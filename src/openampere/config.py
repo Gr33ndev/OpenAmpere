@@ -81,6 +81,17 @@ class CloudConfig:
 
 
 @dataclass
+class NotifyConfig:
+    ntfy_url: str = ""  # e.g. https://ntfy.sh/<own secret topic> or an own ntfy server
+    ntfy_token: str = ""  # optional access token for protected topics
+    on_unreachable: bool = True
+    on_alarm: bool = True
+    on_overwritten: bool = True
+    on_battery_full: bool = False
+    on_cheap_power: bool = False
+
+
+@dataclass
 class Config:
     inverter: InverterConfig = field(default_factory=InverterConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
@@ -90,6 +101,7 @@ class Config:
     cloud: CloudConfig = field(default_factory=CloudConfig)
     pv: PvConfig = field(default_factory=PvConfig)
     grid: GridConfig = field(default_factory=GridConfig)
+    notify: NotifyConfig = field(default_factory=NotifyConfig)
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
@@ -117,6 +129,13 @@ EDITABLE: dict[str, tuple] = {
     "pv.input_names": ("strlist", 6, 30),
     "pv.installed_kwp": ("float", 0, 1000),
     "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),
+    "notify.ntfy_url": ("url",),
+    "notify.ntfy_token": ("secret",),
+    "notify.on_unreachable": ("bool",),
+    "notify.on_alarm": ("bool",),
+    "notify.on_overwritten": ("bool",),
+    "notify.on_battery_full": ("bool",),
+    "notify.on_cheap_power": ("bool",),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
@@ -203,7 +222,7 @@ LABELS = {
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
-    "timezone": "Zeitzone",
+    "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse",
 }
 
 
@@ -234,6 +253,10 @@ def validate(changes: dict) -> dict:
                     raise ValueError
             elif kind == "bool":
                 value = _coerce(True, value)
+            elif kind == "url":
+                value = str(value).strip()
+                if value and not value.startswith(("https://", "http://")):
+                    raise ValueError
             elif kind == "timezone":
                 from zoneinfo import ZoneInfo
                 value = str(value).strip()

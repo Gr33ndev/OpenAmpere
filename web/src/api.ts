@@ -40,6 +40,7 @@ export type Status = {
   timezone: string;
   web_build: string | null;
   clock_wrong: boolean;
+  devices: { grid_charging: boolean; consumers: { name: string; power_w: number; on: boolean | null }[] };
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
@@ -81,8 +82,14 @@ export type Settings = {
     "pv.input_names": string[];
     "pv.installed_kwp": number;
     "grid.feed_in_rule": FeedInRule;
+    "notify.ntfy_url": string;
+    "notify.on_unreachable": boolean;
+    "notify.on_alarm": boolean;
+    "notify.on_overwritten": boolean;
+    "notify.on_battery_full": boolean;
+    "notify.on_cheap_power": boolean;
   };
-  secrets: Record<"cloud.api_key", { set: boolean; hint: string | null }>;
+  secrets: Record<"cloud.api_key" | "notify.ntfy_token", { set: boolean; hint: string | null }>;
   locked: string[];
   revision: number;
 };

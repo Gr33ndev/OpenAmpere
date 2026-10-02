@@ -111,6 +111,45 @@ function ImportHint() {
   );
 }
 
+const HIDE_TIPS_KEY = "openampere.hideTips";
+
+/** Short introduction for the first visits. */
+function Tips() {
+  const [hidden, setHidden] = useState(() => {
+    try { return localStorage.getItem(HIDE_TIPS_KEY) === "1"; } catch { return false; }
+  });
+  if (hidden) return null;
+  const hide = () => {
+    try { localStorage.setItem(HIDE_TIPS_KEY, "1"); } catch { /* private mode */ }
+    setHidden(true);
+  };
+  return (
+    <div className="card tips">
+      <strong>So liest du das Dashboard</strong>
+      <ul>
+        <li>Die Linien zeigen, wohin der Strom gerade fließt – vom Dach, aus dem Speicher und aus dem Netz zum Haus.</li>
+        <li>„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.</li>
+        <li>Im Report siehst du Tage, Wochen und Jahre; tippe auf ein Diagramm für die genauen Werte.</li>
+        <li>Unter „Mehr“ findest du alle Einstellungen. Ändern geht erst nach Anmeldung.</li>
+      </ul>
+      <button className="link" onClick={hide}>Verstanden, ausblenden</button>
+    </div>
+  );
+}
+
+function DeviceStates({ status }: { status: Status | null }) {
+  const devices = status?.devices;
+  if (!devices || (!devices.grid_charging && !devices.consumers.length)) return null;
+  return (
+    <div className="device-chips" aria-label="Weitere Geräte">
+      {devices.grid_charging && <span className="chip on">Speicher lädt aus dem Netz</span>}
+      {devices.consumers.map((c, i) => (
+        <span key={i} className={`chip ${c.on ? "on" : ""}`}>{c.name}: {c.on == null ? "–" : c.on ? "an" : "aus"}</span>
+      ))}
+    </div>
+  );
+}
+
 export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
   const e = today?.energy_wh;
@@ -134,6 +173,8 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
       )}
       <ImportHint />
       <EnergyFlow snap={snap} stale={stale} />
+      <DeviceStates status={status} />
+      <Tips />
 
       <div className="section-title">Tageswerte</div>
       {today?.partial_since && <p className="hint">Erfasst seit {time(today.partial_since)} Uhr (OpenAmpere läuft erst seit heute).</p>}

@@ -10,6 +10,7 @@ from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yam
 from .drivers import registry
 from .cloud_import import CloudImport
 from .storage import Storage
+from .tariffs import Tariffs
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class Runtime:
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
+        self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct))
 
     @classmethod
     def from_files(cls, config_path: str | None = None) -> Runtime:

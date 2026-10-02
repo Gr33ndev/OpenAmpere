@@ -27,11 +27,13 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - **Solar nach Modulfeldern:** Leistung, Spannung und Strom je PV-Eingang (MPPT), etwa für Süddach, Westdach oder Garage
   - **Temperaturen:** Wechselrichter, Speicher, Batteriezellen
 - **Report:**
-  - Leistungskurve über den Tag
-  - Energie pro Tag, Woche, Monat und Jahr
+  - Leistungskurve über den Tag mit Ladestand, Werte beim Antippen
+  - Energie pro Tag (15 oder 60 Minuten), Woche, Monat und Jahr
   - Ertrag je Modulfeld
   - Temperaturverlauf
-  - Autarkie und Eigenverbrauch
+  - Autarkie, Eigenverbrauch und geschätzte Ersparnis
+- **Stromtarife:** Festpreis oder dynamischer Tarif (Börsenpreis plus Aufschlag, Deutschland und Österreich), mehrere Tarife mit Startdatum; daraus die Ersparnis.
+- **Export:** Energiewerte als CSV-Datei für Excel und Co.
 - **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus
 - **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern. Man gibt die installierte Modulleistung (kWp) und die geltende Regel an: 60 % nach dem Solarspitzengesetz (bis ein intelligentes Messsystem mit Steuerbox eingebaut ist), die frühere 70-%-Regel, ein fester Wert aus der Netzanschlusszusage (z. B. Nulleinspeisung) oder keine Begrenzung. Die Prozente beziehen sich auf die Modulleistung, nicht auf den Wechselrichter; mehr als die Regel erlaubt, lässt die App nicht zu. **Bei einem festen Wert vom Netzbetreiber ist jede Erhöhung nur mit dessen schriftlicher Zustimmung zulässig**; die App verlangt dafür eine Bestätigung und protokolliert Datum und Zeichen. „Keine Begrenzung“ setzt eine ausdrückliche Erklärung voraus, die ebenfalls protokolliert wird.
 - **Verlauf aus der EKD-Cloud übernehmen:** Für bisherige Nutzer der App „Ampere.IQ“. Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der Ampere.IQ-App eintragen und den Import starten. Der Import nutzt nur die öffentliche Kunden-API mit dem eigenen Schlüssel; OpenAmpere hat nichts mit EKD zu tun, siehe [rechtliche Hinweise](#hintergrund--rechtliche-hinweise).
@@ -39,11 +41,10 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - Nach einem Neustart macht er dort weiter, wo er aufgehört hat.
   - Alternativ lässt sich ein ZIP aus dem [Export-Werkzeug](tools/cloud-export/) einlesen.
 - **Cloud-kompatible Schnittstelle:** `/api/v1/customer/installation` und `/api/v1/installation/{id}/now/all/power` antworten wie die bisherige Cloud-Kunden-API. Vorhandene Werkzeuge stellt man nur auf die neue Adresse um.
-- **Geplant:**
-  - Laden nach Strompreis
-  - Ersparnis-Berechnung
-  - Wallbox und Wärmepumpe
-  - Siehe auch [docs/architektur.md](docs/architektur.md).
+- **Laden aus dem Netz (experimentell):** zum günstigsten Börsenpreis oder in einem festen Zeitfenster, bis zu einem Ladeziel. Läuft nur über die Fernsteuerung des Wechselrichters mit Zeitbegrenzung, im Testmodus nur protokolliert; vorher sind rechtliche Hinweise zu bestätigen (EEG-Speicher, § 14a EnWG).
+- **Überschuss nutzen:** Heizstab, Wärmepumpe (SG-Ready) oder andere Geräte über Shelly-Relais oder Web-Adressen bei Solarüberschuss einschalten, nach Priorität, mit Speicher-Vorrang, Mindestlauf- und Mindestpausenzeit.
+- **Benachrichtigungen** über ntfy: Wechselrichter nicht erreichbar, Störung, überschriebene Einstellung, Speicher voll, günstigster Strom morgen.
+- **Geplant:** Wallbox (je nach Modell). Siehe auch [docs/architektur.md](docs/architektur.md).
 
 ## Installation mit Docker
 

@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
 import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
-import { isoDate, kw, num, updatedLabel } from "./format";
+import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { Button, Checkbox, Dialog, Field, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
 
-type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
+export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
 /** Loads settings and saves partial changes. */
 function useSettings() {
@@ -175,40 +176,111 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
+type TariffForm = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: string; surcharge_ct: string;
+  vat_percent: string; feed_in_ct: string; area: "DE" | "AT" };
+type TariffData = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: number; surcharge_ct: number;
+  vat_percent: number; feed_in_ct: number; area: "DE" | "AT" };
+const de = (v: number) => String(v).replace(".", ",");
+const toNumber = (v: string) => (v.trim() === "" ? Number.NaN : Number(v.replace(",", ".")));
+
+function PriceChart() {
+  const { data } = useResource<{ kind: string; entries: { ts: number; ct: number }[] }>(`/api/prices?date=${todayIso()}`, 15 * 60_000);
+  if (!data || data.kind !== "dynamic") return null;
+  if (!data.entries.length) return <p className="hint">Noch keine Börsenpreise für heute geladen (braucht Internet).</p>;
+  const x = data.entries.map((e) => e.ts);
+  const cheapest = data.entries.reduce((a, b) => (b.ct < a.ct ? b : a));
+  return (
+    <>
+      <div className="section-title">Strompreis heute</div>
+      <Chart x={x} series={[{ label: "Preis", color: "var(--grid)", values: data.entries.map((e) => e.ct), unit: "ct" }]}
+        xFormat={(ts) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })}
+        height={180} label="Strompreis heute je Viertelstunde" />
+      <p className="hint">Am günstigsten: {new Date(cheapest.ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })} Uhr
+        mit {num(cheapest.ct, 1)} ct/kWh (inkl. Aufschlag).</p>
+    </>
+  );
+}
+
 export function TariffPage({ onBack }: PageProps) {
-  const { settings, locked, save, error, reload } = useSettings();
-  const [price, setPrice] = useState("");
-  const [feedIn, setFeedIn] = useState("");
+  const { data, error, reload, setData } = useResource<{ tariffs: TariffData[] }>("/api/tariffs");
+  const [forms, setForms] = useState<TariffForm[]>([]);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (settings) {
-      setPrice(String(settings["tariff.electricity_price_ct"]).replace(".", ","));
-      setFeedIn(String(settings["tariff.feed_in_ct"]).replace(".", ","));
+    if (data) setForms(data.tariffs.map((t) => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
+      vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct) })));
+  }, [data]);
+  const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "fixed" ? t.price_ct : t.surcharge_ct]
+    .every((v) => Number.isFinite(toNumber(v))));
+  const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35", surcharge_ct: "20",
+    vat_percent: "19", feed_in_ct: "8", area: "DE" }), valid_from: todayIso() } as TariffForm]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const tariffs = forms.map((t) => ({ ...t, price_ct: toNumber(t.price_ct) || 0, surcharge_ct: toNumber(t.surcharge_ct) || 0,
+        vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct) }));
+      setData(await putJson<{ tariffs: TariffData[] }>("/api/tariffs", { tariffs }));
+      toast("Gespeichert");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
     }
-  }, [settings]);
-  const parseNumber = (s: string) => (s.trim() === "" ? Number.NaN : Number(s.replace(",", ".")));
+  };
 
   return (
     <SubPage title="Stromtarif" onBack={onBack}>
-      {!settings && <LoadState error={error} onRetry={reload} />}
-      <div className="card form">
-        <Field label="Strompreis (brutto)" hint="Was du pro Kilowattstunde aus dem Netz bezahlst." locked={locked("tariff.electricity_price_ct")}>
-          <div className="input-unit">
-            <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <span>ct/kWh</span>
+      {!data && <LoadState error={error} onRetry={reload} />}
+      <p className="hint">Damit schätzt OpenAmpere deine Ersparnis (Report → Autarkie → Geld). Wechselst du den Tarif,
+        lege einen neuen mit Startdatum an – ältere Zeiträume werden weiter mit dem alten Preis berechnet.</p>
+      {forms.map((t, i) => (
+        <div className="card form" key={i}>
+          <div className="field-row">
+            <Field label="Gültig ab"><input className="input" type="date" value={t.valid_from}
+              onChange={(e) => update(i, { valid_from: e.target.value })} /></Field>
+            <Field label="Art">
+              <select className="input" value={t.kind} onChange={(e) => update(i, { kind: e.target.value as TariffForm["kind"] })}>
+                <option value="fixed">Festpreis</option>
+                <option value="dynamic">Dynamisch (Börsenpreis)</option>
+              </select>
+            </Field>
           </div>
-        </Field>
-        <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst (EEG)." locked={locked("tariff.feed_in_ct")}>
-          <div className="input-unit">
-            <input className="input" inputMode="decimal" value={feedIn} onChange={(e) => setFeedIn(e.target.value)} />
-            <span>ct/kWh</span>
-          </div>
-        </Field>
-      </div>
-      <p className="hint">Damit schätzt OpenAmpere deine Ersparnis (Report → Autarkie → Geld).</p>
-      <Button disabled={!settings || Number.isNaN(parseNumber(price)) || Number.isNaN(parseNumber(feedIn))}
-        onClick={() => save({ "tariff.electricity_price_ct": parseNumber(price), "tariff.feed_in_ct": parseNumber(feedIn) })}>
-        Speichern
-      </Button>
+          {t.kind === "fixed" ? (
+            <Field label="Strompreis (brutto)" hint="Was du pro Kilowattstunde aus dem Netz bezahlst.">
+              <div className="input-unit"><input className="input" inputMode="decimal" value={t.price_ct}
+                onChange={(e) => update(i, { price_ct: e.target.value })} /><span>ct/kWh</span></div>
+            </Field>
+          ) : (
+            <>
+              <Field label="Aufschlag (brutto)" hint="Alles, was zum Börsenpreis dazukommt: Netzentgelt, Umlagen, Steuern, Marge. Steht im Vertrag oder auf der Rechnung.">
+                <div className="input-unit"><input className="input" inputMode="decimal" value={t.surcharge_ct}
+                  onChange={(e) => update(i, { surcharge_ct: e.target.value })} /><span>ct/kWh</span></div>
+              </Field>
+              <div className="field-row">
+                <Field label="MwSt. auf Börsenpreis"><div className="input-unit"><input className="input" inputMode="decimal"
+                  value={t.vat_percent} onChange={(e) => update(i, { vat_percent: e.target.value })} /><span>%</span></div></Field>
+                <Field label="Preiszone">
+                  <select className="input" value={t.area} onChange={(e) => update(i, { area: e.target.value as TariffForm["area"] })}>
+                    <option value="DE">Deutschland</option><option value="AT">Österreich</option>
+                  </select>
+                </Field>
+              </div>
+            </>
+          )}
+          <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst (EEG).">
+            <div className="input-unit"><input className="input" inputMode="decimal" value={t.feed_in_ct}
+              onChange={(e) => update(i, { feed_in_ct: e.target.value })} /><span>ct/kWh</span></div>
+          </Field>
+          {forms.length > 1 && <button className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>Tarif entfernen</button>}
+        </div>
+      ))}
+      <Button variant="secondary" onClick={add}>Tarifwechsel hinzufügen</Button>
+      <Button busy={busy} disabled={!valid} onClick={save}>Speichern</Button>
+      {forms.some((t) => t.kind === "dynamic") && (
+        <p className="hint">Börsenpreise kommen kostenlos von aWATTar (Day-Ahead-Markt). Dafür braucht der Server Internet.</p>
+      )}
+      <PriceChart />
     </SubPage>
   );
 }
@@ -320,6 +392,8 @@ const LOG_KEYS: Record<string, string> = {
   "control.enabled": "Steuerung", "control.dry_run": "Testmodus", "grid.feed_in_rule": "Einspeiseregel",
   "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Entladegrenze (%)",
   min_soc_on_grid: "Reserve am Netz (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
+  power_w: "Ladeleistung (W)", target_soc: "Ladeziel (%)", enabled: "Eingeschaltet", soc: "Ladestand (%)",
+  consumer: "Gerät", on: "An",
 };
 const LOG_VALUES: Record<string, string> = {
   true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",
@@ -1016,6 +1090,148 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
             onClick={() => save({ "pv.input_names": names.slice(0, 6) })}>Speichern</Button>
         </div>
       ))}
+    </SubPage>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_soc: number; ready_by: number;
+  window_start: number; window_end: number; max_price_ct: number | null; power_w: number; battery_kwh: number;
+  legal_confirmed: boolean };
+type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
+  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> } };
+
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+/** Consecutive quarter hours as readable ranges: "02:00–03:30". */
+function ranges(quarters: number[]): string[] {
+  const out: string[] = [];
+  const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+  let start = quarters[0];
+  for (let i = 1; i <= quarters.length; i++) {
+    if (i === quarters.length || quarters[i] !== quarters[i - 1] + 900) {
+      out.push(`${fmt(start)}–${fmt(quarters[i - 1] + 900)}`);
+      start = quarters[i];
+    }
+  }
+  return out;
+}
+
+export function ChargingPage({ onBack, onNavigate }: PageProps) {
+  const { data: status } = useResource<Status>("/api/status");
+  const { data, error, reload, setData } = useResource<ChargingView>("/api/charging", 30_000);
+  const [form, setForm] = useState<ChargingSettings | null>(null);
+  const [legal, setLegal] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (data) setForm(data.settings); }, [data]);
+  const rated = status?.device?.rated_power_w ?? 10_000;
+  const set = (patch: Partial<ChargingSettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
+  const changed = form && data && JSON.stringify(form) !== JSON.stringify(data.settings);
+
+  const save = async (next: ChargingSettings) => {
+    setBusy(true);
+    try {
+      setData(await putJson<ChargingView>("/api/charging", next));
+      toast("Gespeichert");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SubPage title="Laden aus dem Netz" onBack={onBack}>
+      <Notice kind="warn">
+        <strong>Experimentell.</strong> Lädt den Speicher aus dem Netz, wenn Strom günstig ist (dynamischer Tarif) oder in
+        einem festen Zeitfenster (z. B. Nachtstrom). OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit
+        Zeitbegrenzung: Stoppt OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück.
+      </Notice>
+      {!status?.control.enabled && (
+        <Notice kind="info">Die Steuerung ist ausgeschaltet.{" "}
+          <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
+      )}
+      {!form && <LoadState error={error} onRetry={reload} />}
+      {form && data && (
+        <>
+          <div className="card form">
+            <SwitchRow label="Laden aus dem Netz" checked={form.enabled}
+              hint={data.active ? "Lädt gerade." : data.plan.reason}
+              onChange={(v) => (v && !form.legal_confirmed ? setLegal(true) : void save({ ...form, enabled: v }))} />
+            {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
+            {form.enabled && data.plan.quarters.length > 0 && (
+              <p className="hint">Geplant: {ranges(data.plan.quarters).join(", ")} Uhr
+                {data.plan.needed_wh ? ` – etwa ${num(data.plan.needed_wh / 1000, 1)} kWh` : ""}.</p>
+            )}
+          </div>
+
+          <div className="card form">
+            <Segmented value={form.mode} onChange={(mode) => set({ mode })}
+              options={[["cheapest", "Günstigste Zeit"], ["window", "Festes Zeitfenster"]]} />
+            <Field label="Laden bis" hint="Ladestand, bei dem das Laden aus dem Netz endet.">
+              <Slider value={form.target_soc} min={20} max={100} unit="%" onChange={(v) => set({ target_soc: v })} />
+            </Field>
+            {form.mode === "cheapest" ? (
+              <>
+                <Field label="Fertig bis" hint="Sucht die günstigsten Viertelstunden bis zu dieser Uhrzeit. Braucht einen dynamischen Tarif.">
+                  <select className="input" value={form.ready_by} onChange={(e) => set({ ready_by: Number(e.target.value) })}>
+                    {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+                  </select>
+                </Field>
+                <Field label="Höchstpreis (optional)" hint="Darüber wird nie geladen, auch wenn das Ziel nicht erreicht wird.">
+                  <div className="input-unit"><input className="input" inputMode="decimal"
+                    value={form.max_price_ct == null ? "" : String(form.max_price_ct).replace(".", ",")}
+                    onChange={(e) => set({ max_price_ct: e.target.value.trim() === "" ? null : Number(e.target.value.replace(",", ".")) })} />
+                    <span>ct/kWh</span></div>
+                </Field>
+              </>
+            ) : (
+              <div className="field-row">
+                <Field label="Von">
+                  <select className="input" value={form.window_start} onChange={(e) => set({ window_start: Number(e.target.value) })}>
+                    {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+                  </select>
+                </Field>
+                <Field label="Bis">
+                  <select className="input" value={form.window_end} onChange={(e) => set({ window_end: Number(e.target.value) })}>
+                    {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+                  </select>
+                </Field>
+              </div>
+            )}
+            <Field label="Ladeleistung">
+              <Segmented value={form.power_w === Math.round(rated * 0.3) ? "gentle" : form.power_w === Math.round(rated * 0.6) ? "fast"
+                : form.power_w === rated ? "max" : "custom"}
+                onChange={(v) => v !== "custom" && set({ power_w: Math.round(rated * ({ gentle: 0.3, fast: 0.6, max: 1 } as const)[v]) })}
+                options={[["gentle", "Schonend"], ["fast", "Schnell"], ["max", "Maximal"], ["custom", `${num(form.power_w / 1000, 1)} kW`]]} />
+            </Field>
+            {form.power_w > 4200 && <p className="hint">Über 4,2 kW Ladeleistung aus dem Netz kann der Speicher unter § 14a EnWG
+              (steuerbare Verbraucher) fallen. Kläre das mit deinem Netzbetreiber.</p>}
+            <Field label="Nutzbare Speichergröße" hint="Aus dem Datenblatt, für die Berechnung der Ladedauer.">
+              <div className="input-unit"><input className="input" inputMode="decimal" value={String(form.battery_kwh).replace(".", ",")}
+                onChange={(e) => set({ battery_kwh: Number(e.target.value.replace(",", ".")) || 0 })} /><span>kWh</span></div>
+            </Field>
+            <Button busy={busy} disabled={!changed} onClick={() => void save(form)}>Speichern</Button>
+          </div>
+        </>
+      )}
+      {legal && form && (
+        <Dialog title="Laden aus dem Netz einschalten?" confirm="Einschalten" danger disabled={!form.legal_confirmed}
+          onCancel={() => { setLegal(false); set({ legal_confirmed: false }); }}
+          onConfirm={() => { setLegal(false); void save({ ...form, enabled: true }); }}>
+          <p>Lädt der Speicher Netzstrom, kann das die EEG-Vergütung für Strom betreffen, der später aus dem Speicher
+            eingespeist wird (Ausschließlichkeitsprinzip). Seit 2025 gibt es dafür Abgrenzungs- und Pauschalregeln, die
+            beim Netzbetreiber angemeldet werden müssen. Ein Speicher mit mehr als 4,2 kW Netzladeleistung kann zudem
+            unter § 14a EnWG fallen.</p>
+          <p className="hint">OpenAmpere lädt nur und entlädt nie ins Netz. Kläre die Anmeldung mit deinem Netzbetreiber
+            oder Steuerberater, bevor du die Funktion nutzt.</p>
+          <Checkbox checked={form.legal_confirmed} onChange={(v) => set({ legal_confirmed: v })}>
+            Ich habe das gelesen und kläre die Anmeldung selbst.
+          </Checkbox>
+        </Dialog>
+      )}
     </SubPage>
   );
 }

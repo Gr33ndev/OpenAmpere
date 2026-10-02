@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS pv_input_15m (
     ts INTEGER NOT NULL, input INTEGER NOT NULL, wh REAL NOT NULL, PRIMARY KEY (ts, input)
 );
+CREATE TABLE IF NOT EXISTS prices (ts INTEGER PRIMARY KEY, eur_mwh REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS control_log (
     ts REAL NOT NULL, action TEXT NOT NULL, details TEXT NOT NULL, dry_run INTEGER NOT NULL, result TEXT NOT NULL
 );
@@ -296,6 +297,15 @@ class Storage:
     def pv_input_energy(self, start: float, end: float) -> list[dict]:
         return self._fetchall("SELECT ts, input, wh FROM pv_input_15m WHERE ts >= ? AND ts < ? ORDER BY ts, input",
                               (start, end))
+
+    def save_prices(self, rows: list[tuple[int, float]]) -> None:
+        with self._lock, self._db:
+            self._db.executemany("INSERT OR REPLACE INTO prices(ts, eur_mwh) VALUES (?, ?)", rows)
+
+    def prices(self, start: float, end: float) -> dict[int, float]:
+        """Exchange price (EUR/MWh) per quarter hour."""
+        return {r["ts"]: r["eur_mwh"] for r in
+                self._fetchall("SELECT ts, eur_mwh FROM prices WHERE ts >= ? AND ts < ? ORDER BY ts", (start, end))}
 
     def energy_sum(self, start: float, end: float) -> dict:
         with self._lock:

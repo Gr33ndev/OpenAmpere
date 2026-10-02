@@ -405,3 +405,9 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .update-banner { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px; justify-content: center; align-items: center;
   flex-wrap: wrap; font-size: 14px; padding: calc(env(safe-area-inset-top) + 8px) 16px 8px; background: var(--card); color: var(--text);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+.consumer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.button-row.inline { flex-direction: row; flex-wrap: wrap; gap: 6px 18px; }
+.device-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 4px 0 8px; }
+.chip { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--track); color: var(--label); }
+.chip.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); font-weight: 600; }
+.tips ul { margin: 8px 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }

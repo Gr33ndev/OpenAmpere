@@ -12,6 +12,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
+from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
@@ -30,6 +31,9 @@ from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
 from .storage import FLOWS, Storage
 from .discovery import Rediscovery
+from .charging import GridCharging
+from .consumers import SurplusControl
+from .notify import Notifier
 
 log = logging.getLogger(__name__)
 
@@ -91,17 +95,22 @@ def create_app(runtime: Runtime) -> FastAPI:
     export_limit = ExportLimitControl(runtime)
 
     rediscovery = Rediscovery(runtime)
+    charging = GridCharging(runtime)
+    surplus = SurplusControl(runtime)
+    notifier = Notifier(runtime)
 
     async def watchdog() -> None:
-        """Finds the inverter again after an IP address change (DHCP)."""
+        """Background jobs: find the inverter after an IP change, exchange prices, grid charging."""
         while True:
             await asyncio.sleep(30)
-            try:
-                await rediscovery.check(time.time())
-            except asyncio.CancelledError:
-                raise
-            except Exception as err:  # noqa: BLE001 - never stop the watchdog
-                log.warning("rediscovery failed: %s", err)
+            for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
+                        surplus.tick, notifier.check):
+                try:
+                    await job()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:  # noqa: BLE001 - never stop the watchdog
+                    log.warning("background job failed: %s", err)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -110,6 +119,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         watchdog_task = asyncio.create_task(watchdog())
         yield
         watchdog_task.cancel()
+        await charging.stop("OpenAmpere wird beendet")
         await runtime.cloud_import.stop(status="running")  # keeps running after the next start
         await collector.stop()
 
@@ -211,6 +221,11 @@ def create_app(runtime: Runtime) -> FastAPI:
             "clock_wrong": storage.clock_wrong,
             "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
+            "devices": {
+                "grid_charging": charging.active,
+                "consumers": [{"name": c.name, "power_w": c.power_w, "on": surplus.states[c.id].on
+                               if c.id in surplus.states else None} for c in surplus.consumers if c.enabled],
+            },
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
@@ -423,16 +438,80 @@ def create_app(runtime: Runtime) -> FastAPI:
                     flows = {f: today[f] for f in FLOWS}
                 else:
                     partial_since = first
+        extra = [running] if running and start <= running["ts"] < end else []
         return {"period": period, "from": start, "to": end, "quarters": quarters,
-                "partial_since": partial_since, "energy_wh": flows, **ratios(flows), "money": money(flows)}
+                "partial_since": partial_since, "energy_wh": flows, **ratios(flows),
+                "money": runtime.tariffs.money(start, end, runtime.tz, extra)}
 
-    def money(flows: dict) -> dict:
-        """Rough savings with the configured tariff: self-used solar power is not bought, exports are paid."""
-        tariff = runtime.config.tariff
-        load, grid_import, export = (flows.get(k) or 0 for k in ("load", "grid_import", "grid_export"))
-        price, feed_in = tariff.electricity_price_ct / 100_000, tariff.feed_in_ct / 100_000  # € per Wh
-        return {"savings_eur": round(max(0.0, load - grid_import) * price + export * feed_in, 2),
-                "feed_in_eur": round(export * feed_in, 2), "grid_cost_eur": round(grid_import * price, 2)}
+    # ---- tariffs & exchange prices ------------------------------------------
+
+    @app.get("/api/tariffs")
+    def get_tariffs():
+        return {"tariffs": [asdict(t) for t in runtime.tariffs.all()]}
+
+    @app.put("/api/tariffs")
+    async def put_tariffs(body: dict = Body(...)):
+        try:
+            tariffs = runtime.tariffs.save(body.get("tariffs"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await runtime.tariffs.refresh_prices()
+        return {"tariffs": [asdict(t) for t in tariffs]}
+
+    @app.get("/api/charging")
+    def get_charging():
+        return charging.view()
+
+    @app.put("/api/charging")
+    async def put_charging(body: dict = Body(...)):
+        try:
+            charging.save(body)
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await charging.tick()
+        return charging.view()
+
+    @app.get("/api/consumers")
+    def get_consumers():
+        return surplus.view()
+
+    @app.put("/api/consumers")
+    def put_consumers(body: dict = Body(...)):
+        try:
+            surplus.save(body.get("consumers"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        return surplus.view()
+
+    @app.post("/api/consumers/{consumer_id}/switch")
+    async def switch_consumer(consumer_id: str, on: bool):
+        """Manual switch, e.g. to test the connection to a Shelly."""
+        consumer = next((c for c in surplus.consumers if c.id == consumer_id), None)
+        if consumer is None:
+            raise HTTPException(404, "Verbraucher nicht gefunden")
+        if not runtime.config.control.enabled:
+            raise HTTPException(403, "Steuerung ist deaktiviert")
+        await surplus.switch(consumer, on, "von Hand geschaltet", time.time())
+        return surplus.view()
+
+    @app.post("/api/notify/test")
+    async def notify_test():
+        if not runtime.config.notify.ntfy_url:
+            raise HTTPException(400, "Bitte zuerst eine ntfy-Adresse eintragen.")
+        if not await notifier.push("OpenAmpere", "Test: Benachrichtigungen funktionieren.", "tada"):
+            raise HTTPException(502, notifier.last_error or "Senden fehlgeschlagen")
+        return {"ok": True}
+
+    @app.get("/api/prices")
+    def get_prices(date: str | None = None):
+        """Import price per quarter hour of a day (ct/kWh gross) for the tariff valid that day."""
+        start, end = bounds("day", date)
+        day = datetime.datetime.fromtimestamp(start, runtime.tz).date().isoformat()
+        tariff = runtime.tariffs.at(day)
+        prices = storage.prices(start, end)
+        entries = [{"ts": ts, "ct": round(tariff.import_price_ct(p), 2), "exchange_eur_mwh": p} for ts, p in prices.items()]
+        return {"kind": tariff.kind, "feed_in_ct": tariff.feed_in_ct, "fixed_ct": tariff.price_ct if tariff.kind == "fixed" else None,
+                "entries": entries if tariff.kind == "dynamic" else []}
 
     @app.get("/api/export/csv")
     def export_csv(start: str = Query(..., alias="from", pattern=r"^\d{4}-\d{2}-\d{2}$"),

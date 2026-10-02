@@ -1,9 +1,12 @@
-import type { Snapshot, Status } from "./api";
+import { Fragment } from "react";
+import type { Settings, Snapshot, Status } from "./api";
 import { useResource, useStale } from "./api";
 import { kwh, percent, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
-import { AboutPage, AppearancePage, BatteryPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
+import { AboutPage, AppearancePage, BatteryPage, ChargingPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
+import { ConsumersPage } from "./ConsumersPage";
+import { NotifyPage } from "./NotifyPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { goBack, navigate } from "./route";
 
@@ -16,8 +19,12 @@ function StatusPill({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
+const RULES: Record<string, string> = { unknown: "nicht angegeben", limit_60: "60 % der Modulleistung",
+  limit_70: "70 % der Modulleistung", operator: "Wert vom Netzbetreiber", none: "keine Begrenzung" };
+
 function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () => void }) {
   const { data: status } = useResource<Status>("/api/status", 10_000);
+  const settings = useResource<Settings>("/api/settings").data?.values;
   const device = status?.device;
   const codes = (snap?.alarms ?? []).map((a, i) => ({ word: i + 1, value: a })).filter((a) => a.value !== 0);
   const alarms = codes.length > 0;
@@ -57,6 +64,28 @@ function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () 
         </dl>
       </div>
 
+      <div className="section-title">PV-Anlage</div>
+      <div className="card">
+        <dl className="facts">
+          <dt>Modulleistung</dt><dd>{settings?.["pv.installed_kwp"] ? `${num(settings["pv.installed_kwp"], 1)} kWp` : "nicht angegeben"}</dd>
+          <dt>Modulfelder</dt><dd>{snap?.pv_inputs.filter((p) => p.power != null).length || "–"}</dd>
+          <dt>Einspeiseregel</dt><dd>{RULES[settings?.["grid.feed_in_rule"] ?? "unknown"]}</dd>
+        </dl>
+      </div>
+
+      {!!status?.devices.consumers.length && (
+        <>
+          <div className="section-title">Weitere Geräte</div>
+          <div className="card">
+            <dl className="facts">
+              {status.devices.consumers.map((c, i) => (
+                <Fragment key={i}><dt>{c.name}</dt><dd>{c.on == null ? "–" : c.on ? "an" : "aus"} · {num(c.power_w / 1000, 1)} kW</dd></Fragment>
+              ))}
+            </dl>
+          </div>
+        </>
+      )}
+
       <div className="section-title">Zählerstände</div>
       <div className="card">
         <dl className="facts">
@@ -79,6 +108,9 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
   switch (page) {
     case "installation": return <InstallationPage snap={snap} onBack={back} />;
     case "battery": return <BatteryPage {...nav} />;
+    case "charging": return <ChargingPage {...nav} />;
+    case "consumers": return <ConsumersPage {...nav} />;
+    case "notify": return <NotifyPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
     case "pv": return <PvSystemPage {...nav} snap={snap} />;
     case "export-limit": return <ExportLimitPage {...nav} />;
@@ -101,6 +133,8 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Meine Anlage" hint={status?.device?.model ?? undefined} onClick={() => setPage("installation")} />
         <MenuRow label="PV-Anlage" hint="Modulfelder benennen" onClick={() => setPage("pv")} />
         <MenuRow label="Speicher & Notstrom" onClick={() => setPage("battery")} />
+        <MenuRow label="Laden aus dem Netz" hint="Nach Strompreis oder Zeitfenster (experimentell)" onClick={() => setPage("charging")} />
+        <MenuRow label="Überschuss nutzen" hint="Heizstab, Wärmepumpe & Co." onClick={() => setPage("consumers")} />
         <MenuRow label="Einspeisebegrenzung" hint="Gesetzliche Regel und Modulleistung" onClick={() => setPage("export-limit")} />
         <MenuRow label="Stromtarif" onClick={() => setPage("tariff")} />
       </div>
@@ -110,6 +144,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung"
           hint={control?.enabled ? (control.dry_run ? "Testmodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
+        <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy (ntfy)" onClick={() => setPage("notify")} />
         <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
         <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
