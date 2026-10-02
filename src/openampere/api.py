@@ -34,6 +34,7 @@ from .discovery import Rediscovery
 from .charging import GridCharging
 from .consumers import SurplusControl
 from .notify import Notifier
+from .diagnostics import Diagnostics, report_markdown
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +99,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     charging = GridCharging(runtime)
     surplus = SurplusControl(runtime)
     notifier = Notifier(runtime)
+    diagnostics = Diagnostics(runtime)
 
     async def watchdog() -> None:
         """Background jobs: find the inverter after an IP change, exchange prices, grid charging."""
@@ -501,6 +503,19 @@ def create_app(runtime: Runtime) -> FastAPI:
         if not await notifier.push("OpenAmpere", "Test: Benachrichtigungen funktionieren.", "tada"):
             raise HTTPException(502, notifier.last_error or "Senden fehlgeschlagen")
         return {"ok": True}
+
+    @app.get("/api/diagnostics")
+    def get_diagnostics():
+        return {"running": diagnostics.running, "report": diagnostics.last,
+                "markdown": report_markdown(diagnostics.last) if diagnostics.last else None}
+
+    @app.post("/api/diagnostics")
+    async def run_diagnostics(connection_test: bool = False, include_serial: bool = False):
+        try:
+            report = await diagnostics.run(connection_test=connection_test, include_serial=include_serial)
+        except RuntimeError as err:
+            raise HTTPException(409, str(err)) from None
+        return {"running": False, "report": report, "markdown": report_markdown(report)}
 
     @app.get("/api/prices")
     def get_prices(date: str | None = None):

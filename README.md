@@ -44,6 +44,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 - **Laden aus dem Netz (experimentell):** zum günstigsten Börsenpreis oder in einem festen Zeitfenster, bis zu einem Ladeziel. Läuft nur über die Fernsteuerung des Wechselrichters mit Zeitbegrenzung, im Testmodus nur protokolliert; vorher sind rechtliche Hinweise zu bestätigen (EEG-Speicher, § 14a EnWG).
 - **Überschuss nutzen:** Heizstab, Wärmepumpe (SG-Ready) oder andere Geräte über Shelly-Relais oder Web-Adressen bei Solarüberschuss einschalten, nach Priorität, mit Speicher-Vorrang, Mindestlauf- und Mindestpausenzeit.
 - **Benachrichtigungen** über ntfy: Wechselrichter nicht erreichbar, Störung, überschriebene Einstellung, Speicher voll, günstigster Strom morgen.
+- **Diagnose (nur lesen):** prüft Registerkarte, Funktionscodes, optionale Blöcke, Skalierung, Einspeisebegrenzung, Verbindungsabbrüche und Tageszähler des eigenen Geräts und erstellt einen Bericht zum Teilen. **Vor der ersten Änderung am Wechselrichter einmal ausführen.**
 - **Geplant:** Wallbox (je nach Modell). Siehe auch [docs/architektur.md](docs/architektur.md).
 
 ## Installation mit Docker

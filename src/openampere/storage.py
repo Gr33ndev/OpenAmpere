@@ -222,6 +222,7 @@ class Storage:
         state = self._quarter
         if state is not None and any(totals[f] == 0 and state["totals"][f] > 100 for f in FLOWS):
             log.warning("ignoring reading with a counter that dropped to 0")
+            self._note_glitch(snap.timestamp, "Zähler kurz auf 0")
             return
         quarter = int(snap.timestamp // QUARTER * QUARTER)
         if state is None or quarter < state["ts"]:
@@ -232,8 +233,10 @@ class Storage:
             limit_wh = MAX_POWER_W * span / 3600 * 1.5
             if any(v < 0 for v in delta.values()):
                 log.warning("energy counter went backwards (reset?) - re-basing")
+                self._note_glitch(snap.timestamp, "Zähler rückwärts")
             elif any(v > limit_wh for v in delta.values()):
                 log.warning("implausible energy counter jump %s - re-basing", {f: round(v) for f, v in delta.items()})
+                self._note_glitch(snap.timestamp, "unplausibler Zählersprung")
             elif span > MAX_GAP_S:
                 log.warning("gap of %.1f h is too long to fill - re-basing", span / 3600)
             else:
@@ -266,6 +269,12 @@ class Storage:
         with self._lock:
             row = self._db.execute("SELECT MIN(ts) FROM energy_15m WHERE ts >= ? AND ts < ?", (start, end)).fetchone()
         return row[0]
+
+    def _note_glitch(self, ts: float, kind: str) -> None:
+        """Counter problems for the diagnostics (called with the lock held)."""
+        glitches = (self._get_meta("counter_glitches") or [])[-19:]
+        glitches.append({"ts": ts, "kind": kind})
+        self._set_meta("counter_glitches", glitches)
 
     def import_energy(self, rows: list[dict], source: str) -> int:
         """Insert quarter-hour rows from an external source; never overwrites local measurements."""

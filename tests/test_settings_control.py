@@ -207,3 +207,23 @@ def test_settings_conflict_between_two_devices(tmp_path, authed):
     stale = client.put("/api/settings", json={"tariff.feed_in_ct": 9, "_revision": revision})
     assert stale.status_code == 409 and "anderen Gerät" in stale.json()["detail"]
     assert client.put("/api/settings", json={"timezone": "Mars/Olympus"}).status_code == 400
+
+
+async def test_diagnostics_report(tmp_path):
+    from openampere.diagnostics import Diagnostics, report_markdown
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
+            await wait_connected(runtime)
+            report = await Diagnostics(runtime).run(connection_test=True)
+            checks = {c["id"]: c for c in report["checks"]}
+            assert checks["blocks"]["status"] == "ok"
+            assert checks["block_37609"]["status"] == "ok"
+            assert checks["export_limit"]["summary"] == "6000 W"
+            assert checks["connections"]["details"]["main_connection_survived"]
+            assert report["device"]["serial"] != "SN1"  # masked unless asked
+            assert "OpenAmpere-Diagnose" in report_markdown(report)
+        finally:
+            await runtime.collector.stop()

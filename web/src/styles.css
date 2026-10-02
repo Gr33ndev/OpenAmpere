@@ -411,3 +411,11 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .chip { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--track); color: var(--label); }
 .chip.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); font-weight: 600; }
 .tips ul { margin: 8px 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.checks, .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.plain-list li { font-size: 14px; line-height: 1.5; }
+.check { display: flex; gap: 12px; align-items: flex-start; }
+.check .meta { display: block; font-size: 13px; color: var(--label); margin-top: 2px; }
+.check .badge { flex: none; min-width: 52px; text-align: center; font-size: 12px; font-weight: 600; padding: 3px 8px;
+  border-radius: 999px; background: var(--track); color: var(--label); }
+.check.ok .badge { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); }
+.check.warn .badge, .check.error .badge { background: var(--delight-light); color: var(--delight-text); }

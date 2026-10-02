@@ -44,6 +44,7 @@ OpenAmpere ist eine lokal laufende, quelloffene App für Solaranlagen mit Batter
 | `tariffs.py` | Stromtarife mit Startdatum (Festpreis oder dynamisch), Börsenpreise von aWATTar je Viertelstunde, Ersparnis-Berechnung. |
 | `charging.py` | Laden aus dem Netz nach Preis oder Zeitfenster, nur über die Fernsteuerung mit Watchdog (3 min); prüft, dass der Speicher wirklich lädt. |
 | `consumers.py` | Überschuss-Verbraucher (Shelly, HTTP) nach Priorität mit Hysterese, Mindestzeiten und Speicher-Vorrang. |
+| `diagnostics.py` | Diagnose nur lesend: Blöcke mit FC03/FC04, Skalierung, Exportlimit, Fernsteuerung, optional Verbindungsgrenze; dazu passiv gesammelte Verbindungsabbrüche, Zählerauffälligkeiten und Rücksetzzeiten der Tageszähler. |
 | `notify.py` | Benachrichtigungen über ntfy, jedes Ereignis nur einmal. |
 | `cloud_import.py` | Übernimmt den Verlauf aus der bisherigen Hersteller-Cloud über deren Kunden-API, alternativ per ZIP aus `tools/cloud-export`. Eigene Messwerte werden nie überschrieben. |
 | `simulator.py` | Modbus-TCP-Simulator für FoxESS und SAJ, mit Modulfeldern, Temperaturen, Einspeisebegrenzung und Proxy-Fehlern. Damit lässt sich ohne echte Anlage entwickeln und testen. |

@@ -7,6 +7,7 @@ import { AboutPage, AppearancePage, BatteryPage, ChargingPage, ConnectionPage, C
 import { SecurityPage } from "./AuthScreens";
 import { ConsumersPage } from "./ConsumersPage";
 import { NotifyPage } from "./NotifyPage";
+import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { goBack, navigate } from "./route";
 
@@ -111,6 +112,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "charging": return <ChargingPage {...nav} />;
     case "consumers": return <ConsumersPage {...nav} />;
     case "notify": return <NotifyPage {...nav} />;
+    case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
     case "pv": return <PvSystemPage {...nav} snap={snap} />;
     case "export-limit": return <ExportLimitPage {...nav} />;
@@ -147,6 +149,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy (ntfy)" onClick={() => setPage("notify")} />
         <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
+        <MenuRow label="Diagnose" hint="Gerät prüfen, Bericht teilen (nur lesen)" onClick={() => setPage("diagnostics")} />
         <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
       </div>
 

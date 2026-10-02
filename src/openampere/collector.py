@@ -28,6 +28,7 @@ class Collector:
         self.connected = False
         self.last_error: str | None = None
         self.disconnected_since: float | None = None  # first failed attempt since the last good reading
+        self._last_today_pv: float | None = None
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
 
@@ -84,6 +85,28 @@ class Collector:
             return True
         return not self.connected or time.time() - self.latest.timestamp > max(3 * self.interval, 30)
 
+    def _event(self, kind: str, detail: str = "") -> None:
+        """Connection history for the diagnostics (e.g. does the inverter refuse connections at night?)."""
+        try:
+            events = (self.storage.get_meta("connection_events") or [])[-99:]
+            events.append({"ts": time.time(), "event": kind, "detail": detail[:200]})
+            self.storage.set_meta("connection_events", events)
+        except Exception:  # noqa: BLE001 - diagnostics must never disturb polling
+            pass
+
+    def _watch_daily_reset(self, snap: Snapshot) -> None:
+        """Remembers when the inverter resets its daily counters (its own clock, maybe without DST)."""
+        value = snap.today.pv
+        previous, self._last_today_pv = self._last_today_pv, value
+        if value is None or previous is None or value >= previous - 50:
+            return
+        try:
+            resets = (self.storage.get_meta("daily_resets") or [])[-9:]
+            resets.append(snap.timestamp)
+            self.storage.set_meta("daily_resets", resets)
+        except Exception:  # noqa: BLE001
+            pass
+
     async def _store(self, snap: Snapshot) -> None:
         """Storage problems (e.g. disk full) must not tear down the Modbus connection."""
         try:
@@ -105,6 +128,8 @@ class Collector:
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
                     log.info("inverter connected")
+                    self._event("verbunden")
+                self._watch_daily_reset(snap)
                 self.connected = True
                 self.disconnected_since = None
                 self.last_error = None
@@ -136,6 +161,7 @@ class Collector:
                 transient_failures = 0
                 if self.connected or self.disconnected_since is None:
                     self.disconnected_since = time.time()
+                    self._event("getrennt", str(err) or type(err).__name__)
                 message = friendly_error(err)
                 if self.connected or self.last_error != message:
                     log.warning("inverter error: %s (retry in %.0fs)", str(err) or type(err).__name__, backoff)
