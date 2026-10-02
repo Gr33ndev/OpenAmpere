@@ -1,5 +1,5 @@
 """Import the history of an installation from the EKD cloud (customer API of the Ampere.IQ app) into the local
-database. OpenAmpere is not affiliated with EKD; this only uses the public customer API with the user's own key.
+database. OpenAmpere is not affiliated with EKD; this only uses the customer API with the user's own key.
 
 Two ways in:
   - online: the vendor's official customer API with the user's API key (while that cloud still runs).

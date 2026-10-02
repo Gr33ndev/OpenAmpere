@@ -682,7 +682,7 @@ function CloudImportCard() {
         </p>
         <Notice kind="info">
           <strong>Hinweis:</strong> OpenAmpere ist ein unabhängiges Projekt und hat nichts mit der Energiekonzepte Deutschland
-          GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die öffentliche
+          GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die
           Kunden-API der EKD-Cloud mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber.
         </Notice>
 
