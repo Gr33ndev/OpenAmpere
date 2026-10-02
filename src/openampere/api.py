@@ -378,6 +378,18 @@ def create_app(runtime: Runtime) -> FastAPI:
     if (WEB_DIST / "index.html").is_file():
         app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
 
+        @app.middleware("http")
+        async def cache_headers(request, call_next):
+            response = await call_next(request)
+            if request.url.path.startswith("/assets/"):
+                # file names contain a content hash: a new version always gets new names
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            elif not request.url.path.startswith("/api/"):
+                # index.html, manifest, icons: always revalidate so updates show up immediately
+                # (browsers and iOS home-screen apps otherwise keep showing an old version)
+                response.headers["Cache-Control"] = "no-cache"
+            return response
+
         @app.get("/{path:path}", include_in_schema=False)
         def spa(path: str):
             file = (WEB_DIST / path).resolve()

@@ -173,3 +173,19 @@ def test_concurrent_reads_and_writes_from_threads(tmp_path):
         t.join()
     assert errors == []
     assert len(storage.samples(base, base + 86400)) == 1500
+
+
+def test_cache_headers_make_updates_visible(tmp_path):
+    from openampere import api as api_module
+
+    if not (api_module.WEB_DIST / "index.html").is_file():
+        import pytest
+        pytest.skip("web app not built")
+    client = TestClient(create_app(Runtime({}, Storage(tmp_path / "t.db"))))
+    index = client.get("/")
+    assert index.headers["cache-control"] == "no-cache"
+    import re
+    asset = re.search(r'/assets/[^"]+\.js', index.text).group(0)
+    assert "immutable" in client.get(asset).headers["cache-control"]
+    assert client.get("/manifest.webmanifest").headers["cache-control"] == "no-cache"
+    assert "cache-control" not in client.get("/api/status").headers
