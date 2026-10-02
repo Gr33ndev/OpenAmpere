@@ -109,7 +109,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
       <div className="card menu">
         <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung"
-          hint={control?.enabled ? (control.dry_run ? "Probemodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
+          hint={control?.enabled ? (control.dry_run ? "Testmodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
         <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
         <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />

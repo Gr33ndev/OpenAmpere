@@ -101,7 +101,7 @@ class Collector:
                 if not self.connected:
                     self.device = await self.driver.connect()
                 started = time.monotonic()
-                snap = await self.driver.read()
+                snap = (await self.driver.read()).sanitize()
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
                     log.info("inverter connected")

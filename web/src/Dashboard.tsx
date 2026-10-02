@@ -3,6 +3,7 @@ import type { CloudImportState, Settings, Snapshot, Status, Summary } from "./ap
 import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
+import { Notice } from "./ui";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
@@ -127,6 +128,10 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
         </div>
       </div>
 
+      {status?.clock_wrong && (
+        <Notice kind="error">Die Uhrzeit des Servers stimmt nicht (keine Internetzeit?). Bis sie korrekt ist, speichert
+          OpenAmpere keine Messwerte, damit sie nicht auf falschen Tagen landen.</Notice>
+      )}
       <ImportHint />
       <EnergyFlow snap={snap} stale={stale} />
 

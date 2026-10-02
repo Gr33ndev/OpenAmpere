@@ -127,6 +127,15 @@ def test_api_endpoints(tmp_path):
                           params={"period": "day", "date": "2026-06-01", "resolution": "60m"}).json()
     assert len(timeline["entries"]) == 1 and timeline["entries"][0]["pv"] == 350
     assert client.get("/api/energy/summary", params={"period": "decade"}).status_code == 400
+    # savings with the default tariff
+    assert summary["money"]["savings_eur"] >= 0
+
+    csv = client.get("/api/export/csv", params={"from": "2026-06-01", "to": "2026-06-01", "resolution": "15m"})
+    assert csv.status_code == 200 and "attachment" in csv.headers["content-disposition"]
+    lines = csv.text.lstrip("\ufeff").splitlines()
+    assert lines[0].startswith("Zeit;Erzeugung (kWh)")
+    assert lines[1].split(";")[:2] == ["01.06.2026 12:00", "0,100"] and lines[1].endswith("OpenAmpere")
+    assert client.get("/api/export/csv", params={"from": "2026-06-02", "to": "2026-06-01"}).status_code == 400
 
     installation = client.get("/api/v1/customer/installation").json()[0]["uuid"]
     now = client.get(f"/api/v1/installation/{installation}/now/all/power").json()
@@ -223,3 +232,24 @@ def test_cache_headers_make_updates_visible(tmp_path):
     assert "immutable" in client.get(asset).headers["cache-control"]
     assert client.get("/manifest.webmanifest").headers["cache-control"] == "no-cache"
     assert "cache-control" not in client.get("/api/status").headers
+
+
+def test_wrong_clock_is_not_stored(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.add_snapshot(snap(86400 * 3, 1000, 400))  # Raspberry Pi booted without time: 1970
+    storage.add_snapshot(snap(base - 86400, 1000, 400))  # clock jumped back by a day
+    assert [s["ts"] for s in storage.samples(0, base + 1)] == [base]
+    assert storage._clock_warned
+    storage.add_snapshot(snap(base + 10, 1000, 400))
+    assert not storage._clock_warned
+
+
+def test_sanitize_drops_sentinels_and_impossible_values():
+    s = snap(0, 0, 0)
+    s.battery_soc, s.battery_temperature, s.temperatures = 32767, -3276.8, {"inverter": 45.0, "ambient": 6553.5}
+    s.grid_power = 65535
+    s.sanitize()
+    assert s.battery_soc is None and s.battery_temperature is None and s.grid_power is None
+    assert s.temperatures == {"inverter": 45.0}

@@ -55,7 +55,13 @@ class Runtime:
         for key in SECRETS:
             value = get_value(self.config, key)
             secrets[key] = {"set": bool(value), "hint": f"…{value[-4:]}" if len(value) >= 8 else None}
-        return {"values": values, "secrets": secrets, "locked": sorted(self.locked & set(EDITABLE))}
+        return {"values": values, "secrets": secrets, "locked": sorted(self.locked & set(EDITABLE)),
+                "revision": self.settings_revision}
+
+    @property
+    def settings_revision(self) -> int:
+        """Counts saved changes, so a second device editing an outdated form is noticed."""
+        return int(self.storage.get_meta("settings_revision") or 0)
 
     async def update_settings(self, changes: dict) -> dict:
         clean = validate(changes)
@@ -70,6 +76,7 @@ class Runtime:
         new, locked = build_config(self.file_values, saved)
         make_driver(new)  # validate before persisting
         self.storage.save_settings(saved)
+        self.storage.set_meta("settings_revision", self.settings_revision + 1)
         self.config, self.locked = new, locked
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 

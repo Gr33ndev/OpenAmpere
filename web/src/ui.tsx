@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Chevron } from "./icons";
 
 export function Segmented<T extends string>({ value, options, onChange, disabled }: {
@@ -8,7 +8,7 @@ export function Segmented<T extends string>({ value, options, onChange, disabled
     <div className="segmented">
       {options.map(([key, label]) => (
         <button key={key} type="button" className={value === key ? "active" : ""} disabled={disabled}
-          onClick={() => onChange(key)}>{label}</button>
+          aria-pressed={value === key} onClick={() => onChange(key)}>{label}</button>
       ))}
     </div>
   );
@@ -128,14 +128,45 @@ export function Notice({ kind = "info", children }: { kind?: "info" | "warn" | "
   return <div className={`notice ${kind}`}>{children}</div>;
 }
 
+/** Keeps keyboard focus inside a modal, closes it with Escape and gives focus back afterwards. */
+export function useModal(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const el = ref.current;
+    const focusable = () => Array.from(el?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select, textarea, a[href], [tabindex]:not([tabindex="-1"])') ?? []);
+    (focusable().find((f) => f.tagName === "INPUT") ?? focusable()[0] ?? el)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close.current(); return; }
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus?.();
+    };
+  }, [ref]);
+}
+
 export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger, disabled, onConfirm, onCancel }: {
   title: string; children: ReactNode; confirm: string; cancel?: string; danger?: boolean; disabled?: boolean;
   onConfirm: () => void; onCancel: () => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModal(ref, onCancel);
   return (
     <div className="overlay" onClick={onCancel}>
-      <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <h2>{title}</h2>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={ref} tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}>
+        <h2 id={titleId}>{title}</h2>
         <div className="dialog-body">{children}</div>
         <div className="dialog-actions">
           <Button variant={danger ? "danger" : "primary"} disabled={disabled} onClick={onConfirm}>{confirm}</Button>

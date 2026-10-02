@@ -1,6 +1,6 @@
 # OpenAmpere
 
-[Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md)
+[Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md)
 
 **Lokale App für Solaranlagen mit Batteriespeicher, ganz ohne Cloud.**
 
@@ -117,11 +117,23 @@ Tests:
 .venv/bin/pytest
 ```
 
+Die Python-Abhängigkeiten sind in `requirements.lock` (Docker-Image, mit Prüfsummen) und `requirements-dev.lock` (Entwicklung, CI) fest versioniert. Nach einer Änderung in `pyproject.toml`:
+
+```bash
+uv pip compile pyproject.toml --python-version 3.12 --generate-hashes -o requirements.lock
+```
+
+```bash
+uv pip compile pyproject.toml --extra dev --python-version 3.12 -o requirements-dev.lock
+```
+
+Danach `scripts/third_party_licenses.py` neu ausführen. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist. Ein Versions-Tag (`v…`) veröffentlicht das Image für x86 und ARM unter `ghcr.io`.
+
 ## Sicherheit bei Steuerfunktionen
 
 Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wird es in der App unter **Mehr → Steuerung**, mit Sicherheitsabfrage:
-- Nach der Freigabe läuft die Steuerung zunächst im **Probemodus**. Änderungen werden dann nur protokolliert.
-- Erst wenn man den Probemodus ausdrücklich beendet, werden Werte an den Wechselrichter gesendet.
+- Nach der Freigabe läuft die Steuerung zunächst im **Testmodus**. Änderungen werden dann nur protokolliert.
+- Erst wenn man den Testmodus ausdrücklich beendet, werden Werte an den Wechselrichter gesendet.
 - Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.
 
 Einstellungen wie Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung speichert der Wechselrichter selbst. Sie bleiben aktiv, auch wenn OpenAmpere nicht läuft oder deinstalliert wird. Wer etwas zurücknehmen will, muss es in der App (oder beim Installationsbetrieb) wieder ändern.

@@ -156,16 +156,27 @@ class FoxessDriver(ModbusDevice):
             await self._write(self.map.settings[name], value)
 
     async def set_remote_power(self, watts: int, timeout_s: int) -> None:
-        """Order matters: timeout first, then enable (single writes), then the power setpoint."""
+        """Order matters: timeout first, then enable (single writes), then the power setpoint.
+        The inverter's own watchdog ends remote control after timeout_s without a new command."""
         assert self.map is not None
+        rated = rated_power_w(self.info.model if self.info else None) or 10_000
+        if not -rated <= int(watts) <= rated:
+            raise ValueError(f"remote power must be between -{rated} and {rated} W")
+        if not 10 <= int(timeout_s) <= 3600:
+            raise ValueError("remote timeout must be between 10 and 3600 s")
         s = self.map.settings
-        await self._write(s["remote_timeout"], timeout_s)
+        await self._write(s["remote_timeout"], int(timeout_s))
         await self._write(s["remote_enable"], 1)
+        self._remote_owned = True
         await self._write(s["remote_power"], int(watts))
 
     async def release_remote_power(self) -> None:
+        """Ends remote control, but only if OpenAmpere started it – never someone else's (e.g. a smartbox)."""
         assert self.map is not None
+        if not getattr(self, "_remote_owned", False):
+            return
         await self._write(self.map.settings["remote_enable"], 0)
+        self._remote_owned = False
 
     async def read_export_limit(self) -> ExportLimit:
         assert self.map is not None

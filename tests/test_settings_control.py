@@ -197,3 +197,13 @@ async def test_find_by_serial(tmp_path):
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
         assert await discovery.find_by_serial(runtime, "127.0.0", port, "SN1") == "127.0.0.1"
         assert await discovery.find_by_serial(runtime, "127.0.0", port, "OTHER") is None
+
+
+def test_settings_conflict_between_two_devices(tmp_path, authed):
+    client = authed(TestClient(create_app(Runtime({}, Storage(tmp_path / "t.db")))))
+    revision = client.get("/api/settings").json()["revision"]
+    assert client.put("/api/settings", json={"tariff.feed_in_ct": 7.5, "_revision": revision}).status_code == 200
+    # a second device still shows the old form
+    stale = client.put("/api/settings", json={"tariff.feed_in_ct": 9, "_revision": revision})
+    assert stale.status_code == 409 and "anderen Gerät" in stale.json()["detail"]
+    assert client.put("/api/settings", json={"timezone": "Mars/Olympus"}).status_code == 400

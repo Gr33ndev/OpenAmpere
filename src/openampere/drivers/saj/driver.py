@@ -26,6 +26,7 @@ class SajDriver(ModbusDevice):
                  **_ignored) -> None:
         super().__init__(host, port, unit, timeout=timeout, read_attempts=read_attempts)
         self.read_function = READ_FUNCTION
+        self.grid_counter_source: str | None = None  # "sum" or "l1", fixed after the first reading
 
     async def _detect(self) -> DeviceInfo:
         hit = await self._probe(INFO_ADDRESS, INFO_LENGTH, (READ_FUNCTION,))
@@ -68,7 +69,10 @@ class SajDriver(ModbusDevice):
         return result
 
     async def read(self) -> Snapshot:
-        return to_snapshot(await self.read_raw(), time.time())
+        raw = await self.read_raw()
+        if self.grid_counter_source is None and ("grid_import_sum_total" in raw or "grid_import_l1_total" in raw):
+            self.grid_counter_source = "sum" if "grid_import_sum_total" in raw else "l1"
+        return to_snapshot(raw, time.time(), self.grid_counter_source)
 
     # ---- settings: read-only for now --------------------------------------
 
@@ -91,7 +95,9 @@ class SajDriver(ModbusDevice):
         return False
 
 
-def to_snapshot(raw: dict[str, float], timestamp: float) -> Snapshot:
+def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None = None) -> Snapshot:
+    """grid_source pins the grid counters to the summed ("sum") or phase-1 ("l1") registers: switching
+    between them from one reading to the next would look like a huge energy jump."""
     g = raw.get
     inputs = [PvInput(power=g(f"pv{i}_power"), voltage=g(f"pv{i}_voltage"), current=g(f"pv{i}_current"))
               for i in range(1, 5) if f"pv{i}_power" in raw]
@@ -100,12 +106,17 @@ def to_snapshot(raw: dict[str, float], timestamp: float) -> Snapshot:
     def first(*keys):
         return next((raw[k] for k in keys if k in raw), None)
 
+    def grid(pattern: str):
+        if grid_source:
+            return g(pattern.format(grid_source))
+        return first(pattern.format("sum"), pattern.format("l1"))
+
     def counters(suffix: str) -> EnergyCounters:
         return EnergyCounters(
             pv=g(f"pv_{suffix}"), load=g(f"load_{suffix}"),
             # three-phase: the summed counters cover all phases; fall back to L1 on older firmware
-            grid_import=first(f"grid_import_sum_{suffix}", f"grid_import_l1_{suffix}"),
-            grid_export=first(f"grid_export_sum_{suffix}", f"grid_export_l1_{suffix}"),
+            grid_import=grid(f"grid_import_{{}}_{suffix}"),
+            grid_export=grid(f"grid_export_{{}}_{suffix}"),
             battery_charge=g(f"battery_charge_{suffix}"), battery_discharge=g(f"battery_discharge_{suffix}"))
 
     temperatures = {k: v for k, v in (("inverter", g("inverter_temperature")), ("ambient", g("ambient_temperature")),

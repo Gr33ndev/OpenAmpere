@@ -16,16 +16,34 @@ export function percent(value: number | null | undefined, ratio = false): string
   return `${nf0.format(ratio ? value * 100 : value)} %`;
 }
 
+/** Times are shown in the time zone of the plant (server setting), not of the phone – e.g. while travelling. */
+let zone: string | undefined;
+export function setTimeZone(value: string | undefined): void {
+  zone = value;
+}
+export const timeZone = () => zone;
+
 export function time(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: zone });
+}
+
+/** YYYY-MM-DD of a moment in the plant's time zone. */
+export function dayOf(ts: number): string {
+  return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: zone })
+    .format(new Date(ts * 1000));
 }
 
 /** "Heute, 16:32:39" / "Gestern, …" / "01.10.2026, …" */
 export function updatedLabel(ts: number): string {
-  const d = new Date(ts * 1000);
-  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
-  const day = days === 0 ? "Heute" : days === 1 ? "Gestern" : d.toLocaleDateString("de-DE");
+  const now = Date.now() / 1000;
+  const day = dayOf(ts) === dayOf(now) ? "Heute" : dayOf(ts) === dayOf(now - 86_400) ? "Gestern"
+    : new Date(ts * 1000).toLocaleDateString("de-DE", { timeZone: zone });
   return `${day}, ${time(ts)}`;
+}
+
+/** Today in the plant's time zone. */
+export function todayIso(): string {
+  return dayOf(Date.now() / 1000);
 }
 
 export function isoDate(d: Date): string {

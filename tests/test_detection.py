@@ -87,3 +87,11 @@ async def test_test_connection_reports_label_and_choice(tmp_path):
         assert ok["ok"] and ok["label"].startswith("FoxESS") and ok["sample"]["battery_soc"] is not None
         wrong = await discovery.test_connection(runtime, "127.0.0.1", port, 0, driver="saj")
         assert not wrong["ok"]
+
+
+def test_saj_grid_counter_source_does_not_switch():
+    from openampere.drivers.saj.driver import to_snapshot
+    raw = {"grid_import_sum_total": 5000.0, "grid_import_l1_total": 1700.0}
+    assert to_snapshot(raw, 0, "sum").totals.grid_import == 5000.0
+    # the summed register is missing once: no fallback to L1 (would look like -3300 kWh)
+    assert to_snapshot({"grid_import_l1_total": 1700.0}, 0, "sum").totals.grid_import is None

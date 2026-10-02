@@ -7,7 +7,7 @@ OpenAmpere ist eine lokal laufende, quelloffene App für Solaranlagen mit Batter
 - **Lokal:** Alle Daten bleiben auf dem eigenen Server. Die App funktioniert ohne Internet.
 - **Für Endnutzer:** Alles lässt sich in der Web-App einstellen. Ein Einrichtungsassistent erkennt das Gerät automatisch, Konfigurationsdateien braucht man nicht.
 - **Sicher beim Schreiben:**
-  - Steuerfunktionen sind ab Werk aus und haben zusätzlich einen Probemodus.
+  - Steuerfunktionen sind ab Werk aus und haben zusätzlich einen Testmodus.
   - Werte werden vor dem Schreiben geprüft und danach zurückgelesen.
   - Jede Änderung landet im Protokoll.
 - **Robust:** Die App verträgt Modbus-Proxys, Verbindungsabbrüche und Neustarts. Sie läuft im Hintergrund weiter, auch wenn kein Browser offen ist.
@@ -23,7 +23,7 @@ OpenAmpere ist eine lokal laufende, quelloffene App für Solaranlagen mit Batter
 │  ├ saj/ (H2/HS2)       TCP-Verbindung      Energie je Modulfeld   Cloud-kompat.│
 │  └ modbus.py (Basis)                       Einstellungen, Protokoll  Web-App │
 │                                                                    (PWA)     │
-│  control.py: Speicher, Notstrom, Einspeisebegrenzung (Schalter, Probemodus)  │
+│  control.py: Speicher, Notstrom, Einspeisebegrenzung (Schalter, Testmodus)  │
 │  cloud_import.py: Verlauf aus der bisherigen Cloud (1 Anfrage/min, fortsetzbar)│
 └──────────────────────────────────────────────────────────────────────────────┘
         ▲ Modbus TCP (direkt oder über einen Modbus-Proxy)          ▲ Browser/Smartphone

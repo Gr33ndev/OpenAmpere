@@ -94,6 +94,29 @@ class Snapshot:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    def sanitize(self) -> Snapshot:
+        """Drops values that cannot be real: sentinels for "not available" (0x7FFF, 0x8000, 0xFFFF) and
+        readings outside the physical range. A wrong value is worse than a missing one."""
+        def ok(value, lo, hi):
+            if value is None or value in SENTINELS or not lo <= value <= hi:
+                return None
+            return value
+        self.battery_soc = ok(self.battery_soc, 0, 100)
+        self.battery_soh = ok(self.battery_soh, 0, 100)
+        self.battery_temperature = ok(self.battery_temperature, -40, 90)
+        self.temperatures = {k: v for k, v in self.temperatures.items() if ok(v, -40, 120) is not None}
+        for name in ("pv_power", "house_power"):
+            setattr(self, name, ok(getattr(self, name), 0, MAX_PLAUSIBLE_W))
+        for name in ("grid_power", "battery_power"):
+            setattr(self, name, ok(getattr(self, name), -MAX_PLAUSIBLE_W, MAX_PLAUSIBLE_W))
+        for pv in self.pv_inputs:
+            pv.power = ok(pv.power, 0, MAX_PLAUSIBLE_W)
+        return self
+
+
+SENTINELS = {32767, -32768, 65535, 3276.7, -3276.8, 6553.5, 327.67, -327.68}
+MAX_PLAUSIBLE_W = 100_000
+
 
 @dataclass
 class ExportLimit:

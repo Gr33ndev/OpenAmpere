@@ -37,6 +37,9 @@ export type Status = {
   stale: boolean;
   poll_interval: number;
   relocated: { from: string; to: string; ts: number } | null;
+  timezone: string;
+  web_build: string | null;
+  clock_wrong: boolean;
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
@@ -50,6 +53,7 @@ export type Summary = {
   to: number;
   energy_wh: Counters;
   partial_since?: number | null;
+  money?: { savings_eur: number; feed_in_eur: number; grid_cost_eur: number };
   autarky: number | null;
   self_consumption: number | null;
 };
@@ -80,6 +84,7 @@ export type Settings = {
   };
   secrets: Record<"cloud.api_key", { set: boolean; hint: string | null }>;
   locked: string[];
+  revision: number;
 };
 
 export type PvInputsTimeline = {
@@ -167,9 +172,20 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return response.json() as Promise<T>;
 }
 
-export const getJson = <T,>(path: string) => request<T>("GET", path);
-export const putJson = <T,>(path: string, body: unknown) => request<T>("PUT", path, body);
-export const postJson = <T,>(path: string, body: unknown) => request<T>("POST", path, body);
+// Several components ask for the same thing at the same moment (e.g. /api/status): share one request.
+const recent = new Map<string, { at: number; promise: Promise<unknown> }>();
+export function getJson<T>(path: string): Promise<T> {
+  const hit = recent.get(path);
+  if (hit && Date.now() - hit.at < 1500) return hit.promise as Promise<T>;
+  const promise = request<T>("GET", path);
+  recent.set(path, { at: Date.now(), promise });
+  promise.catch(() => recent.delete(path));
+  return promise;
+}
+/** Forget shared GET results, e.g. after a change was saved. */
+export const invalidate = () => recent.clear();
+export const putJson = <T,>(path: string, body: unknown) => { invalidate(); return request<T>("PUT", path, body); };
+export const postJson = <T,>(path: string, body: unknown) => { invalidate(); return request<T>("POST", path, body); };
 
 /** Live snapshots over WebSocket with automatic reconnect. */
 export function useLive(): { snap: Snapshot | null; online: boolean } {

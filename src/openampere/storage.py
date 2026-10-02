@@ -25,6 +25,7 @@ MAX_PV_INPUTS = 4
 SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery"]
 MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
 MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger counter jumps are garbage
+EARLIEST_PLAUSIBLE_TS = 1_735_689_600  # 2025-01-01: anything earlier is an unset clock
 MAX_GAP_S = 48 * 3600  # outages up to this length are filled by spreading the counter difference
 
 SCHEMA = f"""
@@ -85,8 +86,12 @@ class Storage:
         # SQLite connections must not be used by several threads at the same time (crashes with a
         # segmentation fault on some builds), so EVERY access - reads included - holds this lock.
         self._lock = threading.RLock()
-        self._pv_acc: dict | None = None  # per-input energy of the running quarter (not persisted)
+        # per-input energy of the running quarter; persisted so a restart does not lose it
+        self._pv_acc: dict | None = self._get_meta("pv_input_state")
         self._quarter: dict | None = self._get_meta("quarter_state")
+        row = self._db.execute("SELECT MAX(ts) FROM samples").fetchone()
+        self._last_sample_ts: float = row[0] or 0.0
+        self._clock_warned = False
 
     def close(self) -> None:
         with self._lock:
@@ -152,7 +157,23 @@ class Storage:
 
     # ---- writing ---------------------------------------------------------
 
+    @property
+    def clock_wrong(self) -> bool:
+        return self._clock_warned
+
+    def clock_plausible(self, ts: float) -> bool:
+        """A Raspberry Pi without a real-time clock starts in 1970 or with the time of its last shutdown
+        until NTP has synced. Readings with such a time would land on wrong days."""
+        ok = ts >= EARLIEST_PLAUSIBLE_TS and ts >= self._last_sample_ts - 120
+        if not ok and not self._clock_warned:
+            log.warning("system clock looks wrong (%s) - not storing readings until it is set", time.ctime(ts))
+        self._clock_warned = not ok
+        return ok
+
     def add_snapshot(self, snap: Snapshot) -> None:
+        if not self.clock_plausible(snap.timestamp):
+            return
+        self._last_sample_ts = max(self._last_sample_ts, snap.timestamp)
         inputs = [i.power for i in snap.pv_inputs[:MAX_PV_INPUTS]]
         inputs += [None] * (MAX_PV_INPUTS - len(inputs))
         temps = snap.temperatures
@@ -182,6 +203,7 @@ class Storage:
             acc = {"ts": quarter, "wh": [0.0] * len(powers)}
         acc.update(last_ts=ts, last_powers=powers)
         self._pv_acc = acc
+        self._set_meta("pv_input_state", acc)
 
     def _accumulate(self, snap: Snapshot) -> None:
         """Turn monotonic counters into per-quarter energy rows.

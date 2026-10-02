@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
 import { Ratio } from "./Dashboard";
-import { isoDate, kwh, percent } from "./format";
+import { isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
 import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
 
@@ -30,9 +30,9 @@ function title(date: Date, period: Period): string {
   return String(date.getFullYear());
 }
 
-const fmtHour = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-const fmtMonth = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { month: "short" });
+const fmtHour = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", timeZone: timeZone() });
+const fmtMonth = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { month: "short", timeZone: timeZone() });
 
 function Legend({ items }: { items: { color: string; label: string; value?: string }[] }) {
   return (
@@ -47,92 +47,168 @@ function Legend({ items }: { items: { color: string; label: string; value?: stri
   );
 }
 
+const euro = (v: number | null | undefined) =>
+  v == null ? "–" : v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+
+/** The day that is "today" right now – updates itself at midnight, also in an app left open overnight. */
+function useToday(): string {
+  const [today, setToday] = useState(todayIso);
+  useEffect(() => {
+    const timer = window.setInterval(() => setToday(todayIso()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return today;
+}
+
+function fromIso(day: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Values of the touched bar / point, so nobody has to guess from the axis. */
+function Readout({ rows, index, showPower, xFormat }: {
+  rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
+}) {
+  if (index == null || !rows[index]) return <p className="hint readout-hint">Tippe auf das Diagramm, um die Werte zu sehen.</p>;
+  const r = rows[index];
+  const items: [string, string][] = [];
+  if (showPower) {
+    const p = r as PowerEntry;
+    items.push(["Erzeugung", kw(p.pv)], ["Verbrauch", kw(p.house)],
+      ["Netz", p.grid == null ? "–" : `${kw(Math.abs(p.grid))} ${p.grid >= 0 ? "Bezug" : "Einspeisung"}`],
+      ["Speicher", p.battery == null ? "–" : `${kw(Math.abs(p.battery))} ${p.battery >= 0 ? "entladen" : "laden"}`]);
+  } else {
+    const e = r as EnergyEntry;
+    items.push(["Erzeugt", kwh(e.pv)], ["Verbraucht", kwh(e.load)], ["Netzbezug", kwh(e.grid_import)],
+      ["Eingespeist", kwh(e.grid_export)], ["Geladen", kwh(e.battery_charge)], ["Entladen", kwh(e.battery_discharge)]);
+  }
+  if (r.soc != null) items.push(["Ladestand", percent(r.soc)]);
+  return (
+    <div className="readout" aria-live="polite">
+      <strong>{xFormat(r.ts)}</strong>
+      {items.map(([k, v]) => <span key={k}>{k} <b>{v}</b></span>)}
+    </div>
+  );
+}
+
 export function Report() {
   const [tab, setTab] = useState<"system" | "autarky">("system");
   const [period, setPeriod] = useState<Period>("day");
-  const [date, setDate] = useState(() => new Date());
+  const today = useToday();
+  const [picked, setPicked] = useState<string | null>(null); // null = follow "today"
+  const day = picked ?? today;
+  const date = fromIso(day);
+  const setDate = (d: Date) => setPicked(isoDate(d) === today ? null : isoDate(d));
   const [mode, setMode] = useState<"power" | "energy">("power");
-  const day = isoDate(date);
+  const [dayResolution, setDayResolution] = useState<"15m" | "60m">("60m");
+  const [hover, setHover] = useState<number | null>(null);
   const showPower = period === "day" && mode === "power";
+  const resolution = period === "day" ? dayResolution : RESOLUTION[period];
+  // the running period changes, past periods do not: only refresh what can still change
+  const running = fromIso(today) < shift(date, period, 1) && !(fromIso(today) < date);
+  const refresh = running ? 60_000 : 0;
 
-  const { data: summary } = useResource<Summary>(`/api/energy/summary?period=${period}&date=${day}`, 60_000);
-  const { data: energy } = useResource<{ entries: EnergyEntry[] }>(
-    showPower ? null : `/api/energy/timeline?period=${period}&date=${day}&resolution=${RESOLUTION[period]}`, 60_000);
-  const { data: power } = useResource<{ entries: PowerEntry[] }>(
-    showPower ? `/api/power/timeline?date=${day}&step=300` : null, 60_000);
+  const { data: summary } = useResource<Summary>(`/api/energy/summary?period=${period}&date=${day}`, refresh);
+  const { data: energy, error: energyError } = useResource<{ entries: EnergyEntry[] }>(
+    showPower ? null : `/api/energy/timeline?period=${period}&date=${day}&resolution=${resolution}`, refresh);
+  const { data: power, error: powerError } = useResource<{ entries: PowerEntry[] }>(
+    showPower ? `/api/power/timeline?date=${day}&step=300` : null, refresh);
+  const loaded = showPower ? power : energy;
+  const loadError = showPower ? powerError : energyError;
 
   const xFormat = period === "day" ? fmtHour : period === "year" ? fmtMonth : fmtDay;
   const e = summary?.energy_wh;
   const next = shift(date, period, 1);
+  const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
+  useEffect(() => setHover(null), [period, day, mode, resolution]);
 
   const chart = useMemo(() => {
+    const soc: Series = { label: "Ladestand", color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
+    const hasSoc = rows.some((r) => r.soc != null);
     if (showPower) {
-      const rows = power?.entries ?? [];
+      const p = rows as PowerEntry[];
       const kwOf = (v: number | null) => (v == null ? null : v / 1000);
       return {
-        x: rows.map((r) => r.ts),
+        x: p.map((r) => r.ts),
         series: [
-          { label: "Erzeugung", color: "var(--pv)", values: rows.map((r) => kwOf(r.pv)), unit: "kW" },
-          { label: "Verbrauch", color: "var(--house)", values: rows.map((r) => kwOf(r.house)), unit: "kW" },
-          { label: "Netz", color: "var(--grid)", values: rows.map((r) => kwOf(r.grid)), unit: "kW" },
-          { label: "Speicher", color: "var(--battery)", values: rows.map((r) => kwOf(r.battery)), unit: "kW" },
+          { label: "Erzeugung", color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
+          { label: "Verbrauch", color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
+          { label: "Netz", color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
+          { label: "Speicher", color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
+          ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
         ] as Series[],
       };
     }
-    const rows = energy?.entries ?? [];
+    const en = rows as EnergyEntry[];
     const k = (v: number | null) => (v == null ? null : v / 1000);
     return {
-      x: rows.map((r) => r.ts),
+      x: en.map((r) => r.ts),
       // consumption is drawn as total (blue = from grid) with the self-supplied part (orange) on top
       series: [
-        { label: "Erzeugung", color: "var(--pv)", values: rows.map((r) => k(r.pv)), unit: "kWh", barAlign: -1 },
-        { label: "Netzbezug", color: "var(--grid)", values: rows.map((r) => k(r.load)), unit: "kWh", barAlign: 1 },
+        { label: "Erzeugung", color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", barAlign: -1 },
+        { label: "Netzbezug", color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", barAlign: 1 },
         { label: "Eigenversorgung", color: "var(--house)", unit: "kWh", barAlign: 1,
-          values: rows.map((r) => (r.load == null ? null : Math.max(0, (r.load - (r.grid_import ?? 0)) / 1000))) },
+          values: en.map((r) => (r.load == null ? null : Math.max(0, (r.load - (r.grid_import ?? 0)) / 1000))) },
+        ...(hasSoc && period === "day" ? [{ ...soc, color: "var(--label)" }] : []),
       ] as Series[],
     };
-  }, [showPower, power, energy]);
+  }, [showPower, rows, period]);
 
   return (
     <div className="page">
-      <div className="text-tabs">
-        <button className={tab === "system" ? "active" : ""} onClick={() => setTab("system")}>Verlauf</button>
-        <button className={tab === "autarky" ? "active" : ""} onClick={() => setTab("autarky")}>Autarkie</button>
+      <div className="text-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === "system"} className={tab === "system" ? "active" : ""} onClick={() => setTab("system")}>Verlauf</button>
+        <button role="tab" aria-selected={tab === "autarky"} className={tab === "autarky" ? "active" : ""} onClick={() => setTab("autarky")}>Autarkie</button>
       </div>
 
       <div className="toolbar">
-        <button className="cal" onClick={() => setDate(new Date())} aria-label="Heute"><CalendarIcon /></button>
+        <label className="cal" aria-label="Datum wählen">
+          <CalendarIcon />
+          <input type="date" value={day} max={today} onChange={(ev) => ev.target.value && setDate(fromIso(ev.target.value))} />
+        </label>
         <Segmented value={period} options={Object.entries(PERIOD_LABEL) as [Period, string][]}
           onChange={(p) => { setPeriod(p); if (p !== "day") setMode("energy"); }} />
       </div>
       <div className="date-nav">
-        <button onClick={() => setDate(shift(date, period, -1))} aria-label="zurück"><Chevron dir="left" /></button>
+        <button onClick={() => setDate(shift(date, period, -1))} aria-label="Zeitraum zurück"><Chevron dir="left" /></button>
         <span>{title(date, period)}</span>
-        <button onClick={() => setDate(next)} disabled={next > new Date()} aria-label="weiter"><Chevron /></button>
+        {picked ? <button onClick={() => setPicked(null)} className="today-link">Heute</button> : null}
+        <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label="Zeitraum weiter"><Chevron /></button>
       </div>
 
       {tab === "system" ? (
         <>
           <div className="section-title">Detaillierte Nutzung</div>
-          {chart.x.length ? (
-            <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} />
+          {!loaded ? (
+            <p className="empty">{loadError ? `Konnte nicht geladen werden: ${loadError}` : "Lade …"}</p>
+          ) : chart.x.length ? (
+            <>
+              <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
+                label={`Diagramm ${showPower ? "Leistung" : "Energie"} für ${title(date, period)}`} />
+              <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat} />
+            </>
           ) : (
             <p className="empty">Für diesen Zeitraum liegen keine Daten vor.</p>
           )}
           <Legend items={[
             { color: "var(--pv)", label: "Erzeugt", value: kwh(e?.pv) },
-            { color: "var(--house)", label: "Verbraucht", value: kwh(e?.load) },
+            { color: "var(--house)", label: showPower ? "Verbrauch" : "Eigenversorgt", value: showPower ? kwh(e?.load) : kwh(e?.load != null ? e.load - (e.grid_import ?? 0) : null) },
             { color: "var(--grid)", label: "Netzbezug", value: kwh(e?.grid_import) },
             ...(showPower ? [{ color: "var(--battery)", label: "Speicher" }] : []),
+            ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: "Ladestand (rechte Achse)" }] : []),
           ]} />
+          {showPower && <p className="hint">Netz: über null = Bezug, unter null = Einspeisung. Speicher: über null = Entladen, unter null = Laden.</p>}
           <div className="row-info">
             <Segmented value={showPower ? "power" : "energy"}
               options={period === "day" ? [["power", "Leistung"], ["energy", "Arbeit"]] : [["energy", "Arbeit"]]}
               onChange={setMode} />
+            {period === "day" && !showPower && (
+              <Segmented value={dayResolution} options={[["15m", "15 min"], ["60m", "60 min"]]} onChange={setDayResolution} />
+            )}
           </div>
 
-          <PvInputsSection period={period} day={day} showPower={showPower} xFormat={xFormat} />
-          {period === "day" && <TemperatureSection day={day} />}
+          <PvInputsSection period={period} day={day} showPower={showPower} xFormat={xFormat} refresh={refresh} />
+          {period === "day" && <TemperatureSection day={day} refresh={refresh} />}
         </>
       ) : (
         <>
@@ -150,8 +226,20 @@ export function Report() {
               <dt>Verbraucht</dt><dd>{kwh(e?.load)}</dd>
               <dt>Aus dem Netz</dt><dd>{kwh(e?.grid_import)}</dd>
               <dt>Ins Netz</dt><dd>{kwh(e?.grid_export)}</dd>
+              <dt>Speicher geladen</dt><dd>{kwh(e?.battery_charge)}</dd>
+              <dt>Speicher entladen</dt><dd>{kwh(e?.battery_discharge)}</dd>
               <dt>Autarkie</dt><dd>{percent(summary?.autarky, true)}</dd>
             </dl>
+          </div>
+          <div className="section-title">Geld</div>
+          <div className="card">
+            <dl className="facts">
+              <dt>Ersparnis</dt><dd>{euro(summary?.money?.savings_eur)}</dd>
+              <dt>davon Einspeisevergütung</dt><dd>{euro(summary?.money?.feed_in_eur)}</dd>
+              <dt>Kosten Netzbezug</dt><dd>{euro(summary?.money?.grid_cost_eur)}</dd>
+            </dl>
+            <p className="hint">Grobe Schätzung mit deinem Stromtarif (Mehr → Stromtarif): selbst genutzter Solarstrom
+              zum Strompreis plus Einspeisevergütung. Grundgebühren und Anschaffungskosten sind nicht berücksichtigt.</p>
           </div>
         </>
       )}
@@ -160,12 +248,12 @@ export function Report() {
 }
 
 /** Solar yield per PV input (module array): power curve for a day, energy per bucket otherwise (stacked bars). */
-function PvInputsSection({ period, day, showPower, xFormat }: {
-  period: Period; day: string; showPower: boolean; xFormat: (ts: number) => string;
+function PvInputsSection({ period, day, showPower, xFormat, refresh }: {
+  period: Period; day: string; showPower: boolean; xFormat: (ts: number) => string; refresh: number;
 }) {
   const mode = showPower ? "power" : "energy";
   const { data } = useResource<PvInputsTimeline>(
-    `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${RESOLUTION[period]}`, 60_000);
+    `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${RESOLUTION[period]}`, refresh);
 
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
@@ -189,7 +277,7 @@ function PvInputsSection({ period, day, showPower, xFormat }: {
       ) : <p className="empty">Für diesen Zeitraum liegen keine Werte je Modulfeld vor.</p>}
       <div className="legend">
         {data.labels.map((label, i) => (
-          <span key={label}>
+          <span key={i}>
             <span className="dot" style={{ background: PV_INPUT_COLORS[i % 4] }} />
             {label}{data.totals_wh && <strong>{kwh(data.totals_wh[i])}</strong>}
           </span>
@@ -199,9 +287,9 @@ function PvInputsSection({ period, day, showPower, xFormat }: {
   );
 }
 
-function TemperatureSection({ day }: { day: string }) {
+function TemperatureSection({ day, refresh }: { day: string; refresh: number }) {
   const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null }[] }>(
-    `/api/temperatures/timeline?date=${day}`, 60_000);
+    `/api/temperatures/timeline?date=${day}`, refresh);
   const chart = useMemo(() => {
     const rows = data?.entries ?? [];
     return {

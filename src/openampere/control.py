@@ -140,7 +140,7 @@ class BatteryControl:
             storage = self.runtime.storage
             details = {"from": {k: current.get(k) for k in diff}, "to": diff}
             if control.dry_run:
-                storage.log_control("battery_settings", details, True, "nicht ausgeführt (Probemodus)")
+                storage.log_control("battery_settings", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": diff, "settings": current}
 
             warning = None
@@ -281,7 +281,7 @@ class ExportLimitControl:
                        "rule": rule["rule"], "installed_kwp": rule["installed_kwp"],
                        "grid_operator_confirmation": reference if needs_consent else None}
             if control.dry_run:
-                storage.log_control("export_limit", details, True, "nicht ausgeführt (Probemodus)")
+                storage.log_control("export_limit", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": False, **current}
 
             driver = self._driver()

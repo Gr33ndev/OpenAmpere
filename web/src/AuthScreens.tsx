@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AuthStatus } from "./api";
 import { postJson, useResource } from "./api";
-import { Button, Dialog, Field, Notice, SubPage, toast } from "./ui";
+import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
 function PasswordInput({ value, onChange, placeholder, autoComplete }: {
   value: string; onChange: (v: string) => void; placeholder?: string; autoComplete: string;
@@ -52,6 +52,8 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
 
 /** Login form, used as a dialog whenever a change needs authentication. */
 export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const ref = useRef<HTMLFormElement>(null);
+  useModal(ref, onCancel);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
   };
   return (
     <div className="overlay" onClick={onCancel}>
-      <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="login-title" onClick={(e) => e.stopPropagation()}
+      <form className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="login-title" onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => { e.preventDefault(); void login(); }}>
         <h2 id="login-title">Anmelden</h2>
         <p className="hint">Zum Ändern von Einstellungen brauchst du das Passwort von OpenAmpere.</p>

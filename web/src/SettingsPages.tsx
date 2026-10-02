@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import type { BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
+import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
 import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
-import { kw, num, updatedLabel } from "./format";
+import { isoDate, kw, num, updatedLabel } from "./format";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { Button, Checkbox, Dialog, Field, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
@@ -14,7 +14,7 @@ function useSettings() {
   const { data, setData, error, reload } = useResource<Settings>("/api/settings");
   const save = async (changes: Partial<Settings["values"]> & { "cloud.api_key"?: string }) => {
     try {
-      setData(await putJson<Settings>("/api/settings", changes));
+      setData(await putJson<Settings>("/api/settings", { ...changes, _revision: data?.revision }));
       toast("Gespeichert");
       return true;
     } catch (e) {
@@ -90,7 +90,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
     setBusy(true);
     try {
       const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings", changes);
-      toast(r.dry_run ? "Probemodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Am Wechselrichter gespeichert" : r.result ?? "Gespeichert");
+      toast(r.dry_run ? "Testmodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Am Wechselrichter gespeichert" : r.result ?? "Gespeichert");
       if (r.warning) toast(r.warning, "error");
       reload();
     } catch (e) {
@@ -112,7 +112,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
         </Notice>
       )}
       {editable && control?.dry_run && (
-        <Notice kind="warn">Probemodus aktiv: Änderungen werden nur protokolliert, nicht an den Wechselrichter gesendet.</Notice>
+        <Notice kind="warn">Testmodus aktiv: Änderungen werden nur protokolliert, nicht an den Wechselrichter gesendet.</Notice>
       )}
       {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">Lese Einstellungen vom Wechselrichter …</p>)}
 
@@ -185,7 +185,7 @@ export function TariffPage({ onBack }: PageProps) {
       setFeedIn(String(settings["tariff.feed_in_ct"]).replace(".", ","));
     }
   }, [settings]);
-  const parseNumber = (s: string) => Number(s.replace(",", "."));
+  const parseNumber = (s: string) => (s.trim() === "" ? Number.NaN : Number(s.replace(",", ".")));
 
   return (
     <SubPage title="Stromtarif" onBack={onBack}>
@@ -204,7 +204,7 @@ export function TariffPage({ onBack }: PageProps) {
           </div>
         </Field>
       </div>
-      <p className="hint">Diese Werte werden für die Berechnung deiner Ersparnis verwendet.</p>
+      <p className="hint">Damit schätzt OpenAmpere deine Ersparnis (Report → Autarkie → Geld).</p>
       <Button disabled={!settings || Number.isNaN(parseNumber(price)) || Number.isNaN(parseNumber(feedIn))}
         onClick={() => save({ "tariff.electricity_price_ct": parseNumber(price), "tariff.feed_in_ct": parseNumber(feedIn) })}>
         Speichern
@@ -317,7 +317,7 @@ export function ConnectionPage({ onBack }: PageProps) {
 // ---------------------------------------------------------------------------
 
 const LOG_KEYS: Record<string, string> = {
-  "control.enabled": "Steuerung", "control.dry_run": "Probemodus", "grid.feed_in_rule": "Einspeiseregel",
+  "control.enabled": "Steuerung", "control.dry_run": "Testmodus", "grid.feed_in_rule": "Einspeiseregel",
   "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Entladegrenze (%)",
   min_soc_on_grid: "Reserve am Netz (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
 };
@@ -345,7 +345,7 @@ export function ControlPage({ onBack }: PageProps) {
         <SwitchRow label="Steuerung erlauben" checked={enabled} disabled={locked("control.enabled")}
           hint="Erlaubt OpenAmpere, Einstellungen am Wechselrichter zu ändern (z. B. Notstrom-Reserve)."
           onChange={(v) => (v ? setConfirm("enable") : save({ "control.enabled": false }))} />
-        <SwitchRow label="Probemodus" checked={dryRun} disabled={!enabled || locked("control.dry_run")}
+        <SwitchRow label="Testmodus – nichts wird gesendet" checked={dryRun} disabled={!enabled || locked("control.dry_run")}
           hint="Änderungen werden nur protokolliert und nicht gesendet. Zum gefahrlosen Ausprobieren."
           onChange={(v) => (v ? save({ "control.dry_run": true }) : setConfirm("live"))} />
       </div>
@@ -359,7 +359,7 @@ export function ControlPage({ onBack }: PageProps) {
         {!log?.entries.length && <p className="hint">Noch keine Änderungen.</p>}
         {log?.entries.map((e) => (
           <div className="log-row" key={e.ts}>
-            <div className="meta">{new Date(e.ts * 1000).toLocaleString("de-DE")}{e.dry_run && " · Probemodus"}</div>
+            <div className="meta">{new Date(e.ts * 1000).toLocaleString("de-DE")}{e.dry_run && " · Testmodus"}</div>
             <div>{Object.entries(e.details.to).map(([k, v]) => `${LOG_KEYS[k] ?? k}: ${logValue(e.details.from[k])} → ${logValue(v)}`).join(", ")}</div>
             <div className="meta">{e.result}</div>
           </div>
@@ -371,11 +371,11 @@ export function ControlPage({ onBack }: PageProps) {
         <Dialog title="Steuerung erlauben?" confirm="Erlauben"
           onCancel={() => setConfirm(null)}
           onConfirm={() => { setConfirm(null); void save({ "control.enabled": true, "control.dry_run": true }); }}>
-          <p>OpenAmpere darf dann Einstellungen deines Wechselrichters ändern. Zur Sicherheit startet die Steuerung im <strong>Probemodus</strong> – es wird noch nichts gesendet.</p>
+          <p>OpenAmpere darf dann Einstellungen deines Wechselrichters ändern. Zur Sicherheit startet die Steuerung im <strong>Testmodus</strong> – es wird noch nichts gesendet.</p>
         </Dialog>
       )}
       {confirm === "live" && (
-        <Dialog title="Probemodus beenden?" confirm="Ja, wirklich senden" danger disabled={!understood}
+        <Dialog title="Testmodus beenden?" confirm="Ja, wirklich senden" danger disabled={!understood}
           onCancel={() => setConfirm(null)}
           onConfirm={() => { setConfirm(null); void save({ "control.dry_run": false }); }}>
           <p>Änderungen werden ab jetzt direkt an den Wechselrichter gesendet. Falsche Einstellungen können dazu führen, dass der Speicher nicht wie gewohnt arbeitet.</p>
@@ -415,7 +415,11 @@ export function storedTheme(): Theme {
   }
 }
 
+const TIMEZONES = ["Europe/Berlin", "Europe/Vienna", "Europe/Zurich", "Europe/Amsterdam", "Europe/Brussels",
+  "Europe/Luxembourg", "Europe/Paris", "Europe/Rome", "Europe/Madrid", "Europe/Warsaw", "Europe/Prague", "Europe/London"];
+
 export function AppearancePage({ onBack }: PageProps) {
+  const { settings, locked, save } = useSettings();
   const [theme, setTheme] = useState<Theme>(storedTheme);
   const change = (value: Theme) => {
     setTheme(value);
@@ -429,14 +433,49 @@ export function AppearancePage({ onBack }: PageProps) {
           <Segmented value={theme} onChange={change} options={[["auto", "Automatisch"], ["light", "Hell"], ["dark", "Dunkel"]]} />
         </Field>
       </div>
+      {settings && (
+        <div className="card form">
+          <Field label="Zeitzone der Anlage" locked={locked("timezone")}
+            hint="Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.">
+            <select className="input" value={settings.timezone} disabled={locked("timezone")}
+              onChange={(e) => void save({ timezone: e.target.value })}>
+              {[...new Set([settings.timezone, ...TIMEZONES])].map((z) => <option key={z} value={z}>{z.replace("_", " ")}</option>)}
+            </select>
+          </Field>
+        </div>
+      )}
     </SubPage>
   );
 }
 
 // ---------------------------------------------------------------------------
 
+function CsvExportCard() {
+  const thisYear = new Date().getFullYear();
+  const [from, setFrom] = useState(`${thisYear}-01-01`);
+  const [to, setTo] = useState(isoDate(new Date()));
+  const [resolution, setResolution] = useState<"15m" | "60m" | "day" | "month">("day");
+  const valid = !!from && !!to && from <= to;
+  const href = `/api/export/csv?from=${from}&to=${to}&resolution=${resolution}`;
+  return (
+    <div className="card form">
+      <h2>Als Tabelle exportieren</h2>
+      <p className="hint">Energiewerte als CSV-Datei, z. B. für Excel, Numbers oder die Steuererklärung.</p>
+      <div className="field-row">
+        <Field label="Von"><input className="input" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label="Bis"><input className="input" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field>
+      </div>
+      <Segmented value={resolution} onChange={setResolution}
+        options={[["15m", "15 min"], ["60m", "Stunde"], ["day", "Tag"], ["month", "Monat"]]} />
+      {valid ? <a className="btn secondary" href={href} download>CSV herunterladen</a>
+        : <p className="hint">Bitte einen gültigen Zeitraum wählen.</p>}
+    </div>
+  );
+}
+
 export function DataPage({ onBack }: PageProps) {
   const { settings, locked, save, error, reload } = useSettings();
+  const { data: auth } = useResource<AuthStatus>("/api/auth/status");
   const [days, setDays] = useState(30);
   useEffect(() => { if (settings) setDays(settings["storage.raw_retention_days"]); }, [settings]);
 
@@ -452,11 +491,18 @@ export function DataPage({ onBack }: PageProps) {
           onClick={() => save({ "storage.raw_retention_days": days })}>Speichern</Button>
       </div>
       <CloudImportCard />
+      <CsvExportCard />
       <div className="card form">
         <h2>Sicherung</h2>
-        <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.</p>
-        <a className="btn secondary" href="/api/backup" download>Datensicherung herunterladen</a>
-        <p className="hint">Die Sicherung enthält keine Passwörter oder API-Schlüssel. Zum Herunterladen musst du angemeldet sein.</p>
+        <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.
+          Passwörter und API-Schlüssel sind nicht enthalten.</p>
+        {auth?.authenticated ? (
+          <a className="btn secondary" href="/api/backup" download>Datensicherung herunterladen</a>
+        ) : (
+          <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
+            Anmelden zum Herunterladen
+          </Button>
+        )}
       </div>
     </SubPage>
   );
@@ -806,7 +852,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
       const r = await putJson<{ dry_run: boolean; result?: string }>("/api/grid/export-limit", {
         limit_w: target, grid_operator_confirmed: confirmed, confirmation_reference: reference,
       });
-      toast(r.dry_run ? "Probemodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Einspeisebegrenzung geändert" : r.result ?? "Gespeichert");
+      toast(r.dry_run ? "Testmodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Einspeisebegrenzung geändert" : r.result ?? "Gespeichert");
       setConfirmed(false);
       setReference("");
       reload();
@@ -859,7 +905,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
                   <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
               )}
               {status?.control.enabled && status.control.dry_run && (
-                <Notice kind="warn">Probemodus aktiv: Die Änderung wird nur protokolliert, nicht gesendet.</Notice>
+                <Notice kind="warn">Testmodus aktiv: Die Änderung wird nur protokolliert, nicht gesendet.</Notice>
               )}
               <div className="card form">
                 {hasPreset && (

@@ -1,4 +1,4 @@
-import { StrictMode, type ReactNode } from "react";
+import { StrictMode, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
@@ -10,6 +10,7 @@ import { Report } from "./Report";
 import { applyTheme, storedTheme } from "./SettingsPages";
 import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
+import { setTimeZone } from "./format";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
 
@@ -31,6 +32,9 @@ function App() {
   const { data: auth, reload: reloadAuth } = useResource<AuthStatus>("/api/auth/status");
   const { snap, online } = useLive();
   const login = useLoginPrompt(reloadAuth);
+  setTimeZone(status?.timezone);
+  const firstBuild = useRef<string | null>(null);
+  if (status?.web_build && !firstBuild.current) firstBuild.current = status.web_build;
 
   if (!status) {
     return (
@@ -74,6 +78,12 @@ function App() {
   return (
     <div className="app">
       {error && <div className="offline-banner" role="alert">Keine Verbindung zum OpenAmpere-Server – versuche erneut …</div>}
+      {status.web_build && firstBuild.current && status.web_build !== firstBuild.current && (
+        <div className="update-banner" role="status">
+          Eine neue Version von OpenAmpere ist installiert.
+          <button className="link" onClick={() => window.location.reload()}>Jetzt neu laden</button>
+        </div>
+      )}
       <main>
         {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
         {tab === "report" && <Report />}

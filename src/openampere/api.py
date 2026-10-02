@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
+import hashlib
 import logging
 import shutil
 import tempfile
@@ -205,6 +207,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             "last_error": collector.last_error,
             "last_update": latest.timestamp if latest else None,
             "stale": collector.stale,
+            "timezone": runtime.config.timezone,
+            "clock_wrong": storage.clock_wrong,
+            "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
@@ -219,6 +224,10 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.put("/api/settings")
     async def put_settings(changes: dict = Body(...)):
+        expected = changes.pop("_revision", None)
+        if expected is not None and expected != runtime.settings_revision:
+            raise HTTPException(409, "Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert. "
+                                     "Bitte die Seite neu laden und die Änderung wiederholen.")
         try:
             return await runtime.update_settings(changes)
         except PermissionError as err:
@@ -415,7 +424,53 @@ def create_app(runtime: Runtime) -> FastAPI:
                 else:
                     partial_since = first
         return {"period": period, "from": start, "to": end, "quarters": quarters,
-                "partial_since": partial_since, "energy_wh": flows, **ratios(flows)}
+                "partial_since": partial_since, "energy_wh": flows, **ratios(flows), "money": money(flows)}
+
+    def money(flows: dict) -> dict:
+        """Rough savings with the configured tariff: self-used solar power is not bought, exports are paid."""
+        tariff = runtime.config.tariff
+        load, grid_import, export = (flows.get(k) or 0 for k in ("load", "grid_import", "grid_export"))
+        price, feed_in = tariff.electricity_price_ct / 100_000, tariff.feed_in_ct / 100_000  # € per Wh
+        return {"savings_eur": round(max(0.0, load - grid_import) * price + export * feed_in, 2),
+                "feed_in_eur": round(export * feed_in, 2), "grid_cost_eur": round(grid_import * price, 2)}
+
+    @app.get("/api/export/csv")
+    def export_csv(start: str = Query(..., alias="from", pattern=r"^\d{4}-\d{2}-\d{2}$"),
+                   end: str = Query(..., alias="to", pattern=r"^\d{4}-\d{2}-\d{2}$"),
+                   resolution: str = Query("day", pattern="^(15m|60m|day|month)$")):
+        """Energy per period as CSV for Excel & Co. (semicolon, decimal comma, local time)."""
+        tz = runtime.tz
+        try:
+            first = datetime.date.fromisoformat(start)
+            last = datetime.date.fromisoformat(end)
+        except ValueError:
+            raise HTTPException(400, "Ungültiges Datum") from None
+        if last < first:
+            raise HTTPException(400, "Das Enddatum liegt vor dem Startdatum")
+        t0 = to_ts(first, tz)
+        t1 = to_ts(last + datetime.timedelta(days=1), tz)
+        buckets: dict[float, dict] = {}
+        for row in storage.energy(t0, t1):
+            key = bucket_start(row["ts"], resolution, tz)
+            bucket = buckets.setdefault(key, {**dict.fromkeys(FLOWS, 0.0), "soc": None, "sources": set()})
+            for f in FLOWS:
+                bucket[f] += row[f] or 0
+            bucket["soc"] = row["soc"] if row["soc"] is not None else bucket["soc"]
+            bucket["sources"].add(row["source"] or "local")
+        fmt = {"15m": "%d.%m.%Y %H:%M", "60m": "%d.%m.%Y %H:%M", "day": "%d.%m.%Y", "month": "%m.%Y"}[resolution]
+        num = lambda v: "" if v is None else f"{v:.3f}".replace(".", ",")  # noqa: E731
+        lines = ["Zeit;Erzeugung (kWh);Verbrauch (kWh);Netzbezug (kWh);Einspeisung (kWh);"
+                 "Speicher geladen (kWh);Speicher entladen (kWh);Ladestand (%);Quelle"]
+        for key in sorted(buckets):
+            b = buckets[key]
+            when = datetime.datetime.fromtimestamp(key, tz).strftime(fmt)
+            source = "+".join(sorted({"local": "OpenAmpere", "cloud": "Cloud-Import"}.get(x, x) for x in b["sources"]))
+            lines.append(";".join([when, *(num(b[f] / 1000) for f in FLOWS),
+                                   "" if b["soc"] is None else f"{b['soc']:.0f}", source]))
+        body = "\ufeff" + "\r\n".join(lines) + "\r\n"  # BOM: Excel detects UTF-8 (umlauts)
+        name = f"openampere-{start}-bis-{end}-{resolution}.csv"
+        return Response(body, media_type="text/csv; charset=utf-8",
+                         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     @app.get("/api/energy/timeline")
     def energy_timeline(period: str = "day", date: str | None = None,
@@ -539,6 +594,17 @@ def create_app(runtime: Runtime) -> FastAPI:
             return FileResponse(WEB_DIST / "index.html")
 
     return app
+
+
+def _web_build() -> str | None:
+    """Fingerprint of the installed web app; the browser shows "new version" when it changes."""
+    index = WEB_DIST / "index.html"
+    if not index.is_file():
+        return None
+    return hashlib.sha256(index.read_bytes()).hexdigest()[:12]
+
+
+WEB_BUILD = _web_build()
 
 
 def storage_installation_id(storage: Storage) -> str:

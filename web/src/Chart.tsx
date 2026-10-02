@@ -16,14 +16,20 @@ export type Series = {
 };
 
 /** Thin uPlot wrapper: lines for power, side-by-side bar pairs for energy. */
-export function Chart({ x, series, bars = false, xFormat, height = 220 }: {
+export function Chart({ x, series, bars = false, xFormat, height = 220, onHover, label }: {
   x: number[];
   series: Series[];
   bars?: boolean;
   xFormat: (ts: number) => string;
   height?: number;
+  /** index of the touched / hovered data point, null when the cursor leaves the chart */
+  onHover?: (index: number | null) => void;
+  /** text alternative for screen readers */
+  label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const hover = useRef(onHover);
+  hover.current = onHover;
 
   useEffect(() => {
     const el = ref.current;
@@ -39,6 +45,8 @@ export function Chart({ x, series, bars = false, xFormat, height = 220 }: {
       width: el.clientWidth,
       height,
       cursor: { drag: { x: false, y: false } },
+      legend: { show: false },
+      hooks: { setCursor: [(u) => hover.current?.(u.cursor.idx ?? null)] },
       scales: { x: { time: true }, soc: { range: [0, 100] } },
       axes: [
         { font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, values: (_u, ticks) => ticks.map(xFormat) },
@@ -76,5 +84,5 @@ export function Chart({ x, series, bars = false, xFormat, height = 220 }: {
     };
   }, [x, series, bars, xFormat, height]);
 
-  return <div ref={ref} className="chart" />;
+  return <div ref={ref} className="chart" role="img" aria-label={label ?? "Diagramm"} />;
 }
