@@ -1,0 +1,6 @@
+.venv
+data
+web/node_modules
+src/openampere/web
+**/__pycache__
+.pytest_cache

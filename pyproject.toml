@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openampere"
+version = "0.1.0"
+description = "Local-only energy app for FoxESS H3 based home storage systems"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11"
+dependencies = [
+    "pymodbus>=3.8",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "websockets>=12",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "packaging>=23"]
+
+[project.urls]
+Homepage = "https://github.com/Gr33ndev/OpenAmpere"
+Issues = "https://github.com/Gr33ndev/OpenAmpere/issues"
+
+[project.scripts]
+openampere = "openampere.__main__:main"
+openampere-simulator = "openampere.simulator:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+openampere = ["web/*", "web/**/*"]

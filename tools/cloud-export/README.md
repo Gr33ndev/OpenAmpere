@@ -1,0 +1,53 @@
+# Cloud-Export
+
+Sichert den kompletten Verlauf einer Anlage aus der bisherigen Hersteller-Cloud, solange diese noch läuft. Inoffizielles Werkzeug, siehe [Hintergrund](../../README.md#hintergrund--rechtliche-hinweise).
+
+- Nutzt nur die offizielle, lesende Kunden-API der Cloud.
+- Läuft mit Python 3.9 oder neuer und braucht keine Zusatzpakete.
+- Jede Antwort wird unverändert als JSON gespeichert, eine Datei pro Endpunkt und Tag. Nach einem Abbruch startest du das Skript einfach erneut, es macht dort weiter.
+- Es schickt höchstens eine Anfrage alle 65 Sekunden. Wer öfter abfragt, wird von der API gesperrt.
+
+## 1. API-Schlüssel erstellen
+
+In der bisherigen Hersteller-App: **Mehr → Konfiguration API-Zugang** → Schlüssel erzeugen.
+
+## 2. `.env` anlegen
+
+```
+CLOUD_API_KEY=dein-schluessel
+# optional:
+# CLOUD_INSTALLATION_UUID=…     # nur nötig, wenn zum Schlüssel mehrere Anlagen gehören
+# CLOUD_MIN_INTERVAL=65         # Sekunden zwischen Anfragen
+# CLOUD_EXPORT_DIR=data/cloud-export
+```
+
+Gib die `.env`-Datei niemals weiter und lade sie nirgends hoch.
+
+## 3. Testen und exportieren
+
+```bash
+python3 cloud_export.py check
+```
+
+```bash
+nohup caffeinate -i python3 cloud_export.py export >> cloud-export.log 2>&1 &
+```
+
+`caffeinate` hält einen Mac wach. Unter Linux lässt du es einfach weg.
+
+Mit `--start YYYY-MM-DD` überspringst du die automatische Suche nach dem ersten Datum mit Daten.
+
+## Was gesichert wird
+
+Pro Tag wird Folgendes gesichert, die Verläufe in 15-Minuten-Auflösung:
+
+| Ordner | Endpunkt |
+|---|---|
+| `work/` | `history/common/work`: Energieflüsse (PV, Haus, Netz, Batterie) |
+| `stateOfCharge/` | `history/stateOfCharge`: Ladestand des Akkus |
+| `gridDraw/` | `history/gridDraw/work`: Netzbezug |
+| `power/` | `history/common/power`: Leistung |
+| `consumptionWork/`, `consumptionPower/` | Verbrauch |
+| `totalWork/` | `total/common/work`: Tagessummen |
+
+**Dauer:** etwa 7 Anfragen pro Tag Anlagenlaufzeit, also rund 2 Tage Laufzeit pro Jahr Anlagenbetrieb.

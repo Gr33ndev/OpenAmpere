@@ -1,0 +1,26 @@
+# OpenAmpere – Beispielkonfiguration. Kopieren nach data/config.yaml und anpassen.
+# Jeder Wert lässt sich auch per Umgebungsvariable setzen, z. B. OPENAMPERE_INVERTER_HOST.
+
+timezone: Europe/Berlin
+
+inverter:
+  driver: auto              # auto | foxess | saj  (auto = automatisch erkennen)
+  host: 192.168.x.x         # IP-Adresse des Wechselrichters
+  port: 502                 # Modbus-TCP-Port
+  unit: 247                 # Modbus-Geräteadresse (FoxESS-Standard: 247)
+  register_map: auto        # auto | foxess_h3_new | foxess_h3_legacy
+  read_function: auto       # auto | input | holding
+  poll_interval: 10         # Sekunden zwischen zwei Abfragen
+  timeout: 3                # Sekunden pro Anfrage; bei Modbus-Proxy oder WLAN ggf. erhöhen
+
+storage:
+  path: data/openampere.db
+  raw_retention_days: 30    # Rohwerte (alle 10 s) so lange behalten; 15-min-Werte bleiben immer
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+control:
+  enabled: false            # Hauptschalter für alles, was auf den Wechselrichter schreibt
+  dry_run: true             # true = Befehle nur protokollieren, nicht ausführen

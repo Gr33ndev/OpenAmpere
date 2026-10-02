@@ -1,0 +1,14 @@
+services:
+  openampere:
+    build: .
+    image: openampere:latest
+    restart: unless-stopped
+    # Host-Netzwerk, damit die Gerätesuche das Heimnetz sieht (Linux, z. B. Proxmox/Raspberry Pi).
+    # Die App ist dann direkt unter http://<server-ip>:8080 erreichbar.
+    network_mode: host
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Europe/Berlin
+      # Optional: Werte hier fest vorgeben. Sie sind dann in der App gesperrt.
+      # OPENAMPERE_INVERTER_HOST: "192.168.178.50"

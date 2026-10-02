@@ -1,0 +1,19 @@
+OpenAmpere
+
+Register definitions for FoxESS inverters are based on facts from foxess_modbus
+(https://github.com/nathanmarlor/foxess_modbus), Copyright (c) 2021 nathanmarlor, MIT License.
+
+Register definitions for SAJ H2/HS2 inverters are based on facts from
+home-assistant-saj-h2-modbus (https://github.com/stanus74/home-assistant-saj-h2-modbus, MIT License),
+home-assistant-ampere-storage-pro-modbus (https://github.com/dboeni/home-assistant-ampere-storage-pro-modbus,
+MIT License), EKD_Telegraf_Modbus (https://github.com/litronics/EKD_Telegraf_Modbus, Apache-2.0) and the
+evcc saj-h2 template (https://github.com/evcc-io/evcc, MIT License).
+
+OpenAmpere is an unofficial, independent community project. All product names, company names and
+trademarks mentioned in this project belong to their respective owners and are used only to describe
+compatibility. Background and legal notes: see README.md ("Hintergrund & rechtliche Hinweise").
+
+Licenses of all bundled third-party components: see THIRD_PARTY_LICENSES.md
+(also shown in the app under Mehr > Über OpenAmpere > Open-Source-Lizenzen).
+
+Project: https://github.com/Gr33ndev/OpenAmpere

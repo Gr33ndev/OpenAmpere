@@ -1,0 +1,175 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from fastapi.testclient import TestClient
+
+from openampere.api import create_app, ratios
+from openampere.runtime import Runtime
+from openampere.drivers.base import EnergyCounters, Snapshot
+from openampere.periods import parse_anchor, period_bounds
+from openampere.storage import Storage
+
+TZ = ZoneInfo("Europe/Berlin")
+
+
+def snap(ts: float, pv_total: float, load_total: float, **extra) -> Snapshot:
+    return Snapshot(
+        timestamp=ts, pv_power=1000, house_power=500, grid_power=-500, battery_power=0, battery_soc=50,
+        totals=EnergyCounters(pv=pv_total, load=load_total, grid_import=0, grid_export=pv_total - load_total,
+                              battery_charge=0, battery_discharge=0),
+        **extra,
+    )
+
+
+def test_counter_deltas_become_quarter_rows(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base + 10, 1000, 400))
+    storage.add_snapshot(snap(base + 600, 1200, 500))
+    storage.add_snapshot(snap(base + 905, 1260, 530))  # next quarter starts -> row for 12:00
+    rows = storage.energy(base, base + 3600)
+    assert len(rows) == 1
+    assert rows[0]["ts"] == base and rows[0]["pv"] == 260 and rows[0]["load"] == 130
+
+
+def test_counter_reset_and_gap_are_skipped(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.add_snapshot(snap(base + 900, 10, 5))  # counter reset
+    storage.add_snapshot(snap(base + 900 * 10, 500, 200))  # long outage
+    assert storage.energy(base, base + 86400) == []
+
+
+def test_quarter_state_survives_restart(tmp_path):
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage = Storage(tmp_path / "t.db")
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.close()
+    storage = Storage(tmp_path / "t.db")
+    storage.add_snapshot(snap(base + 900, 1100, 450))
+    assert storage.energy(base, base + 900)[0]["pv"] == 100
+
+
+def test_import_never_overwrites_local(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.add_snapshot(snap(base + 900, 1100, 450))
+    inserted = storage.import_energy([{"ts": base, "pv": 999}, {"ts": base + 900, "pv": 50}], "cloud")
+    assert inserted == 1
+    rows = storage.energy(base, base + 1800)
+    assert [(r["pv"], r["source"]) for r in rows] == [(100, "local"), (50, "cloud")]
+
+
+def test_ratios():
+    r = ratios({"load": 1000, "grid_import": 250, "pv": 2000, "grid_export": 1500})
+    assert r == {"autarky": 0.75, "self_consumption": 0.25}
+    assert ratios({}) == {"autarky": None, "self_consumption": None}
+
+
+def test_periods():
+    assert parse_anchor("week", "2026-W40", TZ).isoformat() == "2026-09-28"
+    assert parse_anchor("month", "2026-02", TZ).isoformat() == "2026-02-01"
+    start, end = period_bounds("month", parse_anchor("month", "2026-02", TZ))
+    assert (start.isoformat(), end.isoformat()) == ("2026-02-01", "2026-03-01")
+    start, end = period_bounds("week", parse_anchor("day", "2026-10-02", TZ))
+    assert start.isoformat() == "2026-09-28" and end.isoformat() == "2026-10-05"
+
+
+def test_api_endpoints(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i, (pv, load) in enumerate([(1000, 400), (1100, 450), (1300, 500)]):
+        storage.add_snapshot(snap(base + i * 900, pv, load))
+    runtime = Runtime({}, storage)
+    runtime.collector.latest = snap(base + 1800, 1300, 500)
+    app = create_app(runtime)
+    client = TestClient(app)
+
+    summary = client.get("/api/energy/summary", params={"period": "day", "date": "2026-06-01"}).json()
+    assert summary["energy_wh"]["pv"] == 300 and summary["quarters"] == 2
+    timeline = client.get("/api/energy/timeline",
+                          params={"period": "day", "date": "2026-06-01", "resolution": "60m"}).json()
+    assert len(timeline["entries"]) == 1 and timeline["entries"][0]["pv"] == 300
+    assert client.get("/api/energy/summary", params={"period": "decade"}).status_code == 400
+
+    installation = client.get("/api/v1/customer/installation").json()[0]["uuid"]
+    now = client.get(f"/api/v1/installation/{installation}/now/all/power").json()
+    assert now == {"pvPower": 1000, "housePower": -500, "gridPower": -500, "batteryPower": 0, "batterySoc": 50}
+    assert client.get("/api/v1/installation/other/now/all/power").status_code == 404
+
+
+def test_second_instance_is_refused(tmp_path):
+    import pytest
+    from openampere.storage import DatabaseInUse
+
+    first = Storage(tmp_path / "t.db")
+    with pytest.raises(DatabaseInUse):
+        Storage(tmp_path / "t.db")
+    first.close()
+    Storage(tmp_path / "t.db").close()  # free again after closing
+
+
+def test_pv_inputs_are_integrated_per_quarter(tmp_path):
+    from openampere.drivers.base import PvInput
+
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i in range(91):  # 15 min + one sample of the next quarter, every 10 s
+        s = snap(base + i * 10, 1000 + i, 400 + i)
+        s.pv_inputs = [PvInput(power=2000), PvInput(power=1000)]
+        s.temperatures = {"inverter": 40.0, "battery": 25.0}
+        storage.add_snapshot(s)
+    rows = storage.pv_input_energy(base, base + 900)
+    assert [(r["input"], round(r["wh"])) for r in rows] == [(1, 500), (2, 250)]  # 2 kW and 1 kW for 15 min
+    sample = storage.samples(base, base + 1)[0]
+    assert sample["pv1"] == 2000 and sample["t_inverter"] == 40.0
+
+
+def test_old_database_is_migrated(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE samples (ts REAL PRIMARY KEY, pv REAL, house REAL, grid REAL, battery REAL, soc REAL)")
+    db.execute("INSERT INTO samples VALUES (1, 2, 3, 4, 5, 6)")
+    db.commit()
+    db.close()
+    storage = Storage(path)
+    assert storage.samples(0, 10)[0]["pv"] == 2 and storage.samples(0, 10)[0]["pv1"] is None
+
+
+def test_concurrent_reads_and_writes_from_threads(tmp_path):
+    """Web requests (thread pool) read while the collector writes. Unsynchronised access to one SQLite
+    connection crashed the process with a segmentation fault."""
+    import threading
+
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    errors = []
+
+    def writer():
+        try:
+            for i in range(1500):
+                storage.add_snapshot(snap(base + i * 10, 1000 + i, 400 + i))
+        except Exception as err:  # pragma: no cover - reported below
+            errors.append(err)
+
+    def reader():
+        try:
+            for _ in range(300):
+                storage.samples(base, base + 86400)
+                storage.energy_sum(base, base + 86400)
+                storage.pv_input_energy(base, base + 86400)
+                storage.get_meta("installation_id")
+        except Exception as err:  # pragma: no cover
+            errors.append(err)
+
+    threads = [threading.Thread(target=writer)] + [threading.Thread(target=reader) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    assert len(storage.samples(base, base + 86400)) == 1500
