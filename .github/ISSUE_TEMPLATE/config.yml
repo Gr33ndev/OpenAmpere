@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke melden
+    url: https://github.com/Gr33ndev/OpenAmpere/security/advisories/new
+    about: Bitte nicht öffentlich melden, sondern privat über GitHub (siehe SECURITY.md).
+  - name: Mitmachen
+    url: https://github.com/Gr33ndev/OpenAmpere/blob/main/CONTRIBUTING.md
+    about: Wie Beiträge ablaufen – erst Issue, dann Pull Request.

@@ -1,0 +1,96 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet.
+labels: ["fehler", "neu"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für deine Meldung! Bitte **keine IP-Adressen, Seriennummern, Passwörter oder API-Schlüssel** eintragen.
+        Sicherheitslücken bitte nicht hier, sondern wie in SECURITY.md beschrieben melden.
+  - type: textarea
+    id: what
+    attributes:
+      label: Was ist passiert?
+      description: Beschreibe den Fehler. Was hast du gesehen, was hättest du erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Wie lässt sich der Fehler nachstellen?
+      placeholder: |
+        1. Mehr → … öffnen
+        2. Auf … tippen
+        3. Fehlermeldung „…“ erscheint
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: OpenAmpere-Version
+      description: Steht unter Mehr → Über.
+      placeholder: z. B. 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Gerät
+      options:
+        - FoxESS H3 / H3 Smart / H3 Pro (auch „Ampere.StoragePro E3“)
+        - SAJ H2 / HS2 (auch ältere „Ampere.StoragePro“)
+        - Simulator
+        - Anderes / weiß nicht
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Docker (Proxmox, NAS, Server)
+        - Docker auf Raspberry Pi
+        - Ohne Docker (Python)
+        - Anderes
+  - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      multiple: true
+      options:
+        - Einrichtung / Verbindung
+        - Dashboard / Live-Werte
+        - Report / Verlauf
+        - Speicher & Steuerung
+        - Einspeisebegrenzung
+        - Tarife / Laden aus dem Netz
+        - Überschuss-Verbraucher
+        - Benachrichtigungen
+        - Cloud-Import
+        - Anmeldung / Zugriffsschutz
+        - Sonstiges
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / Handy
+      placeholder: z. B. iPhone 15, Safari, als App auf dem Home-Bildschirm
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Bei Anzeigefehlern sehr hilfreich. Persönliche Daten vorher schwärzen.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server-Protokoll (optional)
+      description: "Docker: `docker compose logs --tail 100 openampere`. Persönliche Daten vorher entfernen."
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vorab geprüft
+      options:
+        - label: Ich habe nach ähnlichen Issues gesucht.
+          required: true
+        - label: Meine Meldung enthält keine persönlichen Daten.
+          required: true

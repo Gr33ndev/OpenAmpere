@@ -1,0 +1,57 @@
+name: Gerätebericht
+description: Diagnose deines Wechselrichters teilen, damit weitere Geräte und Firmware-Stände unterstützt werden.
+labels: ["gerät", "neu"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        So erstellst du den Bericht: In der App **Mehr → Diagnose → Diagnose starten**, dann **Bericht kopieren** und unten einfügen.
+        Die Diagnose liest nur und ändert nichts. Die Seriennummer ist im Bericht gekürzt, außer du hast sie ausdrücklich eingeschlossen.
+  - type: input
+    id: device
+    attributes:
+      label: Gerät laut Typenschild
+      placeholder: z. B. FoxESS H3-10.0-E, verkauft als Ampere.StoragePro E3
+    validations:
+      required: true
+  - type: input
+    id: battery
+    attributes:
+      label: Speicher
+      placeholder: z. B. 2 Batteriemodule, 10,4 kWh
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Verbindung
+      options:
+        - Direkt per LAN
+        - Über einen Modbus-Proxy
+        - Per WLAN
+        - Weiß nicht
+  - type: dropdown
+    id: smartbox
+    attributes:
+      label: Hängt noch ein anderer Energiemanager am Wechselrichter?
+      options:
+        - Nein
+        - Ja, die bisherige Smartbox
+        - Ja, etwas anderes (bitte unten nennen)
+  - type: textarea
+    id: report
+    attributes:
+      label: Diagnosebericht
+      description: Den kopierten Bericht hier einfügen.
+    validations:
+      required: true
+  - type: textarea
+    id: observations
+    attributes:
+      label: Eigene Beobachtungen
+      description: Stimmen Werte nicht mit dem Display des Wechselrichters überein? Welche?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Datenschutz
+      options:
+        - label: Der Bericht enthält keine IP-Adressen, Passwörter oder API-Schlüssel.
+          required: true

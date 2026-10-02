@@ -1,0 +1,43 @@
+## Worum geht es?
+
+<!-- Kurz: Was ändert dieser PR und warum? -->
+
+Fixes #<!-- Issue-Nummer. Ohne abgestimmtes Issue bitte zuerst eines öffnen (außer bei Tippfehlern). -->
+
+## Art der Änderung
+
+- [ ] Fehlerbehebung
+- [ ] Neue Funktion
+- [ ] Neues Gerät / neue Register
+- [ ] Oberfläche / Texte
+- [ ] Dokumentation
+- [ ] Build, CI, Abhängigkeiten
+
+## Screenshots
+
+<!-- Pflicht bei Änderungen an der Oberfläche: vorher/nachher, hell und dunkel, in Handybreite (ca. 390 px). -->
+
+| Vorher | Nachher |
+|---|---|
+|  |  |
+
+## Wie getestet?
+
+<!-- Simulator, echte Anlage (welches Gerät/Firmware), Browser/Handy … -->
+
+## Checkliste
+
+- [ ] `.venv/bin/pytest` ist grün, neue Logik hat Tests.
+- [ ] `npm run build` in `web/` läuft ohne Fehler.
+- [ ] Texte in der App sind deutsch und für Laien verständlich.
+- [ ] Neue Einstellungen sind in der App änderbar, nicht nur per Datei.
+- [ ] Keine persönlichen Daten (IP-Adressen, Seriennummern, Schlüssel) in Code, Tests oder Screenshots.
+- [ ] Kein Code, keine Grafiken oder Texte aus fremden Apps; Quellen für Register/Code sind angegeben.
+- [ ] Bei neuen Abhängigkeiten: Lockfiles und `THIRD_PARTY_LICENSES.md` neu erzeugt.
+
+### Nur wenn etwas am Wechselrichter geschrieben wird
+
+- [ ] Nur über die Steuerung erreichbar, Testmodus wird respektiert.
+- [ ] Grenzwerte werden vor dem Schreiben geprüft, danach wird zurückgelesen und protokolliert.
+- [ ] Register sind belegt (Dokumentation, Quelle oder Diagnosebericht eines echten Geräts).
+- [ ] Rechtliche Fragen (Einspeisebegrenzung, § 14a EnWG, EEG) sind im Issue geklärt.

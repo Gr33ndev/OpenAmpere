@@ -1,0 +1,42 @@
+name: Funktionswunsch
+description: Eine Idee für eine neue Funktion oder Verbesserung.
+labels: ["wunsch", "neu"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Beschreibe vor allem **dein Problem** – oft gibt es mehrere Wege, es zu lösen.
+        Bitte vorher prüfen, ob es schon ein Issue dazu gibt; dann dort mit 👍 abstimmen.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem möchtest du lösen?
+      placeholder: Ich möchte … , weil …
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Wie stellst du dir die Lösung vor?
+  - type: textarea
+    id: original
+    attributes:
+      label: Gab es das in der bisherigen App?
+      description: Falls ja, wie hat es dort funktioniert? (Beschreibung reicht, bitte keine Screenshots der alten App.)
+  - type: dropdown
+    id: writes
+    attributes:
+      label: Muss dafür etwas am Wechselrichter geändert werden?
+      description: Schreibende Funktionen brauchen mehr Prüfung (Sicherheit, Garantie, Recht).
+      options:
+        - Nein, nur anzeigen / auswerten
+        - Ja, Einstellungen am Wechselrichter
+        - Ja, andere Geräte schalten (Wallbox, Wärmepumpe …)
+        - Weiß nicht
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Mithelfen
+      options:
+        - label: Ich würde das gern selbst umsetzen (bitte zuerst den Lösungsweg im Issue abstimmen).
+        - label: Ich kann es an meiner Anlage testen.
