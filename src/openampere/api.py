@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import tempfile
 import time
 import uuid
@@ -10,12 +11,14 @@ from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import discovery, cloud_import
+from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
+from .config import SECRETS
 from .drivers import registry
 from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, ExportLimitControl, NotConnected,
                       WriteFailed)
@@ -49,6 +52,20 @@ class Target(BaseModel):
     driver: str = Field("auto", pattern="^(auto|foxess|saj)$")
 
 
+class PasswordRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+
+
+class ChangePasswordRequest(BaseModel):
+    current: str = Field(min_length=1, max_length=200)
+    new: str = Field(min_length=1, max_length=200)
+
+
+# reading these needs a login as well (secrets, grid-operator references)
+PROTECTED_READS = ("/api/backup", "/api/control/log")
+PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
+
+
 class ExportLimitRequest(BaseModel):
     limit_w: int = Field(ge=0, le=99_999)
     grid_operator_confirmed: bool = False
@@ -76,6 +93,85 @@ def create_app(runtime: Runtime) -> FastAPI:
         await collector.stop()
 
     app = FastAPI(title="OpenAmpere", lifespan=lifespan)
+    auth = Auth(storage)
+
+    def origin_ok(origin: str | None, host: str | None) -> bool:
+        """Requests from other web sites carry their own Origin; same-origin requests match the Host."""
+        if not origin or origin == "null":
+            return origin is None
+        return origin.split("://", 1)[-1].rstrip("/").lower() == (host or "").lower()
+
+    @app.middleware("http")
+    async def security(request: Request, call_next):
+        host = request.headers.get("host")
+        if not host_allowed(host, runtime.config.server.allowed_hosts):
+            return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
+                                           "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
+        path = request.url.path
+        writing = request.method not in ("GET", "HEAD", "OPTIONS")
+        if path.startswith("/api/") and (writing or path in PROTECTED_READS):
+            if writing and (not origin_ok(request.headers.get("origin"), host) or request.headers.get(CSRF_HEADER) != "1"):
+                return JSONResponse({"detail": "Anfrage abgelehnt (fremde Herkunft)."}, 403)
+            if path not in PUBLIC_WRITES:
+                if not auth.configured:
+                    return JSONResponse({"detail": "Bitte zuerst ein Passwort festlegen.", "code": "setup_required"}, 401)
+                if not auth.valid(request.cookies.get(SESSION_COOKIE)):
+                    return JSONResponse({"detail": "Bitte anmelden.", "code": "login_required"}, 401)
+        return await call_next(request)
+
+    def start_session(response: Response) -> None:
+        response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,
+                            samesite="strict", path="/")
+
+    # ---- access protection ---------------------------------------------------
+
+    @app.get("/api/auth/status")
+    def auth_status(request: Request):
+        return {"configured": auth.configured, "authenticated": auth.valid(request.cookies.get(SESSION_COOKIE))}
+
+    @app.post("/api/auth/setup")
+    def auth_setup(body: PasswordRequest, response: Response):
+        if auth.configured:
+            raise HTTPException(409, "Es ist bereits ein Passwort festgelegt.")
+        try:
+            auth.set_password(body.password)
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        start_session(response)
+        return {"configured": True, "authenticated": True}
+
+    @app.post("/api/auth/login")
+    def auth_login(body: PasswordRequest, response: Response):
+        try:
+            ok = auth.check_password(body.password)
+        except PermissionError as err:
+            raise HTTPException(429, str(err)) from None
+        if not ok:
+            raise HTTPException(401, "Falsches Passwort.")
+        start_session(response)
+        return {"configured": True, "authenticated": True}
+
+    @app.post("/api/auth/logout")
+    def auth_logout(request: Request, response: Response, everywhere: bool = False):
+        token = request.cookies.get(SESSION_COOKIE)
+        # logging out every device is only allowed for a logged-in device
+        auth.revoke(token, everywhere=everywhere and auth.valid(token))
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        return {"authenticated": False}
+
+    @app.post("/api/auth/password")
+    def auth_change_password(body: ChangePasswordRequest, request: Request, response: Response):
+        try:
+            if not auth.check_password(body.current):
+                raise HTTPException(401, "Das bisherige Passwort stimmt nicht.")
+            auth.set_password(body.new)
+        except PermissionError as err:
+            raise HTTPException(429, str(err)) from None
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        auth.revoke(None, everywhere=True)  # other devices must log in again
+        start_session(response)
+        return {"authenticated": True}
 
     # ---- live ------------------------------------------------------------
 
@@ -214,8 +310,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/backup")
     def backup(background: BackgroundTasks):
         tmp = Path(tempfile.mkdtemp()) / "openampere.db"
-        storage.backup(tmp)
-        background.add_task(lambda: (tmp.unlink(missing_ok=True), tmp.parent.rmdir()))
+        storage.backup(tmp, drop_settings=SECRETS)
+        background.add_task(shutil.rmtree, tmp.parent, ignore_errors=True)  # incl. SQLite side files
         name = time.strftime("openampere-backup-%Y-%m-%d.db")
         return FileResponse(tmp, filename=name, media_type="application/vnd.sqlite3")
 
@@ -227,6 +323,12 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.websocket("/api/live/ws")
     async def live_ws(ws: WebSocket):
+        # live data reveals presence at home: only same-origin pages may subscribe
+        host = ws.headers.get("host")
+        origin = ws.headers.get("origin")
+        if not host_allowed(host, runtime.config.server.allowed_hosts) or (origin is not None and not origin_ok(origin, host)):
+            await ws.close(code=1008)
+            return
         await ws.accept()
         queue = collector.subscribe()
 

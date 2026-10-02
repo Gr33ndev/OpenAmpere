@@ -33,7 +33,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - Temperaturverlauf
   - Autarkie und Eigenverbrauch
 - **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus
-- **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern, etwa 60 %, 70 % oder ohne Begrenzung. **Erhöhen oder Aufheben ist nur mit schriftlicher Zustimmung des Netzbetreibers zulässig.** Die App verlangt dafür eine ausdrückliche Bestätigung und protokolliert Datum und Zeichen der Zustimmung.
+- **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern. Man gibt die installierte Modulleistung (kWp) und die geltende Regel an: 60 % nach dem Solarspitzengesetz (bis ein intelligentes Messsystem mit Steuerbox eingebaut ist), die frühere 70-%-Regel, ein fester Wert aus der Netzanschlusszusage (z. B. Nulleinspeisung) oder keine Begrenzung. Die Prozente beziehen sich auf die Modulleistung, nicht auf den Wechselrichter; mehr als die Regel erlaubt, lässt die App nicht zu. **Bei einem festen Wert vom Netzbetreiber ist jede Erhöhung nur mit dessen schriftlicher Zustimmung zulässig**; die App verlangt dafür eine Bestätigung und protokolliert Datum und Zeichen. „Keine Begrenzung“ setzt eine ausdrückliche Erklärung voraus, die ebenfalls protokolliert wird.
 - **Verlauf aus der EKD-Cloud übernehmen:** Für bisherige Nutzer der App „Ampere.IQ“. Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der Ampere.IQ-App eintragen und den Import starten. Der Import nutzt nur die öffentliche Kunden-API mit dem eigenen Schlüssel; OpenAmpere hat nichts mit EKD zu tun, siehe [rechtliche Hinweise](#hintergrund--rechtliche-hinweise).
   - Er läuft im Hintergrund mit höchstens einer Anfrage pro Minute.
   - Nach einem Neustart macht er dort weiter, wo er aufgehört hat.
@@ -52,13 +52,24 @@ git clone <repo-url> openampere && cd openampere
 docker compose up -d --build
 ```
 
-Danach `http://<server-ip>:8080` im Browser öffnen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Alle weiteren Einstellungen erreicht man in der App unter **Mehr**:
+Danach `http://<server-ip>:8080` im Browser öffnen. Beim ersten Start legt man ein **Passwort** fest. Ansehen kann man die Werte im Heimnetz ohne Passwort; Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Alle weiteren Einstellungen erreicht man in der App unter **Mehr**:
 - Verbindung
 - Speicher & Notstrom
 - Stromtarif
 - Steuerung
+- Zugriffsschutz
 - Darstellung
 - Daten & Sicherung
+
+Passwort vergessen? Auf dem Server `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
+
+### Zugriff von unterwegs
+
+OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sichersten über ein **VPN**: das VPN der FRITZ!Box (WireGuard), einen eigenen WireGuard-Server oder Tailscale. Danach öffnet man die App wie zu Hause über die IP-Adresse des Servers.
+
+**Niemals per Portfreigabe direkt ins Internet stellen.** Wer die App so erreicht, kann den Wechselrichter steuern, sobald das Passwort geknackt oder abgefangen ist (kein HTTPS).
+
+Eigene Hostnamen (z. B. ein Reverse-Proxy im Heimnetz) müssen unter `server.allowed_hosts` eingetragen werden; IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag.
 
 Für eine automatisierte Installation lassen sich alle Werte zusätzlich per `data/config.yaml` (siehe `config.example.yaml`) oder per Umgebungsvariable `OPENAMPERE_…` vorgeben. Umgebungsvariablen haben Vorrang und erscheinen in der App als „fest eingestellt“.
 
@@ -113,13 +124,15 @@ Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wir
 - Erst wenn man den Probemodus ausdrücklich beendet, werden Werte an den Wechselrichter gesendet.
 - Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.
 
-Fernsteuerung nutzt immer den eingebauten Watchdog des Wechselrichters. Stürzt OpenAmpere ab, fällt die Anlage selbstständig in ihren normalen Betrieb zurück.
+Einstellungen wie Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung speichert der Wechselrichter selbst. Sie bleiben aktiv, auch wenn OpenAmpere nicht läuft oder deinstalliert wird. Wer etwas zurücknehmen will, muss es in der App (oder beim Installationsbetrieb) wieder ändern.
+
+Die Register zum Schreiben stammen aus der Dokumentation der Community und sind noch nicht an jeder Gerätevariante geprüft. Deshalb liest OpenAmpere jeden geschriebenen Wert zurück und meldet Abweichungen.
 
 ## Hintergrund & rechtliche Hinweise
 
 **Wie OpenAmpere entstanden ist:**
-- Die Energiekonzepte Deutschland GmbH (EKD) hat Insolvenz angemeldet ([Bericht im Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html)).
-- Ihre App „Ampere.IQ“ funktioniert nur über Server von EKD. Mit deren Abschaltung verlieren Anlagenbesitzer den Zugriff auf ihre Daten und Einstellungen.
+- Laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) hat die Energiekonzepte Deutschland GmbH (EKD) Insolvenz angemeldet.
+- Ihre App „Ampere.IQ“ funktioniert nur über Server von EKD. Sollten diese abgeschaltet werden, verlieren Anlagenbesitzer den Zugriff auf ihre Daten und Einstellungen.
 - OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene.
 
 **Warum es mit EKD-Anlagen funktioniert:** OpenAmpere spricht direkt mit den verbauten Wechselrichtern. Die von EKD als „Ampere.StoragePro E3“ vertriebenen Speicher basieren auf der FoxESS-H3-Serie, die älteren „Ampere.StoragePro“ auf SAJ H2/HS2. OpenAmpere funktioniert genauso mit diesen Geräten aus anderen Quellen.
@@ -128,7 +141,7 @@ Fernsteuerung nutzt immer den eingebauten Watchdog des Wechselrichters. Stürzt 
 
 **Marken:** „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ sowie alle weiteren genannten Produkt- und Firmennamen sind Marken oder Bezeichnungen ihrer jeweiligen Inhaber. Alle Rechte daran liegen selbstverständlich bei diesen. Sie werden hier ausschließlich genannt, um zu beschreiben, mit welchen Geräten OpenAmpere zusammenarbeitet. Der Projektname bezieht sich auf die physikalische Einheit Ampere.
 
-**Kein fremder Code:** OpenAmpere enthält keinen Code, keine Grafiken und keine Texte der Ampere.IQ-App. Der Cloud-Import nutzt ausschließlich die öffentlich dokumentierte Kunden-API mit dem persönlichen Schlüssel des jeweiligen Nutzers.
+**Kein fremder Code:** OpenAmpere enthält keinen Code, keine Grafiken und keine Texte der Ampere.IQ-App. Der Cloud-Import nutzt ausschließlich die Kunden-API, die EKD für Kunden unter developer.ekd-solar.de beschrieben hat, mit dem persönlichen Schlüssel aus der App des jeweiligen Nutzers.
 
 **Nutzung auf eigene Verantwortung:** Steuerfunktionen sind ab Werk ausgeschaltet. Wer Einstellungen am Wechselrichter ändert, insbesondere die Einspeisebegrenzung, ist selbst für die Einhaltung der Netzanschlussbedingungen verantwortlich. Die Hinweise in der App sind keine Rechtsberatung.
 

@@ -47,30 +47,39 @@ async def test_settings_reconnect_and_battery_control(tmp_path):
     sim, server, port = await start_sim()
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
-        assert not runtime.collector.configured
-        await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
-        await wait_connected(runtime)
-        assert runtime.storage.get_settings()["inverter.host"] == "127.0.0.1"
+        try:
+            await _reconnect_and_control(runtime, sim, port)
+        finally:
+            await runtime.collector.stop()
 
-        from openampere.control import BatteryControl, ControlDisabled
-        battery = BatteryControl(runtime)
-        assert (await battery.read())["work_mode"] == "self_use"
-        with pytest.raises(ControlDisabled):
-            await battery.write({"min_soc_on_grid": 30})
 
-        await runtime.update_settings({"control.enabled": True})  # dry run stays on by default
-        result = await battery.write({"min_soc_on_grid": 30})
-        assert result["dry_run"] and sim.energy.min_soc_on_grid == 10
+async def _reconnect_and_control(runtime, sim, port):
+    """Body of test_settings_reconnect_and_battery_control (collector is stopped by the caller)."""
+    assert not runtime.collector.configured
+    await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
+    await wait_connected(runtime)
+    assert runtime.storage.get_settings()["inverter.host"] == "127.0.0.1"
 
-        await runtime.update_settings({"control.dry_run": False})
-        result = await battery.write({"min_soc_on_grid": 30, "work_mode": "backup"})
-        assert result["result"] == "ok"
-        assert sim.energy.min_soc_on_grid == 30 and sim.energy.work_mode.value == "backup"
-        with pytest.raises(ValueError):
-            await battery.write({"max_soc": 25})  # below the reserve
-        log = runtime.storage.control_log()
-        assert [e["dry_run"] for e in log] == [False, True]
-        await runtime.collector.stop()
+    from openampere.control import BatteryControl, ControlDisabled
+    battery = BatteryControl(runtime)
+    assert (await battery.read())["work_mode"] == "self_use"
+    with pytest.raises(ControlDisabled):
+        await battery.write({"min_soc_on_grid": 30})
+
+    await runtime.update_settings({"control.enabled": True})  # dry run stays on by default
+    result = await battery.write({"min_soc_on_grid": 30})
+    assert result["dry_run"] and sim.energy.min_soc_on_grid == 10
+
+    await runtime.update_settings({"control.dry_run": False})
+    result = await battery.write({"min_soc_on_grid": 30, "work_mode": "backup"})
+    assert result["result"] == "ok"
+    assert sim.energy.min_soc_on_grid == 30 and sim.energy.work_mode.value == "backup"
+    with pytest.raises(ValueError):
+        await battery.write({"max_soc": 25})  # below the reserve
+    log = [e for e in runtime.storage.control_log() if e["action"] == "battery_settings"]
+    assert [e["dry_run"] for e in log] == [False, True]
+    switches = [e["details"]["to"] for e in runtime.storage.control_log() if e["action"] == "control_switches"]
+    assert switches == [{"control.dry_run": False}, {"control.enabled": True}]  # newest first
 
 
 async def test_setup_endpoints(tmp_path):
@@ -89,10 +98,11 @@ async def test_setup_endpoints(tmp_path):
             discovery.parse_prefix("8.8.8")
 
 
-def test_settings_api(tmp_path):
+def test_settings_api(tmp_path, authed):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     client = TestClient(create_app(runtime))
     assert client.get("/api/status").json()["configured"] is False
+    authed(client)
     view = client.get("/api/settings").json()
     assert view["values"]["control.enabled"] is False
     assert client.put("/api/settings", json={"tariff.feed_in_ct": 7.9}).json()["values"]["tariff.feed_in_ct"] == 7.9

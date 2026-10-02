@@ -39,7 +39,8 @@ OpenAmpere ist eine lokal laufende, quelloffene App für Solaranlagen mit Batter
 | `collector.py` | Fragt das Gerät ab, verteilt Live-Werte per WebSocket und speichert. Einzelne Aussetzer trennen die Verbindung nicht. |
 | `storage.py` | SQLite-Datenbank. Jeder Zugriff, auch jedes Lesen, läuft über eine Sperre. Eine Dateisperre verhindert, dass zwei Instanzen dieselbe Datenbank benutzen. |
 | `runtime.py`, `config.py` | Einstellungen: Standardwerte < `config.yaml` < Einstellungen aus der Web-App < Umgebungsvariablen. Umgebungsvariablen erscheinen in der App als „fest eingestellt“. Änderungen greifen ohne Neustart. |
-| `control.py` | Speicher-Einstellungen und Einspeisebegrenzung. Zum Erhöhen der Begrenzung braucht es die Bestätigung, dass die Zustimmung des Netzbetreibers vorliegt; ihr Aktenzeichen wird protokolliert. |
+| `control.py` | Speicher-Einstellungen und Einspeisebegrenzung. Die Begrenzung folgt der angegebenen Regel (60 % / 70 % der Modulleistung, Wert vom Netzbetreiber, keine). Mehr als die Regel erlaubt, wird abgelehnt; bei einem Wert vom Netzbetreiber braucht jede Erhöhung dessen Zustimmung, deren Aktenzeichen protokolliert wird. |
+| `auth.py` | Zugriffsschutz: ein lokales Passwort (scrypt), Sitzungs-Cookie, CSRF-Header, Prüfung von Origin und Host (gegen DNS-Rebinding), Sperre nach Fehlversuchen. Lesen im Heimnetz ist frei, Ändern braucht eine Anmeldung. |
 | `cloud_import.py` | Übernimmt den Verlauf aus der bisherigen Hersteller-Cloud über deren Kunden-API, alternativ per ZIP aus `tools/cloud-export`. Eigene Messwerte werden nie überschrieben. |
 | `simulator.py` | Modbus-TCP-Simulator für FoxESS und SAJ, mit Modulfeldern, Temperaturen, Einspeisebegrenzung und Proxy-Fehlern. Damit lässt sich ohne echte Anlage entwickeln und testen. |
 | `web/` | React-PWA: Dashboard, Report, „Mehr“ mit allen Einstellungen, Einrichtungsassistent. |

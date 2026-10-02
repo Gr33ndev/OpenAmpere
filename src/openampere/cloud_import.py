@@ -30,6 +30,8 @@ log = logging.getLogger(__name__)
 
 CLIENT_TYPE = "de.ekd.customer.apiclient"  # protocol constant required by the customer API
 MIN_INTERVAL_S = 65
+MAX_UNPACKED_BYTES = 2 * 1024 ** 3  # ZIP import: limits against "zip bombs"
+MAX_ENTRY_BYTES = 50 * 1024 ** 2
 BACKOFF_S = 300
 MAX_NETWORK_FAILURES = 12  # ~1 h of retries before giving up (e.g. cloud switched off)
 
@@ -70,6 +72,9 @@ def import_zip(storage: Storage, data: bytes) -> dict:
         archive = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
         raise ValueError("Das ist keine gültige ZIP-Datei.") from None
+    total = sum(info.file_size for info in archive.infolist())
+    if total > MAX_UNPACKED_BYTES or any(info.file_size > MAX_ENTRY_BYTES for info in archive.infolist()):
+        raise ValueError("Die ZIP-Datei ist zu groß.")
     rows, socs, days = [], [], 0
     for name in archive.namelist():
         parts = name.replace("\\", "/").split("/")

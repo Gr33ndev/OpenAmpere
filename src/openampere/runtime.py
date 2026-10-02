@@ -34,7 +34,8 @@ class Runtime:
         self.storage = storage
         self.config, self.locked = build_config(file_values, storage.get_settings())
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
-                                   self.config.storage.raw_retention_days)
+                                   self.config.storage.raw_retention_days,
+                                   release_connection=self.config.inverter.connection_mode == "per_poll")
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
 
     @classmethod
@@ -73,9 +74,17 @@ class Runtime:
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 
         self.collector.retention_days = new.storage.raw_retention_days
+        control_changes = {k: (get_value(old, k), get_value(new, k))
+                           for k in ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp")
+                           if get_value(old, k) != get_value(new, k)}
+        if control_changes:  # switching control on/off and the declared feed-in rule belong into the audit log
+            self.storage.log_control("control_switches", {"from": {k: v[0] for k, v in control_changes.items()},
+                                                          "to": {k: v[1] for k, v in control_changes.items()}},
+                                     False, "ok")
         if get_value(old, "cloud.api_key") != get_value(new, "cloud.api_key"):
             await self.cloud_import.stop()
             self.cloud_import.reset()
         if any(get_value(old, k) != get_value(new, k) for k in RECONNECT_KEYS):
-            await self.collector.reconfigure(make_driver(new), new.inverter.poll_interval)
+            await self.collector.reconfigure(make_driver(new), new.inverter.poll_interval,
+                                             release_connection=new.inverter.connection_mode == "per_poll")
         return self.settings_view()

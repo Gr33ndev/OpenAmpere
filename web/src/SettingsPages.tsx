@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { BatterySettings, CloudImportState, ExportLimit, SettingKey, Settings, Snapshot, Status } from "./api";
-import { activeInputs, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import type { BatterySettings, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
+import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { kw, num } from "./format";
 import { Chevron } from "./icons";
@@ -231,6 +231,18 @@ export function ConnectionPage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
+const LOG_KEYS: Record<string, string> = {
+  "control.enabled": "Steuerung", "control.dry_run": "Probemodus", "grid.feed_in_rule": "Einspeiseregel",
+  "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Entladegrenze (%)",
+  min_soc_on_grid: "Reserve am Netz (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
+};
+const LOG_VALUES: Record<string, string> = {
+  true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",
+  none: "keine Begrenzung", self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugen", backup: "Notstromreserve",
+  peak_shaving: "Spitzenlast begrenzen",
+};
+const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? String(v));
+
 type LogEntry = { ts: number; action: string; details: { from: Record<string, unknown>; to: Record<string, unknown> }; dry_run: boolean; result: string };
 
 export function ControlPage({ onBack }: PageProps) {
@@ -262,7 +274,7 @@ export function ControlPage({ onBack }: PageProps) {
         {log?.entries.map((e) => (
           <div className="log-row" key={e.ts}>
             <div className="meta">{new Date(e.ts * 1000).toLocaleString("de-DE")}{e.dry_run && " · Probemodus"}</div>
-            <div>{Object.entries(e.details.to).map(([k, v]) => `${k}: ${e.details.from[k] ?? "–"} → ${v}`).join(", ")}</div>
+            <div>{Object.entries(e.details.to).map(([k, v]) => `${LOG_KEYS[k] ?? k}: ${logValue(e.details.from[k])} → ${logValue(v)}`).join(", ")}</div>
             <div className="meta">{e.result}</div>
           </div>
         ))}
@@ -347,6 +359,7 @@ export function DataPage({ onBack }: PageProps) {
         <h2>Sicherung</h2>
         <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.</p>
         <a className="btn secondary" href="/api/backup" download>Datensicherung herunterladen</a>
+        <p className="hint">Die Sicherung enthält keine Passwörter oder API-Schlüssel. Zum Herunterladen musst du angemeldet sein.</p>
       </div>
     </SubPage>
   );
@@ -424,9 +437,7 @@ function CloudImportCard() {
   const uploadZip = async (file: File) => {
     setUpload("Lese Datei …");
     try {
-      const response = await fetch("/api/import/cloud/file", { method: "POST", body: file });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail ?? response.statusText);
+      const data = await postFile<{ days: number; inserted: number }>("/api/import/cloud/file", file);
       setUpload(`${data.days} Tage gelesen, ${data.inserted} Viertelstunden übernommen.`);
       toast("Import abgeschlossen");
     } catch (e) {
@@ -582,33 +593,114 @@ export function LicensesPage({ onBack }: PageProps) {
 
 const watt = (w: number | null | undefined) => (w == null ? "–" : `${w.toLocaleString("de-DE")} W`);
 
+const FEED_IN_RULES: { id: FeedInRule; label: string; hint: string }[] = [
+  { id: "limit_60", label: "60 % der Modulleistung",
+    hint: "Solarspitzengesetz: Inbetriebnahme ab 25.02.2025, solange kein intelligentes Messsystem mit Steuerbox eingebaut ist." },
+  { id: "limit_70", label: "70 % der Modulleistung",
+    hint: "Frühere Regel. Entfallen für Anlagen bis 25 kWp mit Inbetriebnahme nach dem 14.09.2022 und für ältere Anlagen bis 7 kWp." },
+  { id: "operator", label: "Fester Wert vom Netzbetreiber",
+    hint: "Steht in der Netzanschlusszusage, z. B. Nulleinspeisung. Jede Erhöhung braucht seine schriftliche Zustimmung." },
+  { id: "none", label: "Keine Begrenzung",
+    hint: "Weder Gesetz noch Netzanschlusszusage begrenzen die Einspeisung." },
+  { id: "unknown", label: "Weiß ich nicht",
+    hint: "Frag deinen Installationsbetrieb oder Netzbetreiber. Bis dahin braucht jede Erhöhung dessen schriftliche Zustimmung." },
+];
+
+function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
+  const { settings, save, locked } = useSettings();
+  const [kwp, setKwp] = useState("");
+  const [declareNone, setDeclareNone] = useState(false);
+  const [declared, setDeclared] = useState(false);
+  useEffect(() => { if (settings) setKwp(settings["pv.installed_kwp"] ? String(settings["pv.installed_kwp"]).replace(".", ",") : ""); }, [settings]);
+  if (!settings) return null;
+  const kwpValue = Number(kwp.replace(",", "."));
+  const kwpValid = kwp.trim() === "" || (Number.isFinite(kwpValue) && kwpValue >= 0 && kwpValue <= 1000);
+  const kwpChanged = kwpValid && (kwp.trim() === "" ? 0 : kwpValue) !== settings["pv.installed_kwp"];
+  const rule = settings["grid.feed_in_rule"];
+  const pick = async (id: FeedInRule) => {
+    if (id === rule) return;
+    if (id === "none") { setDeclared(false); setDeclareNone(true); return; }
+    if (await save({ "grid.feed_in_rule": id })) onSaved();
+  };
+
+  return (
+    <>
+      <div className="section-title">Deine Anlage</div>
+      <div className="card form">
+        <Field label="Installierte Modulleistung" locked={locked("pv.installed_kwp")}
+          hint="Summe aller Module, z. B. aus dem Marktstammdatenregister oder der Rechnung. Die Prozentregeln beziehen sich darauf – nicht auf den Wechselrichter.">
+          <div className="input-unit">
+            <input className="input" inputMode="decimal" value={kwp} placeholder="z. B. 9,8" disabled={locked("pv.installed_kwp")}
+              onChange={(e) => setKwp(e.target.value)} />
+            <span>kWp</span>
+          </div>
+        </Field>
+        {kwpChanged && (
+          <Button onClick={async () => { if (await save({ "pv.installed_kwp": kwp.trim() === "" ? 0 : kwpValue })) onSaved(); }}>
+            Modulleistung speichern
+          </Button>
+        )}
+      </div>
+      <div className="section-title">Welche Begrenzung gilt für dich?</div>
+      <div className="card choices">
+        {FEED_IN_RULES.map((r) => (
+          <button key={r.id} className={`choice ${rule === r.id ? "active" : ""}`} disabled={locked("grid.feed_in_rule")}
+            onClick={() => void pick(r.id)}>
+            <span className="radio" />
+            <span><strong>{r.label}</strong><span className="meta">{r.hint}</span></span>
+          </button>
+        ))}
+      </div>
+      {declareNone && (
+        <Dialog title="Keine Begrenzung erklären?" danger confirm="Erklärung abgeben" disabled={!declared}
+          onCancel={() => setDeclareNone(false)}
+          onConfirm={async () => { setDeclareNone(false); if (await save({ "grid.feed_in_rule": "none" })) onSaved(); }}>
+          <p>Danach kannst du die Einspeisung bis zur Leistung des Wechselrichters freigeben, ohne weitere Nachfrage.</p>
+          <Checkbox checked={declared} onChange={setDeclared}>
+            Ich erkläre, dass für meine Anlage <strong>weder gesetzlich noch in der Netzanschlusszusage</strong> eine
+            Begrenzung der Einspeisung gilt – zum Beispiel, weil ein intelligentes Messsystem mit Steuerbox eingebaut ist.
+          </Checkbox>
+          <p className="hint">Die Erklärung wird im Protokoll gespeichert.</p>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
 export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
   const { data: current, error, reload } = useResource<ExportLimit>("/api/grid/export-limit");
-  const [preset, setPreset] = useState<"60" | "70" | "100" | "custom">("100");
+  const [preset, setPreset] = useState<"max" | "custom">("custom");
   const [custom, setCustom] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [reference, setReference] = useState("");
   const [dialog, setDialog] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const rated = current?.rated_power_w ?? null;
+  const rule = current?.rule ?? "unknown";
+  const kwp = current?.installed_kwp || 0;
+  // highest value allowed: the declared legal share of the module power, never more than the inverter can do
+  const legalMax = current?.legal_max_w ?? null;
+  const cap = legalMax != null ? Math.min(legalMax, rated ?? legalMax) : rated;
+  const hasPreset = cap != null && (legalMax != null || rule === "none");
+  const presetLabel = rule === "none" ? "Keine Begrenzung" : `${rule === "limit_70" ? 70 : 60} % (${watt(cap)})`;
+
   // start from the current value, so nothing is "changed" (and no warning shown) until the user picks something
   useEffect(() => {
     if (!current?.supported || current.limit_w == null) return;
-    const share = current.rated_power_w ? Math.round((current.limit_w / current.rated_power_w) * 100) : null;
-    const match = share === 60 ? "60" : share === 70 ? "70" : share === 100 ? "100" : null;
-    setPreset(match ?? "custom");
+    setPreset(hasPreset && current.limit_w === cap ? "max" : "custom");
     setCustom(String(current.limit_w));
-  }, [current]);
+  }, [current, hasPreset, cap]);
 
-  const rated = current?.rated_power_w ?? null;
-  const target = preset === "custom" || !rated ? Math.round(Number(custom.replace(",", "."))) : Math.round((rated * Number(preset)) / 100);
-  const valid = Number.isFinite(target) && target >= 0 && target <= (rated ?? 99_999);
+  const target = preset === "max" && cap != null ? cap : Math.round(Number(custom.replace(",", ".")));
+  const valid = Number.isFinite(target) && target >= 0 && target <= (cap ?? 99_999);
   const raising = current?.limit_w == null || (valid && target > current.limit_w);
+  const needsConsent = raising && legalMax == null && rule !== "none";
   const unchanged = valid && target === current?.limit_w;
   const editable = !!status?.control.enabled && !!current?.supported;
-  const canSubmit = editable && valid && !unchanged && (!raising || (confirmed && reference.trim().length >= 3));
-  const pct = (w: number | null | undefined) => (rated && w != null ? ` (${Math.round((w / rated) * 100)} % der Nennleistung)` : "");
+  const canSubmit = editable && valid && !unchanged && (!needsConsent || (confirmed && reference.trim().length >= 3));
+  const pct = (w: number | null | undefined) => (kwp && w != null ? ` (${Math.round(w / (kwp * 10))} % der Modulleistung)` : "");
 
   const submit = async () => {
     setDialog(false);
@@ -631,19 +723,27 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
   return (
     <SubPage title="Einspeisebegrenzung" onBack={onBack}>
       <Notice kind="warn">
-        <strong>Nur mit schriftlicher Zustimmung deines Netzbetreibers ändern.</strong> Die Einspeisebegrenzung ist Teil
-        deiner Netzanschlusszusage – z. B. 60 % nach dem Solarspitzengesetz, 70 % nach früheren Regeln oder
-        Nulleinspeisung. Normalerweise klärt der Installationsbetrieb das mit dem Netzbetreiber und stellt sie ein.
+        <strong>Die Einspeisebegrenzung ist rechtlich vorgegeben.</strong> Sie folgt aus dem Gesetz (z. B. 60 % der
+        Modulleistung nach dem Solarspitzengesetz) oder aus deiner Netzanschlusszusage. Wer mehr einspeist als erlaubt,
+        riskiert Zahlungen an den Netzbetreiber (§ 52 EEG). Normalerweise stellt der Installationsbetrieb sie ein.
       </Notice>
+
+      <FeedInRuleCard onSaved={reload} />
 
       {!current ? <LoadState error={error} onRetry={reload} /> : (
         <>
-          <div className="section-title">Aktuell</div>
+          <div className="section-title">Aktuell im Wechselrichter</div>
           <div className="card">
             {current.supported ? (
               <>
                 <div className="big-value">{watt(current.limit_w)}</div>
-                <p className="hint">{rated ? `${Math.round(((current.limit_w ?? 0) / rated) * 100)} % der Nennleistung von ${watt(rated)}` : "Nennleistung unbekannt"}</p>
+                <p className="hint">
+                  {kwp ? `${Math.round((current.limit_w ?? 0) / (kwp * 10))} % von ${kwp.toLocaleString("de-DE")} kWp` : "Modulleistung nicht angegeben"}
+                  {rated ? ` · Wechselrichter max. ${watt(rated)}` : ""}
+                </p>
+                {legalMax != null && current.limit_w != null && current.limit_w > legalMax && (
+                  <Notice kind="error">Der eingestellte Wert liegt über dem, was die gewählte Regel erlaubt ({watt(legalMax)}).</Notice>
+                )}
               </>
             ) : (
               <p className="hint">Bei diesem Gerät lässt sich die Einspeisebegrenzung nicht über Modbus lesen oder ändern.
@@ -654,6 +754,9 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
           {current.supported && (
             <>
               <div className="section-title">Neue Begrenzung</div>
+              {(rule === "limit_60" || rule === "limit_70") && !kwp && (
+                <Notice kind="info">Gib oben die Modulleistung an, damit OpenAmpere den erlaubten Wert berechnen kann.</Notice>
+              )}
               {!status?.control.enabled && (
                 <Notice kind="info">Nur Anzeige – die Steuerung ist ausgeschaltet.{" "}
                   <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
@@ -662,32 +765,30 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
                 <Notice kind="warn">Probemodus aktiv: Die Änderung wird nur protokolliert, nicht gesendet.</Notice>
               )}
               <div className="card form">
-                {rated ? (
+                {hasPreset && (
                   <Segmented value={preset} onChange={setPreset} disabled={!editable}
-                    options={[["60", "60 %"], ["70", "70 %"], ["100", "Keine"], ["custom", "Eigener Wert"]]} />
-                ) : null}
-                {(preset === "custom" || !rated) && (
-                  <Field label="Maximale Einspeiseleistung">
+                    options={[["max", presetLabel], ["custom", "Eigener Wert"]]} />
+                )}
+                {preset === "custom" && (
+                  <Field label="Maximale Einspeiseleistung" hint={cap != null ? `Höchstens ${watt(cap)}` : undefined}>
                     <div className="input-unit">
                       <input className="input" inputMode="numeric" value={custom} disabled={!editable}
-                        onChange={(e) => setCustom(e.target.value)} placeholder={rated ? `0 – ${rated}` : "z. B. 6000"} />
+                        onChange={(e) => setCustom(e.target.value)} placeholder={cap != null ? `0 – ${cap}` : "z. B. 6000"} />
                       <span>W</span>
                     </div>
                   </Field>
                 )}
-                {valid && !unchanged && (
-                  <p className="hint">Neu: <strong>{watt(target)}</strong>{pct(target)}{preset === "100" && rated ? " – keine Begrenzung" : ""}</p>
-                )}
+                {valid && !unchanged && <p className="hint">Neu: <strong>{watt(target)}</strong>{pct(target)}</p>}
+                {!valid && custom.trim() !== "" && cap != null && <p className="hint">Erlaubt sind 0 bis {watt(cap)}.</p>}
                 {unchanged && <p className="hint">Das ist bereits der aktuelle Wert.</p>}
               </div>
 
-              {editable && valid && !unchanged && raising && (
+              {editable && valid && !unchanged && needsConsent && (
                 <>
                   <Notice kind="error">
-                    <strong>Du erhöhst die Einspeiseleistung.</strong> Das ist nur zulässig, wenn dein Netzbetreiber der
-                    neuen Leistung schriftlich zugestimmt hat. Je nach Netzbetreiber muss die Änderung zusätzlich von einem
-                    eingetragenen Elektrofachbetrieb vorgenommen oder gemeldet und der Eintrag im Marktstammdatenregister
-                    angepasst werden. Ohne Zustimmung kann der Netzbetreiber die Einspeisung sperren oder Kosten geltend machen.
+                    <strong>Du erhöhst die Einspeiseleistung.</strong> Bei einem festen Wert vom Netzbetreiber (oder wenn
+                    du die Regel nicht kennst) ist das nur mit dessen schriftlicher Zustimmung zulässig. Je nach
+                    Netzbetreiber muss zusätzlich ein eingetragener Elektrofachbetrieb die Änderung vornehmen oder melden.
                   </Notice>
                   <div className="card form">
                     <Checkbox checked={confirmed} onChange={setConfirmed} disabled={!editable}>
@@ -702,7 +803,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
               )}
 
               {editable && (
-                <Button variant={raising ? "danger" : "primary"} busy={busy} disabled={!canSubmit} onClick={() => setDialog(true)}>
+                <Button variant={needsConsent ? "danger" : "primary"} busy={busy} disabled={!canSubmit} onClick={() => setDialog(true)}>
                   Einspeisebegrenzung ändern
                 </Button>
               )}
@@ -710,18 +811,18 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
           )}
 
           <Notice kind="info">
-            Hinweis: Auch ein noch angeschlossener Energiemanager (z. B. die bisherige Smartbox) kann die Einspeisung
-            zusätzlich begrenzen. Diese Einstellung hier betrifft nur den Wechselrichter.
+            Prüfe, ob die Begrenzung bisher von der Smartbox umgesetzt wurde: Dann steht der Wechselrichter womöglich auf
+            100 %, und ohne die Box gilt nur noch der Wert hier.
           </Notice>
         </>
       )}
 
       {dialog && current && (
-        <Dialog title="Einspeisebegrenzung wirklich ändern?" danger={raising}
-          confirm={raising ? "Zustimmung liegt vor – ändern" : "Ändern"} onCancel={() => setDialog(false)} onConfirm={() => void submit()}>
+        <Dialog title="Einspeisebegrenzung wirklich ändern?" danger={needsConsent}
+          confirm={needsConsent ? "Zustimmung liegt vor – ändern" : "Ändern"} onCancel={() => setDialog(false)} onConfirm={() => void submit()}>
           <p>Bisher: <strong>{watt(current.limit_w)}</strong>{pct(current.limit_w)}<br />Neu: <strong>{watt(target)}</strong>{pct(target)}</p>
-          {raising && <p>Du bestätigst, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt ({reference.trim()}).
-            Die Verantwortung für die Einhaltung der Netzanschlussbedingungen liegt bei dir als Anlagenbetreiber.</p>}
+          {needsConsent && <p>Du bestätigst, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt ({reference.trim()}).</p>}
+          <p>Die Verantwortung für die Einhaltung der Netzanschlussbedingungen liegt bei dir als Anlagenbetreiber.</p>
         </Dialog>
       )}
     </SubPage>

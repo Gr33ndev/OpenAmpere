@@ -141,7 +141,7 @@ async def test_bad_key_and_resume(tmp_path, fake_cloud):
     await wait_for(runtime2.cloud_import, "done")
 
 
-def test_zip_import_and_secret_handling(tmp_path):
+def test_zip_import_and_secret_handling(tmp_path, authed):
     storage = Storage(tmp_path / "t.db")
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
@@ -150,7 +150,7 @@ def test_zip_import_and_secret_handling(tmp_path):
             "timeline": [{"value": 70, "fromTimestamp": a, "toTimestamp": b} for a, b in day_slots(FIRST_DAY)]}}))
         archive.writestr(f"cloud-export/{UUID}/installations.json", "[]")
     runtime = Runtime({}, storage)
-    client = TestClient(create_app(runtime))
+    client = authed(TestClient(create_app(runtime)))
 
     result = client.post("/api/import/cloud/file", content=buffer.getvalue()).json()
     assert result == {"days": 1, "quarters": 96, "inserted": 96}
@@ -164,10 +164,11 @@ def test_zip_import_and_secret_handling(tmp_path):
     assert client.get("/api/import/cloud").json()["key_set"] is True
 
 
-def test_start_and_stop_through_api(tmp_path, fake_cloud, monkeypatch):
+def test_start_and_stop_through_api(tmp_path, fake_cloud, monkeypatch, authed):
     monkeypatch.setattr(cloud_import, "MIN_INTERVAL_S", 0.2)  # slow enough to observe "running"
     runtime = Runtime({"cloud": {"base_url": fake_cloud}}, Storage(tmp_path / "t.db"))
     with TestClient(create_app(runtime)) as client:  # runs the app's event loop like uvicorn does
+        authed(client)
         assert client.post("/api/import/cloud/start").status_code == 400  # no key yet
         client.put("/api/settings", json={"cloud.api_key": KEY})
         started = client.post("/api/import/cloud/start").json()

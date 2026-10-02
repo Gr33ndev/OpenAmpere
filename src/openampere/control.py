@@ -106,6 +106,18 @@ class ConfirmationRequired(Exception):
     """Raising the feed-in limit needs the grid operator's written confirmation."""
 
 
+RULE_SHARE = {"limit_60": 0.6, "limit_70": 0.7}
+RULE_LABEL = {"limit_60": "60 %", "limit_70": "70 %"}
+
+
+def legal_max_w(rule: str, installed_kwp: float) -> int | None:
+    """Highest feed-in power the declared rule allows (percentages refer to the installed module power)."""
+    share = RULE_SHARE.get(rule)
+    if share is None or not installed_kwp:
+        return None
+    return int(installed_kwp * 1000 * share)
+
+
 class ExportLimitControl:
     """Feed-in (export) power limit. The limit is part of the grid connection approval: raising or lifting
     it is only allowed with the grid operator's written confirmation, which the user must declare and
@@ -120,9 +132,14 @@ class ExportLimitControl:
             raise NotConnected("Wechselrichter ist nicht verbunden")
         return collector.driver
 
+    def _rule(self) -> dict:
+        config = self.runtime.config
+        rule, kwp = config.grid.feed_in_rule, config.pv.installed_kwp
+        return {"rule": rule, "installed_kwp": kwp, "legal_max_w": legal_max_w(rule, kwp)}
+
     async def read(self) -> dict:
         limit = await self._driver().read_export_limit()
-        return asdict(limit)
+        return {**asdict(limit), **self._rule()}
 
     async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "") -> dict:
         control = self.runtime.config.control
@@ -141,14 +158,24 @@ class ExportLimitControl:
 
         raising = old is None or limit_w > old
         reference = reference.strip()
-        if raising and (not confirmed or len(reference) < 3):
+        rule = self._rule()
+        legal_max = rule["legal_max_w"]
+        if legal_max is not None and limit_w > legal_max:
+            raise ValueError(
+                f"Nach der eingestellten Regel ({RULE_LABEL[rule['rule']]} von {rule['installed_kwp']:g} kWp) sind "
+                f"höchstens {legal_max} W erlaubt. Gilt die Regel nicht mehr (z. B. weil ein intelligentes "
+                "Messsystem mit Steuerbox eingebaut wurde), ändere zuerst die Regel.")
+        # Within a declared legal percentage, or with "no limit" declared, raising needs no further consent.
+        needs_consent = raising and legal_max is None and rule["rule"] != "none"
+        if needs_consent and (not confirmed or len(reference) < 3):
             raise ConfirmationRequired(
                 "Zum Erhöhen oder Aufheben der Einspeisebegrenzung musst du bestätigen, dass die schriftliche "
                 "Zustimmung deines Netzbetreibers vorliegt, und Datum/Zeichen dieser Bestätigung angeben.")
 
         storage = self.runtime.storage
         details = {"from": {"export_limit_w": old}, "to": {"export_limit_w": limit_w},
-                   "grid_operator_confirmation": reference if raising else None}
+                   "rule": rule["rule"], "installed_kwp": rule["installed_kwp"],
+                   "grid_operator_confirmation": reference if needs_consent else None}
         if control.dry_run:
             storage.log_control("export_limit", details, True, "nicht ausgeführt (Probemodus)")
             return {"dry_run": True, "written": False, **current}

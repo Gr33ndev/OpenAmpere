@@ -128,8 +128,8 @@ export function Notice({ kind = "info", children }: { kind?: "info" | "warn" | "
   return <div className={`notice ${kind}`}>{children}</div>;
 }
 
-export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger, onConfirm, onCancel }: {
-  title: string; children: ReactNode; confirm: string; cancel?: string; danger?: boolean;
+export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger, disabled, onConfirm, onCancel }: {
+  title: string; children: ReactNode; confirm: string; cancel?: string; danger?: boolean; disabled?: boolean;
   onConfirm: () => void; onCancel: () => void;
 }) {
   return (
@@ -138,7 +138,7 @@ export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger,
         <h2>{title}</h2>
         <div className="dialog-body">{children}</div>
         <div className="dialog-actions">
-          <Button variant={danger ? "danger" : "primary"} onClick={onConfirm}>{confirm}</Button>
+          <Button variant={danger ? "danger" : "primary"} disabled={disabled} onClick={onConfirm}>{confirm}</Button>
           <Button variant="secondary" onClick={onCancel}>{cancel}</Button>
         </div>
       </div>

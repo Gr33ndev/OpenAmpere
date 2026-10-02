@@ -25,6 +25,9 @@ class InverterConfig:
     read_function: str = "auto"  # auto | input | holding
     poll_interval: float = 10.0
     timeout: float = 3.0  # seconds per request; raise for Modbus proxies or slow networks
+    # "persistent": keep one connection open; "per_poll": connect for each reading and release the slot
+    # again (for inverters with very few connection slots shared with another energy manager)
+    connection_mode: str = "persistent"
 
 
 @dataclass
@@ -37,6 +40,9 @@ class StorageConfig:
 class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8080
+    # extra host names the web app may be opened with (besides IPs, localhost and typical home-network
+    # names such as *.local, *.fritz.box, *.ts.net); "*" disables the check (only behind a trusted proxy)
+    allowed_hosts: list = field(default_factory=list)
 
 
 @dataclass
@@ -54,6 +60,18 @@ class TariffConfig:
 @dataclass
 class PvConfig:
     input_names: list = field(default_factory=list)  # e.g. ["Süddach", "Garage"]; empty = "Modulfeld 1", ...
+    installed_kwp: float = 0.0  # installed module power (kWp, from the Marktstammdatenregister); 0 = unknown
+
+
+@dataclass
+class GridConfig:
+    # Which feed-in limit applies to the system (Germany):
+    #   unknown   – not declared; raising the limit needs the grid operator's written consent
+    #   limit_60  – 60 % of the module power (§ 9 EEG, Solarspitzengesetz; until a smart meter with control unit)
+    #   limit_70  – 70 % of the module power (former rule, still valid for some older systems)
+    #   operator  – fixed value from the grid connection approval (e.g. zero export); changes need consent
+    #   none      – declared: neither the law nor the grid connection approval limits the feed-in
+    feed_in_rule: str = "unknown"
 
 
 @dataclass
@@ -71,6 +89,7 @@ class Config:
     tariff: TariffConfig = field(default_factory=TariffConfig)
     cloud: CloudConfig = field(default_factory=CloudConfig)
     pv: PvConfig = field(default_factory=PvConfig)
+    grid: GridConfig = field(default_factory=GridConfig)
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
@@ -87,6 +106,7 @@ EDITABLE: dict[str, tuple] = {
     "inverter.read_function": ("choice", "auto", "input", "holding"),
     "inverter.poll_interval": ("float", 2, 300),
     "inverter.timeout": ("float", 1, 30),
+    "inverter.connection_mode": ("choice", "persistent", "per_poll"),
     "storage.raw_retention_days": ("int", 1, 3650),
     "control.enabled": ("bool",),
     "control.dry_run": ("bool",),
@@ -95,6 +115,8 @@ EDITABLE: dict[str, tuple] = {
     "timezone": ("str",),
     "cloud.api_key": ("secret",),
     "pv.input_names": ("strlist", 6, 30),
+    "pv.installed_kwp": ("float", 0, 1000),
+    "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}

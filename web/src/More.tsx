@@ -4,6 +4,7 @@ import { useResource } from "./api";
 import { kwh, percent, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, BatteryPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
+import { SecurityPage } from "./AuthScreens";
 import { MenuRow, SubPage } from "./ui";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -76,6 +77,7 @@ export function More({ snap }: { snap: Snapshot | null }) {
     case "appearance": return <AppearancePage {...nav} />;
     case "data": return <DataPage {...nav} />;
     case "about": return <AboutPage {...nav} />;
+    case "security": return <SecurityPage onBack={back} />;
     case "licenses": return <LicensesPage onBack={() => setPage("about")} />;
   }
 
@@ -98,6 +100,7 @@ export function More({ snap }: { snap: Snapshot | null }) {
         <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung"
           hint={control?.enabled ? (control.dry_run ? "Probemodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
+        <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
         <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
       </div>

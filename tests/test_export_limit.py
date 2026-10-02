@@ -35,7 +35,8 @@ async def test_export_limit_rules(tmp_path):
     async with server:
         runtime = await connected_runtime(tmp_path, port)
         control = ExportLimitControl(runtime)
-        assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000}
+        assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000,
+                                        "rule": "unknown", "installed_kwp": 0.0, "legal_max_w": None}
 
         with pytest.raises(ControlDisabled):
             await control.write(10000, confirmed=True, reference="Schreiben vom 01.10.2026")
@@ -64,6 +65,39 @@ async def test_export_limit_rules(tmp_path):
         await runtime.collector.stop()
 
 
+
+async def test_export_limit_follows_declared_rule_and_kwp(tmp_path):
+    sim, server, port = await start()
+    async with server:
+        runtime = await connected_runtime(tmp_path, port)
+        control = ExportLimitControl(runtime)
+        try:
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False,
+                                           "pv.installed_kwp": 8, "grid.feed_in_rule": "limit_60"})
+            # 60 % refer to the module power: 8 kWp -> 4800 W, not 60 % of the 10 kW inverter
+            assert (await control.read())["legal_max_w"] == 4800
+            with pytest.raises(ValueError, match="4800"):
+                await control.write(7000, confirmed=True, reference="Az. 4711")  # consent does not override the law
+            await control.write(3000)
+            result = await control.write(4800)  # raising within the declared rule needs no further consent
+            assert result["result"] == "ok" and sim.energy.export_limit_w == 4800
+
+            # a fixed value from the grid operator: every increase needs the written consent again
+            await runtime.update_settings({"grid.feed_in_rule": "operator"})
+            with pytest.raises(ConfirmationRequired):
+                await control.write(5000)
+
+            # declared "no limit": raising is the operator's own responsibility
+            await runtime.update_settings({"grid.feed_in_rule": "none"})
+            assert (await control.write(10000))["result"] == "ok"
+
+            rules = [e["details"]["to"].get("grid.feed_in_rule") for e in runtime.storage.control_log()
+                     if e["action"] == "control_switches"]
+            assert rules[:2] == ["none", "operator"]  # changing the rule is audited
+        finally:
+            await runtime.collector.stop()
+
+
 async def test_export_limit_dry_run_and_unsupported(tmp_path):
     sim, server, port = await start()
     async with server:
@@ -84,9 +118,12 @@ async def test_export_limit_dry_run_and_unsupported(tmp_path):
         await runtime.collector.stop()
 
 
-def test_export_limit_api_requires_confirmation(tmp_path):
+def test_export_limit_api_requires_confirmation(tmp_path, authed):
     # control switch is checked before anything else; invalid values are rejected by validation
     runtime = Runtime({}, Storage(tmp_path / "api.db"))
     client = TestClient(create_app(runtime))
-    assert client.put("/api/grid/export-limit", json={"limit_w": 5000}).status_code == 403
+    client.headers.update({"x-openampere": "1"})
+    assert client.put("/api/grid/export-limit", json={"limit_w": 5000}).status_code == 401  # no password yet
+    authed(client)
+    assert client.put("/api/grid/export-limit", json={"limit_w": 5000}).status_code == 403  # control disabled
     assert client.put("/api/grid/export-limit", json={"limit_w": -1}).status_code == 422

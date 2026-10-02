@@ -12,6 +12,7 @@ inverter:
   read_function: auto       # auto | input | holding
   poll_interval: 10         # Sekunden zwischen zwei Abfragen
   timeout: 3                # Sekunden pro Anfrage; bei Modbus-Proxy oder WLAN ggf. erhöhen
+  connection_mode: persistent  # persistent | per_poll (Verbindung pro Abfrage öffnen und wieder freigeben)
 
 storage:
   path: data/openampere.db
@@ -20,6 +21,13 @@ storage:
 server:
   host: 0.0.0.0
   port: 8080
+  allowed_hosts: []         # zusätzliche Hostnamen, z. B. [solar.example.org]; IPs und *.local/*.fritz.box gehen immer
+
+pv:
+  installed_kwp: 0          # installierte Modulleistung in kWp (0 = unbekannt)
+
+grid:
+  feed_in_rule: unknown     # unknown | limit_60 | limit_70 | operator | none
 
 control:
   enabled: false            # Hauptschalter für alles, was auf den Wechselrichter schreibt

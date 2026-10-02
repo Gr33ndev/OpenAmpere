@@ -70,6 +70,8 @@ export type Settings = {
     "tariff.feed_in_ct": number;
     timezone: string;
     "pv.input_names": string[];
+    "pv.installed_kwp": number;
+    "grid.feed_in_rule": FeedInRule;
   };
   secrets: Record<"cloud.api_key", { set: boolean; hint: string | null }>;
   locked: string[];
@@ -90,7 +92,11 @@ export function activeInputs(snap: Snapshot | null) {
     .filter((i) => (i.voltage ?? 0) > 1 || (i.power ?? 0) > 1);
 }
 
-export type ExportLimit = { supported: boolean; limit_w: number | null; rated_power_w: number | null };
+export type FeedInRule = "unknown" | "limit_60" | "limit_70" | "operator" | "none";
+export type ExportLimit = {
+  supported: boolean; limit_w: number | null; rated_power_w: number | null;
+  rule: FeedInRule; installed_kwp: number; legal_max_w: number | null;
+};
 
 export type CloudImportState = {
   status: "idle" | "running" | "paused" | "done" | "error";
@@ -119,14 +125,24 @@ export const OFFLINE_MESSAGE = "Keine Verbindung zum OpenAmpere-Server.";
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let response: Response;
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (method !== "GET") headers["X-OpenAmpere"] = "1"; // required by the server for every change (CSRF protection)
   try {
     response = await fetch(path, {
       method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers,
+      credentials: "same-origin",
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     throw new Error(OFFLINE_MESSAGE); // network error, server not running
+  }
+  if (response.status === 401) {
+    const data = await response.clone().json().catch(() => ({}));
+    if (data.code === "login_required" || data.code === "setup_required") {
+      window.dispatchEvent(new CustomEvent("openampere:auth", { detail: data.code }));
+    }
   }
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
@@ -216,4 +232,17 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
   }, [path, refreshMs, nonce]);
 
   return { data, error, reload: () => setNonce((n) => n + 1), setData };
+}
+
+export type AuthStatus = { configured: boolean; authenticated: boolean };
+
+/** POST with a raw body (file upload) – same headers as JSON requests. */
+export async function postFile<T>(path: string, file: Blob): Promise<T> {
+  const response = await fetch(path, { method: "POST", body: file, credentials: "same-origin",
+    headers: { "X-OpenAmpere": "1", "Content-Type": "application/zip" } }).catch(() => {
+    throw new Error(OFFLINE_MESSAGE);
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : response.statusText);
+  return data as T;
 }

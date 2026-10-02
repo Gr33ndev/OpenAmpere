@@ -1,7 +1,8 @@
 import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import type { Status } from "./api";
+import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
+import { PasswordSetup, useLoginPrompt } from "./AuthScreens";
 import { Dashboard } from "./Dashboard";
 import { NavHome, NavMore, NavReport } from "./icons";
 import { More } from "./More";
@@ -24,7 +25,9 @@ applyTheme(storedTheme());
 function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const { data: status, error, reload } = useResource<Status>("/api/status", 15_000);
+  const { data: auth, reload: reloadAuth } = useResource<AuthStatus>("/api/auth/status");
   const { snap, online } = useLive();
+  const login = useLoginPrompt(reloadAuth);
 
   if (!status) {
     return (
@@ -47,10 +50,19 @@ function App() {
       </div>
     );
   }
+  if (auth && !auth.configured) {
+    return (
+      <div className="app">
+        <main><PasswordSetup onDone={reloadAuth} /></main>
+        <ToastHost />
+      </div>
+    );
+  }
   if (!status.configured) {
     return (
       <div className="app">
         <main><Setup onDone={reload} /></main>
+        {login.dialog}
         <ToastHost />
       </div>
     );
@@ -71,6 +83,7 @@ function App() {
           </button>
         ))}
       </nav>
+      {login.dialog}
       <ToastHost />
     </div>
   );
