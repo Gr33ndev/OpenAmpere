@@ -225,6 +225,25 @@ class Storage:
             return
         self._set_meta("quarter_state", self._quarter)
 
+    def running_quarter(self, snap: Snapshot | None) -> dict | None:
+        """Energy of the quarter hour that is still running (not yet stored), from the latest counters."""
+        with self._lock:
+            state = self._quarter
+        if snap is None or state is None:
+            return None
+        totals = {f: getattr(snap.totals, f) for f in FLOWS}
+        if any(v is None for v in totals.values()) or snap.timestamp - state["ts"] > 2 * QUARTER:
+            return None
+        delta = {f: totals[f] - state["totals"][f] for f in FLOWS}
+        if any(v < 0 or v > MAX_POWER_W * QUARTER / 3600 * 1.5 for v in delta.values()):
+            return None
+        return {"ts": state["ts"], **delta, "soc": snap.battery_soc}
+
+    def first_quarter(self, start: float, end: float) -> float | None:
+        with self._lock:
+            row = self._db.execute("SELECT MIN(ts) FROM energy_15m WHERE ts >= ? AND ts < ?", (start, end)).fetchone()
+        return row[0]
+
     def import_energy(self, rows: list[dict], source: str) -> int:
         """Insert quarter-hour rows from an external source; never overwrites local measurements."""
         with self._lock, self._db:

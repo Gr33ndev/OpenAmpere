@@ -161,6 +161,7 @@ nav.bottom button.active::after { background: var(--accent); }
 .flow-dash.rev { animation: flow 1.2s linear infinite reverse; }
 @keyframes flow { to { stroke-dashoffset: -36; } }
 @media (prefers-reduced-motion: reduce) { .flow-dash { animation: none !important; } }
+.flow.stale .flow-node { opacity: 0.45; filter: grayscale(1); }
 
 /* ---- daily values ---- */
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -360,3 +361,24 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .tile .meta { margin-top: 2px; }
 
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: var(--card-2); padding: 1px 5px; border-radius: 4px; }
+
+details.expert > summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+details.expert > summary::after { content: "›"; transform: rotate(90deg); transition: transform .2s; font-size: 20px; color: var(--label); }
+details.expert[open] > summary::after { transform: rotate(-90deg); }
+details.expert[open] { display: flex; flex-direction: column; gap: 14px; }
+details.help > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+details.help p, details.help li { font-size: 14px; line-height: 1.5; }
+details.help ul { padding-left: 18px; margin: 6px 0; }
+
+.soc-bar { display: flex; height: 22px; border-radius: 11px; overflow: hidden; background: var(--line); }
+.zone.never { background: var(--line); }
+.zone.backup { background: color-mix(in srgb, var(--battery) 45%, transparent); }
+.zone.daily { background: var(--battery); }
+.zone.unused { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px); }
+.soc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--label); }
+.soc-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.soc-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.import-hint { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.import-hint .actions { display: flex; gap: 18px; }
+.import-hint .actions .link { min-height: 44px; }

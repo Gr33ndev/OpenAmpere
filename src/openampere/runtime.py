@@ -61,7 +61,7 @@ class Runtime:
         clean = validate(changes)
         blocked = set(clean) & self.locked
         if blocked:
-            raise PermissionError(f"set by environment variable: {', '.join(sorted(blocked))}")
+            raise PermissionError(f"Fest eingestellt (Umgebungsvariable), in der App nicht änderbar: {', '.join(sorted(blocked))}")
         if "timezone" in clean:
             ZoneInfo(clean["timezone"])  # raises for unknown zones
 

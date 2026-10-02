@@ -112,7 +112,7 @@ EDITABLE: dict[str, tuple] = {
     "control.dry_run": ("bool",),
     "tariff.electricity_price_ct": ("float", -100, 200),
     "tariff.feed_in_ct": ("float", -100, 200),
-    "timezone": ("str",),
+    "timezone": ("timezone",),
     "cloud.api_key": ("secret",),
     "pv.input_names": ("strlist", 6, 30),
     "pv.installed_kwp": ("float", 0, 1000),
@@ -198,6 +198,23 @@ def get_value(config: Config, key: str):
     return node
 
 
+LABELS = {
+    "inverter.host": "IP-Adresse", "inverter.port": "Port", "inverter.unit": "Geräteadresse",
+    "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
+    "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
+    "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
+    "timezone": "Zeitzone",
+}
+
+
+def _invalid_message(key: str, rule: tuple) -> str:
+    label = LABELS.get(key, key)
+    if rule[0] in ("int", "float"):
+        lo, hi = (f"{v:g}".replace(".", ",") for v in rule[1:3])
+        return f"{label}: bitte eine Zahl zwischen {lo} und {hi} eingeben."
+    return f"{label}: ungültiger Wert."
+
+
 def validate(changes: dict) -> dict:
     """Validates web-app changes; returns the cleaned values or raises ValueError."""
     clean = {}
@@ -205,7 +222,7 @@ def validate(changes: dict) -> dict:
     for key, value in changes.items():
         rule = EDITABLE.get(key)
         if rule is None:
-            raise ValueError(f"{key} cannot be changed")
+            raise ValueError(f"Die Einstellung {key} kann in der App nicht geändert werden.")
         kind = rule[0]
         try:
             if kind == "choice":
@@ -217,13 +234,17 @@ def validate(changes: dict) -> dict:
                     raise ValueError
             elif kind == "bool":
                 value = _coerce(True, value)
+            elif kind == "timezone":
+                from zoneinfo import ZoneInfo
+                value = str(value).strip()
+                ZoneInfo(value)  # raises for unknown names
             elif kind == "strlist":
                 if not isinstance(value, list) or len(value) > rule[1]:
                     raise ValueError
                 value = [str(v).strip()[: rule[2]] for v in value]
             else:
                 value = str(value).strip()
-        except (TypeError, ValueError):
-            raise ValueError(f"invalid value for {key}") from None
+        except (TypeError, ValueError, LookupError):
+            raise ValueError(_invalid_message(key, rule)) from None
         clean[key] = value
     return clean

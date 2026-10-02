@@ -116,15 +116,16 @@ def test_api_endpoints(tmp_path):
     for i, (pv, load) in enumerate([(1000, 400), (1100, 450), (1300, 500)]):
         storage.add_snapshot(snap(base + i * 900, pv, load))
     runtime = Runtime({}, storage)
-    runtime.collector.latest = snap(base + 1800, 1300, 500)
+    # the quarter hour from 12:30 is still running: 50 Wh so far, not stored yet
+    runtime.collector.latest = snap(base + 1900, 1350, 520)
     app = create_app(runtime)
     client = TestClient(app)
 
     summary = client.get("/api/energy/summary", params={"period": "day", "date": "2026-06-01"}).json()
-    assert summary["energy_wh"]["pv"] == 300 and summary["quarters"] == 2
+    assert summary["energy_wh"]["pv"] == 350 and summary["quarters"] == 3  # stored + running quarter
     timeline = client.get("/api/energy/timeline",
                           params={"period": "day", "date": "2026-06-01", "resolution": "60m"}).json()
-    assert len(timeline["entries"]) == 1 and timeline["entries"][0]["pv"] == 300
+    assert len(timeline["entries"]) == 1 and timeline["entries"][0]["pv"] == 350
     assert client.get("/api/energy/summary", params={"period": "decade"}).status_code == 400
 
     installation = client.get("/api/v1/customer/installation").json()[0]["uuid"]

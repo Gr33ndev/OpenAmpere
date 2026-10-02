@@ -7,6 +7,7 @@ import logging
 import time
 
 from .drivers.base import DeviceInfo, InverterDriver, Snapshot, raise_if_cancelled
+from .drivers.modbus import friendly_error
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class Collector:
         self.device: DeviceInfo | None = None
         self.connected = False
         self.last_error: str | None = None
+        self.disconnected_since: float | None = None  # first failed attempt since the last good reading
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
 
@@ -70,6 +72,7 @@ class Collector:
         self.release_connection = release_connection
         self.device = None
         self.connected = False
+        self.disconnected_since = None
         self.last_error = None
         self.latest = None
         self.start()
@@ -103,6 +106,7 @@ class Collector:
                 if not self.connected:
                     log.info("inverter connected")
                 self.connected = True
+                self.disconnected_since = None
                 self.last_error = None
                 backoff = 5.0
                 transient_failures = 0
@@ -130,9 +134,11 @@ class Collector:
                     await asyncio.sleep(self.interval)
                     continue
                 transient_failures = 0
-                message = str(err) or type(err).__name__
+                if self.connected or self.disconnected_since is None:
+                    self.disconnected_since = time.time()
+                message = friendly_error(err)
                 if self.connected or self.last_error != message:
-                    log.warning("inverter error: %s (retry in %.0fs)", message, backoff)
+                    log.warning("inverter error: %s (retry in %.0fs)", str(err) or type(err).__name__, backoff)
                 self.connected = False
                 self.last_error = message
                 await self.driver.close()

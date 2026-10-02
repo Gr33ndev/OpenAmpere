@@ -35,35 +35,37 @@ async def test_export_limit_rules(tmp_path):
     async with server:
         runtime = await connected_runtime(tmp_path, port)
         control = ExportLimitControl(runtime)
-        assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000,
-                                        "rule": "unknown", "installed_kwp": 0.0, "legal_max_w": None}
+        try:
+            assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000,
+                                            "rule": "unknown", "installed_kwp": 0.0, "legal_max_w": None,
+                                            "external_change": None}
 
-        with pytest.raises(ControlDisabled):
-            await control.write(10000, confirmed=True, reference="Schreiben vom 01.10.2026")
-        await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
+            with pytest.raises(ControlDisabled):
+                await control.write(10000, confirmed=True, reference="Schreiben vom 01.10.2026")
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
 
-        # raising without the grid operator's confirmation is refused
-        with pytest.raises(ConfirmationRequired):
-            await control.write(10000)
-        with pytest.raises(ConfirmationRequired):
-            await control.write(10000, confirmed=True, reference="")
-        with pytest.raises(ValueError):
-            await control.write(12000, confirmed=True, reference="Az. 4711")  # above rated power
-        assert sim.energy.export_limit_w == 6000
+            # raising without the grid operator's confirmation is refused
+            with pytest.raises(ConfirmationRequired):
+                await control.write(10000)
+            with pytest.raises(ConfirmationRequired):
+                await control.write(10000, confirmed=True, reference="")
+            with pytest.raises(ValueError):
+                await control.write(12000, confirmed=True, reference="Az. 4711")  # above rated power
+            assert sim.energy.export_limit_w == 6000
 
-        result = await control.write(10000, confirmed=True, reference="Netzbetreiber, Schreiben 01.10.2026, Az. 4711")
-        assert result["result"] == "ok" and sim.energy.export_limit_w == 10000
+            result = await control.write(10000, confirmed=True, reference="Netzbetreiber, Schreiben 01.10.2026, Az. 4711")
+            assert result["result"] == "ok" and sim.energy.export_limit_w == 10000
 
-        # lowering is always allowed
-        result = await control.write(4000)
-        assert result["result"] == "ok" and sim.energy.export_limit_w == 4000
+            # lowering is always allowed
+            result = await control.write(4000)
+            assert result["result"] == "ok" and sim.energy.export_limit_w == 4000
 
-        log = runtime.storage.control_log()
-        assert [e["action"] for e in log[:2]] == ["export_limit", "export_limit"]
-        assert log[1]["details"]["grid_operator_confirmation"].endswith("Az. 4711")
-        assert log[0]["details"]["grid_operator_confirmation"] is None
-        await runtime.collector.stop()
-
+            log = runtime.storage.control_log()
+            assert [e["action"] for e in log[:2]] == ["export_limit", "export_limit"]
+            assert log[1]["details"]["grid_operator_confirmation"].endswith("Az. 4711")
+            assert log[0]["details"]["grid_operator_confirmation"] is None
+        finally:
+            await runtime.collector.stop()
 
 
 async def test_export_limit_follows_declared_rule_and_kwp(tmp_path):

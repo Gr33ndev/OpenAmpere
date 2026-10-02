@@ -11,7 +11,7 @@ import logging
 
 from .base import DeviceInfo
 from .foxess.driver import FoxessDriver
-from .modbus import DeviceUnreachable, ModbusDevice, ModbusReadError
+from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
 from .saj.driver import SajDriver
 
 log = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
             except (ConnectionError, ModbusReadError, OSError, asyncio.TimeoutError) as err:
                 log.debug("%s unit %s: %s", key, candidate_unit, err)
                 await driver.close()
-    raise ConnectionError("Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?")
+    raise DetectionFailed("Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?")
 
 
 async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,

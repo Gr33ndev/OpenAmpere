@@ -1,4 +1,4 @@
-import { StrictMode, useState, type ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
@@ -9,6 +9,7 @@ import { More } from "./More";
 import { Report } from "./Report";
 import { applyTheme, storedTheme } from "./SettingsPages";
 import { Setup } from "./Setup";
+import { navigate, useRoute } from "./route";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
 
@@ -23,7 +24,9 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
 applyTheme(storedTheme());
 
 function App() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const route = useRoute();
+  const tab: Tab = TABS.some((t) => t.id === route[0]) ? (route[0] as Tab) : "dashboard";
+  const setTab = (t: Tab) => navigate(t);
   const { data: status, error, reload } = useResource<Status>("/api/status", 15_000);
   const { data: auth, reload: reloadAuth } = useResource<AuthStatus>("/api/auth/status");
   const { snap, online } = useLive();
@@ -72,13 +75,14 @@ function App() {
     <div className="app">
       {error && <div className="offline-banner" role="alert">Keine Verbindung zum OpenAmpere-Server – versuche erneut …</div>}
       <main>
-        {tab === "dashboard" && <Dashboard snap={snap} online={online} />}
+        {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
         {tab === "report" && <Report />}
-        {tab === "more" && <More snap={snap} />}
+        {tab === "more" && <More snap={snap} page={route[1] ?? null} />}
       </main>
       <nav className="bottom">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)} aria-label={t.label}>
+          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)} aria-label={t.label}
+            aria-current={tab === t.id ? "page" : undefined}>
             {t.icon}
           </button>
         ))}

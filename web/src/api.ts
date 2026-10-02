@@ -34,6 +34,9 @@ export type Status = {
   connected: boolean;
   last_error: string | null;
   last_update: number | null;
+  stale: boolean;
+  poll_interval: number;
+  relocated: { from: string; to: string; ts: number } | null;
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
@@ -46,6 +49,7 @@ export type Summary = {
   from: number;
   to: number;
   energy_wh: Counters;
+  partial_since?: number | null;
   autarky: number | null;
   self_consumption: number | null;
 };
@@ -63,6 +67,7 @@ export type Settings = {
     "inverter.read_function": string;
     "inverter.poll_interval": number;
     "inverter.timeout": number;
+    "inverter.connection_mode": "persistent" | "per_poll";
     "storage.raw_retention_days": number;
     "control.enabled": boolean;
     "control.dry_run": boolean;
@@ -119,6 +124,11 @@ export type BatterySettings = {
   min_soc: number | null;
   max_soc: number | null;
   min_soc_on_grid: number | null;
+};
+
+export type BatteryState = BatterySettings & {
+  unreadable: string[];
+  external_change: { expected: Record<string, unknown>; found: Record<string, unknown> } | null;
 };
 
 export const OFFLINE_MESSAGE = "Keine Verbindung zum OpenAmpere-Server.";
@@ -245,4 +255,16 @@ export async function postFile<T>(path: string, file: Blob): Promise<T> {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : response.statusText);
   return data as T;
+}
+
+/** Live values older than three poll intervals (or while the inverter is unreachable) are not "live". */
+export function useStale(snap: Snapshot | null, online: boolean, status: Status | null): boolean {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!snap) return false;
+  const maxAge = Math.max(3 * (status?.poll_interval ?? 10), 30);
+  return !online || status?.connected === false || now / 1000 - snap.timestamp > maxAge;
 }

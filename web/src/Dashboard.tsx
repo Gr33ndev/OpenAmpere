@@ -1,7 +1,9 @@
-import type { Settings, Snapshot, Summary } from "./api";
-import { activeInputs, PV_INPUT_COLORS, useResource } from "./api";
+import { useState } from "react";
+import type { CloudImportState, Settings, Snapshot, Status, Summary } from "./api";
+import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
-import { kw, kwh, percent, updatedLabel, num } from "./format";
+import { navigate } from "./route";
+import { kw, kwh, percent, time, updatedLabel, num } from "./format";
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -83,24 +85,53 @@ function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
   );
 }
 
-export function Dashboard({ snap, online }: { snap: Snapshot | null; online: boolean }) {
+const HIDE_IMPORT_KEY = "openampere.hideImportHint";
+
+/** Until a history import has run, remind people that the old cloud may switch off at any time. */
+function ImportHint() {
+  const { data: job } = useResource<CloudImportState & { key_set: boolean }>("/api/import/cloud");
+  const [hidden, setHidden] = useState(() => {
+    try { return localStorage.getItem(HIDE_IMPORT_KEY) === "1"; } catch { return false; }
+  });
+  if (hidden || !job || job.status !== "idle") return null;
+  const hide = () => {
+    try { localStorage.setItem(HIDE_IMPORT_KEY, "1"); } catch { /* private mode */ }
+    setHidden(true);
+  };
+  return (
+    <div className="notice info import-hint">
+      <div><strong>Verlauf aus der EKD-Cloud sichern?</strong> Solange die Cloud noch läuft, kannst du deine bisherigen
+        Daten übernehmen.</div>
+      <div className="actions">
+        <button className="link" onClick={() => navigate("more/data")}>Einrichten</button>
+        <button className="link" onClick={hide}>Ausblenden</button>
+      </div>
+    </div>
+  );
+}
+
+export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
   const e = today?.energy_wh;
-  const live = online && snap;
+  const stale = useStale(snap, online, status);
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>Dashboard</h1>
-        <div className={`sub ${live ? "" : "off"}`}>
-          {snap ? `Zuletzt aktualisiert: ${updatedLabel(snap.timestamp)}` : "Verbinde …"}
+        <div className={`sub ${snap && !stale ? "" : "off"}`} role="status">
+          {!snap ? "Verbinde …"
+            : stale ? `Wechselrichter nicht erreichbar seit ${updatedLabel(snap.timestamp)} – angezeigt werden die letzten Werte`
+            : `Zuletzt aktualisiert: ${updatedLabel(snap.timestamp)}`}
           {snap?.off_grid && " · Notstrombetrieb"}
         </div>
       </div>
 
-      <EnergyFlow snap={snap} />
+      <ImportHint />
+      <EnergyFlow snap={snap} stale={stale} />
 
       <div className="section-title">Tageswerte</div>
+      {today?.partial_since && <p className="hint">Erfasst seit {time(today.partial_since)} Uhr (OpenAmpere läuft erst seit heute).</p>}
       <div className="tiles">
         <Tile label="Erzeugt" value={kwh(e?.pv)} color="var(--pv)" />
         <Tile label="Verbraucht" value={kwh(e?.load)} color="var(--house)" />

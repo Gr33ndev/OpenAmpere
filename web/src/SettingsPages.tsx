@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import type { BatterySettings, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
+import type { BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
 import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
-import { kw, num } from "./format";
+import { kw, num, updatedLabel } from "./format";
 import { Chevron } from "./icons";
-import { ConnectionForm } from "./Setup";
+import { ConnectionForm, SetupHelp } from "./Setup";
 import { Button, Checkbox, Dialog, Field, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
 
 type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
@@ -36,26 +36,62 @@ const WORK_MODES: { id: NonNullable<BatterySettings["work_mode"]>; label: string
   { id: "peak_shaving", label: "Spitzenlast begrenzen", hint: "Speicher deckt nur hohe Verbrauchsspitzen." },
 ];
 
+const FIELDS = ["work_mode", "min_soc", "max_soc", "min_soc_on_grid"] as const;
+
+function SocSlider({ value, min, max, disabled, onChange }: {
+  value: number | null; min: number; max: number; disabled: boolean; onChange: (v: number) => void;
+}) {
+  if (value == null) return <p className="hint">? – konnte nicht gelesen werden</p>;
+  return <Slider value={value} min={min} max={Math.max(min, max)} unit="%" disabled={disabled} onChange={onChange} />;
+}
+
+/** The battery from 0 to 100 %: which part is used when. */
+function SocBar({ min, reserve, max }: { min: number | null; reserve: number | null; max: number | null }) {
+  if (min == null || reserve == null || max == null) return null;
+  const zones = [
+    { from: 0, to: min, cls: "never", label: "Wird nie genutzt" },
+    { from: min, to: reserve, cls: "backup", label: "Nur bei Stromausfall" },
+    { from: reserve, to: max, cls: "daily", label: "Alltag" },
+    { from: max, to: 100, cls: "unused", label: "Wird nicht geladen" },
+  ].filter((z) => z.to > z.from);
+  return (
+    <div className="card">
+      <div className="soc-bar" role="img"
+        aria-label={zones.map((z) => `${z.label}: ${z.from} bis ${z.to} %`).join(", ")}>
+        {zones.map((z) => <div key={z.cls} className={`zone ${z.cls}`} style={{ flexGrow: z.to - z.from }} />)}
+      </div>
+      <div className="soc-legend">
+        {zones.map((z) => <span key={z.cls}><i className={`zone ${z.cls}`} />{z.label} ({z.from}–{z.to} %)</span>)}
+      </div>
+    </div>
+  );
+}
+
 export function BatteryPage({ onBack, onNavigate }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
-  const { data: current, error, reload } = useResource<BatterySettings>("/api/battery/settings");
+  const { data: current, error, reload } = useResource<BatteryState>("/api/battery/settings");
   const [form, setForm] = useState<BatterySettings | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (current) setForm(current); }, [current]);
+  useEffect(() => {
+    if (current) setForm({ work_mode: current.work_mode, min_soc: current.min_soc, max_soc: current.max_soc,
+      min_soc_on_grid: current.min_soc_on_grid });
+  }, [current]);
 
   const control = status?.control;
   const deviceSupportsControl = status?.device?.supports_control ?? true;
   const editable = !!control?.enabled && deviceSupportsControl;
-  const changed = form && current && JSON.stringify(form) !== JSON.stringify(current);
+  const changed = form && current && FIELDS.some((k) => form[k] !== current[k]);
+  const socEditable = editable && !!current && !current.unreadable.some((k) => k !== "work_mode");
   const set = (patch: Partial<BatterySettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
   const save = async () => {
     if (!form || !current) return;
-    const changes = Object.fromEntries(Object.entries(form).filter(([k, v]) => current[k as keyof BatterySettings] !== v));
+    const changes = Object.fromEntries(FIELDS.filter((k) => form[k] !== current[k]).map((k) => [k, form[k]]));
     setBusy(true);
     try {
-      const r = await putJson<{ dry_run: boolean; written: object; result?: string }>("/api/battery/settings", changes);
+      const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings", changes);
       toast(r.dry_run ? "Probemodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Am Wechselrichter gespeichert" : r.result ?? "Gespeichert");
+      if (r.warning) toast(r.warning, "error");
       reload();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -80,24 +116,42 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
       )}
       {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">Lese Einstellungen vom Wechselrichter …</p>)}
 
+      {current?.external_change && (
+        <Notice kind="error">
+          Ein anderes Gerät (z. B. die bisherige Smartbox) hat deine Änderung kurz danach wieder überschrieben:{" "}
+          {Object.entries(current.external_change.found).map(([k, v]) => `${LOG_KEYS[k] ?? k} jetzt ${logValue(v)}`).join(", ")}.
+          Solange es angeschlossen ist, lassen sich diese Werte nicht dauerhaft ändern.
+        </Notice>
+      )}
+      {form && current && current.unreadable.length > 0 && (
+        <Notice kind="warn">
+          Einige Werte konnten gerade nicht gelesen werden ({current.unreadable.map((k) => LOG_KEYS[k] ?? k).join(", ")}).
+          Sie werden mit „?“ angezeigt; Änderungen an den Grenzen sind erst möglich, wenn alle Werte gelesen wurden.
+        </Notice>
+      )}
+
       {form && (
         <>
+          <SocBar min={form.min_soc} reserve={form.min_soc_on_grid} max={form.max_soc} />
+
           <div className="section-title">Notstrom-Reserve</div>
           <div className="card form">
-            <p className="hint">Dieser Teil des Speichers bleibt im Normalbetrieb immer geladen, damit bei einem Stromausfall Energie zur Verfügung steht.</p>
-            <Slider value={form.min_soc_on_grid ?? 10} min={10} max={100} unit="%" disabled={!editable}
+            <p className="hint">So viel bleibt im Alltag immer im Speicher, damit bei einem Stromausfall Energie da ist.</p>
+            <SocSlider value={form.min_soc_on_grid} disabled={!socEditable}
+              min={Math.max(10, form.min_soc ?? 10)} max={Math.min(99, (form.max_soc ?? 100) - 1)}
               onChange={(v) => set({ min_soc_on_grid: v })} />
           </div>
 
           <div className="section-title">Ladegrenzen</div>
           <div className="card form">
             <Field label="Maximaler Ladestand" hint="Bis zu diesem Wert wird der Speicher geladen.">
-              <Slider value={form.max_soc ?? 100} min={20} max={100} unit="%" disabled={!editable}
-                onChange={(v) => set({ max_soc: v })} />
+              <SocSlider value={form.max_soc} disabled={!socEditable}
+                min={Math.max(20, (form.min_soc_on_grid ?? 10) + 1)} max={100} onChange={(v) => set({ max_soc: v })} />
             </Field>
-            <Field label="Entladegrenze bei Stromausfall" hint="Im Notstrombetrieb wird der Speicher nicht weiter entladen.">
-              <Slider value={form.min_soc ?? 10} min={10} max={100} unit="%" disabled={!editable}
-                onChange={(v) => set({ min_soc: v })} />
+            <Field label="Untergrenze im Notstrombetrieb"
+              hint="Während eines Stromausfalls wird der Speicher bis hierhin entladen, nicht weiter. Höchstens so hoch wie die Notstrom-Reserve.">
+              <SocSlider value={form.min_soc} disabled={!socEditable}
+                min={10} max={form.min_soc_on_grid ?? 100} onChange={(v) => set({ min_soc: v })} />
             </Field>
           </div>
 
@@ -166,10 +220,16 @@ export function ConnectionPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status", 5000);
   const [pollInterval, setPollInterval] = useState(10);
   const [timeout, setTimeoutValue] = useState(3);
+  const [mode, setMode] = useState<"persistent" | "per_poll">("persistent");
+  const [registerMap, setRegisterMap] = useState("auto");
+  const [readFunction, setReadFunction] = useState("auto");
   useEffect(() => {
     if (!settings) return;
     setPollInterval(settings["inverter.poll_interval"]);
     setTimeoutValue(settings["inverter.timeout"]);
+    setMode(settings["inverter.connection_mode"]);
+    setRegisterMap(settings["inverter.register_map"]);
+    setReadFunction(settings["inverter.read_function"]);
   }, [settings]);
 
   return (
@@ -189,6 +249,14 @@ export function ConnectionPage({ onBack }: PageProps) {
           onSaved={() => toast("Gespeichert – verbinde neu …")}
         />
       )}
+      {!status?.connected && <SetupHelp />}
+
+      {status?.relocated && (
+        <Notice kind="info">
+          Der Wechselrichter hatte eine neue IP-Adresse und wurde am {updatedLabel(status.relocated.ts)} automatisch
+          wiedergefunden ({status.relocated.from} → {status.relocated.to}). Tipp: Vergib ihm im Router eine feste Adresse.
+        </Notice>
+      )}
 
       {settings && (
         <>
@@ -201,28 +269,45 @@ export function ConnectionPage({ onBack }: PageProps) {
               hint="Hängt der Wechselrichter hinter einem Modbus-Proxy oder im WLAN, kann ein höherer Wert Verbindungsabbrüche vermeiden.">
               <Slider value={timeout} min={1} max={30} unit="s" onChange={setTimeoutValue} />
             </Field>
+            <Field label="Verbindung" locked={locked("inverter.connection_mode")}
+              hint={mode === "per_poll"
+                ? "OpenAmpere verbindet sich für jede Abfrage neu und gibt den Zugang danach wieder frei – für Geräte, an denen noch ein anderer Energiemanager hängt."
+                : "Eine dauerhafte Verbindung ist am schnellsten. Bricht die Verbindung eines anderen Energiemanagers (z. B. der Smartbox) ab, wähle „Pro Abfrage“."}>
+              <Segmented value={mode} onChange={setMode} disabled={locked("inverter.connection_mode")}
+                options={[["persistent", "Dauerhaft"], ["per_poll", "Pro Abfrage"]]} />
+            </Field>
             <Button variant="secondary"
-              disabled={pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]}
-              onClick={() => save({ "inverter.poll_interval": pollInterval, "inverter.timeout": timeout })}>Speichern</Button>
-            {(status?.device?.driver ?? settings["inverter.driver"]) === "foxess" && (<>
-            <Field label="FoxESS-Registerkarte" hint="Nur ändern, wenn die automatische Erkennung falsch liegt." locked={locked("inverter.register_map")}>
-              <select className="input" value={settings["inverter.register_map"]}
-                onChange={(e) => save({ "inverter.register_map": e.target.value })}>
-                <option value="auto">Automatisch erkennen</option>
-                <option value="foxess_h3_new">FoxESS H3 – neuere Firmware / Smart / Pro</option>
-                <option value="foxess_h3_legacy">FoxESS H3 – ältere Firmware</option>
-              </select>
-            </Field>
-            <Field label="Leseverfahren" hint="Modbus-Funktionscode für Messwerte." locked={locked("inverter.read_function")}>
-              <select className="input" value={settings["inverter.read_function"]}
-                onChange={(e) => save({ "inverter.read_function": e.target.value })}>
-                <option value="auto">Automatisch</option>
-                <option value="input">Input-Register (FC04)</option>
-                <option value="holding">Holding-Register (FC03)</option>
-              </select>
-            </Field>
-            </>)}
+              disabled={pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
+                && mode === settings["inverter.connection_mode"]}
+              onClick={() => save({ "inverter.poll_interval": pollInterval, "inverter.timeout": timeout,
+                "inverter.connection_mode": mode })}>Speichern</Button>
           </div>
+
+          {(status?.device?.driver ?? settings["inverter.driver"]) === "foxess" && (
+            <details className="card expert">
+              <summary>Für Experten</summary>
+              <p className="hint">Nur ändern, wenn die automatische Erkennung falsch liegt. Beim Speichern wird neu verbunden.</p>
+              <Field label="FoxESS-Registerkarte" locked={locked("inverter.register_map")}>
+                <select className="input" value={registerMap} onChange={(e) => setRegisterMap(e.target.value)}>
+                  <option value="auto">Automatisch erkennen</option>
+                  <option value="foxess_h3_new">FoxESS H3 – neuere Firmware / Smart / Pro</option>
+                  <option value="foxess_h3_legacy">FoxESS H3 – ältere Firmware</option>
+                </select>
+              </Field>
+              <Field label="Leseverfahren (Modbus-Funktionscode)" locked={locked("inverter.read_function")}>
+                <select className="input" value={readFunction} onChange={(e) => setReadFunction(e.target.value)}>
+                  <option value="auto">Automatisch</option>
+                  <option value="input">Input-Register (FC04)</option>
+                  <option value="holding">Holding-Register (FC03)</option>
+                </select>
+              </Field>
+              <Button variant="secondary"
+                disabled={registerMap === settings["inverter.register_map"] && readFunction === settings["inverter.read_function"]}
+                onClick={() => save({ "inverter.register_map": registerMap, "inverter.read_function": readFunction })}>
+                Speichern und neu verbinden
+              </Button>
+            </details>
+          )}
         </>
       )}
     </SubPage>
@@ -249,6 +334,7 @@ export function ControlPage({ onBack }: PageProps) {
   const { settings, locked, save, error, reload: reloadSettings } = useSettings();
   const { data: log, reload } = useResource<{ entries: LogEntry[] }>("/api/control/log");
   const [confirm, setConfirm] = useState<null | "enable" | "live">(null);
+  const [understood, setUnderstood] = useState(false);
   if (!settings) return <SubPage title="Steuerung" onBack={onBack}><LoadState error={error} onRetry={reloadSettings} /></SubPage>;
   const enabled = settings["control.enabled"];
   const dryRun = settings["control.dry_run"];
@@ -289,11 +375,15 @@ export function ControlPage({ onBack }: PageProps) {
         </Dialog>
       )}
       {confirm === "live" && (
-        <Dialog title="Probemodus beenden?" confirm="Ja, wirklich senden" danger
+        <Dialog title="Probemodus beenden?" confirm="Ja, wirklich senden" danger disabled={!understood}
           onCancel={() => setConfirm(null)}
           onConfirm={() => { setConfirm(null); void save({ "control.dry_run": false }); }}>
           <p>Änderungen werden ab jetzt direkt an den Wechselrichter gesendet. Falsche Einstellungen können dazu führen, dass der Speicher nicht wie gewohnt arbeitet.</p>
-          <p>Im Zweifel: Werte notieren, bevor du sie änderst.</p>
+          <p className="hint">OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne Gewähr und ersetzt keinen
+            Elektrofachbetrieb. Ungeeignete Einstellungen können den Speicher belasten und Garantie- oder
+            Gewährleistungsansprüche (gegenüber Hersteller, Händler oder Insolvenzverwalter) gefährden.
+            Notiere die bisherigen Werte, bevor du etwas änderst.</p>
+          <Checkbox checked={understood} onChange={setUnderstood}>Ich habe das verstanden und handle auf eigene Verantwortung.</Checkbox>
         </Dialog>
       )}
     </SubPage>
@@ -304,9 +394,16 @@ export function ControlPage({ onBack }: PageProps) {
 
 export type Theme = "auto" | "light" | "dark";
 
+const THEME_COLORS = { light: "#f4f4f4", dark: "#21262b" };
+
 export function applyTheme(theme: Theme) {
   if (theme === "auto") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
+  // status bar colour of the installed app follows the chosen design
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    const scheme = meta.media.includes("dark") ? "dark" : "light";
+    meta.content = THEME_COLORS[theme === "auto" ? scheme : theme];
+  });
 }
 
 export function storedTheme(): Theme {

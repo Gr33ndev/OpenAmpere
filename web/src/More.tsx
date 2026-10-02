@@ -1,11 +1,11 @@
-import { useState } from "react";
 import type { Snapshot, Status } from "./api";
-import { useResource } from "./api";
+import { useResource, useStale } from "./api";
 import { kwh, percent, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, BatteryPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
-import { MenuRow, SubPage } from "./ui";
+import { MenuRow, Notice, SubPage } from "./ui";
+import { goBack, navigate } from "./route";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
   return (
@@ -19,14 +19,24 @@ function StatusPill({ ok, text }: { ok: boolean; text: string }) {
 function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () => void }) {
   const { data: status } = useResource<Status>("/api/status", 10_000);
   const device = status?.device;
-  const alarms = snap?.alarms.some((a) => a !== 0) ?? false;
+  const codes = (snap?.alarms ?? []).map((a, i) => ({ word: i + 1, value: a })).filter((a) => a.value !== 0);
+  const alarms = codes.length > 0;
+  const stale = useStale(snap, true, status);
 
   return (
     <SubPage title="Meine Anlage" onBack={onBack}>
       <div className="section-title">Infos &amp; Status</div>
       <div className="card">
         <div className="device-row"><BatteryIcon size={44} soc={snap?.battery_soc ?? null} />Speicher</div>
-        <StatusPill ok={!alarms && snap?.battery_soc != null} text={alarms ? "Störung gemeldet" : snap ? "In Ordnung" : "Keine Daten"} />
+        <StatusPill ok={!alarms && !stale && snap?.battery_soc != null}
+          text={alarms ? "Störung gemeldet" : !snap ? "Keine Daten" : stale ? "Keine aktuellen Werte" : "In Ordnung"} />
+        {alarms && (
+          <Notice kind="error">
+            Der Wechselrichter meldet einen Störungscode:{" "}
+            {codes.map((c) => `Wort ${c.word}: 0x${c.value.toString(16).toUpperCase().padStart(4, "0")}`).join(", ")}.
+            Die Bedeutung steht im Handbuch des Herstellers. Nenne den Code deinem Installationsbetrieb, wenn die Meldung bleibt.
+          </Notice>
+        )}
         <dl className="facts">
           <dt>Ladestand</dt><dd>{percent(snap?.battery_soc)}</dd>
           <dt>Gesundheit (SoH)</dt><dd>{percent(snap?.battery_soh)}</dd>
@@ -60,10 +70,10 @@ function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () 
   );
 }
 
-export function More({ snap }: { snap: Snapshot | null }) {
-  const [page, setPage] = useState<string | null>(null);
+export function More({ snap, page }: { snap: Snapshot | null; page: string | null }) {
+  const setPage = (p: string) => navigate(`more/${p}`);
   const { data: status } = useResource<Status>("/api/status", 10_000);
-  const back = () => setPage(null);
+  const back = () => goBack("more");
   const nav = { onBack: back, onNavigate: setPage };
 
   switch (page) {
@@ -78,7 +88,7 @@ export function More({ snap }: { snap: Snapshot | null }) {
     case "data": return <DataPage {...nav} />;
     case "about": return <AboutPage {...nav} />;
     case "security": return <SecurityPage onBack={back} />;
-    case "licenses": return <LicensesPage onBack={() => setPage("about")} />;
+    case "licenses": return <LicensesPage onBack={() => goBack("more/about")} />;
   }
 
   const control = status?.control;
@@ -91,7 +101,7 @@ export function More({ snap }: { snap: Snapshot | null }) {
         <MenuRow label="Meine Anlage" hint={status?.device?.model ?? undefined} onClick={() => setPage("installation")} />
         <MenuRow label="PV-Anlage" hint="Modulfelder benennen" onClick={() => setPage("pv")} />
         <MenuRow label="Speicher & Notstrom" onClick={() => setPage("battery")} />
-        <MenuRow label="Einspeisebegrenzung" hint="Nur nach Zustimmung des Netzbetreibers ändern" onClick={() => setPage("export-limit")} />
+        <MenuRow label="Einspeisebegrenzung" hint="Gesetzliche Regel und Modulleistung" onClick={() => setPage("export-limit")} />
         <MenuRow label="Stromtarif" onClick={() => setPage("tariff")} />
       </div>
 

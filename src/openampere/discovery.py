@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import socket
 
 from .drivers import registry
-from .drivers.modbus import DeviceUnreachable
+from .drivers.modbus import DeviceUnreachable, friendly_error
 from .runtime import Runtime
+
+log = logging.getLogger(__name__)
 
 
 def local_prefixes() -> list[str]:
@@ -93,7 +96,7 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
     except DeviceUnreachable:
         return {"ok": False, "error": f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse und ist Modbus TCP aktiviert?"}
     except (ConnectionError, OSError, asyncio.TimeoutError) as err:
-        return {"ok": False, "error": str(err)}
+        return {"ok": False, "error": friendly_error(err)}
     try:
         snap = await device.read()
         sample = {"pv_power": snap.pv_power, "battery_soc": snap.battery_soc}
@@ -102,3 +105,67 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
     finally:
         await device.close()
     return {"ok": True, "device": info.__dict__, "label": registry.LABELS.get(info.driver), "sample": sample}
+
+
+REDISCOVER_AFTER_S = 180  # unreachable this long -> look for the device elsewhere in the network
+REDISCOVER_EVERY_S = 1800
+
+
+async def find_by_serial(runtime: Runtime, prefix: str, port: int, serial: str) -> str | None:
+    """Host in the /24 network that answers as the device with this serial number (read-only probes)."""
+    hosts = parse_prefix(prefix)
+    semaphore = asyncio.Semaphore(128)
+
+    async def probe(host: str) -> str | None:
+        async with semaphore:
+            return host if await _port_open(host, port, 0.7) else None
+
+    for host in [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]:
+        try:
+            info = await registry.detect(host, port, runtime.config.inverter.unit,
+                                         timeout=runtime.config.inverter.timeout)
+        except (ConnectionError, OSError, asyncio.TimeoutError):
+            continue
+        if info.serial and info.serial == serial:
+            return host
+    return None
+
+
+class Rediscovery:
+    """Remembers the connected device's serial number. If it becomes unreachable (typically a new IP
+    address from the router's DHCP), searches the local network for it and switches over."""
+
+    def __init__(self, runtime: Runtime) -> None:
+        self.runtime = runtime
+        self._last_attempt = float("-inf")
+
+    def remember(self) -> None:
+        collector = self.runtime.collector
+        device = collector.device
+        if collector.connected and device and device.serial:
+            known = {"serial": device.serial, "host": self.runtime.config.inverter.host}
+            if self.runtime.storage.get_meta("known_device") != known:
+                self.runtime.storage.set_meta("known_device", known)
+
+    async def check(self, now: float) -> str | None:
+        runtime, collector = self.runtime, self.runtime.collector
+        self.remember()
+        known = runtime.storage.get_meta("known_device")
+        inverter = runtime.config.inverter
+        if (collector.connected or not known or "inverter.host" in runtime.locked
+                or known.get("host") != inverter.host or inverter.host.count(".") != 3):
+            return None
+        since = collector.disconnected_since
+        if since is None or now - since < REDISCOVER_AFTER_S or now - self._last_attempt < REDISCOVER_EVERY_S:
+            return None
+        self._last_attempt = now
+        prefix = inverter.host.rsplit(".", 1)[0]
+        log.info("inverter unreachable since %.0f s - searching %s.0/24 for serial %s", now - since, prefix,
+                 known["serial"])
+        host = await find_by_serial(runtime, prefix, inverter.port, known["serial"])
+        if host is None or host == inverter.host:
+            return None
+        log.warning("inverter found at new address %s (was %s)", host, inverter.host)
+        runtime.storage.set_meta("relocated", {"from": inverter.host, "to": host, "ts": now})
+        await runtime.update_settings({"inverter.host": host})
+        return host

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import shutil
 import tempfile
 import time
@@ -26,6 +27,9 @@ from .drivers.base import Snapshot
 from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
 from .storage import FLOWS, Storage
+from .discovery import Rediscovery
+
+log = logging.getLogger(__name__)
 
 try:
     VERSION = version("openampere")
@@ -84,11 +88,26 @@ def create_app(runtime: Runtime) -> FastAPI:
     battery = BatteryControl(runtime)
     export_limit = ExportLimitControl(runtime)
 
+    rediscovery = Rediscovery(runtime)
+
+    async def watchdog() -> None:
+        """Finds the inverter again after an IP address change (DHCP)."""
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await rediscovery.check(time.time())
+            except asyncio.CancelledError:
+                raise
+            except Exception as err:  # noqa: BLE001 - never stop the watchdog
+                log.warning("rediscovery failed: %s", err)
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         collector.start()
         runtime.cloud_import.resume_if_running()
+        watchdog_task = asyncio.create_task(watchdog())
         yield
+        watchdog_task.cancel()
         await runtime.cloud_import.stop(status="running")  # keeps running after the next start
         await collector.stop()
 
@@ -185,6 +204,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             "connected": collector.connected,
             "last_error": collector.last_error,
             "last_update": latest.timestamp if latest else None,
+            "stale": collector.stale,
+            "relocated": storage.get_meta("relocated"),
+            "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
         }
@@ -246,6 +268,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(502, str(err)) from None
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
+        except Exception:  # reading the current values failed, e.g. timeout through a proxy
+            raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte später erneut versuchen.") from None
 
     @app.get("/api/grid/export-limit")
     async def get_export_limit():
@@ -271,6 +295,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(502, str(err)) from None
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
+        except Exception:
+            raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte später erneut versuchen.") from None
 
     @app.get("/api/control/log")
     def get_control_log(limit: int = Query(50, ge=1, le=500)):
@@ -318,7 +344,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/live")
     def live():
         if not collector.latest:
-            raise HTTPException(503, "no data yet")
+            raise HTTPException(503, "Noch keine Messwerte")
         return collector.latest.to_dict()
 
     @app.websocket("/api/live/ws")
@@ -361,7 +387,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     def bounds(period: str, date: str | None) -> tuple[float, float]:
         tz = runtime.tz
         if period not in PERIODS:
-            raise HTTPException(400, f"period must be one of {PERIODS}")
+            raise HTTPException(400, "Unbekannter Zeitraum")
         try:
             start, end = period_bounds(period, parse_anchor(period, date, tz))
         except ValueError as err:
@@ -374,20 +400,33 @@ def create_app(runtime: Runtime) -> FastAPI:
         flows = storage.energy_sum(start, end)
         quarters = flows.pop("quarters")
         latest = collector.latest
-        # For the running day prefer the inverter's own daily counters (complete up to now)
-        if period == "day" and latest and start <= latest.timestamp < end:
-            today = latest.today.__dict__
-            if all(today.get(f) is not None for f in FLOWS):
-                flows = {f: today[f] for f in FLOWS}
+        running = storage.running_quarter(latest)
+        partial_since = None
+        if running and start <= running["ts"] < end:
+            # stored quarters + the quarter hour that is still running = exactly what the counters say
+            flows = {f: (flows[f] or 0) + running[f] for f in FLOWS}
+            quarters += 1
+            first = storage.first_quarter(start, end) or running["ts"]
+            if period == "day" and first > start + 900:
+                # first day: recording started during the day; the inverter's daily counters are complete
+                today = latest.today.__dict__
+                if all(today.get(f) is not None for f in FLOWS) and today["pv"] >= flows["pv"]:
+                    flows = {f: today[f] for f in FLOWS}
+                else:
+                    partial_since = first
         return {"period": period, "from": start, "to": end, "quarters": quarters,
-                "energy_wh": flows, **ratios(flows)}
+                "partial_since": partial_since, "energy_wh": flows, **ratios(flows)}
 
     @app.get("/api/energy/timeline")
     def energy_timeline(period: str = "day", date: str | None = None,
                         resolution: str = Query("15m", pattern="^(15m|60m|day|month)$")):
         start, end = bounds(period, date)
         buckets: dict[float, dict] = {}
-        for row in storage.energy(start, end):
+        rows = storage.energy(start, end)
+        running = storage.running_quarter(collector.latest)
+        if running and start <= running["ts"] < end:
+            rows.append(running)  # show the running quarter hour too
+        for row in rows:
             key = bucket_start(row["ts"], resolution, runtime.tz)
             bucket = buckets.setdefault(key, {"ts": key, **dict.fromkeys(FLOWS, 0.0), "soc": None})
             for f in FLOWS:
@@ -470,7 +509,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(404, "installation not found")
         s = collector.latest
         if not s:
-            raise HTTPException(503, "no data yet")
+            raise HTTPException(503, "Noch keine Messwerte")
         neg = (lambda v: -v if v is not None else None)
         return {"pvPower": s.pv_power, "housePower": neg(s.house_power), "gridPower": s.grid_power,
                 "batteryPower": s.battery_power, "batterySoc": s.battery_soc}

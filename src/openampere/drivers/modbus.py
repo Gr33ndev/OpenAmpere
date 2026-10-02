@@ -26,6 +26,10 @@ class DeviceUnreachable(ConnectionError):
     """Nothing accepts TCP connections at host:port."""
 
 
+class DetectionFailed(ConnectionError):
+    """Something answers, but it is not a supported device. The message is a German text for the app."""
+
+
 class ModbusReadError(Exception):
     """Any failed Modbus request."""
 
@@ -43,6 +47,25 @@ class ModbusTransientError(ModbusReadError):
 # Modbus exception codes that mean "this request can never work"; everything else is transient
 # (4 device failure, 5/6 acknowledge/busy, 10/11 gateway path unavailable / target failed to respond).
 PERMANENT_EXCEPTION_CODES = {1, 2, 3}
+
+
+def friendly_error(err: BaseException) -> str:
+    """German plain-language text for errors shown in the app (the technical text goes to the log)."""
+    if isinstance(err, DeviceUnreachable):
+        return "Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die Adresse und ist Modbus TCP aktiviert?"
+    if isinstance(err, ModbusIllegalError):
+        return "Der Wechselrichter hat die Anfrage abgelehnt (Register nicht vorhanden)."
+    if isinstance(err, (ModbusTransientError, TimeoutError, asyncio.TimeoutError)):
+        return "Der Wechselrichter antwortet nicht rechtzeitig. Bei einem Modbus-Proxy oder WLAN hilft ein höheres Zeitlimit."
+    if isinstance(err, OSError) and err.errno is not None:
+        if err.errno in (113, 65, 51, 101):  # host/network unreachable (Linux, macOS)
+            return "Unter dieser Adresse ist kein Gerät erreichbar. Hat der Wechselrichter eine neue IP-Adresse bekommen?"
+        if err.errno in (111, 61):  # connection refused
+            return "Das Gerät lehnt die Verbindung ab. Ist Modbus TCP aktiviert und der Port richtig?"
+        return "Netzwerkfehler bei der Verbindung zum Wechselrichter."
+    if isinstance(err, DetectionFailed):
+        return str(err)
+    return "Unerwarteter Fehler bei der Verbindung zum Wechselrichter (Details im Protokoll des Servers)."
 
 
 def _error_from_response(response, what: str) -> ModbusReadError:

@@ -3,6 +3,7 @@ import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
 import { InverterIcon } from "./icons";
 import { Button, Field, Notice } from "./ui";
+import { navigate } from "./route";
 
 type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
@@ -161,8 +162,53 @@ export function ConnectionForm({ initial, onSaved, saveLabel = "Speichern", lock
   );
 }
 
+/** Help for people who have never heard of Modbus: where the address comes from and what to check. */
+export function SetupHelp() {
+  return (
+    <div className="card">
+      <details className="help">
+        <summary>Gerät wird nicht gefunden?</summary>
+        <ul>
+          <li><strong>Netzwerkkabel:</strong> Der Wechselrichter braucht eine Verbindung ins Heimnetz, meist per Kabel am
+            LAN-Anschluss. Ein reiner Cloud-WLAN-Stick reicht oft nicht.</li>
+          <li><strong>Modbus TCP:</strong> Die Schnittstelle muss eingeschaltet sein. Bei vielen Geräten ist sie das ab
+            Werk, sonst kann der Installationsbetrieb sie aktivieren. Üblich ist Port 502.</li>
+          <li><strong>FoxESS H3</strong> (auch als „Ampere.StoragePro E3“ verkauft): Geräteadresse 247.</li>
+          <li><strong>SAJ H2/HS2</strong> (ältere „Ampere.StoragePro“): Geräteadresse 1 oder 2, je nach Kommunikationsmodul.</li>
+          <li><strong>IP-Adresse herausfinden:</strong> In der Geräteliste deines Routers (FRITZ!Box: Heimnetz → Netzwerk)
+            oder im Menü am Display des Wechselrichters.</li>
+          <li><strong>Hängt noch ein anderer Energiemanager</strong> (z. B. die bisherige Smartbox) am Wechselrichter, sind
+            evtl. alle Verbindungen belegt. Dann nach dem Einrichten unter Mehr → Verbindung „Pro Abfrage“ wählen.</li>
+        </ul>
+      </details>
+      <details className="help">
+        <summary>Tipp: Feste IP-Adresse vergeben</summary>
+        <p>Der Router kann dem Wechselrichter irgendwann eine neue Adresse geben. OpenAmpere sucht ihn dann zwar
+          automatisch anhand der Seriennummer, zuverlässiger ist aber eine feste Adresse. In der FRITZ!Box: Heimnetz →
+          Netzwerk → Gerät bearbeiten → „Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen“.</p>
+      </details>
+    </div>
+  );
+}
+
 export function Setup({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState<"welcome" | "connect">("welcome");
+  const [step, setStep] = useState<"welcome" | "connect" | "history">("welcome");
+
+  if (step === "history") {
+    return (
+      <div className="page setup">
+        <div className="page-head"><h1>Bisherigen Verlauf übernehmen?</h1></div>
+        <div className="card">
+          <p>Hast du deine Anlage bisher mit der App „Ampere.IQ“ genutzt? Dann kannst du deinen Verlauf aus der
+            EKD-Cloud übernehmen – <strong>aber nur, solange diese noch läuft.</strong> Danach ist er verloren.</p>
+          <p className="hint">Du brauchst dafür den persönlichen API-Schlüssel aus der Ampere.IQ-App. OpenAmpere ist ein
+            unabhängiges Projekt ohne Verbindung zu EKD.</p>
+        </div>
+        <Button onClick={() => { navigate("more/data"); onDone(); }}>Jetzt einrichten</Button>
+        <Button variant="secondary" onClick={onDone}>Später oder nicht nötig</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="page setup">
@@ -180,7 +226,8 @@ export function Setup({ onDone }: { onDone: () => void }) {
       ) : (
         <>
           <div className="page-head"><h1>Wechselrichter verbinden</h1></div>
-          <ConnectionForm initial={{ host: "", port: 502, unit: 0, driver: "auto" }} onSaved={onDone} saveLabel="Speichern und starten" />
+          <ConnectionForm initial={{ host: "", port: 502, unit: 0, driver: "auto" }} onSaved={() => setStep("history")} saveLabel="Speichern und weiter" />
+          <SetupHelp />
         </>
       )}
     </div>

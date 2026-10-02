@@ -109,3 +109,91 @@ def test_settings_api(tmp_path, authed):
     assert client.put("/api/settings", json={"storage.path": "/x"}).status_code == 400
     assert client.put("/api/battery/settings", json={"min_soc": 20}).status_code in (403, 503)
     assert client.get("/api/backup").status_code == 200
+
+
+def test_write_order_keeps_every_step_valid():
+    from openampere.control import write_order
+    current = {"min_soc": 10, "min_soc_on_grid": 20, "max_soc": 30}
+    # raising everything: the upper limit has to move first
+    assert write_order(current, {"min_soc": 40, "min_soc_on_grid": 50, "max_soc": 90}) == ["max_soc", "min_soc_on_grid", "min_soc"]
+    # lowering everything: the lower limit first
+    current = {"min_soc": 40, "min_soc_on_grid": 50, "max_soc": 90}
+    assert write_order(current, {"min_soc": 10, "min_soc_on_grid": 15, "max_soc": 20}) == ["min_soc", "min_soc_on_grid", "max_soc"]
+
+
+async def test_battery_write_detects_second_master_and_partial_writes(tmp_path, monkeypatch):
+    from openampere import control as control_module
+    from openampere.control import BatteryControl, WriteFailed
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.3)
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            assert (await battery.write({"min_soc_on_grid": 40}))["result"] == "ok"
+
+            # another energy manager writes its own reserve back
+            sim.regs[sim.map.settings["min_soc_on_grid"].address] = 15
+            sim.on_write(sim.map.settings["min_soc_on_grid"].address)
+            await asyncio.sleep(0.6)
+            state = await battery.read()
+            assert state["external_change"] == {"expected": {"min_soc_on_grid": 40}, "found": {"min_soc_on_grid": 15}}
+            assert runtime.storage.control_log()[0]["action"] == "battery_settings_check"
+
+            # the work mode gets through, the SoC write is refused: the log records what the inverter holds
+            original = sim.handle
+            def refuse_soc(pdu):
+                if pdu[0] in (6, 16) and int.from_bytes(pdu[1:3], "big") == sim.map.settings["max_soc"].address:
+                    return bytes([pdu[0] | 0x80, 4])
+                return original(pdu)
+            sim.handle = refuse_soc
+            with pytest.raises(WriteFailed):
+                await battery.write({"work_mode": "backup", "max_soc": 90})
+            entry = runtime.storage.control_log()[0]
+            assert entry["action"] == "battery_settings" and "Fehler" in entry["result"]
+            assert "Rücklesen abweichend" in entry["result"] and "max_soc" in entry["result"]
+            assert sim.energy.work_mode.value == "backup"
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_rediscovery_finds_inverter_after_ip_change(tmp_path, monkeypatch):
+    """The router hands out a new address: the app finds the device by its serial number."""
+    from openampere import discovery
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2})
+            await wait_connected(runtime)
+            rediscovery = discovery.Rediscovery(runtime)
+            rediscovery.remember()
+            assert runtime.storage.get_meta("known_device") == {"serial": "SN1", "host": "127.0.0.1"}
+
+            # simulate: device gone from the old address since 5 minutes, found at 127.0.0.2
+            runtime.collector.connected = False
+            runtime.collector.disconnected_since = 1000.0
+            async def fake_find(rt, prefix, p, serial):
+                assert (prefix, p, serial) == ("127.0.0", port, "SN1")
+                return "127.0.0.2"
+            monkeypatch.setattr(discovery, "find_by_serial", fake_find)
+            assert await rediscovery.check(1000.0 + 60) is None  # too early
+            assert await rediscovery.check(1000.0 + 300) == "127.0.0.2"
+            assert runtime.config.inverter.host == "127.0.0.2"
+            assert runtime.storage.get_meta("relocated")["from"] == "127.0.0.1"
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_find_by_serial(tmp_path):
+    from openampere import discovery
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        assert await discovery.find_by_serial(runtime, "127.0.0", port, "SN1") == "127.0.0.1"
+        assert await discovery.find_by_serial(runtime, "127.0.0", port, "OTHER") is None
