@@ -1,15 +1,17 @@
-# Cloud-Export
+# Export aus der EKD-Cloud
 
-Sichert den kompletten Verlauf einer Anlage aus der bisherigen Hersteller-Cloud, solange diese noch läuft. Inoffizielles Werkzeug, siehe [Hintergrund](../../README.md#hintergrund--rechtliche-hinweise).
+Sichert den kompletten Verlauf einer Anlage aus der EKD-Cloud (App „Ampere.IQ“), solange diese noch läuft.
 
-- Nutzt nur die offizielle, lesende Kunden-API der Cloud.
+> Inoffizielles Werkzeug: OpenAmpere hat nichts mit der Energiekonzepte Deutschland GmbH (EKD) zu tun und wurde von ihr weder beauftragt noch autorisiert. Das Werkzeug nutzt ausschließlich die öffentliche Kunden-API mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber. Siehe [Hintergrund & rechtliche Hinweise](../../README.md#hintergrund--rechtliche-hinweise).
+
+- Nutzt nur die offizielle, lesende Kunden-API der EKD-Cloud.
 - Läuft mit Python 3.9 oder neuer und braucht keine Zusatzpakete.
 - Jede Antwort wird unverändert als JSON gespeichert, eine Datei pro Endpunkt und Tag. Nach einem Abbruch startest du das Skript einfach erneut, es macht dort weiter.
 - Es schickt höchstens eine Anfrage alle 65 Sekunden. Wer öfter abfragt, wird von der API gesperrt.
 
 ## 1. API-Schlüssel erstellen
 
-In der bisherigen Hersteller-App: **Mehr → Konfiguration API-Zugang** → Schlüssel erzeugen.
+In der App „Ampere.IQ“: **Mehr → Konfiguration API-Zugang** → Schlüssel erzeugen.
 
 ## 2. `.env` anlegen
 

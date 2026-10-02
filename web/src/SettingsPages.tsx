@@ -438,19 +438,25 @@ function CloudImportCard() {
   const total = job?.days_total ?? 0;
   const done = (job?.work_done ?? 0) + (job?.soc_done ?? 0);
   const progress = total ? done / (2 * total) : 0;
-  const phaseText = !job?.phase ? "Verbinde mit der Cloud …"
+  const phaseText = !job?.phase ? "Verbinde mit der EKD-Cloud …"
     : job.phase === "search" ? "Suche den Beginn deiner Aufzeichnungen …"
     : job?.phase === "soc" ? `Ladestand: ${job.soc_done} von ${total} Tagen`
     : `Energiedaten: ${job?.work_done ?? 0} von ${total} Tagen`;
 
   return (
     <>
-      <div className="section-title">Verlauf aus der bisherigen Cloud</div>
+      <div className="section-title">Verlauf aus der EKD-Cloud</div>
       <div className="card form">
         <p className="hint">
-          Solange die Cloud deines bisherigen Anbieters noch läuft, kannst du deinen bisherigen Verlauf übernehmen. Den
-          API-Schlüssel erzeugst du in der bisherigen Hersteller-App unter <strong>Mehr → Konfiguration API-Zugang</strong>.
+          Hast du deine Anlage bisher mit der App „Ampere.IQ“ von EKD genutzt? Dann kannst du deinen bisherigen Verlauf aus der
+          EKD-Cloud übernehmen, solange diese noch läuft. Den API-Schlüssel erzeugst du in der Ampere.IQ-App unter{" "}
+          <strong>Mehr → Konfiguration API-Zugang</strong>.
         </p>
+        <Notice kind="info">
+          <strong>Hinweis:</strong> OpenAmpere ist ein unabhängiges Projekt und hat nichts mit der Energiekonzepte Deutschland
+          GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die öffentliche
+          Kunden-API der EKD-Cloud mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber.
+        </Notice>
 
         {showKeyForm ? (
           <form className="field" onSubmit={(e) => { e.preventDefault(); void saveKey(key.trim()); }}>
@@ -499,7 +505,7 @@ function CloudImportCard() {
           </Button>
         )}
         <p className="hint">
-          Die Cloud erlaubt nur etwa eine Abfrage pro Minute, deshalb dauert der Import einige Stunden (rund 2 Minuten pro Tag).
+          Die EKD-Cloud erlaubt nur etwa eine Abfrage pro Minute, deshalb dauert der Import einige Stunden (rund 2 Minuten pro Tag).
           Er läuft im Hintergrund weiter – auch wenn du die App schließt oder OpenAmpere neu startest.
           Eigene Messwerte von OpenAmpere werden dabei nie überschrieben.
         </p>

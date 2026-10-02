@@ -34,7 +34,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - Autarkie und Eigenverbrauch
 - **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus
 - **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern, etwa 60 %, 70 % oder ohne Begrenzung. **Erhöhen oder Aufheben ist nur mit schriftlicher Zustimmung des Netzbetreibers zulässig.** Die App verlangt dafür eine ausdrückliche Bestätigung und protokolliert Datum und Zeichen der Zustimmung.
-- **Verlauf aus der bisherigen Cloud übernehmen:** Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der bisherigen Hersteller-App eintragen und den Import starten.
+- **Verlauf aus der EKD-Cloud übernehmen:** Für bisherige Nutzer der App „Ampere.IQ“. Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der Ampere.IQ-App eintragen und den Import starten. Der Import nutzt nur die öffentliche Kunden-API mit dem eigenen Schlüssel; OpenAmpere hat nichts mit EKD zu tun, siehe [rechtliche Hinweise](#hintergrund--rechtliche-hinweise).
   - Er läuft im Hintergrund mit höchstens einer Anfrage pro Minute.
   - Nach einem Neustart macht er dort weiter, wo er aufgehört hat.
   - Alternativ lässt sich ein ZIP aus dem [Export-Werkzeug](tools/cloud-export/) einlesen.

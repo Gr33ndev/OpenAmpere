@@ -99,7 +99,7 @@ export function More({ snap }: { snap: Snapshot | null }) {
         <MenuRow label="Steuerung"
           hint={control?.enabled ? (control.dry_run ? "Probemodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
-        <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der Cloud übernehmen" onClick={() => setPage("data")} />
+        <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
       </div>
 
       <div className="card menu">

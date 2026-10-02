@@ -1,4 +1,5 @@
-"""Import the history of an installation from the former vendor cloud into the local database.
+"""Import the history of an installation from the EKD cloud (customer API of the Ampere.IQ app) into the local
+database. OpenAmpere is not affiliated with EKD; this only uses the public customer API with the user's own key.
 
 Two ways in:
   - online: the vendor's official customer API with the user's API key (while that cloud still runs).
@@ -170,16 +171,16 @@ class CloudImport:
                 return response.status, json.loads(response.read() or b"null")
         except urllib.error.HTTPError as err:
             if err.code == 401:
-                raise CloudApiError("Der API-Schlüssel wurde abgelehnt.", retry=False) from None
+                raise CloudApiError("Der API-Schlüssel wurde von der EKD-Cloud abgelehnt.", retry=False) from None
             if err.code in (400, 404):
                 return err.code, None
             log.warning("cloud API %s: HTTP %s", path.split("/")[-1], err.code)
-            message = ("Der Cloud-Server bremst zu viele Anfragen." if err.code in (403, 429)
-                       else f"Der Cloud-Server meldet einen Fehler ({err.code}).")
+            message = ("Die EKD-Cloud bremst zu viele Anfragen." if err.code in (403, 429)
+                       else f"Die EKD-Cloud meldet einen Fehler ({err.code}).")
             raise CloudApiError(message, retry=True) from None
         except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError) as err:
             log.warning("cloud API not reachable: %s", err)  # details only in the log, never the key
-            raise CloudApiError("Der Cloud-Server ist nicht erreichbar.", retry=True) from None
+            raise CloudApiError("Die EKD-Cloud ist nicht erreichbar.", retry=True) from None
 
     async def _get(self, path: str, params: dict | None = None):
         """One request with rate limiting and back-off; the pacing survives restarts."""
@@ -273,7 +274,7 @@ class CloudImport:
             else:
                 break
         if first_year is None:
-            raise CloudApiError("In der Cloud wurden keine Verlaufsdaten gefunden.", retry=False)
+            raise CloudApiError("In der EKD-Cloud wurden keine Verlaufsdaten gefunden.", retry=False)
         for month in range(1, 13):
             first = date(first_year, month, 1)
             if first > date.today():
