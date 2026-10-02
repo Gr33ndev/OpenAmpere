@@ -22,6 +22,8 @@ class RegisterMap:
     read_function: int
     # Contiguous address ranges (start, count) read every poll
     blocks: tuple[tuple[int, int], ...]
+    # blocks the device may legitimately not have (second battery, MPPT details, ...): skipped if rejected
+    optional_blocks: frozenset
     values: dict[str, Reg]
     # Writable settings (always holding registers)
     settings: dict[str, Reg]
@@ -44,9 +46,10 @@ H3_NEW = RegisterMap(
         (39141, 1),
         (39219, 20),
         (39279, 8),
-        (39327, 11),  # MPPT 1-3
+        (39327, 12),  # MPPT 1-3 (MPPT3 power is a 32-bit value at 39337-39338)
         (39601, 32),
     ),
+    optional_blocks=frozenset({37002, 38309, 39063, 39118, 39141, 39279, 39327}),
     values={
         "bms1_connected": Reg(37002),
         "battery_voltage": Reg(37609, Kind.U16, 0.1),
@@ -135,6 +138,7 @@ H3_LEGACY = RegisterMap(
         (31090, 1),
         (32000, 24),
     ),
+    optional_blocks=frozenset({31090}),
     values={
         "pv1_voltage": Reg(31000, Kind.I16, 0.1),
         "pv1_current": Reg(31001, Kind.I16, 0.1),

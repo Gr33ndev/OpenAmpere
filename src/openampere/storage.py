@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -15,12 +16,16 @@ from pathlib import Path
 
 from .drivers.base import Snapshot
 
+log = logging.getLogger(__name__)
+
 FLOWS = ("pv", "load", "grid_import", "grid_export", "battery_charge", "battery_discharge")
 QUARTER = 900
 MAX_PV_INPUTS = 4
 # columns added after the first release; created on start-up if missing
 SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery"]
 MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
+MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger counter jumps are garbage
+MAX_GAP_S = 48 * 3600  # outages up to this length are filled by spreading the counter difference
 
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS samples (
@@ -129,12 +134,20 @@ class Storage:
         rows = self._fetchall("SELECT * FROM control_log ORDER BY ts DESC LIMIT ?", (limit,))
         return [{**r, "details": json.loads(r["details"]), "dry_run": bool(r["dry_run"])} for r in rows]
 
-    def backup(self, target: str | Path) -> None:
-        """Consistent copy of the database while it is in use."""
+    def backup(self, target: str | Path, *, drop_settings: set[str] | frozenset = frozenset()) -> None:
+        """Consistent copy of the database while it is in use. Sessions and the given secret settings
+        (e.g. API keys) are removed from the copy."""
         with self._lock:
             dest = sqlite3.connect(str(target))
             with dest:
                 self._db.backup(dest)
+            with dest:
+                row = dest.execute("SELECT value FROM meta WHERE key='settings'").fetchone()
+                if row:
+                    settings = {k: v for k, v in json.loads(row[0]).items() if k not in drop_settings}
+                    dest.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
+                dest.execute("DELETE FROM meta WHERE key='sessions'")
+            dest.execute("VACUUM")  # really remove the deleted data from the file
             dest.close()
 
     # ---- writing ---------------------------------------------------------
@@ -171,22 +184,42 @@ class Storage:
         self._pv_acc = acc
 
     def _accumulate(self, snap: Snapshot) -> None:
-        """Turn monotonic counters into per-quarter energy rows."""
+        """Turn monotonic counters into per-quarter energy rows.
+
+        The counters at the first reading of a quarter are the base; at the first reading of a later
+        quarter the difference is stored. Guards against glitches:
+        - a counter that drops to 0 (device booting, proxy cache) is ignored, the base is kept
+        - a counter that goes backwards (counter reset) only re-bases
+        - an implausibly large difference (garbage reading) only re-bases
+        - after an outage the difference is spread evenly over the missing quarters (up to MAX_GAP_S)
+        """
         totals = {f: getattr(snap.totals, f) for f in FLOWS}
         if any(v is None for v in totals.values()):
             return
-        quarter = int(snap.timestamp // QUARTER * QUARTER)
         state = self._quarter
+        if state is not None and any(totals[f] == 0 and state["totals"][f] > 100 for f in FLOWS):
+            log.warning("ignoring reading with a counter that dropped to 0")
+            return
+        quarter = int(snap.timestamp // QUARTER * QUARTER)
         if state is None or quarter < state["ts"]:
             self._quarter = {"ts": quarter, "totals": totals}
         elif quarter > state["ts"]:
+            span = quarter - state["ts"]
             delta = {f: totals[f] - state["totals"][f] for f in FLOWS}
-            # Only store plausible rows: no counter reset and no long outage merged into one quarter
-            if all(v >= 0 for v in delta.values()) and quarter - state["ts"] <= 2 * QUARTER:
-                self._db.execute(
+            limit_wh = MAX_POWER_W * span / 3600 * 1.5
+            if any(v < 0 for v in delta.values()):
+                log.warning("energy counter went backwards (reset?) - re-basing")
+            elif any(v > limit_wh for v in delta.values()):
+                log.warning("implausible energy counter jump %s - re-basing", {f: round(v) for f, v in delta.items()})
+            elif span > MAX_GAP_S:
+                log.warning("gap of %.1f h is too long to fill - re-basing", span / 3600)
+            else:
+                quarters = span // QUARTER  # spread the energy evenly over the quarters without readings
+                rows = [(state["ts"] + i * QUARTER, *(delta[f] / quarters for f in FLOWS),
+                         snap.battery_soc if i == quarters - 1 else None) for i in range(quarters)]
+                self._db.executemany(
                     f"INSERT OR REPLACE INTO energy_15m(ts, {', '.join(FLOWS)}, soc, source) "
-                    f"VALUES (?, {', '.join('?' * len(FLOWS))}, ?, 'local')",
-                    (state["ts"], *(delta[f] for f in FLOWS), snap.battery_soc))
+                    f"VALUES (?, {', '.join('?' * len(FLOWS))}, ?, 'local')", rows)
             self._quarter = {"ts": quarter, "totals": totals}
         else:
             return

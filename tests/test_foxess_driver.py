@@ -86,3 +86,49 @@ async def test_connection_limit():
             await second.connect()
         await first.close()
         await second.close()
+
+
+async def test_missing_optional_block_does_not_stop_readings():
+    sim, server, port = await start_sim(H3_NEW, "H3-10.0-Smart")
+    for address in range(38309, 38317):  # no second battery module: device rejects the BMS2 block
+        sim.regs.pop(address, None)
+    sim.energy.pv_inputs_w = [3000.0, 2000.0, 1000.0]
+    sim.update_registers()
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247)
+        try:
+            await driver.connect()
+            snap = await driver.read()
+            snap2 = await driver.read()  # rejected addresses are remembered, second poll is cheap
+        finally:
+            await driver.close()
+    assert snap.battery_soc is not None and snap.pv_power is not None
+    assert "battery2" not in snap.temperatures
+    assert [round(i.power) for i in snap.pv_inputs] == [3000, 2000, 1000]  # MPPT3 power is read
+    assert snap2.battery_soc is not None
+
+
+async def test_collector_counts_connected_only_after_a_successful_read(tmp_path):
+    from openampere.collector import Collector
+    from openampere.drivers.base import DeviceInfo
+    from openampere.storage import Storage
+
+    class DeadInverter:
+        connects = 0
+
+        async def connect(self):
+            DeadInverter.connects += 1
+            return DeviceInfo(manufacturer="X", model="Y")
+
+        async def read(self):
+            raise ConnectionError("cannot connect to inverter")
+
+        async def close(self):
+            pass
+
+    collector = Collector(DeadInverter(), Storage(tmp_path / "t.db"), 0.1, 30)
+    collector.start()
+    await asyncio.sleep(0.8)
+    assert not collector.connected and collector.last_error
+    assert DeadInverter.connects == 1  # back-off (5 s) is respected, no reconnect storm
+    await collector.stop()

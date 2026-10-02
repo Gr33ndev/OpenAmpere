@@ -88,14 +88,13 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
         return {"ok": True, "device": collector.device.__dict__}
     timeout = max(3.0, runtime.config.inverter.timeout)
     try:
-        info = await registry.detect(host, port, unit, timeout=timeout, only=None if driver == "auto" else driver)
+        info, device = await registry.detect_driver(host, port, unit, timeout=timeout,
+                                                    only=None if driver == "auto" else driver)
     except DeviceUnreachable:
         return {"ok": False, "error": f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse und ist Modbus TCP aktiviert?"}
     except (ConnectionError, OSError, asyncio.TimeoutError) as err:
         return {"ok": False, "error": str(err)}
-    device = registry.create(info.driver, host, port, info.unit or 0, timeout=timeout)
     try:
-        await device.connect()
         snap = await device.read()
         sample = {"pv_power": snap.pv_power, "battery_soc": snap.battery_soc}
     except Exception:  # identification worked; a failed sample read is not fatal

@@ -48,18 +48,34 @@ class FoxessDriver(ModbusDevice):
         if found:
             model = _ascii(found[1])
 
+        new_readable = legacy_readable = None  # probed lazily
+
+        async def has_new() -> bool:
+            nonlocal new_readable
+            if new_readable is None:
+                new_readable = bool(await self._probe(39601, 2, functions))
+            return new_readable
+
+        async def has_legacy() -> bool:
+            nonlocal legacy_readable
+            if legacy_readable is None:
+                legacy_readable = bool(await self._probe(32000, 2, functions))
+            return legacy_readable
+
         if self._map_choice in MAPS:
             self.map = MAPS[self._map_choice]
-        elif _NEW_MODEL.match(model):
+        # the model string is only a hint: always confirm with the counter registers, prefer the newer map
+        elif await has_new():
             self.map = H3_NEW
-        elif _LEGACY_MODEL.match(model):
-            self.map = H3_LEGACY
-        elif await self._probe(39601, 2, functions):
-            self.map = H3_NEW
-        elif await self._probe(32000, 2, functions):
+        elif await has_legacy():
             self.map = H3_LEGACY
         else:
             raise ConnectionError(f"unsupported device (model string {model!r})")
+        if self._map_choice not in MAPS and _NEW_MODEL.match(model) and self.map is not H3_NEW:
+            log.warning("model %r suggests the new register map, but only the legacy map answers", model)
+        elif self._map_choice not in MAPS and _LEGACY_MODEL.match(model) and not _NEW_MODEL.match(model) \
+                and self.map is H3_NEW:
+            log.info("model %r answers on the new register map", model)
 
         # Which function code serves the measurement registers?
         if self._fc_choice in ("input", "holding"):
@@ -93,7 +109,12 @@ class FoxessDriver(ModbusDevice):
         assert self.map is not None, "connect() first"
         words: dict[int, int] = {}
         for start, count in self.map.blocks:
-            words.update(await self._read_block(start, count))
+            try:
+                words.update(await self._read_block(start, count))
+            except ModbusIllegalError:
+                if start not in self.map.optional_blocks:
+                    raise
+                # e.g. no second battery module or no MPPT detail registers on this model
         result = {}
         for name, reg in self.map.values.items():
             chunk = [words.get(reg.address + i) for i in range(reg.count)]

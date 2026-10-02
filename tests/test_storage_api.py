@@ -32,13 +32,46 @@ def test_counter_deltas_become_quarter_rows(tmp_path):
     assert rows[0]["ts"] == base and rows[0]["pv"] == 260 and rows[0]["load"] == 130
 
 
-def test_counter_reset_and_gap_are_skipped(tmp_path):
+def test_counter_reset_only_rebases(tmp_path):
     storage = Storage(tmp_path / "t.db")
     base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
     storage.add_snapshot(snap(base, 1000, 400))
-    storage.add_snapshot(snap(base + 900, 10, 5))  # counter reset
-    storage.add_snapshot(snap(base + 900 * 10, 500, 200))  # long outage
-    assert storage.energy(base, base + 86400) == []
+    storage.add_snapshot(snap(base + 900, 10, 5))  # counters went backwards (inverter reset)
+    storage.add_snapshot(snap(base + 1800, 60, 25))
+    rows = storage.energy(base, base + 86400)
+    assert [(r["ts"] - base, r["pv"], r["load"]) for r in rows] == [(900, 50, 20)]
+
+
+def test_counter_glitch_to_zero_is_ignored(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    glitch = snap(base + 905, 1100, 450)
+    glitch.totals.grid_import = 0  # was 0 already in snap(); make another counter drop to 0
+    glitch.totals.pv = 0
+    storage.add_snapshot(glitch)
+    storage.add_snapshot(snap(base + 910, 1100, 450))
+    rows = storage.energy(base, base + 3600)
+    assert [(r["ts"] - base, r["pv"]) for r in rows] == [(0, 100)]  # no lifetime-sized spike
+
+
+def test_implausible_jump_rebases(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.add_snapshot(snap(base + 900, 12_000_000, 450))  # garbage: +12,000 kWh in 15 min
+    storage.add_snapshot(snap(base + 1800, 12_000_200, 500))
+    rows = storage.energy(base, base + 3600)
+    assert [(r["ts"] - base, r["pv"]) for r in rows] == [(900, 200)]
+
+
+def test_outage_is_spread_over_missing_quarters(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base, 1000, 400))
+    storage.add_snapshot(snap(base + 4 * 900, 1400, 600))  # 1 h without readings
+    rows = storage.energy(base, base + 3600)
+    assert [(r["ts"] - base, r["pv"], r["load"]) for r in rows] == [(0, 100, 50), (900, 100, 50), (1800, 100, 50), (2700, 100, 50)]
 
 
 def test_quarter_state_survives_restart(tmp_path):

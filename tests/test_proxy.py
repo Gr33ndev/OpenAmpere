@@ -55,14 +55,16 @@ async def test_flaky_upstream_does_not_blacklist_registers():
     sim, server, port = await start_sim()
     async with server:
         driver = FoxessDriver("127.0.0.1", port, 247)
-        await driver.connect()
-        sim.fault_rate = 1.0  # proxy cannot reach the inverter
-        with pytest.raises(ModbusTransientError):
-            await driver.read()
-        assert driver._bad_addresses == set()
-        sim.fault_rate = 0.0  # inverter reachable again: everything is read normally
-        snap = await driver.read()
-        await driver.close()
+        try:
+            await driver.connect()
+            sim.fault_rate = 1.0  # proxy cannot reach the inverter
+            with pytest.raises(ModbusTransientError):
+                await driver.read()
+            assert not driver._bad_addresses
+            sim.fault_rate = 0.0  # inverter reachable again: everything is read normally
+            snap = await driver.read()
+        finally:
+            await driver.close()
     assert snap.battery_soc is not None and snap.totals.pv is not None
 
 

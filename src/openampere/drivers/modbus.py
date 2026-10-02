@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
@@ -18,6 +19,7 @@ REQUEST_GAP_S = 0.03  # pause between requests, helps inverter stability on LAN
 CONNECT_SETTLE_S = 1.0
 READ_ATTEMPTS = 3  # per request, for temporary errors (proxy could not reach the inverter, busy, ...)
 RETRY_DELAY_S = 0.3
+BAD_ADDRESS_TTL_S = 600  # rejected addresses are retried after this time (device may have been booting)
 
 
 class DeviceUnreachable(ConnectionError):
@@ -79,14 +81,17 @@ class ModbusDevice:
         self._lock = asyncio.Lock()
         self.read_function: int = 3
         self.info: DeviceInfo | None = None
-        self._bad_addresses: set[int] = set()
+        self._bad_addresses: dict[int, float] = {}  # address -> time until it is skipped
 
     # ---- low level -------------------------------------------------------
 
     async def _ensure_connected(self) -> AsyncModbusTcpClient:
         if self._client is None:
             # created lazily: pymodbus needs a running event loop
-            self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=self._timeout, retries=1)
+            # retries=0 and reconnect_delay=0: retrying and reconnecting are handled here, not by pymodbus
+            # (its own background reconnect could open a second socket and block one of the few slots)
+            self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=self._timeout, retries=0,
+                                                reconnect_delay=0)
         if not self._client.connected:
             if not await self._client.connect():
                 self._client.close()
@@ -169,6 +174,12 @@ class ModbusDevice:
     async def _detect(self) -> DeviceInfo:
         raise NotImplementedError
 
+    async def disconnect(self) -> None:
+        """Close the TCP connection but keep the detected device info (for "connect per poll" mode)."""
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
     async def close(self) -> None:
         if self._client is not None:
             self._client.close()
@@ -184,13 +195,15 @@ class ModbusDevice:
             return {start + i: w for i, w in enumerate(words)}
         except ModbusIllegalError:
             values = {}
+            now = time.monotonic()
             for address in range(start, start + count):
-                if address in self._bad_addresses:
+                if self._bad_addresses.get(address, 0) > now:
                     continue
                 try:
                     values[address] = (await self._read(address, 1, self.read_function))[0]
+                    self._bad_addresses.pop(address, None)
                 except ModbusIllegalError:
-                    self._bad_addresses.add(address)
+                    self._bad_addresses[address] = now + BAD_ADDRESS_TTL_S
             if not values:
                 raise
             return values

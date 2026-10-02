@@ -36,25 +36,40 @@ def create(key: str, host: str, port: int, unit: int, *, timeout: float, registe
     return cls(host, port, unit, timeout=timeout)
 
 
-async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
-                 only: str | None = None) -> DeviceInfo:
-    """Returns the info of the first driver that recognises the device. Raises ConnectionError."""
+async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
+                        only: str | None = None, register_map: str = "auto", read_function: str = "auto"):
+    """Returns (info, connected driver) of the first driver that recognises the device; the caller owns the
+    driver and must close it. Raises ConnectionError."""
+    timeout = max(timeout, DETECT_TIMEOUT_S)  # never shorter than configured (slow proxies need more)
     keys = [only] if only else list(DRIVERS)
     for key in keys:
         cls = DRIVERS[key]
         for candidate_unit in ([unit] if unit else list(cls.DEFAULT_UNITS)):
-            driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=1)  # fail fast while probing
+            if cls is FoxessDriver:
+                driver = FoxessDriver(host, port, candidate_unit, timeout=timeout, read_attempts=2,
+                                      register_map=register_map, read_function=read_function)
+            else:
+                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2)
             try:
                 info = await driver.connect()
                 log.info("detected %s on unit %s", info.model, candidate_unit)
-                return info
+                driver._attempts = 3  # normal operation: full retries again
+                return info, driver
             except DeviceUnreachable:
+                await driver.close()
                 raise  # nothing listens there: no point in trying other vendors
             except (ConnectionError, ModbusReadError, OSError, asyncio.TimeoutError) as err:
                 log.debug("%s unit %s: %s", key, candidate_unit, err)
-            finally:
                 await driver.close()
     raise ConnectionError("Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?")
+
+
+async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
+                 only: str | None = None) -> DeviceInfo:
+    """Returns the info of the first driver that recognises the device. Raises ConnectionError."""
+    info, driver = await detect_driver(host, port, unit, timeout=timeout, only=only)
+    await driver.close()
+    return info
 
 
 class AutoDriver:
@@ -69,10 +84,15 @@ class AutoDriver:
     async def connect(self) -> DeviceInfo:
         if self._driver is None:
             a = self._args
-            info = await detect(a["host"], a["port"], a["unit"], timeout=min(a["timeout"], DETECT_TIMEOUT_S) or DETECT_TIMEOUT_S)
-            self._driver = create(info.driver, a["host"], a["port"], info.unit or 0, timeout=a["timeout"],
-                                  register_map=a["register_map"], read_function=a["read_function"])
+            # keep the connection that detected the device instead of opening a second one
+            _info, self._driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
+                                                      register_map=a["register_map"],
+                                                      read_function=a["read_function"])
         return await self._driver.connect()
+
+    async def disconnect(self) -> None:
+        if self._driver is not None:
+            await self._driver.disconnect()
 
     async def close(self) -> None:
         if self._driver is not None:
