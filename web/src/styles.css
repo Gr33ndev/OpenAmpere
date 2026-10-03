@@ -527,3 +527,6 @@ details.learn > summary { cursor: pointer; color: var(--accent-text); font-size:
   display: flex; align-items: center; }
 details.learn .learn-body { padding: 4px 0 8px; }
 .hint.unsaved { color: var(--delight-text); font-weight: 600; text-align: center; }
+
+html.embedded, html.embedded body { scrollbar-width: none; }
+html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { display: none; }

@@ -26,6 +26,8 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
 ];
 
 applyTheme(storedTheme());
+// the demo inside the phone frame on the website: scroll without a visible scrollbar
+if (DEMO && window.self !== window.top) document.documentElement.classList.add("embedded");
 
 function App() {
   const route = useRoute();
