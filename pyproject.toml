@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openampere"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local-only app for home solar and battery systems (FoxESS H3, SAJ H2)"
 readme = "README.md"
 license = "MIT"
