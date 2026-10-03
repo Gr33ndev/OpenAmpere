@@ -169,6 +169,7 @@ nav.bottom button.active::after { background: var(--accent-text); }
   display: flex; flex-direction: column; align-items: center; text-align: center;
   font-size: 16px; line-height: 1.25; min-width: 90px;
 }
+.flow-node .flow-icon { display: flex; }
 .flow-node .value { margin-top: 6px; }
 .flow-node .soc { font-size: 13px; color: var(--label); }
 .flow-line { stroke: var(--line); stroke-width: 2; }
