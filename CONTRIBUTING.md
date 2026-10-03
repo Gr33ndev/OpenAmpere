@@ -129,6 +129,23 @@ Beispiele: `fix(report): keep daily totals after midnight`, `feat(saj): read bat
   diesem Format folgen.
 - Keine Links zu privaten Chats, Tickets oder Sitzungen und keine persönlichen Daten in Commits.
 
+## Releases
+
+Releases macht das Maintainer-Team von `main` aus:
+
+```bash
+scripts/release.sh 0.2.0
+```
+
+```bash
+git push origin main v0.2.0
+```
+
+Das Script setzt die Version in `pyproject.toml` und `web/package.json`, committet sie und legt einen signierten Tag
+an. Der Workflow „Release“ baut daraus das Docker-Image und erstellt das GitHub-Release. Die Release-Notes entstehen
+aus den Commit-Nachrichten seit dem letzten Tag, deshalb lohnen sich gute Commit-Titel: `feat` landet unter „Neu“,
+`fix` unter „Behoben“.
+
 ## Lizenz
 
 Mit deinem Beitrag stimmst du zu, dass er unter der [MIT-Lizenz](LICENSE) des Projekts veröffentlicht wird.

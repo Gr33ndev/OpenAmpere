@@ -1,20 +1,33 @@
-name: Release image
+name: Release
 
-# A version tag (e.g. v0.2.0) builds the Docker image for x86 and ARM (Raspberry Pi)
-# and publishes it as ghcr.io/<owner>/openampere.
+# A version tag (e.g. v0.2.0, made with scripts/release.sh) builds the Docker image for x86 and ARM
+# (Raspberry Pi), publishes it as ghcr.io/<owner>/openampere and creates a GitHub release with notes
+# from the commits since the previous tag. "Run workflow" with a tag only (re)writes that release.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag whose release should be created or updated (no new image)
+        required: true
 
 permissions:
-  contents: read
-  packages: write
+  contents: write  # create the release
+  packages: write  # publish the image
 
 jobs:
   image:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches the version in pyproject.toml and web/package.json
+        run: |
+          py=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          web=$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')
+          echo "tag $GITHUB_REF_NAME, pyproject $py, web $web"
+          [ "v$py" = "$GITHUB_REF_NAME" ] && [ "v$web" = "$GITHUB_REF_NAME" ]
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
@@ -36,3 +49,27 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  release:
+    needs: image
+    # after a successful image build, or on its own when started by hand
+    if: always() && (needs.image.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # all tags and commits for the notes
+      - name: Create or update the release
+        run: |
+          python3 scripts/release_notes.py "$TAG" > notes.md
+          cat notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            flags=""
+            case "$TAG" in *-*) flags="--prerelease" ;; esac
+            gh release create "$TAG" --verify-tag --title "OpenAmpere ${TAG#v}" --notes-file notes.md $flags
+          fi
