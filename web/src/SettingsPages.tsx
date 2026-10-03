@@ -598,6 +598,8 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
         <p>OpenAmpere ist ein unabhängiges Community-Projekt für Solaranlagen mit Batteriespeicher. Es läuft komplett lokal und braucht keine Cloud.</p>
         <p className="hint">Alle genannten Produktnamen und Marken gehören ihren jeweiligen Inhabern. Rechtliche Hinweise und Hintergrund: siehe README im Quellcode.</p>
         <p className="hint">FoxESS-Registerdefinitionen basieren auf foxess_modbus (MIT-Lizenz).</p>
+        <p className="hint">Wallboxen steuert <a href="https://evcc.io" target="_blank" rel="noreferrer">evcc</a>, ein
+          eigenständiges Open-Source-Projekt. OpenAmpere nutzt dessen offene Schnittstelle. Danke an die evcc-Community!</p>
       </div>
       <div className="card menu">
         <a className="menu-row" href={REPO_URL} target="_blank" rel="noopener noreferrer">

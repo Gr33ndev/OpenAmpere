@@ -4,6 +4,7 @@ import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
 import { Notice } from "./ui";
+import { EVCC_URL, WallboxCard, type EvccView } from "./WallboxPage";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
@@ -144,9 +145,25 @@ function DeviceStates({ status }: { status: Status | null }) {
     <div className="device-chips" aria-label="Weitere Geräte">
       {devices.grid_charging && <span className="chip on">Speicher lädt aus dem Netz</span>}
       {devices.consumers.map((c, i) => (
-        <span key={i} className={`chip ${c.on ? "on" : ""}`}>{c.name}: {c.on == null ? "–" : c.on ? "an" : "aus"}</span>
+        <span key={i} className={`chip ${c.on ? "on" : ""}`}>
+          {c.name}: {c.on == null ? "–" : c.on ? kw(c.power_w) : "aus"}
+          {c.temperature_c != null ? ` · ${num(c.temperature_c, 0)} °C` : ""}
+        </span>
       ))}
     </div>
+  );
+}
+
+function Wallboxes() {
+  const { data, setData } = useResource<EvccView>("/api/evcc", 10_000);
+  const loadpoints = data?.state?.loadpoints ?? [];
+  if (!loadpoints.length) return null;
+  return (
+    <>
+      <div className="section-title">Wallbox</div>
+      {loadpoints.map((lp) => <WallboxCard key={lp.id} lp={lp} onChange={setData} />)}
+      <p className="hint small-credit">Gesteuert von <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a></p>
+    </>
   );
 }
 
@@ -190,6 +207,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
         <Ratio label="Autark" value={today?.autarky ?? null} />
       </div>
 
+      <Wallboxes />
       <PvInputsCard snap={snap} />
       <TemperaturesCard snap={snap} />
     </div>

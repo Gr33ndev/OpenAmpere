@@ -392,6 +392,52 @@ class SajSimulatedInverter(SimulatedInverter):
         put("battery1_temperature", 23)
 
 
+class SimulatedHeatingRod(SimulatedInverter):
+    """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
+    The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
+
+    def __init__(self, *, unit: int = 1, max_watts: int = 3000, timeout_s: float = 60.0) -> None:
+        self.unit, self.max_watts, self.timeout_s = unit, max_watts, timeout_s
+        self.max_connections, self.connections, self.latency_s = 3, 0, 0.0
+        self.temperature, self.target, self.setpoint, self.last_write = 45.0, 60.0, 0, 0.0
+        self.writes: list[int] = []
+
+    def tick(self, seconds: float, now: float | None = None) -> None:
+        now = time.monotonic() if now is None else now
+        if self.setpoint and now - self.last_write > self.timeout_s:
+            self.setpoint = 0  # control timeout: the device stops by itself
+        heat = self.power_w * seconds / 3600 / 1000 * 4.3  # roughly 200 l of water: 4.3 K per kWh
+        self.temperature = max(20.0, self.temperature + heat - seconds / 3600 * 0.3)
+
+    @property
+    def status(self) -> int:
+        if self.temperature >= self.target:
+            return 5
+        return 2 if self.setpoint else 3
+
+    @property
+    def power_w(self) -> int:
+        return min(self.setpoint, self.max_watts) if self.status == 2 else 0
+
+    def handle(self, pdu: bytes) -> bytes:
+        function = pdu[0]
+        if function == 3:
+            address, count = struct.unpack(">HH", pdu[1:5])
+            regs = {1000: self.setpoint, 1001: round(self.temperature * 10), 1002: round(self.target * 10),
+                    1003: self.status}
+            if any(a not in regs for a in range(address, address + count)):
+                return bytes([function | 0x80, ILLEGAL_ADDRESS])
+            return struct.pack(">BB", function, count * 2) + struct.pack(f">{count}H", *(regs[a] for a in range(address, address + count)))
+        if function == 6:
+            address, value = struct.unpack(">HH", pdu[1:5])
+            if address != 1000:
+                return bytes([function | 0x80, ILLEGAL_ADDRESS])
+            self.setpoint, self.last_write = value, time.monotonic()
+            self.writes.append(value)
+            return pdu[:5]
+        return bytes([function | 0x80, ILLEGAL_FUNCTION])
+
+
 async def run(host: str, port: int, speed: float, sim: SimulatedInverter, tick_s: float = 1.0) -> None:
     server = await asyncio.start_server(sim.serve_client, host, port)
     log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else "saj_h2",
@@ -409,7 +455,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj"], default="foxess", help="device family to emulate")
+    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv"], default="foxess",
+                        help="device family to emulate (mypv = my-PV heating rod)")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
     parser.add_argument("--model", default=None, help="model string at register 30000")
@@ -424,7 +471,10 @@ def main() -> None:
     parser.add_argument("--read-only", action="store_true", help="reject writes like a read-only proxy")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    if args.vendor == "saj":
+    sim: SimulatedInverter | None = None
+    if args.vendor == "mypv":
+        pass
+    elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
                                    fault_rate=args.fault_rate, latency_s=args.latency)
     else:
@@ -433,6 +483,20 @@ def main() -> None:
         sim = SimulatedInverter(register_map, model, args.serial, strict_function=args.strict_function,
                                 max_connections=args.max_connections, fault_rate=args.fault_rate,
                                 latency_s=args.latency, read_only=args.read_only, unit=args.unit or 247)
+    if args.vendor == "mypv":
+        async def run_rod() -> None:
+            rod = SimulatedHeatingRod(unit=args.unit or 1)
+            server = await asyncio.start_server(rod.serve_client, args.host, args.port)
+            log.info("simulating my-PV heating rod on %s:%d", args.host, args.port)
+            async with server:
+                while True:
+                    await asyncio.sleep(1)
+                    rod.tick(args.speed)
+        try:
+            asyncio.run(run_rod())
+        except KeyboardInterrupt:
+            pass
+        return
     try:
         asyncio.run(run(args.host, args.port, args.speed, sim))
     except KeyboardInterrupt:

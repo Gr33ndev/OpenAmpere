@@ -8,6 +8,7 @@ import { SecurityPage } from "./AuthScreens";
 import { ConsumersPage } from "./ConsumersPage";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
+import { WallboxPage } from "./WallboxPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { goBack, navigate } from "./route";
 
@@ -111,6 +112,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "battery": return <BatteryPage {...nav} />;
     case "charging": return <ChargingPage {...nav} />;
     case "consumers": return <ConsumersPage {...nav} />;
+    case "wallbox": return <WallboxPage {...nav} />;
     case "notify": return <NotifyPage {...nav} />;
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
@@ -137,6 +139,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Speicher & Notstrom" onClick={() => setPage("battery")} />
         <MenuRow label="Laden aus dem Netz" hint="Nach Strompreis oder Zeitfenster (experimentell)" onClick={() => setPage("charging")} />
         <MenuRow label="Überschuss nutzen" hint="Heizstab, Wärmepumpe & Co." onClick={() => setPage("consumers")} />
+        <MenuRow label="Wallbox" hint="Laden mit evcc" onClick={() => setPage("wallbox")} />
         <MenuRow label="Einspeisebegrenzung" hint="Gesetzliche Regel und Modulleistung" onClick={() => setPage("export-limit")} />
         <MenuRow label="Stromtarif" onClick={() => setPage("tariff")} />
       </div>

@@ -33,6 +33,7 @@ from .storage import FLOWS, Storage
 from .discovery import Rediscovery
 from .charging import GridCharging
 from .consumers import SurplusControl
+from .evcc import Evcc, EvccError
 from .notify import Notifier
 from .diagnostics import Diagnostics, report_markdown
 
@@ -97,7 +98,8 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     rediscovery = Rediscovery(runtime)
     charging = GridCharging(runtime)
-    surplus = SurplusControl(runtime)
+    evcc = Evcc(runtime)
+    surplus = SurplusControl(runtime, evcc)
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
 
@@ -106,7 +108,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         while True:
             await asyncio.sleep(30)
             for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
-                        surplus.tick, notifier.check):
+                        notifier.check):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -114,13 +116,28 @@ def create_app(runtime: Runtime) -> FastAPI:
                 except Exception as err:  # noqa: BLE001 - never stop the watchdog
                     log.warning("background job failed: %s", err)
 
+    async def fast_loop() -> None:
+        """Every few seconds: read evcc and share the solar surplus (the heating rod follows the sun)."""
+        while True:
+            await asyncio.sleep(max(5.0, min(runtime.config.inverter.poll_interval, 15.0)))
+            for job in (evcc.refresh, surplus.tick):
+                try:
+                    await job()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:  # noqa: BLE001 - never stop the loop
+                    log.warning("surplus control failed: %s", err)
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         collector.start()
         runtime.cloud_import.resume_if_running()
         watchdog_task = asyncio.create_task(watchdog())
+        fast_task = asyncio.create_task(fast_loop())
         yield
         watchdog_task.cancel()
+        fast_task.cancel()
+        await surplus.stop()
         await charging.stop("OpenAmpere wird beendet")
         await runtime.cloud_import.stop(status="running")  # keeps running after the next start
         await collector.stop()
@@ -208,6 +225,13 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     # ---- live ------------------------------------------------------------
 
+    def device_summary(c) -> dict:
+        state = surplus.states.get(c.id)
+        power = (state.actual_w if state and state.actual_w is not None else state.power_w) if state and c.adjustable \
+            else (c.power_w if state and state.on else 0)
+        return {"name": c.name, "power_w": power if state else c.power_w, "on": state.on if state else None,
+                "temperature_c": state.temperature_c if state else None}
+
     @app.get("/api/status")
     def status():
         latest = collector.latest
@@ -225,8 +249,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             "relocated": storage.get_meta("relocated"),
             "devices": {
                 "grid_charging": charging.active,
-                "consumers": [{"name": c.name, "power_w": c.power_w, "on": surplus.states[c.id].on
-                               if c.id in surplus.states else None} for c in surplus.consumers if c.enabled],
+                "consumers": [device_summary(c) for c in surplus.consumers if c.enabled],
+                "wallboxes": [{"title": lp["title"], "charging": lp["charging"], "power_w": lp["power_w"],
+                               "soc": lp["soc"], "heating": lp["heating"]}
+                              for lp in ((evcc.fresh() or {}).get("loadpoints") or []) if lp["connected"]],
             },
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
@@ -516,6 +542,42 @@ def create_app(runtime: Runtime) -> FastAPI:
         except RuntimeError as err:
             raise HTTPException(409, str(err)) from None
         return {"running": False, "report": report, "markdown": report_markdown(report)}
+
+    # ---- evcc (wallbox) -----------------------------------------------------
+
+    @app.get("/api/evcc")
+    async def get_evcc(refresh: bool = False):
+        if refresh:
+            await evcc.refresh()
+        return evcc.view()
+
+    @app.post("/api/evcc/loadpoints/{lp_id}")
+    async def evcc_command(lp_id: int, body: dict = Body(...)):
+        try:
+            return await evcc.command(lp_id, str(body.get("action")), body.get("value"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        except EvccError as err:
+            raise HTTPException(502, str(err)) from None
+
+    @app.get("/api/evcc/sessions")
+    async def evcc_sessions(limit: int = Query(50, ge=1, le=500)):
+        try:
+            return {"sessions": await evcc.sessions(limit)}
+        except EvccError as err:
+            raise HTTPException(502, str(err)) from None
+
+    @app.get("/api/evcc/site")
+    def evcc_site():
+        """Site meters for evcc ("custom" meters with source http): one inverter connection is enough.
+        Signs as in evcc: grid + = import, battery + = discharging."""
+        snap = collector.latest
+        if snap is None or collector.stale:
+            raise HTTPException(503, "Keine aktuellen Messwerte vom Wechselrichter")
+        return {"grid_power": snap.grid_power, "pv_power": snap.pv_power, "battery_power": snap.battery_power,
+                "battery_soc": snap.battery_soc, "grid_import_kwh": (snap.totals.grid_import or 0) / 1000 or None,
+                "grid_export_kwh": (snap.totals.grid_export or 0) / 1000 or None,
+                "pv_kwh": (snap.totals.pv or 0) / 1000 or None, "timestamp": snap.timestamp}
 
     @app.get("/api/prices")
     def get_prices(date: str | None = None):

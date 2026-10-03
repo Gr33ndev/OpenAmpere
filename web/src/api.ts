@@ -42,7 +42,11 @@ export type Status = {
   timezone: string;
   web_build: string | null;
   clock_wrong: boolean;
-  devices: { grid_charging: boolean; consumers: { name: string; power_w: number; on: boolean | null }[] };
+  devices: {
+    grid_charging: boolean;
+    consumers: { name: string; power_w: number; on: boolean | null; temperature_c: number | null }[];
+    wallboxes: { title: string; charging: boolean; power_w: number; soc: number | null; heating: boolean }[];
+  };
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
@@ -90,8 +94,10 @@ export type Settings = {
     "notify.on_overwritten": boolean;
     "notify.on_battery_full": boolean;
     "notify.on_cheap_power": boolean;
+    "evcc.url": string;
+    "evcc.priority": "wallbox_first" | "devices_first";
   };
-  secrets: Record<"cloud.api_key" | "notify.ntfy_token", { set: boolean; hint: string | null }>;
+  secrets: Record<"cloud.api_key" | "notify.ntfy_token" | "evcc.password", { set: boolean; hint: string | null }>;
   locked: string[];
   revision: number;
 };

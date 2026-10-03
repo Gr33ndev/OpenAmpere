@@ -102,7 +102,36 @@ export function snapshot() {
   };
 }
 
-const heatingRodOn = () => (current()?.pv ?? 0) > 6000;
+/** Demo wallbox: a car is plugged in during the day and charges with solar surplus (display only). */
+function wallbox() {
+  const s = current();
+  const hour = new Date().getHours() + new Date().getMinutes() / 60;
+  const surplus = s ? s.pv - s.load : 0;
+  const charging = surplus > 1600;
+  const power = charging ? Math.min(11_000, Math.round(surplus / 230) * 230) : 0;
+  const soc = Math.round(Math.min(80, 38 + Math.max(0, hour - 9) * 4.5));
+  return {
+    id: 1, title: "Carport", heating: false, mode: "pv", connected: true, charging, enabled: charging, power_w: power,
+    session_wh: Math.round(Math.max(0, hour - 9) * 2800), session_solar_pct: 97, vehicle_name: "egolf",
+    vehicle_title: "e-Golf", soc, range_km: Math.round(soc * 2.6), limit_soc: 80, phases: 1,
+    pv_action: charging ? "inactive" : "enable", pv_remaining_s: null, remaining_s: charging ? 5400 : null,
+    plan_active: false, plan_time: null, plan_soc: null,
+  };
+}
+
+/** Demo heating rod: follows the solar surplus that is left after the car. */
+function heatingRod() {
+  const s = current();
+  const car = wallbox();
+  // like the real control: with "wallbox first" a waiting car keeps its minimum power (6 A, 1 phase) free
+  const rest = s ? s.pv - s.load - car.power_w - (car.charging ? 0 : 6 * 230) : 0;
+  const power = rest > 600 ? Math.min(3000, Math.round(rest / 50) * 50) : 0;
+  const hour = new Date().getHours();
+  const temperature = Math.round((46 + Math.max(0, Math.min(14, (hour - 10) * 2.2))) * 10) / 10;
+  return { on: power > 0, power, temperature };
+}
+
+const heatingRodOn = () => heatingRod().on;
 
 const settings = {
   values: {
@@ -113,8 +142,10 @@ const settings = {
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false,
+    "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
   },
-  secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null } },
+  secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
+    "evcc.password": { set: false, hint: null } },
   locked: [],
   revision: 1,
 };
@@ -124,7 +155,11 @@ function status() {
   return {
     version: "Demo", configured: true, connected: true, last_error: null, last_update: latest ? now() : null,
     stale: false, poll_interval: 10, relocated: null, timezone: "Europe/Berlin", web_build: null, clock_wrong: false,
-    devices: { grid_charging: false, consumers: [{ name: "Heizstab", power_w: 2000, on: heatingRodOn() }] },
+    devices: {
+      grid_charging: false,
+      consumers: [{ name: "Heizstab", power_w: heatingRod().power, on: heatingRodOn(), temperature_c: heatingRod().temperature }],
+      wallboxes: [{ title: "Carport", charging: wallbox().charging, power_w: wallbox().power_w, soc: wallbox().soc, heating: false }],
+    },
     device: { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
       register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true },
     control: { enabled: true, dry_run: true },
@@ -206,9 +241,25 @@ function charging() {
 }
 
 function consumers() {
-  return { consumers: [{ id: "demo1", name: "Heizstab", kind: "shelly2", host: "heizstab.local", channel: 0, url_on: "",
-    url_off: "", power_w: 2000, min_on_min: 10, min_off_min: 5, battery_min_soc: 80, enabled: true,
-    state: { on: heatingRodOn(), since: now() - 1800, error: null } }] };
+  const rod = heatingRod();
+  return { consumers: [{ id: "demo1", name: "Heizstab", kind: "mypv", host: "heizstab.local", port: 502, unit: 1, channel: 0,
+    url_on: "", url_off: "", power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 80,
+    price_limit_ct: null, enabled: true,
+    state: { on: rod.on, power_w: rod.power, since: now() - 1800, error: null, temperature_c: rod.temperature, target_c: 60,
+      status: rod.on ? "heizt" : rod.temperature >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
+}
+
+function evcc() {
+  return { configured: true, url: "http://evcc.local:7070", error: null, updated: now(), priority: "wallbox_first",
+    state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()] } };
+}
+
+function evccSessions() {
+  const day = 86400 * 1000;
+  return { sessions: [3, 5, 8, 12].map((ago, i) => ({
+    created: new Date(Date.now() - ago * day).toISOString(), finished: new Date(Date.now() - ago * day + 5 * 3600_000).toISOString(),
+    loadpoint: "Carport", vehicle: "e-Golf", energy_kwh: [18.4, 22.1, 9.7, 25.3][i], duration_s: [16200, 19800, 8100, 21600][i],
+    solar_pct: [92, 71, 100, 64][i], price: null })) };
 }
 
 function controlLog() {
@@ -261,18 +312,21 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/charging": charging,
   "/api/consumers": consumers,
   "/api/diagnostics": diagnostics,
+  "/api/evcc": evcc,
+  "/api/evcc/sessions": evccSessions,
   "/api/live": () => snapshot(),
 };
 
 /** Endpoints that only change something: the demo refuses them with DEMO_WRITE_MESSAGE. */
 export const DEMO_WRITE_ONLY = [
-  "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/consumers/",
+  "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/consumers/", "/api/evcc/loadpoints/",
   "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test",
   "/api/setup/scan", "/api/setup/test",
 ];
 
 /** Endpoints the demo never reaches: setup (the demo is already set up) and downloads (hidden in the demo). */
-export const DEMO_NOT_NEEDED = ["/api/backup", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks"];
+export const DEMO_NOT_NEEDED = ["/api/backup", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks",
+  "/api/evcc/site"]; // the last one is read by evcc, not by the app
 
 /** Every endpoint the app reads needs an answer here. `npm run check:demo` (CI) fails otherwise. */
 export const DEMO_ROUTES = Object.keys(ROUTES);

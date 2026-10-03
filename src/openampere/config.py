@@ -92,6 +92,14 @@ class NotifyConfig:
 
 
 @dataclass
+class EvccConfig:
+    url: str = ""  # e.g. http://evcc.local:7070 ; empty = no evcc
+    password: str = ""  # evcc admin password, only needed if evcc asks for a login
+    # who gets solar surplus first: the wallbox (evcc) or OpenAmpere's own devices (heating rod, ...)
+    priority: str = "wallbox_first"  # wallbox_first | devices_first
+
+
+@dataclass
 class Config:
     inverter: InverterConfig = field(default_factory=InverterConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
@@ -102,6 +110,7 @@ class Config:
     pv: PvConfig = field(default_factory=PvConfig)
     grid: GridConfig = field(default_factory=GridConfig)
     notify: NotifyConfig = field(default_factory=NotifyConfig)
+    evcc: EvccConfig = field(default_factory=EvccConfig)
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
@@ -136,6 +145,9 @@ EDITABLE: dict[str, tuple] = {
     "notify.on_overwritten": ("bool",),
     "notify.on_battery_full": ("bool",),
     "notify.on_cheap_power": ("bool",),
+    "evcc.url": ("url",),
+    "evcc.password": ("secret",),
+    "evcc.priority": ("choice", "wallbox_first", "devices_first"),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
@@ -222,7 +234,7 @@ LABELS = {
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
-    "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse",
+    "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
 }
 
 

@@ -1,6 +1,13 @@
-"""Surplus consumers: switch a heating rod, a heat pump (SG-Ready contact) or any other load on when there
-is solar surplus, by priority, with minimum on and off times. Switching uses Shelly relays (Gen1 and Gen2+)
-or two plain HTTP URLs. Respects the control switch and the test mode; every switch is logged."""
+"""Surplus consumers: heating rods, heat pumps (SG-Ready contact) and other loads that run on solar surplus.
+
+Two kinds of devices:
+- adjustable: my-PV heating rods (AC ELWA-E, AC ELWA 2, AC THOR) follow the surplus watt by watt,
+- switched: Shelly relays (Gen1 and Gen2+) or two plain HTTP URLs, on or off with minimum on/off times.
+
+The surplus is shared out in the order of the list. A wallbox controlled by evcc can come first (it gets
+room to start charging) or last (it gets what is left). Optionally a device also runs on cheap grid power
+(dynamic tariff below a price limit). Respects the control switch and the test mode; switching is logged.
+"""
 
 from __future__ import annotations
 
@@ -11,40 +18,58 @@ import time
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 
+from .drivers.mypv import MyPvHeatingRod
 from .runtime import Runtime
+from .storage import QUARTER
 
 log = logging.getLogger(__name__)
 
-MARGIN_W = 200  # surplus needed on top of the consumer's power before switching on
-IMPORT_LIMIT_W = 150  # grid import above this means: not enough sun any more
+MARGIN_W = 200  # switched devices: surplus needed on top of their power before switching on
+ADJUST_MARGIN_W = 100  # adjustable devices: leave a little export so the grid never has to deliver
+ADJUST_STEP_W = 50
 CONFIRM_TICKS = 2  # a condition must hold this many checks in a row (clouds!)
 MAX_CONSUMERS = 8
+KINDS = ("mypv", "shelly2", "shelly1", "http")
 
 
 @dataclass
 class Consumer:
     name: str
-    kind: str = "shelly2"  # shelly1 | shelly2 | http
+    kind: str = "shelly2"  # mypv | shelly2 | shelly1 | http
     host: str = ""
-    channel: int = 0
+    port: int = 502  # mypv only
+    unit: int = 1  # mypv only
+    channel: int = 0  # shelly only
     url_on: str = ""
     url_off: str = ""
-    power_w: int = 2000
+    power_w: int = 2000  # switched: power of the device; mypv: maximum power to use
+    min_power_w: int = 500  # mypv: minimum surplus before the rod starts
     min_on_min: int = 10
     min_off_min: int = 5
     battery_min_soc: int = 0  # battery first: only use surplus once the battery has this state of charge
+    price_limit_ct: float | None = None  # also run on grid power when the dynamic price is at or below this
     enabled: bool = True
     id: str = field(default_factory=lambda: secrets.token_hex(4))
+
+    @property
+    def adjustable(self) -> bool:
+        return self.kind == "mypv"
 
 
 @dataclass
 class State:
     on: bool | None = None  # unknown until we switched it once
+    power_w: int = 0  # current setpoint (adjustable) or power while on (switched)
     since: float = 0.0
     want_on: int = 0
     want_off: int = 0
     error: str | None = None
+    temperature_c: float | None = None
+    target_c: float | None = None
+    status: str | None = None
+    actual_w: int | None = None  # measured / reported consumption (adjustable devices)
 
 
 def _check_url(url: str) -> str:
@@ -56,29 +81,37 @@ def _check_url(url: str) -> str:
 
 def validate(raw: list) -> list[Consumer]:
     if not isinstance(raw, list) or len(raw) > MAX_CONSUMERS:
-        raise ValueError(f"Höchstens {MAX_CONSUMERS} Verbraucher.")
+        raise ValueError(f"Höchstens {MAX_CONSUMERS} Geräte.")
     consumers = []
     for item in raw:
         try:
             c = Consumer(**{k: v for k, v in item.items() if k in Consumer.__dataclass_fields__})
             c.name = str(c.name).strip()[:40]
-            c.channel, c.power_w, c.min_on_min, c.min_off_min, c.battery_min_soc = (
-                int(v) for v in (c.channel, c.power_w, c.min_on_min, c.min_off_min, c.battery_min_soc))
+            c.channel, c.power_w, c.min_on_min, c.min_off_min, c.battery_min_soc, c.port, c.unit, c.min_power_w = (
+                int(v) for v in (c.channel, c.power_w, c.min_on_min, c.min_off_min, c.battery_min_soc, c.port,
+                                 c.unit, c.min_power_w))
+            c.price_limit_ct = None if c.price_limit_ct in (None, "") else float(c.price_limit_ct)
             c.enabled = bool(c.enabled)
         except (TypeError, ValueError):
-            raise ValueError("Ungültige Angaben bei einem Verbraucher.") from None
+            raise ValueError("Ungültige Angaben bei einem Gerät.") from None
         if not c.name:
-            raise ValueError("Bitte jedem Verbraucher einen Namen geben.")
-        if c.kind not in ("shelly1", "shelly2", "http"):
+            raise ValueError("Bitte jedem Gerät einen Namen geben.")
+        if c.kind not in KINDS:
             raise ValueError("Unbekannte Schaltart.")
         if c.kind == "http":
             _check_url(c.url_on), _check_url(c.url_off)
         elif not c.host.strip():
-            raise ValueError(f"{c.name}: Bitte die IP-Adresse des Shelly angeben.")
+            raise ValueError(f"{c.name}: Bitte die IP-Adresse des Geräts angeben.")
         if not 50 <= c.power_w <= 30_000 or not 0 <= c.battery_min_soc <= 100:
             raise ValueError(f"{c.name}: Leistung 50–30000 W, Speicher-Vorrang 0–100 %.")
+        if c.adjustable and not 50 <= c.min_power_w <= c.power_w:
+            raise ValueError(f"{c.name}: Der Mindestüberschuss muss zwischen 50 W und der maximalen Leistung liegen.")
         if not 0 <= c.min_on_min <= 240 or not 0 <= c.min_off_min <= 240:
             raise ValueError(f"{c.name}: Mindestzeiten 0–240 Minuten.")
+        if not 1 <= c.port <= 65535 or not 0 <= c.unit <= 255:
+            raise ValueError(f"{c.name}: Ungültiger Port oder Geräteadresse.")
+        if c.price_limit_ct is not None and not -100 <= c.price_limit_ct <= 200:
+            raise ValueError(f"{c.name}: Preisgrenze bitte zwischen -100 und 200 ct/kWh.")
         consumers.append(c)
     return consumers
 
@@ -98,10 +131,18 @@ def _call(url: str) -> None:
         response.read(1024)
 
 
+def make_heating_rod(c: Consumer) -> MyPvHeatingRod:
+    return MyPvHeatingRod(c.host.strip(), c.port, c.unit)
+
+
 class SurplusControl:
-    def __init__(self, runtime: Runtime) -> None:
+    def __init__(self, runtime: Runtime, evcc=None) -> None:
         self.runtime = runtime
+        self.evcc = evcc
         self.states: dict[str, State] = {}
+        self._rods: dict[str, tuple[tuple, MyPvHeatingRod]] = {}
+
+    # ---- settings ------------------------------------------------------------
 
     @property
     def consumers(self) -> list[Consumer]:
@@ -115,11 +156,26 @@ class SurplusControl:
     def view(self) -> dict:
         return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State()))} for c in self.consumers]}
 
+    def _rod(self, c: Consumer) -> MyPvHeatingRod:
+        key = (c.host.strip(), c.port, c.unit)
+        cached = self._rods.get(c.id)
+        if cached is None or cached[0] != key:
+            if cached:
+                cached[1].close()
+            cached = (key, make_heating_rod(c))
+            self._rods[c.id] = cached
+        return cached[1]
+
+    # ---- actions ---------------------------------------------------------------
+
     async def switch(self, c: Consumer, on: bool, reason: str, now: float) -> None:
+        """Switched devices: on/off. Adjustable devices: full power or off (manual test)."""
+        if c.adjustable:
+            await self.set_power(c, c.power_w if on else 0, reason, now, force_log=True)
+            return
         state = self.states.setdefault(c.id, State())
-        dry = self.runtime.config.control.dry_run
         details = {"from": {"consumer": c.name, "on": state.on}, "to": {"consumer": c.name, "on": on}}
-        if dry:
+        if self.runtime.config.control.dry_run:
             self.runtime.storage.log_control("consumer", details, True, f"nicht geschaltet (Testmodus): {reason}")
         else:
             try:
@@ -130,51 +186,161 @@ class SurplusControl:
                 self.runtime.storage.log_control("consumer", details, False, f"Fehler: {err}")
                 return
             self.runtime.storage.log_control("consumer", details, False, reason)
-        state.on, state.since, state.want_on, state.want_off = on, now, 0, 0
+        state.on, state.power_w = on, c.power_w if on else 0
+        state.since, state.want_on, state.want_off = now, 0, 0
+
+    async def set_power(self, c: Consumer, watts: int, reason: str, now: float, *, force_log: bool = False) -> None:
+        state = self.states.setdefault(c.id, State())
+        watts = max(0, min(int(watts), c.power_w))
+        starting, stopping = watts > 0 and not state.on, watts == 0 and bool(state.on)
+        details = {"from": {"consumer": c.name, "power_w": state.power_w}, "to": {"consumer": c.name, "power_w": watts}}
+        if self.runtime.config.control.dry_run:
+            if starting or stopping or force_log:
+                self.runtime.storage.log_control("consumer", details, True, f"nicht gesendet (Testmodus): {reason}")
+        else:
+            try:
+                await self._rod(c).set_power(watts)
+                state.error = None
+            except Exception as err:  # noqa: BLE001
+                state.error = str(err)
+                if starting or force_log:
+                    self.runtime.storage.log_control("consumer", details, False, f"Fehler: {err}")
+                return
+            if starting or stopping or force_log:
+                self.runtime.storage.log_control("consumer", details, False, reason)
+        if starting or stopping:
+            state.since = now
+        state.on, state.power_w = watts > 0, watts
+
+    async def _read_rods(self, consumers: list[Consumer]) -> None:
+        for c in consumers:
+            if not c.adjustable:
+                continue
+            state = self.states.setdefault(c.id, State())
+            try:
+                reading = await self._rod(c).read()
+            except Exception as err:  # noqa: BLE001
+                state.error, state.actual_w = str(err), None
+                continue
+            state.error = None
+            state.temperature_c, state.target_c = reading.temperature_c, reading.target_c
+            state.status, state.actual_w = reading.status_text, reading.power_w
+
+    def _price_now(self, now: float) -> float | None:
+        tariffs = self.runtime.tariffs
+        tariff = tariffs.at(datetime.fromtimestamp(now, self.runtime.tz).date().isoformat())
+        if tariff.kind != "dynamic":
+            return None
+        quarter = int(now // QUARTER * QUARTER)
+        price = self.runtime.storage.prices(quarter, quarter + QUARTER).get(quarter)
+        return tariff.import_price_ct(price) if price is not None else None
+
+    def _wallbox_reserve(self) -> float:
+        """Room for a waiting car when the wallbox comes first (evcc needs its minimum power to start)."""
+        if self.evcc is None or self.runtime.config.evcc.priority != "wallbox_first":
+            return 0.0
+        state = self.evcc.fresh()
+        if not state:
+            return 0.0
+        from .evcc import min_power_w, wants_surplus
+        return sum(min_power_w(lp) for lp in state["loadpoints"] if wants_surplus(lp) and not lp["charging"])
+
+    async def _safe_off(self, consumers: list[Consumer], reason: str, now: float) -> None:
+        for c in consumers:
+            state = self.states.get(c.id)
+            if state and state.on:
+                if c.adjustable:
+                    await self.set_power(c, 0, reason, now)
+                else:
+                    await self.switch(c, False, reason, now)
 
     async def tick(self, now: float | None = None) -> None:
         now = time.time() if now is None else now
         runtime = self.runtime
-        snap = runtime.collector.latest
         consumers = [c for c in self.consumers if c.enabled]
-        if not consumers or not runtime.config.control.enabled:
+        if not consumers:
             return
+        if not runtime.config.control.enabled:
+            await self._safe_off(consumers, "Steuerung ausgeschaltet", now)
+            return
+        snap = runtime.collector.latest
         if snap is None or runtime.collector.stale or snap.grid_power is None:
-            # no current readings: switch everything we turned on off again (safe state)
-            for c in consumers:
-                if self.states.get(c.id, State()).on:
-                    await self.switch(c, False, "keine aktuellen Messwerte", now)
+            await self._safe_off(consumers, "keine aktuellen Messwerte", now)  # safe state
             return
+        await self._read_rods(consumers)
+        dry = runtime.config.control.dry_run
         soc = snap.battery_soc or 0
-        charging = max(0.0, -(snap.battery_power or 0))  # battery charging power that could be diverted
-        export = max(0.0, -snap.grid_power)
-        grid_import = max(0.0, snap.grid_power)
+        battery = snap.battery_power or 0  # + = discharging
+        grid = snap.grid_power  # + = import
 
-        # too little sun: switch off the lowest priority consumer that may be switched off
-        if grid_import > IMPORT_LIMIT_W:
-            for c in reversed(consumers):
-                state = self.states.get(c.id, State())
-                if state.on and now - state.since >= c.min_on_min * 60:
-                    state.want_off += 1
-                    if state.want_off >= CONFIRM_TICKS:
-                        await self.switch(c, False, f"Netzbezug {grid_import:.0f} W", now)
-                    return
-            return
-        for c in consumers:
-            self.states.get(c.id, State()).want_off = 0
+        def own_power(c: Consumer) -> float:
+            state = self.states.get(c.id, State())
+            if dry:
+                return 0.0  # nothing was really switched
+            if c.adjustable:
+                return float(state.actual_w if state.actual_w is not None else state.power_w)
+            return float(c.power_w if state.on else 0)
 
-        # surplus: switch on the highest priority consumer that is off and fits
+        # what would be free if all our devices were off; battery charging is shared separately
+        free = -grid - max(0.0, battery) + sum(own_power(c) for c in consumers) - self._wallbox_reserve()
+        charge = max(0.0, -battery)
+        price = self._price_now(now)
+
         for c in consumers:
             state = self.states.setdefault(c.id, State())
-            if state.on:
-                continue
-            available = export + (charging if soc >= c.battery_min_soc else 0)
-            if soc < c.battery_min_soc or available < c.power_w + MARGIN_W:
-                state.want_on = 0
-                break  # keep the priority order: lower ones wait
-            if state.since and now - state.since < c.min_off_min * 60:
-                break
+            available = free + (charge if soc >= c.battery_min_soc else 0.0)
+            cheap = c.price_limit_ct is not None and price is not None and price <= c.price_limit_ct
+            if c.adjustable:
+                used = await self._adjust(c, state, available, cheap, now)
+            else:
+                used = await self._switch_step(c, state, available, cheap, now)
+            from_free = min(max(free, 0.0), used)
+            free -= from_free
+            charge = max(0.0, charge - (used - from_free))
+
+    async def _adjust(self, c: Consumer, state: State, available: float, cheap: bool, now: float) -> float:
+        running = bool(state.on)
+        if cheap:
+            target, reason = c.power_w, "günstiger Strompreis"
+        elif available - ADJUST_MARGIN_W >= (ADJUST_STEP_W if running else c.min_power_w):
+            target, reason = min(c.power_w, available - ADJUST_MARGIN_W), f"Überschuss {available:.0f} W"
+        else:
+            target, reason = 0, f"kein Überschuss ({available:.0f} W)"
+        if target and not running:
             state.want_on += 1
-            if state.want_on >= CONFIRM_TICKS:
-                await self.switch(c, True, f"Überschuss {available:.0f} W", now)
-            break
+            if state.want_on < CONFIRM_TICKS or (state.since and now - state.since < c.min_off_min * 60):
+                return 0.0
+        state.want_on = 0
+        if running and not target and now - state.since < c.min_on_min * 60:
+            target = ADJUST_STEP_W  # keep the minimum run time with the smallest step
+        if target > state.power_w:
+            target = state.power_w + 0.7 * (target - state.power_w)  # ramp up gently, react fast downwards
+        target = int(round(target / ADJUST_STEP_W) * ADJUST_STEP_W)
+        await self.set_power(c, target, reason, now)
+        return float(state.power_w)
+
+    async def _switch_step(self, c: Consumer, state: State, available: float, cheap: bool, now: float) -> float:
+        if state.on:
+            if cheap or available >= c.power_w:
+                state.want_off = 0
+            else:
+                state.want_off += 1
+                if state.want_off >= CONFIRM_TICKS and now - state.since >= c.min_on_min * 60:
+                    await self.switch(c, False, f"zu wenig Überschuss ({available:.0f} W)", now)
+        else:
+            if cheap or available >= c.power_w + MARGIN_W:
+                if state.since and now - state.since < c.min_off_min * 60:
+                    state.want_on = 0
+                else:
+                    state.want_on += 1
+                    if state.want_on >= CONFIRM_TICKS:
+                        await self.switch(c, True, "günstiger Strompreis" if cheap else f"Überschuss {available:.0f} W", now)
+            else:
+                state.want_on = 0
+        return float(c.power_w if state.on else 0)
+
+    async def stop(self) -> None:
+        """On shutdown: adjustable devices to 0 (their own timeout would do it as well)."""
+        await self._safe_off([c for c in self.consumers if c.adjustable], "OpenAmpere wird beendet", time.time())
+        for _key, rod in self._rods.values():
+            rod.close()

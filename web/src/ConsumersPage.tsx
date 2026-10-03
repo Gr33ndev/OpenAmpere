@@ -5,15 +5,28 @@ import type { PageProps } from "./SettingsPages";
 import { Button, Field, LoadState, Notice, Slider, SubPage, SwitchRow, toast } from "./ui";
 
 export type ConsumerData = {
-  id?: string; name: string; kind: "shelly1" | "shelly2" | "http"; host: string; channel: number;
-  url_on: string; url_off: string; power_w: number; min_on_min: number; min_off_min: number; battery_min_soc: number;
-  enabled: boolean; state?: { on: boolean | null; since: number; error: string | null };
+  id?: string; name: string; kind: "mypv" | "shelly1" | "shelly2" | "http"; host: string; port: number; unit: number;
+  channel: number; url_on: string; url_off: string; power_w: number; min_power_w: number; min_on_min: number;
+  min_off_min: number; battery_min_soc: number; price_limit_ct: number | null; enabled: boolean;
+  state?: { on: boolean | null; power_w: number; since: number; error: string | null; temperature_c: number | null;
+    target_c: number | null; status: string | null; actual_w: number | null };
 };
 
 const NEW_CONSUMER: ConsumerData = {
-  name: "Heizstab", kind: "shelly2", host: "", channel: 0, url_on: "", url_off: "",
-  power_w: 2000, min_on_min: 10, min_off_min: 5, battery_min_soc: 80, enabled: true,
+  name: "Heizstab", kind: "mypv", host: "", port: 502, unit: 1, channel: 0, url_on: "", url_off: "",
+  power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 80, price_limit_ct: null, enabled: true,
 };
+
+function liveText(c: ConsumerData, state: ConsumerData["state"]): string {
+  if (!state) return "noch nicht verbunden";
+  if (state.error) return state.error;
+  if (c.kind === "mypv") {
+    const parts = [state.status ?? "", state.actual_w ? `${(state.actual_w / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} kW` : ""];
+    if (state.temperature_c != null) parts.push(`${state.temperature_c.toLocaleString("de-DE")} °C${state.target_c != null ? ` von ${state.target_c.toLocaleString("de-DE")} °C` : ""}`);
+    return parts.filter(Boolean).join(" · ") || "verbunden";
+  }
+  return state.on == null ? "noch nicht geschaltet" : state.on ? "an" : "aus";
+}
 
 export function ConsumersPage({ onBack, onNavigate }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
@@ -58,8 +71,10 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
 
   return (
     <SubPage title="Überschuss nutzen" onBack={onBack}>
-      <p className="hint">Schaltet Heizstab, Wärmepumpe (SG-Ready-Kontakt) oder andere Geräte ein, wenn Solarstrom übrig
-        ist – in der Reihenfolge der Liste. Geschaltet wird über ein Shelly-Relais oder zwei Web-Adressen.</p>
+      <p className="hint">Heizstab, Wärmepumpe (SG-Ready-Kontakt) oder andere Geräte bekommen den Solarstrom, der übrig
+        ist. Wer oben steht, ist zuerst dran. Ein my-PV-Heizstab folgt dem Überschuss stufenlos, andere Geräte werden
+        über ein Shelly-Relais oder zwei Web-Adressen ein- und ausgeschaltet.</p>
+      <p className="hint">Eine Wallbox steuert evcc. Wer zuerst Überschuss bekommt, stellst du unter Mehr → Wallbox ein.</p>
       {!status?.control.enabled && (
         <Notice kind="info">Die Steuerung ist ausgeschaltet – es wird nichts geschaltet.{" "}
           <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
@@ -71,21 +86,34 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
           <div className="card form" key={c.id ?? `new-${i}`}>
             <div className="consumer-head">
               <strong>{i + 1}. {c.name || "Neues Gerät"}</strong>
-              <span className="hint">
-                {state?.error ? state.error : state?.on == null ? "noch nicht geschaltet" : state.on ? "an" : "aus"}
-              </span>
+              <span className="hint">{liveText(c, state)}</span>
             </div>
             <Field label="Name">
               <input className="input" value={c.name} maxLength={40} onChange={(e) => update(i, { name: e.target.value })} />
             </Field>
             <Field label="Schalten über">
               <select className="input" value={c.kind} onChange={(e) => update(i, { kind: e.target.value as ConsumerData["kind"] })}>
+                <option value="mypv">my-PV Heizstab (AC ELWA-E, AC ELWA 2, AC THOR), stufenlos</option>
                 <option value="shelly2">Shelly (Plus/Pro, 2. Generation und neuer)</option>
                 <option value="shelly1">Shelly (1. Generation)</option>
                 <option value="http">Eigene Web-Adressen</option>
               </select>
             </Field>
-            {c.kind === "http" ? (
+            {c.kind === "mypv" ? (
+              <>
+                <div className="field-row">
+                  <Field label="IP-Adresse des Heizstabs">
+                    <input className="input" value={c.host} inputMode="decimal" onChange={(e) => update(i, { host: e.target.value })} />
+                  </Field>
+                  <Field label="Port">
+                    <input className="input" inputMode="numeric" value={c.port} onChange={(e) => update(i, { port: Number(e.target.value) || 502 })} />
+                  </Field>
+                </div>
+                <p className="hint">Im Webinterface des Heizstabs die Ansteuerung auf „Modbus TCP“ stellen und den
+                  Zeitablauf der Ansteuerung auf 60 Sekunden. Bekommt der Heizstab keine Vorgabe mehr, schaltet er sich
+                  dann von selbst ab.</p>
+              </>
+            ) : c.kind === "http" ? (
               <>
                 <Field label="Adresse zum Einschalten">
                   <input className="input" value={c.url_on} placeholder="http://" onChange={(e) => update(i, { url_on: e.target.value })} />
@@ -105,7 +133,17 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
                 </Field>
               </div>
             )}
-            <Field label="Leistung des Geräts" hint="Wird eingeschaltet, wenn mindestens so viel Überschuss da ist (plus 200 W Reserve).">
+            {c.kind === "mypv" && (
+              <Field label="Mindestüberschuss zum Starten" hint="Erst ab diesem Überschuss beginnt der Heizstab. Danach folgt er dem Überschuss Watt für Watt.">
+                <div className="input-unit">
+                  <input className="input" inputMode="numeric" value={c.min_power_w}
+                    onChange={(e) => update(i, { min_power_w: Number(e.target.value) || 0 })} />
+                  <span>W</span>
+                </div>
+              </Field>
+            )}
+            <Field label={c.kind === "mypv" ? "Höchstens nutzen" : "Leistung des Geräts"}
+              hint={c.kind === "mypv" ? "Maximale Leistung, die der Heizstab bekommt." : "Wird eingeschaltet, wenn mindestens so viel Überschuss da ist (plus 200 W Reserve)."}>
               <div className="input-unit">
                 <input className="input" inputMode="numeric" value={c.power_w}
                   onChange={(e) => update(i, { power_w: Number(e.target.value) || 0 })} />
@@ -131,7 +169,15 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
                 </div>
               </Field>
             </div>
-            <SwitchRow label="Automatisch schalten" checked={c.enabled} onChange={(v) => update(i, { enabled: v })} />
+            <Field label="Auch mit günstigem Netzstrom (optional)"
+              hint="Nur mit dynamischem Tarif: läuft zusätzlich, wenn der Strompreis höchstens so hoch ist. Leer lassen für nur Solarstrom.">
+              <div className="input-unit">
+                <input className="input" inputMode="decimal" value={c.price_limit_ct == null ? "" : String(c.price_limit_ct).replace(".", ",")}
+                  onChange={(e) => update(i, { price_limit_ct: e.target.value.trim() === "" ? null : Number(e.target.value.replace(",", ".")) })} />
+                <span>ct/kWh</span>
+              </div>
+            </Field>
+            <SwitchRow label="Automatisch steuern" checked={c.enabled} onChange={(v) => update(i, { enabled: v })} />
             <div className="button-row inline">
               {i > 0 && <button className="link" onClick={() => move(i, -1)}>Nach oben</button>}
               {i < forms.length - 1 && <button className="link" onClick={() => move(i, 1)}>Nach unten</button>}
