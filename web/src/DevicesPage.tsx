@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from "react";
 import type { BatteryState, Device, DevicesView, Snapshot } from "./api";
-import { postJson, useResource } from "./api";
+import { postJson, putJson, useResource } from "./api";
 import { ConsumersPage } from "./ConsumersPage";
 import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
 import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
 import { BatteryPage, ChargingPage, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
-import { Button, MenuRow, Notice, Segmented, toast } from "./ui";
+import { Button, MenuRow, Notice, Segmented, Slider, toast } from "./ui";
 import { EVCC_URL, WallboxCard, WallboxPage, type EvccView } from "./WallboxPage";
 
 const COLORS: Record<Device["kind"], string[]> = {
@@ -130,6 +130,58 @@ function BatteryCard({ snap }: { snap: Snapshot | null }) {
 const WORK_MODE_LABEL: Record<string, string> = { self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugt",
   backup: "Notstromreserve", peak_shaving: "Spitzenlast begrenzen" };
 
+type OrderView = { items: { key: string; name: string; kind: Device["kind"] | "battery" }[]; order: string[];
+  battery_soc: number; evcc_error?: string };
+
+/** One list for the whole site: who gets solar power first. */
+function SurplusOrder() {
+  const { data, setData } = useResource<OrderView>("/api/surplus-order", 60_000);
+  const [soc, setSoc] = useState<number | null>(null);
+  if (!data || data.items.length < 2) return null;
+  const save = async (keys: string[], batterySoc: number) => {
+    try {
+      const view = await putJson<OrderView>("/api/surplus-order", { order: keys, battery_soc: batterySoc });
+      setData(view);
+      if (view.evcc_error) toast(`In evcc nicht übernommen: ${view.evcc_error}`, "error");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  const keys = data.items.map((i) => i.key);
+  const move = (index: number, dir: -1 | 1) => {
+    const next = [...keys];
+    [next[index], next[index + dir]] = [next[index + dir], next[index]];
+    void save(next, data.battery_soc);
+  };
+  return (
+    <>
+      <div className="section-title">Wer bekommt Sonnenstrom zuerst?</div>
+      <div className="card order-list">
+        {data.items.map((item, i) => (
+          <div key={item.key} className="order-item">
+            <div className="order-row">
+              <span className="order-pos">{i + 1}</span>
+              {item.kind === "battery" ? <BatteryIcon size={32} soc={60} /> : <DeviceIcon kind={item.kind} size={32} />}
+              <strong className="grow">{item.name}</strong>
+              <div className="order-buttons">
+                <button aria-label={`${item.name} nach oben`} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
+                <button aria-label={`${item.name} nach unten`} disabled={i === data.items.length - 1} onClick={() => move(i, 1)}>▼</button>
+              </div>
+            </div>
+            {item.kind === "battery" && (
+              <div className="order-extra">
+                <Slider value={soc ?? data.battery_soc} min={0} max={100} step={5} unit="%"
+                  onChange={setSoc} onCommit={(v) => { setSoc(null); void save(keys, v); }} />
+                <span className="hint">Der Speicher wird bis zu diesem Ladestand geladen. Danach bekommen die Geräte darunter den Sonnenstrom.</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot | null }) {
   const { data, reload } = useResource<DevicesView>("/api/devices", 5_000);
   const { data: evcc, setData: setEvcc } = useResource<EvccView>("/api/evcc", 10_000);
@@ -176,9 +228,10 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
           {own.map((d) => <OwnDeviceCard key={d.key} d={d} today={data?.today_wh[d.key]} onChange={reload} />)}
         </>
       )}
+      <SurplusOrder />
       <div className="section-title">Einrichten</div>
       <div className="card menu">
-        <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, Web-Adressen, Reihenfolge" onClick={() => navigate("devices/setup")} />
+        <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, eigene Web-Adressen" onClick={() => navigate("devices/setup")} />
         <MenuRow label="Wallbox" hint={evcc?.configured ? "mit evcc verbunden" : "mit evcc verbinden"} onClick={() => navigate("devices/wallbox")} />
       </div>
     </div>

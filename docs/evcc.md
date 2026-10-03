@@ -20,8 +20,9 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
 - **OpenAmpere zeigt und bedient die Ladepunkte.** Lademodus (Aus, Solar, Min + Solar, Sofort), Ladeziel, Ladeplan
   bis zu einer Uhrzeit stehen unter „Geräte“. Energiefluss, Tageswerte und Auswertung zeigen das Laden ebenfalls,
   die Ladevorgänge findest du in der Auswertung.
-- **Überschuss wird aufgeteilt.** Unter Geräte → Wallbox einrichten legst du fest, ob die Wallbox oder die Geräte unter
-  „Überschuss nutzen“ (z. B. der Heizstab) zuerst Solarstrom bekommen.
+- **Überschuss wird aufgeteilt.** Unter „Geräte“ legst du in einer Liste fest, wer Sonnenstrom zuerst bekommt:
+  Speicher (bis zu einem Ladestand), Wallbox, Heizstab und weitere Geräte. Steht der Speicher vor der Wallbox,
+  überträgt OpenAmpere den Ladestand als „Vorrang Hausspeicher“ (priority SoC) an evcc.
 
 ## Einrichtung
 

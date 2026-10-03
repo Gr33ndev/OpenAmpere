@@ -472,3 +472,17 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .control-mode.compact { padding: 14px 16px; }
 .device-card-head.as-link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left;
   cursor: pointer; width: 100%; }
+
+/* surplus order */
+.order-list { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; padding-bottom: 10px; }
+.order-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.order-item:last-child { border-bottom: 0; }
+.order-row { display: flex; align-items: center; gap: 12px; }
+.order-row .grow { flex: 1; min-width: 0; }
+.order-extra { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px 34px; }
+.order-pos { width: 22px; height: 22px; border-radius: 50%; background: var(--track); display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; flex: none; }
+.order-buttons { display: flex; gap: 6px; }
+.order-buttons button { width: 44px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--card);
+  color: var(--text); cursor: pointer; font-size: 13px; }
+.order-buttons button:disabled { opacity: 0.3; cursor: default; }

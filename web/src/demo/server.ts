@@ -354,6 +354,9 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/diagnostics": diagnostics,
   "/api/evcc": evcc,
   "/api/devices": devices,
+  "/api/surplus-order": () => ({ order: ["battery", "wallbox", "c:demo1"], battery_soc: 50, items: [
+    { key: "battery", name: "Speicher", kind: "battery" }, { key: "wallbox", name: "Carport", kind: "wallbox" },
+    { key: "c:demo1", name: "Heizstab", kind: "heating_rod" }] }),
   "/api/devices/energy": devicesEnergy,
   "/api/devices/power": devicesPower,
   "/api/evcc/sessions": evccSessions,

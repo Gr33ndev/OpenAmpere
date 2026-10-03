@@ -88,3 +88,25 @@ def test_devices_api(tmp_path, authed):
     assert client.post(f"/api/consumers/{cid}/mode", json={"mode": "turbo"}).status_code == 400
     energy = client.get("/api/devices/energy", params={"period": "day", "date": "2026-06-01"}).json()
     assert energy["devices"] == [] and energy["entries"] == []
+
+
+def test_surplus_order(tmp_path, authed):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    client = authed(TestClient(create_app(runtime)))
+    client.put("/api/consumers", json={"consumers": [
+        {"name": "Heizstab", "kind": "shelly2", "host": "rod.local", "power_w": 2000},
+        {"name": "Pumpe", "kind": "shelly1", "host": "pump.local", "power_w": 800}]})
+    view = client.get("/api/surplus-order").json()
+    rod, pump = (i["key"] for i in view["items"] if i["key"].startswith("c:"))
+    assert view["order"][0] == "battery" and [i["name"] for i in view["items"]] == ["Speicher", "Heizstab", "Pumpe"]
+
+    # pump first, then the battery up to 70 %, then the heating rod
+    saved = client.put("/api/surplus-order", json={"order": [pump, "battery", rod], "battery_soc": 70}).json()
+    assert saved["order"] == [pump, "battery", "wallbox", rod] and saved["battery_soc"] == 70
+    surplus = SurplusControl(runtime)
+    by_name = {c.name: c for c in surplus.consumers}
+    assert surplus.battery_first_soc(by_name["Pumpe"]) == 0
+    assert surplus.battery_first_soc(by_name["Heizstab"]) == 70
+    assert [c.name for c in surplus.consumers] == ["Pumpe", "Heizstab"]  # list follows the order
+    assert not surplus.wallbox_first() and surplus.evcc_priority_soc() == 70
+    assert client.put("/api/surplus-order", json={"order": ["battery"], "battery_soc": 50}).status_code == 400

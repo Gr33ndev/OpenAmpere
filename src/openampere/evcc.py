@@ -221,6 +221,11 @@ class Evcc:
         await self.refresh()
         return self.view()
 
+    async def set_priority_soc(self, soc: int) -> None:
+        """evcc charges the home battery first up to this state of charge (a site setting in evcc)."""
+        if self.configured:
+            await asyncio.to_thread(self._call, "POST", f"/api/prioritysoc/{int(soc)}")
+
     async def sessions(self, limit: int = 50) -> list[dict]:
         if not self.configured:
             return []

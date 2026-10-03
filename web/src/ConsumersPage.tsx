@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Status } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, Slider, SubPage, SwitchRow, toast } from "./ui";
+import { Button, Field, LoadState, SubPage, SwitchRow, toast } from "./ui";
 
 export type ConsumerData = {
   id?: string; name: string; kind: "mypv" | "shelly1" | "shelly2" | "http"; host: string; port: number; unit: number;
@@ -36,12 +36,6 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
   useEffect(() => { if (data && forms === null) setForms(data.consumers); }, [data, forms]);
   const update = (i: number, patch: Partial<ConsumerData>) =>
     setForms((f) => f && f.map((c, j) => (j === i ? { ...c, ...patch } : c)));
-  const move = (i: number, dir: -1 | 1) => setForms((f) => {
-    if (!f || i + dir < 0 || i + dir >= f.length) return f;
-    const next = [...f];
-    [next[i], next[i + dir]] = [next[i + dir], next[i]];
-    return next;
-  });
 
   const save = async () => {
     if (!forms) return;
@@ -74,7 +68,7 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
       <p className="hint">Heizstab, Wärmepumpe (SG-Ready-Kontakt) oder andere Geräte bekommen den Solarstrom, der übrig
         ist. Wer oben steht, ist zuerst dran. Ein my-PV-Heizstab folgt dem Überschuss stufenlos, andere Geräte werden
         über ein Shelly-Relais oder zwei Web-Adressen ein- und ausgeschaltet.</p>
-      <p className="hint">Eine Wallbox steuert evcc. Wer zuerst Überschuss bekommt, stellst du unter Geräte → Wallbox einrichten ein.</p>
+      <p className="hint">Wer zuerst Sonnenstrom bekommt (Speicher, Wallbox, Heizstab), stellst du unter „Geräte“ in einer Liste ein.</p>
       {!forms && <LoadState error={error} onRetry={reload} />}
       {forms?.map((c, i) => {
         const state = live(c.id);
@@ -146,9 +140,6 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
                 <span>W</span>
               </div>
             </Field>
-            <Field label="Speicher zuerst laden bis" hint="Erst ab diesem Ladestand bekommt das Gerät den Überschuss.">
-              <Slider value={c.battery_min_soc} min={0} max={100} unit="%" onChange={(v) => update(i, { battery_min_soc: v })} />
-            </Field>
             <div className="field-row">
               <Field label="Mindestlaufzeit">
                 <div className="input-unit">
@@ -175,8 +166,6 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
             </Field>
             <SwitchRow label="Automatisch steuern" checked={c.enabled} onChange={(v) => update(i, { enabled: v })} />
             <div className="button-row inline">
-              {i > 0 && <button className="link" onClick={() => move(i, -1)}>Nach oben</button>}
-              {i < forms.length - 1 && <button className="link" onClick={() => move(i, 1)}>Nach unten</button>}
               {c.id && <button className="link" onClick={() => void test(c, true)}>Test: ein</button>}
               {c.id && <button className="link" onClick={() => void test(c, false)}>Test: aus</button>}
               <button className="link" onClick={() => setForms((f) => f && f.filter((_, j) => j !== i))}>Entfernen</button>

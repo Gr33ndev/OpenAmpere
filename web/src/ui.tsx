@@ -88,13 +88,16 @@ export function Checkbox({ checked, onChange, children, disabled }: {
   );
 }
 
-export function Slider({ value, min, max, step = 1, unit, onChange, disabled }: {
-  value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void; disabled?: boolean;
+export function Slider({ value, min, max, step = 1, unit, onChange, onCommit, disabled }: {
+  value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
+  /** called once when the user lets go (for settings that are saved right away) */
+  onCommit?: (v: number) => void; disabled?: boolean;
 }) {
+  const commit = (e: React.SyntheticEvent<HTMLInputElement>) => onCommit?.(Number(e.currentTarget.value));
   return (
     <div className="slider">
       <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => onChange(Number(e.target.value))} onPointerUp={commit} onKeyUp={commit}
         style={{ "--pct": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties} />
       <span className="slider-value">{value} {unit}</span>
     </div>

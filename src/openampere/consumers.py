@@ -157,6 +157,55 @@ class SurplusControl:
         return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State())), "override": self.override(c.id)}
                               for c in self.consumers]}
 
+    # ---- order: who gets solar surplus first ------------------------------------
+
+    def order(self) -> dict:
+        """One list for the whole site: "battery", "wallbox" (evcc) and the own devices ("c:<id>").
+        The battery takes surplus up to `battery_soc`; devices below it only get surplus above that."""
+        saved = self.runtime.storage.get_meta("surplus_order") or {}
+        consumers = self.consumers
+        own = [f"c:{c.id}" for c in consumers]
+        if saved.get("order"):
+            order = [k for k in saved["order"] if k in ("battery", "wallbox") or k in own]
+            for key in ["battery", "wallbox", *own]:  # newly added devices go to the end
+                if key not in order:
+                    order.insert(0 if key == "battery" else len(order), key)
+            return {"order": order, "battery_soc": int(saved.get("battery_soc", 50))}
+        # not saved yet: derived from the older settings (wallbox priority, "battery first" per device)
+        wallbox_first = self.runtime.config.evcc.priority == "wallbox_first"
+        order = ["battery", *(["wallbox"] if wallbox_first else []), *own, *([] if wallbox_first else ["wallbox"])]
+        soc = max((c.battery_min_soc for c in consumers), default=50)
+        return {"order": order, "battery_soc": int(soc)}
+
+    def save_order(self, order: list, battery_soc: int) -> dict:
+        own = [f"c:{c.id}" for c in self.consumers]
+        if not isinstance(order, list) or sorted(order) != sorted(["battery", "wallbox", *own]):
+            raise ValueError("Die Reihenfolge passt nicht zu den eingerichteten Geräten. Bitte die Seite neu laden.")
+        battery_soc = int(battery_soc)
+        if not 0 <= battery_soc <= 100:
+            raise ValueError("Der Speicher-Vorrang muss zwischen 0 und 100 % liegen.")
+        self.runtime.storage.set_meta("surplus_order", {"order": order, "battery_soc": battery_soc})
+        # keep the device list in the same order
+        by_key = {f"c:{c.id}": c for c in self.consumers}
+        self.runtime.storage.set_meta("consumers", [asdict(by_key[k]) for k in order if k in by_key])
+        return self.order()
+
+    def battery_first_soc(self, c: Consumer) -> int:
+        """State of charge the battery gets before this device sees surplus."""
+        o = self.order()
+        key = f"c:{c.id}"
+        return o["battery_soc"] if key in o["order"] and o["order"].index("battery") < o["order"].index(key) else 0
+
+    def wallbox_first(self) -> bool:
+        o = self.order()["order"]
+        own = [i for i, k in enumerate(o) if k.startswith("c:")]
+        return not own or o.index("wallbox") < min(own)
+
+    def evcc_priority_soc(self) -> int:
+        """evcc's own setting: the battery is charged first up to this state of charge."""
+        o = self.order()
+        return o["battery_soc"] if o["order"].index("battery") < o["order"].index("wallbox") else 0
+
     # ---- manual override: off or full power for a while -------------------------
 
     def override(self, consumer_id: str, now: float | None = None) -> dict | None:
@@ -266,7 +315,7 @@ class SurplusControl:
 
     def _wallbox_reserve(self) -> float:
         """Room for a waiting car when the wallbox comes first (evcc needs its minimum power to start)."""
-        if self.evcc is None or self.runtime.config.evcc.priority != "wallbox_first":
+        if self.evcc is None or not self.wallbox_first():
             return 0.0
         state = self.evcc.fresh()
         if not state:
@@ -317,7 +366,7 @@ class SurplusControl:
 
         for c in consumers:
             state = self.states.setdefault(c.id, State())
-            available = free + (charge if soc >= c.battery_min_soc else 0.0)
+            available = free + (charge if soc >= self.battery_first_soc(c) else 0.0)
             cheap = c.price_limit_ct is not None and price is not None and price <= c.price_limit_ct
             override = self.override(c.id, now)
             if override:

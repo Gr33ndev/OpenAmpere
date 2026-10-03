@@ -220,17 +220,8 @@ export function WallboxPage({ onBack }: PageProps) {
         {view?.state && <Notice kind="ok">Verbunden mit evcc {view.state.version ?? ""} · {cars.length} Ladepunkt{cars.length === 1 ? "" : "e"}</Notice>}
       </div>
 
-      {settings && (
-        <>
-          <div className="section-title">Wer bekommt den Überschuss zuerst?</div>
-          <div className="card form">
-            <Segmented value={settings.values["evcc.priority"]} onChange={(v) => void save({ "evcc.priority": v })}
-              options={[["wallbox_first", "Wallbox zuerst"], ["devices_first", "Heizstab & Co. zuerst"]]} />
-            <p className="hint">Bei „Wallbox zuerst“ halten die Geräte unter „Überschuss nutzen“ genug Leistung frei, damit
-              ein angeschlossenes Auto mit dem Solarladen beginnen kann. Sonst bekommt das Auto nur, was übrig bleibt.</p>
-          </div>
-        </>
-      )}
+      <p className="hint">Ob die Wallbox vor oder nach Speicher und Heizstab Sonnenstrom bekommt, stellst du unter „Geräte“
+        in der Liste „Wer bekommt Sonnenstrom zuerst?“ ein. OpenAmpere überträgt das an evcc.</p>
 
       <div className="section-title">evcc einrichten</div>
       <div className="card form">

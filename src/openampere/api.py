@@ -492,7 +492,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     def get_devices():
         return {"devices": devices.live(), "today_wh": devices.today_wh(),
                 "evcc": {"configured": evcc.configured, "error": evcc.error},
-                "priority": runtime.config.evcc.priority}
+                "wallbox_first": surplus.wallbox_first()}
 
     @app.get("/api/devices/energy")
     def devices_energy(period: str = "day", date: str | None = None,
@@ -505,6 +505,45 @@ def create_app(runtime: Runtime) -> FastAPI:
     def devices_power(date: str | None = None, step: int = Query(300, ge=60, le=3600)):
         start, end = bounds("day", date)
         return {"from": start, "to": end, **devices.power(start, end, step)}
+
+    def order_view() -> dict:
+        o = surplus.order()
+        names = {f"c:{c.id}": c for c in surplus.consumers}
+        lps = (evcc.fresh() or {}).get("loadpoints", [])
+        items = []
+        for key in o["order"]:
+            if key == "battery":
+                items.append({"key": key, "name": "Speicher", "kind": "battery"})
+            elif key == "wallbox":
+                if evcc.configured:
+                    items.append({"key": key, "name": " / ".join(lp["title"] for lp in lps if not lp["heating"]) or "Wallbox",
+                                  "kind": "wallbox"})
+            else:
+                c = names[key]
+                items.append({"key": key, "name": c.name, "kind": "heating_rod" if c.adjustable else "switch"})
+        return {"items": items, "order": o["order"], "battery_soc": o["battery_soc"]}
+
+    @app.get("/api/surplus-order")
+    def get_surplus_order():
+        return order_view()
+
+    @app.put("/api/surplus-order")
+    async def put_surplus_order(body: dict = Body(...)):
+        order = list(body.get("order") or [])
+        if "wallbox" not in order:  # the app hides the wallbox when evcc is not set up
+            order.insert(order.index("battery") + 1 if "battery" in order else 0, "wallbox")
+        try:
+            surplus.save_order(order, body.get("battery_soc", 50))
+        except (TypeError, ValueError) as err:
+            raise HTTPException(400, str(err)) from None
+        result = order_view()
+        if evcc.configured:
+            try:
+                await evcc.set_priority_soc(surplus.evcc_priority_soc())
+                result["evcc_synced"] = True
+            except EvccError as err:
+                result["evcc_synced"], result["evcc_error"] = False, str(err)
+        return result
 
     @app.post("/api/consumers/{consumer_id}/mode")
     async def consumer_mode(consumer_id: str, body: dict = Body(...)):
