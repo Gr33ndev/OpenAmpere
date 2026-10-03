@@ -89,6 +89,13 @@ async def test_reads_state_and_sends_commands(tmp_path, evcc_server):
     await runtime.update_settings({"evcc.url": evcc_server + "/"})
     evcc = Evcc(runtime)
     state = await evcc.refresh()
+    from openampere.evcc import EvccError
+    with pytest.raises(EvccError, match="ausgeschaltet"):
+        await evcc.command(1, "mode", "now")  # "Nur ansehen"
+    await runtime.update_settings({"control.enabled": True})
+    await evcc.command(1, "mode", "now")  # test mode: only logged
+    assert FakeEvcc.calls == [] and runtime.storage.control_log()[0]["dry_run"]
+    await runtime.update_settings({"control.dry_run": False})
     car, heat_pump = state["loadpoints"]
     assert (car["mode"], car["power_w"], car["soc"], car["limit_soc"], car["phases"]) == ("pv", 7400, 61, 80, 3)
     assert heat_pump["heating"] and not wants_surplus(heat_pump)
@@ -112,7 +119,7 @@ async def test_reads_state_and_sends_commands(tmp_path, evcc_server):
 async def test_login_when_evcc_asks_for_it(tmp_path, evcc_server):
     FakeEvcc.password = "geheim"
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
-    await runtime.update_settings({"evcc.url": evcc_server})
+    await runtime.update_settings({"evcc.url": evcc_server, "control.enabled": True, "control.dry_run": False})
     evcc = Evcc(runtime)
     await evcc.refresh()
     from openampere.evcc import EvccError

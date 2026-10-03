@@ -142,8 +142,8 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
       <div className="section-title">Einstellungen</div>
       <div className="card menu">
         <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
-        <MenuRow label="Steuerung"
-          hint={control?.enabled ? (control.dry_run ? "Testmodus" : "Aktiv") : "Aus"} onClick={() => setPage("control")} />
+        <MenuRow label="Steuerung und Protokoll"
+          hint={control?.enabled ? (control.dry_run ? "Testen" : "Aktiv") : "Nur ansehen"} onClick={() => setPage("control")} />
         <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy (ntfy)" onClick={() => setPage("notify")} />
         <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
         <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />

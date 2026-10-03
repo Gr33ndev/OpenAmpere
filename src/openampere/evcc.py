@@ -184,6 +184,9 @@ class Evcc:
     async def command(self, lp_id: int, action: str, value=None) -> dict:
         if not self.configured:
             raise EvccError("evcc ist nicht verbunden.")
+        control = self.runtime.config.control
+        if not control.enabled:
+            raise EvccError("Änderungen sind ausgeschaltet. Stelle oben auf „Testen“ oder „Aktiv“.")
         lp = self._loadpoint(lp_id)
         if action == "mode":
             if value not in MODES:
@@ -209,9 +212,12 @@ class Evcc:
                 path, method = f"/api/vehicles/{vehicle}/plan/soc/{soc}/{stamp}", "POST"
         else:
             raise ValueError("Unbekannter Befehl.")
+        details = {"from": {"loadpoint": lp["title"]}, "to": {"action": action, "value": value}}
+        if control.dry_run:
+            self.runtime.storage.log_control("evcc", details, True, "nicht gesendet (Testmodus)")
+            return {**self.view(), "dry_run": True}
         await asyncio.to_thread(self._call, method, path)
-        self.runtime.storage.log_control("evcc", {"from": {"loadpoint": lp["title"]},
-                                                  "to": {"action": action, "value": value}}, False, "ok")
+        self.runtime.storage.log_control("evcc", details, False, "ok")
         await self.refresh()
         return self.view()
 

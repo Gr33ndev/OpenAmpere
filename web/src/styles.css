@@ -463,3 +463,10 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .device-row-compact .menu-hint { display: block; }
 .device-today { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; }
 .device-today small { font-size: 12px; color: var(--label); font-weight: 400; }
+
+/* control mode switch */
+.control-mode { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); }
+.control-mode.live { border-color: var(--accent); }
+.control-mode.test { border-color: var(--warning); }
+.control-mode-title { font-size: 13px; font-weight: 600; color: var(--label); }
+.control-mode.compact { padding: 14px 16px; }

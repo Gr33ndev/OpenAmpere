@@ -7,6 +7,7 @@ import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
+import { ControlModeBar } from "./ControlMode";
 import { Button, Checkbox, Dialog, Field, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
@@ -104,18 +105,9 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
 
   return (
     <SubPage title="Speicher & Notstrom" onBack={onBack}>
-      {!deviceSupportsControl && (
+      {!deviceSupportsControl ? (
         <Notice kind="info">Nur Anzeige – für {status?.device?.manufacturer}-Geräte kann OpenAmpere Einstellungen noch nicht ändern.</Notice>
-      )}
-      {deviceSupportsControl && !editable && (
-        <Notice kind="info">
-          Nur Anzeige – die Steuerung ist ausgeschaltet.{" "}
-          <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button>
-        </Notice>
-      )}
-      {editable && control?.dry_run && (
-        <Notice kind="warn">Testmodus aktiv: Änderungen werden nur protokolliert, nicht an den Wechselrichter gesendet.</Notice>
-      )}
+      ) : <ControlModeBar compact />}
       {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">Lese Einstellungen vom Wechselrichter …</p>)}
 
       {current?.external_change && (
@@ -406,24 +398,11 @@ const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? S
 type LogEntry = { ts: number; action: string; details: { from: Record<string, unknown>; to: Record<string, unknown> }; dry_run: boolean; result: string };
 
 export function ControlPage({ onBack }: PageProps) {
-  const { settings, locked, save, error, reload: reloadSettings } = useSettings();
-  const { data: log, reload } = useResource<{ entries: LogEntry[] }>("/api/control/log");
-  const [confirm, setConfirm] = useState<null | "enable" | "live">(null);
-  const [understood, setUnderstood] = useState(false);
-  if (!settings) return <SubPage title="Steuerung" onBack={onBack}><LoadState error={error} onRetry={reloadSettings} /></SubPage>;
-  const enabled = settings["control.enabled"];
-  const dryRun = settings["control.dry_run"];
+  const { data: log, reload } = useResource<{ entries: LogEntry[] }>("/api/control/log", 30_000);
 
   return (
-    <SubPage title="Steuerung" onBack={onBack}>
-      <div className="card form">
-        <SwitchRow label="Steuerung erlauben" checked={enabled} disabled={locked("control.enabled")}
-          hint="Erlaubt OpenAmpere, Einstellungen am Wechselrichter zu ändern (z. B. Notstrom-Reserve)."
-          onChange={(v) => (v ? setConfirm("enable") : save({ "control.enabled": false }))} />
-        <SwitchRow label="Testmodus – nichts wird gesendet" checked={dryRun} disabled={!enabled || locked("control.dry_run")}
-          hint="Änderungen werden nur protokolliert und nicht gesendet. Zum gefahrlosen Ausprobieren."
-          onChange={(v) => (v ? save({ "control.dry_run": true }) : setConfirm("live"))} />
-      </div>
+    <SubPage title="Steuerung und Protokoll" onBack={onBack}>
+      <ControlModeBar />
       <Notice kind="info">
         Solange ein anderer Energiemanager (z. B. die bisherige Smartbox) angeschlossen ist, kann er Einstellungen wieder überschreiben.
         Prüfe nach Änderungen, ob sie erhalten bleiben.
@@ -442,25 +421,6 @@ export function ControlPage({ onBack }: PageProps) {
         {!!log?.entries.length && <button className="link" onClick={reload}>Aktualisieren</button>}
       </div>
 
-      {confirm === "enable" && (
-        <Dialog title="Steuerung erlauben?" confirm="Erlauben"
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => { setConfirm(null); void save({ "control.enabled": true, "control.dry_run": true }); }}>
-          <p>OpenAmpere darf dann Einstellungen deines Wechselrichters ändern. Zur Sicherheit startet die Steuerung im <strong>Testmodus</strong> – es wird noch nichts gesendet.</p>
-        </Dialog>
-      )}
-      {confirm === "live" && (
-        <Dialog title="Testmodus beenden?" confirm="Ja, wirklich senden" danger disabled={!understood}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => { setConfirm(null); void save({ "control.dry_run": false }); }}>
-          <p>Änderungen werden ab jetzt direkt an den Wechselrichter gesendet. Falsche Einstellungen können dazu führen, dass der Speicher nicht wie gewohnt arbeitet.</p>
-          <p className="hint">OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne Gewähr und ersetzt keinen
-            Elektrofachbetrieb. Ungeeignete Einstellungen können den Speicher belasten und Garantie- oder
-            Gewährleistungsansprüche (gegenüber Hersteller, Händler oder Insolvenzverwalter) gefährden.
-            Notiere die bisherigen Werte, bevor du etwas änderst.</p>
-          <Checkbox checked={understood} onChange={setUnderstood}>Ich habe das verstanden und handle auf eigene Verantwortung.</Checkbox>
-        </Dialog>
-      )}
     </SubPage>
   );
 }
@@ -977,13 +937,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
               {(rule === "limit_60" || rule === "limit_70") && !kwp && (
                 <Notice kind="info">Gib oben die Modulleistung an, damit OpenAmpere den erlaubten Wert berechnen kann.</Notice>
               )}
-              {!status?.control.enabled && (
-                <Notice kind="info">Nur Anzeige – die Steuerung ist ausgeschaltet.{" "}
-                  <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
-              )}
-              {status?.control.enabled && status.control.dry_run && (
-                <Notice kind="warn">Testmodus aktiv: Die Änderung wird nur protokolliert, nicht gesendet.</Notice>
-              )}
+              <ControlModeBar compact />
               <div className="card form">
                 {hasPreset && (
                   <Segmented value={preset} onChange={setPreset} disabled={!editable}
@@ -1152,10 +1106,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
         einem festen Zeitfenster (z. B. Nachtstrom). OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit
         Zeitbegrenzung: Stoppt OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück.
       </Notice>
-      {!status?.control.enabled && (
-        <Notice kind="info">Die Steuerung ist ausgeschaltet.{" "}
-          <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
-      )}
+      <ControlModeBar compact />
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && data && (
         <>

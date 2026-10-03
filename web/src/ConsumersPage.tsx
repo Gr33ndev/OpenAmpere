@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Status } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, Notice, Slider, SubPage, SwitchRow, toast } from "./ui";
+import { Button, Field, LoadState, Slider, SubPage, SwitchRow, toast } from "./ui";
 
 export type ConsumerData = {
   id?: string; name: string; kind: "mypv" | "shelly1" | "shelly2" | "http"; host: string; port: number; unit: number;
@@ -75,10 +75,6 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
         ist. Wer oben steht, ist zuerst dran. Ein my-PV-Heizstab folgt dem Überschuss stufenlos, andere Geräte werden
         über ein Shelly-Relais oder zwei Web-Adressen ein- und ausgeschaltet.</p>
       <p className="hint">Eine Wallbox steuert evcc. Wer zuerst Überschuss bekommt, stellst du unter Geräte → Wallbox einrichten ein.</p>
-      {!status?.control.enabled && (
-        <Notice kind="info">Die Steuerung ist ausgeschaltet – es wird nichts geschaltet.{" "}
-          <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>
-      )}
       {!forms && <LoadState error={error} onRetry={reload} />}
       {forms?.map((c, i) => {
         const state = live(c.id);

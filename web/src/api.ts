@@ -238,6 +238,13 @@ export function useLive(): { snap: Snapshot | null; online: boolean } {
 }
 
 const RETRY_MS = 5000;
+const REFRESH_EVENT = "openampere:refresh";
+
+/** Reload every resource on screen, e.g. after a setting changed that several pages show. */
+export function refreshAll(): void {
+  invalidate();
+  window.dispatchEvent(new Event(REFRESH_EVENT));
+}
 
 /** Re-fetches a JSON resource whenever the path changes and every refreshMs; path null = nothing to load.
  *  Failed loads are retried automatically every few seconds. */
@@ -269,10 +276,12 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
         });
     load();
     const timer = refreshMs ? window.setInterval(load, refreshMs) : undefined;
+    window.addEventListener(REFRESH_EVENT, load);
     return () => {
       active = false;
       window.clearInterval(timer);
       window.clearTimeout(retry);
+      window.removeEventListener(REFRESH_EVENT, load);
     };
   }, [path, refreshMs, nonce]);
 

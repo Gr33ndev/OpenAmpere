@@ -57,7 +57,9 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
   const send = async (action: string, value?: unknown) => {
     setBusy(true);
     try {
-      onChange(await postJson<EvccView>(`/api/evcc/loadpoints/${lp.id}`, { action, value }));
+      const view = await postJson<EvccView & { dry_run?: boolean }>(`/api/evcc/loadpoints/${lp.id}`, { action, value });
+      if (view.dry_run) toast("Testmodus: nur im Protokoll, nicht an evcc gesendet");
+      onChange(view);
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {

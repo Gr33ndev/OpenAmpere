@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Device, DevicesView } from "./api";
 import { postJson, useResource } from "./api";
 import { ConsumersPage } from "./ConsumersPage";
+import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
 import { CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
 import { goBack, navigate } from "./route";
@@ -122,6 +123,7 @@ export function DevicesTab({ page }: { page: string | null }) {
   return (
     <div className="page">
       <div className="page-head"><h1>Geräte</h1></div>
+      {!empty && <ControlModeBar compact />}
       {content}
       {!!loadpoints.length && (
         <>
