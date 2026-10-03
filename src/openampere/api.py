@@ -37,6 +37,7 @@ from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
 from .devices import Devices
 from .notify import Notifier
+from .updates import Updates
 from .diagnostics import Diagnostics, report_markdown
 
 log = logging.getLogger(__name__)
@@ -106,13 +107,14 @@ def create_app(runtime: Runtime) -> FastAPI:
     devices = Devices(runtime, surplus, evcc)
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
+    updates = Updates(runtime, VERSION)
 
     async def watchdog() -> None:
         """Background jobs: find the inverter after an IP change, exchange prices, grid charging."""
         while True:
             await asyncio.sleep(30)
             for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
-                        notifier.check):
+                        notifier.check, updates.tick):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -472,6 +474,25 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/tariffs")
     def get_tariffs():
         return {"tariffs": [asdict(t) for t in runtime.tariffs.all()]}
+
+    @app.get("/api/update")
+    def get_update():
+        return updates.view()
+
+    @app.post("/api/update")
+    async def post_update(body: dict = Body(...)):
+        if body.get("action") == "check":
+            await updates.check(force=True)
+        elif body.get("action") == "install":
+            if not updates.available:
+                raise HTTPException(409, "Es gibt keine neuere Version.")
+            try:
+                updates.request()
+            except RuntimeError as err:
+                raise HTTPException(409, str(err)) from None
+        else:
+            raise HTTPException(400, "Unbekannte Aktion.")
+        return updates.view()
 
     @app.get("/api/billing")
     def get_billing():

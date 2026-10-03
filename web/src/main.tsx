@@ -13,6 +13,7 @@ import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
 import { setTimeZone } from "./format";
 import { DEMO } from "./demo/flag";
+import { UpdateBanner } from "./Updates";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
 
@@ -91,6 +92,7 @@ function App() {
           <a href="../impressum.html">Impressum</a>
         </div>
       )}
+      {!DEMO && !error && <UpdateBanner />}
       {error && <div className="offline-banner" role="alert">Keine Verbindung zum OpenAmpere-Server – versuche erneut …</div>}
       {status.web_build && firstBuild.current && status.web_build !== firstBuild.current && (
         <div className="update-banner" role="status">

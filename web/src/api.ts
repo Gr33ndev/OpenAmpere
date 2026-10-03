@@ -85,6 +85,8 @@ export type Settings = {
     "pv.input_names": string[];
     "pv.installed_kwp": number;
     "battery.capacity_kwh": number;
+    "updates.check": boolean;
+    "updates.auto": boolean;
     "grid.feed_in_rule": FeedInRule;
     "notify.ntfy_url": string;
     "notify.on_unreachable": boolean;

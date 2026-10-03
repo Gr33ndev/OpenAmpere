@@ -73,7 +73,9 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
-Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`) und ob es evcc für eine Wallbox mit einrichten soll. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Zum Aktualisieren führt man es einfach erneut aus. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
+Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`) und ob es evcc für eine Wallbox mit einrichten soll. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
+
+**Updates:** Gibt es eine neue Version, zeigt die App oben einen Hinweis, ein Tipp auf **Aktualisieren** genügt. Unter Mehr → Über OpenAmpere lassen sich Updates auch nachts automatisch installieren. Dafür richtet das Install-Script einen kleinen Helfer-Container ein ([scripts/updater.sh](scripts/updater.sh)): Er hat Zugriff auf Docker, reagiert aber nur auf eine Anfrage-Datei, die die App in den Datenordner schreibt. Dann lädt er die neue Version, startet sie und prüft, ob sie läuft. Startet sie nicht, kommt die bisherige Version zurück. Die App selbst bekommt keinen Zugriff auf Docker. Nach neuen Versionen sucht die App alle 6 Stunden bei GitHub, das lässt sich abschalten. Wer schon vorher mit dem Script installiert hat, führt es einmal erneut aus, damit der Helfer dazukommt.
 
 **2. Im Browser einrichten:** Die angezeigte Adresse öffnen, meist `http://<server-ip>:8080`, und ein **Passwort** festlegen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Ansehen kann man die Werte im Heimnetz ohne Passwort. Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung.
 

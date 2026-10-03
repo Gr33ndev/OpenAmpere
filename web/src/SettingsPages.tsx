@@ -8,6 +8,7 @@ import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
+import { UpdatesCard } from "./Updates";
 import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
@@ -572,6 +573,7 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
           <dt>Version</dt><dd>{status?.version ?? "–"}</dd>
         </dl>
       </div>
+      {!DEMO && <UpdatesCard />}
       <div className="card">
         <p>OpenAmpere ist ein unabhängiges Community-Projekt für Solaranlagen mit Batteriespeicher. Es läuft komplett lokal und braucht keine Cloud.</p>
         <p className="hint">Alle genannten Produktnamen und Marken gehören ihren jeweiligen Inhabern. Rechtliche Hinweise und Hintergrund: siehe README im Quellcode.</p>

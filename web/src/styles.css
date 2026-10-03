@@ -325,6 +325,12 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 @media (min-width: 640px) { .overlay { align-items: center; } }
 .dialog { width: min(480px, 100%); background: var(--card); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .dialog h2 { margin: 0; font-size: 20px; font-weight: 500; }
+.update-banner.update-available { flex-wrap: nowrap; justify-content: space-between; gap: 10px; text-align: left; }
+.banner-button { flex: none; border: 0; border-radius: 999px; padding: 7px 14px; background: var(--accent); color: #fff;
+  font: inherit; font-weight: 600; cursor: pointer; }
+.banner-close { flex: none; border: 0; background: none; color: var(--label); font-size: 22px; line-height: 1; padding: 4px; cursor: pointer; }
+.code-inline { display: block; margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: var(--code-bg, rgba(0,0,0,.06));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-x: auto; white-space: nowrap; }
 .dialog-body p { margin: 0 0 10px; }
 .dialog-actions { display: flex; flex-direction: column; gap: 10px; }
 .toast {

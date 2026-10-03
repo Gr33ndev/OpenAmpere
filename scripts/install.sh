@@ -10,6 +10,8 @@ set -euo pipefail
 
 IMAGE="ghcr.io/gr33ndev/openampere:latest"
 EVCC_IMAGE="evcc/evcc:latest"
+UPDATER_IMAGE="docker:cli"
+SITE="https://gr33ndev.github.io/OpenAmpere"
 APP_UID=1000  # user inside the OpenAmpere image
 MARKER="# erzeugt von install.sh"
 DOCS="https://github.com/Gr33ndev/OpenAmpere#installation-von-hand"
@@ -85,6 +87,14 @@ main() {
       fail "$DIR wurde von Hand eingerichtet. Aktualisieren dort mit: git pull && docker compose up -d --build"
     step "OpenAmpere ist schon installiert in $DIR"
     confirm "Auf die neueste Version aktualisieren?" j || exit 0
+    # keep the choices of the first installation, but bring the files up to date (e.g. the update helper)
+    PORT=$(sed -n 's/.*OPENAMPERE_SERVER_PORT: "\([0-9]*\)".*/\1/p' "$COMPOSE")
+    PORT=${PORT:-8080}
+    TZ_NAME=$(sed -n 's/^ *TZ: *//p' "$COMPOSE" | head -n 1)
+    TZ_NAME=${TZ_NAME:-Europe/Berlin}
+    EVCC_CONTAINER=no
+    grep -q "^  evcc:" "$COMPOSE" && EVCC_CONTAINER=yes
+    write_files
     start_and_report
     return
   fi
@@ -116,11 +126,29 @@ main() {
   TZ_NAME=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || true)
   [ -n "$TZ_NAME" ] || TZ_NAME="Europe/Berlin"
 
-  # --- files ---
-  step "Dateien anlegen in $DIR"
+  write_files
+  if [ ! -f "$DIR/data/config.yaml" ]; then
+    {
+      say "# Startwerte, alles lässt sich danach in der App ändern."
+      say "timezone: $TZ_NAME"
+      if [ -n "$EVCC_URL" ]; then
+        say "evcc:"
+        say "  url: $EVCC_URL"
+      fi
+    } | $SUDO tee "$DIR/data/config.yaml" >/dev/null
+    $SUDO chown "$APP_UID:$APP_UID" "$DIR/data/config.yaml"
+  fi
+
+  start_and_report
+}
+
+# docker-compose.yml and the update helper; uses DIR, COMPOSE, PORT, TZ_NAME, EVCC_CONTAINER
+write_files() {
+  step "Dateien schreiben in $DIR"
   $SUDO mkdir -p "$DIR/data"
+  $SUDO chown "$APP_UID:$APP_UID" "$DIR/data"
   {
-    say "$MARKER am $(date +%F). Aktualisieren: das Script einfach erneut ausführen."
+    say "$MARKER am $(date +%F). Aktualisieren: in der App oder das Script erneut ausführen."
     say "services:"
     say "  openampere:"
     say "    image: $IMAGE"
@@ -139,21 +167,26 @@ main() {
       say "    volumes:"
       say "      - ./evcc:/root/.evcc"
     fi
+    say "  updater:  # installiert Updates, wenn in der App jemand auf Aktualisieren tippt (siehe updater.sh)"
+    say "    image: $UPDATER_IMAGE"
+    say "    restart: unless-stopped"
+    say "    entrypoint: [\"sh\", \"$DIR/updater.sh\"]"
+    say "    environment:"
+    say "      OPENAMPERE_DIR: $DIR"
+    say "    volumes:"
+    say "      - /var/run/docker.sock:/var/run/docker.sock"
+    say "      - $DIR:$DIR"
   } | $SUDO tee "$COMPOSE" >/dev/null
-  if [ ! -f "$DIR/data/config.yaml" ]; then
-    {
-      say "# Startwerte, alles lässt sich danach in der App ändern."
-      say "timezone: $TZ_NAME"
-      if [ -n "$EVCC_URL" ]; then
-        say "evcc:"
-        say "  url: $EVCC_URL"
-      fi
-    } | $SUDO tee "$DIR/data/config.yaml" >/dev/null
+  # the helper script: next to this script when run from the repository, otherwise from the website
+  local source=${BASH_SOURCE[0]:-}
+  if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/updater.sh" ]; then
+    $SUDO cp "$(dirname "$source")/updater.sh" "$DIR/updater.sh"
+  else
+    curl -fsSL "$SITE/updater.sh" | $SUDO tee "$DIR/updater.sh" >/dev/null ||
+      fail "Der Update-Helfer ließ sich nicht herunterladen."
   fi
-  $SUDO chown -R "$APP_UID:$APP_UID" "$DIR/data"
+  $SUDO chmod 755 "$DIR/updater.sh"
   say "Fertig: $COMPOSE"
-
-  start_and_report
 }
 
 start_and_report() {
@@ -195,7 +228,8 @@ start_and_report() {
     say "  aus der App unter Mehr → Verbindung → Wallbox."
   fi
   say ""
-  say "  Aktualisieren: dieses Script erneut ausführen"
+  say "  Neue Versionen zeigt die App oben an, ein Tipp auf Aktualisieren genügt."
+  say "  Automatisch nachts: in der App unter Mehr → Über OpenAmpere."
   say "  Meldungen ansehen: cd $DIR && $DOCKER compose logs -f"
 }
 

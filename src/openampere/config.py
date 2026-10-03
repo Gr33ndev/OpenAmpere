@@ -69,6 +69,12 @@ class BatteryConfig:
 
 
 @dataclass
+class UpdatesConfig:
+    check: bool = True  # look for new versions on GitHub every few hours
+    auto: bool = False  # install them at night without asking (needs the updater container from install.sh)
+
+
+@dataclass
 class GridConfig:
     # Which feed-in limit applies to the system (Germany):
     #   unknown   – not declared; raising the limit needs the grid operator's written consent
@@ -117,6 +123,7 @@ class Config:
     pv: PvConfig = field(default_factory=PvConfig)
     grid: GridConfig = field(default_factory=GridConfig)
     battery: BatteryConfig = field(default_factory=BatteryConfig)
+    updates: UpdatesConfig = field(default_factory=UpdatesConfig)
     notify: NotifyConfig = field(default_factory=NotifyConfig)
     evcc: EvccConfig = field(default_factory=EvccConfig)
     timezone: str = "Europe/Berlin"
@@ -146,6 +153,8 @@ EDITABLE: dict[str, tuple] = {
     "pv.input_names": ("strlist", 6, 30),
     "pv.installed_kwp": ("float", 0, 1000),
     "battery.capacity_kwh": ("float", 0, 200),
+    "updates.check": ("bool",),
+    "updates.auto": ("bool",),
     "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),
     "notify.ntfy_url": ("url",),
     "notify.ntfy_token": ("secret",),

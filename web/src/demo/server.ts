@@ -185,7 +185,7 @@ const settings = {
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
-    "notify.on_battery_health": true, "battery.capacity_kwh": BATTERY_WH / 1000,
+    "notify.on_battery_health": true, "battery.capacity_kwh": BATTERY_WH / 1000, "updates.check": false, "updates.auto": false,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
   },
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
@@ -421,6 +421,9 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/pv/inputs": pvInputs,
   "/api/temperatures/timeline": temperatures,
   "/api/battery/health": batteryHealth,
+  // the demo is the website: it is updated with every release and has nothing to install
+  "/api/update": () => ({ current: "Demo", available: false, updater: false, requested: false, check: false, auto: false,
+    latest: null, status: null, checked: null, error: null }),
   "/api/billing": billing,
   "/api/battery/settings": () => ({ work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
