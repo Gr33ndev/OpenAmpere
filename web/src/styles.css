@@ -515,3 +515,11 @@ details.advanced > summary { cursor: pointer; color: var(--accent-text); font-we
 details.advanced[open] { display: flex; flex-direction: column; gap: 14px; }
 .danger-link { color: var(--delight-text); }
 .choice > svg { flex: none; }
+
+/* numbered steps */
+.steps-list { list-style: none; counter-reset: step; padding: 0; margin: 12px 0; display: flex; flex-direction: column; gap: 18px; }
+.steps-list > li { counter-increment: step; position: relative; padding-left: 40px; display: flex; flex-direction: column; gap: 8px; }
+.steps-list > li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
+.steps-list p { margin: 0; }
+main a:not(.btn) { color: var(--accent-text); }

@@ -199,41 +199,48 @@ export function WallboxPage({ onBack }: PageProps) {
   return (
     <SubPage title="Wallbox einrichten" onBack={onBack}>
       <p className="hint">Die Wallbox steuert <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a>, ein
-        eigenständiges Open-Source-Projekt für Solarladen. evcc kennt sehr viele Wallboxen und Fahrzeuge. Bedienen
-        kannst du die Wallbox unter „Geräte“, die Ladevorgänge findest du in der Auswertung. evcc bekommt von OpenAmpere
-        die Werte von Netz, Solar und Speicher.</p>
+        eigenständiges Open-Source-Projekt für Solarladen. Bedienen kannst du sie danach unter „Geräte“.</p>
       {!view && <LoadState error={error} onRetry={reload} />}
-
+      {view?.state && <Notice kind="ok">Verbunden mit evcc {view.state.version ?? ""} · {cars.length} Ladepunkt{cars.length === 1 ? "" : "e"}</Notice>}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
 
-      <div className="section-title">Verbindung zu evcc</div>
-      <div className="card form">
-        <Field label="Adresse von evcc" hint="Zum Beispiel http://192.168.178.20:7070 oder http://evcc:7070 (Docker)">
-          <input className="input" value={url} placeholder="http://" onChange={(e) => setUrl(e.target.value)} />
-        </Field>
-        <Field label="Admin-Passwort von evcc (optional)"
-          hint={settings?.secrets["evcc.password"]?.set ? "Gespeichert. Leer lassen, um es zu behalten." : "Nur nötig, wenn evcc für Änderungen eine Anmeldung verlangt."}>
-          <input className="input" type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
-        <Button busy={busy} disabled={!settings || (url === settings.values["evcc.url"] && !password)}
-          onClick={() => void save({ "evcc.url": url, ...(password ? { "evcc.password": password } : {}) })}>Speichern und verbinden</Button>
-        {view?.state && <Notice kind="ok">Verbunden mit evcc {view.state.version ?? ""} · {cars.length} Ladepunkt{cars.length === 1 ? "" : "e"}</Notice>}
-      </div>
+      <ol className="steps-list">
+        <li>
+          <strong>evcc installieren</strong>
+          <p className="hint">Am einfachsten mit Docker auf demselben Rechner wie OpenAmpere. Wallbox und Fahrzeug richtest
+            du in evcc ein, siehe <a href="https://docs.evcc.io" target="_blank" rel="noreferrer">Anleitung von evcc</a>.</p>
+        </li>
+        <li>
+          <strong>Messwerte von OpenAmpere in evcc übernehmen</strong>
+          <p className="hint">Dann braucht evcc keine eigene Verbindung zum Wechselrichter, der nur wenige erlaubt. Kopiere die
+            Zähler-Konfiguration und füge sie in evcc ein (evcc.yaml oder „benutzerdefiniertes Gerät“).</p>
+          <Button variant="secondary" onClick={() => void copy()}>Konfiguration kopieren</Button>
+          <details className="advanced">
+            <summary>Konfiguration ansehen</summary>
+            <pre className="code-block">{siteYaml(origin)}</pre>
+          </details>
+        </li>
+        <li>
+          <strong>evcc mit OpenAmpere verbinden</strong>
+          <div className="card form">
+            <Field label="Adresse von evcc" hint="z. B. http://192.168.178.20:7070 oder http://evcc:7070 (Docker)">
+              <input className="input" value={url} placeholder="http://" onChange={(e) => setUrl(e.target.value)} />
+            </Field>
+            <details className="advanced">
+              <summary>Erweitert</summary>
+              <Field label="Admin-Passwort von evcc"
+                hint={settings?.secrets["evcc.password"]?.set ? "Gespeichert. Leer lassen, um es zu behalten." : "Nur nötig, wenn evcc für Änderungen eine Anmeldung verlangt."}>
+                <input className="input" type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </Field>
+            </details>
+            <Button busy={busy} disabled={!settings || (url === settings.values["evcc.url"] && !password)}
+              onClick={() => void save({ "evcc.url": url, ...(password ? { "evcc.password": password } : {}) })}>Speichern und verbinden</Button>
+          </div>
+        </li>
+      </ol>
 
-      <p className="hint">Ob die Wallbox vor oder nach Speicher und Heizstab Sonnenstrom bekommt, stellst du unter „Geräte“
-        in der Liste „Wer bekommt Sonnenstrom zuerst?“ ein. OpenAmpere überträgt das an evcc.</p>
-
-      <div className="section-title">evcc einrichten</div>
-      <div className="card form">
-        <p className="hint">So nutzt evcc die Messwerte von OpenAmpere und braucht keine eigene Verbindung zum
-          Wechselrichter. Der Wechselrichter erlaubt nur wenige gleichzeitige Verbindungen. Füge in evcc diese Zähler
-          hinzu, entweder in der evcc.yaml oder in der Oberfläche von evcc als „benutzerdefiniertes Gerät“:</p>
-        <pre className="code-block">{siteYaml(origin)}</pre>
-        <Button variant="secondary" onClick={() => void copy()}>Konfiguration kopieren</Button>
-        <p className="hint">Wallbox und Fahrzeug richtest du direkt in evcc ein. Die Anleitung dazu steht in der
-          <a href="https://docs.evcc.io" target="_blank" rel="noreferrer"> Dokumentation von evcc</a>.</p>
-      </div>
-
+      <p className="hint">Wer zuerst Sonnenstrom bekommt (Speicher, Wallbox, Heizstab), stellst du unter „Geräte“ ein.
+        OpenAmpere überträgt den Speicher-Vorrang an evcc.</p>
       <p className="hint">evcc wird von der evcc-Community entwickelt und steht unter MIT-Lizenz. Für manche Geräte
         verlangt evcc ein Sponsoring. OpenAmpere nutzt nur die offene Schnittstelle von evcc und enthält keinen Code
         von evcc.</p>
