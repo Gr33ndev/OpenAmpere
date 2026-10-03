@@ -273,7 +273,7 @@ function charging() {
 function consumers() {
   const rod = heatingRod();
   return { consumers: [{ id: "demo1", name: "Heizstab", kind: "mypv", host: "heizstab.local", port: 502, unit: 1, channel: 0,
-    url_on: "", url_off: "", power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 80,
+    url_on: "", url_off: "", power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 50,
     price_limit_ct: null, enabled: true,
     state: { on: rod.on, power_w: rod.power, since: now() - 1800, error: null, temperature_c: rod.temperature, target_c: 60,
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
@@ -284,12 +284,22 @@ function evcc() {
     state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()] } };
 }
 
+/** Charging sessions of the last weeks, taken from the simulation. */
 function evccSessions() {
-  const day = 86400 * 1000;
-  return { sessions: [3, 5, 8, 12].map((ago, i) => ({
-    created: new Date(Date.now() - ago * day).toISOString(), finished: new Date(Date.now() - ago * day + 5 * 3600_000).toISOString(),
-    loadpoint: "Carport", vehicle: "e-Golf", energy_kwh: [18.4, 22.1, 9.7, 25.3][i], duration_s: [16200, 19800, 8100, 21600][i],
-    solar_pct: [92, 71, 100, 64][i], price: null })) };
+  const sessions = [];
+  let day = dayStart(new Date());
+  for (let n = 0; n < 45 && sessions.length < 12; n++) {
+    day = dayStart(new Date((day - 86400 + 7200) * 1000));
+    const charging = stepsOf(day).filter((s) => s.car > 0);
+    if (!charging.length) continue;
+    const energy = charging.reduce((a, s) => a + (s.car * STEP_S) / 3600, 0) / 1000;
+    if (energy < 0.5) continue;
+    sessions.push({ created: new Date(charging[0].ts * 1000).toISOString(),
+      finished: new Date((charging[charging.length - 1].ts + STEP_S) * 1000).toISOString(),
+      loadpoint: "Carport", vehicle: "e-Golf", energy_kwh: Math.round(energy * 10) / 10,
+      duration_s: charging.length * STEP_S, solar_pct: 100, price: null });
+  }
+  return { sessions };
 }
 
 function controlLog() {

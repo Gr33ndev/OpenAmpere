@@ -19,6 +19,7 @@ const CAR_KWH = 44;
 const CAR_MIN_W = 1380; // 6 A, one phase
 const ROD_MAX_W = 3000;
 const WATER_TARGET = 60;
+export const DEVICES_FROM_SOC = 50; // the devices get surplus once the battery has this state of charge
 
 function random(seed: number): () => number {
   let s = seed >>> 0;
@@ -71,11 +72,11 @@ function simulateDay(start: number, soc: number): Step[] {
   const weekend = date.getDay() === 0 || date.getDay() === 6;
   const steps: Step[] = [];
   let cloud = clouds;
-  // the car is at home on weekends and on some weekdays, plugged in from late morning
-  const carHome = weekend || rnd() < 0.35;
-  const carFrom = 10 + rnd() * 2, carUntil = 17 + rnd() * 2;
-  let carSoc = 30 + rnd() * 25;
-  let water = 44 + rnd() * 4;
+  // the car is at home on weekends and on most weekdays (home office), plugged in from the morning
+  const carHome = weekend || rnd() < 0.6;
+  const carFrom = 8.5 + rnd() * 2, carUntil = 16.5 + rnd() * 2.5;
+  let carSoc = 20 + rnd() * 30;
+  let water = 42 + rnd() * 6;
   for (let i = 0; i < 86400 / STEP_S; i++) {
     const ts = start + i * STEP_S;
     const hour = (i * STEP_S) / 3600;
@@ -89,7 +90,7 @@ function simulateDay(start: number, soc: number): Step[] {
     let free = pv - household;
     let battery = 0; // + = discharging
     const room = ((100 - soc) / 100) * BATTERY_WH / h;
-    if (free > 0 && soc < 80) {
+    if (free > 0 && soc < DEVICES_FROM_SOC) {
       battery = -Math.min(free, MAX_BATTERY_W, room);
       free += battery;
     }
@@ -105,7 +106,9 @@ function simulateDay(start: number, soc: number): Step[] {
       rod = Math.min(ROD_MAX_W, Math.round((free - 100) / 50) * 50);
       free -= rod;
     }
-    water = Math.max(35, water + (rod * h / 1000) * 4.3 - 0.25 * h);
+    // showers in the morning and in the evening use hot water, the rest is standing loss
+    const tapping = (hour >= 6.5 && hour < 7.5) || (hour >= 19 && hour < 20.5) ? 6 : 0.25;
+    water = Math.max(35, water + (rod * h / 1000) * 4.3 - tapping * h);
     if (free > 0 && soc < 100 && battery === 0) battery = -Math.min(free, MAX_BATTERY_W, room);
     else if (free > 0 && soc < 100) battery -= Math.min(free, MAX_BATTERY_W + battery, room + battery);
     const deficit = household + car + rod - pv;
