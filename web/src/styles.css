@@ -510,3 +510,8 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .report-section[open] > summary::after { transform: rotate(-90deg); }
 .report-section[open] > summary { margin-bottom: 8px; }
 .facts dt .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+details.advanced > summary { cursor: pointer; color: var(--accent-text); font-weight: 600; font-size: 14px; min-height: 40px;
+  display: flex; align-items: center; }
+details.advanced[open] { display: flex; flex-direction: column; gap: 14px; }
+.danger-link { color: var(--delight-text); }
+.choice > svg { flex: none; }
