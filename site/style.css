@@ -72,7 +72,7 @@ p { margin: 0 0 12px; }
 nav { display: flex; gap: 4px 18px; flex-wrap: wrap; justify-content: flex-end; }
 nav a { color: var(--text); text-decoration: none; font-size: 15px; padding: 10px 0; }
 nav a:hover { color: var(--accent-text); }
-@media (max-width: 560px) { nav a[href="#funktionen"], nav a[href="#installation"] { display: none; } }
+@media (max-width: 560px) { nav a[href="./#funktionen"], nav a[href="./#installation"] { display: none; } }
 
 /* hero */
 .hero { padding: 48px 0 8px; }
