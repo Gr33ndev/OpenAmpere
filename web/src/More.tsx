@@ -9,6 +9,7 @@ import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { deviceStatus } from "./DevicesPage";
+import { PvInputsCard, TemperaturesCard } from "./Dashboard";
 import { goBack, navigate } from "./route";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -73,6 +74,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>Einspeiseregel</dt><dd>{RULES[settings?.["grid.feed_in_rule"] ?? "unknown"]}</dd>
         </dl>
       </div>
+      <PvInputsCard snap={snap} />
       <div className="card menu">
         <MenuRow label="Modulfelder benennen" hint="z. B. Süddach, Garage" onClick={() => onNavigate("pv")} />
         <MenuRow label="Einspeisebegrenzung" hint="Modulleistung und gesetzliche Regel" onClick={() => onNavigate("export-limit")} />
@@ -90,6 +92,8 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           </div>
         </>
       )}
+
+      <TemperaturesCard snap={snap} />
 
       <div className="section-title">Zählerstände</div>
       <div className="card">

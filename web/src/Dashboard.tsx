@@ -4,17 +4,9 @@ import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
 import { Notice } from "./ui";
+import { KeyFigures } from "./KeyFigures";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
-
-function Tile({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="tile">
-      <div className="tile-label"><span className="dot" style={{ background: color }} />{label}</div>
-      <div className="tile-value">{value}</div>
-    </div>
-  );
-}
 
 export function Ratio({ label, value }: { label: string; value: number | null }) {
   return (
@@ -34,7 +26,7 @@ export function inputName(names: string[] | undefined, index: number) {
   return names?.[index]?.trim() || `Modulfeld ${index + 1}`;
 }
 
-function PvInputsCard({ snap }: { snap: Snapshot | null }) {
+export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
   const { data: settings } = useResource<Settings>("/api/settings");
   const inputs = activeInputs(snap);
   if (inputs.length < 2) return null; // a single input is already the PV total
@@ -63,7 +55,7 @@ const TEMPERATURE_LABELS: [keyof Snapshot["temperatures"], string][] = [
   ["battery2", "Speicher 2"],
 ];
 
-function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
+export function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
   const t = snap?.temperatures ?? {};
   const rows = TEMPERATURE_LABELS.filter(([key]) => t[key] != null);
   if (!rows.length) return null;
@@ -162,7 +154,6 @@ function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; to
 export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
   const { data: devicesView } = useResource<DevicesView>("/api/devices", 30_000);
-  const e = today?.energy_wh;
   const stale = useStale(snap, online, status);
   const devices = status?.devices.items ?? [];
 
@@ -184,25 +175,13 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
       )}
       <ImportHint />
       <EnergyFlow snap={snap} stale={stale} devices={devices} />
-      <Tips />
 
-      <div className="section-title">Tageswerte</div>
       {today?.partial_since && <p className="hint">Erfasst seit {time(today.partial_since)} Uhr (OpenAmpere läuft erst seit heute).</p>}
-      <div className="tiles">
-        <Tile label="Erzeugt" value={kwh(e?.pv)} color="var(--pv)" />
-        <Tile label="Verbraucht" value={kwh(e?.load)} color="var(--house)" />
-        <Tile label="Ins Netz" value={kwh(e?.grid_export)} color="var(--grid)" />
-        <Tile label="Aus dem Netz" value={kwh(e?.grid_import)} color="var(--grid)" />
-        <Tile label="Gespeichert" value={kwh(e?.battery_charge)} color="var(--battery)" />
-        <Tile label="Genutzt" value={kwh(e?.battery_discharge)} color="var(--battery)" />
-      </div>
-      <div className="card">
-        <Ratio label="Autark" value={today?.autarky ?? null} />
-      </div>
+      <KeyFigures summary={today} title="Heute" />
 
       <DevicesCard devices={devices} todayWh={devicesView?.today_wh ?? {}} gridCharging={!!status?.devices.grid_charging} />
-      <PvInputsCard snap={snap} />
-      <TemperaturesCard snap={snap} />
+      <Tips />
+      <p className="hint center">Leistung je Modulfeld und Temperaturen findest du unter Mehr → Meine Anlage.</p>
     </div>
   );
 }
