@@ -28,6 +28,8 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
 applyTheme(storedTheme());
 // the demo inside the phone frame on the website: scroll without a visible scrollbar
 if (DEMO && window.self !== window.top) document.documentElement.classList.add("embedded");
+// screenshots for the README (scripts/screenshots.sh) are taken without the demo banner
+const SCREENSHOT = DEMO && new URLSearchParams(window.location.search).has("screenshot");
 
 function App() {
   const route = useRoute();
@@ -82,7 +84,7 @@ function App() {
 
   return (
     <div className="app">
-      {DEMO && (
+      {DEMO && !SCREENSHOT && (
         <div className="demo-banner" role="note">
           <span><strong>Demo</strong> mit erfundenen Werten</span>
           <a href="../">Infos</a>

@@ -6,6 +6,14 @@
 
 OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Daten lokal und zeigt sie im Browser an. Auf dem Smartphone lässt sich die Seite zum Home-Bildschirm hinzufügen und verhält sich dann wie eine App. Kein Konto, keine Cloud, keine Abhängigkeit von einem Hersteller-Server.
 
+<p align="center">
+  <img src="docs/screenshots/overview.png" width="190" alt="Übersicht mit Energiefluss von Solar, Speicher, Netz, Wallbox und Heizstab">
+  <img src="docs/screenshots/devices.png" width="190" alt="Geräte: Speicher und Wallbox bedienen">
+  <img src="docs/screenshots/report.png" width="190" alt="Auswertung mit Tageswerten und Leistungskurve">
+  <img src="docs/screenshots/overview-dark.png" width="190" alt="Übersicht im dunklen Design">
+</p>
+<p align="center"><sub>Aus der <a href="https://gr33ndev.github.io/OpenAmpere/demo/">Demo</a> mit erfundenen Werten. Neu erzeugen mit <code>scripts/screenshots.sh</code>.</sub></p>
+
 > Unabhängiges Community-Projekt. Hintergrund und rechtliche Hinweise stehen [am Ende dieser Seite](#hintergrund--rechtliche-hinweise).
 
 ## Unterstützte Geräte
