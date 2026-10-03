@@ -19,7 +19,7 @@ import "./styles.css";
 type Tab = "dashboard" | "devices" | "report" | "more";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
-  { id: "dashboard", label: "Dashboard", icon: <NavHome /> },
+  { id: "dashboard", label: "Übersicht", icon: <NavHome /> },
   { id: "devices", label: "Geräte", icon: <NavDevices /> },
   { id: "report", label: "Auswertung", icon: <NavReport /> },
   { id: "more", label: "Mehr", icon: <NavMore /> },
@@ -102,9 +102,10 @@ function App() {
       </main>
       <nav className="bottom">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)} aria-label={t.label}
+          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}
             aria-current={tab === t.id ? "page" : undefined}>
             {t.icon}
+            <span className="nav-label">{t.label}</span>
           </button>
         ))}
       </nav>

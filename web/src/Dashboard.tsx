@@ -126,7 +126,7 @@ function Tips() {
   };
   return (
     <div className="card tips">
-      <strong>So liest du das Dashboard</strong>
+      <strong>So liest du die Übersicht</strong>
       <ul>
         <li>Die Linien zeigen, wohin der Strom gerade fließt: vom Dach, aus dem Speicher und aus dem Netz zum Haus und zu Geräten wie Wallbox oder Heizstab.</li>
         <li>„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.</li>
@@ -169,7 +169,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Dashboard</h1>
+        <h1>Übersicht</h1>
         <div className={`sub ${snap && !stale ? "" : "off"}`} role="status">
           {!snap ? "Verbinde …"
             : stale ? `Wechselrichter nicht erreichbar seit ${updatedLabel(snap.timestamp)} – angezeigt werden die letzten Werte`
