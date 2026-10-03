@@ -8,6 +8,7 @@ rm -rf _site
 (cd web && npm run build:demo)
 cp site/index.html site/impressum.html site/style.css _site/
 cp web/public/icon.svg _site/
+cp scripts/install.sh _site/install.sh
 mkdir -p _site/fonts
 fonts=web/node_modules/@fontsource-variable/dm-sans
 cp "$fonts/files/dm-sans-latin-wght-normal.woff2" "$fonts/files/dm-sans-latin-ext-wght-normal.woff2" _site/fonts/

@@ -141,3 +141,10 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
 .legal-page h3 { margin-top: 22px; }
 .legal-page p { color: var(--label); }
 .address { color: var(--text) !important; font-size: 18px; line-height: 1.7; }
+
+/* install command with copy button */
+.command { margin: 8px 0 12px; }
+.command pre { margin: 0; }
+.command .copy { margin-top: 8px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.command .copy:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }

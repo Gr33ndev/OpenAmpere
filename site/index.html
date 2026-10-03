@@ -104,31 +104,29 @@
       <ol class="steps">
         <li>
           <h3>Rechner vorbereiten</h3>
-          <p>Du brauchst einen Rechner mit Docker im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi,
-            ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Das kann auch der
-            Installationsbetrieb erledigen.</p>
+          <p>Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit
+            64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Das
+            kann auch der Installationsbetrieb erledigen.</p>
         </li>
         <li>
-          <h3>OpenAmpere starten</h3>
-          <pre><code>git clone https://github.com/Gr33ndev/OpenAmpere.git openampere
-cd openampere
-docker compose up -d --build</code></pre>
+          <h3>Installieren</h3>
+          <p>Diesen Befehl im Terminal des Rechners ausführen:</p>
+          <div class="command">
+            <pre><code id="install-command">curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash</code></pre>
+            <button class="copy" type="button" data-copy="install-command">Kopieren</button>
+          </div>
+          <p>Das Script installiert bei Bedarf Docker und fragt, ob du eine Wallbox hast. Dann richtet es
+            <a href="https://evcc.io">evcc</a> gleich mit ein. Zum Aktualisieren führst du es einfach noch einmal aus.</p>
         </li>
         <li>
           <h3>Im Browser einrichten</h3>
-          <p>http://&lt;server-ip&gt;:8080 öffnen und ein Passwort festlegen. Der Assistent sucht dann den
-            Wechselrichter. Auf dem iPhone kannst du die Seite zum Home-Bildschirm hinzufügen.</p>
-        </li>
-        <li>
-          <h3>Heizstab und Wallbox, falls vorhanden</h3>
-          <p>Einen Heizstab fügst du direkt in der App hinzu. Für eine Wallbox braucht es zusätzlich
-            <a href="https://evcc.io">evcc</a>. Es läuft als zweiter Container neben OpenAmpere und bekommt die Messwerte
-            von OpenAmpere. Die passenden Zeilen stehen schon in der docker-compose.yml, du musst sie nur einkommentieren.
-            Die App zeigt dir danach Schritt für Schritt, wie du beide verbindest.</p>
+          <p>Die Adresse öffnen, die das Script am Ende anzeigt, und ein Passwort festlegen. Der Assistent sucht dann den
+            Wechselrichter. Einen Heizstab fügst du unter Mehr → Verbindung hinzu, die Wallbox verbindest du dort Schritt
+            für Schritt mit evcc. Auf dem iPhone kannst du die Seite zum Home-Bildschirm hinzufügen.</p>
         </li>
       </ol>
-      <p class="small">Mehr Details, auch zum Zugriff von unterwegs, stehen im
-        <a href="https://github.com/Gr33ndev/OpenAmpere#installation-mit-docker">README auf GitHub</a>.</p>
+      <p class="small">Installation von Hand und Zugriff von unterwegs stehen im
+        <a href="https://github.com/Gr33ndev/OpenAmpere#installation">README auf GitHub</a>.</p>
     </section>
 
     <section class="wrap" id="sicherheit">
@@ -190,5 +188,14 @@ docker compose up -d --build</code></pre>
         Schrift: DM Sans (<a href="fonts/OFL.txt">SIL Open Font License</a>).</p>
     </div>
   </footer>
+  <script>
+    for (const button of document.querySelectorAll("[data-copy]")) {
+      button.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent);
+        button.textContent = "Kopiert";
+        setTimeout(() => (button.textContent = "Kopieren"), 2000);
+      });
+    }
+  </script>
 </body>
 </html>

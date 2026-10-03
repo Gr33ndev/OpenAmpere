@@ -52,31 +52,43 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 - **Wallbox mit evcc:** Wallboxen steuert das eigenständige Open-Source-Projekt [evcc](https://evcc.io). OpenAmpere liefert evcc die Messwerte von Netz, Solar und Speicher, sodass evcc keine eigene Verbindung zum Wechselrichter braucht, und zeigt die Ladepunkte in der App: Lademodus, Ladeziel, Ladeplan und Ladevorgänge. Ob Wallbox oder Heizstab zuerst Überschuss bekommt, ist einstellbar. Einrichtung: [docs/evcc.md](docs/evcc.md). Danke an die evcc-Community!
 - Siehe auch [docs/architektur.md](docs/architektur.md).
 
-## Installation mit Docker
+## Installation
 
-**Voraussetzungen:** ein Rechner mit Docker im selben Netz wie der Wechselrichter (Raspberry Pi, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Das Einschalten kann auch der Installationsbetrieb erledigen.
+**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Das Einschalten kann auch der Installationsbetrieb erledigen.
 
-**1. OpenAmpere starten**
+**1. Installieren:** Auf dem Rechner im Terminal ausführen:
 
 ```bash
-git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
-docker compose up -d --build
+curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
-**2. Im Browser einrichten:** `http://<server-ip>:8080` öffnen und ein **Passwort** festlegen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Ansehen kann man die Werte im Heimnetz ohne Passwort. Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung.
+Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`) und ob es evcc für eine Wallbox mit einrichten soll. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Zum Aktualisieren führt man es einfach erneut aus. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
+
+**2. Im Browser einrichten:** Die angezeigte Adresse öffnen, meist `http://<server-ip>:8080`, und ein **Passwort** festlegen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Ansehen kann man die Werte im Heimnetz ohne Passwort. Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung.
 
 **3. Optional: Heizstab oder Wärmepumpe.** Dafür braucht es keine weitere Software. In der App unter **Mehr → Verbindung → Heizstab und weitere Geräte** hinzufügen.
 
-**4. Optional: Wallbox.** Die Wallbox steuert [evcc](https://evcc.io), ein eigenes Open-Source-Projekt. Es läuft als zweiter Container neben OpenAmpere und bekommt die Messwerte von OpenAmpere. Deshalb kommt evcc nach OpenAmpere dran:
-1. In der `docker-compose.yml` die vorbereiteten Zeilen für evcc einkommentieren und `docker compose up -d` ausführen.
-2. Unter `http://<server-ip>:7070` in evcc Wallbox und Fahrzeug einrichten.
-3. In OpenAmpere unter **Mehr → Verbindung → Wallbox** die Zähler-Konfiguration kopieren, in evcc einfügen und die Adresse `http://localhost:7070` eintragen.
+**4. Optional: Wallbox.** Die Wallbox steuert [evcc](https://evcc.io), ein eigenes Open-Source-Projekt. Hat man im Script „Wallbox“ bejaht, läuft evcc schon als zweiter Container unter `http://<server-ip>:7070`, und OpenAmpere kennt seine Adresse. Dann:
+1. In evcc Wallbox und Fahrzeug einrichten.
+2. In OpenAmpere unter **Mehr → Verbindung → Wallbox** die Zähler-Konfiguration kopieren und in evcc einfügen. So bekommt evcc die Messwerte von Netz, Solar und Speicher von OpenAmpere.
 
-Läuft evcc schon auf einem anderen Rechner, entfallen die Schritte 1 und 2, und in Schritt 3 trägt man die Adresse dieses Rechners ein. Details stehen in [docs/evcc.md](docs/evcc.md).
+Läuft evcc schon woanders, trägt man unter Mehr → Verbindung → Wallbox dessen Adresse ein. Details stehen in [docs/evcc.md](docs/evcc.md).
 
 **Wo was ist:** Unter **Geräte** bedient man Speicher (Notstrom-Reserve, Ladegrenzen), Wallbox und Heizstab und legt fest, wer zuerst Sonnenstrom bekommt. Unter **Mehr** liegen Meine Anlage (mit Einspeisebegrenzung), Stromtarif, Verbindung, Steuerung und Protokoll, Benachrichtigungen, Zugriffsschutz, Darstellung, Daten & Sicherung und Diagnose.
 
-Passwort vergessen? Auf dem Server `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
+Passwort vergessen? Auf dem Server im Installationsordner `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
+
+### Installation von Hand
+
+Wer selbst bauen oder mitentwickeln will, nimmt das Repository statt des Scripts:
+
+```bash
+git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
+mkdir -p data && sudo chown 1000:1000 data
+docker compose up -d --build
+```
+
+Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.md](docs/evcc.md).
 
 ### Zugriff von unterwegs
 

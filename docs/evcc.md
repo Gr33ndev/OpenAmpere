@@ -28,8 +28,9 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
 
 evcc bekommt seine Messwerte von OpenAmpere. Deshalb zuerst OpenAmpere einrichten, dann evcc.
 
-1. evcc installieren, am einfachsten als zweiten Container neben OpenAmpere (siehe unten). Läuft evcc schon,
-   zum Beispiel auf einem anderen Rechner, kann es so bleiben.
+1. evcc installieren. Das Install-Script von OpenAmpere erledigt das, wenn man die Frage nach der Wallbox
+   bejaht. Bei einer Installation von Hand siehe unten. Läuft evcc schon, zum Beispiel auf einem anderen
+   Rechner, kann es so bleiben.
 2. In evcc die Zähler von OpenAmpere eintragen. Die fertige Konfiguration mit der richtigen Adresse zeigt die App
    unter Mehr → Verbindung → Wallbox zum Kopieren an. In der Weboberfläche von evcc fügt man sie als
    benutzerdefiniertes Gerät ein, alternativ in die `evcc.yaml`. Sie sieht so aus, statt `localhost` steht dort die
