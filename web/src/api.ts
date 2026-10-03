@@ -46,6 +46,7 @@ export type Status = {
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
+  firmware?: { serial?: string | null; firmware?: string; since?: number; history: { ts: number; old: string; new: string }[] };
 };
 
 export type Period = "day" | "week" | "month" | "year";
@@ -56,7 +57,7 @@ export type Summary = {
   to: number;
   energy_wh: Counters;
   partial_since?: number | null;
-  money?: { savings_eur: number; feed_in_eur: number; grid_cost_eur: number };
+  money?: { savings_eur: number; feed_in_eur: number; grid_cost_eur: number; base_fee_eur?: number; net_cost_eur?: number };
   autarky: number | null;
   self_consumption: number | null;
 };
@@ -83,6 +84,7 @@ export type Settings = {
     timezone: string;
     "pv.input_names": string[];
     "pv.installed_kwp": number;
+    "battery.capacity_kwh": number;
     "grid.feed_in_rule": FeedInRule;
     "notify.ntfy_url": string;
     "notify.on_unreachable": boolean;
@@ -90,6 +92,8 @@ export type Settings = {
     "notify.on_overwritten": boolean;
     "notify.on_battery_full": boolean;
     "notify.on_cheap_power": boolean;
+    "notify.on_firmware": boolean;
+    "notify.on_battery_health": boolean;
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
   };

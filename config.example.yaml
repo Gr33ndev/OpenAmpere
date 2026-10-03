@@ -26,6 +26,9 @@ server:
 pv:
   installed_kwp: 0          # installierte Modulleistung in kWp (0 = unbekannt)
 
+battery:
+  capacity_kwh: 0           # nutzbare Kapazität des Speichers in kWh (0 = unbekannt), für die Vollzyklen
+
 grid:
   feed_in_rule: unknown     # unknown | limit_60 | limit_70 | operator | none
 

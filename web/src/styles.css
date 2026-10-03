@@ -536,3 +536,9 @@ details.learn .learn-body { padding: 4px 0 8px; }
 
 html.embedded, html.embedded body { scrollbar-width: none; }
 html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { display: none; }
+
+/* annual bill forecast */
+.billing-card { margin-bottom: 12px; }
+.billing-headline { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
+.billing-headline.good { color: var(--accent-text); }
+.billing-headline.bad { color: var(--coral); }

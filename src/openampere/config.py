@@ -64,6 +64,11 @@ class PvConfig:
 
 
 @dataclass
+class BatteryConfig:
+    capacity_kwh: float = 0.0  # usable capacity of the home battery; 0 = unknown
+
+
+@dataclass
 class GridConfig:
     # Which feed-in limit applies to the system (Germany):
     #   unknown   – not declared; raising the limit needs the grid operator's written consent
@@ -89,6 +94,8 @@ class NotifyConfig:
     on_overwritten: bool = True
     on_battery_full: bool = False
     on_cheap_power: bool = False
+    on_firmware: bool = True  # the inverter reports a different firmware (after an update)
+    on_battery_health: bool = True  # battery cells unusually warm or far apart in temperature
 
 
 @dataclass
@@ -109,6 +116,7 @@ class Config:
     cloud: CloudConfig = field(default_factory=CloudConfig)
     pv: PvConfig = field(default_factory=PvConfig)
     grid: GridConfig = field(default_factory=GridConfig)
+    battery: BatteryConfig = field(default_factory=BatteryConfig)
     notify: NotifyConfig = field(default_factory=NotifyConfig)
     evcc: EvccConfig = field(default_factory=EvccConfig)
     timezone: str = "Europe/Berlin"
@@ -137,6 +145,7 @@ EDITABLE: dict[str, tuple] = {
     "cloud.api_key": ("secret",),
     "pv.input_names": ("strlist", 6, 30),
     "pv.installed_kwp": ("float", 0, 1000),
+    "battery.capacity_kwh": ("float", 0, 200),
     "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),
     "notify.ntfy_url": ("url",),
     "notify.ntfy_token": ("secret",),
@@ -145,6 +154,8 @@ EDITABLE: dict[str, tuple] = {
     "notify.on_overwritten": ("bool",),
     "notify.on_battery_full": ("bool",),
     "notify.on_cheap_power": ("bool",),
+    "notify.on_firmware": ("bool",),
+    "notify.on_battery_health": ("bool",),
     "evcc.url": ("url",),
     "evcc.password": ("secret",),
     "evcc.priority": ("choice", "wallbox_first", "devices_first"),

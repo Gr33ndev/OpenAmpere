@@ -171,9 +171,9 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
 // ---------------------------------------------------------------------------
 
 type TariffForm = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: string; surcharge_ct: string;
-  vat_percent: string; feed_in_ct: string; area: "DE" | "AT" };
+  vat_percent: string; feed_in_ct: string; area: "DE" | "AT"; base_fee_eur_month: string };
 type TariffData = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: number; surcharge_ct: number;
-  vat_percent: number; feed_in_ct: number; area: "DE" | "AT" };
+  vat_percent: number; feed_in_ct: number; area: "DE" | "AT"; base_fee_eur_month: number };
 const de = (v: number) => String(v).replace(".", ",");
 const toNumber = (v: string) => (v.trim() === "" ? Number.NaN : Number(v.replace(",", ".")));
 
@@ -199,23 +199,24 @@ export function TariffPage({ onBack }: PageProps) {
   const { data, error, reload, setData } = useResource<{ tariffs: TariffData[] }>("/api/tariffs");
   const [forms, setForms] = useState<TariffForm[]>([]);
   const [busy, setBusy] = useState(false);
+  const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
+    vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct), base_fee_eur_month: de(t.base_fee_eur_month ?? 0) });
   useEffect(() => {
-    if (data) setForms(data.tariffs.map((t) => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
-      vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct) })));
+    if (data) setForms(data.tariffs.map(toForm));
   }, [data]);
   const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
-  const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map((t) => ({ ...t, price_ct: de(t.price_ct),
-    surcharge_ct: de(t.surcharge_ct), vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct) })));
+  const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map(toForm));
   const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "fixed" ? t.price_ct : t.surcharge_ct]
     .every((v) => Number.isFinite(toNumber(v))));
   const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35", surcharge_ct: "20",
-    vat_percent: "19", feed_in_ct: "8", area: "DE" }), valid_from: todayIso() } as TariffForm]);
+    vat_percent: "19", feed_in_ct: "8", area: "DE", base_fee_eur_month: "0" }), valid_from: todayIso() } as TariffForm]);
 
   const save = async () => {
     setBusy(true);
     try {
       const tariffs = forms.map((t) => ({ ...t, price_ct: toNumber(t.price_ct) || 0, surcharge_ct: toNumber(t.surcharge_ct) || 0,
-        vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct) }));
+        vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct),
+        base_fee_eur_month: toNumber(t.base_fee_eur_month) || 0 }));
       setData(await putJson<{ tariffs: TariffData[] }>("/api/tariffs", { tariffs }));
       toast("Gespeichert");
     } catch (e) {
@@ -228,8 +229,8 @@ export function TariffPage({ onBack }: PageProps) {
   return (
     <SubPage title="Stromtarif" onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">Damit schätzt OpenAmpere deine Ersparnis (Report → Autarkie → Geld). Wechselst du den Tarif,
-        lege einen neuen mit Startdatum an – ältere Zeiträume werden weiter mit dem alten Preis berechnet.</p>
+      <p className="hint">Damit rechnet OpenAmpere Ersparnis, Stromkosten und die Jahresabrechnung (Auswertung). Wechselst
+        du den Tarif, lege einen neuen mit Startdatum an. Ältere Zeiträume rechnet OpenAmpere weiter mit dem alten Preis.</p>
       {forms.map((t, i) => (
         <div className="card form" key={i}>
           <div className="field-row">
@@ -264,6 +265,10 @@ export function TariffPage({ onBack }: PageProps) {
               </div>
             </>
           )}
+          <Field label="Grundpreis" hint="Fester Betrag pro Monat, unabhängig vom Verbrauch. Steht im Vertrag.">
+            <div className="input-unit"><input className="input" inputMode="decimal" value={t.base_fee_eur_month}
+              onChange={(e) => update(i, { base_fee_eur_month: e.target.value })} /><span>€/Monat</span></div>
+          </Field>
           <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst (EEG).">
             <div className="input-unit"><input className="input" inputMode="decimal" value={t.feed_in_ct}
               onChange={(e) => update(i, { feed_in_ct: e.target.value })} /><span>ct/kWh</span></div>

@@ -85,6 +85,18 @@ class Collector:
             return True
         return not self.connected or time.time() - self.latest.timestamp > max(3 * self.interval, 30)
 
+    def _check_firmware(self) -> None:
+        """An update can change registers: remember the firmware and note when it changes."""
+        if not self.device:
+            return
+        try:
+            change = self.storage.note_firmware(self.device.serial, self.device.firmware)
+        except Exception:  # noqa: BLE001 - must never disturb polling
+            return
+        if change:
+            log.warning("inverter firmware changed: %s -> %s", change["old"], change["new"])
+            self._event("firmware", f"{change['old']} -> {change['new']}")
+
     def _event(self, kind: str, detail: str = "") -> None:
         """Connection history for the diagnostics (e.g. does the inverter refuse connections at night?)."""
         try:
@@ -129,6 +141,7 @@ class Collector:
                 if not self.connected:
                     log.info("inverter connected")
                     self._event("verbunden")
+                    self._check_firmware()
                 self._watch_daily_reset(snap)
                 self.connected = True
                 self.disconnected_since = None

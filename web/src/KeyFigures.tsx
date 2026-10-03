@@ -29,9 +29,12 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
           <dt>Selbst genutzter Solarstrom</dt><dd>{percent(summary?.self_consumption, true)}</dd>
           {summary?.money && <><dt>Einspeisevergütung</dt><dd>{euro(summary.money.feed_in_eur)}</dd></>}
           {summary?.money && <><dt>Kosten Netzbezug</dt><dd>{euro(summary.money.grid_cost_eur)}</dd></>}
+          {!!summary?.money?.base_fee_eur && <><dt>Grundpreis</dt><dd>{euro(summary.money.base_fee_eur)}</dd></>}
+          {summary?.money?.net_cost_eur != null && <><dt>Stromkosten unterm Strich</dt><dd>{euro(summary.money.net_cost_eur)}</dd></>}
         </dl>
         {summary?.money && <p className="hint">Die Ersparnis ist eine Schätzung mit deinem Stromtarif (Mehr → Stromtarif):
-          selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung.</p>}
+          selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung. Unterm Strich heißt Netzbezug und Grundpreis
+          minus Einspeisevergütung.</p>}
       </details>
     </div>
   );

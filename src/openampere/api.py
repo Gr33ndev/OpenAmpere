@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import
+from . import discovery, cloud_import, health
 from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import SECRETS
 from .drivers import registry
@@ -31,6 +31,7 @@ from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
 from .storage import FLOWS, Storage
 from .discovery import Rediscovery
+from .billing import Billing
 from .charging import GridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
@@ -99,6 +100,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     rediscovery = Rediscovery(runtime)
     charging = GridCharging(runtime)
+    billing = Billing(runtime.storage, runtime.tariffs)
     evcc = Evcc(runtime)
     surplus = SurplusControl(runtime, evcc)
     devices = Devices(runtime, surplus, evcc)
@@ -245,6 +247,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
+            "firmware": {**(storage.get_meta("firmware") or {}), "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
         }
 
@@ -287,6 +290,10 @@ def create_app(runtime: Runtime) -> FastAPI:
         return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver)
 
     # ---- battery control -------------------------------------------------
+
+    @app.get("/api/battery/health")
+    def battery_health():
+        return health.battery(storage, collector.latest, runtime.config.battery.capacity_kwh)
 
     @app.get("/api/battery/settings")
     async def get_battery_settings():
@@ -465,6 +472,18 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/tariffs")
     def get_tariffs():
         return {"tariffs": [asdict(t) for t in runtime.tariffs.all()]}
+
+    @app.get("/api/billing")
+    def get_billing():
+        return {"settings": billing.settings(), "status": billing.status(runtime.tz)}
+
+    @app.put("/api/billing")
+    def put_billing(body: dict = Body(...)):
+        try:
+            billing.save(body.get("settings") or {})
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        return get_billing()
 
     @app.put("/api/tariffs")
     async def put_tariffs(body: dict = Body(...)):
@@ -757,7 +776,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         entries = []
         for ts, rows in sorted(buckets.items()):
             entry = {"ts": ts}
-            for key, column in (("inverter", "t_inverter"), ("battery", "t_battery")):
+            for key, column in (("inverter", "t_inverter"), ("battery", "t_battery"), ("cell_max", "t_cell_max"),
+                                ("cell_min", "t_cell_min")):
                 values = [r[column] for r in rows if r.get(column) is not None]
                 entry[key] = sum(values) / len(values) if values else None
             entries.append(entry)

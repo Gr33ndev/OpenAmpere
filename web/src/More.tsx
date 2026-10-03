@@ -14,6 +14,8 @@ import { TemperatureSection } from "./Report";
 import { goBack, navigate } from "./route";
 import { ConsumersPage } from "./ConsumersPage";
 import { WallboxPage } from "./WallboxPage";
+import { BillingPage } from "./BillingPage";
+import { BatteryHealthCard, FirmwareFacts } from "./BatteryHealth";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
   return (
@@ -57,6 +59,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>Gesamt entladen</dt><dd>{kwh(snap?.totals.battery_discharge)}</dd>
         </dl>
       </div>
+      <BatteryHealthCard />
 
       <div className="card">
         <div className="device-row"><InverterIcon size={44} />Wechselrichter</div>
@@ -67,6 +70,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>Firmware</dt><dd>{device?.firmware ?? "–"}</dd>
           <dt>Letzte Messung</dt><dd>{status?.last_update ? updatedLabel(status.last_update) : "–"}</dd>
         </dl>
+        <FirmwareFacts firmware={status?.firmware} />
       </div>
 
       <div className="section-title">PV-Anlage</div>
@@ -123,6 +127,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "notify": return <NotifyPage {...nav} />;
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
+    case "billing": return <BillingPage {...nav} />;
     // parts of "Meine Anlage"
     case "pv": return <PvSystemPage onBack={() => goBack("more/installation")} snap={snap} />;
     case "export-limit": return <ExportLimitPage onBack={() => goBack("more/installation")} onNavigate={setPage} />;
@@ -149,7 +154,8 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
       <div className="section-title">Anlage</div>
       <div className="card menu">
         <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
-        <MenuRow label="Stromtarif" hint="Preise für die Ersparnis" onClick={() => setPage("tariff")} />
+        <MenuRow label="Stromtarif" hint="Preise und Grundpreis" onClick={() => setPage("tariff")} />
+        <MenuRow label="Abschläge" hint="Jahresabrechnung vorhersagen" onClick={() => setPage("billing")} />
       </div>
 
       <div className="section-title">Einstellungen</div>

@@ -8,6 +8,7 @@ export const DEMO_WRITE_MESSAGE = "Das ist nur die Demo, hier lässt sich nichts
 const RATED_W = 10_000;
 const PRICE_CT = 35;
 const FEED_IN_CT = 8;
+const BASE_FEE_EUR_MONTH = 13.7;
 const INPUT_NAMES = ["Süddach", "Westdach"];
 const QUARTER = 900;
 
@@ -49,12 +50,15 @@ function ratios(e: Energy) {
   };
 }
 
-function money(e: Energy) {
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+function money(e: Energy, days = 0) {
+  const feedIn = (e.grid_export * FEED_IN_CT) / 100_000, grid = (e.grid_import * PRICE_CT) / 100_000;
+  const baseFee = (BASE_FEE_EUR_MONTH * 12) / 365 * days;
   return {
-    savings_eur: Math.round((Math.max(0, e.load - e.grid_import) * PRICE_CT + e.grid_export * FEED_IN_CT) / 1000) / 100,
-    feed_in_eur: Math.round((e.grid_export * FEED_IN_CT) / 1000) / 100,
-    grid_cost_eur: Math.round((e.grid_import * PRICE_CT) / 1000) / 100,
-    incomplete: false,
+    savings_eur: round2((Math.max(0, e.load - e.grid_import) * PRICE_CT + e.grid_export * FEED_IN_CT) / 100_000),
+    feed_in_eur: round2(feedIn), grid_cost_eur: round2(grid), base_fee_eur: round2(baseFee),
+    net_cost_eur: round2(grid + baseFee - feedIn), incomplete: false,
   };
 }
 
@@ -70,6 +74,10 @@ function totals(): Energy {
 }
 
 let totalsCache: { at: number; value: Energy } | null = null;
+function cachedTotals(): Energy {
+  if (!totalsCache || now() - totalsCache.at > 300) totalsCache = { at: now(), value: totals() };
+  return totalsCache.value;
+}
 
 export function snapshot() {
   const s = current();
@@ -78,7 +86,7 @@ export function snapshot() {
   const pv1 = wobble(s.pv1), pv2 = wobble(s.pv2), house = wobble(s.load, 0.06);
   const pv = pv1 + pv2;
   const battery = s.battery;
-  if (!totalsCache || now() - totalsCache.at > 300) totalsCache = { at: now(), value: totals() };
+  const lifetime = cachedTotals();
   return {
     timestamp: now(),
     pv_power: pv,
@@ -97,7 +105,7 @@ export function snapshot() {
     inverter_state: 2,
     off_grid: false,
     alarms: [0, 0, 0],
-    totals: totalsCache.value,
+    totals: lifetime,
     today: energyOf(stepsOf(dayStart(new Date()))),
   };
 }
@@ -176,7 +184,8 @@ const settings = {
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
-    "notify.on_battery_full": false, "notify.on_cheap_power": false,
+    "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
+    "notify.on_battery_health": true, "battery.capacity_kwh": BATTERY_WH / 1000,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
   },
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
@@ -194,6 +203,8 @@ function status() {
     device: { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
       register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true },
     control: { enabled: true, dry_run: true },
+    firmware: { serial: "DEMO000001", firmware: "1.50 / 1.20", since: dayStart(new Date()) - 41 * 86400,
+      history: [{ ts: dayStart(new Date()) - 41 * 86400 + 52_000, old: "1.48 / 1.20", new: "1.50 / 1.20" }] },
   };
 }
 
@@ -202,7 +213,8 @@ function energySummary(q: URLSearchParams) {
   const [from, to] = bounds(period, q.get("date"));
   const steps = stepsBetween(from, to);
   const e = energyOf(steps);
-  return { period, from, to, quarters: Math.ceil(steps.length / 3), partial_since: null, energy_wh: e, ...ratios(e), money: money(e) };
+  return { period, from, to, quarters: Math.ceil(steps.length / 3), partial_since: null, energy_wh: e, ...ratios(e),
+    money: money(e, Math.max(0, Math.min(to, now()) - from) / 86400) };
 }
 
 function energyTimeline(q: URLSearchParams) {
@@ -245,7 +257,65 @@ function pvInputs(q: URLSearchParams) {
 
 function temperatures(q: URLSearchParams) {
   const [from, to] = bounds("day", q.get("date"));
-  return { entries: stepsBetween(from, to).map((s) => ({ ts: s.ts, inverter: s.tInverter, battery: s.tBattery })) };
+  return { entries: stepsBetween(from, to).map((s) => ({ ts: s.ts, inverter: s.tInverter, battery: s.tBattery,
+    cell_max: s.tBattery + 0.8, cell_min: s.tBattery - 0.6 })) };
+}
+
+/** Battery health from the simulation: the same numbers the real app derives from the inverter counters. */
+function batteryHealth() {
+  const totals = cachedTotals();
+  const month = stepsBetween(now() - 30 * 86400, now());
+  const hottest = month.reduce((a, s) => (s.tBattery > a.tBattery ? s : a), month[0]);
+  const coldest = month.reduce((a, s) => (s.tBattery < a.tBattery ? s : a), month[0]);
+  const inverter = month.reduce((a, s) => (s.tInverter > a.tInverter ? s : a), month[0]);
+  const s = current();
+  return {
+    capacity_kwh: BATTERY_WH / 1000, charged_kwh: totals.battery_charge / 1000, discharged_kwh: totals.battery_discharge / 1000,
+    cycles: totals.battery_discharge / BATTERY_WH, efficiency_pct: (totals.battery_discharge / totals.battery_charge) * 100,
+    soh_pct: 98, cell_max_now_c: s ? s.tBattery + 0.8 : null, cell_min_now_c: s ? s.tBattery - 0.6 : null,
+    spread_now_c: s ? 1.4 : null, days: 30, warning: null,
+    extremes: {
+      cell_max: { value: hottest.tBattery + 0.8, ts: hottest.ts }, cell_min: { value: coldest.tBattery - 0.6, ts: coldest.ts },
+      spread: { value: 1.9, ts: hottest.ts }, inverter: { value: inverter.tInverter, ts: inverter.ts },
+      battery: { value: hottest.tBattery, ts: hottest.ts },
+    },
+  };
+}
+
+// typical share of a year's energy per month (%), as in the real app (billing.py)
+const TYPICAL = { export: [2, 4, 8, 11, 13, 14, 14, 12, 9, 6, 4, 3], import: [13, 11, 9, 7, 6, 5, 5, 6, 7, 9, 10, 12] };
+const PREPAYMENTS = { import: [{ from: "2026-01", eur: 58 }], export: [{ from: "2025-07", eur: 9 }, { from: "2026-03", eur: 10 }] };
+
+/** Annual bill forecast for the calendar year, simplified from the real app (billing.py). */
+function billing() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 1);
+  const days = (Date.now() - start.getTime()) / 86_400_000;
+  const e = energyOf(stepsBetween(start.getTime() / 1000, now()));
+  const passed = (kind: "import" | "export") => TYPICAL[kind].slice(0, today.getMonth()).reduce((a, v) => a + v, 0)
+    + TYPICAL[kind][today.getMonth()] * (today.getDate() - 0.5) / 31;
+  const year = (kind: "import" | "export") => {
+    const kwh = (kind === "import" ? e.grid_import : e.grid_export) / 1000;
+    const price = (kind === "import" ? PRICE_CT : FEED_IN_CT) / 100;
+    const fee = kind === "import" ? (BASE_FEE_EUR_MONTH * 12) / 365 : 0;
+    const soFar = kwh * price + fee * days;
+    const restKwh = kwh * (100 - passed(kind)) / passed(kind);
+    const projected = soFar + restKwh * price + fee * (365 - days);
+    const amount = (m: number) => {
+      const key = `${today.getFullYear()}-${String(m + 1).padStart(2, "0")}`;
+      return PREPAYMENTS[kind].filter((p) => p.from <= key).slice(-1)[0]?.eur ?? 0;
+    };
+    const paid = Array.from({ length: today.getMonth() + 1 }, (_, m) => amount(m)).reduce((a, v) => a + v, 0);
+    const yearly = Array.from({ length: 12 }, (_, m) => amount(m)).reduce((a, v) => a + v, 0);
+    const sign = kind === "import" ? 1 : -1;
+    return { from: `${today.getFullYear()}-01-01`, to: `${today.getFullYear() + 1}-01-01`, months_paid: today.getMonth() + 1,
+      paid_eur: paid, yearly_payments_eur: yearly, so_far_kwh: Math.round(kwh), so_far_eur: round2(soFar),
+      estimated_before: null, projected_kwh: Math.round(kwh + restKwh), projected_eur: round2(projected), method: "last_year",
+      balance_now_eur: round2(sign * (paid - soFar)), balance_end_eur: round2(sign * (yearly - projected)),
+      fitting_payment_eur: Math.round(projected / 12), incomplete: false };
+  };
+  return { settings: { import: { start_month: 1, payments: PREPAYMENTS.import }, export: { start_month: 1, payments: PREPAYMENTS.export } },
+    status: { import: year("import"), export: year("export") } };
 }
 
 /** Exchange price model: cheap at noon and at night, expensive in the evening (ct/kWh incl. surcharge). */
@@ -350,14 +420,18 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/power/timeline": powerTimeline,
   "/api/pv/inputs": pvInputs,
   "/api/temperatures/timeline": temperatures,
+  "/api/battery/health": batteryHealth,
+  "/api/billing": billing,
   "/api/battery/settings": () => ({ work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
     legal_max_w: 5880, external_change: null }),
   "/api/control/log": controlLog,
   "/api/import/cloud": () => ({ status: "done", phase: "soc", days_total: 487, work_done: 487, soc_done: 487, imported: 46752, key_set: true }),
   "/api/tariffs": () => ({ tariffs: [
-    { valid_from: "2025-01-01", kind: "fixed", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE" },
-    { valid_from: "2026-04-01", kind: "dynamic", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE" },
+    { valid_from: "2025-01-01", kind: "fixed", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE",
+      base_fee_eur_month: BASE_FEE_EUR_MONTH },
+    { valid_from: "2026-04-01", kind: "dynamic", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE",
+      base_fee_eur_month: BASE_FEE_EUR_MONTH },
   ] }),
   "/api/prices": prices,
   "/api/charging": charging,

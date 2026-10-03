@@ -7,6 +7,7 @@ import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
 import { KeyFigures } from "./KeyFigures";
 import { colorsFor } from "./DevicesPage";
+import { BillingSection } from "./BillingPage";
 import { VehicleStats } from "./VehicleStats";
 import { EvccSessions } from "./WallboxPage";
 
@@ -225,6 +226,7 @@ export function Report() {
       <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
         colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />
       <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
+      <BillingSection />
       <VehicleStats />
       <EvccSessions />
     </div>
@@ -272,7 +274,8 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
 }
 
 export function TemperatureSection({ day, refresh }: { day: string; refresh: number }) {
-  const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null }[] }>(
+  const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null;
+    cell_max?: number | null; cell_min?: number | null }[] }>(
     `/api/temperatures/timeline?date=${day}`, refresh);
   const chart = useMemo(() => {
     const rows = data?.entries ?? [];
@@ -281,6 +284,10 @@ export function TemperatureSection({ day, refresh }: { day: string; refresh: num
       series: [
         { label: "Wechselrichter", color: "var(--coral)", values: rows.map((r) => r.inverter), unit: "°C" },
         { label: "Speicher", color: "var(--battery)", values: rows.map((r) => r.battery), unit: "°C" },
+        ...(rows.some((r) => r.cell_max != null) ? [
+          { label: "Wärmste Zelle", color: "var(--pv)", values: rows.map((r) => r.cell_max ?? null), unit: "°C", dash: true },
+          { label: "Kühlste Zelle", color: "var(--sky)", values: rows.map((r) => r.cell_min ?? null), unit: "°C", dash: true },
+        ] : []),
       ] as Series[],
     };
   }, [data]);
@@ -292,6 +299,8 @@ export function TemperatureSection({ day, refresh }: { day: string; refresh: num
       <div className="legend">
         <span><span className="dot" style={{ background: "var(--coral)" }} />Wechselrichter</span>
         <span><span className="dot" style={{ background: "var(--battery)" }} />Speicher</span>
+        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--pv)" }} />Wärmste Zelle</span>}
+        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--sky)" }} />Kühlste Zelle</span>}
       </div>
     </>
   );

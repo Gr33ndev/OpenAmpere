@@ -35,6 +35,24 @@ def send(url: str, token: str, title: str, message: str, tags: str = "") -> None
         response.read(256)
 
 
+CELL_HOT_C = 45.0  # most lithium iron phosphate cells are specified for charging up to 45-55 °C
+CELL_SPREAD_C = 5.0  # cells of a healthy pack stay within a few degrees of each other
+
+
+def battery_problem(temperatures: dict) -> str | None:
+    """A warning text if the battery cells are too warm or unusually far apart, else None."""
+    hot = max((temperatures.get(k) for k in ("battery_cell_max", "battery2_cell_max") if temperatures.get(k) is not None),
+              default=None)
+    spreads = [temperatures[f"{p}_cell_max"] - temperatures[f"{p}_cell_min"] for p in ("battery", "battery2")
+               if temperatures.get(f"{p}_cell_max") is not None and temperatures.get(f"{p}_cell_min") is not None]
+    if hot is not None and hot >= CELL_HOT_C:
+        return f"Die wärmste Batteriezelle hat {hot:.0f} °C. Für Lade- und Entladebetrieb ist das sehr warm."
+    if spreads and max(spreads) >= CELL_SPREAD_C:
+        return (f"Die Batteriezellen unterscheiden sich um {max(spreads):.1f} °C. Das kann auf eine schwache Zelle "
+                "oder schlechte Belüftung hinweisen. Bleibt es so, den Installationsbetrieb fragen.")
+    return None
+
+
 class Notifier:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
@@ -102,6 +120,20 @@ class Notifier:
                                  "Ein anderes Gerät (z. B. die bisherige Smartbox) hat eine Einstellung von OpenAmpere "
                                  "wieder geändert.", "warning")
                     break
+
+        if cfg.on_firmware:
+            history = self.runtime.storage.get_meta("firmware_history") or []
+            if history and history[-1]["ts"] > float(self.sent.get("firmware_ts") or 0):
+                change = history[-1]
+                await notify("firmware_ts", change["ts"], "Neue Firmware am Wechselrichter",
+                             f"Firmware {change['old']} → {change['new']}. Ein Update kann Werte verändern: bitte einmal "
+                             "die Diagnose ausführen (Mehr → Diagnose) und das Ergebnis bei Auffälligkeiten melden.",
+                             "arrows_counterclockwise")
+
+        if cfg.on_battery_health and snap is not None:
+            problem = battery_problem(snap.temperatures)
+            if problem:
+                await notify("battery_health", today, "Speicher prüfen", problem, "warning")
 
         if cfg.on_battery_full and snap is not None and (snap.battery_soc or 0) >= 99:
             await notify("battery_full", today, "Speicher voll",

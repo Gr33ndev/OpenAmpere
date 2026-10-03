@@ -22,7 +22,8 @@ FLOWS = ("pv", "load", "grid_import", "grid_export", "battery_charge", "battery_
 QUARTER = 900
 MAX_PV_INPUTS = 4
 # columns added after the first release; created on start-up if missing
-SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery"]
+SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery", "t_cell_max",
+                                                                          "t_cell_min"]
 MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
 MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger counter jumps are garbage
 EARLIEST_PLAUSIBLE_TS = 1_735_689_600  # 2025-01-01: anything earlier is an unset clock
@@ -189,7 +190,8 @@ class Storage:
                 f"INSERT OR REPLACE INTO samples(ts, pv, house, grid, battery, soc, {', '.join(SAMPLE_EXTRA_COLUMNS)}) "
                 f"VALUES ({', '.join('?' * (6 + len(SAMPLE_EXTRA_COLUMNS)))})",
                 (snap.timestamp, snap.pv_power, snap.house_power, snap.grid_power, snap.battery_power,
-                 snap.battery_soc, *inputs, temps.get("inverter"), temps.get("battery")))
+                 snap.battery_soc, *inputs, temps.get("inverter"), temps.get("battery"),
+                 temps.get("battery_cell_max"), temps.get("battery_cell_min")))
             self._accumulate(snap)
             self._accumulate_pv_inputs(snap.timestamp, [i or 0.0 for i in inputs[:len(snap.pv_inputs)]])
 
@@ -270,6 +272,38 @@ class Storage:
         if any(v < 0 or v > MAX_POWER_W * QUARTER / 3600 * 1.5 for v in delta.values()):
             return None
         return {"ts": state["ts"], **delta, "soc": snap.battery_soc}
+
+    def days_with_energy(self, start: float, end: float) -> int:
+        """Number of days with at least one stored quarter hour (also for coarser imported history)."""
+        rows = self._fetchall("SELECT COUNT(DISTINCT CAST(ts / 86400 AS INTEGER)) AS n FROM energy_15m WHERE ts >= ? AND ts < ?",
+                              (start, end))
+        return int(rows[0]["n"] or 0)
+
+    def temperature_extremes(self, start: float, end: float) -> dict:
+        """Highest (and for the cells lowest) temperatures and the largest cell spread, with their time."""
+        result = {}
+        for key, expr, order in (("cell_max", "t_cell_max", "DESC"), ("cell_min", "t_cell_min", "ASC"),
+                                 ("spread", "t_cell_max - t_cell_min", "DESC"), ("inverter", "t_inverter", "DESC"),
+                                 ("battery", "t_battery", "DESC")):
+            rows = self._fetchall(f"SELECT ts, {expr} AS v FROM samples WHERE ts >= ? AND ts < ? AND {expr} IS NOT NULL "
+                                  f"ORDER BY v {order} LIMIT 1", (start, end))
+            result[key] = {"value": rows[0]["v"], "ts": rows[0]["ts"]} if rows else None
+        return result
+
+    def note_firmware(self, serial: str | None, firmware: str | None, now: float | None = None) -> dict | None:
+        """Remembers the inverter's firmware. Returns the change if the same device now reports another one."""
+        if not firmware:
+            return None
+        now = time.time() if now is None else now
+        last = self.get_meta("firmware") or {}
+        if last.get("serial") == serial and last.get("firmware") == firmware:
+            return None
+        self.set_meta("firmware", {"serial": serial, "firmware": firmware, "since": now})
+        if last.get("firmware") and last.get("serial") == serial:
+            change = {"ts": now, "old": last["firmware"], "new": firmware}
+            self.set_meta("firmware_history", (self.get_meta("firmware_history") or [])[-49:] + [change])
+            return change
+        return None
 
     def first_quarter(self, start: float, end: float) -> float | None:
         with self._lock:

@@ -33,6 +33,7 @@ class Tariff:
     vat_percent: float = 19.0  # dynamic: VAT applied to the (net) exchange price
     feed_in_ct: float = 8.0  # feed-in compensation per kWh
     area: str = "DE"  # dynamic: price zone DE (DE-LU) or AT
+    base_fee_eur_month: float = 0.0  # fixed monthly fee of the supplier (Grundpreis), gross
 
     def import_price_ct(self, exchange_eur_mwh: float | None) -> float | None:
         if self.kind == "fixed":
@@ -53,13 +54,16 @@ def validate(raw: list) -> list[Tariff]:
             tariff = Tariff(valid_from=str(item["valid_from"]), kind=str(item.get("kind", "fixed")),
                             price_ct=float(item.get("price_ct", 0)), surcharge_ct=float(item.get("surcharge_ct", 0)),
                             vat_percent=float(item.get("vat_percent", 19)), feed_in_ct=float(item.get("feed_in_ct", 0)),
-                            area=str(item.get("area", "DE")))
+                            area=str(item.get("area", "DE")),
+                            base_fee_eur_month=float(item.get("base_fee_eur_month") or 0))
         except (KeyError, TypeError, ValueError):
             raise ValueError("Ungültiger Tarif: bitte Datum und Preise prüfen.") from None
         if tariff.kind not in ("fixed", "dynamic") or tariff.area not in PRICE_SOURCES:
             raise ValueError("Ungültige Tarifart.")
         if not all(-100 <= v <= 200 for v in (tariff.price_ct, tariff.surcharge_ct, tariff.feed_in_ct)):
             raise ValueError("Preise bitte zwischen -100 und 200 ct/kWh angeben.")
+        if not 0 <= tariff.base_fee_eur_month <= 200:
+            raise ValueError("Den Grundpreis bitte zwischen 0 und 200 € pro Monat angeben.")
         tariffs.append(tariff)
     tariffs.sort(key=lambda t: t.valid_from)
     if len({t.valid_from for t in tariffs}) != len(tariffs):
@@ -117,8 +121,21 @@ class Tariffs:
             savings += max(0.0, load - grid_import) * price / 100_000 + export * tariff.feed_in_ct / 100_000
             feed_in += export * tariff.feed_in_ct / 100_000
             grid_cost += grid_import * price / 100_000
+        base_fee = self.base_fee(start, min(end, time.time()), tz)
         return {"savings_eur": round(savings, 2), "feed_in_eur": round(feed_in, 2), "grid_cost_eur": round(grid_cost, 2),
-                "incomplete": missing > 0}
+                "base_fee_eur": round(base_fee, 2),
+                # what electricity cost in the end: grid power and base fee minus the feed-in pay
+                "net_cost_eur": round(grid_cost + base_fee - feed_in, 2), "incomplete": missing > 0}
+
+    def base_fee(self, start: float, end: float, tz: ZoneInfo) -> float:
+        """Monthly base fee for the days between start and end (12 monthly fees spread over 365 days)."""
+        total, ts = 0.0, start
+        while ts < end:
+            step = min(86400.0, end - ts)
+            tariff = self.at(datetime.fromtimestamp(ts, tz).date().isoformat())
+            total += tariff.base_fee_eur_month * 12 / 365 * step / 86400
+            ts += step
+        return total
 
     def charge_cost(self, start: float, end: float, kwh: float, solar_share: float, tz: ZoneInfo) -> tuple[float, float]:
         """Cost of charging kwh (e.g. a car) between start and end, and what it would cost from the grid only.
