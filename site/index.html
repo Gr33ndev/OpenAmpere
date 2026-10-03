@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>OpenAmpere – deine Solaranlage, lokal und ohne Cloud</title>
+  <meta name="description" content="Kostenlose, quelloffene App für Solaranlagen mit Batteriespeicher (FoxESS H3, SAJ H2). Läuft im Heimnetz, ohne Konto und ohne Hersteller-Cloud." />
+  <meta name="theme-color" content="#f4f4f4" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#21262b" media="(prefers-color-scheme: dark)" />
+  <meta property="og:title" content="OpenAmpere" />
+  <meta property="og:description" content="Deine Solaranlage. Lokal. Ohne Cloud. Kostenlos und quelloffen." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="./"><img src="icon.svg" alt="" width="32" height="32" />OpenAmpere</a>
+      <nav aria-label="Seitenbereiche">
+        <a href="#funktionen">Funktionen</a>
+        <a href="#installation">Installation</a>
+        <a href="demo/">Demo</a>
+        <a href="https://github.com/Gr33ndev/OpenAmpere">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow">Kostenlos · Open Source · MIT-Lizenz</p>
+          <h1>Deine Solaranlage.<br />Lokal. Ohne Cloud.</h1>
+          <p class="lead">OpenAmpere ist eine App für Solaranlagen mit Batteriespeicher. Sie spricht direkt im Heimnetz mit
+            deinem Wechselrichter – ohne Konto, ohne Hersteller-Server, ohne Abo. Deine Daten bleiben bei dir.</p>
+          <div class="actions">
+            <a class="btn primary" href="demo/">Demo ausprobieren</a>
+            <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere">Auf GitHub ansehen</a>
+          </div>
+          <p class="small">Die Demo läuft komplett in deinem Browser mit erfundenen Werten.</p>
+        </div>
+        <div class="phone" aria-hidden="true">
+          <iframe src="demo/" title="OpenAmpere Demo" loading="lazy" tabindex="-1"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="fuer-wen">
+      <h2>Für wen?</h2>
+      <div class="cards two">
+        <div class="card">
+          <h3>Unterstützte Geräte</h3>
+          <ul>
+            <li><strong>FoxESS H3, H3 Smart, H3 Pro</strong> – Anzeige und Steuerung</li>
+            <li><strong>SAJ H2 / HS2</strong> – Anzeige</li>
+            <li>Heizstab, Wärmepumpe &amp; Co. über Shelly-Relais</li>
+          </ul>
+          <p class="small">Das Gerät wird automatisch erkannt. Verbunden wird über Modbus TCP im Heimnetz.</p>
+        </div>
+        <div class="card">
+          <h3>Ohne Technikwissen</h3>
+          <p>Ein Assistent sucht den Wechselrichter im Heimnetz, alles Weitere stellst du in der App ein. Läuft auf einem
+            Raspberry Pi, einem NAS oder einem Heimserver – überall, wo Docker läuft.</p>
+          <p class="small">Hattest du bisher eine Hersteller-App, die nur über die Cloud funktioniert?
+            <a href="#hintergrund">Hintergrund lesen</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="funktionen">
+      <h2>Funktionen</h2>
+      <div class="cards">
+        <div class="card"><h3>Live-Energiefluss</h3><p>Solar, Haus, Speicher und Netz auf einen Blick – mit Ladestand und Richtung.</p></div>
+        <div class="card"><h3>Report &amp; Ersparnis</h3><p>Tag, Woche, Monat, Jahr. Autarkie, Eigenverbrauch und was dir die Anlage spart.</p></div>
+        <div class="card"><h3>Je Modulfeld</h3><p>Ertrag von Süddach, Westdach oder Garage getrennt – dazu alle Temperaturen.</p></div>
+        <div class="card"><h3>Speicher &amp; Notstrom</h3><p>Notstrom-Reserve, Ladegrenzen und Betriebsmodus – mit Testmodus und Protokoll.</p></div>
+        <div class="card"><h3>Einspeisebegrenzung</h3><p>Nach der Regel, die für deine Anlage gilt: 60 %, 70 % oder Wert vom Netzbetreiber.</p></div>
+        <div class="card"><h3>Tarife &amp; Laden nach Preis</h3><p>Fest- und Börsenstrompreis. Speicher experimentell zur günstigsten Zeit laden.</p></div>
+        <div class="card"><h3>Überschuss nutzen</h3><p>Heizstab oder Wärmepumpe einschalten, wenn die Sonne mehr liefert als gebraucht wird.</p></div>
+        <div class="card"><h3>Benachrichtigungen</h3><p>Hinweise aufs Handy über ntfy: Störung, nicht erreichbar, Speicher voll.</p></div>
+        <div class="card"><h3>Diagnose &amp; Export</h3><p>Gerät prüfen, ohne etwas zu ändern. Alle Werte als CSV für Excel.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap" id="so-gehts">
+      <h2>So funktioniert es</h2>
+      <svg class="diagram" viewBox="0 0 760 170" role="img" aria-label="Der Wechselrichter ist per Modbus TCP mit dem Heimserver verbunden, auf dem OpenAmpere läuft. Handy oder Browser öffnen die App im Heimnetz oder per VPN.">
+        <g class="node"><rect x="10" y="45" width="190" height="80" rx="16" /><text x="105" y="80">Wechselrichter</text><text x="105" y="102" class="sub">mit Speicher</text></g>
+        <g class="node accent"><rect x="285" y="45" width="190" height="80" rx="16" /><text x="380" y="80">OpenAmpere</text><text x="380" y="102" class="sub">Docker im Heimnetz</text></g>
+        <g class="node"><rect x="560" y="45" width="190" height="80" rx="16" /><text x="655" y="80">Handy / Browser</text><text x="655" y="102" class="sub">zu Hause oder per VPN</text></g>
+        <g class="link"><line x1="200" y1="85" x2="285" y2="85" /><text x="242" y="72">Modbus TCP</text></g>
+        <g class="link"><line x1="475" y1="85" x2="560" y2="85" /><text x="517" y="72">Web-App</text></g>
+        <text x="380" y="155" class="note">Keine Cloud, kein Konto – nichts verlässt dein Heimnetz.</text>
+      </svg>
+    </section>
+
+    <section class="wrap" id="installation">
+      <h2>Installation in drei Schritten</h2>
+      <ol class="steps">
+        <li>
+          <h3>Docker bereitstellen</h3>
+          <p>Auf einem Raspberry Pi, einem NAS oder einem Heimserver (z. B. Proxmox). Der Wechselrichter muss im Heimnetz
+            erreichbar sein und Modbus TCP aktiviert haben – das erledigt im Zweifel der Installationsbetrieb.</p>
+        </li>
+        <li>
+          <h3>OpenAmpere starten</h3>
+          <pre><code>git clone https://github.com/Gr33ndev/OpenAmpere.git openampere
+cd openampere
+docker compose up -d --build</code></pre>
+        </li>
+        <li>
+          <h3>Im Browser einrichten</h3>
+          <p>http://&lt;server-ip&gt;:8080 öffnen, Passwort festlegen – der Assistent findet den Wechselrichter.
+            Auf dem iPhone lässt sich die Seite wie eine App auf den Home-Bildschirm legen.</p>
+        </li>
+      </ol>
+      <p class="small">Ausführliche Anleitung, Betrieb hinter einem Modbus-Proxy und Zugriff von unterwegs:
+        <a href="https://github.com/Gr33ndev/OpenAmpere#installation-mit-docker">README auf GitHub</a>.</p>
+    </section>
+
+    <section class="wrap" id="sicherheit">
+      <h2>Sicher von Anfang an</h2>
+      <div class="cards two">
+        <div class="card">
+          <h3>Steuern ist ab Werk aus</h3>
+          <p>OpenAmpere liest zunächst nur. Wer Einstellungen ändern will, gibt die Steuerung ausdrücklich frei, testet im
+            Testmodus und findet jede Änderung im Protokoll. Werte werden vor dem Schreiben geprüft und danach zurückgelesen.</p>
+        </div>
+        <div class="card">
+          <h3>Dein Netz, deine Daten</h3>
+          <p>Ansehen im Heimnetz, Ändern nur mit Passwort. Keine Telemetrie, keine Werbung. Für unterwegs ein VPN
+            (z. B. FRITZ!Box, WireGuard, Tailscale) – nie eine Portfreigabe ins Internet.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="mitmachen">
+      <h2>Mitmachen</h2>
+      <p>Jede Anlage hilft: Teile einen Diagnosebericht deines Geräts, melde Fehler oder bring Ideen ein – auch ohne
+        Programmierkenntnisse.</p>
+      <div class="actions">
+        <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere/issues/new/choose">Issue öffnen</a>
+        <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere/blob/main/CONTRIBUTING.md">So kannst du helfen</a>
+      </div>
+    </section>
+
+    <section class="wrap legal" id="hintergrund">
+      <h2>Hintergrund &amp; rechtliche Hinweise</h2>
+      <p>Laut <a href="https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html">Handelsblatt</a>
+        hat die Energiekonzepte Deutschland GmbH (EKD) Insolvenz angemeldet. Ihre App „Ampere.IQ“ funktioniert nur über
+        Server von EKD; sollten diese abgeschaltet werden, verlieren Anlagenbesitzer den Zugriff auf Daten und Einstellungen.
+        OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene. Die als „Ampere.StoragePro E3“
+        vertriebenen Speicher basieren auf der FoxESS-H3-Serie, ältere „Ampere.StoragePro“ auf SAJ H2/HS2.</p>
+      <p><strong>Keine Verbindung zu EKD oder den Herstellern:</strong> OpenAmpere ist ein unabhängiges, inoffizielles
+        Community-Projekt. Es steht in keinerlei Verbindung zur Energiekonzepte Deutschland GmbH, zu deren
+        Insolvenzverwaltung, zu FoxESS, SAJ oder Kiwigrid und wurde von ihnen weder beauftragt noch autorisiert.</p>
+      <p><strong>Marken:</strong> „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ sowie alle weiteren genannten Produkt- und
+        Firmennamen sind Marken oder Bezeichnungen ihrer jeweiligen Inhaber. Sie werden nur genannt, um zu beschreiben,
+        mit welchen Geräten OpenAmpere zusammenarbeitet. OpenAmpere enthält keinen Code, keine Grafiken und keine Texte
+        der Ampere.IQ-App.</p>
+      <p><strong>Nutzung auf eigene Verantwortung:</strong> OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne
+        Gewähr und ersetzt keinen Elektrofachbetrieb. Wer Einstellungen am Wechselrichter ändert, ist selbst für die
+        Einhaltung der Netzanschlussbedingungen verantwortlich. Die Hinweise sind keine Rechtsberatung.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p><a href="https://github.com/Gr33ndev/OpenAmpere">Quellcode</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">MIT-Lizenz</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">Sicherheit</a> ·
+        <a href="demo/">Demo</a></p>
+      <p class="small"><strong>Datenschutz:</strong> Diese Seite setzt keine Cookies, nutzt kein Tracking und lädt keine
+        Inhalte von Dritten; Schrift und Bilder liegen hier selbst. Ausgeliefert wird sie von GitHub Pages. Dabei verarbeitet
+        GitHub technisch notwendige Zugriffsdaten wie die IP-Adresse, siehe
+        <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement">Datenschutzerklärung von GitHub</a>.
+        Die Demo läuft vollständig in deinem Browser und sendet nichts.</p>
+      <p class="small">Schrift: DM Sans (<a href="fonts/OFL.txt">SIL Open Font License</a>).</p>
+    </div>
+  </footer>
+</body>
+</html>

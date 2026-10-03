@@ -10,3 +10,4 @@ src/openampere/web/
 # lokale Werkzeug-Protokolle
 .abide/
 *.db.lock
+_site/

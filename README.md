@@ -1,6 +1,6 @@
 # OpenAmpere
 
-[Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md) · [Mitmachen](CONTRIBUTING.md)
+[Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md) · [Mitmachen](CONTRIBUTING.md)
 
 **Lokale App für Solaranlagen mit Batteriespeicher, ganz ohne Cloud.**
 
@@ -14,7 +14,8 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 |---|---|
 | FoxESS H3 / H3 Smart / H3 Pro | ✅ Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. |
 | SAJ H2 / HS2 | ✅ Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. |
-| Wallbox, Wärmepumpe, Heizstab | geplant |
+| Heizstab, Wärmepumpe (SG-Ready) | ✅ Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. |
+| Wallbox | geplant, je nach Modell |
 
 **Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2. Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
 
@@ -50,7 +51,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 ## Installation mit Docker
 
 ```bash
-git clone <repo-url> openampere && cd openampere
+git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
 docker compose up -d --build
 ```
 
@@ -129,7 +130,19 @@ uv pip compile pyproject.toml --python-version 3.12 --generate-hashes -o require
 uv pip compile pyproject.toml --extra dev --python-version 3.12 -o requirements-dev.lock
 ```
 
-Danach `scripts/third_party_licenses.py` neu ausführen. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist. Ein Versions-Tag (`v…`) veröffentlicht das Image für x86 und ARM unter `ghcr.io`.
+Danach `scripts/third_party_licenses.py` neu ausführen. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
+
+Projektseite mit Demo: Die Startseite liegt in `site/`, die Demo ist die normale Web-App, gebaut mit `VITE_DEMO=1`. Sie simuliert eine Anlage im Browser (`web/src/demo/`) und schickt nichts an einen Server. Lokal bauen und ansehen:
+
+```bash
+scripts/build-site.sh
+```
+
+```bash
+python3 -m http.server 8090 -d _site
+```
+
+Der Workflow `pages.yml` veröffentlicht die Seite auf GitHub Pages (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen). Ein Versions-Tag (`v…`) veröffentlicht das Image für x86 und ARM unter `ghcr.io`.
 
 ## Sicherheit bei Steuerfunktionen
 
