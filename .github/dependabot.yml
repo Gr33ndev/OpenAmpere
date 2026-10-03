@@ -12,6 +12,12 @@ updates:
       interval: weekly
     commit-message:
       prefix: "build(deps-web)"
+    groups:
+      # vite and its plugins only work in matching major versions, so they are updated together
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
