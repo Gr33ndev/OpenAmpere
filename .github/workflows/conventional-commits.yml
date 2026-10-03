@@ -1,0 +1,40 @@
+name: Conventional Commits
+
+# PR titles become the commit message when squash merging, so both are checked.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check PR title and commit subjects
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='^(feat|fix|docs|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .+'
+          failed=0
+          if ! printf '%s\n' "$TITLE" | grep -Eq "$pattern"; then
+            echo "::error::PR-Titel folgt nicht Conventional Commits: $TITLE"
+            failed=1
+          fi
+          while IFS= read -r subject; do
+            case "$subject" in Merge*|fixup!*|squash!*) continue ;; esac
+            if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
+              echo "::error::Commit folgt nicht Conventional Commits: $subject"
+              failed=1
+            fi
+          done < <(git log --format=%s "$BASE..$HEAD")
+          if [ "$failed" = 1 ]; then
+            echo "Format: <typ>(<bereich>): <beschreibung> – siehe CONTRIBUTING.md"
+            exit 1
+          fi

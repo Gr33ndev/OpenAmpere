@@ -30,7 +30,7 @@ auch ohne Programmierkenntnisse.
    Rückmeldung zum Lösungsweg.
 2. Repository forken, einen Branch anlegen (`fix/…`, `feature/…`, `docs/…`).
 3. Änderung umsetzen, Tests ergänzen, lokal prüfen (siehe unten).
-4. Pull Request mit der Vorlage öffnen und das Issue verlinken (`Fixes #123`).
+4. Pull Request mit der Vorlage öffnen, Titel im [Commit-Format](#commits-und-pr-titel), Issue verlinken (`Fixes #123`).
 5. Review abwarten und Anmerkungen einarbeiten. Bitte keine Force-Pushes, während ein Review läuft.
 
 ## Entwicklungsumgebung
@@ -87,10 +87,37 @@ Fehler beim Schreiben können Geräte, Garantie oder die Netzanschlussbedingunge
 - Code aus anderen Open-Source-Projekten nur mit kompatibler Lizenz und Quellenangabe.
 - Firmen- und Produktnamen nur beschreibend verwenden, siehe [rechtliche Hinweise](README.md#hintergrund--rechtliche-hinweise).
 
-## Commits
+## Commits und PR-Titel
 
-- Kurze Betreffzeile im Imperativ auf Englisch, z. B. `Fix daily totals after midnight`.
+Wir nutzen [Conventional Commits](https://www.conventionalcommits.org/de/v1.0.0/). Die CI prüft das.
+
+```
+<typ>(<bereich>): <kurze Beschreibung im Imperativ, englisch, klein>
+```
+
+Beispiele: `fix(report): keep daily totals after midnight`, `feat(saj): read battery temperature`,
+`docs: explain the VPN setup`.
+
+| Typ | Wofür |
+|---|---|
+| `feat` | neue Funktion für Nutzer |
+| `fix` | Fehlerbehebung |
+| `docs` | nur Dokumentation |
+| `refactor` | Umbau ohne geänderte Funktion |
+| `perf` | schneller oder sparsamer |
+| `test` | nur Tests |
+| `build` | Docker, Abhängigkeiten, Paketierung |
+| `ci` | GitHub Actions |
+| `chore` | Pflege, die in keine andere Kategorie passt |
+| `revert` | nimmt einen Commit zurück |
+
+- **Bereich** (optional): z. B. `modbus`, `foxess`, `saj`, `report`, `dashboard`, `ui`, `api`, `auth`, `control`,
+  `charging`, `tariffs`, `import`, `diagnostics`, `docker`, `deps`.
+- **Breaking Changes** (z. B. geänderte Datenbank oder Einstellungen, die man anpassen muss): `!` nach dem Typ,
+  z. B. `feat(api)!: …`, und im Text ein Absatz `BREAKING CHANGE: …` mit der nötigen Anpassung.
 - Im Text das Warum erklären, nicht nur das Was.
+- PRs werden per Squash zusammengeführt; der **PR-Titel** wird dabei zur Commit-Nachricht und muss deshalb ebenfalls
+  diesem Format folgen.
 - Keine Links zu privaten Chats, Tickets oder Sitzungen und keine persönlichen Daten in Commits.
 
 ## Lizenz

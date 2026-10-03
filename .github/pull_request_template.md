@@ -1,3 +1,5 @@
+<!-- PR-Titel im Format von Conventional Commits, z. B. „fix(report): keep daily totals after midnight“ (siehe CONTRIBUTING.md). -->
+
 ## Worum geht es?
 
 <!-- Kurz: Was ändert dieser PR und warum? -->
