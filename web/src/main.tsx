@@ -82,8 +82,8 @@ function App() {
     <div className="app">
       {DEMO && (
         <div className="demo-banner" role="note">
-          <span><strong>Demo</strong> mit einer erfundenen Anlage. Änderungen werden nicht gespeichert.</span>
-          <a href="../">Was ist OpenAmpere?</a>
+          <span><strong>Demo</strong> mit erfundenen Werten</span>
+          <a href="../">Infos</a>
           <a href="../impressum.html">Impressum</a>
         </div>
       )}

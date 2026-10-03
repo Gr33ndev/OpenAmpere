@@ -22,8 +22,8 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 ## Funktionen
 
-- **Menü:** Dashboard, Geräte (Wallbox, Heizstab und weitere Geräte bedienen), Auswertung und Mehr (Einstellungen).
-- **Dashboard:**
+- **Menü:** Übersicht, Geräte (Speicher, Wallbox, Heizstab bedienen und die Reihenfolge für Sonnenstrom festlegen), Auswertung und Mehr (Einrichtung und Einstellungen). Ein Schalter „Nur ansehen / Testen / Aktiv“ legt fest, ob OpenAmpere etwas ändern darf.
+- **Übersicht:**
   - Energiefluss live für PV, Haus, Netz und Speicher mit Ladestand, dazu Wallbox und Heizstab
   - Tageswerte
   - Autarkie

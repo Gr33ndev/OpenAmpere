@@ -43,7 +43,10 @@ export function deviceStatus(d: Device): string {
   if (d.error) return d.error;
   if (d.override?.mode === "off") return "von Hand aus";
   if (d.override?.mode === "boost") return `volle Leistung${d.override.until ? ` bis ${clock(d.override.until)}` : ""}`;
-  if (d.kind === "wallbox") return d.active ? `lädt mit ${kw(d.power_w)}` : "lädt nicht";
+  if (d.kind === "wallbox") {
+    if (d.active) return `lädt mit ${kw(d.power_w)}`;
+    return d.connected === false ? "kein Auto angeschlossen" : "angeschlossen, lädt gerade nicht";
+  }
   if (d.active) return `${kw(d.power_w)}`;
   if (d.status) return d.status;
   return d.on == null ? "wartet auf Überschuss" : "aus";

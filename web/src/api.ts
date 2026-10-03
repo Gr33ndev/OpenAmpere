@@ -319,6 +319,7 @@ export type Device = {
   kind: "heating_rod" | "switch" | "wallbox" | "heat_pump"; enabled: boolean; power_w: number; active: boolean;
   on: boolean | null; temperature_c: number | null; target_c: number | null; status: string | null; error: string | null;
   override: { mode: "off" | "boost"; until: number | null } | null;
+  connected: boolean | null; // wallbox: car plugged in
 };
 export type DevicesView = { devices: Device[]; today_wh: Record<string, number>;
   evcc: { configured: boolean; error: string | null }; priority: string };

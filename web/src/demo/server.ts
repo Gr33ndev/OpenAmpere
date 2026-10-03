@@ -128,11 +128,12 @@ function deviceItems() {
   const car = wallbox();
   return [
     { key: "evcc:1", id: 1, source: "evcc", name: "Carport", kind: "wallbox", enabled: true, power_w: car.power_w,
-      active: car.charging, on: car.charging, temperature_c: null, target_c: null, status: null, error: null, override: null },
+      active: car.charging, on: car.charging, temperature_c: null, target_c: null, status: null, error: null, override: null,
+      connected: car.connected },
     { key: "c:demo1", id: "demo1", source: "openampere", name: "Heizstab", kind: "heating_rod", enabled: true,
       power_w: rod.power, active: rod.on, on: rod.on, temperature_c: rod.temperature, target_c: 60,
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft",
-      error: null, override: null },
+      error: null, override: null, connected: null },
   ];
 }
 

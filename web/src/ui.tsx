@@ -212,3 +212,8 @@ export function LearnMore({ summary = "Mehr erfahren", children }: { summary?: s
     </details>
   );
 }
+
+/** Shown next to a save button while the form differs from what is stored. */
+export function Unsaved({ show }: { show: boolean }) {
+  return show ? <p className="hint unsaved" role="status">Noch nicht gespeichert</p> : null;
+}

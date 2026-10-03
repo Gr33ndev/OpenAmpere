@@ -8,7 +8,7 @@ import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
-import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
+import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
@@ -161,6 +161,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
           </div>
 
           {editable && <Button onClick={save} busy={busy} disabled={!changed}>Übernehmen</Button>}
+          {editable && <Unsaved show={!!changed} />}
         </>
       )}
     </SubPage>
@@ -203,6 +204,8 @@ export function TariffPage({ onBack }: PageProps) {
       vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct) })));
   }, [data]);
   const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map((t) => ({ ...t, price_ct: de(t.price_ct),
+    surcharge_ct: de(t.surcharge_ct), vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct) })));
   const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "fixed" ? t.price_ct : t.surcharge_ct]
     .every((v) => Number.isFinite(toNumber(v))));
   const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35", surcharge_ct: "20",
@@ -269,7 +272,8 @@ export function TariffPage({ onBack }: PageProps) {
         </div>
       ))}
       <Button variant="secondary" onClick={add}>Tarifwechsel hinzufügen</Button>
-      <Button busy={busy} disabled={!valid} onClick={save}>Speichern</Button>
+      <Button busy={busy} disabled={!valid || !dirty} onClick={save}>Speichern</Button>
+      <Unsaved show={dirty} />
       {forms.some((t) => t.kind === "dynamic") && (
         <p className="hint">Börsenpreise kommen kostenlos von aWATTar (Day-Ahead-Markt). Dafür braucht der Server Internet.</p>
       )}
@@ -346,6 +350,8 @@ export function ConnectionPage({ onBack }: PageProps) {
                 && mode === settings["inverter.connection_mode"]}
               onClick={() => save({ "inverter.poll_interval": pollInterval, "inverter.timeout": timeout,
                 "inverter.connection_mode": mode })}>Speichern</Button>
+            <Unsaved show={!(pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
+              && mode === settings["inverter.connection_mode"])} />
           </div>
 
           {(status?.device?.driver ?? settings["inverter.driver"]) === "foxess" && (
@@ -524,6 +530,7 @@ export function DataPage({ onBack }: PageProps) {
         </Field>
         <Button variant="secondary" disabled={!settings || days === settings["storage.raw_retention_days"]}
           onClick={() => save({ "storage.raw_retention_days": days })}>Speichern</Button>
+        <Unsaved show={!!settings && days !== settings["storage.raw_retention_days"]} />
       </div>
       <CloudImportCard />
       <CsvExportCard />
@@ -1041,6 +1048,7 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
           })}
           <Button disabled={JSON.stringify(names) === JSON.stringify(settings["pv.input_names"])}
             onClick={() => save({ "pv.input_names": names.slice(0, 6) })}>Speichern</Button>
+          <Unsaved show={JSON.stringify(names) !== JSON.stringify(settings["pv.input_names"])} />
         </div>
       ))}
     </SubPage>
@@ -1166,6 +1174,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
                 onChange={(e) => set({ battery_kwh: Number(e.target.value.replace(",", ".")) || 0 })} /><span>kWh</span></div>
             </Field>
             <Button busy={busy} disabled={!changed} onClick={() => void save(form)}>Speichern</Button>
+            <Unsaved show={!!changed} />
           </div>
         </>
       )}

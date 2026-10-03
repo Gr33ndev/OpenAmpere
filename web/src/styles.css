@@ -429,8 +429,8 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
   border-radius: 999px; background: var(--track); color: var(--label); }
 .check.ok .badge { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); }
 .check.warn .badge, .check.error .badge { background: var(--delight-light); color: var(--delight-text); }
-.demo-banner { position: sticky; top: 0; z-index: 11; display: flex; gap: 6px 14px; flex-wrap: wrap; justify-content: center;
-  align-items: center; font-size: 13px; padding: calc(env(safe-area-inset-top) + 8px) 16px 8px;
+.demo-banner { position: sticky; top: 0; z-index: 11; display: flex; gap: 12px; justify-content: center; align-items: center;
+  white-space: nowrap; font-size: 12px; padding: calc(env(safe-area-inset-top) + 6px) 12px 6px;
   background: var(--accent-text); color: #fff; }
 .demo-banner a { color: #fff; font-weight: 600; }
 
@@ -526,3 +526,4 @@ main a:not(.btn) { color: var(--accent-text); }
 details.learn > summary { cursor: pointer; color: var(--accent-text); font-size: 14px; font-weight: 600; min-height: 36px;
   display: flex; align-items: center; }
 details.learn .learn-body { padding: 4px 0 8px; }
+.hint.unsaved { color: var(--delight-text); font-weight: 600; text-align: center; }
