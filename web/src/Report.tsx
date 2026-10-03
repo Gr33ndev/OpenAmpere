@@ -190,7 +190,7 @@ export function Report() {
         <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label="Zeitraum weiter"><Chevron /></button>
       </div>
 
-      <KeyFigures summary={summary} open />
+      <KeyFigures summary={summary} />
 
       <div className="section-title">Verlauf</div>
       {period === "day" && (

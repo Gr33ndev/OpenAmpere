@@ -2,6 +2,8 @@
 
 /* Design tokens. Accent: green (own colour, deliberately not the vendor's brand colour). */
 :root {
+  /* the floating nav sits inside the home-indicator area like native iOS tab bars, not on top of it */
+  --nav-bottom: max(12px, calc(env(safe-area-inset-bottom) - 12px));
   --accent: #22b573;
   --accent-text: #13804f;
   --coral: #e8684a;
@@ -114,7 +116,7 @@ body {
 button { font: inherit; color: inherit; }
 
 .app { min-height: 100vh; }
-main { padding: calc(env(safe-area-inset-top) + 20px) 20px calc(120px + env(safe-area-inset-bottom)); }
+main { padding: calc(env(safe-area-inset-top) + 20px) 20px calc(110px + var(--nav-bottom)); }
 .page { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
 /* ---- headings ---- */
@@ -133,7 +135,7 @@ main { padding: calc(env(safe-area-inset-top) + 20px) 20px calc(120px + env(safe
 nav.bottom {
   position: fixed; z-index: 5;
   left: 50%; transform: translateX(-50%);
-  bottom: calc(10px + env(safe-area-inset-bottom));
+  bottom: var(--nav-bottom);
   width: min(600px, calc(100% - 40px));
   display: flex; justify-content: space-around;
   background: var(--nav-bg); color: var(--nav-fg);
@@ -326,7 +328,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .dialog-actions { display: flex; flex-direction: column; gap: 10px; }
 .toast {
   position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
-  bottom: calc(100px + env(safe-area-inset-bottom)); max-width: calc(100% - 40px);
+  bottom: calc(90px + var(--nav-bottom)); max-width: calc(100% - 40px);
   background: var(--text); color: var(--bg); padding: 12px 20px; border-radius: var(--radius-m); font-size: 14px;
   box-shadow: 0 6px 20px rgba(0,0,0,.2);
 }
