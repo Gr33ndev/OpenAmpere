@@ -4,8 +4,9 @@
 Commits created this way are signed by GitHub and show as "Verified", unlike a plain `git push` from a
 runner. Needs the `gh` CLI with GH_TOKEN, and GITHUB_REPOSITORY / GITHUB_REF_NAME from Actions.
 
-Usage: scripts/commit_via_api.py "chore(licenses): update third-party licenses" FILE [FILE ...]
-Prints the new commit id, or nothing when the files are unchanged.
+Usage: scripts/commit_via_api.py [--branch NAME] "commit message" FILE [FILE ...]
+Prints the new commit id, or nothing when the files are unchanged. Without --branch the current branch
+(GITHUB_REF_NAME) is used; the branch must already exist and point at the checked-out commit.
 """
 
 from __future__ import annotations
@@ -30,14 +31,18 @@ def changed(paths: list[str]) -> list[str]:
 
 
 def main() -> None:
-    message, paths = sys.argv[1], sys.argv[2:]
+    args = sys.argv[1:]
+    branch = os.environ["GITHUB_REF_NAME"]
+    if args[:1] == ["--branch"]:
+        branch, args = args[1], args[2:]
+    message, paths = args[0], args[1:]
     files = changed(paths)
     if not files:
         return
     head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
     additions = [{"path": f, "contents": base64.b64encode(open(f, "rb").read()).decode()} for f in files]
     payload = {"query": MUTATION, "variables": {"input": {
-        "branch": {"repositoryNameWithOwner": os.environ["GITHUB_REPOSITORY"], "branchName": os.environ["GITHUB_REF_NAME"]},
+        "branch": {"repositoryNameWithOwner": os.environ["GITHUB_REPOSITORY"], "branchName": branch},
         "message": {"headline": message},
         "expectedHeadOid": head,  # refuses to commit if the branch moved meanwhile
         "fileChanges": {"additions": additions},

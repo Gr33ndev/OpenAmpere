@@ -49,9 +49,12 @@ Vor dem PR:
 cd web && npm run build
 ```
 
-Ändern sich Abhängigkeiten, die Lockfiles neu erzeugen (siehe README, Abschnitt Entwicklung). Die Lizenzliste
-musst du nicht anfassen: Der Workflow „Third-party licenses“ aktualisiert sie nach dem Push automatisch auf deinem
-Branch. Lokal geht es mit:
+Ändern sich Abhängigkeiten, musst du Lockfiles und Lizenzliste nicht anfassen: Der Workflow „Dependency files“
+erzeugt sie nach dem Push automatisch neu und committet sie auf deinen Branch. Lokal geht es mit:
+
+```bash
+scripts/lock.sh
+```
 
 ```bash
 .venv/bin/python scripts/third_party_licenses.py
