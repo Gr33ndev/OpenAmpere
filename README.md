@@ -134,7 +134,7 @@ uv pip compile pyproject.toml --python-version 3.12 --generate-hashes -o require
 uv pip compile pyproject.toml --extra dev --python-version 3.12 -o requirements-dev.lock
 ```
 
-Danach `scripts/third_party_licenses.py` neu ausführen. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
+Die Lizenzliste (`THIRD_PARTY_LICENSES.md` und die Liste in der App) hält der Workflow `licenses.yml` automatisch aktuell: Ändern sich Abhängigkeiten, auch in Dependabot-PRs, erzeugt er die Dateien neu und committet sie auf denselben Branch. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
 
 Projektseite mit Demo: Die Startseite liegt in `site/`, die Demo ist die normale Web-App, gebaut mit `VITE_DEMO=1`. Sie simuliert eine Anlage im Browser (`web/src/demo/`) und schickt nichts an einen Server. Lokal bauen und ansehen:
 

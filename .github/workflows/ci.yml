@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:  # started by the licenses workflow after it committed updated license files
 
 permissions:
   contents: read

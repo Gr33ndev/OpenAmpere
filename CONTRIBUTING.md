@@ -49,7 +49,9 @@ Vor dem PR:
 cd web && npm run build
 ```
 
-Ändern sich Abhängigkeiten, Lockfiles und Lizenzliste neu erzeugen (siehe README, Abschnitt Entwicklung):
+Ändern sich Abhängigkeiten, die Lockfiles neu erzeugen (siehe README, Abschnitt Entwicklung). Die Lizenzliste
+musst du nicht anfassen: Der Workflow „Third-party licenses“ aktualisiert sie nach dem Push automatisch auf deinem
+Branch. Lokal geht es mit:
 
 ```bash
 .venv/bin/python scripts/third_party_licenses.py

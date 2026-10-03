@@ -36,7 +36,7 @@ Fixes #<!-- Issue-Nummer. Ohne abgestimmtes Issue bitte zuerst eines öffnen (au
 - [ ] Neue Funktionen laufen auch in der Demo: neue API-Endpunkte haben eine Antwort in `web/src/demo/server.ts` (`npm run check:demo`).
 - [ ] Keine persönlichen Daten (IP-Adressen, Seriennummern, Schlüssel) in Code, Tests oder Screenshots.
 - [ ] Kein Code, keine Grafiken oder Texte aus fremden Apps; Quellen für Register/Code sind angegeben.
-- [ ] Bei neuen Abhängigkeiten: Lockfiles und `THIRD_PARTY_LICENSES.md` neu erzeugt.
+- [ ] Bei neuen Abhängigkeiten: Lockfiles neu erzeugt (die Lizenzliste aktualisiert ein Workflow automatisch).
 
 ### Nur wenn etwas am Wechselrichter geschrieben wird
 
