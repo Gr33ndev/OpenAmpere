@@ -66,10 +66,14 @@ jobs:
         run: |
           python3 scripts/release_notes.py "$TAG" > notes.md
           cat notes.md
+          # only the highest stable version is "Latest", also when an older release is written afterwards
+          newest=$(git tag -l 'v*' --sort=-v:refname | grep -v -- - | head -n 1)
+          latest=$([ "$TAG" = "$newest" ] && echo true || echo false)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file notes.md
+            gh release edit "$TAG" --notes-file notes.md --latest="$latest"
           else
             flags=""
             case "$TAG" in *-*) flags="--prerelease" ;; esac
-            gh release create "$TAG" --verify-tag --title "OpenAmpere ${TAG#v}" --notes-file notes.md $flags
+            gh release create "$TAG" --verify-tag --title "OpenAmpere ${TAG#v}" --notes-file notes.md \
+              --latest="$latest" $flags
           fi
