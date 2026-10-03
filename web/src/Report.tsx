@@ -190,7 +190,7 @@ export function Report() {
         <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label="Zeitraum weiter"><Chevron /></button>
       </div>
 
-      <KeyFigures summary={summary} />
+      <KeyFigures summary={summary} open />
 
       <div className="section-title">Verlauf</div>
       {period === "day" && (
@@ -252,8 +252,8 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
 
   if (!data || data.labels.length < 2) return null;
   return (
-    <details className="report-section">
-      <summary>Nach Modulfeldern</summary>
+    <>
+      <div className="section-title">Nach Modulfeldern</div>
       {chart && chart.x.length ? (
         <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={220} />
       ) : <p className="empty">Für diesen Zeitraum liegen keine Werte je Modulfeld vor.</p>}
@@ -265,7 +265,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
           </span>
         ))}
       </div>
-    </details>
+    </>
   );
 }
 
@@ -314,12 +314,12 @@ function DevicesSection({ data, power, totals, colors, xFormat, load }: {
   if (!data?.devices.length) return null;
   const deviceSum = (totals ?? []).reduce((a, b) => a + b, 0);
   return (
-    <details className="report-section">
-      <summary>Nach Geräten</summary>
+    <>
+      <div className="section-title">Nach Geräten</div>
       {chart ? <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={200}
         label="Diagramm Verbrauch je Gerät" />
         : <p className="empty">In diesem Zeitraum haben die Geräte keinen Strom verbraucht.</p>}
-      <dl className="facts">
+      <div className="card"><dl className="facts">
         {load != null && <><dt>Haushalt</dt><dd>{kwh(Math.max(0, load - deviceSum))}</dd></>}
         {data.devices.map((d, i) => (
           <Fragment key={d.key}>
@@ -327,7 +327,7 @@ function DevicesSection({ data, power, totals, colors, xFormat, load }: {
             <dd>{kwh(totals?.[i])}{load ? ` · ${Math.round(((totals?.[i] ?? 0) / load) * 100)} %` : ""}</dd>
           </Fragment>
         ))}
-      </dl>
-    </details>
+      </dl></div>
+    </>
   );
 }

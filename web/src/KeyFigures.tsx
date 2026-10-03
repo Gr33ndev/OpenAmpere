@@ -5,7 +5,7 @@ const euro = (v: number | null | undefined) =>
   v == null ? "–" : v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 
 /** The few numbers that matter for a period, details on request. Used on the start page and in the analysis. */
-export function KeyFigures({ summary, title }: { summary: Summary | null; title?: string }) {
+export function KeyFigures({ summary, title, open = false }: { summary: Summary | null; title?: string; open?: boolean }) {
   const e = summary?.energy_wh;
   return (
     <div className="card key-figures">
@@ -19,7 +19,7 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
       {summary?.money && (
         <p className="key-money">Ersparnis etwa <strong>{euro(summary.money.savings_eur)}</strong></p>
       )}
-      <details className="key-details">
+      <details className="key-details" open={open}>
         <summary>Alle Werte</summary>
         <dl className="facts">
           <dt>Ins Netz eingespeist</dt><dd>{kwh(e?.grid_export)}</dd>

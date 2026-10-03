@@ -12,6 +12,8 @@ import { deviceStatus } from "./DevicesPage";
 import { PvInputsCard, TemperaturesCard } from "./Dashboard";
 import { TemperatureSection } from "./Report";
 import { goBack, navigate } from "./route";
+import { ConsumersPage } from "./ConsumersPage";
+import { WallboxPage } from "./WallboxPage";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
   return (
@@ -124,6 +126,9 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     // parts of "Meine Anlage"
     case "pv": return <PvSystemPage onBack={() => goBack("more/installation")} snap={snap} />;
     case "export-limit": return <ExportLimitPage onBack={() => goBack("more/installation")} onNavigate={setPage} />;
+    // devices are set up under "Verbindung"
+    case "device-setup": return <ConsumersPage onBack={() => goBack("more/connection")} />;
+    case "wallbox": return <WallboxPage onBack={() => goBack("more/connection")} />;
     // moved to "Geräte"; old links still work
     case "battery": navigate("devices/battery"); return null;
     case "charging": navigate("devices/charging"); return null;
@@ -149,7 +154,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
 
       <div className="section-title">Einstellungen</div>
       <div className="card menu">
-        <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
+        <MenuRow label="Verbindung" hint="Wechselrichter, Heizstab, Wallbox" onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung und Protokoll"
           hint={control?.enabled ? (control.dry_run ? "Testen" : "Aktiv") : "Nur ansehen"} onClick={() => setPage("control")} />
         <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy" onClick={() => setPage("notify")} />

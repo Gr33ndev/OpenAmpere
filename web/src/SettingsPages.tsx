@@ -8,7 +8,7 @@ import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
-import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
+import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
@@ -284,7 +284,7 @@ export function TariffPage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
-export function ConnectionPage({ onBack }: PageProps) {
+export function ConnectionPage({ onBack, onNavigate }: PageProps) {
   const { settings, locked, lockedKeys, save, error, reload } = useSettings();
   const { data: status } = useResource<Status>("/api/status", 5000);
   const [pollInterval, setPollInterval] = useState(10);
@@ -309,6 +309,12 @@ export function ConnectionPage({ onBack }: PageProps) {
           ? `Verbunden mit ${status.device?.manufacturer} ${status.device?.model}`
           : `Nicht verbunden${status?.last_error ? `: ${status.last_error}` : ""}`}
       </Notice>
+      <div className="section-title">Weitere Geräte</div>
+      <div className="card menu">
+        <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, eigene Web-Adressen" onClick={() => onNavigate?.("device-setup")} />
+        <MenuRow label="Wallbox" hint="über evcc" onClick={() => onNavigate?.("wallbox")} />
+      </div>
+      <div className="section-title">Wechselrichter</div>
       {settings && (
         <ConnectionForm
           key={settings["inverter.host"]}

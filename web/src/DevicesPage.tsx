@@ -1,14 +1,13 @@
 import { useState, type ReactNode } from "react";
 import type { BatteryState, Device, DevicesView, Snapshot } from "./api";
 import { postJson, putJson, useResource } from "./api";
-import { ConsumersPage } from "./ConsumersPage";
 import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
 import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
 import { BatteryPage, ChargingPage, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
-import { Button, MenuRow, Notice, Segmented, Slider, toast } from "./ui";
-import { EVCC_URL, WallboxCard, WallboxPage, type EvccView } from "./WallboxPage";
+import { Button, Notice, Segmented, Slider, toast } from "./ui";
+import { EVCC_URL, WallboxCard, type EvccView } from "./WallboxPage";
 
 const COLORS: Record<Device["kind"], string[]> = {
   wallbox: ["var(--wallbox)", "var(--wallbox-2)"],
@@ -189,8 +188,8 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
   const { data, reload } = useResource<DevicesView>("/api/devices", 5_000);
   const { data: evcc, setData: setEvcc } = useResource<EvccView>("/api/evcc", 10_000);
   const nav = { onBack: () => goBack("devices"), onNavigate: (p: string) => navigate(`more/${p}`) };
-  if (page === "setup") return <ConsumersPage {...nav} />;
-  if (page === "wallbox") return <WallboxPage {...nav} />;
+  if (page === "setup") { navigate("more/device-setup"); return null; } // moved to Mehr → Verbindung
+  if (page === "wallbox") { navigate("more/wallbox"); return null; }
   if (page === "battery") return <BatteryPage {...nav} />;
   if (page === "charging") return <ChargingPage {...nav} />;
 
@@ -203,8 +202,8 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
       <div className="card">
         <p>Wallbox, Heizstab oder Wärmepumpe können deinen Sonnenstrom nutzen. Füge sie hier hinzu.</p>
         <div className="button-row">
-          <Button onClick={() => navigate("devices/setup")}>Heizstab oder Gerät hinzufügen</Button>
-          <Button variant="secondary" onClick={() => navigate("devices/wallbox")}>Wallbox mit evcc verbinden</Button>
+          <Button onClick={() => navigate("more/device-setup")}>Heizstab oder Gerät hinzufügen</Button>
+          <Button variant="secondary" onClick={() => navigate("more/wallbox")}>Wallbox mit evcc verbinden</Button>
         </div>
       </div>
     );
@@ -232,11 +231,7 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
         </>
       )}
       <SurplusOrder />
-      <div className="section-title">Einrichten</div>
-      <div className="card menu">
-        <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, eigene Web-Adressen" onClick={() => navigate("devices/setup")} />
-        <MenuRow label="Wallbox" hint={evcc?.configured ? "mit evcc verbunden" : "mit evcc verbinden"} onClick={() => navigate("devices/wallbox")} />
-      </div>
+      <p className="hint center">Geräte hinzufügen oder einrichten: <button className="link" onClick={() => navigate("more/connection")}>Mehr → Verbindung</button></p>
     </div>
   );
 }
