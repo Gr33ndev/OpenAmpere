@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 rm -rf _site
 (cd web && npm run build:demo)
-cp site/index.html site/style.css _site/
+cp site/index.html site/impressum.html site/style.css _site/
 cp web/public/icon.svg _site/
 mkdir -p _site/fonts
 fonts=web/node_modules/@fontsource-variable/dm-sans

@@ -3,7 +3,7 @@
 
 import { BATTERY_WH, dayStart, energyOf, firstDayStart, KWP, stepsBetween, stepsOf, STEP_S, type Energy, type Step } from "./model";
 
-export const DEMO_WRITE_MESSAGE = "Das ist nur die Demo – hier lässt sich nichts ändern. Installiere OpenAmpere für deine eigene Anlage.";
+export const DEMO_WRITE_MESSAGE = "Das ist nur die Demo, hier lässt sich nichts ändern. Für deine eigene Anlage installierst du OpenAmpere.";
 
 const RATED_W = 10_000;
 const PRICE_CT = 35;
