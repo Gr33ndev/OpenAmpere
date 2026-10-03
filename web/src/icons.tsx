@@ -133,12 +133,13 @@ export function WarnCircle() {
 export function CarIcon({ size = 64 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
-      <path d="M10 40v-8l6-12c1-2 3-3 5-3h22c2 0 4 1 5 3l6 12v8z" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M17 31l4-9h22l4 9z" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinejoin="round" />
-      <rect x="10" y="40" width="44" height="8" rx="2" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
-      <circle cx="20" cy="48" r="4.5" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
-      <circle cx="44" cy="48" r="4.5" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
-      <path d="M33 33l-3 5h4l-3 5" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 31l5-12c.8-2 2.6-3 4.6-3h10.8c2 0 3.8 1 4.6 3l5 12" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M22 30l3.5-8.5h13L42 30" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M13 48v6h8v-6M43 48v6h8v-6" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinejoin="round" />
+      <rect x="8" y="30" width="48" height="18" rx="5" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <circle cx="16.5" cy="38.5" r="3" stroke="var(--icon-stroke)" strokeWidth="1.5" />
+      <circle cx="47.5" cy="38.5" r="3" stroke="var(--icon-stroke)" strokeWidth="1.5" />
+      <path d="M33.5 33l-3.5 6h5l-3.5 6" stroke="var(--brand)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -146,11 +147,11 @@ export function CarIcon({ size = 64 }: P) {
 export function HeaterIcon({ size = 64 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
-      <rect x="18" y="8" width="28" height="48" rx="10" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
-      <path d="M26 46V24M32 46V20M38 46V24" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M24 46h16" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
-      <path d="M27 14c-2 2 2 3 0 5M32 12c-2 2 2 3 0 5M37 14c-2 2 2 3 0 5" stroke="var(--brand)" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M26 56v3M38 56v3" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
+      <rect x="16" y="6" width="32" height="52" rx="12" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <path d="M20 25c2.4-1.6 4.4-1.6 6 0s3.6 1.6 6 0 3.6-1.6 6 0 3.6 1.6 6 0" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M27 52V34a5 5 0 0 1 10 0v18" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M26 12c-1.5 1.6 1.5 2.4 0 4M32 11c-1.5 1.6 1.5 2.4 0 4M38 12c-1.5 1.6 1.5 2.4 0 4" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M22 58v3M42 58v3" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

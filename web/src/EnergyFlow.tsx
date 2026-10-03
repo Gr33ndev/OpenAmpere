@@ -7,10 +7,10 @@ import { BatteryIcon, GridIcon, HouseIcon, SolarIcon } from "./icons";
 const IDLE_W = 30;
 // Layout in a 100 x H coordinate system (matches the container's aspect ratio)
 const BASE_H = 80;
-const DEVICES_H = 108; // extra row below the house for wallbox, heating rod, ...
+const DEVICES_H = 120; // extra row below the house for wallbox, heating rod, ...
 const HOUSE = { x: 50, y: 56 };
 const LINE_Y = 52; // vertical centre of the side icons
-const DEVICE_Y = 94;
+const DEVICE_Y = 101;
 const MAX_DEVICES = 4;
 
 /** Connection; dashes travel from (x1, y1) to (x2, y2) when power > 0 and backwards when < 0. */
@@ -73,7 +73,7 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
         <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale ? null : snap?.grid_power ?? null} />
         {/* house -> devices */}
         {shown.map((d, i) => (
-          <Link key={d.key} x1={50} y1={72} x2={deviceX(i, shown.length)} y2={DEVICE_Y - 9}
+          <Link key={d.key} x1={50} y1={72} x2={deviceX(i, shown.length)} y2={DEVICE_Y - 18}
             power={stale ? null : d.power_w} />
         ))}
       </svg>
@@ -89,7 +89,7 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
         {grid && <div className="soc">{grid}</div>}
       </Node>
       {shown.map((d, i) => (
-        <Node key={d.key} x={deviceX(i, shown.length)} y={DEVICE_Y} h={h} small icon={<DeviceIcon kind={d.kind} size={40} />}>
+        <Node key={d.key} x={deviceX(i, shown.length)} y={DEVICE_Y} h={h} small icon={<DeviceIcon kind={d.kind} size={64} />}>
           {kw(d.power_w)}
           <div className="soc">{d.name}{d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</div>
         </Node>
