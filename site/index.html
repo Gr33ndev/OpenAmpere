@@ -55,7 +55,9 @@
           <ul>
             <li><strong>FoxESS H3, H3 Smart, H3 Pro:</strong> Anzeige und Steuerung</li>
             <li><strong>SAJ H2 und HS2:</strong> Anzeige</li>
-            <li>Heizstab oder Wärmepumpe über ein Shelly-Relais</li>
+            <li><strong>Heizstab von my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): stufenlos geregelt</li>
+            <li>Wärmepumpe oder andere Geräte über ein Shelly-Relais</li>
+            <li><strong>Wallbox</strong> über <a href="https://evcc.io">evcc</a></li>
           </ul>
           <p class="small">Welches Gerät du hast, erkennt die App beim Einrichten selbst. Die Verbindung läuft über
             Modbus TCP.</p>
@@ -79,9 +81,9 @@
         <div class="card"><h3>Speicher und Notstrom</h3><p>Notstrom-Reserve, Ladegrenzen und Betriebsmodus einstellen. Neue Werte kannst du vorher im Testmodus ausprobieren.</p></div>
         <div class="card"><h3>Einspeisebegrenzung</h3><p>Du gibst an, welche Regel für deine Anlage gilt: 60 %, 70 % oder ein Wert vom Netzbetreiber. Mehr lässt die App nicht zu.</p></div>
         <div class="card"><h3>Stromtarife</h3><p>Festpreis oder Börsenstrom. Mit dynamischem Tarif kann der Speicher zur günstigsten Zeit laden. Diese Funktion ist noch experimentell.</p></div>
-        <div class="card"><h3>Überschuss nutzen</h3><p>Heizstab oder Wärmepumpe einschalten, wenn mehr Sonne da ist, als das Haus gerade braucht.</p></div>
-        <div class="card"><h3>Benachrichtigungen</h3><p>Nachricht aufs Handy über ntfy, wenn der Wechselrichter eine Störung meldet oder nicht mehr erreichbar ist.</p></div>
-        <div class="card"><h3>Diagnose und Export</h3><p>Prüft, ob die App dein Gerät richtig liest, ohne etwas zu ändern. Alle Werte lassen sich als CSV-Datei laden.</p></div>
+        <div class="card"><h3>Heizstab und Wärmepumpe</h3><p>Ein Heizstab von my-PV nimmt genau so viel Strom, wie gerade übrig ist. Wärmepumpe oder andere Geräte schaltet die App über ein Shelly-Relais.</p></div>
+        <div class="card"><h3>Wallbox mit evcc</h3><p>Das Auto mit Sonnenstrom laden. Die Wallbox steuert <a href="https://evcc.io">evcc</a>, bedienen kannst du sie direkt in OpenAmpere.</p></div>
+        <div class="card"><h3>Hinweise, Diagnose, Export</h3><p>Nachricht aufs Handy über ntfy, wenn etwas nicht stimmt. Eine Diagnose prüft, ob die App dein Gerät richtig liest. Alle Werte gibt es als CSV-Datei.</p></div>
       </div>
     </section>
 
@@ -175,6 +177,7 @@ docker compose up -d --build</code></pre>
         <a href="https://github.com/Gr33ndev/OpenAmpere">Quellcode</a> ·
         <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">MIT-Lizenz</a> ·
         <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">Sicherheit</a></p>
+      <p class="small">Wallboxen steuert <a href="https://evcc.io">evcc</a>, ein eigenständiges Open-Source-Projekt. Danke an die evcc-Community!</p>
       <p class="small">Diese Seite setzt keine Cookies und nutzt kein Tracking.
         Schrift: DM Sans (<a href="fonts/OFL.txt">SIL Open Font License</a>).</p>
     </div>

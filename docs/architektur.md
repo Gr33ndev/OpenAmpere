@@ -43,7 +43,8 @@ OpenAmpere ist eine lokal laufende, quelloffene App für Solaranlagen mit Batter
 | `auth.py` | Zugriffsschutz: ein lokales Passwort (scrypt), Sitzungs-Cookie, CSRF-Header, Prüfung von Origin und Host (gegen DNS-Rebinding), Sperre nach Fehlversuchen. Lesen im Heimnetz ist frei, Ändern braucht eine Anmeldung. |
 | `tariffs.py` | Stromtarife mit Startdatum (Festpreis oder dynamisch), Börsenpreise von aWATTar je Viertelstunde, Ersparnis-Berechnung. |
 | `charging.py` | Laden aus dem Netz nach Preis oder Zeitfenster, nur über die Fernsteuerung mit Watchdog (3 min); prüft, dass der Speicher wirklich lädt. |
-| `consumers.py` | Überschuss-Verbraucher (Shelly, HTTP) nach Priorität mit Hysterese, Mindestzeiten und Speicher-Vorrang. |
+| `consumers.py` | Überschuss verteilen nach Reihenfolge: my-PV-Heizstab stufenlos (`drivers/mypv.py`), Shelly/HTTP an oder aus mit Hysterese und Mindestzeiten, Speicher-Vorrang, optional günstiger Netzstrom, Rücksicht auf ein wartendes Auto. Läuft im schnellen Takt (5 bis 15 s). |
+| `evcc.py` | Anbindung an evcc für Wallboxen: liest `/api/state` fehlertolerant, sendet Lademodus, Ladeziel und Ladeplan. Unter `/api/evcc/site` bekommt evcc Netz, Solar und Speicher, siehe [evcc.md](evcc.md). |
 | `diagnostics.py` | Diagnose nur lesend: Blöcke mit FC03/FC04, Skalierung, Exportlimit, Fernsteuerung, optional Verbindungsgrenze; dazu passiv gesammelte Verbindungsabbrüche, Zählerauffälligkeiten und Rücksetzzeiten der Tageszähler. |
 | `notify.py` | Benachrichtigungen über ntfy, jedes Ereignis nur einmal. |
 | `cloud_import.py` | Übernimmt den Verlauf aus der bisherigen Hersteller-Cloud über deren Kunden-API, alternativ per ZIP aus `tools/cloud-export`. Eigene Messwerte werden nie überschrieben. |

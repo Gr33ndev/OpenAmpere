@@ -9,6 +9,12 @@ home-assistant-ampere-storage-pro-modbus (https://github.com/dboeni/home-assista
 MIT License), EKD_Telegraf_Modbus (https://github.com/litronics/EKD_Telegraf_Modbus, Apache-2.0) and the
 evcc saj-h2 template (https://github.com/evcc-io/evcc, MIT License).
 
+Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/evcc, MIT License for the
+core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
+contains no evcc code. Thanks to the evcc community.
+
+my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
+
 OpenAmpere is an unofficial, independent community project. All product names, company names and
 trademarks mentioned in this project belong to their respective owners and are used only to describe
 compatibility. Background and legal notes: see README.md ("Hintergrund & rechtliche Hinweise").
