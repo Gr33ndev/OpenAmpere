@@ -10,7 +10,15 @@ const HISTORY_DAYS = 420;
 export type Step = {
   ts: number; pv: number; pv1: number; pv2: number; load: number; grid: number; battery: number; soc: number;
   tInverter: number; tBattery: number;
+  household: number; // load without the devices below
+  car: number; carConnected: boolean; carSoc: number; // wallbox (evcc in the real app)
+  rod: number; water: number; // my-PV heating rod and hot water temperature
 };
+
+const CAR_KWH = 44;
+const CAR_MIN_W = 1380; // 6 A, one phase
+const ROD_MAX_W = 3000;
+const WATER_TARGET = 60;
 
 function random(seed: number): () => number {
   let s = seed >>> 0;
@@ -63,23 +71,52 @@ function simulateDay(start: number, soc: number): Step[] {
   const weekend = date.getDay() === 0 || date.getDay() === 6;
   const steps: Step[] = [];
   let cloud = clouds;
+  // the car is at home on weekends and on some weekdays, plugged in from late morning
+  const carHome = weekend || rnd() < 0.35;
+  const carFrom = 10 + rnd() * 2, carUntil = 17 + rnd() * 2;
+  let carSoc = 30 + rnd() * 25;
+  let water = 44 + rnd() * 4;
   for (let i = 0; i < 86400 / STEP_S; i++) {
     const ts = start + i * STEP_S;
     const hour = (i * STEP_S) / 3600;
+    const h = STEP_S / 3600;
     cloud = Math.min(1, Math.max(0.1, cloud + (rnd() - 0.5) * 0.25 * (1 - clouds) + (clouds - cloud) * 0.1));
     const pv1 = Math.round(KWP * 1000 * 0.6 * 0.85 * sun(hour, doy) * cloud);
     const pv2 = Math.round(KWP * 1000 * 0.4 * 0.85 * sun(hour - 1.3, doy) * cloud);
     const pv = pv1 + pv2;
-    const house = Math.round(load(hour, weekend, rnd, washer));
+    const household = Math.round(load(hour, weekend, rnd, washer));
+    // shared like the real control: battery first up to 80 %, then the car (wallbox first), then the heating rod
+    let free = pv - household;
     let battery = 0; // + = discharging
-    const surplus = pv - house;
-    if (surplus > 0 && soc < 100) battery = -Math.min(surplus, MAX_BATTERY_W, ((100 - soc) / 100) * BATTERY_WH * 3600 / STEP_S);
-    if (surplus < 0 && soc > 10) battery = Math.min(-surplus, MAX_BATTERY_W, ((soc - 10) / 100) * BATTERY_WH * 3600 / STEP_S);
-    soc = Math.min(100, Math.max(10, soc - (battery * STEP_S / 3600 / BATTERY_WH) * 100 * (battery < 0 ? 0.95 : 1)));
-    const grid = Math.round(house - pv - battery);
+    const room = ((100 - soc) / 100) * BATTERY_WH / h;
+    if (free > 0 && soc < 80) {
+      battery = -Math.min(free, MAX_BATTERY_W, room);
+      free += battery;
+    }
+    const carConnected = carHome && hour >= carFrom && hour < carUntil;
+    let car = 0;
+    if (carConnected && carSoc < 80 && free >= CAR_MIN_W) {
+      car = Math.min(11_000, Math.floor(free / 230) * 230);
+      free -= car;
+      carSoc = Math.min(80, carSoc + (car * h / 1000 / CAR_KWH) * 100);
+    }
+    let rod = 0;
+    if (water < WATER_TARGET && free >= 600) {
+      rod = Math.min(ROD_MAX_W, Math.round((free - 100) / 50) * 50);
+      free -= rod;
+    }
+    water = Math.max(35, water + (rod * h / 1000) * 4.3 - 0.25 * h);
+    if (free > 0 && soc < 100 && battery === 0) battery = -Math.min(free, MAX_BATTERY_W, room);
+    else if (free > 0 && soc < 100) battery -= Math.min(free, MAX_BATTERY_W + battery, room + battery);
+    const deficit = household + car + rod - pv;
+    if (deficit > 0 && soc > 10) battery = Math.min(deficit, MAX_BATTERY_W, ((soc - 10) / 100) * BATTERY_WH / h);
+    soc = Math.min(100, Math.max(10, soc - (battery * h / BATTERY_WH) * 100 * (battery < 0 ? 0.95 : 1)));
+    const loadW = household + car + rod;
+    const grid = Math.round(loadW - pv - battery);
     const ambient = 12 + 8 * Math.sin((2 * Math.PI * (doy - 110)) / 365) + 4 * Math.sin((Math.PI * (hour - 8)) / 12);
-    steps.push({ ts, pv, pv1, pv2, load: house, grid, battery: Math.round(battery), soc: Math.round(soc * 10) / 10,
-      tInverter: Math.round((ambient + 8 + pv / 400) * 10) / 10, tBattery: Math.round((ambient + 6 + Math.abs(battery) / 800) * 10) / 10 });
+    steps.push({ ts, pv, pv1, pv2, load: loadW, grid, battery: Math.round(battery), soc: Math.round(soc * 10) / 10,
+      tInverter: Math.round((ambient + 8 + pv / 400) * 10) / 10, tBattery: Math.round((ambient + 6 + Math.abs(battery) / 800) * 10) / 10,
+      household, car, carConnected, carSoc: Math.round(carSoc), rod, water: Math.round(water * 10) / 10 });
   }
   return steps;
 }

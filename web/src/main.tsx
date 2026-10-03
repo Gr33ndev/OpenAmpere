@@ -4,7 +4,8 @@ import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
 import { PasswordSetup, useLoginPrompt } from "./AuthScreens";
 import { Dashboard } from "./Dashboard";
-import { NavHome, NavMore, NavReport } from "./icons";
+import { NavDevices, NavHome, NavMore, NavReport } from "./icons";
+import { DevicesTab } from "./DevicesPage";
 import { More } from "./More";
 import { Report } from "./Report";
 import { applyTheme, storedTheme } from "./SettingsPages";
@@ -15,11 +16,12 @@ import { DEMO } from "./demo/flag";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
 
-type Tab = "dashboard" | "report" | "more";
+type Tab = "dashboard" | "devices" | "report" | "more";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <NavHome /> },
-  { id: "report", label: "Report", icon: <NavReport /> },
+  { id: "devices", label: "Geräte", icon: <NavDevices /> },
+  { id: "report", label: "Auswertung", icon: <NavReport /> },
   { id: "more", label: "Mehr", icon: <NavMore /> },
 ];
 
@@ -94,6 +96,7 @@ function App() {
       )}
       <main>
         {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
+        {tab === "devices" && <DevicesTab page={route[1] ?? null} />}
         {tab === "report" && <Report />}
         {tab === "more" && <More snap={snap} page={route[1] ?? null} />}
       </main>

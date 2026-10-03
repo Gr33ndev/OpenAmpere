@@ -5,11 +5,10 @@ import { kwh, percent, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, BatteryPage, ChargingPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
-import { ConsumersPage } from "./ConsumersPage";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
-import { WallboxPage } from "./WallboxPage";
 import { MenuRow, Notice, SubPage } from "./ui";
+import { deviceStatus } from "./DevicesPage";
 import { goBack, navigate } from "./route";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -75,13 +74,13 @@ function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () 
         </dl>
       </div>
 
-      {!!status?.devices.consumers.length && (
+      {!!status?.devices.items.length && (
         <>
           <div className="section-title">Weitere Geräte</div>
           <div className="card">
             <dl className="facts">
-              {status.devices.consumers.map((c, i) => (
-                <Fragment key={i}><dt>{c.name}</dt><dd>{c.on == null ? "–" : c.on ? "an" : "aus"} · {num(c.power_w / 1000, 1)} kW</dd></Fragment>
+              {status.devices.items.map((d) => (
+                <Fragment key={d.key}><dt>{d.name}</dt><dd>{deviceStatus(d)}{d.source === "evcc" ? " (evcc)" : ""}</dd></Fragment>
               ))}
             </dl>
           </div>
@@ -111,8 +110,6 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "installation": return <InstallationPage snap={snap} onBack={back} />;
     case "battery": return <BatteryPage {...nav} />;
     case "charging": return <ChargingPage {...nav} />;
-    case "consumers": return <ConsumersPage {...nav} />;
-    case "wallbox": return <WallboxPage {...nav} />;
     case "notify": return <NotifyPage {...nav} />;
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
@@ -138,8 +135,6 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="PV-Anlage" hint="Modulfelder benennen" onClick={() => setPage("pv")} />
         <MenuRow label="Speicher & Notstrom" onClick={() => setPage("battery")} />
         <MenuRow label="Laden aus dem Netz" hint="Nach Strompreis oder Zeitfenster (experimentell)" onClick={() => setPage("charging")} />
-        <MenuRow label="Überschuss nutzen" hint="Heizstab, Wärmepumpe & Co." onClick={() => setPage("consumers")} />
-        <MenuRow label="Wallbox" hint="Laden mit evcc" onClick={() => setPage("wallbox")} />
         <MenuRow label="Einspeisebegrenzung" hint="Gesetzliche Regel und Modulleistung" onClick={() => setPage("export-limit")} />
         <MenuRow label="Stromtarif" onClick={() => setPage("tariff")} />
       </div>

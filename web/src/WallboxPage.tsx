@@ -53,6 +53,7 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (lp.limit_soc != null) setLimit(lp.limit_soc); }, [lp.limit_soc]);
   const unit = lp.heating ? "°C" : "%";
+  const plugged = lp.connected || lp.heating; // without a car the vehicle values are stale
   const send = async (action: string, value?: unknown) => {
     setBusy(true);
     try {
@@ -69,13 +70,13 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
       <div className="wallbox-head">
         <div>
           <strong>{lp.title}</strong>
-          <div className="hint">{lp.vehicle_title ? `${lp.vehicle_title} · ` : ""}{status(lp)}</div>
+          <div className="hint">{plugged && lp.vehicle_title ? `${lp.vehicle_title} · ` : ""}{status(lp)}</div>
         </div>
-        {lp.soc != null && (
+        {plugged && lp.soc != null && (
           <div className="wallbox-soc"><span>{num(lp.soc, 0)}</span><small>{unit}</small></div>
         )}
       </div>
-      {lp.soc != null && !lp.heating && (
+      {plugged && lp.soc != null && !lp.heating && (
         <div className="soc-track" role="img" aria-label={`Ladestand ${lp.soc} %, Ziel ${lp.limit_soc ?? "–"} %`}>
           <div className="fill" style={{ width: `${Math.min(100, lp.soc)}%` }} />
           {lp.limit_soc != null && <div className="target" style={{ left: `${lp.limit_soc}%` }} />}
@@ -89,13 +90,13 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
       </Field>
       {limit !== lp.limit_soc && <Button variant="secondary" busy={busy} onClick={() => void send("limit_soc", limit)}>Ziel übernehmen</Button>}
       <dl className="facts">
-        {lp.session_wh != null && <><dt>Diesmal geladen</dt><dd>{num(lp.session_wh / 1000, 1)} kWh
+        {plugged && !!lp.session_wh && <><dt>Diesmal geladen</dt><dd>{num(lp.session_wh / 1000, 1)} kWh
           {lp.session_solar_pct != null ? ` · ${num(lp.session_solar_pct, 0)} % Sonne` : ""}</dd></>}
-        {lp.range_km != null && <><dt>Reichweite</dt><dd>{num(lp.range_km, 0)} km</dd></>}
+        {plugged && lp.range_km != null && <><dt>Reichweite</dt><dd>{num(lp.range_km, 0)} km</dd></>}
         {lp.charging && duration(lp.remaining_s) && <><dt>Fertig in</dt><dd>{duration(lp.remaining_s)}</dd></>}
         {lp.plan_active && lp.plan_time && <><dt>Ladeplan</dt><dd>{lp.plan_soc != null ? `${num(lp.plan_soc, 0)} % ` : ""}bis {clock(lp.plan_time)}</dd></>}
       </dl>
-      {!lp.heating && lp.vehicle_name && <PlanForm lp={lp} busy={busy} send={send} />}
+      {!lp.heating && lp.connected && lp.vehicle_name && <PlanForm lp={lp} busy={busy} send={send} />}
     </div>
   );
 }
@@ -163,8 +164,7 @@ site:
 
 export function WallboxPage({ onBack }: PageProps) {
   const { data: settings, reload: reloadSettings } = useResource<Settings>("/api/settings");
-  const { data: view, error, reload, setData } = useResource<EvccView>("/api/evcc?refresh=true", 10_000);
-  const { data: sessions } = useResource<{ sessions: Session[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
+  const { data: view, error, reload } = useResource<EvccView>("/api/evcc?refresh=true", 10_000);
   const [url, setUrl] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -195,14 +195,13 @@ export function WallboxPage({ onBack }: PageProps) {
   const cars = view?.state?.loadpoints ?? [];
 
   return (
-    <SubPage title="Wallbox" onBack={onBack}>
+    <SubPage title="Wallbox einrichten" onBack={onBack}>
       <p className="hint">Die Wallbox steuert <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a>, ein
-        eigenständiges Open-Source-Projekt für Solarladen. evcc kennt sehr viele Wallboxen und Fahrzeuge. OpenAmpere
-        zeigt die Ladepunkte an, du kannst sie hier bedienen, und evcc bekommt von OpenAmpere die Werte von Netz, Solar
-        und Speicher.</p>
+        eigenständiges Open-Source-Projekt für Solarladen. evcc kennt sehr viele Wallboxen und Fahrzeuge. Bedienen
+        kannst du die Wallbox unter „Geräte“, die Ladevorgänge findest du in der Auswertung. evcc bekommt von OpenAmpere
+        die Werte von Netz, Solar und Speicher.</p>
       {!view && <LoadState error={error} onRetry={reload} />}
 
-      {cars.map((lp) => <WallboxCard key={lp.id} lp={lp} onChange={setData} />)}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
 
       <div className="section-title">Verbindung zu evcc</div>
@@ -242,27 +241,33 @@ export function WallboxPage({ onBack }: PageProps) {
           <a href="https://docs.evcc.io" target="_blank" rel="noreferrer"> Dokumentation von evcc</a>.</p>
       </div>
 
-      {!!sessions?.sessions.length && (
-        <>
-          <div className="section-title">Letzte Ladevorgänge</div>
-          <div className="card">
-            <ul className="sessions">
-              {sessions.sessions.map((s, i) => (
-                <li key={i}>
-                  <span><strong>{s.created ? new Date(s.created).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", timeZone: timeZone() }) : "–"}</strong>
-                    {" "}{s.vehicle ?? s.loadpoint ?? ""}</span>
-                  <span>{s.energy_kwh != null ? `${num(s.energy_kwh, 1)} kWh` : "–"}{s.solar_pct != null ? ` · ${num(s.solar_pct, 0)} % Sonne` : ""}</span>
-                </li>
-              ))}
-            </ul>
-            {view?.url && <a className="link" href={`${view.url}/api/sessions?format=csv&lang=de`}>Alle Ladevorgänge als CSV (aus evcc)</a>}
-          </div>
-        </>
-      )}
-
       <p className="hint">evcc wird von der evcc-Community entwickelt und steht unter MIT-Lizenz. Für manche Geräte
         verlangt evcc ein Sponsoring. OpenAmpere nutzt nur die offene Schnittstelle von evcc und enthält keinen Code
         von evcc.</p>
     </SubPage>
+  );
+}
+
+/** Recent charging sessions from evcc, for the analysis page. */
+export function EvccSessions() {
+  const { data: view } = useResource<EvccView>("/api/evcc");
+  const { data } = useResource<{ sessions: Session[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
+  if (!data?.sessions.length) return null;
+  return (
+    <>
+      <div className="section-title">Ladevorgänge</div>
+      <div className="card">
+        <ul className="sessions">
+          {data.sessions.map((s, i) => (
+            <li key={i}>
+              <span><strong>{s.created ? new Date(s.created).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", timeZone: timeZone() }) : "–"}</strong>
+                {" "}{s.vehicle ?? s.loadpoint ?? ""}</span>
+              <span>{s.energy_kwh != null ? `${num(s.energy_kwh, 1)} kWh` : "–"}{s.solar_pct != null ? ` · ${num(s.solar_pct, 0)} % Sonne` : ""}</span>
+            </li>
+          ))}
+        </ul>
+        {view?.url && <a className="link" href={`${view.url}/api/sessions?format=csv&lang=de`}>Alle Ladevorgänge als CSV (aus evcc)</a>}
+      </div>
+    </>
   );
 }

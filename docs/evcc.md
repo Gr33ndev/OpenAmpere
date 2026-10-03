@@ -18,8 +18,9 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
   braucht evcc keine eigene Verbindung zum Wechselrichter. Viele Wechselrichter erlauben nur wenige gleichzeitige
   Modbus-Verbindungen.
 - **OpenAmpere zeigt und bedient die Ladepunkte.** Lademodus (Aus, Solar, Min + Solar, Sofort), Ladeziel, Ladeplan
-  bis zu einer Uhrzeit und die letzten Ladevorgänge erscheinen auf dem Dashboard und unter Mehr → Wallbox.
-- **Überschuss wird aufgeteilt.** Unter Mehr → Wallbox legst du fest, ob die Wallbox oder die Geräte unter
+  bis zu einer Uhrzeit stehen unter „Geräte“. Energiefluss, Tageswerte und Auswertung zeigen das Laden ebenfalls,
+  die Ladevorgänge findest du in der Auswertung.
+- **Überschuss wird aufgeteilt.** Unter Geräte → Wallbox einrichten legst du fest, ob die Wallbox oder die Geräte unter
   „Überschuss nutzen“ (z. B. der Heizstab) zuerst Solarstrom bekommen.
 
 ## Einrichtung
@@ -27,7 +28,7 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
 1. evcc installieren, zum Beispiel mit Docker neben OpenAmpere (siehe unten) oder nach der
    [Anleitung von evcc](https://docs.evcc.io).
 2. In evcc die Zähler von OpenAmpere eintragen. Die fertige Konfiguration mit der richtigen Adresse zeigt die App
-   unter Mehr → Wallbox → „evcc einrichten“ zum Kopieren an. Sie sieht so aus:
+   unter Geräte → Wallbox einrichten zum Kopieren an. Sie sieht so aus:
 
    ```yaml
    meters:
@@ -68,7 +69,7 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
    Die Vorzeichen passen ohne Umrechnung: Netz positiv bei Bezug, Speicher positiv beim Entladen. Hat OpenAmpere
    keine aktuellen Werte, antwortet die Adresse mit einem Fehler, und evcc lädt nicht auf Basis alter Werte.
 3. Wallbox und Fahrzeug direkt in evcc einrichten.
-4. In OpenAmpere unter Mehr → Wallbox die Adresse von evcc eintragen, z. B. `http://evcc:7070`. Ein Passwort ist nur
+4. In OpenAmpere unter Geräte → Wallbox einrichten die Adresse von evcc eintragen, z. B. `http://evcc:7070`. Ein Passwort ist nur
    nötig, wenn evcc für Änderungen eine Anmeldung verlangt.
 
 ## evcc mit Docker neben OpenAmpere
@@ -92,7 +93,7 @@ Mit `network_mode: host` erreicht evcc OpenAmpere unter `http://localhost:8080` 
 
 - Manche Geräte sind in evcc nur mit einem [Sponsoring](https://docs.evcc.io/docs/sponsorship) nutzbar. Das ist
   Sache von evcc und unterstützt dessen Entwicklung.
-- Den Heizstab von my-PV steuert OpenAmpere selbst (Mehr → Überschuss nutzen). Ist er stattdessen in evcc
+- Den Heizstab von my-PV steuert OpenAmpere selbst (Geräte → Heizstab und weitere Geräte). Ist er stattdessen in evcc
   eingerichtet, zeigt OpenAmpere ihn als Ladepunkt von evcc an.
 - Die interne Schnittstelle von evcc kann sich zwischen Versionen ändern. OpenAmpere liest sie fehlertolerant und
   verwendet Befehle, die alte und neue evcc-Versionen verstehen.

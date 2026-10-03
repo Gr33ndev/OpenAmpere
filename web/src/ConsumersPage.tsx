@@ -70,11 +70,11 @@ export function ConsumersPage({ onBack, onNavigate }: PageProps) {
   const live = (id?: string) => data?.consumers.find((c) => c.id === id)?.state;
 
   return (
-    <SubPage title="Überschuss nutzen" onBack={onBack}>
+    <SubPage title="Heizstab und weitere Geräte" onBack={onBack}>
       <p className="hint">Heizstab, Wärmepumpe (SG-Ready-Kontakt) oder andere Geräte bekommen den Solarstrom, der übrig
         ist. Wer oben steht, ist zuerst dran. Ein my-PV-Heizstab folgt dem Überschuss stufenlos, andere Geräte werden
         über ein Shelly-Relais oder zwei Web-Adressen ein- und ausgeschaltet.</p>
-      <p className="hint">Eine Wallbox steuert evcc. Wer zuerst Überschuss bekommt, stellst du unter Mehr → Wallbox ein.</p>
+      <p className="hint">Eine Wallbox steuert evcc. Wer zuerst Überschuss bekommt, stellst du unter Geräte → Wallbox einrichten ein.</p>
       {!status?.control.enabled && (
         <Notice kind="info">Die Steuerung ist ausgeschaltet – es wird nichts geschaltet.{" "}
           <button className="link" onClick={() => onNavigate?.("control")}>Steuerung freigeben</button></Notice>

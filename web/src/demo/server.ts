@@ -102,36 +102,70 @@ export function snapshot() {
   };
 }
 
-/** Demo wallbox: a car is plugged in during the day and charges with solar surplus (display only). */
+/** Demo wallbox from the simulation (in the real app this comes from evcc). */
 function wallbox() {
   const s = current();
-  const hour = new Date().getHours() + new Date().getMinutes() / 60;
-  const surplus = s ? s.pv - s.load : 0;
-  const charging = surplus > 1600;
-  const power = charging ? Math.min(11_000, Math.round(surplus / 230) * 230) : 0;
-  const soc = Math.round(Math.min(80, 38 + Math.max(0, hour - 9) * 4.5));
+  const charging = !!s && s.car > 0;
+  const session = stepsOf(dayStart(new Date())).reduce((sum, x) => sum + (x.car * STEP_S) / 3600, 0);
   return {
-    id: 1, title: "Carport", heating: false, mode: "pv", connected: true, charging, enabled: charging, power_w: power,
-    session_wh: Math.round(Math.max(0, hour - 9) * 2800), session_solar_pct: 97, vehicle_name: "egolf",
-    vehicle_title: "e-Golf", soc, range_km: Math.round(soc * 2.6), limit_soc: 80, phases: 1,
+    id: 1, title: "Carport", heating: false, mode: "pv", connected: !!s?.carConnected, charging, enabled: charging,
+    power_w: s?.car ?? 0, session_wh: Math.round(session), session_solar_pct: 100, vehicle_name: "egolf",
+    vehicle_title: "e-Golf", soc: s?.carSoc ?? null, range_km: s ? Math.round(s.carSoc * 2.6) : null, limit_soc: 80, phases: 1,
     pv_action: charging ? "inactive" : "enable", pv_remaining_s: null, remaining_s: charging ? 5400 : null,
     plan_active: false, plan_time: null, plan_soc: null,
   };
 }
 
-/** Demo heating rod: follows the solar surplus that is left after the car. */
+/** Demo heating rod from the simulation. */
 function heatingRod() {
   const s = current();
-  const car = wallbox();
-  // like the real control: with "wallbox first" a waiting car keeps its minimum power (6 A, 1 phase) free
-  const rest = s ? s.pv - s.load - car.power_w - (car.charging ? 0 : 6 * 230) : 0;
-  const power = rest > 600 ? Math.min(3000, Math.round(rest / 50) * 50) : 0;
-  const hour = new Date().getHours();
-  const temperature = Math.round((46 + Math.max(0, Math.min(14, (hour - 10) * 2.2))) * 10) / 10;
-  return { on: power > 0, power, temperature };
+  const power = s?.rod ?? 0;
+  return { on: power > 0, power, temperature: s?.water ?? null };
 }
 
-const heatingRodOn = () => heatingRod().on;
+function deviceItems() {
+  const rod = heatingRod();
+  const car = wallbox();
+  return [
+    { key: "evcc:1", id: 1, source: "evcc", name: "Carport", kind: "wallbox", enabled: true, power_w: car.power_w,
+      active: car.charging, on: car.charging, temperature_c: null, target_c: null, status: null, error: null, override: null },
+    { key: "c:demo1", id: "demo1", source: "openampere", name: "Heizstab", kind: "heating_rod", enabled: true,
+      power_w: rod.power, active: rod.on, on: rod.on, temperature_c: rod.temperature, target_c: 60,
+      status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft",
+      error: null, override: null },
+  ];
+}
+
+const DEVICE_LABELS = [{ key: "evcc:1", name: "Carport", kind: "wallbox" }, { key: "c:demo1", name: "Heizstab", kind: "heating_rod" }];
+
+function devices() {
+  const today = stepsOf(dayStart(new Date()));
+  const h = STEP_S / 3600;
+  return { devices: deviceItems(), evcc: { configured: true, error: null }, priority: "wallbox_first",
+    today_wh: { "evcc:1": today.reduce((a, x) => a + x.car * h, 0), "c:demo1": today.reduce((a, x) => a + x.rod * h, 0) } };
+}
+
+function devicesEnergy(q: URLSearchParams) {
+  const period = q.get("period") ?? "day";
+  const resolution = q.get("resolution") ?? "60m";
+  const [from, to] = bounds(period, q.get("date"));
+  const h = STEP_S / 3600;
+  const groups = new Map<number, [number, number]>();
+  for (const s of stepsBetween(from, to)) {
+    const key = bucket(s.ts, resolution);
+    const v = groups.get(key) ?? [0, 0];
+    groups.set(key, [v[0] + s.car * h, v[1] + s.rod * h]);
+  }
+  const entries = [...groups.entries()].map(([ts, values]) => ({ ts, values }));
+  const totals_wh = [entries.reduce((a, e) => a + e.values[0], 0), entries.reduce((a, e) => a + e.values[1], 0)];
+  return { period, resolution, from, to, devices: DEVICE_LABELS, totals_wh, entries };
+}
+
+function devicesPower(q: URLSearchParams) {
+  const [from, to] = bounds("day", q.get("date"));
+  return { from, to, step: STEP_S, devices: DEVICE_LABELS,
+    entries: stepsBetween(from, to).map((s) => ({ ts: s.ts, values: [s.car, s.rod] })) };
+}
 
 const settings = {
   values: {
@@ -155,11 +189,7 @@ function status() {
   return {
     version: "Demo", configured: true, connected: true, last_error: null, last_update: latest ? now() : null,
     stale: false, poll_interval: 10, relocated: null, timezone: "Europe/Berlin", web_build: null, clock_wrong: false,
-    devices: {
-      grid_charging: false,
-      consumers: [{ name: "Heizstab", power_w: heatingRod().power, on: heatingRodOn(), temperature_c: heatingRod().temperature }],
-      wallboxes: [{ title: "Carport", charging: wallbox().charging, power_w: wallbox().power_w, soc: wallbox().soc, heating: false }],
-    },
+    devices: { grid_charging: false, items: deviceItems() },
     device: { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
       register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true },
     control: { enabled: true, dry_run: true },
@@ -246,7 +276,7 @@ function consumers() {
     url_on: "", url_off: "", power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 80,
     price_limit_ct: null, enabled: true,
     state: { on: rod.on, power_w: rod.power, since: now() - 1800, error: null, temperature_c: rod.temperature, target_c: 60,
-      status: rod.on ? "heizt" : rod.temperature >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
+      status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
 }
 
 function evcc() {
@@ -313,6 +343,9 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/consumers": consumers,
   "/api/diagnostics": diagnostics,
   "/api/evcc": evcc,
+  "/api/devices": devices,
+  "/api/devices/energy": devicesEnergy,
+  "/api/devices/power": devicesPower,
   "/api/evcc/sessions": evccSessions,
   "/api/live": () => snapshot(),
 };

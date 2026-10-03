@@ -129,3 +129,64 @@ export function WarnCircle() {
     </svg>
   );
 }
+
+export function CarIcon({ size = 64 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
+      <path d="M10 40v-8l6-12c1-2 3-3 5-3h22c2 0 4 1 5 3l6 12v8z" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M17 31l4-9h22l4 9z" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinejoin="round" />
+      <rect x="10" y="40" width="44" height="8" rx="2" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <circle cx="20" cy="48" r="4.5" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <circle cx="44" cy="48" r="4.5" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <path d="M33 33l-3 5h4l-3 5" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function HeaterIcon({ size = 64 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
+      <rect x="18" y="8" width="28" height="48" rx="10" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <path d="M26 46V24M32 46V20M38 46V24" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M24 46h16" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M27 14c-2 2 2 3 0 5M32 12c-2 2 2 3 0 5M37 14c-2 2 2 3 0 5" stroke="var(--brand)" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M26 56v3M38 56v3" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PlugIcon({ size = 64 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
+      <rect x="14" y="14" width="36" height="36" rx="10" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <circle cx="32" cy="32" r="10" stroke="var(--icon-stroke)" strokeWidth="1.5" />
+      <circle cx="28" cy="32" r="1.8" fill="var(--icon-stroke)" />
+      <circle cx="36" cy="32" r="1.8" fill="var(--icon-stroke)" />
+      <path d="M32 20v4" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HeatPumpIcon({ size = 64 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
+      <rect x="8" y="16" width="48" height="34" rx="4" fill="var(--icon-fill)" stroke="var(--icon-stroke)" strokeWidth="2" />
+      <circle cx="24" cy="33" r="10" stroke="var(--icon-stroke)" strokeWidth="1.5" />
+      <path d="M24 23v20M14 33h20M17 26l14 14M31 26 17 40" stroke="var(--icon-stroke)" strokeWidth="1" />
+      <path d="M40 26h10M40 32h10M40 38h10" stroke="var(--icon-stroke)" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 50v4M50 50v4" stroke="var(--icon-stroke)" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="45" cy="44" r="2" fill="var(--brand)" />
+    </svg>
+  );
+}
+
+export function NavDevices() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M10 3v5M18 3v5" strokeLinecap="round" />
+      <path d="M7 8h14v5a7 7 0 0 1-14 0z" strokeLinejoin="round" />
+      <path d="M14 20v5" strokeLinecap="round" />
+      <path d="M15 11.5l-2 3h3l-2 3" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

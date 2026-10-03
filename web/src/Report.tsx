@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import type { EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
 import { Ratio } from "./Dashboard";
 import { isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
 import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
+import { colorsFor } from "./DevicesPage";
+import { EvccSessions } from "./WallboxPage";
 
 const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const RESOLUTION: Record<Period, string> = { day: "60m", week: "day", month: "day", year: "month" };
@@ -66,8 +68,9 @@ function fromIso(day: string): Date {
 }
 
 /** Values of the touched bar / point, so nobody has to guess from the axis. */
-function Readout({ rows, index, showPower, xFormat }: {
+function Readout({ rows, index, showPower, xFormat, extra = [] }: {
   rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
+  extra?: { label: string; values: (number | null)[] }[];
 }) {
   if (index == null || !rows[index]) return <p className="hint readout-hint">Tippe auf das Diagramm, um die Werte zu sehen.</p>;
   const r = rows[index];
@@ -81,6 +84,10 @@ function Readout({ rows, index, showPower, xFormat }: {
     const e = r as EnergyEntry;
     items.push(["Erzeugt", kwh(e.pv)], ["Verbraucht", kwh(e.load)], ["Netzbezug", kwh(e.grid_import)],
       ["Eingespeist", kwh(e.grid_export)], ["Geladen", kwh(e.battery_charge)], ["Entladen", kwh(e.battery_discharge)]);
+  }
+  for (const x of extra) {
+    const v = x.values[index];
+    if (v != null) items.push([x.label, kw(v * 1000)]);
   }
   if (r.soc != null) items.push(["Ladestand", percent(r.soc)]);
   return (
@@ -113,6 +120,9 @@ export function Report() {
     showPower ? null : `/api/energy/timeline?period=${period}&date=${day}&resolution=${resolution}`, refresh);
   const { data: power, error: powerError } = useResource<{ entries: PowerEntry[] }>(
     showPower ? `/api/power/timeline?date=${day}&step=300` : null, refresh);
+  const { data: devPower } = useResource<DeviceSeries>(showPower ? `/api/devices/power?date=${day}&step=300` : null, refresh);
+  const { data: devEnergy } = useResource<DeviceSeries>(
+    `/api/devices/energy?period=${period}&date=${day}&resolution=${showPower ? "60m" : resolution}`, refresh);
   const loaded = showPower ? power : energy;
   const loadError = showPower ? powerError : energyError;
 
@@ -121,6 +131,17 @@ export function Report() {
   const next = shift(date, period, 1);
   const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
   useEffect(() => setHover(null), [period, day, mode, resolution]);
+
+  const deviceColors = useMemo(() => colorsFor(devPower?.devices ?? []), [devPower]);
+  /** Device power on the same time axis as the main power curve (dashed lines). */
+  const deviceSeries = (xs: number[]): Series[] => {
+    if (!devPower?.devices.length) return [];
+    const byTs = new Map(devPower.entries.map((e) => [e.ts, e.values]));
+    return devPower.devices.map((d, i) => ({
+      label: d.name, color: deviceColors[d.key], unit: "kW", dash: true,
+      values: xs.map((ts) => { const v = byTs.get(ts)?.[i]; return v == null ? null : v / 1000; }),
+    }));
+  };
 
   const chart = useMemo(() => {
     const soc: Series = { label: "Ladestand", color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
@@ -135,6 +156,7 @@ export function Report() {
           { label: "Verbrauch", color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
           { label: "Netz", color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
           { label: "Speicher", color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
+          ...deviceSeries(p.map((r) => r.ts)),
           ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
         ] as Series[],
       };
@@ -152,7 +174,7 @@ export function Report() {
         ...(hasSoc && period === "day" ? [{ ...soc, color: "var(--label)" }] : []),
       ] as Series[],
     };
-  }, [showPower, rows, period]);
+  }, [showPower, rows, period, devPower, deviceColors]);
 
   return (
     <div className="page">
@@ -185,7 +207,8 @@ export function Report() {
             <>
               <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
                 label={`Diagramm ${showPower ? "Leistung" : "Energie"} für ${title(date, period)}`} />
-              <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat} />
+              <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat}
+                extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
             </>
           ) : (
             <p className="empty">Für diesen Zeitraum liegen keine Daten vor.</p>
@@ -207,8 +230,11 @@ export function Report() {
             )}
           </div>
 
+          <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
+            colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} />
           <PvInputsSection period={period} day={day} showPower={showPower} xFormat={xFormat} refresh={refresh} />
           {period === "day" && <TemperatureSection day={day} refresh={refresh} />}
+          <EvccSessions />
         </>
       ) : (
         <>
@@ -231,6 +257,20 @@ export function Report() {
               <dt>Autarkie</dt><dd>{percent(summary?.autarky, true)}</dd>
             </dl>
           </div>
+          {!!devEnergy?.devices.length && e?.load != null && (
+            <>
+              <div className="section-title">Verbrauch aufgeteilt</div>
+              <div className="card">
+                <dl className="facts">
+                  <dt>Haushalt</dt><dd>{kwh(Math.max(0, e.load - (devEnergy.totals_wh ?? []).reduce((a, b) => a + b, 0)))}</dd>
+                  {devEnergy.devices.map((d, i) => (
+                    <Fragment key={d.key}><dt>{d.name}</dt><dd>{kwh(devEnergy.totals_wh?.[i])}
+                      {e.load ? ` · ${Math.round(((devEnergy.totals_wh?.[i] ?? 0) / e.load) * 100)} %` : ""}</dd></Fragment>
+                  ))}
+                </dl>
+              </div>
+            </>
+          )}
           <div className="section-title">Geld</div>
           <div className="card">
             <dl className="facts">
@@ -308,6 +348,40 @@ function TemperatureSection({ day, refresh }: { day: string; refresh: number }) 
       <div className="legend">
         <span><span className="dot" style={{ background: "var(--coral)" }} />Wechselrichter</span>
         <span><span className="dot" style={{ background: "var(--battery)" }} />Speicher</span>
+      </div>
+    </>
+  );
+}
+
+/** Energy (stacked bars) or power (lines) per device: wallbox, heating rod, ... */
+function DevicesSection({ data, power, totals, colors, xFormat }: {
+  data: DeviceSeries | null; power: boolean; totals?: number[]; colors: Record<string, string>; xFormat: (ts: number) => string;
+}) {
+  const chart = useMemo(() => {
+    if (!data?.devices.length || !data.entries.length) return null;
+    const x = data.entries.map((e) => e.ts);
+    if (power) {
+      return { x, bars: false, series: data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], unit: "kW",
+        values: data.entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000)) })) as Series[] };
+    }
+    const stacked = data.devices.map((_, i) => data.entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
+    const series = data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], values: stacked[i], unit: "kWh", barAlign: 0 as const }));
+    return { x, bars: true, series: series.reverse() as Series[] };
+  }, [data, power, colors]);
+  if (!data?.devices.length) return null;
+  return (
+    <>
+      <div className="section-title">Nach Geräten</div>
+      {chart ? <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={200}
+        label="Diagramm Verbrauch je Gerät" />
+        : <p className="empty">Für diesen Zeitraum liegen keine Werte je Gerät vor.</p>}
+      <div className="legend">
+        {data.devices.map((d, i) => (
+          <span key={d.key}>
+            <span className="dot" style={{ background: colors[d.key] }} />
+            {d.name}{totals?.[i] != null && <strong>{kwh(totals[i])}</strong>}
+          </span>
+        ))}
       </div>
     </>
   );

@@ -22,8 +22,9 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 ## Funktionen
 
+- **Menü:** Dashboard, Geräte (Wallbox, Heizstab und weitere Geräte bedienen), Auswertung und Mehr (Einstellungen).
 - **Dashboard:**
-  - Energiefluss live für PV, Haus, Netz und Speicher mit Ladestand
+  - Energiefluss live für PV, Haus, Netz und Speicher mit Ladestand, dazu Wallbox und Heizstab
   - Tageswerte
   - Autarkie
   - **Solar nach Modulfeldern:** Leistung, Spannung und Strom je PV-Eingang (MPPT), etwa für Süddach, Westdach oder Garage
@@ -33,7 +34,8 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - Energie pro Tag (15 oder 60 Minuten), Woche, Monat und Jahr
   - Ertrag je Modulfeld
   - Temperaturverlauf
-  - Autarkie, Eigenverbrauch und geschätzte Ersparnis
+  - Verbrauch je Gerät (Wallbox, Heizstab) und Ladevorgänge
+  - Autarkie, Eigenverbrauch, Verbrauch aufgeteilt nach Haushalt und Geräten, geschätzte Ersparnis
 - **Stromtarife:** Festpreis oder dynamischer Tarif (Börsenpreis plus Aufschlag, Deutschland und Österreich), mehrere Tarife mit Startdatum; daraus die Ersparnis.
 - **Export:** Energiewerte als CSV-Datei für Excel und Co.
 - **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus

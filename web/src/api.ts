@@ -42,11 +42,7 @@ export type Status = {
   timezone: string;
   web_build: string | null;
   clock_wrong: boolean;
-  devices: {
-    grid_charging: boolean;
-    consumers: { name: string; power_w: number; on: boolean | null; temperature_c: number | null }[];
-    wallboxes: { title: string; charging: boolean; power_w: number; soc: number | null; heating: boolean }[];
-  };
+  devices: { grid_charging: boolean; items: Device[] };
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
@@ -308,3 +304,14 @@ export function useStale(snap: Snapshot | null, online: boolean, status: Status 
   const maxAge = Math.max(3 * (status?.poll_interval ?? 10), 30);
   return !online || status?.connected === false || now / 1000 - snap.timestamp > maxAge;
 }
+
+export type Device = {
+  key: string; id: string | number; source: "openampere" | "evcc"; name: string;
+  kind: "heating_rod" | "switch" | "wallbox" | "heat_pump"; enabled: boolean; power_w: number; active: boolean;
+  on: boolean | null; temperature_c: number | null; target_c: number | null; status: string | null; error: string | null;
+  override: { mode: "off" | "boost"; until: number | null } | null;
+};
+export type DevicesView = { devices: Device[]; today_wh: Record<string, number>;
+  evcc: { configured: boolean; error: string | null }; priority: string };
+export type DeviceSeries = { devices: { key: string; name: string; kind: Device["kind"] }[];
+  entries: { ts: number; values: (number | null)[] }[]; totals_wh?: number[] };

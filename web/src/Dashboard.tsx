@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { CloudImportState, Settings, Snapshot, Status, Summary } from "./api";
+import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
 import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
 import { Notice } from "./ui";
-import { EVCC_URL, WallboxCard, type EvccView } from "./WallboxPage";
+import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
@@ -128,49 +128,43 @@ function Tips() {
     <div className="card tips">
       <strong>So liest du das Dashboard</strong>
       <ul>
-        <li>Die Linien zeigen, wohin der Strom gerade fließt – vom Dach, aus dem Speicher und aus dem Netz zum Haus.</li>
+        <li>Die Linien zeigen, wohin der Strom gerade fließt: vom Dach, aus dem Speicher und aus dem Netz zum Haus und zu Geräten wie Wallbox oder Heizstab.</li>
         <li>„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.</li>
-        <li>Im Report siehst du Tage, Wochen und Jahre; tippe auf ein Diagramm für die genauen Werte.</li>
-        <li>Unter „Mehr“ findest du alle Einstellungen. Ändern geht erst nach Anmeldung.</li>
+        <li>In der Auswertung siehst du Tage, Wochen und Jahre. Tippe auf ein Diagramm für die genauen Werte.</li>
+        <li>Unter „Geräte“ bedienst du Wallbox und Heizstab, unter „Mehr“ findest du alle Einstellungen.</li>
       </ul>
       <button className="link" onClick={hide}>Verstanden, ausblenden</button>
     </div>
   );
 }
 
-function DeviceStates({ status }: { status: Status | null }) {
-  const devices = status?.devices;
-  if (!devices || (!devices.grid_charging && !devices.consumers.length)) return null;
-  return (
-    <div className="device-chips" aria-label="Weitere Geräte">
-      {devices.grid_charging && <span className="chip on">Speicher lädt aus dem Netz</span>}
-      {devices.consumers.map((c, i) => (
-        <span key={i} className={`chip ${c.on ? "on" : ""}`}>
-          {c.name}: {c.on == null ? "–" : c.on ? kw(c.power_w) : "aus"}
-          {c.temperature_c != null ? ` · ${num(c.temperature_c, 0)} °C` : ""}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Wallboxes() {
-  const { data, setData } = useResource<EvccView>("/api/evcc", 10_000);
-  const loadpoints = data?.state?.loadpoints ?? [];
-  if (!loadpoints.length) return null;
+/** Compact list of the extra devices; tap to control them under "Geräte". */
+function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; todayWh: Record<string, number>; gridCharging: boolean }) {
+  if (!devices.length && !gridCharging) return null;
   return (
     <>
-      <div className="section-title">Wallbox</div>
-      {loadpoints.map((lp) => <WallboxCard key={lp.id} lp={lp} onChange={setData} />)}
-      <p className="hint small-credit">Gesteuert von <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a></p>
+      <div className="section-title">Geräte</div>
+      <div className="card menu">
+        {gridCharging && <div className="device-row-compact"><span className="grow">Speicher lädt aus dem Netz</span></div>}
+        {devices.map((d) => (
+          <button key={d.key} className="device-row-compact" onClick={() => navigate("devices")}>
+            <DeviceIcon kind={d.kind} size={36} />
+            <span className="grow"><strong>{d.name}</strong><span className="menu-hint">{deviceStatus(d)}
+              {d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</span></span>
+            <span className="device-today">{todayWh[d.key] != null ? kwh(todayWh[d.key]) : ""}<small>heute</small></span>
+          </button>
+        ))}
+      </div>
     </>
   );
 }
 
 export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
+  const { data: devicesView } = useResource<DevicesView>("/api/devices", 30_000);
   const e = today?.energy_wh;
   const stale = useStale(snap, online, status);
+  const devices = status?.devices.items ?? [];
 
   return (
     <div className="page">
@@ -189,8 +183,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
           OpenAmpere keine Messwerte, damit sie nicht auf falschen Tagen landen.</Notice>
       )}
       <ImportHint />
-      <EnergyFlow snap={snap} stale={stale} />
-      <DeviceStates status={status} />
+      <EnergyFlow snap={snap} stale={stale} devices={devices} />
       <Tips />
 
       <div className="section-title">Tageswerte</div>
@@ -207,7 +200,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
         <Ratio label="Autark" value={today?.autarky ?? null} />
       </div>
 
-      <Wallboxes />
+      <DevicesCard devices={devices} todayWh={devicesView?.today_wh ?? {}} gridCharging={!!status?.devices.grid_charging} />
       <PvInputsCard snap={snap} />
       <TemperaturesCard snap={snap} />
     </div>

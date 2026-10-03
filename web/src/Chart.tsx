@@ -11,6 +11,8 @@ export type Series = {
   unit: string;
   scale?: string;
   fill?: boolean;
+  /** Lines only: dashed (e.g. devices on top of the main curves) */
+  dash?: boolean;
   /** Bars only: -1 = left of the tick, 1 = right of the tick (two series side by side), 0 = centred (stacked) */
   barAlign?: -1 | 0 | 1;
 };
@@ -65,6 +67,7 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
             label: s.label,
             stroke: color,
             width: isBar ? 0 : 2,
+            dash: !isBar && s.dash ? [6, 4] : undefined,
             scale: s.scale ?? "y",
             fill: isBar ? color : s.fill ? color + "33" : undefined,
             paths: isBar ? uPlot.paths.bars!({ size: s.barAlign === 0 ? [0.7, 60] : [0.46, 48], align: s.barAlign ?? 1 }) : undefined,
