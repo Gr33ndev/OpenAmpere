@@ -131,7 +131,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .legal p { color: var(--label); max-width: 52em; }
 .legal strong { color: var(--text); }
 footer { margin-top: 64px; padding: 28px 0 40px; border-top: 1px solid var(--line); }
-footer p { margin: 0 0 8px; max-width: 60em; }
+footer { text-align: center; }
+footer p { margin: 0 auto 8px; max-width: 60em; }
 
 /* imprint */
 .legal-page { padding-top: 40px; max-width: 760px; }
