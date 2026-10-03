@@ -2,10 +2,10 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
-import { Ratio } from "./Dashboard";
 import { isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
 import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
+import { KeyFigures } from "./KeyFigures";
 import { colorsFor } from "./DevicesPage";
 import { EvccSessions } from "./WallboxPage";
 
@@ -49,8 +49,6 @@ function Legend({ items }: { items: { color: string; label: string; value?: stri
   );
 }
 
-const euro = (v: number | null | undefined) =>
-  v == null ? "–" : v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 
 /** The day that is "today" right now – updates itself at midnight, also in an app left open overnight. */
 function useToday(): string {
@@ -99,7 +97,6 @@ function Readout({ rows, index, showPower, xFormat, extra = [] }: {
 }
 
 export function Report() {
-  const [tab, setTab] = useState<"system" | "autarky">("system");
   const [period, setPeriod] = useState<Period>("day");
   const today = useToday();
   const [picked, setPicked] = useState<string | null>(null); // null = follow "today"
@@ -127,7 +124,6 @@ export function Report() {
   const loadError = showPower ? powerError : energyError;
 
   const xFormat = period === "day" ? fmtHour : period === "year" ? fmtMonth : fmtDay;
-  const e = summary?.energy_wh;
   const next = shift(date, period, 1);
   const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
   useEffect(() => setHover(null), [period, day, dayView, resolution]);
@@ -178,11 +174,7 @@ export function Report() {
 
   return (
     <div className="page">
-      <div className="text-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "system"} className={tab === "system" ? "active" : ""} onClick={() => setTab("system")}>Verlauf</button>
-        <button role="tab" aria-selected={tab === "autarky"} className={tab === "autarky" ? "active" : ""} onClick={() => setTab("autarky")}>Autarkie</button>
-      </div>
-
+      <div className="page-head"><h1>Auswertung</h1></div>
       <div className="toolbar">
         <label className="cal" aria-label="Datum wählen">
           <CalendarIcon />
@@ -198,89 +190,41 @@ export function Report() {
         <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label="Zeitraum weiter"><Chevron /></button>
       </div>
 
-      {tab === "system" ? (
-        <>
-          <div className="section-title">Detaillierte Nutzung</div>
-          {!loaded ? (
-            <p className="empty">{loadError ? `Konnte nicht geladen werden: ${loadError}` : "Lade …"}</p>
-          ) : chart.x.length ? (
-            <>
-              <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
-                label={`Diagramm ${showPower ? "Leistung" : "Energie"} für ${title(date, period)}`} />
-              <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat}
-                extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
-            </>
-          ) : (
-            <p className="empty">Für diesen Zeitraum liegen keine Daten vor.</p>
-          )}
-          <Legend items={[
-            { color: "var(--pv)", label: "Erzeugt", value: kwh(e?.pv) },
-            { color: "var(--house)", label: showPower ? "Verbrauch" : "Eigenversorgt", value: showPower ? kwh(e?.load) : kwh(e?.load != null ? e.load - (e.grid_import ?? 0) : null) },
-            { color: "var(--grid)", label: "Netzbezug", value: kwh(e?.grid_import) },
-            ...(showPower ? [{ color: "var(--battery)", label: "Speicher" }] : []),
-            ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: "Ladestand (rechte Achse)" }] : []),
-          ]} />
-          {showPower && <p className="hint">Netz: über null = Bezug, unter null = Einspeisung. Speicher: über null = Entladen, unter null = Laden.</p>}
-          {period === "day" && (
-            <div className="row-info">
-              <Segmented value={dayView} onChange={setDayView}
-                options={[["power", "Leistung"], ["15m", "Arbeit · 15 min"], ["60m", "Arbeit · 1 h"]]} />
-            </div>
-          )}
+      <KeyFigures summary={summary} />
 
-          <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
-            colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} />
-          <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
-          {period === "day" && <TemperatureSection day={day} refresh={refresh} />}
-          <EvccSessions />
+      <div className="section-title">Verlauf</div>
+      {period === "day" && (
+        <div className="row-info">
+          <Segmented value={dayView} onChange={setDayView}
+            options={[["power", "Leistung"], ["15m", "Arbeit · 15 min"], ["60m", "Arbeit · 1 h"]]} />
+        </div>
+      )}
+      {!loaded ? (
+        <p className="empty">{loadError ? `Konnte nicht geladen werden: ${loadError}` : "Lade …"}</p>
+      ) : chart.x.length ? (
+        <>
+          <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
+            label={`Diagramm ${showPower ? "Leistung" : "Energie"} für ${title(date, period)}`} />
+          <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat}
+            extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
         </>
       ) : (
-        <>
-          <div className="card">
-            <div className="big-number">{summary?.autarky != null ? Math.round(summary.autarky * 100) : "–"}<small>%</small></div>
-            <p className="hint">autark – dieser Anteil deines Verbrauchs kam nicht aus dem Netz.</p>
-          </div>
-          <div className="card">
-            <Ratio label="Eigenverbrauch" value={summary?.self_consumption ?? null} />
-            <p className="hint" style={{ marginTop: 8 }}>Anteil des Solarstroms, der im Haus genutzt oder gespeichert wurde.</p>
-          </div>
-          <div className="card">
-            <dl className="facts">
-              <dt>Erzeugt</dt><dd>{kwh(e?.pv)}</dd>
-              <dt>Verbraucht</dt><dd>{kwh(e?.load)}</dd>
-              <dt>Aus dem Netz</dt><dd>{kwh(e?.grid_import)}</dd>
-              <dt>Ins Netz</dt><dd>{kwh(e?.grid_export)}</dd>
-              <dt>Speicher geladen</dt><dd>{kwh(e?.battery_charge)}</dd>
-              <dt>Speicher entladen</dt><dd>{kwh(e?.battery_discharge)}</dd>
-              <dt>Autarkie</dt><dd>{percent(summary?.autarky, true)}</dd>
-            </dl>
-          </div>
-          {!!devEnergy?.devices.length && e?.load != null && (
-            <>
-              <div className="section-title">Verbrauch aufgeteilt</div>
-              <div className="card">
-                <dl className="facts">
-                  <dt>Haushalt</dt><dd>{kwh(Math.max(0, e.load - (devEnergy.totals_wh ?? []).reduce((a, b) => a + b, 0)))}</dd>
-                  {devEnergy.devices.map((d, i) => (
-                    <Fragment key={d.key}><dt>{d.name}</dt><dd>{kwh(devEnergy.totals_wh?.[i])}
-                      {e.load ? ` · ${Math.round(((devEnergy.totals_wh?.[i] ?? 0) / e.load) * 100)} %` : ""}</dd></Fragment>
-                  ))}
-                </dl>
-              </div>
-            </>
-          )}
-          <div className="section-title">Geld</div>
-          <div className="card">
-            <dl className="facts">
-              <dt>Ersparnis</dt><dd>{euro(summary?.money?.savings_eur)}</dd>
-              <dt>davon Einspeisevergütung</dt><dd>{euro(summary?.money?.feed_in_eur)}</dd>
-              <dt>Kosten Netzbezug</dt><dd>{euro(summary?.money?.grid_cost_eur)}</dd>
-            </dl>
-            <p className="hint">Grobe Schätzung mit deinem Stromtarif (Mehr → Stromtarif): selbst genutzter Solarstrom
-              zum Strompreis plus Einspeisevergütung. Grundgebühren und Anschaffungskosten sind nicht berücksichtigt.</p>
-          </div>
-        </>
+        <p className="empty">Für diesen Zeitraum liegen keine Daten vor.</p>
       )}
+      <Legend items={[
+        { color: "var(--pv)", label: "Erzeugt" },
+        { color: "var(--house)", label: showPower ? "Verbrauch" : "Selbst versorgt" },
+        { color: "var(--grid)", label: showPower ? "Netz" : "Aus dem Netz" },
+        ...(showPower ? [{ color: "var(--battery)", label: "Speicher" }] : []),
+        ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: "Ladestand (rechte Achse)" }] : []),
+        ...(showPower ? (devPower?.devices ?? []).map((d) => ({ color: deviceColors[d.key], label: `${d.name} (gestrichelt)` })) : []),
+      ]} />
+      {showPower && <p className="hint">Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.</p>}
+
+      <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
+        colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />
+      <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
+      <EvccSessions />
     </div>
   );
 }
@@ -308,8 +252,8 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
 
   if (!data || data.labels.length < 2) return null;
   return (
-    <>
-      <div className="section-title">Nach Modulfeldern</div>
+    <details className="report-section">
+      <summary>Nach Modulfeldern</summary>
       {chart && chart.x.length ? (
         <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={220} />
       ) : <p className="empty">Für diesen Zeitraum liegen keine Werte je Modulfeld vor.</p>}
@@ -321,11 +265,11 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
           </span>
         ))}
       </div>
-    </>
+    </details>
   );
 }
 
-function TemperatureSection({ day, refresh }: { day: string; refresh: number }) {
+export function TemperatureSection({ day, refresh }: { day: string; refresh: number }) {
   const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null }[] }>(
     `/api/temperatures/timeline?date=${day}`, refresh);
   const chart = useMemo(() => {
@@ -352,8 +296,9 @@ function TemperatureSection({ day, refresh }: { day: string; refresh: number }) 
 }
 
 /** Energy (stacked bars) or power (lines) per device: wallbox, heating rod, ... */
-function DevicesSection({ data, power, totals, colors, xFormat }: {
+function DevicesSection({ data, power, totals, colors, xFormat, load }: {
   data: DeviceSeries | null; power: boolean; totals?: number[]; colors: Record<string, string>; xFormat: (ts: number) => string;
+  load: number | null;
 }) {
   const chart = useMemo(() => {
     if (!data?.devices.length || !data.entries.some((e) => e.values.some((v) => (v ?? 0) > 0))) return null;
@@ -367,20 +312,22 @@ function DevicesSection({ data, power, totals, colors, xFormat }: {
     return { x, bars: true, series: series.reverse() as Series[] };
   }, [data, power, colors]);
   if (!data?.devices.length) return null;
+  const deviceSum = (totals ?? []).reduce((a, b) => a + b, 0);
   return (
-    <>
-      <div className="section-title">Nach Geräten</div>
+    <details className="report-section">
+      <summary>Nach Geräten</summary>
       {chart ? <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={200}
         label="Diagramm Verbrauch je Gerät" />
         : <p className="empty">In diesem Zeitraum haben die Geräte keinen Strom verbraucht.</p>}
-      <div className="legend">
+      <dl className="facts">
+        {load != null && <><dt>Haushalt</dt><dd>{kwh(Math.max(0, load - deviceSum))}</dd></>}
         {data.devices.map((d, i) => (
-          <span key={d.key}>
-            <span className="dot" style={{ background: colors[d.key] }} />
-            {d.name}{totals?.[i] != null && <strong>{kwh(totals[i])}</strong>}
-          </span>
+          <Fragment key={d.key}>
+            <dt><span className="dot" style={{ background: colors[d.key] }} /> {d.name}</dt>
+            <dd>{kwh(totals?.[i])}{load ? ` · ${Math.round(((totals?.[i] ?? 0) / load) * 100)} %` : ""}</dd>
+          </Fragment>
         ))}
-      </div>
-    </>
+      </dl>
+    </details>
   );
 }

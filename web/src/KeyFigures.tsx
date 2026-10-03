@@ -30,6 +30,8 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
           {summary?.money && <><dt>Einspeisevergütung</dt><dd>{euro(summary.money.feed_in_eur)}</dd></>}
           {summary?.money && <><dt>Kosten Netzbezug</dt><dd>{euro(summary.money.grid_cost_eur)}</dd></>}
         </dl>
+        {summary?.money && <p className="hint">Die Ersparnis ist eine Schätzung mit deinem Stromtarif (Mehr → Stromtarif):
+          selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung.</p>}
       </details>
     </div>
   );

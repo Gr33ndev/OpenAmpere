@@ -500,3 +500,13 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
   display: flex; align-items: center; }
 .key-details[open] > summary { margin-bottom: 6px; }
 .hint.center { text-align: center; }
+
+/* collapsible report sections */
+.report-section { margin-top: 18px; }
+.report-section > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  font-size: 20px; font-weight: 600; color: var(--label); min-height: 44px; }
+.report-section > summary::-webkit-details-marker { display: none; }
+.report-section > summary::after { content: "›"; font-size: 24px; transform: rotate(90deg); transition: transform .2s; }
+.report-section[open] > summary::after { transform: rotate(-90deg); }
+.report-section[open] > summary { margin-bottom: 8px; }
+.facts dt .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }

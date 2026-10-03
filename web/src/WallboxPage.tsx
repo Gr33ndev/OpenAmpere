@@ -247,8 +247,8 @@ export function EvccSessions() {
   const { data } = useResource<{ sessions: Session[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
   if (!data?.sessions.length) return null;
   return (
-    <>
-      <div className="section-title">Ladevorgänge</div>
+    <details className="report-section">
+      <summary>Ladevorgänge</summary>
       <div className="card">
         <ul className="sessions">
           {data.sessions.map((s, i) => (
@@ -261,6 +261,6 @@ export function EvccSessions() {
         </ul>
         {view?.url && <a className="link" href={`${view.url}/api/sessions?format=csv&lang=de`}>Alle Ladevorgänge als CSV (aus evcc)</a>}
       </div>
-    </>
+    </details>
   );
 }

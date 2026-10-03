@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import type { Settings, Snapshot, Status } from "./api";
 import { useResource, useStale } from "./api";
-import { kwh, percent, updatedLabel, num } from "./format";
+import { kwh, percent, todayIso, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
@@ -10,6 +10,7 @@ import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { deviceStatus } from "./DevicesPage";
 import { PvInputsCard, TemperaturesCard } from "./Dashboard";
+import { TemperatureSection } from "./Report";
 import { goBack, navigate } from "./route";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -94,6 +95,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       )}
 
       <TemperaturesCard snap={snap} />
+      <TemperatureSection day={todayIso()} refresh={60_000} />
 
       <div className="section-title">Zählerstände</div>
       <div className="card">
