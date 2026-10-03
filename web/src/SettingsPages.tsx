@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
 import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
-import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
+import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
@@ -573,8 +573,13 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
         <p className="hint">FoxESS-Registerdefinitionen basieren auf foxess_modbus (MIT-Lizenz).</p>
         <p className="hint">Wallboxen steuert <a href="https://evcc.io" target="_blank" rel="noreferrer">evcc</a>, ein
           eigenständiges Open-Source-Projekt. OpenAmpere nutzt dessen offene Schnittstelle. Danke an die evcc-Community!</p>
+        {!DEMO && <p className="hint">Diese Installation betreibst du selbst auf deinem Rechner. OpenAmpere sendet keine
+          Daten an das Projekt.</p>}
       </div>
       <div className="card menu">
+        <a className="menu-row" href={IMPRINT_URL} target="_blank" rel="noopener noreferrer">
+          <span>Projektseite und Impressum<span className="menu-hint">Wer hinter OpenAmpere steht</span></span><span aria-hidden>↗</span>
+        </a>
         <a className="menu-row" href={REPO_URL} target="_blank" rel="noopener noreferrer">
           <span>Quellcode auf GitHub<span className="menu-hint">github.com/Gr33ndev/OpenAmpere</span></span><span aria-hidden>↗</span>
         </a>
