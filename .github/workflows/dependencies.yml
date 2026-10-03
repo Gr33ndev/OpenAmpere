@@ -10,6 +10,7 @@ name: Dependency files
 # deps/python-updates, and a pull request is opened or refreshed for it.
 on:
   push:
+    branches: ["**"]  # not on version tags, there is no branch to commit to
     paths:
       - pyproject.toml
       - requirements.lock
