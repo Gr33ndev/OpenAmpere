@@ -106,11 +106,11 @@ export function Report() {
   const day = picked ?? today;
   const date = fromIso(day);
   const setDate = (d: Date) => setPicked(isoDate(d) === today ? null : isoDate(d));
-  const [mode, setMode] = useState<"power" | "energy">("power");
-  const [dayResolution, setDayResolution] = useState<"15m" | "60m">("60m");
+  // only a day can be shown as a power curve; energy per quarter hour or per hour
+  const [dayView, setDayView] = useState<"power" | "15m" | "60m">("power");
   const [hover, setHover] = useState<number | null>(null);
-  const showPower = period === "day" && mode === "power";
-  const resolution = period === "day" ? dayResolution : RESOLUTION[period];
+  const showPower = period === "day" && dayView === "power";
+  const resolution = period === "day" ? (dayView === "15m" ? "15m" : "60m") : RESOLUTION[period];
   // the running period changes, past periods do not: only refresh what can still change
   const running = fromIso(today) < shift(date, period, 1) && !(fromIso(today) < date);
   const refresh = running ? 60_000 : 0;
@@ -130,7 +130,7 @@ export function Report() {
   const e = summary?.energy_wh;
   const next = shift(date, period, 1);
   const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
-  useEffect(() => setHover(null), [period, day, mode, resolution]);
+  useEffect(() => setHover(null), [period, day, dayView, resolution]);
 
   const deviceColors = useMemo(() => colorsFor(devPower?.devices ?? []), [devPower]);
   /** Device power on the same time axis as the main power curve (dashed lines). */
@@ -189,7 +189,7 @@ export function Report() {
           <input type="date" value={day} max={today} onChange={(ev) => ev.target.value && setDate(fromIso(ev.target.value))} />
         </label>
         <Segmented value={period} options={Object.entries(PERIOD_LABEL) as [Period, string][]}
-          onChange={(p) => { setPeriod(p); if (p !== "day") setMode("energy"); }} />
+          onChange={setPeriod} />
       </div>
       <div className="date-nav">
         <button onClick={() => setDate(shift(date, period, -1))} aria-label="Zeitraum zurück"><Chevron dir="left" /></button>
@@ -221,18 +221,16 @@ export function Report() {
             ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: "Ladestand (rechte Achse)" }] : []),
           ]} />
           {showPower && <p className="hint">Netz: über null = Bezug, unter null = Einspeisung. Speicher: über null = Entladen, unter null = Laden.</p>}
-          <div className="row-info">
-            <Segmented value={showPower ? "power" : "energy"}
-              options={period === "day" ? [["power", "Leistung"], ["energy", "Arbeit"]] : [["energy", "Arbeit"]]}
-              onChange={setMode} />
-            {period === "day" && !showPower && (
-              <Segmented value={dayResolution} options={[["15m", "15 min"], ["60m", "60 min"]]} onChange={setDayResolution} />
-            )}
-          </div>
+          {period === "day" && (
+            <div className="row-info">
+              <Segmented value={dayView} onChange={setDayView}
+                options={[["power", "Leistung"], ["15m", "Arbeit · 15 min"], ["60m", "Arbeit · 1 h"]]} />
+            </div>
+          )}
 
           <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
             colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} />
-          <PvInputsSection period={period} day={day} showPower={showPower} xFormat={xFormat} refresh={refresh} />
+          <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
           {period === "day" && <TemperatureSection day={day} refresh={refresh} />}
           <EvccSessions />
         </>
@@ -288,12 +286,12 @@ export function Report() {
 }
 
 /** Solar yield per PV input (module array): power curve for a day, energy per bucket otherwise (stacked bars). */
-function PvInputsSection({ period, day, showPower, xFormat, refresh }: {
-  period: Period; day: string; showPower: boolean; xFormat: (ts: number) => string; refresh: number;
+function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh }: {
+  period: Period; day: string; showPower: boolean; resolution: string; xFormat: (ts: number) => string; refresh: number;
 }) {
   const mode = showPower ? "power" : "energy";
   const { data } = useResource<PvInputsTimeline>(
-    `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${RESOLUTION[period]}`, refresh);
+    `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${resolution}`, refresh);
 
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
@@ -358,7 +356,7 @@ function DevicesSection({ data, power, totals, colors, xFormat }: {
   data: DeviceSeries | null; power: boolean; totals?: number[]; colors: Record<string, string>; xFormat: (ts: number) => string;
 }) {
   const chart = useMemo(() => {
-    if (!data?.devices.length || !data.entries.length) return null;
+    if (!data?.devices.length || !data.entries.some((e) => e.values.some((v) => (v ?? 0) > 0))) return null;
     const x = data.entries.map((e) => e.ts);
     if (power) {
       return { x, bars: false, series: data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], unit: "kW",
@@ -374,7 +372,7 @@ function DevicesSection({ data, power, totals, colors, xFormat }: {
       <div className="section-title">Nach Geräten</div>
       {chart ? <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={200}
         label="Diagramm Verbrauch je Gerät" />
-        : <p className="empty">Für diesen Zeitraum liegen keine Werte je Gerät vor.</p>}
+        : <p className="empty">In diesem Zeitraum haben die Geräte keinen Strom verbraucht.</p>}
       <div className="legend">
         {data.devices.map((d, i) => (
           <span key={d.key}>
