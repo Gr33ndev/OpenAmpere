@@ -119,6 +119,13 @@ docker compose up -d --build</code></pre>
           <p>http://&lt;server-ip&gt;:8080 öffnen und ein Passwort festlegen. Der Assistent sucht dann den
             Wechselrichter. Auf dem iPhone kannst du die Seite zum Home-Bildschirm hinzufügen.</p>
         </li>
+        <li>
+          <h3>Heizstab und Wallbox, falls vorhanden</h3>
+          <p>Einen Heizstab fügst du direkt in der App hinzu. Für eine Wallbox braucht es zusätzlich
+            <a href="https://evcc.io">evcc</a>. Es läuft als zweiter Container neben OpenAmpere und bekommt die Messwerte
+            von OpenAmpere. Die passenden Zeilen stehen schon in der docker-compose.yml, du musst sie nur einkommentieren.
+            Die App zeigt dir danach Schritt für Schritt, wie du beide verbindest.</p>
+        </li>
       </ol>
       <p class="small">Mehr Details, auch zum Zugriff von unterwegs, stehen im
         <a href="https://github.com/Gr33ndev/OpenAmpere#installation-mit-docker">README auf GitHub</a>.</p>
@@ -164,7 +171,8 @@ docker compose up -d --build</code></pre>
         Kiwigrid zu tun und wurde von ihnen weder beauftragt noch autorisiert.</p>
       <p><strong>Marken:</strong> „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ und alle anderen genannten Produkt- und
         Firmennamen gehören ihren Inhabern. Sie stehen hier nur, um zu beschreiben, mit welchen Geräten OpenAmpere
-        funktioniert. OpenAmpere enthält keinen Code, keine Grafiken und keine Texte der Ampere.IQ-App.</p>
+        funktioniert. Der Projektname bezieht sich auf die physikalische Einheit Ampere. OpenAmpere enthält keinen Code,
+        keine Grafiken und keine Texte der Ampere.IQ-App.</p>
       <p><strong>Nutzung auf eigene Verantwortung:</strong> OpenAmpere ist kostenlos und ohne Gewähr. Es ersetzt keinen
         Elektrofachbetrieb. Wer Einstellungen am Wechselrichter ändert, ist selbst dafür verantwortlich, dass die
         Netzanschlussbedingungen eingehalten werden. Die Hinweise sind keine Rechtsberatung.</p>

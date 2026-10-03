@@ -29,7 +29,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   - Autarkie
   - **Solar nach Modulfeldern:** Leistung, Spannung und Strom je PV-Eingang (MPPT), etwa für Süddach, Westdach oder Garage
   - **Temperaturen:** Wechselrichter, Speicher, Batteriezellen
-- **Report:**
+- **Auswertung:**
   - Leistungskurve über den Tag mit Ladestand, Werte beim Antippen
   - Energie pro Tag (15 oder 60 Minuten), Woche, Monat und Jahr
   - Ertrag je Modulfeld
@@ -54,19 +54,27 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 ## Installation mit Docker
 
+**Voraussetzungen:** ein Rechner mit Docker im selben Netz wie der Wechselrichter (Raspberry Pi, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Das Einschalten kann auch der Installationsbetrieb erledigen.
+
+**1. OpenAmpere starten**
+
 ```bash
 git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
 docker compose up -d --build
 ```
 
-Danach `http://<server-ip>:8080` im Browser öffnen. Beim ersten Start legt man ein **Passwort** fest. Ansehen kann man die Werte im Heimnetz ohne Passwort; Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Alle weiteren Einstellungen erreicht man in der App unter **Mehr**:
-- Verbindung
-- Speicher & Notstrom
-- Stromtarif
-- Steuerung
-- Zugriffsschutz
-- Darstellung
-- Daten & Sicherung
+**2. Im Browser einrichten:** `http://<server-ip>:8080` öffnen und ein **Passwort** festlegen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Ansehen kann man die Werte im Heimnetz ohne Passwort. Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung.
+
+**3. Optional: Heizstab oder Wärmepumpe.** Dafür braucht es keine weitere Software. In der App unter **Mehr → Verbindung → Heizstab und weitere Geräte** hinzufügen.
+
+**4. Optional: Wallbox.** Die Wallbox steuert [evcc](https://evcc.io), ein eigenes Open-Source-Projekt. Es läuft als zweiter Container neben OpenAmpere und bekommt die Messwerte von OpenAmpere. Deshalb kommt evcc nach OpenAmpere dran:
+1. In der `docker-compose.yml` die vorbereiteten Zeilen für evcc einkommentieren und `docker compose up -d` ausführen.
+2. Unter `http://<server-ip>:7070` in evcc Wallbox und Fahrzeug einrichten.
+3. In OpenAmpere unter **Mehr → Verbindung → Wallbox** die Zähler-Konfiguration kopieren, in evcc einfügen und die Adresse `http://localhost:7070` eintragen.
+
+Läuft evcc schon auf einem anderen Rechner, entfallen die Schritte 1 und 2, und in Schritt 3 trägt man die Adresse dieses Rechners ein. Details stehen in [docs/evcc.md](docs/evcc.md).
+
+**Wo was ist:** Unter **Geräte** bedient man Speicher (Notstrom-Reserve, Ladegrenzen), Wallbox und Heizstab und legt fest, wer zuerst Sonnenstrom bekommt. Unter **Mehr** liegen Meine Anlage (mit Einspeisebegrenzung), Stromtarif, Verbindung, Steuerung und Protokoll, Benachrichtigungen, Zugriffsschutz, Darstellung, Daten & Sicherung und Diagnose.
 
 Passwort vergessen? Auf dem Server `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
 

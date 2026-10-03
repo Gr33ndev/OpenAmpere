@@ -12,3 +12,13 @@ services:
       TZ: Europe/Berlin
       # Optional: Werte hier fest vorgeben. Sie sind dann in der App gesperrt.
       # OPENAMPERE_INVERTER_HOST: "192.168.178.50"
+
+  # Optional, nur mit Wallbox: evcc steuert die Wallbox (https://evcc.io, siehe docs/evcc.md).
+  # Zum Einschalten die Zeilen unten einkommentieren und `docker compose up -d` ausführen.
+  # evcc ist dann unter http://<server-ip>:7070 erreichbar, Wallbox und Fahrzeug richtet man dort ein.
+  # evcc:
+  #   image: evcc/evcc:latest
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   volumes:
+  #     - ./evcc:/root/.evcc

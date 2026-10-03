@@ -11,3 +11,4 @@ src/openampere/web/
 .abide/
 *.db.lock
 _site/
+evcc/

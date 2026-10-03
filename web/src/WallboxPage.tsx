@@ -223,7 +223,7 @@ export function WallboxPage({ onBack }: PageProps) {
         <li>
           <strong>evcc mit OpenAmpere verbinden</strong>
           <div className="card form">
-            <Field label="Adresse von evcc" hint="z. B. http://192.168.178.20:7070 oder http://evcc:7070 (Docker)">
+            <Field label="Adresse von evcc" hint="Auf demselben Rechner http://localhost:7070, sonst z. B. http://192.168.178.20:7070">
               <input className="input" value={url} placeholder="http://" onChange={(e) => setUrl(e.target.value)} />
             </Field>
             <details className="advanced">

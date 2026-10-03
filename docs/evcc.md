@@ -26,10 +26,14 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
 
 ## Einrichtung
 
-1. evcc installieren, zum Beispiel mit Docker neben OpenAmpere (siehe unten) oder nach der
-   [Anleitung von evcc](https://docs.evcc.io).
+evcc bekommt seine Messwerte von OpenAmpere. Deshalb zuerst OpenAmpere einrichten, dann evcc.
+
+1. evcc installieren, am einfachsten als zweiten Container neben OpenAmpere (siehe unten). Läuft evcc schon,
+   zum Beispiel auf einem anderen Rechner, kann es so bleiben.
 2. In evcc die Zähler von OpenAmpere eintragen. Die fertige Konfiguration mit der richtigen Adresse zeigt die App
-   unter Mehr → Verbindung → Wallbox zum Kopieren an. Sie sieht so aus:
+   unter Mehr → Verbindung → Wallbox zum Kopieren an. In der Weboberfläche von evcc fügt man sie als
+   benutzerdefiniertes Gerät ein, alternativ in die `evcc.yaml`. Sie sieht so aus, statt `localhost` steht dort die
+   Adresse, unter der du OpenAmpere geöffnet hast:
 
    ```yaml
    meters:
@@ -37,27 +41,27 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
        type: custom
        power:
          source: http
-         uri: http://openampere:8080/api/evcc/site
+         uri: http://localhost:8080/api/evcc/site
          jq: .grid_power
        energy:
          source: http
-         uri: http://openampere:8080/api/evcc/site
+         uri: http://localhost:8080/api/evcc/site
          jq: .grid_import_kwh
      - name: openampere_pv
        type: custom
        power:
          source: http
-         uri: http://openampere:8080/api/evcc/site
+         uri: http://localhost:8080/api/evcc/site
          jq: .pv_power
      - name: openampere_battery
        type: custom
        power:
          source: http
-         uri: http://openampere:8080/api/evcc/site
+         uri: http://localhost:8080/api/evcc/site
          jq: .battery_power
        soc:
          source: http
-         uri: http://openampere:8080/api/evcc/site
+         uri: http://localhost:8080/api/evcc/site
          jq: .battery_soc
 
    site:
@@ -70,12 +74,12 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
    Die Vorzeichen passen ohne Umrechnung: Netz positiv bei Bezug, Speicher positiv beim Entladen. Hat OpenAmpere
    keine aktuellen Werte, antwortet die Adresse mit einem Fehler, und evcc lädt nicht auf Basis alter Werte.
 3. Wallbox und Fahrzeug direkt in evcc einrichten.
-4. In OpenAmpere unter Mehr → Verbindung → Wallbox die Adresse von evcc eintragen, z. B. `http://evcc:7070`. Ein Passwort ist nur
-   nötig, wenn evcc für Änderungen eine Anmeldung verlangt.
+4. In OpenAmpere unter Mehr → Verbindung → Wallbox die Adresse von evcc eintragen, auf demselben Rechner
+   `http://localhost:7070`. Ein Passwort ist nur nötig, wenn evcc für Änderungen eine Anmeldung verlangt.
 
 ## evcc mit Docker neben OpenAmpere
 
-In der `docker-compose.yml` von OpenAmpere als zweiten Dienst ergänzen (Ausschnitt):
+Die `docker-compose.yml` von OpenAmpere enthält evcc schon als auskommentierten zweiten Dienst:
 
 ```yaml
   evcc:
@@ -83,12 +87,14 @@ In der `docker-compose.yml` von OpenAmpere als zweiten Dienst ergänzen (Ausschn
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./evcc/evcc.yaml:/etc/evcc.yaml
-      - ./evcc/data:/root/.evcc
+      - ./evcc:/root/.evcc
 ```
 
-Mit `network_mode: host` erreicht evcc OpenAmpere unter `http://localhost:8080` und OpenAmpere evcc unter
-`http://localhost:7070`. In der Konfiguration oben dann `localhost` statt `openampere` eintragen.
+Zeilen einkommentieren, dann `docker compose up -d`. evcc speichert seine Einstellungen im Ordner `evcc/` und ist
+unter `http://<server-ip>:7070` erreichbar. Beide Container nutzen das Host-Netzwerk, so erreicht evcc OpenAmpere
+unter `http://localhost:8080` und OpenAmpere evcc unter `http://localhost:7070`. Wer evcc lieber mit Datei
+konfiguriert, bindet zusätzlich `./evcc.yaml:/etc/evcc.yaml` ein, siehe
+[Docker-Anleitung von evcc](https://docs.evcc.io/en/installation/docker).
 
 ## Grenzen
 
