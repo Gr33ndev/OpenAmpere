@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
-import type { Device, DevicesView } from "./api";
+import type { BatteryState, Device, DevicesView, Snapshot } from "./api";
 import { postJson, useResource } from "./api";
 import { ConsumersPage } from "./ConsumersPage";
 import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
-import { CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
+import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
+import { BatteryPage, ChargingPage, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
 import { Button, MenuRow, Notice, Segmented, toast } from "./ui";
 import { EVCC_URL, WallboxCard, WallboxPage, type EvccView } from "./WallboxPage";
@@ -97,21 +98,55 @@ function OwnDeviceCard({ d, today, onChange }: { d: Device; today: number | unde
   );
 }
 
-export function DevicesTab({ page }: { page: string | null }) {
+/** The home battery: what it does now and its most important settings. */
+function BatteryCard({ snap }: { snap: Snapshot | null }) {
+  const { data: settings } = useResource<BatteryState>("/api/battery/settings", 60_000);
+  const { data: charging } = useResource<ChargingView>("/api/charging", 30_000);
+  const power = snap?.battery_power ?? null;
+  const state = power == null ? "–" : Math.abs(power) <= 30 ? "ruht" : power > 0 ? `entlädt ${kw(power)}` : `lädt ${kw(power)}`;
+  return (
+    <div className="card device-card">
+      <button className="device-card-head as-link" onClick={() => navigate("devices/battery")}>
+        <BatteryIcon size={44} soc={snap?.battery_soc ?? null} />
+        <div className="grow">
+          <strong>Speicher</strong>
+          <div className="hint">{state}{settings?.work_mode ? ` · ${WORK_MODE_LABEL[settings.work_mode]}` : ""}</div>
+        </div>
+        <div className="device-power">{snap?.battery_soc != null ? `${num(snap.battery_soc, 0)} %` : "–"}</div>
+      </button>
+      {settings?.min_soc_on_grid != null && (
+        <p className="hint">Notstrom-Reserve: {num(settings.min_soc_on_grid, 0)} %</p>
+      )}
+      <div className="button-row inline">
+        <button className="link" onClick={() => navigate("devices/battery")}>Speicher einstellen</button>
+        <button className="link" onClick={() => navigate("devices/charging")}>
+          Laden aus dem Netz: {charging ? (charging.active ? "lädt gerade" : charging.settings.enabled ? "an" : "aus") : "…"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const WORK_MODE_LABEL: Record<string, string> = { self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugt",
+  backup: "Notstromreserve", peak_shaving: "Spitzenlast begrenzen" };
+
+export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot | null }) {
   const { data, reload } = useResource<DevicesView>("/api/devices", 5_000);
   const { data: evcc, setData: setEvcc } = useResource<EvccView>("/api/evcc", 10_000);
   const nav = { onBack: () => goBack("devices"), onNavigate: (p: string) => navigate(`more/${p}`) };
   if (page === "setup") return <ConsumersPage {...nav} />;
   if (page === "wallbox") return <WallboxPage {...nav} />;
+  if (page === "battery") return <BatteryPage {...nav} />;
+  if (page === "charging") return <ChargingPage {...nav} />;
 
   const own = (data?.devices ?? []).filter((d) => d.source === "openampere");
   const loadpoints = evcc?.state?.loadpoints ?? [];
-  const empty = data && !own.length && !loadpoints.length;
+  const noExtras = data && !own.length && !loadpoints.length;
   let content: ReactNode = null;
-  if (empty) {
+  if (noExtras) {
     content = (
       <div className="card">
-        <p>Hier steuerst du Geräte, die Solarstrom nutzen: einen Heizstab, eine Wärmepumpe oder deine Wallbox.</p>
+        <p>Wallbox, Heizstab oder Wärmepumpe können deinen Sonnenstrom nutzen. Füge sie hier hinzu.</p>
         <div className="button-row">
           <Button onClick={() => navigate("devices/setup")}>Heizstab oder Gerät hinzufügen</Button>
           <Button variant="secondary" onClick={() => navigate("devices/wallbox")}>Wallbox mit evcc verbinden</Button>
@@ -123,7 +158,9 @@ export function DevicesTab({ page }: { page: string | null }) {
   return (
     <div className="page">
       <div className="page-head"><h1>Geräte</h1></div>
-      {!empty && <ControlModeBar compact />}
+      <ControlModeBar compact />
+      <div className="section-title">Speicher</div>
+      <BatteryCard snap={snap} />
       {content}
       {!!loadpoints.length && (
         <>

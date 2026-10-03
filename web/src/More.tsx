@@ -3,7 +3,7 @@ import type { Settings, Snapshot, Status } from "./api";
 import { useResource, useStale } from "./api";
 import { kwh, percent, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
-import { AboutPage, AppearancePage, BatteryPage, ChargingPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
+import { AboutPage, AppearancePage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
@@ -23,7 +23,7 @@ function StatusPill({ ok, text }: { ok: boolean; text: string }) {
 const RULES: Record<string, string> = { unknown: "nicht angegeben", limit_60: "60 % der Modulleistung",
   limit_70: "70 % der Modulleistung", operator: "Wert vom Netzbetreiber", none: "keine Begrenzung" };
 
-function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () => void }) {
+function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null; onBack: () => void; onNavigate: (p: string) => void }) {
   const { data: status } = useResource<Status>("/api/status", 10_000);
   const settings = useResource<Settings>("/api/settings").data?.values;
   const device = status?.device;
@@ -73,6 +73,10 @@ function InstallationPage({ snap, onBack }: { snap: Snapshot | null; onBack: () 
           <dt>Einspeiseregel</dt><dd>{RULES[settings?.["grid.feed_in_rule"] ?? "unknown"]}</dd>
         </dl>
       </div>
+      <div className="card menu">
+        <MenuRow label="Modulfelder benennen" hint="z. B. Süddach, Garage" onClick={() => onNavigate("pv")} />
+        <MenuRow label="Einspeisebegrenzung" hint="Modulleistung und gesetzliche Regel" onClick={() => onNavigate("export-limit")} />
+      </div>
 
       {!!status?.devices.items.length && (
         <>
@@ -107,14 +111,16 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
   const nav = { onBack: back, onNavigate: setPage };
 
   switch (page) {
-    case "installation": return <InstallationPage snap={snap} onBack={back} />;
-    case "battery": return <BatteryPage {...nav} />;
-    case "charging": return <ChargingPage {...nav} />;
+    case "installation": return <InstallationPage snap={snap} onBack={back} onNavigate={setPage} />;
     case "notify": return <NotifyPage {...nav} />;
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
-    case "pv": return <PvSystemPage {...nav} snap={snap} />;
-    case "export-limit": return <ExportLimitPage {...nav} />;
+    // parts of "Meine Anlage"
+    case "pv": return <PvSystemPage onBack={() => goBack("more/installation")} snap={snap} />;
+    case "export-limit": return <ExportLimitPage onBack={() => goBack("more/installation")} onNavigate={setPage} />;
+    // moved to "Geräte"; old links still work
+    case "battery": navigate("devices/battery"); return null;
+    case "charging": navigate("devices/charging"); return null;
     case "connection": return <ConnectionPage {...nav} />;
     case "control": return <ControlPage {...nav} />;
     case "appearance": return <AppearancePage {...nav} />;
@@ -129,14 +135,10 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     <div className="page">
       <div className="page-head"><h1>Mehr</h1></div>
 
-      <div className="section-title">Mein System</div>
+      <div className="section-title">Anlage</div>
       <div className="card menu">
-        <MenuRow label="Meine Anlage" hint={status?.device?.model ?? undefined} onClick={() => setPage("installation")} />
-        <MenuRow label="PV-Anlage" hint="Modulfelder benennen" onClick={() => setPage("pv")} />
-        <MenuRow label="Speicher & Notstrom" onClick={() => setPage("battery")} />
-        <MenuRow label="Laden aus dem Netz" hint="Nach Strompreis oder Zeitfenster (experimentell)" onClick={() => setPage("charging")} />
-        <MenuRow label="Einspeisebegrenzung" hint="Gesetzliche Regel und Modulleistung" onClick={() => setPage("export-limit")} />
-        <MenuRow label="Stromtarif" onClick={() => setPage("tariff")} />
+        <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
+        <MenuRow label="Stromtarif" hint="Preise für die Ersparnis" onClick={() => setPage("tariff")} />
       </div>
 
       <div className="section-title">Einstellungen</div>
@@ -144,14 +146,15 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Verbindung" hint={status?.connected ? "Verbunden" : "Nicht verbunden"} onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung und Protokoll"
           hint={control?.enabled ? (control.dry_run ? "Testen" : "Aktiv") : "Nur ansehen"} onClick={() => setPage("control")} />
-        <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy (ntfy)" onClick={() => setPage("notify")} />
-        <MenuRow label="Zugriffsschutz" hint="Passwort, Anmeldung" onClick={() => setPage("security")} />
-        <MenuRow label="Darstellung" onClick={() => setPage("appearance")} />
-        <MenuRow label="Diagnose" hint="Gerät prüfen, Bericht teilen (nur lesen)" onClick={() => setPage("diagnostics")} />
-        <MenuRow label="Daten & Sicherung" hint="Sicherung, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
+        <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy" onClick={() => setPage("notify")} />
+        <MenuRow label="Zugriffsschutz" hint="Passwort" onClick={() => setPage("security")} />
+        <MenuRow label="Darstellung" hint="Hell, dunkel, Zeitzone" onClick={() => setPage("appearance")} />
       </div>
 
+      <div className="section-title">Daten und Hilfe</div>
       <div className="card menu">
+        <MenuRow label="Daten & Sicherung" hint="Sicherung, Export, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
+        <MenuRow label="Diagnose" hint="Gerät prüfen und Bericht teilen" onClick={() => setPage("diagnostics")} />
         <MenuRow label="Über OpenAmpere" onClick={() => setPage("about")} />
       </div>
     </div>

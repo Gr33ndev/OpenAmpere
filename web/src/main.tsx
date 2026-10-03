@@ -96,7 +96,7 @@ function App() {
       )}
       <main>
         {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
-        {tab === "devices" && <DevicesTab page={route[1] ?? null} />}
+        {tab === "devices" && <DevicesTab page={route[1] ?? null} snap={snap} />}
         {tab === "report" && <Report />}
         {tab === "more" && <More snap={snap} page={route[1] ?? null} />}
       </main>

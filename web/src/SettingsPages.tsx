@@ -1056,7 +1056,7 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
 type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_soc: number; ready_by: number;
   window_start: number; window_end: number; max_price_ct: number | null; power_w: number; battery_kwh: number;
   legal_confirmed: boolean };
-type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
+export type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
   plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> } };
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);

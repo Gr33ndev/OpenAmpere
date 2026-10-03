@@ -470,3 +470,5 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .control-mode.test { border-color: var(--warning); }
 .control-mode-title { font-size: 13px; font-weight: 600; color: var(--label); }
 .control-mode.compact { padding: 14px 16px; }
+.device-card-head.as-link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left;
+  cursor: pointer; width: 100%; }
