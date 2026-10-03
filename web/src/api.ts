@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { DEMO } from "./demo/flag";
+import { demoRequest, snapshot as demoSnapshot } from "./demo/server";
 
 export type Counters = {
   pv: number | null;
@@ -146,6 +148,7 @@ export type BatteryState = BatterySettings & {
 export const OFFLINE_MESSAGE = "Keine Verbindung zum OpenAmpere-Server.";
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  if (DEMO && path.startsWith("/api/")) return demoRequest<T>(method, path);
   let response: Response;
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -200,6 +203,13 @@ export function useLive(): { snap: Snapshot | null; online: boolean } {
   const [online, setOnline] = useState(false);
 
   useEffect(() => {
+    if (DEMO) {
+      const tick = () => setSnap(demoSnapshot() as Snapshot | null);
+      setOnline(true);
+      tick();
+      const timer = window.setInterval(tick, 5000);
+      return () => window.clearInterval(timer);
+    }
     let ws: WebSocket | null = null;
     let retry: number | undefined;
     let closed = false;
@@ -271,6 +281,7 @@ export type AuthStatus = { configured: boolean; authenticated: boolean };
 
 /** POST with a raw body (file upload) – same headers as JSON requests. */
 export async function postFile<T>(path: string, file: Blob): Promise<T> {
+  if (DEMO) return demoRequest<T>("POST", path);
   const response = await fetch(path, { method: "POST", body: file, credentials: "same-origin",
     headers: { "X-OpenAmpere": "1", "Content-Type": "application/zip" } }).catch(() => {
     throw new Error(OFFLINE_MESSAGE);

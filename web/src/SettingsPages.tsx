@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
 import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import { DEMO } from "./demo/flag";
 import { ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
@@ -541,7 +542,7 @@ function CsvExportCard() {
       </div>
       <Segmented value={resolution} onChange={setResolution}
         options={[["15m", "15 min"], ["60m", "Stunde"], ["day", "Tag"], ["month", "Monat"]]} />
-      {valid ? <a className="btn secondary" href={href} download>CSV herunterladen</a>
+      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <a className="btn secondary" href={href} download>CSV herunterladen</a>
         : <p className="hint">Bitte einen gültigen Zeitraum wählen.</p>}
     </div>
   );
@@ -570,7 +571,7 @@ export function DataPage({ onBack }: PageProps) {
         <h2>Sicherung</h2>
         <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.
           Passwörter und API-Schlüssel sind nicht enthalten.</p>
-        {auth?.authenticated ? (
+        {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : auth?.authenticated ? (
           <a className="btn secondary" href="/api/backup" download>Datensicherung herunterladen</a>
         ) : (
           <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
