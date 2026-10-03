@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS pv_input_15m (
     ts INTEGER NOT NULL, input INTEGER NOT NULL, wh REAL NOT NULL, PRIMARY KEY (ts, input)
 );
 CREATE TABLE IF NOT EXISTS prices (ts INTEGER PRIMARY KEY, eur_mwh REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS device_power (
+    ts REAL NOT NULL, device TEXT NOT NULL, w REAL NOT NULL, PRIMARY KEY (ts, device)
+);
+CREATE TABLE IF NOT EXISTS device_energy_15m (
+    ts INTEGER NOT NULL, device TEXT NOT NULL, wh REAL NOT NULL, PRIMARY KEY (ts, device)
+);
 CREATE TABLE IF NOT EXISTS control_log (
     ts REAL NOT NULL, action TEXT NOT NULL, details TEXT NOT NULL, dry_run INTEGER NOT NULL, result TEXT NOT NULL
 );
@@ -293,7 +299,49 @@ class Storage:
 
     def prune(self, retention_days: int) -> None:
         with self._lock, self._db:
-            self._db.execute("DELETE FROM samples WHERE ts < ?", (time.time() - retention_days * 86400,))
+            cutoff = time.time() - retention_days * 86400
+            self._db.execute("DELETE FROM samples WHERE ts < ?", (cutoff,))
+            self._db.execute("DELETE FROM device_power WHERE ts < ?", (cutoff,))
+
+    # ---- devices (wallbox, heating rod, ...) --------------------------------
+
+    def add_device_power(self, ts: float, powers: dict[str, float]) -> None:
+        """Power of each device (W) at one moment; integrated into quarter-hour energies like the PV inputs."""
+        if not powers or not self.clock_plausible(ts):
+            return
+        quarter = int(ts // QUARTER * QUARTER)
+        with self._lock, self._db:
+            self._db.executemany("INSERT OR REPLACE INTO device_power(ts, device, w) VALUES (?, ?, ?)",
+                                 [(ts, key, max(0.0, w)) for key, w in powers.items()])
+            acc = self._get_meta("device_energy_state")
+            if acc is not None:
+                dt = ts - acc["last_ts"]
+                if 0 < dt <= MAX_INTEGRATION_GAP_S:
+                    for key, w in acc["last"].items():
+                        acc["wh"][key] = acc["wh"].get(key, 0.0) + max(0.0, w) * dt / 3600
+                if quarter != acc["ts"]:
+                    self._db.executemany(
+                        "INSERT INTO device_energy_15m(ts, device, wh) VALUES (?, ?, ?) "
+                        "ON CONFLICT(ts, device) DO UPDATE SET wh = wh + excluded.wh",
+                        [(acc["ts"], key, wh) for key, wh in acc["wh"].items()])
+                    acc = None
+            if acc is None:
+                acc = {"ts": quarter, "wh": {}}
+            acc.update(last_ts=ts, last=powers)
+            self._set_meta("device_energy_state", acc)
+
+    def running_device_energy(self) -> tuple[int, dict[str, float]] | None:
+        """Energy per device of the quarter hour that is still running."""
+        acc = self._get_meta("device_energy_state")
+        return (acc["ts"], acc["wh"]) if acc else None
+
+    def device_energy(self, start: float, end: float) -> list[dict]:
+        return self._fetchall("SELECT ts, device, wh FROM device_energy_15m WHERE ts >= ? AND ts < ? ORDER BY ts",
+                              (start, end))
+
+    def device_power(self, start: float, end: float) -> list[dict]:
+        return self._fetchall("SELECT ts, device, w FROM device_power WHERE ts >= ? AND ts < ? ORDER BY ts",
+                              (start, end))
 
     # ---- reading ---------------------------------------------------------
 

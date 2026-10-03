@@ -34,6 +34,7 @@ from .discovery import Rediscovery
 from .charging import GridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
+from .devices import Devices
 from .notify import Notifier
 from .diagnostics import Diagnostics, report_markdown
 
@@ -100,6 +101,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     charging = GridCharging(runtime)
     evcc = Evcc(runtime)
     surplus = SurplusControl(runtime, evcc)
+    devices = Devices(runtime, surplus, evcc)
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
 
@@ -120,7 +122,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         """Every few seconds: read evcc and share the solar surplus (the heating rod follows the sun)."""
         while True:
             await asyncio.sleep(max(5.0, min(runtime.config.inverter.poll_interval, 15.0)))
-            for job in (evcc.refresh, surplus.tick):
+            for job in (evcc.refresh, surplus.tick, devices.record_async):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -225,13 +227,6 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     # ---- live ------------------------------------------------------------
 
-    def device_summary(c) -> dict:
-        state = surplus.states.get(c.id)
-        power = (state.actual_w if state and state.actual_w is not None else state.power_w) if state and c.adjustable \
-            else (c.power_w if state and state.on else 0)
-        return {"name": c.name, "power_w": power if state else c.power_w, "on": state.on if state else None,
-                "temperature_c": state.temperature_c if state else None}
-
     @app.get("/api/status")
     def status():
         latest = collector.latest
@@ -247,13 +242,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "clock_wrong": storage.clock_wrong,
             "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
-            "devices": {
-                "grid_charging": charging.active,
-                "consumers": [device_summary(c) for c in surplus.consumers if c.enabled],
-                "wallboxes": [{"title": lp["title"], "charging": lp["charging"], "power_w": lp["power_w"],
-                               "soc": lp["soc"], "heating": lp["heating"]}
-                              for lp in ((evcc.fresh() or {}).get("loadpoints") or []) if lp["connected"]],
-            },
+            "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
@@ -498,6 +487,33 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(400, str(err)) from None
         await charging.tick()
         return charging.view()
+
+    @app.get("/api/devices")
+    def get_devices():
+        return {"devices": devices.live(), "today_wh": devices.today_wh(),
+                "evcc": {"configured": evcc.configured, "error": evcc.error},
+                "priority": runtime.config.evcc.priority}
+
+    @app.get("/api/devices/energy")
+    def devices_energy(period: str = "day", date: str | None = None,
+                       resolution: str = Query("60m", pattern="^(15m|60m|day|month)$")):
+        start, end = bounds(period, date)
+        return {"period": period, "resolution": resolution, "from": start, "to": end,
+                **devices.energy(start, end, resolution)}
+
+    @app.get("/api/devices/power")
+    def devices_power(date: str | None = None, step: int = Query(300, ge=60, le=3600)):
+        start, end = bounds("day", date)
+        return {"from": start, "to": end, **devices.power(start, end, step)}
+
+    @app.post("/api/consumers/{consumer_id}/mode")
+    async def consumer_mode(consumer_id: str, body: dict = Body(...)):
+        try:
+            surplus.set_override(consumer_id, str(body.get("mode")), body.get("hours"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await surplus.tick()
+        return {"devices": devices.live()}
 
     @app.get("/api/consumers")
     def get_consumers():

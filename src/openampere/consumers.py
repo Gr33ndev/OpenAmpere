@@ -154,7 +154,36 @@ class SurplusControl:
         return consumers
 
     def view(self) -> dict:
-        return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State()))} for c in self.consumers]}
+        return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State())), "override": self.override(c.id)}
+                              for c in self.consumers]}
+
+    # ---- manual override: off or full power for a while -------------------------
+
+    def override(self, consumer_id: str, now: float | None = None) -> dict | None:
+        now = time.time() if now is None else now
+        entry = (self.runtime.storage.get_meta("consumer_overrides") or {}).get(consumer_id)
+        if entry and (entry.get("until") is None or entry["until"] > now):
+            return entry
+        return None
+
+    def set_override(self, consumer_id: str, mode: str, hours: float | None = None, now: float | None = None) -> None:
+        """mode: auto (follow the surplus), off (stay off), boost (full power, e.g. hot water now)."""
+        now = time.time() if now is None else now
+        if consumer_id not in {c.id for c in self.consumers}:
+            raise ValueError("Gerät nicht gefunden.")
+        if mode not in ("auto", "off", "boost"):
+            raise ValueError("Unbekannte Betriebsart.")
+        if hours is not None and not 0 < float(hours) <= 48:
+            raise ValueError("Bitte eine Dauer bis 48 Stunden wählen.")
+        overrides = self.runtime.storage.get_meta("consumer_overrides") or {}
+        if mode == "auto":
+            overrides.pop(consumer_id, None)
+        else:
+            overrides[consumer_id] = {"mode": mode, "until": now + float(hours) * 3600 if hours else None}
+        self.runtime.storage.set_meta("consumer_overrides", overrides)
+        name = next(c.name for c in self.consumers if c.id == consumer_id)
+        self.runtime.storage.log_control("consumer_mode", {"from": {"consumer": name}, "to": {"consumer": name, "mode": mode,
+                                         "hours": hours}}, False, "ok")
 
     def _rod(self, c: Consumer) -> MyPvHeatingRod:
         key = (c.host.strip(), c.port, c.unit)
@@ -260,6 +289,7 @@ class SurplusControl:
         consumers = [c for c in self.consumers if c.enabled]
         if not consumers:
             return
+        await self._read_rods(consumers)  # status and water temperature are shown even without control
         if not runtime.config.control.enabled:
             await self._safe_off(consumers, "Steuerung ausgeschaltet", now)
             return
@@ -267,7 +297,6 @@ class SurplusControl:
         if snap is None or runtime.collector.stale or snap.grid_power is None:
             await self._safe_off(consumers, "keine aktuellen Messwerte", now)  # safe state
             return
-        await self._read_rods(consumers)
         dry = runtime.config.control.dry_run
         soc = snap.battery_soc or 0
         battery = snap.battery_power or 0  # + = discharging
@@ -290,13 +319,29 @@ class SurplusControl:
             state = self.states.setdefault(c.id, State())
             available = free + (charge if soc >= c.battery_min_soc else 0.0)
             cheap = c.price_limit_ct is not None and price is not None and price <= c.price_limit_ct
-            if c.adjustable:
+            override = self.override(c.id, now)
+            if override:
+                used = await self._manual(c, state, override["mode"], now)
+            elif c.adjustable:
                 used = await self._adjust(c, state, available, cheap, now)
             else:
                 used = await self._switch_step(c, state, available, cheap, now)
             from_free = min(max(free, 0.0), used)
             free -= from_free
             charge = max(0.0, charge - (used - from_free))
+
+    async def _manual(self, c: Consumer, state: State, mode: str, now: float) -> float:
+        on = mode == "boost"
+        reason = "von Hand: volle Leistung" if on else "von Hand: aus"
+        if c.adjustable:
+            if state.power_w != (c.power_w if on else 0):
+                await self.set_power(c, c.power_w if on else 0, reason, now)
+            elif on:
+                await self.set_power(c, c.power_w, reason, now)  # keep-alive within the device's control timeout
+            return float(state.power_w)
+        if bool(state.on) != on:
+            await self.switch(c, on, reason, now)
+        return float(c.power_w if state.on else 0)
 
     async def _adjust(self, c: Consumer, state: State, available: float, cheap: bool, now: float) -> float:
         running = bool(state.on)
