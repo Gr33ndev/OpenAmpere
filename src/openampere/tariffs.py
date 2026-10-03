@@ -120,6 +120,21 @@ class Tariffs:
         return {"savings_eur": round(savings, 2), "feed_in_eur": round(feed_in, 2), "grid_cost_eur": round(grid_cost, 2),
                 "incomplete": missing > 0}
 
+    def charge_cost(self, start: float, end: float, kwh: float, solar_share: float, tz: ZoneInfo) -> tuple[float, float]:
+        """Cost of charging kwh (e.g. a car) between start and end, and what it would cost from the grid only.
+
+        Solar energy is valued at the feed-in pay that was given up, grid energy at the average price of the period.
+        """
+        tariff = self.at(datetime.fromtimestamp(start, tz).date().isoformat())
+        prices = [p for p in self.storage.prices(start - QUARTER, end).values() if p is not None]
+        exchange = sum(prices) / len(prices) if prices else None
+        grid = tariff.import_price_ct(exchange)
+        if grid is None:  # dynamic tariff without a known exchange price
+            grid = tariff.surcharge_ct
+        share = min(1.0, max(0.0, solar_share))
+        cost = kwh * (share * tariff.feed_in_ct + (1 - share) * grid) / 100
+        return round(cost, 2), round(kwh * grid / 100, 2)
+
     # ---- exchange prices ------------------------------------------------------
 
     async def refresh_prices(self, now: float | None = None) -> int:

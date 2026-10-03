@@ -24,6 +24,21 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
   Speicher (bis zu einem Ladestand), Wallbox, Heizstab und weitere Geräte. Steht der Speicher vor der Wallbox,
   überträgt OpenAmpere den Ladestand als „Vorrang Hausspeicher“ (priority SoC) an evcc.
 
+## Das Auto in evcc
+
+Viele Autos lassen sich in evcc als Fahrzeug einrichten, zum Beispiel VW, Cupra, Skoda, Tesla, BMW oder Renault
+([Liste bei evcc](https://docs.evcc.io/de/vehicles), manche nur mit Sponsoring). evcc fragt dann über die Cloud des
+Herstellers den Ladestand ab, meist nur solange das Auto angesteckt ist. Damit kann OpenAmpere mehr:
+
+- **Ladestand und Reichweite** im Energiefluss und auf der Wallbox-Karte, dazu „Ziel erreicht um 15:40 Uhr“.
+- **Laden bis 80 %** und Ladepläne wie „bis 7:00 Uhr auf 80 %“. Ohne Fahrzeug kennt evcc nur die geladenen kWh.
+- **Mindestladung:** Bis zu diesem Ladestand lädt das Auto sofort, auch mit Netzstrom, danach gilt der Lademodus.
+  Das ist eine Einstellung des Fahrzeugs in evcc, OpenAmpere setzt sie unter „Geräte“.
+- **Auswertung „Auto“:** evcc speichert bei jedem Ladevorgang den Kilometerstand. OpenAmpere rechnet daraus gefahrene
+  Kilometer, Kilometer mit Sonnenstrom, Verbrauch pro 100 km und Kosten pro 100 km, für 30 Tage, 12 Monate oder
+  insgesamt. Sonnenstrom zählt dabei mit der entgangenen Einspeisevergütung, Netzstrom mit dem Preis aus deinem
+  Stromtarif in OpenAmpere. Lädst du auch unterwegs, fehlt diese Energie, und der Verbrauch wirkt zu niedrig.
+
 ## Einrichtung
 
 evcc bekommt seine Messwerte von OpenAmpere. Deshalb zuerst OpenAmpere einrichten, dann evcc.

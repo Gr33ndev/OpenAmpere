@@ -35,6 +35,7 @@ class Devices:
                 "power_w": float(power or 0), "active": bool(power), "on": state.on,
                 "temperature_c": state.temperature_c, "target_c": state.target_c, "status": state.status,
                 "error": state.error, "override": self.surplus.override(c.id), "connected": None,
+                "soc": None, "range_km": None,
             })
         for lp in (self.evcc.fresh() or {}).get("loadpoints", []):
             devices.append({
@@ -43,6 +44,9 @@ class Devices:
                 "power_w": lp["power_w"], "active": lp["charging"], "on": lp["charging"],
                 "temperature_c": lp["soc"] if lp["heating"] else None, "target_c": lp["limit_soc"] if lp["heating"] else None,
                 "status": None, "error": None, "override": None, "connected": lp.get("connected"),
+                # car battery and range, only while plugged in (evcc keeps old values otherwise)
+                "soc": lp["soc"] if not lp["heating"] and lp.get("connected") else None,
+                "range_km": lp.get("range_km") if not lp["heating"] and lp.get("connected") else None,
             })
         return devices
 

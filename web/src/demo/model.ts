@@ -15,7 +15,7 @@ export type Step = {
   rod: number; water: number; // my-PV heating rod and hot water temperature
 };
 
-const CAR_KWH = 44;
+export const CAR_KWH = 44;
 const CAR_MIN_W = 1380; // 6 A, one phase
 const ROD_MAX_W = 3000;
 const WATER_TARGET = 60;

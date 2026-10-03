@@ -48,6 +48,10 @@ def test_dynamic_tariff_uses_exchange_prices(tmp_path, monkeypatch):
     # 100 €/MWh = 10 ct net -> 11.9 ct gross + 20 ct surcharge = 31.9 ct
     money = t.money(ts - 60, ts + 3600, TZ)
     assert money["grid_cost_eur"] == round(0.2 * 0.319, 2)
+    # charging a car for that hour: 10 kWh, half of it solar (valued at the lost feed-in pay)
+    assert t.charge_cost(ts, ts + 3600, 10, 0.5, TZ) == (round(10 * (0.5 * 8 + 0.5 * 31.9) / 100, 2), round(10 * 31.9 / 100, 2))
+    # no exchange price known for that time: the surcharge alone, like in money()
+    assert t.charge_cost(ts + 86400 * 30, ts + 86400 * 30 + 3600, 10, 0, TZ) == (2.0, 2.0)
 
 
 def test_tariff_validation():

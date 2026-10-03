@@ -11,14 +11,17 @@ export type EvccLoadpoint = {
   vehicle_name: string | null; vehicle_title: string | null; soc: number | null; range_km: number | null;
   limit_soc: number | null; phases: number; pv_action: string | null; pv_remaining_s: number | null;
   remaining_s: number | null; plan_active: boolean; plan_time: string | null; plan_soc: number | null;
+  min_soc: number; vehicle_capacity_kwh: number | null;
 };
 export type EvccView = {
   configured: boolean; url: string | null; error: string | null; updated: number | null;
   priority: "wallbox_first" | "devices_first";
   state: { version: string | null; site_title: string | null; loadpoints: EvccLoadpoint[] } | null;
 };
-type Session = { created: string | null; finished: string | null; loadpoint: string | null; vehicle: string | null;
-  energy_kwh: number | null; duration_s: number | null; solar_pct: number | null; price: number | null };
+export type EvccSession = { created: string | null; finished: string | null; loadpoint: string | null; vehicle: string | null;
+  energy_kwh: number | null; duration_s: number | null; solar_pct: number | null; price: number | null;
+  odometer_km: number | null; soc_start: number | null; soc_end: number | null; added_range_km: number | null;
+  cost_eur: number | null; grid_cost_eur: number | null };
 
 export const EVCC_URL = "https://evcc.io";
 const MODES: [NonNullable<EvccLoadpoint["mode"]>, string][] = [["off", "Aus"], ["pv", "Solar"], ["minpv", "Min + Solar"], ["now", "Sofort"]];
@@ -35,6 +38,8 @@ const duration = (s: number | null) => {
   const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
   return h ? `${h} h ${m} min` : `${m} min`;
 };
+const at = (s: number) => new Date(Date.now() + s * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit",
+  timeZone: timeZone() });
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleString("de-DE", { weekday: "short", hour: "2-digit",
   minute: "2-digit", timeZone: timeZone() }) : "");
 
@@ -95,11 +100,29 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
         {plugged && !!lp.session_wh && <><dt>Diesmal geladen</dt><dd>{num(lp.session_wh / 1000, 1)} kWh
           {lp.session_solar_pct != null ? ` · ${num(lp.session_solar_pct, 0)} % Sonne` : ""}</dd></>}
         {plugged && lp.range_km != null && <><dt>Reichweite</dt><dd>{num(lp.range_km, 0)} km</dd></>}
-        {lp.charging && duration(lp.remaining_s) && <><dt>Fertig in</dt><dd>{duration(lp.remaining_s)}</dd></>}
+        {lp.charging && duration(lp.remaining_s) && <><dt>{lp.heating ? "Fertig um" : "Ziel erreicht um"}</dt>
+          <dd>{at(lp.remaining_s!)} Uhr (in {duration(lp.remaining_s)})</dd></>}
         {lp.plan_active && lp.plan_time && <><dt>Ladeplan</dt><dd>{lp.plan_soc != null ? `${num(lp.plan_soc, 0)} % ` : ""}bis {clock(lp.plan_time)}</dd></>}
       </dl>
+      {!lp.heating && lp.vehicle_name && <MinSoc lp={lp} busy={busy} send={send} />}
       {!lp.heating && lp.connected && lp.vehicle_name && <PlanForm lp={lp} busy={busy} send={send} />}
     </div>
+  );
+}
+
+/** Minimum charge of the car (an evcc vehicle setting): up to it, evcc charges right away, also from the grid. */
+function MinSoc({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (action: string, value?: unknown) => Promise<void> }) {
+  const [value, setValue] = useState(lp.min_soc);
+  useEffect(() => setValue(lp.min_soc), [lp.min_soc]);
+  return (
+    <details className="advanced">
+      <summary>Mindestladung: {lp.min_soc ? `${num(lp.min_soc, 0)} %` : "aus"}</summary>
+      <p className="hint">Bis zu diesem Ladestand lädt das Auto sofort, auch mit Netzstrom. Danach gilt der Lademodus.
+        So ist immer genug für eine kurze Fahrt im Akku.</p>
+      <Slider value={value} min={0} max={50} step={5} unit="%" onChange={setValue} />
+      {value !== lp.min_soc && <Button variant="secondary" busy={busy} onClick={() => void send("min_soc", value)}>
+        {value ? "Mindestladung übernehmen" : "Mindestladung ausschalten"}</Button>}
+    </details>
   );
 }
 
@@ -251,7 +274,7 @@ export function WallboxPage({ onBack }: PageProps) {
 /** Recent charging sessions from evcc, for the analysis page. */
 export function EvccSessions() {
   const { data: view } = useResource<EvccView>("/api/evcc");
-  const { data } = useResource<{ sessions: Session[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
+  const { data } = useResource<{ sessions: EvccSession[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
   if (!data?.sessions.length) return null;
   return (
     <>

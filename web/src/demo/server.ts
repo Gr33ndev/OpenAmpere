@@ -1,7 +1,7 @@
 /** Answers the app's API requests inside the browser for the public demo. Nothing leaves the browser,
  *  nothing is saved: every change is refused with a friendly message. */
 
-import { BATTERY_WH, dayStart, energyOf, firstDayStart, KWP, stepsBetween, stepsOf, STEP_S, type Energy, type Step } from "./model";
+import { BATTERY_WH, CAR_KWH, dayStart, energyOf, firstDayStart, KWP, stepsBetween, stepsOf, STEP_S, type Energy, type Step } from "./model";
 
 export const DEMO_WRITE_MESSAGE = "Das ist nur die Demo, hier lässt sich nichts ändern. Für deine eigene Anlage installierst du OpenAmpere.";
 
@@ -112,7 +112,7 @@ function wallbox() {
     power_w: s?.car ?? 0, session_wh: Math.round(session), session_solar_pct: 100, vehicle_name: "egolf",
     vehicle_title: "e-Golf", soc: s?.carSoc ?? null, range_km: s ? Math.round(s.carSoc * 2.6) : null, limit_soc: 80, phases: 1,
     pv_action: charging ? "inactive" : "enable", pv_remaining_s: null, remaining_s: charging ? 5400 : null,
-    plan_active: false, plan_time: null, plan_soc: null,
+    plan_active: false, plan_time: null, plan_soc: null, min_soc: 20, vehicle_capacity_kwh: CAR_KWH,
   };
 }
 
@@ -129,7 +129,7 @@ function deviceItems() {
   return [
     { key: "evcc:1", id: 1, source: "evcc", name: "Carport", kind: "wallbox", enabled: true, power_w: car.power_w,
       active: car.charging, on: car.charging, temperature_c: null, target_c: null, status: null, error: null, override: null,
-      connected: car.connected },
+      connected: car.connected, soc: car.connected ? car.soc : null, range_km: car.connected ? car.range_km : null },
     { key: "c:demo1", id: "demo1", source: "openampere", name: "Heizstab", kind: "heating_rod", enabled: true,
       power_w: rod.power, active: rod.on, on: rod.on, temperature_c: rod.temperature, target_c: 60,
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft",
@@ -285,22 +285,32 @@ function evcc() {
     state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()] } };
 }
 
-/** Charging sessions of the last weeks, taken from the simulation. */
-function evccSessions() {
-  const sessions = [];
+/** Charging sessions of the last months, taken from the simulation. The odometer follows from the energy, as if
+ * the car used 16.9 kWh per 100 km (its range in the demo). */
+function evccSessions(params: URLSearchParams) {
+  const limit = Number(params.get("limit") ?? 50);
+  const found = [];
   let day = dayStart(new Date());
-  for (let n = 0; n < 45 && sessions.length < 12; n++) {
+  for (let n = 0; n < 120 && found.length < limit; n++) {
     day = dayStart(new Date((day - 86400 + 7200) * 1000));
     const charging = stepsOf(day).filter((s) => s.car > 0);
     if (!charging.length) continue;
-    const energy = charging.reduce((a, s) => a + (s.car * STEP_S) / 3600, 0) / 1000;
+    const energy = Math.round(charging.reduce((a, s) => a + (s.car * STEP_S) / 3600, 0) / 100) / 10;
     if (energy < 0.5) continue;
-    sessions.push({ created: new Date(charging[0].ts * 1000).toISOString(),
-      finished: new Date((charging[charging.length - 1].ts + STEP_S) * 1000).toISOString(),
-      loadpoint: "Carport", vehicle: "e-Golf", energy_kwh: Math.round(energy * 10) / 10,
-      duration_s: charging.length * STEP_S, solar_pct: 100, price: null });
+    const first = charging[0], last = charging[charging.length - 1];
+    found.push({ created: new Date(first.ts * 1000).toISOString(),
+      finished: new Date((last.ts + STEP_S) * 1000).toISOString(),
+      loadpoint: "Carport", vehicle: "e-Golf", energy_kwh: energy, duration_s: charging.length * STEP_S,
+      solar_pct: 100, price: null, soc_start: first.carSoc, soc_end: last.carSoc, added_range_km: Math.round(energy / 0.169),
+      cost_eur: Math.round(energy * FEED_IN_CT) / 100, grid_cost_eur: Math.round(energy * PRICE_CT) / 100,
+      odometer_km: 0 });
   }
-  return { sessions };
+  let odometer = 23_000; // oldest first: the energy charged replaces what was driven since the last session
+  for (const s of [...found].reverse()) {
+    odometer += Math.round(s.energy_kwh / 0.169);
+    s.odometer_km = odometer;
+  }
+  return { sessions: found };
 }
 
 function controlLog() {

@@ -7,10 +7,10 @@ import { BatteryIcon, GridIcon, HouseIcon, SolarIcon } from "./icons";
 const IDLE_W = 30;
 // Layout in a 100 x H coordinate system (matches the container's aspect ratio)
 const BASE_H = 80;
-const DEVICES_H = 120; // extra row below the house for wallbox, heating rod, ...
+const DEVICES_H = 124; // extra row below the house for wallbox, heating rod, ...
 const HOUSE = { x: 50, y: 56 };
 const LINE_Y = 52; // vertical centre of the side icons
-const DEVICE_Y = 101;
+const DEVICE_Y = 95; // centre of the device icons
 const MAX_DEVICES = 4;
 
 /** Connection; dashes travel from (x1, y1) to (x2, y2) when power > 0 and backwards when < 0. */
@@ -147,6 +147,7 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
           iconRef={(el) => { deviceIcons.current[i] = el; }}>
           {kw(d.power_w)}
           <div className="soc">{d.name}{d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</div>
+          {d.soc != null && <div className="soc">{num(d.soc, 0)} %{d.range_km != null ? ` · ${num(d.range_km, 0)} km` : ""}</div>}
         </Node>
       ))}
     </div>

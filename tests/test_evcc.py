@@ -13,6 +13,7 @@ from openampere.storage import Storage
 
 STATE = {
     "version": "0.316.1",
+    "vehicles": {"ev1": {"title": "e-Golf", "capacity": 35.8, "minSoc": 20, "limitSoc": 80}},
     "loadpoints": [
         {"title": "Carport", "mode": "smart", "alwaysCharge": "off", "connected": True, "charging": True,
          "enabled": True, "chargePower": 7400, "sessionEnergy": 5200, "vehicleName": "ev1", "vehicleTitle": "e-Golf",
@@ -48,7 +49,8 @@ class FakeEvcc(BaseHTTPRequestHandler):
         elif self.path == "/api/sessions":
             self._send(200, [{"created": "2026-10-01T18:00:00+02:00", "finished": "2026-10-01T21:00:00+02:00",
                               "loadpoint": "Carport", "vehicle": "e-Golf", "chargedEnergy": 21.5,
-                              "chargeDuration": 10_800_000_000_000, "solarPercentage": 40.0, "price": 4.1}])
+                              "chargeDuration": 10_800_000_000_000, "solarPercentage": 40.0, "price": 4.1,
+                              "odometer": 23456, "socStart": 22, "socEnd": 80, "addedRange": 140}])
         else:
             self._send(404)
 
@@ -98,6 +100,8 @@ async def test_reads_state_and_sends_commands(tmp_path, evcc_server):
     await runtime.update_settings({"control.dry_run": False})
     car, heat_pump = state["loadpoints"]
     assert (car["mode"], car["power_w"], car["soc"], car["limit_soc"], car["phases"]) == ("pv", 7400, 61, 80, 3)
+    assert (car["min_soc"], car["vehicle_capacity_kwh"]) == (20, 35.8)
+    assert heat_pump["min_soc"] == 0 and heat_pump["vehicle_capacity_kwh"] is None
     assert heat_pump["heating"] and not wants_surplus(heat_pump)
     assert wants_surplus(car)
 
@@ -105,15 +109,25 @@ async def test_reads_state_and_sends_commands(tmp_path, evcc_server):
     await evcc.command(1, "limit_soc", 90)
     await evcc.command(1, "plan", {"soc": 80, "time": 4_000_000_000})
     await evcc.command(1, "plan_delete")
+    await evcc.command(1, "min_soc", 30)
     assert FakeEvcc.calls == [("POST", "/api/loadpoints/1/mode/now"), ("POST", "/api/loadpoints/1/limitsoc/90"),
                               ("POST", "/api/vehicles/ev1/plan/soc/80/2096-10-02T07:06:40Z"),
-                              ("DELETE", "/api/vehicles/ev1/plan/soc")]
+                              ("DELETE", "/api/vehicles/ev1/plan/soc"), ("POST", "/api/vehicles/ev1/minsoc/30")]
     with pytest.raises(ValueError):
         await evcc.command(1, "mode", "turbo")
+    with pytest.raises(ValueError):
+        await evcc.command(1, "min_soc", 95)
+    with pytest.raises(EvccError, match="Fahrzeug"):
+        await evcc.command(2, "min_soc", 20)  # the heat pump has no vehicle
     assert runtime.storage.control_log()[0]["action"] == "evcc"
 
     sessions = await evcc.sessions()
-    assert sessions[0]["energy_kwh"] == 21.5 and sessions[0]["duration_s"] == 10_800
+    session = sessions[0]
+    assert session["energy_kwh"] == 21.5 and session["duration_s"] == 10_800
+    assert (session["odometer_km"], session["soc_start"], session["soc_end"], session["added_range_km"]) == (23456, 22, 80, 140)
+    # default tariff 35 ct from the grid, 8 ct feed-in: 40 % solar at 8 ct, 60 % grid at 35 ct
+    assert session["cost_eur"] == round(21.5 * (0.4 * 8 + 0.6 * 35) / 100, 2)
+    assert session["grid_cost_eur"] == round(21.5 * 35 / 100, 2)
 
 
 async def test_login_when_evcc_asks_for_it(tmp_path, evcc_server):

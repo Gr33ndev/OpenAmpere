@@ -7,6 +7,7 @@ import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
 import { KeyFigures } from "./KeyFigures";
 import { colorsFor } from "./DevicesPage";
+import { VehicleStats } from "./VehicleStats";
 import { EvccSessions } from "./WallboxPage";
 
 const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
@@ -224,6 +225,7 @@ export function Report() {
       <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
         colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />
       <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
+      <VehicleStats />
       <EvccSessions />
     </div>
   );

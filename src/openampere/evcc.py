@@ -43,8 +43,9 @@ def normalize_mode(mode: str | None, always_charge) -> str | None:
     return mode if mode in MODES else None
 
 
-def normalize_loadpoint(index: int, lp: dict) -> dict:
+def normalize_loadpoint(index: int, lp: dict, vehicles: dict | None = None) -> dict:
     heating = bool(lp.get("chargerFeatureHeating"))
+    vehicle = (vehicles or {}).get(lp.get("vehicleName") or "") or {}  # evcc settings of the connected car
     return {
         "id": index,
         "title": lp.get("title") or f"Ladepunkt {index}",
@@ -69,6 +70,8 @@ def normalize_loadpoint(index: int, lp: dict) -> dict:
         "plan_active": bool(lp.get("planActive")),
         "plan_time": lp.get("effectivePlanTime") or None,
         "plan_soc": _num(lp.get("effectivePlanSoc")),
+        "min_soc": _num(vehicle.get("minSoc")) or 0.0,  # charge right away up to this, also from the grid
+        "vehicle_capacity_kwh": _num(vehicle.get("capacity")),
     }
 
 
@@ -155,7 +158,8 @@ class Evcc:
         if not isinstance(raw, dict) or "loadpoints" not in raw:
             self.error = "Unter dieser Adresse antwortet kein evcc."
             return self.state
-        loadpoints = [normalize_loadpoint(i + 1, lp) for i, lp in enumerate(raw.get("loadpoints") or [])
+        vehicles = raw.get("vehicles") if isinstance(raw.get("vehicles"), dict) else {}
+        loadpoints = [normalize_loadpoint(i + 1, lp, vehicles) for i, lp in enumerate(raw.get("loadpoints") or [])
                       if isinstance(lp, dict)]
         self.state = {"version": raw.get("version"), "site_title": raw.get("siteTitle"), "loadpoints": loadpoints,
                       "grid_configured": bool(raw.get("gridConfigured"))}
@@ -197,12 +201,17 @@ class Evcc:
             if not 20 <= value <= 100 and not (lp["heating"] and 20 <= value <= 90):
                 raise ValueError("Das Ladeziel muss zwischen 20 und 100 % liegen.")
             path, method = f"/api/loadpoints/{lp_id}/limitsoc/{value}", "POST"
-        elif action in ("plan", "plan_delete"):
+        elif action in ("plan", "plan_delete", "min_soc"):
             vehicle = lp["vehicle_name"]
             if not vehicle:
-                raise EvccError("Für einen Ladeplan muss in evcc ein Fahrzeug erkannt sein.")
+                raise EvccError("Dafür muss in evcc ein Fahrzeug erkannt sein.")
             vehicle = urllib.parse.quote(vehicle, safe="")
-            if action == "plan_delete":
+            if action == "min_soc":
+                value = int(value)
+                if not 0 <= value <= 80:
+                    raise ValueError("Die Mindestladung muss zwischen 0 und 80 % liegen.")
+                path, method = f"/api/vehicles/{vehicle}/minsoc/{value}", "POST"
+            elif action == "plan_delete":
                 path, method = f"/api/vehicles/{vehicle}/plan/soc", "DELETE"
             else:
                 soc, when = int(value["soc"]), float(value["time"])
@@ -221,6 +230,18 @@ class Evcc:
         await self.refresh()
         return self.view()
 
+    def _cost(self, created, finished, energy_kwh, solar_pct) -> tuple[float, float] | None:
+        """Cost of a session with the user's tariff (solar at the lost feed-in pay) and the same from the grid."""
+        if not energy_kwh or not created:
+            return None
+        try:
+            start = datetime.fromisoformat(str(created).replace("Z", "+00:00")).timestamp()
+            end = datetime.fromisoformat(str(finished).replace("Z", "+00:00")).timestamp() if finished else start
+        except ValueError:
+            return None
+        return self.runtime.tariffs.charge_cost(start, max(start, end), energy_kwh, (solar_pct or 0) / 100,
+                                                self.runtime.tz)
+
     async def set_priority_soc(self, soc: int) -> None:
         """evcc charges the home battery first up to this state of charge (a site setting in evcc)."""
         if self.configured:
@@ -235,10 +256,15 @@ class Evcc:
             if not isinstance(s, dict):
                 continue
             duration = _num(s.get("chargeDuration"))
+            energy, solar = _num(s.get("chargedEnergy")), _num(s.get("solarPercentage"))
+            cost = self._cost(s.get("created"), s.get("finished"), energy, solar)
             rows.append({"created": s.get("created"), "finished": s.get("finished"),
                          "loadpoint": s.get("loadpoint"), "vehicle": s.get("vehicle") or None,
-                         "energy_kwh": _num(s.get("chargedEnergy")),
+                         "energy_kwh": energy,
                          "duration_s": duration / 1e9 if duration else None,  # nanoseconds in evcc
-                         "solar_pct": _num(s.get("solarPercentage")), "price": _num(s.get("price"))})
+                         "solar_pct": solar, "price": _num(s.get("price")),
+                         "odometer_km": _num(s.get("odometer")), "soc_start": _num(s.get("socStart")),
+                         "soc_end": _num(s.get("socEnd")), "added_range_km": _num(s.get("addedRange")),
+                         "cost_eur": cost[0] if cost else None, "grid_cost_eur": cost[1] if cost else None})
         rows.sort(key=lambda r: r["created"] or "", reverse=True)
         return rows[:limit]

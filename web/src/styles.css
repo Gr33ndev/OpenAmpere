@@ -161,7 +161,7 @@ nav.bottom button.active::after { background: var(--accent-text); }
 
 /* ---- energy flow ---- */
 .flow { position: relative; width: 100%; max-width: 380px; margin: 8px auto 0; aspect-ratio: 100 / 80; }
-.flow-node.small { font-size: 14px; min-width: 70px; }
+.flow-node.small { font-size: 14px; min-width: 70px; transform: translate(-50%, -32px); } /* anchored at the icon centre, so extra text lines do not move it */
 .flow-node.small .soc { font-size: 12px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .flow-node {
@@ -499,6 +499,9 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .key-label { font-size: 13px; color: var(--label); display: flex; align-items: center; gap: 6px; }
 .key-label .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .key-money { margin: 0; font-size: 15px; }
+.key-unit { font-size: 12px; color: var(--label); }
+.vehicle-stats { margin-top: 12px; }
+.vehicle-stats .key-row { align-items: start; }
 .key-details > summary { cursor: pointer; color: var(--accent-text); font-size: 14px; font-weight: 600; min-height: 32px;
   display: flex; align-items: center; }
 .key-details[open] > summary { margin-bottom: 6px; }
