@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
+import { Button, Field, LearnMore, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
 
 type NotifyKey = "notify.on_unreachable" | "notify.on_alarm" | "notify.on_overwritten" | "notify.on_battery_full"
   | "notify.on_cheap_power";
@@ -55,8 +55,11 @@ export function NotifyPage({ onBack }: PageProps) {
   return (
     <SubPage title="Benachrichtigungen" onBack={onBack}>
       {!values && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">OpenAmpere schickt Hinweise über <strong>ntfy</strong> aufs Handy. Dafür die kostenlose App
-        „ntfy“ installieren (iPhone und Android, ohne Konto) und dort dasselbe Thema abonnieren wie hier.</p>
+      <p className="hint">Hinweise aufs Handy mit der kostenlosen App <strong>ntfy</strong> (iPhone und Android, ohne Konto).</p>
+      <LearnMore summary="So geht's">
+        <p className="hint">ntfy installieren, unten ein Thema eintragen oder vorschlagen lassen und in der App genau dieses
+          Thema abonnieren. Mit „Testnachricht senden“ prüfst du, ob alles ankommt.</p>
+      </LearnMore>
       {values && (
         <>
           <div className="card form">

@@ -523,3 +523,6 @@ details.advanced[open] { display: flex; flex-direction: column; gap: 14px; }
   background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
 .steps-list p { margin: 0; }
 main a:not(.btn) { color: var(--accent-text); }
+details.learn > summary { cursor: pointer; color: var(--accent-text); font-size: 14px; font-weight: 600; min-height: 36px;
+  display: flex; align-items: center; }
+details.learn .learn-body { padding: 4px 0 8px; }

@@ -8,7 +8,7 @@ import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
-import { Button, Checkbox, Dialog, Field, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
+import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, Notice, Segmented, Slider, SubPage, SwitchRow, toast } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
@@ -638,16 +638,14 @@ function CloudImportCard() {
     <>
       <div className="section-title">Verlauf aus der EKD-Cloud</div>
       <div className="card form">
-        <p className="hint">
-          Hast du deine Anlage bisher mit der App „Ampere.IQ“ von EKD genutzt? Dann kannst du deinen bisherigen Verlauf aus der
-          EKD-Cloud übernehmen, solange diese noch läuft. Den API-Schlüssel erzeugst du in der Ampere.IQ-App unter{" "}
-          <strong>Mehr → Konfiguration API-Zugang</strong>.
-        </p>
-        <Notice kind="info">
-          <strong>Hinweis:</strong> OpenAmpere ist ein unabhängiges Projekt und hat nichts mit der Energiekonzepte Deutschland
-          GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die
-          Kunden-API der EKD-Cloud mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber.
-        </Notice>
+        <p className="hint">Übernimm deinen Verlauf aus der App „Ampere.IQ“, solange die EKD-Cloud noch läuft. Den Schlüssel
+          findest du in der Ampere.IQ-App unter <strong>Mehr → Konfiguration API-Zugang</strong>.</p>
+        <p className="hint"><strong>OpenAmpere ist unabhängig und hat nichts mit EKD zu tun.</strong></p>
+        <LearnMore summary="Mehr dazu">
+          <p className="hint">OpenAmpere ist ein unabhängiges Projekt und hat nichts mit der Energiekonzepte Deutschland
+            GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die
+            Kunden-API der EKD-Cloud mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber.</p>
+        </LearnMore>
 
         {showKeyForm ? (
           <form className="field" onSubmit={(e) => { e.preventDefault(); void saveKey(key.trim()); }}>
@@ -902,11 +900,13 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
 
   return (
     <SubPage title="Einspeisebegrenzung" onBack={onBack}>
-      <Notice kind="warn">
-        <strong>Die Einspeisebegrenzung ist rechtlich vorgegeben.</strong> Sie folgt aus dem Gesetz (z. B. 60 % der
-        Modulleistung nach dem Solarspitzengesetz) oder aus deiner Netzanschlusszusage. Wer mehr einspeist als erlaubt,
-        riskiert Zahlungen an den Netzbetreiber (§ 52 EEG). Normalerweise stellt der Installationsbetrieb sie ein.
-      </Notice>
+      <Notice kind="warn"><strong>Rechtlich vorgegeben:</strong> Wer mehr einspeist als erlaubt, riskiert Zahlungen an den
+        Netzbetreiber.</Notice>
+      <LearnMore>
+        <p className="hint">Die Begrenzung folgt aus dem Gesetz (z. B. 60 % der Modulleistung nach dem Solarspitzengesetz)
+          oder aus deiner Netzanschlusszusage. Verstöße können nach § 52 EEG Zahlungen auslösen. Normalerweise stellt der
+          Installationsbetrieb die Begrenzung ein.</p>
+      </LearnMore>
 
       <FeedInRuleCard onSaved={reload} />
 
@@ -1021,11 +1021,7 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
   return (
     <SubPage title="PV-Anlage" onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">
-        Dein Wechselrichter hat mehrere PV-Eingänge (MPPT). An jedem Eingang hängt ein Modulfeld – zum Beispiel
-        eine Dachseite, die Garage oder ein Carport.
-        Gib ihnen Namen wie „Süddach“ oder „Garage“ – die aktuelle Leistung hilft beim Zuordnen.
-      </p>
+      <p className="hint">Gib deinen Modulfeldern Namen wie „Süddach“ oder „Garage“. Die aktuelle Leistung hilft beim Zuordnen.</p>
       {settings && (count === 0 ? (
         <Notice kind="info">Noch keine PV-Eingänge erkannt. Bei Dunkelheit liefern die Eingänge keine Spannung – schau tagsüber noch einmal vorbei.</Notice>
       ) : (
@@ -1101,11 +1097,13 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
 
   return (
     <SubPage title="Laden aus dem Netz" onBack={onBack}>
-      <Notice kind="warn">
-        <strong>Experimentell.</strong> Lädt den Speicher aus dem Netz, wenn Strom günstig ist (dynamischer Tarif) oder in
-        einem festen Zeitfenster (z. B. Nachtstrom). OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit
-        Zeitbegrenzung: Stoppt OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück.
-      </Notice>
+      <p className="hint">Lädt den Speicher aus dem Netz, wenn Strom günstig ist oder in einem festen Zeitfenster
+        (z. B. Nachtstrom). <strong>Experimentell.</strong></p>
+      <LearnMore>
+        <p className="hint">OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit Zeitbegrenzung: Stoppt
+          OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück. Für „Günstigste Zeit“
+          brauchst du einen dynamischen Stromtarif.</p>
+      </LearnMore>
       <ControlModeBar compact />
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && data && (

@@ -202,3 +202,13 @@ export function ToastHost() {
   }, []);
   return message ? <div className={`toast ${message.kind}`} role="status">{message.text}</div> : null;
 }
+
+/** Background information that most people do not need every time: folded away. */
+export function LearnMore({ summary = "Mehr erfahren", children }: { summary?: string; children: ReactNode }) {
+  return (
+    <details className="learn">
+      <summary>{summary}</summary>
+      <div className="learn-body">{children}</div>
+    </details>
+  );
+}

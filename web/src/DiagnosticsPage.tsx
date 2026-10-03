@@ -3,7 +3,7 @@ import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
 import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
-import { Button, Checkbox, LoadState, Notice, SubPage, toast } from "./ui";
+import { Button, Checkbox, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
 type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
@@ -40,8 +40,12 @@ export function DiagnosticsPage({ onBack }: PageProps) {
 
   return (
     <SubPage title="Diagnose" onBack={onBack}>
-      <p className="hint">Prüft, ob OpenAmpere deinen Wechselrichter richtig versteht: welche Register er beantwortet,
-        wie Werte skaliert sind und wie er sich nachts verhält. <strong>Es wird nur gelesen, nichts geändert.</strong></p>
+      <p className="hint">Prüft, ob OpenAmpere deinen Wechselrichter richtig versteht. <strong>Es wird nur gelesen, nichts geändert.</strong></p>
+      <LearnMore>
+        <p className="hint">Die Diagnose fragt alle Registerblöcke ab, prüft Skalierungen und Einspeisebegrenzung und wertet aus,
+          wie sich das Gerät nachts und beim Zurücksetzen der Tageszähler verhält. Den Bericht kannst du teilen, damit
+          weitere Geräte unterstützt werden.</p>
+      </LearnMore>
       {!data && <LoadState error={error} onRetry={reload} />}
       <div className="card form">
         <Checkbox checked={connectionTest} onChange={setConnectionTest}>
