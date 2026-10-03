@@ -264,6 +264,19 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/live": () => snapshot(),
 };
 
+/** Endpoints that only change something: the demo refuses them with DEMO_WRITE_MESSAGE. */
+export const DEMO_WRITE_ONLY = [
+  "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/consumers/",
+  "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test",
+  "/api/setup/scan", "/api/setup/test",
+];
+
+/** Endpoints the demo never reaches: setup (the demo is already set up) and downloads (hidden in the demo). */
+export const DEMO_NOT_NEEDED = ["/api/backup", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks"];
+
+/** Every endpoint the app reads needs an answer here. `npm run check:demo` (CI) fails otherwise. */
+export const DEMO_ROUTES = Object.keys(ROUTES);
+
 export async function demoRequest<T>(method: string, path: string): Promise<T> {
   await new Promise((r) => setTimeout(r, 120)); // feels like a real server
   if (method !== "GET") throw new Error(DEMO_WRITE_MESSAGE);

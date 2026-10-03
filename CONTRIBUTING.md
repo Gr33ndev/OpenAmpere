@@ -62,6 +62,10 @@ cd web && npm run build
 - **Verständlich für Laien:** Die App richtet sich an Anlagenbesitzer ohne Technikwissen. Keine Fachbegriffe ohne
   Erklärung, Fehlermeldungen als ganze deutsche Sätze mit einem Hinweis, was man tun kann.
 - **Alles in der App einstellbar:** Neue Optionen gehören in die Oberfläche, nicht nur in eine Konfigurationsdatei.
+- **Demo immer mitziehen:** Die Demo auf der Projektseite ist dieselbe Web-App, nur die Daten kommen aus einer
+  Simulation im Browser (`web/src/demo/`). Neue Oberflächen erscheinen dort automatisch. Liest die App einen neuen
+  API-Endpunkt, braucht er eine Demo-Antwort in `web/src/demo/server.ts` (oder einen Eintrag als nur schreibend bzw.
+  in der Demo nicht nötig). `npm run check:demo` prüft das, die CI auch.
 - **Tests:** Neue Logik bekommt Tests, Fehlerbehebungen einen Test, der den Fehler vorher zeigt. Tests mit dem
   Simulator stoppen den Collector immer in einem `finally`-Block.
 - **Barrierefreiheit:** Tippflächen mindestens 44 px, ausreichender Kontrast in hell und dunkel, sinnvolle
