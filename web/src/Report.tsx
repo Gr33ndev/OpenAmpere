@@ -290,7 +290,8 @@ export function TemperatureSection({ day, refresh }: { day: string; refresh: num
       x: rows.map((r) => r.ts),
       series: [
         { label: "Wechselrichter", color: "var(--coral)", values: rows.map((r) => r.inverter), unit: "°C" },
-        { label: "Speicher", color: "var(--battery)", values: rows.map((r) => r.battery), unit: "°C" },
+        { label: rows.some((r) => r.cell_max != null) ? "Speicher-Elektronik (BMS)" : "Speicher", color: "var(--battery)",
+          values: rows.map((r) => r.battery), unit: "°C" },
         ...(rows.some((r) => r.cell_max != null) ? [
           { label: "Wärmste Zelle", color: "var(--pv)", values: rows.map((r) => r.cell_max ?? null), unit: "°C", dash: true },
           { label: "Kühlste Zelle", color: "var(--sky)", values: rows.map((r) => r.cell_min ?? null), unit: "°C", dash: true },
@@ -305,7 +306,7 @@ export function TemperatureSection({ day, refresh }: { day: string; refresh: num
       <Chart x={chart.x} series={chart.series} xFormat={fmtHour} height={180} />
       <div className="legend">
         <span><span className="dot" style={{ background: "var(--coral)" }} />Wechselrichter</span>
-        <span><span className="dot" style={{ background: "var(--battery)" }} />Speicher</span>
+        <span><span className="dot" style={{ background: "var(--battery)" }} />{chart.series.length > 2 ? "Speicher-Elektronik (BMS)" : "Speicher"}</span>
         {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--pv)" }} />Wärmste Zelle</span>}
         {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--sky)" }} />Kühlste Zelle</span>}
       </div>

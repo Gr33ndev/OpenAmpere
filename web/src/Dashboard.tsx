@@ -67,9 +67,10 @@ export function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
   const t = snap?.temperatures ?? {};
   const rows = TEMPERATURE_LABELS.filter(([key]) => t[key] != null);
   if (!rows.length) return null;
+  // with cell temperatures, the battery's own sensor is the electronics (BMS), not the cells (#16)
   const cells = (prefix: "battery" | "battery2") => {
     const lo = t[`${prefix}_cell_min`], hi = t[`${prefix}_cell_max`];
-    return lo != null && hi != null ? `Zellen ${num(lo, 1)} – ${num(hi, 1)} °C` : null;
+    return lo != null && hi != null ? `${num(lo, 1)}–${num(hi, 1)}\u00a0°C` : null;
   };
   return (
     <>
@@ -78,8 +79,10 @@ export function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
         {rows.map(([key, label]) => (
           <div className="tile" key={key}>
             <div className="tile-label">{label}</div>
-            <div className="tile-value">{num(t[key]!, 1)} °C</div>
-            {(key === "battery" || key === "battery2") && cells(key) && <div className="meta">{cells(key)}</div>}
+            {(key === "battery" || key === "battery2") && cells(key) ? <>
+              <div className="tile-value">{cells(key)}</div>
+              <div className="meta">Zellen · Elektronik {num(t[key]!, 1)}&nbsp;°C</div>
+            </> : <div className="tile-value">{num(t[key]!, 1)} °C</div>}
           </div>
         ))}
       </div>
