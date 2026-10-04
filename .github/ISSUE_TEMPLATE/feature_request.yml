@@ -1,6 +1,6 @@
 name: Funktionswunsch
 description: Eine Idee für eine neue Funktion oder Verbesserung.
-labels: ["wunsch", "neu"]
+labels: ["feature request", "needs triage"]
 body:
   - type: markdown
     attributes:

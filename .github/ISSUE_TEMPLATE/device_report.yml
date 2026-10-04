@@ -1,6 +1,6 @@
 name: Gerätebericht
 description: Diagnose deines Wechselrichters teilen, damit weitere Geräte und Firmware-Stände unterstützt werden.
-labels: ["gerät", "neu"]
+labels: ["device report", "needs triage"]
 body:
   - type: markdown
     attributes:
