@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .collector import Collector
 from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yaml, validate
 from .drivers import registry
 from .cloud_import import CloudImport
+from .secretbox import SecretBox
 from .storage import Storage
 from .tariffs import Tariffs
 
@@ -33,7 +35,8 @@ class Runtime:
     def __init__(self, file_values: dict, storage: Storage) -> None:
         self.file_values = file_values
         self.storage = storage
-        self.config, self.locked = build_config(file_values, storage.get_settings())
+        self.secrets = SecretBox(Path(storage.path).resolve().parent / "secret.key")
+        self.config, self.locked = build_config(file_values, self._load_settings())
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
@@ -46,6 +49,19 @@ class Runtime:
         bootstrap, _ = build_config(file_values)  # storage path may come from file or env only
         return cls(file_values, Storage(bootstrap.storage.path))
 
+    def _load_settings(self) -> dict:
+        """The saved settings with the secrets decrypted; secrets of older versions get encrypted now."""
+        stored = self.storage.get_settings()
+        plain = {k: self.secrets.decrypt(k, v) if k in SECRETS else v for k, v in stored.items()}
+        if any(k in SECRETS and v and not SecretBox.is_encrypted(v) for k, v in stored.items()):
+            self._save_settings(plain)
+            log.info("stored secrets are encrypted now")
+        return plain
+
+    def _save_settings(self, plain: dict) -> None:
+        self.storage.save_settings({k: self.secrets.encrypt(k, v) if k in SECRETS and isinstance(v, str) else v
+                                    for k, v in plain.items()})
+
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.config.timezone)
@@ -56,7 +72,9 @@ class Runtime:
         secrets = {}
         for key in SECRETS:
             value = get_value(self.config, key)
-            secrets[key] = {"set": bool(value), "hint": f"…{value[-4:]}" if len(value) >= 8 else None}
+            # the end of a long key helps to recognise it, a password shows nothing of itself
+            hint = f"…{value[-4:]}" if len(value) >= 8 and not key.endswith(".password") else None
+            secrets[key] = {"set": bool(value), "hint": hint}
         return {"values": values, "secrets": secrets, "locked": sorted(self.locked & set(EDITABLE)),
                 "revision": self.settings_revision}
 
@@ -73,11 +91,11 @@ class Runtime:
         if "timezone" in clean:
             ZoneInfo(clean["timezone"])  # raises for unknown zones
 
-        saved = {**self.storage.get_settings(), **clean}
+        saved = {**self._load_settings(), **clean}
         old = self.config
         new, locked = build_config(self.file_values, saved)
         make_driver(new)  # validate before persisting
-        self.storage.save_settings(saved)
+        self._save_settings(saved)
         self.storage.set_meta("settings_revision", self.settings_revision + 1)
         self.config, self.locked = new, locked
         log.info("settings changed: %s", ", ".join(sorted(clean)))
