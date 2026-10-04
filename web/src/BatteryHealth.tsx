@@ -33,7 +33,7 @@ function CapacityForm({ current, onSaved }: { current: number | null; onSaved: (
     }
   };
   return (
-    <div className="field-row">
+    <div className="form capacity-form">
       <Field label="Nutzbare Kapazität" hint="Steht im Datenblatt oder auf dem Typenschild des Speichers.">
         <div className="input-unit"><input className="input" inputMode="decimal" value={value} placeholder="z. B. 10,4"
           onChange={(e) => setValue(e.target.value)} /><span>kWh</span></div>

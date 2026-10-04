@@ -280,7 +280,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   );
 }
 
-export function TemperatureSection({ day, refresh }: { day: string; refresh: number }) {
+export function TemperatureSection({ day, refresh, heading = "Temperaturen" }: { day: string; refresh: number; heading?: string | null }) {
   const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null;
     cell_max?: number | null; cell_min?: number | null }[] }>(
     `/api/temperatures/timeline?date=${day}`, refresh);
@@ -302,7 +302,7 @@ export function TemperatureSection({ day, refresh }: { day: string; refresh: num
   if (!chart.x.length || chart.series.every((s) => s.values.every((v) => v == null))) return null;
   return (
     <>
-      <div className="section-title">Temperaturen</div>
+      {heading && <div className="section-title">{heading}</div>}
       <Chart x={chart.x} series={chart.series} xFormat={fmtHour} height={180} />
       <div className="legend">
         <span><span className="dot" style={{ background: "var(--coral)" }} />Wechselrichter</span>

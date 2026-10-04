@@ -104,7 +104,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       )}
 
       <TemperaturesCard snap={snap} />
-      <TemperatureSection day={todayIso()} refresh={60_000} />
+      <TemperatureSection day={todayIso()} refresh={60_000} heading={null} /* the tiles above have the heading */ />
 
       <div className="section-title">Zählerstände</div>
       <div className="card">
