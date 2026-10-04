@@ -102,7 +102,7 @@ mkdir -p data && sudo chown 1000:1000 data
 docker compose up -d --build
 ```
 
-Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.md](docs/evcc.md).
+Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.md](docs/evcc.md).
 
 ### Zugriff von unterwegs
 

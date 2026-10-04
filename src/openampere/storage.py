@@ -141,8 +141,15 @@ class Storage:
         return self._get_meta("settings") or {}
 
     def save_settings(self, values: dict) -> None:
-        with self._lock, self._db:
-            self._set_meta("settings", values)
+        """Overwrites the old settings on disk too (also in the write-ahead log), so replaced secrets do not linger."""
+        with self._lock:
+            self._db.execute("PRAGMA secure_delete=ON")
+            try:
+                with self._db:
+                    self._set_meta("settings", values)
+            finally:
+                self._db.execute("PRAGMA secure_delete=OFF")
+            self._db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
     def log_control(self, action: str, details: dict, dry_run: bool, result: str) -> None:
         with self._lock, self._db:
