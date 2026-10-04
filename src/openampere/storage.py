@@ -279,6 +279,10 @@ class Storage:
                               (start, end))
         return int(rows[0]["n"] or 0)
 
+    def first_sample_ts(self) -> float | None:
+        rows = self._fetchall("SELECT MIN(ts) AS ts FROM samples")
+        return rows[0]["ts"] if rows else None
+
     def temperature_extremes(self, start: float, end: float) -> dict:
         """Highest (and for the cells lowest) temperatures and the largest cell spread, with their time."""
         result = {}

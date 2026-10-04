@@ -4,7 +4,7 @@ import { DeviceIcon } from "./DevicesPage";
 import { kw, num, percent } from "./format";
 import { BatteryIcon, GridIcon, HouseIcon, SolarIcon } from "./icons";
 
-const IDLE_W = 30;
+const IDLE_W = 50; // below this the value shows as 0,0 kW, so no flow or direction either
 // Layout in a 100 x H coordinate system (matches the container's aspect ratio)
 const BASE_H = 80;
 const DEVICES_H = 124; // extra row below the house for wallbox, heating rod, ...
