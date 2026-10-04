@@ -205,12 +205,15 @@ async def test_hidden_pv_inputs_are_left_out(tmp_path):
     runtime = Runtime({}, storage)
     client = TestClient(create_app(runtime))
     params = {"period": "day", "date": "2026-06-01", "mode": "energy", "resolution": "60m"}
-    assert client.get("/api/pv/inputs", params=params).json()["labels"] == ["Modulfeld 1", "Modulfeld 2", "Modulfeld 3"]
-    await runtime.update_settings({"pv.hidden_inputs": ["2"], "pv.input_names": ["Süd", "", "West"]})
+    # input 2 never produced anything: it is not connected and left out by itself (#58)
+    assert client.get("/api/pv/inputs", params=params).json()["labels"] == ["Modulfeld 1", "Modulfeld 3"]
+    await runtime.update_settings({"pv.input_names": ["Süd", "", "West"]})
     data = client.get("/api/pv/inputs", params=params).json()
     assert data["inputs"] == [1, 3] and data["labels"] == ["Süd", "West"]
     assert [round(v) for v in data["totals_wh"]] == [500, 250]
     assert all(len(e["values"]) == 2 for e in data["entries"])
+    await runtime.update_settings({"pv.hidden_inputs": ["3"]})  # hidden by hand
+    assert client.get("/api/pv/inputs", params=params).json()["labels"] == ["Süd"]
     assert len(storage.pv_input_energy(base, base + 900)) == 3  # still recorded
 
 

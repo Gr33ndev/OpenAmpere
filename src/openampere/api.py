@@ -829,7 +829,10 @@ def create_app(runtime: Runtime) -> FastAPI:
         sums = [sum(e["values"][i] or 0 for e in entries) for i in range(count)] if mode == "energy" else None
         # inputs hidden in the settings (e.g. an unused MPPT) are left out; their readings are kept (#38)
         hidden = {str(h) for h in runtime.config.pv.hidden_inputs}
-        keep = [i for i in range(count) if str(i + 1) not in hidden]
+        # an input without any yield in the whole period is not connected (#58): leave it out as well
+        produced = [max((e["values"][i] or 0 for e in entries), default=0) > (1 if mode == "energy" else 5)
+                    for i in range(count)]
+        keep = [i for i in range(count) if str(i + 1) not in hidden and (produced[i] or not any(produced))]
         return {"mode": mode, "inputs": [i + 1 for i in keep], "labels": [labels[i] for i in keep],
                 "entries": [{"ts": e["ts"], "values": [e["values"][i] for i in keep]} for e in entries],
                 "totals_wh": [sums[i] for i in keep] if sums is not None else None}
