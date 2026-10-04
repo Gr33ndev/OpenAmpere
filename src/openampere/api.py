@@ -399,6 +399,11 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     # ---- data ------------------------------------------------------------
 
+    @app.get("/api/outages")
+    def outages():
+        """Power cuts: the running one and the history (off-grid mode of the inverter)."""
+        return collector.outages.view()
+
     @app.get("/api/storage")
     def storage_usage():
         """Database size, free space and an estimate per year of detail readings (retention setting)."""

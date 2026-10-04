@@ -421,6 +421,17 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/pv/inputs": pvInputs,
   "/api/temperatures/timeline": temperatures,
   "/api/battery/health": batteryHealth,
+  // two invented power cuts: a short one in the evening and one at night that emptied the battery
+  "/api/outages": () => {
+    const d = dayStart(new Date());
+    const outages = [
+      { start: d - 9 * 86400 + 19.5 * 3600, end: d - 9 * 86400 + 20.2 * 3600, duration_s: 2520, soc_start: 78, soc_end: 66,
+        soc_min: 66, load_kwh: 1.4, solar_kwh: 0.2, battery_kwh: 1.2, dark_since: null },
+      { start: d - 23 * 86400 + 1 * 3600, end: d - 23 * 86400 + 7.5 * 3600, duration_s: 23400, soc_start: 31, soc_end: 12,
+        soc_min: 10, load_kwh: 2.6, solar_kwh: 0.4, battery_kwh: 2.2, dark_since: d - 23 * 86400 + 5.2 * 3600 },
+    ];
+    return { current: null, outages, count: 2, total_s: 25920 };
+  },
   "/api/storage": () => ({ db_bytes: 84_000_000, free_bytes: 21_500_000_000, samples: 259_200, first_sample: now() - 30 * 86400,
     bytes_per_year: 410_000_000, retention_days: 30 }),
   // the demo is the website: it is updated with every release and has nothing to install
