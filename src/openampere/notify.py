@@ -130,6 +130,16 @@ class Notifier:
                              "die Diagnose ausführen (Mehr → Diagnose) und das Ergebnis bei Auffälligkeiten melden.",
                              "arrows_counterclockwise")
 
+        if cfg.on_off_grid and snap is not None and snap.off_grid is not None:
+            if snap.off_grid and not self.sent.get("off_grid"):
+                soc = f" Der Speicher ist zu {snap.battery_soc:.0f} % geladen." if snap.battery_soc is not None else ""
+                await notify("off_grid", now, "Stromausfall: Notstrombetrieb",
+                             f"Das Netz ist weg, das Haus läuft über Speicher und Solaranlage.{soc} "
+                             "Große Verbraucher jetzt besser ausschalten.", "warning")
+            elif not snap.off_grid and self.sent.get("off_grid"):
+                await notify("off_grid", None, "Strom ist wieder da", "Das Netz ist zurück, der Notstrombetrieb ist beendet.",
+                             "white_check_mark")
+
         if cfg.on_battery_health and snap is not None:
             problem = battery_problem(snap.temperatures)
             if problem:

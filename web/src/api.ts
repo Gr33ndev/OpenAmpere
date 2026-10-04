@@ -100,6 +100,7 @@ export type Settings = {
     "notify.on_cheap_power": boolean;
     "notify.on_firmware": boolean;
     "notify.on_battery_health": boolean;
+    "notify.on_off_grid": boolean;
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
   };
