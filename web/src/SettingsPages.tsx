@@ -503,6 +503,12 @@ export function AppearancePage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
+/** Started from the home screen (iPhone/iPad): downloads must open in their own window, the preview iOS shows
+ * in the app window itself has no way back (#13). */
+const HOME_SCREEN_APP = window.matchMedia?.("(display-mode: standalone)").matches
+  || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+const downloadProps = HOME_SCREEN_APP ? { target: "_blank", rel: "noopener" } : { download: "" };
+
 function CsvExportCard() {
   const thisYear = new Date().getFullYear();
   const [from, setFrom] = useState(`${thisYear}-01-01`);
@@ -520,10 +526,24 @@ function CsvExportCard() {
       </div>
       <Segmented value={resolution} onChange={setResolution}
         options={[["15m", "15 min"], ["60m", "Stunde"], ["day", "Tag"], ["month", "Monat"]]} />
-      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <a className="btn secondary" href={href} download>CSV herunterladen</a>
+      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <a className="btn secondary" href={href} {...downloadProps}>CSV herunterladen</a>
         : <p className="hint">Bitte einen gültigen Zeitraum wählen.</p>}
     </div>
   );
+}
+
+/** The separate download window does not share the login cookie: it gets a link that is valid for 10 minutes. */
+function BackupLink() {
+  const [url, setUrl] = useState<string | null>(HOME_SCREEN_APP ? null : "/api/backup");
+  useEffect(() => {
+    if (!HOME_SCREEN_APP) return;
+    const fetchLink = () => postJson<{ url: string }>("/api/backup/link", {}).then((r) => setUrl(r.url)).catch(() => setUrl(null));
+    fetchLink();
+    const timer = window.setInterval(fetchLink, 5 * 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  if (!url) return <Button variant="secondary" disabled>Datensicherung herunterladen</Button>;
+  return <a className="btn secondary" href={url} {...downloadProps}>Datensicherung herunterladen</a>;
 }
 
 export function DataPage({ onBack }: PageProps) {
@@ -551,7 +571,7 @@ export function DataPage({ onBack }: PageProps) {
         <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.
           Passwörter und API-Schlüssel sind nicht enthalten.</p>
         {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : auth?.authenticated ? (
-          <a className="btn secondary" href="/api/backup" download>Datensicherung herunterladen</a>
+          <BackupLink />
         ) : (
           <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
             Anmelden zum Herunterladen

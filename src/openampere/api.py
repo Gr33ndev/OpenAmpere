@@ -6,6 +6,7 @@ import asyncio
 import datetime
 import hashlib
 import logging
+import secrets
 import shutil
 import tempfile
 import time
@@ -150,6 +151,14 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     app = FastAPI(title="OpenAmpere", lifespan=lifespan)
     auth = Auth(storage)
+    # short-lived links for downloads that open in their own window (iPhone home-screen app, see /api/backup/link)
+    download_links: dict[str, float] = {}
+
+    def download_link_ok(token: str | None) -> bool:
+        now = time.time()
+        for key in [k for k, until in download_links.items() if until < now]:
+            del download_links[key]
+        return bool(token) and token in download_links
 
     def origin_ok(origin: str | None, host: str | None) -> bool:
         """Requests from other web sites carry their own Origin; same-origin requests match the Host."""
@@ -165,6 +174,8 @@ def create_app(runtime: Runtime) -> FastAPI:
                                            "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
         path = request.url.path
         writing = request.method not in ("GET", "HEAD", "OPTIONS")
+        if path == "/api/backup" and not writing and download_link_ok(request.query_params.get("token")):
+            return await call_next(request)
         if path.startswith("/api/") and (writing or path in PROTECTED_READS):
             if writing and (not origin_ok(request.headers.get("origin"), host) or request.headers.get(CSRF_HEADER) != "1"):
                 return JSONResponse({"detail": "Anfrage abgelehnt (fremde Herkunft)."}, 403)
@@ -382,6 +393,14 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(400, str(err)) from None
 
     # ---- data ------------------------------------------------------------
+
+    @app.post("/api/backup/link")
+    def backup_link():
+        """A download link valid for 10 minutes without the login cookie: on the iPhone, downloads from the
+        home-screen app must open in their own window (with a "Done" button), which does not share the cookie."""
+        token = secrets.token_urlsafe(24)
+        download_links[token] = time.time() + 600
+        return {"url": f"/api/backup?token={token}", "valid_s": 600}
 
     @app.get("/api/backup")
     def backup(background: BackgroundTasks):
