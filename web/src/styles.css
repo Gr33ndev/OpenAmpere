@@ -551,13 +551,19 @@ details.learn .learn-body { padding: 4px 0 8px; }
 html.embedded, html.embedded body { scrollbar-width: none; }
 html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { display: none; }
 
-/* annual bill forecast */
+/* prepayments: stand today */
 .billing-card { margin-bottom: 12px; }
 .billing-headline { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
 .billing-headline.good { color: var(--accent-text); }
 .billing-headline.bad { color: var(--coral); }
 .billing-sum dd { white-space: nowrap; }
 .billing-sum .sum { font-weight: 700; border-top: 1px solid var(--divider); padding-top: 8px; }
+.billing-sum .billing-group { grid-column: 1 / -1; color: var(--text); font-weight: 600; margin-top: 6px; }
+.billing-sum .billing-group + dd { display: none; }
+.billing-sum .sub { border-top: 1px solid var(--divider); padding-top: 6px; }
+.billing-sum dt.sub, .billing-sum dt.sum { margin-right: -16px; padding-right: 16px; } /* line without the column gap */
+.billing-sum .good-text { color: var(--accent-text); }
+.billing-sum .bad-text { color: var(--coral); }
 
 /* report and configuration as selectable text (copying falls back to selecting by hand) */
 .report-text { width: 100%; min-height: 220px; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

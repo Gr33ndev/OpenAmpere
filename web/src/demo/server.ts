@@ -308,7 +308,9 @@ function billing() {
     const paid = Array.from({ length: today.getMonth() + 1 }, (_, m) => amount(m)).reduce((a, v) => a + v, 0);
     const yearly = Array.from({ length: 12 }, (_, m) => amount(m)).reduce((a, v) => a + v, 0);
     const sign = kind === "import" ? 1 : -1;
-    return { from: `${today.getFullYear()}-01-01`, to: `${today.getFullYear() + 1}-01-01`, months_paid: today.getMonth() + 1,
+    const monthDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const paidToDate = paid - amount(today.getMonth()) * (1 - (today.getDate() - 0.5) / monthDays);
+    return { paid_to_date_eur: round2(paidToDate), balance_today_eur: round2(sign * (paidToDate - soFar)), missing_days: 0, from: `${today.getFullYear()}-01-01`, to: `${today.getFullYear() + 1}-01-01`, months_paid: today.getMonth() + 1,
       paid_eur: paid, yearly_payments_eur: yearly, so_far_kwh: Math.round(kwh), so_far_eur: round2(soFar),
       estimated_before: null, projected_kwh: Math.round(kwh + restKwh), projected_eur: round2(projected), method: "last_year",
       balance_now_eur: round2(sign * (paid - soFar)), balance_end_eur: round2(sign * (yearly - projected)),
