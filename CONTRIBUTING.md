@@ -89,6 +89,19 @@ Fehler beim Schreiben können Geräte, Garantie oder die Netzanschlussbedingunge
   gespeicherte Register.
 - **Rechtliche Themen** (Einspeisebegrenzung, § 14a EnWG, EEG) im Issue ansprechen, bevor Code entsteht.
 
+### Netzbetreiber ergänzen (Zählerwerte)
+
+Jeder Netzbetreiber hat ein eigenes Kundenportal. Für einen weiteren Netzbetreiber:
+
+1. Ein Modul in `src/openampere/gridmeter/` mit einer Klasse, die `Provider` aus `base.py` erweitert: `meters()` liefert
+   die aktiven Zähler, `daily()` die kWh pro Tag für Bezug (`import`) und Einspeisung (`export`). Fehlermeldungen als
+   `ProviderAuthError` (Anmeldung abgelehnt, wird nicht automatisch wiederholt) oder `ProviderError` (später nochmal).
+2. Die Klasse in `PROVIDERS` in `gridmeter/__init__.py` und den Schlüssel bei `meter.provider` in `config.py` eintragen.
+3. Ein Test mit nachgebautem Portal wie in `tests/test_gridmeter.py`, ohne echte Zugangsdaten.
+4. Die Quelle für Endpunkte und Anmeldung in der Moduldoku und in `NOTICE` nennen. Bevorzugt offizielle Schnittstellen.
+
+Speicherung, Abruf alle sechs Stunden, Auswahl der Zähler und die Abrechnung sind für alle Netzbetreiber gleich.
+
 ### Fremder Code und Marken
 
 - **Kein Code, keine Grafiken und keine Texte aus fremden Apps**, insbesondere nicht aus der Ampere.IQ-App oder deren

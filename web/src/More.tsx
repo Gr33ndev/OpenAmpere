@@ -15,6 +15,7 @@ import { goBack, navigate } from "./route";
 import { ConsumersPage } from "./ConsumersPage";
 import { WallboxPage } from "./WallboxPage";
 import { BillingPage } from "./BillingPage";
+import { GridMeterPage } from "./GridMeterPage";
 import { BatteryHealthCard, FirmwareFacts } from "./BatteryHealth";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -131,6 +132,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
     case "billing": return <BillingPage {...nav} />;
+    case "gridmeter": return <GridMeterPage {...nav} />;
     // parts of "Meine Anlage"
     case "pv": return <PvSystemPage onBack={() => goBack("more/installation")} snap={snap} />;
     case "export-limit": return <ExportLimitPage onBack={() => goBack("more/installation")} onNavigate={setPage} />;
@@ -159,6 +161,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
         <MenuRow label="Stromtarif" hint="Preise und Grundpreis" onClick={() => setPage("tariff")} />
         <MenuRow label="Abschläge" hint="Mit Verbrauch und Einspeisung vergleichen" onClick={() => setPage("billing")} />
+        <MenuRow label="Zählerwerte" hint="Vom Netzbetreiber abrufen" onClick={() => setPage("gridmeter")} />
       </div>
 
       <div className="section-title">Einstellungen</div>

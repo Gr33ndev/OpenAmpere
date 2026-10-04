@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
+import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
 import { postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
@@ -14,9 +14,9 @@ import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice,
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
 /** Loads settings and saves partial changes. */
-function useSettings() {
+export function useSettings() {
   const { data, setData, error, reload } = useResource<Settings>("/api/settings");
-  const save = async (changes: Partial<Settings["values"]> & { "cloud.api_key"?: string }) => {
+  const save = async (changes: Partial<Settings["values"]> & Partial<Record<SecretKey, string>>) => {
     try {
       setData(await putJson<Settings>("/api/settings", { ...changes, _revision: data?.revision }));
       toast("Gespeichert");

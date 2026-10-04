@@ -33,6 +33,7 @@ from .runtime import Runtime
 from .storage import FLOWS, Storage
 from .discovery import Rediscovery
 from .billing import Billing
+from .gridmeter import GridMeter
 from .charging import GridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
@@ -82,8 +83,8 @@ class ChangePasswordRequest(BaseModel):
     new: str = Field(min_length=1, max_length=200)
 
 
-# reading these needs a login as well (secrets, grid-operator references)
-PROTECTED_READS = ("/api/backup", "/api/control/log")
+# reading these needs a login as well (secrets, grid-operator references, meter numbers)
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -107,7 +108,8 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     rediscovery = Rediscovery(runtime)
     charging = GridCharging(runtime)
-    billing = Billing(runtime.storage, runtime.tariffs)
+    gridmeter = GridMeter(runtime)
+    billing = Billing(runtime.storage, runtime.tariffs, gridmeter)
     evcc = Evcc(runtime)
     surplus = SurplusControl(runtime, evcc)
     devices = Devices(runtime, surplus, evcc)
@@ -120,7 +122,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         while True:
             await asyncio.sleep(30)
             for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
-                        notifier.check, updates.tick):
+                        notifier.check, updates.tick, gridmeter.tick):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -533,6 +535,18 @@ def create_app(runtime: Runtime) -> FastAPI:
         else:
             raise HTTPException(400, "Unbekannte Aktion.")
         return updates.view()
+
+    # ---- meter values of the grid operator (#60) -----------------------------
+
+    @app.get("/api/gridmeter")
+    def get_gridmeter():
+        return gridmeter.view()
+
+    @app.post("/api/gridmeter/sync")
+    async def sync_gridmeter():
+        """Fetch now, e.g. right after entering the login. The answer says whether it worked."""
+        await gridmeter.sync(force=True)
+        return gridmeter.view()
 
     @app.get("/api/billing")
     def get_billing():

@@ -13,6 +13,10 @@ Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/ev
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.
 
+Daily smart-meter values of Netze BW are fetched from its customer portal meine.netze-bw.de. The endpoints and
+the login flow are based on facts from ha-netze-bw (https://github.com/cygnusb/ha-netze-bw), Copyright (c) 2026
+cygnusb, MIT License. OpenAmpere is not affiliated with Netze BW.
+
 my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
 
 OpenAmpere is an unofficial, independent community project. All product names, company names and

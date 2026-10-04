@@ -117,6 +117,15 @@ class EvccConfig:
 
 
 @dataclass
+class MeterConfig:
+    # customer portal of the grid operator for the daily meter values (#60): none | netze_bw (see gridmeter.PROVIDERS)
+    provider: str = "none"
+    username: str = ""
+    password: str = ""
+    meter_ids: list = field(default_factory=list)  # meters that count for the billing; empty = all of the account
+
+
+@dataclass
 class Config:
     inverter: InverterConfig = field(default_factory=InverterConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
@@ -130,6 +139,7 @@ class Config:
     updates: UpdatesConfig = field(default_factory=UpdatesConfig)
     notify: NotifyConfig = field(default_factory=NotifyConfig)
     evcc: EvccConfig = field(default_factory=EvccConfig)
+    meter: MeterConfig = field(default_factory=MeterConfig)
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
@@ -175,6 +185,10 @@ EDITABLE: dict[str, tuple] = {
     "evcc.url": ("url",),
     "evcc.password": ("secret",),
     "evcc.priority": ("choice", "wallbox_first", "devices_first"),
+    "meter.provider": ("choice", "none", "netze_bw"),
+    "meter.username": ("str",),
+    "meter.password": ("secret",),
+    "meter.meter_ids": ("strlist", 10, 100),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
