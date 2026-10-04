@@ -813,7 +813,12 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries = [{"ts": ts, "values": [t.get(i, 0.0) for i in range(1, count + 1)]} for ts, t in sorted(totals.items())]
         labels = [names[i] if i < len(names) and names[i] else f"Modulfeld {i + 1}" for i in range(count)]
         sums = [sum(e["values"][i] or 0 for e in entries) for i in range(count)] if mode == "energy" else None
-        return {"mode": mode, "labels": labels, "entries": entries, "totals_wh": sums}
+        # inputs hidden in the settings (e.g. an unused MPPT) are left out; their readings are kept (#38)
+        hidden = {str(h) for h in runtime.config.pv.hidden_inputs}
+        keep = [i for i in range(count) if str(i + 1) not in hidden]
+        return {"mode": mode, "inputs": [i + 1 for i in keep], "labels": [labels[i] for i in keep],
+                "entries": [{"ts": e["ts"], "values": [e["values"][i] for i in keep]} for e in entries],
+                "totals_wh": [sums[i] for i in keep] if sums is not None else None}
 
     @app.get("/api/temperatures/timeline")
     def temperatures_timeline(date: str | None = None, step: int = Query(300, ge=60, le=3600)):

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import type { Settings, Snapshot, Status } from "./api";
-import { useResource, useStale } from "./api";
+import { activeInputs, useResource, useStale } from "./api";
 import { kwh, percent, todayIso, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
@@ -77,7 +77,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       <div className="card">
         <dl className="facts">
           <dt>Modulleistung</dt><dd>{settings?.["pv.installed_kwp"] ? `${num(settings["pv.installed_kwp"], 1)} kWp` : "nicht angegeben"}</dd>
-          <dt>Modulfelder</dt><dd>{snap?.pv_inputs.filter((p) => p.power != null).length || "–"}</dd>
+          <dt>Modulfelder</dt><dd>{activeInputs(snap, settings?.["pv.hidden_inputs"]).length || "–"}</dd>
           <dt>Einspeiseregel</dt><dd>{RULES[settings?.["grid.feed_in_rule"] ?? "unknown"]}</dd>
         </dl>
       </div>

@@ -36,7 +36,7 @@ export function inputName(names: string[] | undefined, index: number) {
 
 export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
   const { data: settings } = useResource<Settings>("/api/settings");
-  const inputs = activeInputs(snap);
+  const inputs = activeInputs(snap, settings?.values["pv.hidden_inputs"]);
   if (inputs.length < 2) return null; // a single input is already the PV total
   const max = Math.max(...inputs.map((i) => i.power ?? 0), 1);
   return (

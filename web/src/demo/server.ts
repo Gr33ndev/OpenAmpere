@@ -182,7 +182,7 @@ const settings = {
     "inverter.register_map": "auto", "inverter.read_function": "auto", "inverter.poll_interval": 10,
     "inverter.timeout": 3, "inverter.connection_mode": "persistent", "storage.raw_retention_days": 30,
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
-    timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
+    timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
     "notify.on_battery_health": true, "battery.capacity_kwh": BATTERY_WH / 1000, "updates.check": false, "updates.auto": false,

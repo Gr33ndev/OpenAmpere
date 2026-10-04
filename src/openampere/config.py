@@ -60,6 +60,7 @@ class TariffConfig:
 @dataclass
 class PvConfig:
     input_names: list = field(default_factory=list)  # e.g. ["Süddach", "Garage"]; empty = "Modulfeld 1", ...
+    hidden_inputs: list = field(default_factory=list)  # input numbers ("3") not shown anywhere, e.g. an unused MPPT
     installed_kwp: float = 0.0  # installed module power (kWp, from the Marktstammdatenregister); 0 = unknown
 
 
@@ -151,6 +152,7 @@ EDITABLE: dict[str, tuple] = {
     "timezone": ("timezone",),
     "cloud.api_key": ("secret",),
     "pv.input_names": ("strlist", 6, 30),
+    "pv.hidden_inputs": ("strlist", 6, 2),
     "pv.installed_kwp": ("float", 0, 1000),
     "battery.capacity_kwh": ("float", 0, 200),
     "updates.check": ("bool",),
