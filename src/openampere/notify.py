@@ -118,7 +118,8 @@ class Notifier:
                 if entry["action"].endswith("_check") and entry["ts"] > last:
                     await notify("overwritten_ts", entry["ts"], "Einstellung überschrieben",
                                  "Ein anderes Gerät (z. B. die bisherige Smartbox) hat eine Einstellung von OpenAmpere "
-                                 "wieder geändert.", "warning")
+                                 "wieder geändert. Eine Smartbox holt sich ihre Einstellungen aus der Cloud: Ohne "
+                                 "Internetzugang (im Router sperren) bleiben deine Änderungen bestehen.", "warning")
                     break
 
         if cfg.on_firmware:

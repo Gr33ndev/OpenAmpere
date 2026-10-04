@@ -116,6 +116,8 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
           Ein anderes Gerät (z. B. die bisherige Smartbox) hat deine Änderung kurz danach wieder überschrieben:{" "}
           {Object.entries(current.external_change.found).map(([k, v]) => `${LOG_KEYS[k] ?? k} jetzt ${logValue(v)}`).join(", ")}.
           Solange es angeschlossen ist, lassen sich diese Werte nicht dauerhaft ändern.
+          {" "}Eine bisherige Smartbox holt sich ihre Einstellungen regelmäßig aus der Cloud. Sperrst du ihr im Router den
+          Internetzugang, bleiben deine Änderungen bestehen.
         </Notice>
       )}
       {form && current && current.unreadable.length > 0 && (
