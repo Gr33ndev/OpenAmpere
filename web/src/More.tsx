@@ -54,7 +54,10 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
         <dl className="facts">
           <dt>Ladestand</dt><dd>{percent(snap?.battery_soc)}</dd>
           <dt>Gesundheit (SoH)</dt><dd>{percent(snap?.battery_soh)}</dd>
-          <dt>Temperatur</dt><dd>{snap?.battery_temperature != null ? `${num(snap.battery_temperature, 1)} °C` : "–"}</dd>
+          {snap?.temperatures.battery_cell_max != null && snap.temperatures.battery_cell_min != null ? <>
+            <dt>Zellen</dt><dd>{num(snap.temperatures.battery_cell_min, 1)} – {num(snap.temperatures.battery_cell_max, 1)} °C</dd>
+            <dt>Elektronik (BMS)</dt><dd>{snap.battery_temperature != null ? `${num(snap.battery_temperature, 1)} °C` : "–"}</dd>
+          </> : <><dt>Temperatur</dt><dd>{snap?.battery_temperature != null ? `${num(snap.battery_temperature, 1)} °C` : "–"}</dd></>}
           <dt>Gesamt geladen</dt><dd>{kwh(snap?.totals.battery_charge)}</dd>
           <dt>Gesamt entladen</dt><dd>{kwh(snap?.totals.battery_discharge)}</dd>
         </dl>
