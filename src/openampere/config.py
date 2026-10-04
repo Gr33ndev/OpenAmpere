@@ -33,7 +33,7 @@ class InverterConfig:
 @dataclass
 class StorageConfig:
     path: str = "data/openampere.db"
-    raw_retention_days: int = 30
+    raw_retention_days: int = 30  # 0 = keep forever
 
 
 @dataclass
@@ -144,7 +144,7 @@ EDITABLE: dict[str, tuple] = {
     "inverter.poll_interval": ("float", 2, 300),
     "inverter.timeout": ("float", 1, 30),
     "inverter.connection_mode": ("choice", "persistent", "per_poll"),
-    "storage.raw_retention_days": ("int", 1, 3650),
+    "storage.raw_retention_days": ("int", 0, 36500),  # 0 = keep forever
     "control.enabled": ("bool",),
     "control.dry_run": ("bool",),
     "tariff.electricity_price_ct": ("float", -100, 200),
