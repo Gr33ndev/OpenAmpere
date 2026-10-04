@@ -559,3 +559,7 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
    scrolled content runs under the clock and battery icons (#14). Banners and dialogs stay above it. */
 .status-bar-backdrop { position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 9;
   background: var(--bg); pointer-events: none; }
+
+/* PV input: name and show/hide switch */
+.pv-input-row { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--divider); }
+.pv-input-row:last-of-type { border-bottom: 0; }

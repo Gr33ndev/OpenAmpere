@@ -245,17 +245,19 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   const mode = showPower ? "power" : "energy";
   const { data } = useResource<PvInputsTimeline>(
     `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${resolution}`, refresh);
+  // colour of the input itself, so it stays the same when another input is hidden
+  const inputColor = (i: number) => PV_INPUT_COLORS[((data?.inputs?.[i] ?? i + 1) - 1) % 4];
 
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
     const x = data.entries.map((e) => e.ts);
     const col = (i: number) => data.entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000));
     if (mode === "power") {
-      return { x, bars: false, series: data.labels.map((label, i) => ({ label, color: PV_INPUT_COLORS[i % 4], values: col(i), unit: "kW" })) as Series[] };
+      return { x, bars: false, series: data.labels.map((label, i) => ({ label, color: inputColor(i), values: col(i), unit: "kW" })) as Series[] };
     }
     // stacked: draw the running sums from the top down so each input shows as its own segment
     const stacked = data.labels.map((_, i) => data.entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
-    const series = data.labels.map((label, i) => ({ label, color: PV_INPUT_COLORS[i % 4], values: stacked[i], unit: "kWh", barAlign: 0 as const }));
+    const series = data.labels.map((label, i) => ({ label, color: inputColor(i), values: stacked[i], unit: "kWh", barAlign: 0 as const }));
     return { x, bars: true, series: series.reverse() as Series[] };
   }, [data, mode]);
 
@@ -269,7 +271,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
       <div className="legend">
         {data.labels.map((label, i) => (
           <span key={i}>
-            <span className="dot" style={{ background: PV_INPUT_COLORS[i % 4] }} />
+            <span className="dot" style={{ background: inputColor(i) }} />
             {label}{data.totals_wh && <strong>{kwh(data.totals_wh[i])}</strong>}
           </span>
         ))}

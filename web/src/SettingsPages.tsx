@@ -1053,8 +1053,15 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
 export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | null }) {
   const { settings, save, error, reload } = useSettings();
   const [names, setNames] = useState<string[]>([]);
-  const inputs = activeInputs(snap);
-  useEffect(() => { if (settings) setNames(settings["pv.input_names"]); }, [settings]);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const inputs = activeInputs(snap); // all inputs with PV, also hidden ones, so they can be shown again
+  useEffect(() => {
+    if (settings) { setNames(settings["pv.input_names"]); setHidden(settings["pv.hidden_inputs"] ?? []); }
+  }, [settings]);
+  const toggle = (i: number, show: boolean) =>
+    setHidden((h) => (show ? h.filter((x) => x !== String(i + 1)) : [...h, String(i + 1)].sort()));
+  const dirty = !!settings && (JSON.stringify(names) !== JSON.stringify(settings["pv.input_names"])
+    || JSON.stringify(hidden) !== JSON.stringify(settings["pv.hidden_inputs"] ?? []));
   const count = Math.max(inputs.length ? Math.max(...inputs.map((i) => i.index)) + 1 : 0, names.length);
   const setName = (i: number, value: string) => setNames((n) => {
     const next = [...n];
@@ -1066,7 +1073,8 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
   return (
     <SubPage title="PV-Anlage" onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">Gib deinen Modulfeldern Namen wie „Süddach“ oder „Garage“. Die aktuelle Leistung hilft beim Zuordnen.</p>
+      <p className="hint">Gib deinen Modulfeldern Namen wie „Süddach“ oder „Garage“. Die aktuelle Leistung hilft beim Zuordnen.
+        Meldet der Wechselrichter einen Eingang, an dem nichts angeschlossen ist, blende ihn aus.</p>
       {settings && (count === 0 ? (
         <Notice kind="info">Noch keine PV-Eingänge erkannt. Bei Dunkelheit liefern die Eingänge keine Spannung – schau tagsüber noch einmal vorbei.</Notice>
       ) : (
@@ -1074,19 +1082,24 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
           {Array.from({ length: count }, (_, i) => {
             const live = inputs.find((x) => x.index === i);
             return (
-              <Field key={i} label={`Eingang ${i + 1}`}
-                hint={live ? `jetzt ${kw(live.power)} · ${num(live.voltage, 0)} V` : "derzeit keine Leistung"}>
-                <div className="input-unit">
-                  <span className="dot" style={{ background: PV_INPUT_COLORS[i % 4] }} />
-                  <input className="input" maxLength={30} value={names[i] ?? ""} placeholder={`Modulfeld ${i + 1}`}
-                    onChange={(e) => setName(i, e.target.value)} />
-                </div>
-              </Field>
+              <div key={i} className="pv-input-row">
+                <Field label={`Eingang ${i + 1}`}
+                  hint={live ? `jetzt ${kw(live.power)} · ${num(live.voltage, 0)} V` : "derzeit keine Leistung"}>
+                  <div className="input-unit">
+                    <span className="dot" style={{ background: PV_INPUT_COLORS[i % 4] }} />
+                    <input className="input" maxLength={30} value={names[i] ?? ""} placeholder={`Modulfeld ${i + 1}`}
+                      disabled={hidden.includes(String(i + 1))} onChange={(e) => setName(i, e.target.value)} />
+                  </div>
+                </Field>
+                <SwitchRow label="Anzeigen" checked={!hidden.includes(String(i + 1))} onChange={(v) => toggle(i, v)} />
+              </div>
             );
           })}
-          <Button disabled={JSON.stringify(names) === JSON.stringify(settings["pv.input_names"])}
-            onClick={() => save({ "pv.input_names": names.slice(0, 6) })}>Speichern</Button>
-          <Unsaved show={JSON.stringify(names) !== JSON.stringify(settings["pv.input_names"])} />
+          <Button disabled={!dirty}
+            onClick={() => save({ "pv.input_names": names.slice(0, 6), "pv.hidden_inputs": hidden })}>Speichern</Button>
+          <Unsaved show={dirty} />
+          {hidden.length > 0 && <p className="hint">Ausgeblendete Eingänge erscheinen nirgends in Anzeige und Auswertung.
+            Ihre Messwerte speichert OpenAmpere weiter, du kannst sie jederzeit wieder einblenden.</p>}
         </div>
       ))}
     </SubPage>

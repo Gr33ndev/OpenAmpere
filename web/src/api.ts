@@ -86,6 +86,7 @@ export type Settings = {
     timezone: string;
     "pv.input_names": string[];
     "pv.installed_kwp": number;
+    "pv.hidden_inputs": string[];
     "battery.capacity_kwh": number;
     "updates.check": boolean;
     "updates.auto": boolean;
@@ -108,6 +109,7 @@ export type Settings = {
 
 export type PvInputsTimeline = {
   mode: "energy" | "power";
+  inputs?: number[]; // input numbers (1, 2, 3 ...) of the labels; hidden inputs are left out
   labels: string[];
   entries: { ts: number; values: (number | null)[] }[];
   totals_wh: number[] | null;
@@ -115,10 +117,10 @@ export type PvInputsTimeline = {
 
 export const PV_INPUT_COLORS = ["#eec91d", "#a78bfa", "#4fc3f7", "#f48fb1"];
 
-/** Inputs that actually carry PV (voltage or power seen); unused MPPT inputs are hidden. */
-export function activeInputs(snap: Snapshot | null) {
+/** Inputs that actually carry PV (voltage or power seen) and are not hidden in the settings (e.g. an unused MPPT). */
+export function activeInputs(snap: Snapshot | null, hidden: string[] = []) {
   return (snap?.pv_inputs ?? []).map((input, index) => ({ ...input, index }))
-    .filter((i) => (i.voltage ?? 0) > 1 || (i.power ?? 0) > 1);
+    .filter((i) => ((i.voltage ?? 0) > 1 || (i.power ?? 0) > 1) && !hidden.includes(String(i.index + 1)));
 }
 
 export type FeedInRule = "unknown" | "limit_60" | "limit_70" | "operator" | "none";

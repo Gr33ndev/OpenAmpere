@@ -192,6 +192,28 @@ def test_pv_inputs_are_integrated_per_quarter(tmp_path):
     assert sample["pv1"] == 2000 and sample["t_inverter"] == 40.0
 
 
+async def test_hidden_pv_inputs_are_left_out(tmp_path):
+    """An unused MPPT can be hidden; its readings are kept (#38)."""
+    from openampere.drivers.base import PvInput
+
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i in range(91):
+        s = snap(base + i * 10, 1000 + i, 400 + i)
+        s.pv_inputs = [PvInput(power=2000), PvInput(power=0), PvInput(power=1000)]
+        storage.add_snapshot(s)
+    runtime = Runtime({}, storage)
+    client = TestClient(create_app(runtime))
+    params = {"period": "day", "date": "2026-06-01", "mode": "energy", "resolution": "60m"}
+    assert client.get("/api/pv/inputs", params=params).json()["labels"] == ["Modulfeld 1", "Modulfeld 2", "Modulfeld 3"]
+    await runtime.update_settings({"pv.hidden_inputs": ["2"], "pv.input_names": ["Süd", "", "West"]})
+    data = client.get("/api/pv/inputs", params=params).json()
+    assert data["inputs"] == [1, 3] and data["labels"] == ["Süd", "West"]
+    assert [round(v) for v in data["totals_wh"]] == [500, 250]
+    assert all(len(e["values"]) == 2 for e in data["entries"])
+    assert len(storage.pv_input_energy(base, base + 900)) == 3  # still recorded
+
+
 def test_old_database_is_migrated(tmp_path):
     import sqlite3
 
