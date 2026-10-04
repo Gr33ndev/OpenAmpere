@@ -256,7 +256,7 @@ export function TariffPage({ onBack }: PageProps) {
   return (
     <SubPage title="Stromtarif" onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">Damit rechnet OpenAmpere Ersparnis, Stromkosten und die Jahresabrechnung (Auswertung). Wechselst
+      <p className="hint">Damit rechnet OpenAmpere Ersparnis, Stromkosten und den Abgleich deiner Abschläge (Auswertung). Wechselst
         du den Tarif, lege einen neuen mit Startdatum an. Ältere Zeiträume rechnet OpenAmpere weiter mit dem alten Preis.</p>
       {forms.map((t, i) => (
         <div className="card form" key={i}>

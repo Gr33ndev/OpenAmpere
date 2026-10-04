@@ -39,6 +39,10 @@ def test_grid_import_against_prepayments(billing):
     used = 1810 * 0.30 + 12 * 12 / 365 * 181.5  # energy plus the base fee for the days so far
     assert year["so_far_eur"] == pytest.approx(used, abs=0.05)
     assert year["balance_now_eur"] == pytest.approx(350 - used, abs=0.05)  # negative: more used than prepaid
+    # stand today: July counts only for the half day that has passed (#59)
+    assert year["paid_to_date_eur"] == pytest.approx(6 * 50 + 50 * 0.5 / 31, abs=0.01)
+    assert year["balance_today_eur"] == pytest.approx(year["paid_to_date_eur"] - used, abs=0.05)
+    assert year["missing_days"] == 0
     # no data from last year: the rest follows the typical year (Jan-Jun are 51 % of the grid import)
     assert year["method"] == "typical"
     rest = 1810 * 49 / 51 * 0.30 + 12 * 12 / 365 * 183.5
@@ -86,3 +90,13 @@ def test_base_fee_in_money(billing):
     money = bill.tariffs.money(start, start + 10 * 86400, TZ)
     assert money["base_fee_eur"] == pytest.approx(12 * 12 / 365 * 10, abs=0.01)
     assert money["net_cost_eur"] == money["grid_cost_eur"] + money["base_fee_eur"] - money["feed_in_eur"]
+
+
+def test_missing_days_are_counted(billing):
+    """Days without readings make the values so far too low; the app says so (#59)."""
+    storage, bill = billing
+    storage.import_energy(daily_rows(date(2026, 1, 1), 60, grid_import=5_000), "local")
+    storage.import_energy(daily_rows(date(2026, 3, 12), 30, grid_import=5_000), "local")  # 10 days missing
+    bill.save({"import": {"start_month": 1, "payments": [{"from": "2026-01", "eur": 50}]}})
+    year = bill.status(TZ, datetime(2026, 4, 11, 12, tzinfo=TZ).timestamp())["import"]
+    assert year["missing_days"] == 10

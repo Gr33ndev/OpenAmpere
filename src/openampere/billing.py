@@ -129,6 +129,13 @@ class Billing:
 
         paid_months = [m for m in months if m <= today]
         paid = sum(_amount(cfg["payments"], m) for m in paid_months)
+        # "Stand heute": the current month only for the days that have passed, like the consumption (#59)
+        days_in_month = (_add_months(today, 1) - today.replace(day=1)).days
+        paid_to_date = paid - _amount(cfg["payments"], today.replace(day=1)) * (1 - (today.day - 1 + 0.5) / days_in_month)
+        # days without any reading since the recording started: the values so far are too low then
+        expected_days = max(0, (today - max(recorded_from, start)).days)
+        recorded_days = self.storage.days_with_energy(ts(max(recorded_from, start)), ts(today)) if expected_days else 0
+        missing_days = max(0, expected_days - recorded_days)
         yearly = sum(_amount(cfg["payments"], m) for m in months)
         projected = so_far + rest_eur
         # positive = money back for the user: import paid more than used, export earned more than prepaid
@@ -139,7 +146,9 @@ class Billing:
             "so_far_kwh": round(kwh_total_so_far, 1), "so_far_eur": round(so_far, 2),
             "estimated_before": recorded_from.isoformat() if missing_kwh else None,
             "projected_kwh": round(kwh_total_so_far + rest_kwh, 0), "projected_eur": round(projected, 2), "method": method,
-            "balance_now_eur": round(sign * (paid - so_far), 2), "balance_end_eur": round(sign * (yearly - projected), 2),
+            "balance_now_eur": round(sign * (paid - so_far), 2),
+            "paid_to_date_eur": round(paid_to_date, 2), "balance_today_eur": round(sign * (paid_to_date - so_far), 2),
+            "missing_days": missing_days, "balance_end_eur": round(sign * (yearly - projected), 2),
             "fitting_payment_eur": round(projected / 12, 0),
             "incomplete": money["incomplete"],
         }

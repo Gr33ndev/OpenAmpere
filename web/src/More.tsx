@@ -158,7 +158,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
       <div className="card menu">
         <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
         <MenuRow label="Stromtarif" hint="Preise und Grundpreis" onClick={() => setPage("tariff")} />
-        <MenuRow label="Abschläge" hint="Jahresabrechnung vorhersagen" onClick={() => setPage("billing")} />
+        <MenuRow label="Abschläge" hint="Mit Verbrauch und Einspeisung vergleichen" onClick={() => setPage("billing")} />
       </div>
 
       <div className="section-title">Einstellungen</div>

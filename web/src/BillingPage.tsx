@@ -13,6 +13,7 @@ export type BillingYear = {
   so_far_kwh: number; so_far_eur: number; estimated_before: string | null; projected_kwh: number; projected_eur: number;
   method: "last_year" | "typical" | "none"; balance_now_eur: number; balance_end_eur: number;
   fitting_payment_eur: number; incomplete: boolean;
+  paid_to_date_eur: number; balance_today_eur: number; missing_days: number;
 };
 export type Billing = { settings: BillingSettings; status: Record<Kind, BillingYear | null> };
 
@@ -51,7 +52,7 @@ export function BillingPage({ onBack }: PageProps) {
   return (
     <SubPage title="Abschläge" onBack={onBack}>
       <p className="hint">Trag deine monatlichen Abschläge ein. OpenAmpere vergleicht sie mit deinem Verbrauch und deiner
-        Einspeisung und rechnet bis zur Jahresabrechnung hoch. Das Ergebnis steht in der Auswertung.</p>
+        Einspeisung bis heute. Das Ergebnis steht in der Auswertung.</p>
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && (["import", "export"] as Kind[]).map((kind) => (
         <div key={kind}>
@@ -89,60 +90,67 @@ export function BillingPage({ onBack }: PageProps) {
   );
 }
 
-function YearCard({ kind, year }: { kind: Kind; year: BillingYear }) {
-  const end = year.balance_end_eur;
-  const back = end >= 0;
-  const headline = Math.abs(end) < 5 ? "Abschläge passen" : kind === "import"
-    ? (back ? `${euro(end)} Guthaben` : `${euro(-end)} Nachzahlung`)
-    : (back ? `${euro(end)} Nachzahlung an dich` : `${euro(-end)} zu viel ausgezahlt`);
-  const lastDay = new Date(new Date(`${year.to}T12:00:00`).getTime() - 86_400_000).toISOString().slice(0, 10);
+const lastDay = (to: string) => new Date(new Date(`${to}T12:00:00`).getTime() - 86_400_000).toISOString().slice(0, 10);
+
+/** One kind of the billing as it stands today: what was used or earned so far against the prepayments up to now (#59). */
+function TodayRows({ kind, year }: { kind: Kind; year: BillingYear }) {
+  const diff = year.balance_today_eur;
   return (
-    <div className="card key-figures billing-card">
-      <div className="key-title">{TEXT[kind].title} · {dateLabel(year.from)} bis {dateLabel(lastDay)}</div>
-      <div>
-        <span className="key-label">Voraussichtlich bei der Abrechnung</span>
-        <strong className={`billing-headline ${Math.abs(end) < 5 ? "" : back ? "good" : "bad"}`}>{headline}</strong>
-      </div>
-      {/* one balance only: how the forecast comes about (#37) */}
-      <dl className="facts billing-sum">
-        {kind === "import" ? <>
-          <dt>Abschläge im Jahr</dt><dd>{euro(year.yearly_payments_eur)}</dd>
-          <dt>Kosten laut Hochrechnung ({num(year.projected_kwh, 0)} kWh)</dt><dd>− {euro(year.projected_eur)}</dd>
-        </> : <>
-          <dt>Vergütung laut Hochrechnung ({num(year.projected_kwh, 0)} kWh)</dt><dd>{euro(year.projected_eur)}</dd>
-          <dt>Abschläge im Jahr</dt><dd>− {euro(year.yearly_payments_eur)}</dd>
-        </>}
-        <dt className="sum">{end >= 0 ? (kind === "import" ? "Guthaben" : "Nachzahlung an dich") : (kind === "import" ? "Nachzahlung" : "Zu viel ausgezahlt")}</dt>
-        <dd className="sum">{euro(Math.abs(end))}</dd>
-        <dt>Passender Abschlag</dt><dd>{num(year.fitting_payment_eur, 0)}&nbsp;€ im Monat</dd>
-      </dl>
-      <p className="hint">Bisher {kind === "import" ? "verbraucht" : "eingespeist"}: {num(year.so_far_kwh, 0)} kWh
-        für {euro(year.so_far_eur)}, {kind === "import" ? "gezahlt" : "ausgezahlt"} wurden {euro(year.paid_eur)} in {year.months_paid}
-        {" "}{year.months_paid === 1 ? "Monat" : "Monaten"}.</p>
-      <p className="hint">
-        {year.method === "last_year" ? "Die restlichen Monate sind mit deinen Werten aus dem Vorjahr gerechnet. "
-          : "Die restlichen Monate sind nach dem typischen Jahresverlauf geschätzt, ab nächstem Jahr mit deinen eigenen Werten. "}
-        {year.estimated_before ? `Vor dem ${dateLabel(year.estimated_before)} hat OpenAmpere noch nicht gemessen, diese Zeit ist geschätzt. ` : ""}
-        {kind === "import" ? "Enthalten ist der Grundpreis aus deinem Stromtarif." : ""}
-      </p>
-    </div>
+    <>
+      <dt className="billing-group">{TEXT[kind].title} <span className="meta">seit {dateLabel(year.from)}</span></dt><dd />
+      {kind === "import" ? <>
+        <dt>Abschläge bis heute</dt><dd>{euro(year.paid_to_date_eur)}</dd>
+        <dt>Kosten für {num(year.so_far_kwh, 0)}&nbsp;kWh</dt><dd>− {euro(year.so_far_eur)}</dd>
+      </> : <>
+        <dt>Vergütung für {num(year.so_far_kwh, 0)}&nbsp;kWh</dt><dd>{euro(year.so_far_eur)}</dd>
+        <dt>Abschläge bis heute</dt><dd>− {euro(year.paid_to_date_eur)}</dd>
+      </>}
+      <dt className="sub">Differenz</dt><dd className={`sub ${diff >= 0 ? "good-text" : "bad-text"}`}>{diff >= 0 ? "+" : "−"} {euro(Math.abs(diff))}</dd>
+    </>
   );
 }
 
-/** Forecast of the annual bills, for the analysis page. */
+/** The billing as it stands today, one block for grid power and feed-in, without a forecast (#59). */
 export function BillingSection() {
   const { data } = useResource<Billing>("/api/billing");
   if (!data) return null;
-  const years = (["import", "export"] as Kind[]).filter((k) => data.status[k]);
+  const kinds = (["import", "export"] as Kind[]).filter((k) => data.status[k]);
+  if (!kinds.length) return (
+    <>
+      <div className="section-title">Abschläge</div>
+      <div className="card">
+        <p>Trag deine monatlichen Abschläge ein, dann zeigt OpenAmpere, ob sie zu deinem Verbrauch und deiner Einspeisung passen.</p>
+        <button className="link" onClick={() => navigate("more/billing")}>Abschläge eintragen</button>
+      </div>
+    </>
+  );
+  const years = kinds.map((k) => [k, data.status[k]!] as const);
+  const total = years.reduce((sum, [, y]) => sum + y.balance_today_eur, 0);
+  const even = Math.abs(total) < 5;
+  const missing = Math.max(...years.map(([, y]) => y.missing_days));
+  const estimated = years.map(([, y]) => y.estimated_before).filter(Boolean).sort()[0];
   return (
     <>
-      <div className="section-title">Jahresabrechnung</div>
-      {years.length ? years.map((k) => <YearCard key={k} kind={k} year={data.status[k]!} />) : (
-        <div className="card">
-          <p>Trag deine monatlichen Abschläge ein, dann sagt OpenAmpere voraus, ob bei der Jahresabrechnung Geld zurückkommt.</p>
-          <button className="link" onClick={() => navigate("more/billing")}>Abschläge eintragen</button>
+      <div className="section-title">Abschläge</div>
+      <div className="card key-figures billing-card">
+        <div>
+          <span className="key-label">Stand heute</span>
+          <strong className={`billing-headline ${even ? "" : total > 0 ? "good" : "bad"}`}>
+            {even ? "Abschläge passen" : total > 0 ? `${euro(total)} im Plus` : `${euro(-total)} im Minus`}</strong>
         </div>
-      )}
+        <dl className="facts billing-sum">
+          {years.map(([k, y]) => <TodayRows key={k} kind={k} year={y} />)}
+          {years.length > 1 && <><dt className="sum">Zusammen</dt><dd className="sum">{total >= 0 ? "+" : "−"} {euro(Math.abs(total))}</dd></>}
+        </dl>
+        <p className="hint">Plus heißt: Bis heute hast du mehr Abschlag gezahlt als verbraucht{kinds.includes("export")
+          ? " oder mehr eingespeist als ausgezahlt wurde" : ""}. Der laufende Monat zählt anteilig bis heute, die Kosten
+          enthalten den Grundpreis aus deinem Stromtarif.</p>
+        {missing > 0 && <p className="hint warn-text">An {missing} {missing === 1 ? "Tag" : "Tagen"} hat OpenAmpere keine Messwerte,
+          etwa weil die Verbindung gestört war. Verbrauch und Einspeisung sind deshalb etwas zu niedrig.</p>}
+        {estimated && <p className="hint">Vor dem {dateLabel(estimated)} hat OpenAmpere noch nicht gemessen, diese Zeit ist geschätzt.</p>}
+        <p className="hint">Abgerechnet wird nach den Zählern des Netzbetreibers. Die Werte hier sind eine Orientierung. Das
+          Abrechnungsjahr endet am {dateLabel(lastDay(years[0][1].to))}.</p>
+      </div>
     </>
   );
 }
