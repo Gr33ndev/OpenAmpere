@@ -132,7 +132,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "diagnostics": return <DiagnosticsPage {...nav} />;
     case "tariff": return <TariffPage {...nav} />;
     case "billing": return <BillingPage {...nav} />;
-    case "gridmeter": return <GridMeterPage {...nav} />;
+    case "gridmeter": return <GridMeterPage onBack={() => goBack("more/connection")} />;
     // parts of "Meine Anlage"
     case "pv": return <PvSystemPage onBack={() => goBack("more/installation")} snap={snap} />;
     case "export-limit": return <ExportLimitPage onBack={() => goBack("more/installation")} onNavigate={setPage} />;
@@ -161,12 +161,11 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
         <MenuRow label="Stromtarif" hint="Preise und Grundpreis" onClick={() => setPage("tariff")} />
         <MenuRow label="Abschläge" hint="Mit Verbrauch und Einspeisung vergleichen" onClick={() => setPage("billing")} />
-        <MenuRow label="Zählerwerte" hint="Vom Netzbetreiber abrufen" onClick={() => setPage("gridmeter")} />
       </div>
 
       <div className="section-title">Einstellungen</div>
       <div className="card menu">
-        <MenuRow label="Verbindung" hint="Wechselrichter, Heizstab, Wallbox" onClick={() => setPage("connection")} />
+        <MenuRow label="Verbindung" hint="Wechselrichter, Heizstab, Wallbox, Netzbetreiber" onClick={() => setPage("connection")} />
         <MenuRow label="Steuerung und Protokoll"
           hint={control?.enabled ? (control.dry_run ? "Testen" : "Aktiv") : "Nur ansehen"} onClick={() => setPage("control")} />
         <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy" onClick={() => setPage("notify")} />

@@ -349,6 +349,10 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
         <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, eigene Web-Adressen" onClick={() => onNavigate?.("device-setup")} />
         <MenuRow label="Wallbox" hint="über evcc" onClick={() => onNavigate?.("wallbox")} />
       </div>
+      <div className="section-title">Netzbetreiber</div>
+      <div className="card menu">
+        <MenuRow label="Zählerwerte" hint="Smart-Meter-Werte aus dem Kundenportal" onClick={() => onNavigate?.("gridmeter")} />
+      </div>
       <div className="section-title">Wechselrichter</div>
       {settings && (
         <ConnectionForm
