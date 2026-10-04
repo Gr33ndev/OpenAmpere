@@ -225,5 +225,12 @@ async def test_diagnostics_report(tmp_path):
             assert checks["connections"]["details"]["main_connection_survived"]
             assert report["device"]["serial"] != "SN1"  # masked unless asked
             assert "OpenAmpere-Diagnose" in report_markdown(report)
+            # readable texts (#19): yes/no instead of a raw value, temperature in °C, plural only for several
+            assert checks["bms1"]["summary"] == "ja"
+            assert checks["temp_scale"]["status"] == "ok" and "°C" in checks["temp_scale"]["summary"]
+            assert checks["night"]["summary"].startswith(("0 Abbrüche", "1 Abbruch,", "2 Abbrüche"))
+            warn = {**report, "checks": report["checks"] + [{"id": "x", "title": "Beispiel (1)", "status": "warn",
+                                                             "summary": "bitte prüfen"}]}
+            assert report_markdown(warn).index("### Zu prüfen") < report_markdown(warn).index("### Alle Prüfungen")
         finally:
             await runtime.collector.stop()
