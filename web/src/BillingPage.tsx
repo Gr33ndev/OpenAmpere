@@ -14,6 +14,8 @@ export type BillingYear = {
   method: "last_year" | "typical" | "none"; balance_now_eur: number; balance_end_eur: number;
   fitting_payment_eur: number; incomplete: boolean;
   paid_to_date_eur: number; balance_today_eur: number; missing_days: number;
+  /** the grid operator's meter values replace the inverter's for these days (#60) */
+  meter: { source: string; from: string; until: string; kwh: number; deviation_percent: number | null } | null;
 };
 export type Billing = { settings: BillingSettings; status: Record<Kind, BillingYear | null> };
 
@@ -129,6 +131,9 @@ export function BillingSection() {
   const even = Math.abs(total) < 5;
   const missing = Math.max(...years.map(([, y]) => y.missing_days));
   const estimated = years.map(([, y]) => y.estimated_before).filter(Boolean).sort()[0];
+  const metered = years.flatMap(([k, y]) => (y.meter ? [[k, y.meter] as const] : []));
+  const deviations = metered.filter(([, m]) => m.deviation_percent != null && Math.abs(m.deviation_percent) >= 0.5)
+    .map(([k, m]) => `${k === "import" ? "beim Bezug" : "bei der Einspeisung"} ${num(Math.abs(m.deviation_percent!), 1)} % ${m.deviation_percent! < 0 ? "weniger" : "mehr"}`);
   return (
     <>
       <div className="section-title">Abschläge</div>
@@ -148,8 +153,15 @@ export function BillingSection() {
         {missing > 0 && <p className="hint warn-text">An {missing} {missing === 1 ? "Tag" : "Tagen"} hat OpenAmpere keine Messwerte,
           etwa weil die Verbindung gestört war. Verbrauch und Einspeisung sind deshalb etwas zu niedrig.</p>}
         {estimated && <p className="hint">Vor dem {dateLabel(estimated)} hat OpenAmpere noch nicht gemessen, diese Zeit ist geschätzt.</p>}
-        <p className="hint">Abgerechnet wird nach den Zählern des Netzbetreibers. Die Werte hier sind eine Orientierung. Das
-          Abrechnungsjahr endet am {dateLabel(lastDay(years[0][1].to))}.</p>
+        {metered.length > 0 && (
+          <p className="hint">Bis {dateLabel(metered.map(([, m]) => m.until).sort()[0])} rechnet OpenAmpere mit den Zählerwerten
+            von {metered[0][1].source}, danach mit denen des Wechselrichters.{deviations.length > 0 && ` Der Wechselrichter misst ${deviations.join(" und ")}.`}</p>
+        )}
+        <p className="hint">{metered.length ? "" : "Abgerechnet wird nach den Zählern des Netzbetreibers. Die Werte hier sind eine Orientierung. "}
+          Das Abrechnungsjahr endet am {dateLabel(lastDay(years[0][1].to))}.</p>
+        {!metered.length && (
+          <button className="link" onClick={() => navigate("more/gridmeter")}>Zählerwerte vom Netzbetreiber abrufen</button>
+        )}
       </div>
     </>
   );

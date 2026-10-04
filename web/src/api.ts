@@ -67,6 +67,7 @@ export type Summary = {
 export type EnergyEntry = Counters & { ts: number; soc: number | null };
 export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null };
 
+export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password";
 export type Settings = {
   values: {
     "inverter.driver": "auto" | "foxess" | "saj";
@@ -103,8 +104,11 @@ export type Settings = {
     "notify.on_off_grid": boolean;
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
+    "meter.provider": string;
+    "meter.username": string;
+    "meter.meter_ids": string[];
   };
-  secrets: Record<"cloud.api_key" | "notify.ntfy_token" | "evcc.password", { set: boolean; hint: string | null }>;
+  secrets: Record<SecretKey, { set: boolean; hint: string | null }>;
   locked: string[];
   revision: number;
 };

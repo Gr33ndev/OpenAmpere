@@ -1,19 +1,24 @@
-"""Monthly prepayments (Abschläge) and a forecast of the annual bill.
+"""Monthly prepayments (Abschläge) compared with the energy so far.
 
 Grid power is usually paid with a monthly prepayment to the supplier, and the grid operator pays the feed-in
-compensation the same way. Once a year both are settled. This module compares what was paid so far with what the
-measured energy costs (or earns) under the user's tariffs and projects the year to its end, so the annual bill is
-no surprise.
+compensation the same way. Once a year both are settled. This module compares what was paid up to today with what the
+energy so far costs (or earns) under the user's tariffs. The energy comes from the grid operator's meters where
+OpenAmpere can fetch them (#60), otherwise from the inverter. The projection to the end of the year is still
+returned, the app no longer shows it (#59).
 """
 
 from __future__ import annotations
 
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from .storage import Storage
 from .tariffs import Tariffs
+
+if TYPE_CHECKING:
+    from .gridmeter import GridMeter
 
 KINDS = ("import", "export")
 # Typical share of a year's energy per month in Germany (in %): feed-in follows the sun, grid import the darkness.
@@ -66,9 +71,10 @@ def _amount(payments: list[dict], month: date) -> float:
 
 
 class Billing:
-    def __init__(self, storage: Storage, tariffs: Tariffs) -> None:
+    def __init__(self, storage: Storage, tariffs: Tariffs, gridmeter: GridMeter | None = None) -> None:
         self.storage = storage
         self.tariffs = tariffs
+        self.gridmeter = gridmeter
 
     def settings(self) -> dict:
         saved = self.storage.get_meta("billing") or {}
@@ -104,6 +110,11 @@ class Billing:
         so_far = money["grid_cost_eur"] + money["base_fee_eur"] if kind == "import" else money["feed_in_eur"]
         first = self.storage.first_quarter(start_ts, now)
         recorded_from = datetime.fromtimestamp(first, tz).date() if first else today
+        # the grid operator's meter values (#60) replace the inverter's values for the days they cover
+        meter = self.storage.meter_days(kind, start.isoformat(), (today + timedelta(days=1)).isoformat(),
+                                        self.gridmeter.active_ids() if self.gridmeter else [])
+        meter_from = date.fromisoformat(min(meter)) if meter else None
+        meter_to = date.fromisoformat(max(meter)) + timedelta(days=1) if meter else None
         tariff = self.tariffs.at(today.isoformat())
         if kind == "import":
             fallback = tariff.import_price_ct(None)
@@ -111,9 +122,23 @@ class Billing:
         else:
             price = tariff.feed_in_ct / 100
 
+        inverter_in_meter = meter_kwh = 0.0
+        deviation = None
+        if meter:
+            inverter_in_meter = (self.storage.energy_sum(ts(meter_from), min(ts(meter_to), now)).get(field) or 0) / 1000
+            meter_kwh = sum(meter.values())
+            # how far the inverter is off: only over days that both recorded
+            both_from = max(meter_from, recorded_from)
+            both = [d for d in self.storage.energy_days(ts(both_from), ts(meter_to), tz) if d in meter]
+            if len(both) >= 7 and len(both) >= 0.9 * (meter_to - both_from).days:
+                inv = (self.storage.energy_sum(ts(both_from), ts(meter_to)).get(field) or 0) / 1000
+                ref = sum(meter[d] for d in both)
+                deviation = round((inv - ref) / ref * 100, 1) if ref > 1 else None
+
         # before the recording started (OpenAmpere installed during the billing year): estimated
+        estimate_until = min(recorded_from, meter_from) if meter_from else recorded_from
         covered = _share(kind, recorded_from, today)
-        missing_kwh = kwh * _share(kind, start, recorded_from) / covered if covered > 0 and recorded_from > start else 0.0
+        missing_kwh = kwh * _share(kind, start, estimate_until) / covered if covered > 0 and estimate_until > start else 0.0
         # the rest of the year: last year's energy if it was recorded, otherwise the typical course of a year
         rest_kwh, method = self._last_year(field, now, end_ts)
         if rest_kwh is None:
@@ -121,21 +146,20 @@ class Billing:
         rest_eur = rest_kwh * price
         if kind == "import":
             rest_eur += tariff.base_fee_eur_month * 12 / 365 * max(0.0, (end_ts - now) / 86400)
-            missing_eur = missing_kwh * price + tariff.base_fee_eur_month * 12 / 365 * (recorded_from - start).days
-        else:
-            missing_eur = missing_kwh * price
-        so_far += missing_eur
-        kwh_total_so_far = kwh + missing_kwh
+        # the base fee is already in money() for the whole period, also before the recording started
+        so_far += (missing_kwh + meter_kwh - inverter_in_meter) * price
+        kwh_total_so_far = kwh + missing_kwh + meter_kwh - inverter_in_meter
 
         paid_months = [m for m in months if m <= today]
         paid = sum(_amount(cfg["payments"], m) for m in paid_months)
         # "Stand heute": the current month only for the days that have passed, like the consumption (#59)
         days_in_month = (_add_months(today, 1) - today.replace(day=1)).days
         paid_to_date = paid - _amount(cfg["payments"], today.replace(day=1)) * (1 - (today.day - 1 + 0.5) / days_in_month)
-        # days without any reading since the recording started: the values so far are too low then
-        expected_days = max(0, (today - max(recorded_from, start)).days)
-        recorded_days = self.storage.days_with_energy(ts(max(recorded_from, start)), ts(today)) if expected_days else 0
-        missing_days = max(0, expected_days - recorded_days)
+        # days without any reading (neither inverter nor meter) since the recording started: the values are too low then
+        watched_from = max(start, min(recorded_from, meter_from) if meter_from else recorded_from)
+        known = self.storage.energy_days(ts(watched_from), ts(today), tz) | set(meter)
+        missing_days = sum(1 for i in range((today - watched_from).days)
+                           if (watched_from + timedelta(days=i)).isoformat() not in known)
         yearly = sum(_amount(cfg["payments"], m) for m in months)
         projected = so_far + rest_eur
         # positive = money back for the user: import paid more than used, export earned more than prepaid
@@ -144,7 +168,10 @@ class Billing:
             "from": start.isoformat(), "to": end.isoformat(),
             "months_paid": len(paid_months), "paid_eur": round(paid, 2), "yearly_payments_eur": round(yearly, 2),
             "so_far_kwh": round(kwh_total_so_far, 1), "so_far_eur": round(so_far, 2),
-            "estimated_before": recorded_from.isoformat() if missing_kwh else None,
+            "estimated_before": estimate_until.isoformat() if missing_kwh else None,
+            "meter": {"source": self.gridmeter.label, "from": meter_from.isoformat(),
+                      "until": (meter_to - timedelta(days=1)).isoformat(), "kwh": round(meter_kwh, 1),
+                      "deviation_percent": deviation} if meter and self.gridmeter else None,
             "projected_kwh": round(kwh_total_so_far + rest_kwh, 0), "projected_eur": round(projected, 2), "method": method,
             "balance_now_eur": round(sign * (paid - so_far), 2),
             "paid_to_date_eur": round(paid_to_date, 2), "balance_today_eur": round(sign * (paid_to_date - so_far), 2),

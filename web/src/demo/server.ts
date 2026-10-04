@@ -187,9 +187,10 @@ const settings = {
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
     "notify.on_battery_health": true, "notify.on_off_grid": true, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
+    "meter.provider": "netze_bw", "meter.username": "demo@example.org", "meter.meter_ids": [],
   },
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
-    "evcc.password": { set: false, hint: null } },
+    "evcc.password": { set: false, hint: null }, "meter.password": { set: true, hint: null } },
   locked: [],
   revision: 1,
 };
@@ -287,6 +288,10 @@ const TYPICAL = { export: [2, 4, 8, 11, 13, 14, 14, 12, 9, 6, 4, 3], import: [13
 const PREPAYMENTS = { import: [{ from: "2026-01", eur: 58 }], export: [{ from: "2025-07", eur: 9 }, { from: "2026-03", eur: 10 }] };
 
 /** Annual bill forecast for the calendar year, simplified from the real app (billing.py). */
+/** Local date (YYYY-MM-DD) a number of days from today. */
+const isoDay = (offset: number) => { const d = new Date(Date.now() + offset * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+
 function billing() {
   const today = new Date();
   const start = new Date(today.getFullYear(), 0, 1);
@@ -310,7 +315,10 @@ function billing() {
     const sign = kind === "import" ? 1 : -1;
     const monthDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     const paidToDate = paid - amount(today.getMonth()) * (1 - (today.getDate() - 0.5) / monthDays);
-    return { paid_to_date_eur: round2(paidToDate), balance_today_eur: round2(sign * (paidToDate - soFar)), missing_days: 0, from: `${today.getFullYear()}-01-01`, to: `${today.getFullYear() + 1}-01-01`, months_paid: today.getMonth() + 1,
+    // the grid operator's meter until two days ago (#60)
+    const meter = { source: "Netze BW", from: `${today.getFullYear()}-01-01`, until: isoDay(-2), kwh: Math.round(kwh * 0.99),
+      deviation_percent: kind === "import" ? -1.8 : -2.4 };
+    return { paid_to_date_eur: round2(paidToDate), balance_today_eur: round2(sign * (paidToDate - soFar)), missing_days: 0, meter, from: `${today.getFullYear()}-01-01`, to: `${today.getFullYear() + 1}-01-01`, months_paid: today.getMonth() + 1,
       paid_eur: paid, yearly_payments_eur: yearly, so_far_kwh: Math.round(kwh), so_far_eur: round2(soFar),
       estimated_before: null, projected_kwh: Math.round(kwh + restKwh), projected_eur: round2(projected), method: "last_year",
       balance_now_eur: round2(sign * (paid - soFar)), balance_end_eur: round2(sign * (yearly - projected)),
@@ -440,6 +448,9 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/update": () => ({ current: "Demo", available: false, updater: false, requested: false, check: false, auto: false,
     latest: null, status: null, checked: null, error: null }),
   "/api/billing": billing,
+  "/api/gridmeter": () => ({ providers: [{ key: "netze_bw", label: "Netze BW", portal: "meine.netze-bw.de", region: "Baden-Württemberg" }],
+    configured: true, meters: [{ id: "demo", name: "Hauszähler", kinds: ["import", "export"] }], active: ["demo"],
+    synced: now() - 2 * 3600, until: isoDay(-2), error: null, busy: false }),
   "/api/battery/settings": () => ({ work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
     legal_max_w: 5880, external_change: null }),
@@ -469,7 +480,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 /** Endpoints that only change something: the demo refuses them with DEMO_WRITE_MESSAGE. */
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/consumers/", "/api/evcc/loadpoints/",
-  "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test",
+  "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test",
   "/api/setup/scan", "/api/setup/test",
 ];
 

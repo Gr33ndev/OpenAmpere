@@ -13,6 +13,7 @@ import shutil
 import sqlite3
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 from .drivers.base import Snapshot
@@ -50,6 +51,9 @@ CREATE TABLE IF NOT EXISTS device_power (
 );
 CREATE TABLE IF NOT EXISTS device_energy_15m (
     ts INTEGER NOT NULL, device TEXT NOT NULL, wh REAL NOT NULL, PRIMARY KEY (ts, device)
+);
+CREATE TABLE IF NOT EXISTS grid_meter_daily (
+    meter TEXT NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL, kwh REAL NOT NULL, PRIMARY KEY (meter, kind, day)
 );
 CREATE TABLE IF NOT EXISTS control_log (
     ts REAL NOT NULL, action TEXT NOT NULL, details TEXT NOT NULL, dry_run INTEGER NOT NULL, result TEXT NOT NULL
@@ -280,6 +284,32 @@ class Storage:
         rows = self._fetchall("SELECT COUNT(DISTINCT CAST(ts / 86400 AS INTEGER)) AS n FROM energy_15m WHERE ts >= ? AND ts < ?",
                               (start, end))
         return int(rows[0]["n"] or 0)
+
+    # ---- daily values of the grid operator's meters (#60) ------------------
+
+    def save_meter_days(self, meter: str, kind: str, days: dict[str, float]) -> None:
+        with self._lock, self._db:
+            self._db.executemany("INSERT OR REPLACE INTO grid_meter_daily(meter, kind, day, kwh) VALUES(?, ?, ?, ?)",
+                                 [(meter, kind, day, kwh) for day, kwh in days.items()])
+
+    def meter_last_day(self, meter: str, kind: str) -> str | None:
+        rows = self._fetchall("SELECT MAX(day) AS day FROM grid_meter_daily WHERE meter=? AND kind=?", (meter, kind))
+        return rows[0]["day"] if rows else None
+
+    def meter_days(self, kind: str, first: str, last: str, meters: list[str]) -> dict[str, float]:
+        """kWh per day (ISO dates, first <= day < last), summed over the given meters."""
+        if not meters:
+            return {}
+        marks = ", ".join("?" * len(meters))
+        rows = self._fetchall(f"SELECT day, SUM(kwh) AS kwh FROM grid_meter_daily WHERE kind=? AND day >= ? AND day < ? "
+                              f"AND meter IN ({marks}) GROUP BY day ORDER BY day", (kind, first, last, *meters))
+        return {r["day"]: r["kwh"] for r in rows}
+
+    def energy_days(self, start: float, end: float, tz) -> set[str]:
+        """Local days (ISO dates) with at least one stored quarter hour."""
+        rows = self._fetchall("SELECT DISTINCT CAST(ts / 900 AS INTEGER) * 900 AS ts FROM energy_15m WHERE ts >= ? AND ts < ?",
+                              (start, end))
+        return {datetime.fromtimestamp(r["ts"], tz).date().isoformat() for r in rows}
 
     def first_sample_ts(self) -> float | None:
         rows = self._fetchall("SELECT MIN(ts) AS ts FROM samples")
