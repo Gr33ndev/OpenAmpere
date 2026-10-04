@@ -453,7 +453,7 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .soc-track .target { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text); border-radius: 1px; }
 .plan-form { display: flex; flex-direction: column; gap: 10px; }
 .code-block { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--track); font-size: 12px;
-  line-height: 1.5; overflow-x: auto; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .sessions { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
 .sessions li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .small-credit { text-align: right; font-size: 12px; margin-top: -4px; }
@@ -548,3 +548,7 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .billing-headline { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
 .billing-headline.good { color: var(--accent-text); }
 .billing-headline.bad { color: var(--coral); }
+
+/* report and configuration as selectable text (copying falls back to selecting by hand) */
+.report-text { width: 100%; min-height: 220px; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; line-height: 1.45; white-space: pre; resize: vertical; }

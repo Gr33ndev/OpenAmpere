@@ -3,7 +3,7 @@ import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
 import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
-import { Button, Checkbox, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
+import { Button, Checkbox, copyText, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
 type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
@@ -28,13 +28,14 @@ export function DiagnosticsPage({ onBack }: PageProps) {
       setBusy(false);
     }
   };
+  const [showText, setShowText] = useState(false);
   const copy = async () => {
     if (!data?.markdown) return;
-    try {
-      await navigator.clipboard.writeText(data.markdown);
+    if (await copyText(data.markdown)) {
       toast("Bericht kopiert");
-    } catch {
-      toast("Kopieren nicht möglich – bitte den Text unten markieren.", "error");
+    } else {
+      setShowText(true);
+      toast("Kopieren hat nicht geklappt. Bitte den Bericht unten markieren und kopieren.", "error");
     }
   };
 
@@ -72,8 +73,15 @@ export function DiagnosticsPage({ onBack }: PageProps) {
           <div className="card form">
             <p className="hint">Hilf anderen mit demselben Gerät: Kopiere den Bericht und füge ihn in ein Issue auf GitHub ein.</p>
             <Button variant="secondary" onClick={() => void copy()}>Bericht kopieren</Button>
-            <a className="btn secondary" href={`${ISSUES_URL}/new?title=${encodeURIComponent("Diagnosebericht")}`}
+            <a className="btn secondary" href={`${ISSUES_URL}/new?template=device_report.yml`}
               target="_blank" rel="noreferrer">Issue auf GitHub öffnen</a>
+            {data.markdown && (
+              <details className="advanced" open={showText} onToggle={(e) => setShowText(e.currentTarget.open)}>
+                <summary>Bericht als Text anzeigen</summary>
+                <textarea className="input report-text" readOnly rows={12} value={data.markdown}
+                  onFocus={(e) => e.currentTarget.select()} aria-label="Diagnosebericht" />
+              </details>
+            )}
           </div>
         </>
       )}
