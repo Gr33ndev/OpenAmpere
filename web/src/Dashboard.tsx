@@ -186,7 +186,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
           OpenAmpere keine Messwerte, damit sie nicht auf falschen Tagen landen.</Notice>
       )}
       <ImportHint />
-      <EnergyFlow snap={snap} stale={stale} devices={devices} />
+      <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging} />
 
       <div className="section-title">Tageswerte</div>
       {today?.partial_since && <p className="hint">Erfasst seit {time(today.partial_since)} Uhr (OpenAmpere läuft erst seit heute).</p>}

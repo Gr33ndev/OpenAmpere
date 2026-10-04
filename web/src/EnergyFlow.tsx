@@ -65,6 +65,14 @@ function deviceLine(house: Box, houseNode: Box, device: Box): [Point, Point] {
   return [[x1 + dx, y1 + dy], [x2 - dx, y2 - dy]];
 }
 
+/** Where the battery's charge comes from: the sun, or the grid (cheap power, or more than half from the grid). */
+export function chargeSource(snap: Snapshot | null, gridCharging: boolean): "sun" | "grid" | null {
+  const charge = -(snap?.battery_power ?? 0);
+  if (!snap || charge <= IDLE_W) return null;
+  if (gridCharging) return "grid";
+  return (snap.grid_power ?? 0) > IDLE_W && (snap.grid_power ?? 0) >= charge / 2 ? "grid" : "sun";
+}
+
 function direction(power: number | null | undefined, positive: string, negative: string): string | null {
   if (power == null || Math.abs(power) <= IDLE_W) return null;
   return power > 0 ? positive : negative;
@@ -74,7 +82,9 @@ function deviceX(index: number, count: number): number {
   return count === 1 ? 50 : 14 + (72 / (count - 1)) * index;
 }
 
-export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapshot | null; stale?: boolean; devices?: Device[] }) {
+export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = false }: {
+  snap: Snapshot | null; stale?: boolean; devices?: Device[]; gridCharging?: boolean;
+}) {
   const shown = devices.slice(0, MAX_DEVICES);
   const h = shown.length ? DEVICES_H : BASE_H;
   const container = useRef<HTMLDivElement>(null);
@@ -106,7 +116,8 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
   // the inverter measures the whole consumption: the household is what the devices do not use
   const house = snap?.house_power != null ? Math.max(0, snap.house_power - (stale ? 0 : devicePower)) : null;
   // battery: + = discharging towards the house; grid: + = import from the grid
-  const battery = direction(snap?.battery_power, "entlädt", "lädt");
+  const source = stale ? null : chargeSource(snap, gridCharging);
+  const battery = direction(snap?.battery_power, "entlädt", "lädt"); // the badge shows sun or grid
   const grid = direction(snap?.grid_power, "Bezug", "Einspeisung");
   const label = snap
     ? [`Solar ${kw(snap.pv_power)}`, `Haus ${kw(house)}`,
@@ -134,7 +145,12 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
 
       <Node x={50} y={16} h={h} icon={<SolarIcon />}>{kw(snap?.pv_power)}</Node>
       <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon}>{kw(house)}</Node>
-      <Node x={12} y={HOUSE.y} h={h} icon={<BatteryIcon soc={snap?.battery_soc ?? null} />}>
+      <Node x={12} y={HOUSE.y} h={h} icon={
+        <span className="battery-with-source">
+          <BatteryIcon soc={snap?.battery_soc ?? null} />
+          {source && <span className={`charge-source ${source}`} title={source === "sun" ? "lädt mit Sonnenstrom" : "lädt aus dem Netz"}>
+            {source === "sun" ? <SunGlyph /> : "€"}</span>}
+        </span>}>
         {kw(snap?.battery_power)}
         <div className="soc">{percent(snap?.battery_soc)}{battery ? ` · ${battery}` : ""}</div>
       </Node>
@@ -151,5 +167,14 @@ export function EnergyFlow({ snap, stale = false, devices = [] }: { snap: Snapsh
         </Node>
       ))}
     </div>
+  );
+}
+
+function SunGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none" />
+      <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
+    </svg>
   );
 }
