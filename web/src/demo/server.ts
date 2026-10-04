@@ -459,7 +459,7 @@ export const DEMO_WRITE_ONLY = [
 ];
 
 /** Endpoints the demo never reaches: setup (the demo is already set up) and downloads (hidden in the demo). */
-export const DEMO_NOT_NEEDED = ["/api/backup", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks",
+export const DEMO_NOT_NEEDED = ["/api/backup", "/api/backup/link", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks",
   "/api/evcc/site"]; // the last one is read by evcc, not by the app
 
 /** Every endpoint the app reads needs an answer here. `npm run check:demo` (CI) fails otherwise. */

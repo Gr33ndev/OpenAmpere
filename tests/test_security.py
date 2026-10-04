@@ -105,3 +105,19 @@ def test_logout_everywhere_needs_session(tmp_path):
     other.headers["x-openampere"] = "1"
     other.post("/api/auth/logout?everywhere=true")
     assert client.get("/api/auth/status").json()["authenticated"]
+
+
+def test_backup_link_works_without_the_cookie_for_a_while(tmp_path, monkeypatch):
+    """The iPhone home-screen app opens downloads in their own window, which does not share the login cookie (#13)."""
+    _, client = app_client(tmp_path)
+    login(client)
+    assert TestClient(client.app).post("/api/backup/link").status_code == 403  # not for other sites
+    url = client.post("/api/backup/link").json()["url"]
+    window = TestClient(client.app)  # no cookie, like the separate window on the iPhone
+    assert window.get("/api/backup").status_code == 401
+    assert window.get("/api/backup?token=guessed").status_code == 401
+    assert window.get(url).status_code == 200
+    import openampere.api as api_module
+    later = api_module.time.time() + 601
+    monkeypatch.setattr(api_module.time, "time", lambda: later)
+    assert window.get(url).status_code == 401  # expired after 10 minutes
