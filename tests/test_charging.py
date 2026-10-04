@@ -74,3 +74,16 @@ async def test_charging_power_is_limited_by_the_battery(tmp_path):
     await runtime.update_settings({"battery.max_charge_kw": 5.5})
     with pytest.raises(ValueError, match="zulässige Ladeleistung"):
         GridCharging(runtime).save({"power_w": 8000})
+
+
+async def test_cheapest_quarters_with_a_time_tariff(tmp_path):
+    """A night tariff without exchange prices: charging picks the night window (#24)."""
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.tariffs.save([{"valid_from": "2020-01-01", "kind": "time", "price_ct": 32, "feed_in_ct": 8,
+                           "windows": [{"from": "02:00", "to": "04:00", "price_ct": 10}]}])
+    now = datetime(2026, 6, 1, 20, 0, tzinfo=runtime.tz).timestamp()
+    charging = GridCharging(runtime)
+    charging.save({"enabled": False, "mode": "cheapest", "ready_by": 6, "target_soc": 60, "battery_kwh": 10,
+                   "power_w": 4000})
+    night = datetime(2026, 6, 2, 2, 0, tzinfo=runtime.tz).timestamp()
+    assert charging.plan(now, 50)["quarters"] == [int(night), int(night) + QUARTER]

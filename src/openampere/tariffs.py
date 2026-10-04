@@ -12,7 +12,7 @@ import json
 import logging
 import time
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -27,20 +27,47 @@ FETCH_EVERY_S = 3600
 @dataclass
 class Tariff:
     valid_from: str  # YYYY-MM-DD
-    kind: str = "fixed"  # fixed | dynamic
-    price_ct: float = 35.0  # fixed: gross price per kWh from the grid
+    kind: str = "fixed"  # fixed | time (own time windows) | dynamic (exchange price)
+    price_ct: float = 35.0  # fixed: gross price per kWh from the grid; time: price outside the windows
     surcharge_ct: float = 20.0  # dynamic: gross amount on top of the exchange price (grid fees, levies, margin)
     vat_percent: float = 19.0  # dynamic: VAT applied to the (net) exchange price
     feed_in_ct: float = 8.0  # feed-in compensation per kWh
     area: str = "DE"  # dynamic: price zone DE (DE-LU) or AT
     base_fee_eur_month: float = 0.0  # fixed monthly fee of the supplier (Grundpreis), gross
+    # time: own prices in time windows, e.g. a night tariff or time-variable grid fees (§ 14a EnWG, module 3):
+    # [{"from": "00:30", "to": "05:30", "price_ct": 9.0}], a window may run past midnight
+    windows: list = field(default_factory=list)
 
-    def import_price_ct(self, exchange_eur_mwh: float | None) -> float | None:
+    def import_price_ct(self, exchange_eur_mwh: float | None, minute_of_day: int | None = None) -> float | None:
         if self.kind == "fixed":
+            return self.price_ct
+        if self.kind == "time":
+            if minute_of_day is not None:
+                for w in self.windows:
+                    start, end = _minutes(w["from"]), _minutes(w["to"])
+                    inside = start <= minute_of_day < end if start < end else minute_of_day >= start or minute_of_day < end
+                    if inside:
+                        return float(w["price_ct"])
             return self.price_ct
         if exchange_eur_mwh is None:
             return None
         return exchange_eur_mwh / 10 * (1 + self.vat_percent / 100) + self.surcharge_ct
+
+
+def _minutes(hhmm: str) -> int:
+    h, m = str(hhmm).split(":")
+    return int(h) * 60 + int(m)
+
+
+def _clean_windows(raw) -> list[dict]:
+    windows = []
+    for w in raw or []:
+        start, end = _minutes(w["from"]), _minutes(w["to"])  # raises on bad input
+        if not (0 <= start < 1440 and 0 <= end <= 1440) or start == end:
+            raise ValueError
+        windows.append({"from": f"{start // 60:02d}:{start % 60:02d}", "to": f"{end // 60 % 24:02d}:{end % 60:02d}",
+                        "price_ct": round(float(w["price_ct"]), 2)})
+    return windows
 
 
 def validate(raw: list) -> list[Tariff]:
@@ -55,13 +82,18 @@ def validate(raw: list) -> list[Tariff]:
                             price_ct=float(item.get("price_ct", 0)), surcharge_ct=float(item.get("surcharge_ct", 0)),
                             vat_percent=float(item.get("vat_percent", 19)), feed_in_ct=float(item.get("feed_in_ct", 0)),
                             area=str(item.get("area", "DE")),
-                            base_fee_eur_month=float(item.get("base_fee_eur_month") or 0))
+                            base_fee_eur_month=float(item.get("base_fee_eur_month") or 0),
+                            windows=_clean_windows(item.get("windows")))
         except (KeyError, TypeError, ValueError):
             raise ValueError("Ungültiger Tarif: bitte Datum und Preise prüfen.") from None
-        if tariff.kind not in ("fixed", "dynamic") or tariff.area not in PRICE_SOURCES:
+        if tariff.kind not in ("fixed", "time", "dynamic") or tariff.area not in PRICE_SOURCES:
             raise ValueError("Ungültige Tarifart.")
         if not all(-100 <= v <= 200 for v in (tariff.price_ct, tariff.surcharge_ct, tariff.feed_in_ct)):
             raise ValueError("Preise bitte zwischen -100 und 200 ct/kWh angeben.")
+        if tariff.kind == "time" and not tariff.windows:
+            raise ValueError("Bitte mindestens ein Zeitfenster mit eigenem Preis angeben.")
+        if len(tariff.windows) > 6 or not all(-100 <= w["price_ct"] <= 200 for w in tariff.windows):
+            raise ValueError("Höchstens 6 Zeitfenster, Preise zwischen -100 und 200 ct/kWh.")
         if not 0 <= tariff.base_fee_eur_month <= 200:
             raise ValueError("Den Grundpreis bitte zwischen 0 und 200 € pro Monat angeben.")
         tariffs.append(tariff)
@@ -98,6 +130,27 @@ class Tariffs:
                 current = tariff
         return current
 
+    def quarter_prices(self, start: float, end: float, tz: ZoneInfo) -> dict[int, float]:
+        """Import price (ct/kWh gross) per quarter hour where it is known: every quarter for fixed and time tariffs,
+        quarters with an exchange price for dynamic ones."""
+        exchange = self.storage.prices(start, end)
+        result: dict[int, float] = {}
+        cache: dict[str, Tariff] = {}
+        ts = int(start // QUARTER * QUARTER)
+        while ts < end:
+            local = datetime.fromtimestamp(ts, tz)
+            day = local.date().isoformat()
+            tariff = cache.get(day) or cache.setdefault(day, self.at(day))
+            price = tariff.import_price_ct(exchange.get(ts), local.hour * 60 + local.minute)
+            if price is not None:
+                result[ts] = price
+            ts += QUARTER
+        return result
+
+    def price_at(self, ts: float, tz: ZoneInfo) -> float | None:
+        quarter = int(ts // QUARTER * QUARTER)
+        return self.quarter_prices(quarter, quarter + QUARTER, tz).get(quarter)
+
     def dynamic_areas(self) -> set[str]:
         return {t.area for t in self.all() if t.kind == "dynamic"}
 
@@ -116,7 +169,8 @@ class Tariffs:
         for row in rows:
             day = datetime.fromtimestamp(row["ts"], tz).date().isoformat()
             tariff = cache.get(day) or cache.setdefault(day, self.at(day))
-            price = tariff.import_price_ct(prices.get(int(row["ts"]) // QUARTER * QUARTER))
+            local = datetime.fromtimestamp(row["ts"], tz)
+            price = tariff.import_price_ct(prices.get(int(row["ts"]) // QUARTER * QUARTER), local.hour * 60 + local.minute)
             if price is None:  # dynamic tariff without a known exchange price: use the surcharge only
                 missing += 1
                 price = tariff.surcharge_ct
@@ -146,9 +200,8 @@ class Tariffs:
         Solar energy is valued at the feed-in pay that was given up, grid energy at the average price of the period.
         """
         tariff = self.at(datetime.fromtimestamp(start, tz).date().isoformat())
-        prices = [p for p in self.storage.prices(start - QUARTER, end).values() if p is not None]
-        exchange = sum(prices) / len(prices) if prices else None
-        grid = tariff.import_price_ct(exchange)
+        known = list(self.quarter_prices(start - QUARTER, max(end, start + 1), tz).values())
+        grid = sum(known) / len(known) if known else None
         if grid is None:  # dynamic tariff without a known exchange price
             grid = tariff.surcharge_ct
         share = min(1.0, max(0.0, solar_share))

@@ -720,10 +720,11 @@ def create_app(runtime: Runtime) -> FastAPI:
         start, end = bounds("day", date)
         day = datetime.datetime.fromtimestamp(start, runtime.tz).date().isoformat()
         tariff = runtime.tariffs.at(day)
-        prices = storage.prices(start, end)
-        entries = [{"ts": ts, "ct": round(tariff.import_price_ct(p), 2), "exchange_eur_mwh": p} for ts, p in prices.items()]
+        exchange = storage.prices(start, end)
+        prices = runtime.tariffs.quarter_prices(start, end, runtime.tz) if tariff.kind != "fixed" else {}
+        entries = [{"ts": ts, "ct": round(ct, 2), "exchange_eur_mwh": exchange.get(ts)} for ts, ct in prices.items()]
         return {"kind": tariff.kind, "feed_in_ct": tariff.feed_in_ct, "fixed_ct": tariff.price_ct if tariff.kind == "fixed" else None,
-                "entries": entries if tariff.kind == "dynamic" else []}
+                "entries": entries}
 
     @app.get("/api/export/csv")
     def export_csv(start: str = Query(..., alias="from", pattern=r"^\d{4}-\d{2}-\d{2}$"),

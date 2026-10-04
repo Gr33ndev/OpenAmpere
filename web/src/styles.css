@@ -586,3 +586,10 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .outage-summary { margin: 0 0 10px; font-weight: 600; }
 .sessions.outages li { flex-direction: column; align-items: flex-start; gap: 2px; }
 .warn-text { color: var(--coral); }
+
+/* own price windows of a time tariff (#24) */
+.time-windows { display: flex; flex-direction: column; gap: 10px; }
+.time-window { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; align-items: end;
+  padding-bottom: 10px; border-bottom: 1px solid var(--divider); }
+.time-window > * { min-width: 0; }
+.time-window .danger-link { justify-self: start; margin-bottom: 14px; }

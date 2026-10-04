@@ -173,16 +173,39 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
-type TariffForm = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: string; surcharge_ct: string;
-  vat_percent: string; feed_in_ct: string; area: "DE" | "AT"; base_fee_eur_month: string };
-type TariffData = { valid_from: string; kind: "fixed" | "dynamic"; price_ct: number; surcharge_ct: number;
-  vat_percent: number; feed_in_ct: number; area: "DE" | "AT"; base_fee_eur_month: number };
+type Window = { from: string; to: string; price_ct: number };
+type TariffForm = { valid_from: string; kind: "fixed" | "time" | "dynamic"; price_ct: string; surcharge_ct: string;
+  vat_percent: string; feed_in_ct: string; area: "DE" | "AT"; base_fee_eur_month: string; windows: Window[] };
+type TariffData = { valid_from: string; kind: "fixed" | "time" | "dynamic"; price_ct: number; surcharge_ct: number;
+  vat_percent: number; feed_in_ct: number; area: "DE" | "AT"; base_fee_eur_month: number; windows?: Window[] };
 const de = (v: number) => String(v).replace(".", ",");
 const toNumber = (v: string) => (v.trim() === "" ? Number.NaN : Number(v.replace(",", ".")));
 
+/** Own price windows, e.g. a night tariff or time-variable grid fees (§ 14a EnWG, module 3) (#24). */
+function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: Window[]) => void }) {
+  const set = (i: number, patch: Partial<Window>) => onChange(windows.map((w, j) => (j === i ? { ...w, ...patch } : w)));
+  return (
+    <div className="time-windows">
+      <p className="hint">Zeiten mit eigenem Preis, z. B. Nachtstrom von 00:30 bis 05:30 oder die Zeitfenster eines
+        zeitvariablen Netzentgelts. Ein Fenster darf über Mitternacht gehen.</p>
+      {windows.map((w, i) => (
+        <div className="time-window" key={i}>
+          <Field label="Von"><input className="input" type="time" value={w.from} onChange={(e) => set(i, { from: e.target.value })} /></Field>
+          <Field label="Bis"><input className="input" type="time" value={w.to} onChange={(e) => set(i, { to: e.target.value })} /></Field>
+          <Field label="Preis"><div className="input-unit"><input className="input" inputMode="decimal" value={de(w.price_ct)}
+            onChange={(e) => set(i, { price_ct: toNumber(e.target.value) || 0 })} /><span>ct</span></div></Field>
+          <button className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>Entfernen</button>
+        </div>
+      ))}
+      {windows.length < 6 && <button className="link" onClick={() => onChange([...windows, { from: "00:00", to: "06:00", price_ct: 20 }])}>
+        Zeitfenster hinzufügen</button>}
+    </div>
+  );
+}
+
 function PriceChart() {
   const { data } = useResource<{ kind: string; entries: { ts: number; ct: number }[] }>(`/api/prices?date=${todayIso()}`, 15 * 60_000);
-  if (!data || data.kind !== "dynamic") return null;
+  if (!data || data.kind === "fixed") return null;
   if (!data.entries.length) return <p className="hint">Noch keine Börsenpreise für heute geladen (braucht Internet).</p>;
   const x = data.entries.map((e) => e.ts);
   const cheapest = data.entries.reduce((a, b) => (b.ct < a.ct ? b : a));
@@ -203,16 +226,17 @@ export function TariffPage({ onBack }: PageProps) {
   const [forms, setForms] = useState<TariffForm[]>([]);
   const [busy, setBusy] = useState(false);
   const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
-    vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct), base_fee_eur_month: de(t.base_fee_eur_month ?? 0) });
+    vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct), base_fee_eur_month: de(t.base_fee_eur_month ?? 0),
+    windows: t.windows ?? [] });
   useEffect(() => {
     if (data) setForms(data.tariffs.map(toForm));
   }, [data]);
   const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
   const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map(toForm));
-  const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "fixed" ? t.price_ct : t.surcharge_ct]
-    .every((v) => Number.isFinite(toNumber(v))));
+  const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "dynamic" ? t.surcharge_ct : t.price_ct]
+    .every((v) => Number.isFinite(toNumber(v))) && (t.kind !== "time" || t.windows.length > 0));
   const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35", surcharge_ct: "20",
-    vat_percent: "19", feed_in_ct: "8", area: "DE", base_fee_eur_month: "0" }), valid_from: todayIso() } as TariffForm]);
+    vat_percent: "19", feed_in_ct: "8", area: "DE", base_fee_eur_month: "0", windows: [] }), valid_from: todayIso() } as TariffForm]);
 
   const save = async () => {
     setBusy(true);
@@ -242,16 +266,19 @@ export function TariffPage({ onBack }: PageProps) {
             <Field label="Art">
               <select className="input" value={t.kind} onChange={(e) => update(i, { kind: e.target.value as TariffForm["kind"] })}>
                 <option value="fixed">Festpreis</option>
+                <option value="time">Zeitvariabel (eigene Zeitfenster)</option>
                 <option value="dynamic">Dynamisch (Börsenpreis)</option>
               </select>
             </Field>
           </div>
-          {t.kind === "fixed" ? (
-            <Field label="Strompreis (brutto)" hint="Was du pro Kilowattstunde aus dem Netz bezahlst.">
+          {t.kind !== "dynamic" ? (<>
+            <Field label={t.kind === "time" ? "Preis außerhalb der Zeitfenster" : "Strompreis (brutto)"}
+              hint={t.kind === "time" ? undefined : "Was du pro Kilowattstunde aus dem Netz bezahlst."}>
               <div className="input-unit"><input className="input" inputMode="decimal" value={t.price_ct}
                 onChange={(e) => update(i, { price_ct: e.target.value })} /><span>ct/kWh</span></div>
             </Field>
-          ) : (
+            {t.kind === "time" && <TimeWindows windows={t.windows} onChange={(windows) => update(i, { windows })} />}
+          </>) : (
             <>
               <Field label="Aufschlag (brutto)" hint="Alles, was zum Börsenpreis dazukommt: Netzentgelt, Umlagen, Steuern, Marge. Steht im Vertrag oder auf der Rechnung.">
                 <div className="input-unit"><input className="input" inputMode="decimal" value={t.surcharge_ct}
@@ -1196,7 +1223,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
       <LearnMore>
         <p className="hint">OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit Zeitbegrenzung: Stoppt
           OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück. Für „Günstigste Zeit“
-          brauchst du einen dynamischen Stromtarif.</p>
+          brauchst du einen dynamischen oder zeitvariablen Stromtarif.</p>
       </LearnMore>
       <ControlModeBar compact />
       {!form && <LoadState error={error} onRetry={reload} />}
@@ -1221,7 +1248,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
             </Field>
             {form.mode === "cheapest" ? (
               <>
-                <Field label="Fertig bis" hint="Sucht die günstigsten Viertelstunden bis zu dieser Uhrzeit. Braucht einen dynamischen Tarif.">
+                <Field label="Fertig bis" hint="Sucht die günstigsten Viertelstunden bis zu dieser Uhrzeit. Braucht einen dynamischen oder zeitvariablen Tarif.">
                   <select className="input" value={form.ready_by} onChange={(e) => set({ ready_by: Number(e.target.value) })}>
                     {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
                   </select>
