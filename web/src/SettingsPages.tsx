@@ -674,10 +674,11 @@ function CloudImportCard() {
   const total = job?.days_total ?? 0;
   const done = (job?.work_done ?? 0) + (job?.soc_done ?? 0);
   const progress = total ? done / (2 * total) : 0;
+  // two steps, the percentage covers both: energy values first, then the battery's state of charge (#17)
   const phaseText = !job?.phase ? "Verbinde mit der EKD-Cloud …"
     : job.phase === "search" ? "Suche den Beginn deiner Aufzeichnungen …"
-    : job?.phase === "soc" ? `Ladestand: ${job.soc_done} von ${total} Tagen`
-    : `Energiedaten: ${job?.work_done ?? 0} von ${total} Tagen`;
+    : job?.phase === "soc" ? `Schritt 2 von 2: Ladestand des Speichers, ${job.soc_done} von ${total} Tagen`
+    : `Schritt 1 von 2: Energiewerte, ${job?.work_done ?? 0} von ${total} Tagen`;
 
   return (
     <>
@@ -720,11 +721,11 @@ function CloudImportCard() {
           <div className="import-status">
             <div className="ratio-head">
               <span>{job.status === "done" ? "Import abgeschlossen" : job.status === "paused" ? "Pausiert" : job.status === "error" ? "Abgebrochen" : phaseText}</span>
-              {total > 0 && <strong>{Math.round(progress * 100)} %</strong>}
+              {total > 0 && <strong className="nowrap">{Math.round(progress * 100)} % insgesamt</strong>}
             </div>
             {total > 0 && <div className="bar"><div className="bar-fill" style={{ width: `${progress * 100}%` }} /></div>}
             {job.start && <div className="field-hint">Zeitraum {new Date(job.start).toLocaleDateString("de-DE")} – {new Date(job.end ?? job.start).toLocaleDateString("de-DE")}
-              {job.imported ? ` · ${job.imported.toLocaleString("de-DE")} Viertelstunden übernommen` : ""}</div>}
+              {job.imported ? ` · ${job.imported.toLocaleString("de-DE")} Viertelstunden Energiewerte übernommen` : ""}</div>}
             {job.status === "running" && job.eta_seconds ? <div className="field-hint">Noch ca. {duration(job.eta_seconds)}</div> : null}
           </div>
         )}
@@ -738,6 +739,7 @@ function CloudImportCard() {
             {job?.status === "paused" ? "Fortsetzen" : job?.status === "error" ? "Erneut versuchen" : job?.status === "done" ? "Erneut abgleichen" : "Import starten"}
           </Button>
         )}
+        {job && !job.key_set && <p className="field-hint">Zum Starten zuerst den API-Schlüssel speichern.</p>}
         <p className="hint">
           Die EKD-Cloud erlaubt nur etwa eine Abfrage pro Minute, deshalb dauert der Import einige Stunden (rund 2 Minuten pro Tag).
           Er läuft im Hintergrund weiter – auch wenn du die App schließt oder OpenAmpere neu startest.
