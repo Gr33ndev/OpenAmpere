@@ -41,6 +41,7 @@ def test_battery_health(tmp_path):
     assert extremes["cell_max"]["value"] == 31.0 and extremes["spread"]["value"] == 3.5
     assert extremes["inverter"]["value"] == 58.0 and extremes["cell_min"]["value"] == 22.0
     assert result["warning"] is None
+    assert result["days"] == 1  # recorded for two hours: not "30 days" yet (#20)
     assert health.battery(storage, None, 0)["cycles"] is None
 
 

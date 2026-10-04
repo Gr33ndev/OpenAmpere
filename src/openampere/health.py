@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 
 from .drivers.base import Snapshot
@@ -10,6 +11,13 @@ from .storage import Storage
 
 WINDOW_DAYS = 30  # raw readings (with the temperatures) are kept about this long by default
 MIN_EFFICIENCY_KWH = 50  # the counters need some throughput before the ratio means anything
+
+
+def recorded_days(storage: Storage, now: float) -> int:
+    first = storage.first_sample_ts()
+    if first is None:
+        return 0
+    return max(1, min(WINDOW_DAYS, math.ceil((now - first) / 86400)))
 
 
 def battery(storage: Storage, snap: Snapshot | None, capacity_kwh: float, now: float | None = None) -> dict:
@@ -31,7 +39,8 @@ def battery(storage: Storage, snap: Snapshot | None, capacity_kwh: float, now: f
         "soh_pct": snap.battery_soh if snap else None,
         "cell_max_now_c": temps.get("battery_cell_max"), "cell_min_now_c": temps.get("battery_cell_min"),
         "spread_now_c": spread_now,
-        "days": WINDOW_DAYS,
+        # the window shrinks to what is recorded so far (e.g. 1 day after installing)
+        "days": recorded_days(storage, now),
         "extremes": storage.temperature_extremes(now - WINDOW_DAYS * 86400, now),
         "warning": battery_problem(temps),
     }

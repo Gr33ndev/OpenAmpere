@@ -80,7 +80,9 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
                 device = None
         results.append({"host": host, "port": port, "model": device.model if device else None,
                         "manufacturer": device.manufacturer if device else None,
-                        "driver": device.driver if device else None, "unit": device.unit if device else None})
+                        "driver": device.driver if device else None, "unit": device.unit if device else None,
+                        # the same inverter answers twice when a Modbus proxy or data logger forwards it
+                        "serial": device.serial if device else None})
     return results
 
 

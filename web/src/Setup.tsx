@@ -9,7 +9,8 @@ type Device = { manufacturer: string; model: string; serial: string | null; firm
   driver: string; unit: number | null; supports_control: boolean };
 type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
   sample?: { pv_power: number | null; battery_soc: number | null } | null };
-type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null };
+type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
+  serial?: string | null };
 type DriverOption = { key: string; label: string };
 
 /** Find / enter the inverter address, detect the device type, test and save.
@@ -105,12 +106,17 @@ export function ConnectionForm({ initial, onSaved, saveLabel = "Speichern", lock
                 <InverterIcon size={36} />
                 <span>
                   <strong>{d.model ? `${d.manufacturer ?? ""} ${d.model}`.trim() : "Unbekanntes Modbus-Gerät"}</strong>
-                  <span className="meta">{d.host}</span>
+                  <span className="meta">{d.host}{d.serial ? ` · Seriennr. …${d.serial.slice(-4)}` : ""}</span>
                 </span>
               </button>
             ))}
           </div>
         ))}
+        {found && found.some((d, i) => d.serial && found.findIndex((x) => x.serial === d.serial) !== i) && (
+          <p className="hint">Zwei Treffer haben dieselbe Seriennummer: Einer davon ist vermutlich ein Modbus-Proxy oder
+            Datenlogger, der den Wechselrichter weiterreicht. Beide funktionieren. Über einen Proxy können auch andere
+            Programme gleichzeitig lesen.</p>
+        )}
       </div>
 
       <div className="card form">

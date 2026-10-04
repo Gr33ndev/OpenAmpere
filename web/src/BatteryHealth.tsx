@@ -59,7 +59,7 @@ export function BatteryHealthCard() {
         <dt>Wirkungsgrad</dt><dd>{data.efficiency_pct != null ? `${num(data.efficiency_pct, 0)} %` : "–"}</dd>
         {data.cell_max_now_c != null && <><dt>Zellen jetzt</dt>
           <dd>{num(data.cell_min_now_c, 1)} bis {deg(data.cell_max_now_c)}</dd></>}
-        {x.cell_max && <><dt>Wärmste Zelle ({data.days} Tage)</dt><dd>{deg(x.cell_max.value)} · {when(x.cell_max.ts)}</dd></>}
+        {x.cell_max && <><dt>Wärmste Zelle ({data.days <= 1 ? "bisher" : `${data.days} Tage`})</dt><dd>{deg(x.cell_max.value)} · {when(x.cell_max.ts)}</dd></>}
         {x.spread && <><dt>Größter Unterschied</dt><dd>{deg(x.spread.value)} · {when(x.spread.ts)}</dd></>}
         {x.inverter && <><dt>Wechselrichter max.</dt><dd>{deg(x.inverter.value)} · {when(x.inverter.ts)}</dd></>}
       </dl>
@@ -81,7 +81,7 @@ export function FirmwareFacts({ firmware }: { firmware: Status["firmware"] }) {
   if (!firmware?.since && !history.length) return null;
   return (
     <>
-      {firmware?.since && <p className="hint">Diese Firmware meldet der Wechselrichter seit {new Date(firmware.since * 1000)
+      {firmware?.since && history.length > 0 && <p className="hint">Diese Firmware meldet der Wechselrichter seit {new Date(firmware.since * 1000)
         .toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: timeZone() })}.</p>}
       {history.length > 0 && (
         <details className="advanced">

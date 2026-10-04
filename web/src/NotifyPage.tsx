@@ -25,6 +25,9 @@ function randomTopic(): string {
 
 export function NotifyPage({ onBack }: PageProps) {
   const { data, error, reload, setData } = useResource<Settings>("/api/settings");
+  // the cheapest-hour message needs exchange prices, i.e. a dynamic tariff
+  const { data: tariffs } = useResource<{ tariffs: { kind: string }[] }>("/api/tariffs");
+  const dynamic = !!tariffs?.tariffs.some((t) => t.kind === "dynamic");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,7 +85,8 @@ export function NotifyPage({ onBack }: PageProps) {
           <div className="section-title">Wann benachrichtigen?</div>
           <div className="card form">
             {EVENTS.map((e) => (
-              <SwitchRow key={e.key} label={e.label} hint={e.hint} checked={values[e.key]} disabled={locked(e.key)}
+              <SwitchRow key={e.key} label={e.label} hint={e.hint} checked={values[e.key] && !(e.key === "notify.on_cheap_power" && !dynamic)}
+                disabled={locked(e.key) || (e.key === "notify.on_cheap_power" && !dynamic)}
                 onChange={(v) => void save({ [e.key]: v })} />
             ))}
           </div>
