@@ -552,3 +552,8 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 /* report and configuration as selectable text (copying falls back to selecting by hand) */
 .report-text { width: 100%; min-height: 220px; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px; line-height: 1.45; white-space: pre; resize: vertical; }
+
+/* iPhone home-screen app: the page reaches under the status bar (viewport-fit=cover). Without a backdrop,
+   scrolled content runs under the clock and battery icons (#14). Banners and dialogs stay above it. */
+.status-bar-backdrop { position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 9;
+  background: var(--bg); pointer-events: none; }

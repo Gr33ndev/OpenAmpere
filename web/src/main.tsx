@@ -85,6 +85,7 @@ function App() {
 
   return (
     <div className="app">
+      <div className="status-bar-backdrop" aria-hidden="true" />
       {DEMO && !SCREENSHOT && (
         <div className="demo-banner" role="note">
           <span><strong>Demo</strong> mit erfundenen Werten</span>
