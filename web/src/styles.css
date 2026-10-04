@@ -548,6 +548,8 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .billing-headline { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
 .billing-headline.good { color: var(--accent-text); }
 .billing-headline.bad { color: var(--coral); }
+.billing-sum dd { white-space: nowrap; }
+.billing-sum .sum { font-weight: 700; border-top: 1px solid var(--divider); padding-top: 8px; }
 
 /* report and configuration as selectable text (copying falls back to selecting by hand) */
 .report-text { width: 100%; min-height: 220px; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
