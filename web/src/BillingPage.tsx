@@ -103,16 +103,22 @@ function YearCard({ kind, year }: { kind: Kind; year: BillingYear }) {
         <span className="key-label">Voraussichtlich bei der Abrechnung</span>
         <strong className={`billing-headline ${Math.abs(end) < 5 ? "" : back ? "good" : "bad"}`}>{headline}</strong>
       </div>
-      <dl className="facts">
-        <dt>{kind === "import" ? "Bisher verbraucht" : "Bisher eingespeist"}</dt>
-        <dd>{num(year.so_far_kwh, 0)} kWh · {euro(year.so_far_eur)}</dd>
-        <dt>Abschläge bisher</dt><dd>{euro(year.paid_eur)} ({year.months_paid} {year.months_paid === 1 ? "Monat" : "Monate"})</dd>
-        <dt>Stand heute</dt>
-        <dd>{year.balance_now_eur >= 0 ? `${euro(year.balance_now_eur)} im Plus` : `${euro(-year.balance_now_eur)} im Minus`}</dd>
-        <dt>Hochrechnung Jahr</dt><dd>{num(year.projected_kwh, 0)} kWh · {euro(year.projected_eur)}</dd>
-        <dt>Abschläge im Jahr</dt><dd>{euro(year.yearly_payments_eur)}</dd>
-        <dt>Passender Abschlag</dt><dd>etwa {euro(year.fitting_payment_eur)} pro Monat</dd>
+      {/* one balance only: how the forecast comes about (#37) */}
+      <dl className="facts billing-sum">
+        {kind === "import" ? <>
+          <dt>Abschläge im Jahr</dt><dd>{euro(year.yearly_payments_eur)}</dd>
+          <dt>Kosten laut Hochrechnung ({num(year.projected_kwh, 0)} kWh)</dt><dd>− {euro(year.projected_eur)}</dd>
+        </> : <>
+          <dt>Vergütung laut Hochrechnung ({num(year.projected_kwh, 0)} kWh)</dt><dd>{euro(year.projected_eur)}</dd>
+          <dt>Abschläge im Jahr</dt><dd>− {euro(year.yearly_payments_eur)}</dd>
+        </>}
+        <dt className="sum">{end >= 0 ? (kind === "import" ? "Guthaben" : "Nachzahlung an dich") : (kind === "import" ? "Nachzahlung" : "Zu viel ausgezahlt")}</dt>
+        <dd className="sum">{euro(Math.abs(end))}</dd>
+        <dt>Passender Abschlag</dt><dd>{num(year.fitting_payment_eur, 0)}&nbsp;€ im Monat</dd>
       </dl>
+      <p className="hint">Bisher {kind === "import" ? "verbraucht" : "eingespeist"}: {num(year.so_far_kwh, 0)} kWh
+        für {euro(year.so_far_eur)}, {kind === "import" ? "gezahlt" : "ausgezahlt"} wurden {euro(year.paid_eur)} in {year.months_paid}
+        {" "}{year.months_paid === 1 ? "Monat" : "Monaten"}.</p>
       <p className="hint">
         {year.method === "last_year" ? "Die restlichen Monate sind mit deinen Werten aus dem Vorjahr gerechnet. "
           : "Die restlichen Monate sind nach dem typischen Jahresverlauf geschätzt, ab nächstem Jahr mit deinen eigenen Werten. "}
