@@ -182,6 +182,39 @@ export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger,
 
 /** Small transient message at the bottom ("snackbar"). */
 let pushToast: ((text: string, kind?: "ok" | "error") => void) | null = null;
+/**
+ * Copies text to the clipboard. The Clipboard API exists only on HTTPS, but OpenAmpere runs on plain HTTP in the
+ * home network: then a selected, invisible text field and execCommand do it (also on the iPhone). Call it
+ * directly from a tap, the browser allows copying only right after a user action.
+ */
+export async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      /* fall back below */
+    }
+  }
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  // in view and 16 px, otherwise iOS scrolls or zooms; invisible anyway
+  Object.assign(field.style, { position: "fixed", top: "0", left: "0", opacity: "0", fontSize: "16px" });
+  document.body.appendChild(field);
+  field.focus();
+  field.select();
+  field.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  field.remove();
+  return ok;
+}
+
 export function toast(text: string, kind: "ok" | "error" = "ok") {
   pushToast?.(text, kind);
 }

@@ -3,7 +3,7 @@ import type { Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import { num, timeZone } from "./format";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
+import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
 
 export type EvccLoadpoint = {
   id: number; title: string; heating: boolean; mode: "off" | "pv" | "minpv" | "now" | null; connected: boolean;
@@ -209,12 +209,13 @@ export function WallboxPage({ onBack }: PageProps) {
       setBusy(false);
     }
   };
+  const [showYaml, setShowYaml] = useState(false);
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(siteYaml(origin));
+    if (await copyText(siteYaml(origin))) {
       toast("Konfiguration kopiert");
-    } catch {
-      toast("Kopieren nicht möglich. Bitte den Text markieren.", "error");
+    } else {
+      setShowYaml(true);
+      toast("Kopieren hat nicht geklappt. Bitte die Konfiguration unten markieren und kopieren.", "error");
     }
   };
   const cars = view?.state?.loadpoints ?? [];
@@ -238,7 +239,7 @@ export function WallboxPage({ onBack }: PageProps) {
           <p className="hint">Dann braucht evcc keine eigene Verbindung zum Wechselrichter, der nur wenige erlaubt. Kopiere die
             Zähler-Konfiguration und füge sie in evcc ein (evcc.yaml oder „benutzerdefiniertes Gerät“).</p>
           <Button variant="secondary" onClick={() => void copy()}>Konfiguration kopieren</Button>
-          <details className="advanced">
+          <details className="advanced" open={showYaml} onToggle={(e) => setShowYaml(e.currentTarget.open)}>
             <summary>Konfiguration ansehen</summary>
             <pre className="code-block">{siteYaml(origin)}</pre>
           </details>
