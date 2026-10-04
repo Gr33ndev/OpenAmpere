@@ -95,7 +95,7 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
               onChange={(e) => set({ min_off_min: num(e.target.value) })} /><span>min</span></div></Field>
           </div>
         )}
-        <Field label="Auch mit günstigem Netzstrom" hint="Nur mit dynamischem Tarif. Leer lassen für nur Sonnenstrom.">
+        <Field label="Auch mit günstigem Netzstrom" hint="Nur mit dynamischem oder zeitvariablem Tarif. Leer lassen für nur Sonnenstrom.">
           <div className="input-unit"><input className="input" inputMode="decimal"
             value={c.price_limit_ct == null ? "" : String(c.price_limit_ct).replace(".", ",")}
             onChange={(e) => set({ price_limit_ct: e.target.value.trim() === "" ? null : num(e.target.value) })} /><span>ct/kWh</span></div>

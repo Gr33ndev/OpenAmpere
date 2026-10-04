@@ -63,3 +63,25 @@ def test_tariff_validation():
         validate([{"valid_from": "2026-01-01"}, {"valid_from": "2026-01-01"}])
     assert [t.valid_from for t in validate([{"valid_from": "2026-05-01"}, {"valid_from": "2025-01-01"}])] == \
         ["2025-01-01", "2026-05-01"]
+
+
+def test_time_tariff_windows(tmp_path):
+    """Own time windows (night tariff, time-variable grid fees), also across midnight (#24)."""
+    storage = Storage(tmp_path / "t.db")
+    t = Tariffs(storage, lambda: (35.0, 8.0))
+    t.save([{"valid_from": "2026-01-01", "kind": "time", "price_ct": 32, "feed_in_ct": 8,
+             "windows": [{"from": "23:00", "to": "5:30", "price_ct": 12}, {"from": "17:00", "to": "20:00", "price_ct": 41}]}])
+    tariff = t.all()[0]
+    assert tariff.windows[0] == {"from": "23:00", "to": "05:30", "price_ct": 12.0}
+    at = lambda h, m=0: t.price_at(datetime(2026, 6, 1, h, m, tzinfo=TZ).timestamp(), TZ)  # noqa: E731
+    assert (at(23, 15), at(2), at(5, 15), at(5, 30), at(12), at(18)) == (12, 12, 12, 32, 32, 41)
+    day = datetime(2026, 6, 1, tzinfo=TZ).timestamp()
+    assert len(t.quarter_prices(day, day + 86400, TZ)) == 96  # every quarter is known
+    # money: a night quarter costs the night price
+    storage.import_energy([row(int(datetime(2026, 6, 1, 2, 0, tzinfo=TZ).timestamp()), load=1000, grid_import=1000,
+                               grid_export=0)], "local")
+    assert t.money(day, day + 86400, TZ)["grid_cost_eur"] == 0.12
+    with pytest.raises(ValueError, match="Zeitfenster"):
+        t.save([{"valid_from": "2026-01-01", "kind": "time", "price_ct": 32, "windows": []}])
+    with pytest.raises(ValueError):
+        t.save([{"valid_from": "2026-01-01", "kind": "time", "price_ct": 32, "windows": [{"from": "25:00", "to": "1:00", "price_ct": 5}]}])

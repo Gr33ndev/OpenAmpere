@@ -124,10 +124,10 @@ class GridCharging:
             return {"quarters": quarters, "reason": reason, "needed_wh": round(needed_wh)}
         deadline = self._deadline(now, s.ready_by)
         tariff = self.runtime.tariffs.at(datetime.fromtimestamp(now, self.runtime.tz).date().isoformat())
-        if tariff.kind != "dynamic":
-            return {"quarters": [], "reason": "Braucht einen dynamischen Stromtarif (Mehr → Stromtarif)"}
-        prices = self.runtime.storage.prices(quarter, deadline)
-        candidates = [(tariff.import_price_ct(p), ts) for ts, p in prices.items()]
+        if tariff.kind == "fixed":
+            return {"quarters": [], "reason": "Braucht einen dynamischen oder zeitvariablen Stromtarif (Mehr → Stromtarif)"}
+        prices = self.runtime.tariffs.quarter_prices(quarter, deadline, self.runtime.tz)
+        candidates = [(p, ts) for ts, p in prices.items()]
         if s.max_price_ct is not None:
             candidates = [c for c in candidates if c[0] <= s.max_price_ct]
         if not candidates:

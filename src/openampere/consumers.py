@@ -22,7 +22,6 @@ from datetime import datetime
 
 from .drivers.mypv import MyPvHeatingRod
 from .runtime import Runtime
-from .storage import QUARTER
 
 log = logging.getLogger(__name__)
 
@@ -307,11 +306,9 @@ class SurplusControl:
     def _price_now(self, now: float) -> float | None:
         tariffs = self.runtime.tariffs
         tariff = tariffs.at(datetime.fromtimestamp(now, self.runtime.tz).date().isoformat())
-        if tariff.kind != "dynamic":
+        if tariff.kind == "fixed":
             return None
-        quarter = int(now // QUARTER * QUARTER)
-        price = self.runtime.storage.prices(quarter, quarter + QUARTER).get(quarter)
-        return tariff.import_price_ct(price) if price is not None else None
+        return tariffs.price_at(now, self.runtime.tz)
 
     def _wallbox_reserve(self) -> float:
         """Room for a waiting car when the wallbox comes first (evcc needs its minimum power to start)."""
