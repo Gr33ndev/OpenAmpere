@@ -1,14 +1,28 @@
-"""Netze BW (Baden-Württemberg): daily values of the smart meters from the customer portal meine.netze-bw.de.
+"""Netze BW (Baden-Württemberg): smart-meter values from the customer portal meine.netze-bw.de.
 
-There is no documented API. The portal's web app reads JSON from its own backend (a "backend for frontend" behind
-/bff), after a login through Auth0 with e-mail and password. The endpoints and the login flow follow the MIT-licensed
-Home Assistant integration https://github.com/cygnusb/ha-netze-bw (facts only, no code taken over).
+There is no documented API. The portal's web app reads its data from its own backend (a "backend for frontend" behind
+/bff), after a login through Auth0 with e-mail and password. The login flow and the list of installations follow the
+MIT-licensed Home Assistant integration https://github.com/cygnusb/ha-netze-bw, the CSV download of the quarter-hour
+values follows a working importer a user shared in #67 (facts only, no code taken over from either).
+
+What real accounts showed (#67):
+  - grid power (1.8.0) and feed-in (2.8.0) of one smart meter are two installations with their own ids and the same
+    meter number
+  - the portal session can still be valid (/bff/auth/user 200) while the meter values answer 401: then the session is
+    dropped and the login done from scratch
+  - values exist only since the smart meter was installed, and a day is published hours after it ended (the overview
+    shows 0 kWh meanwhile). A day counts only when all its quarter hours are there; a missing value is unknown, not 0.
+  - CSV: ";" separated, "Datum" (dd.mm.yyyy) and "Uhrzeit" (hh:mm) in German time, the first row is the meter reading at
+    the start, every further row the energy (kWh, decimal comma) of the quarter hour that ends at its time
 """
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import logging
+import time as clock
 from datetime import date, datetime, time, timedelta, timezone
 from html.parser import HTMLParser
 from http.cookiejar import CookieJar
@@ -28,7 +42,17 @@ AUTH0_CLIENT = "eyJuYW1lIjoibG9jay5qcy11bHAiLCJ2ZXJzaW9uIjoiMTEuMTcuMyIsImVudiI6
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 PORTAL_TZ = ZoneInfo("Europe/Berlin")
 VALUE_TYPES = {"import": "CONSUMPTION", "export": "FEEDIN"}
-CHUNK_DAYS = 90  # daily values per request
+ENERGY_COLUMN = {"import": "verbrauch", "export": "einspeisung"}
+DIRECTION = {"import": "Bezug", "export": "Einspeisung"}
+CHUNK_DAYS = 7  # quarter hours of a week per request
+PAUSE_S = 0.3  # between requests while catching up, to go easy on the portal
+QUARTER = timedelta(minutes=15)
+
+
+class _HttpError(ProviderError):
+    def __init__(self, message: str, status: int) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class _Form(HTMLParser):
@@ -61,9 +85,12 @@ class NetzeBw(Provider):
     region = "Baden-Württemberg"
 
     def __init__(self, username: str, password: str, base_url: str = BASE_URL, auth_url: str = AUTH_URL,
-                 timeout: float = 30) -> None:
+                 timeout: float = 30, pause_s: float = PAUSE_S) -> None:
         super().__init__(username, password)
-        self.base_url, self.auth_url, self.timeout = base_url, auth_url, timeout
+        self.base_url, self.auth_url, self.timeout, self.pause_s = base_url, auth_url, timeout, pause_s
+        self._new_session()
+
+    def _new_session(self) -> None:
         self.cookies = CookieJar()
         self.opener = build_opener(HTTPCookieProcessor(self.cookies))
         self.logged_in = False
@@ -80,20 +107,28 @@ class NetzeBw(Provider):
         except (URLError, TimeoutError, OSError) as err:
             raise ProviderError("Das Kundenportal von Netze BW ist gerade nicht erreichbar.") from err
 
-    def _json(self, path: str, params: dict | None = None, retry: bool = True):
+    def _get(self, path: str, params: dict | None, step: str, accept: str, retry: bool = True) -> bytes:
         if not self.logged_in:
             self.login()
         url = self.base_url + path + (f"?{urlencode(params)}" if params else "")
-        status, _, body = self._open(url, headers={"x-csrf": "1", "Accept": "application/json"})
-        if status == 401 and retry:  # session expired
-            self.logged_in = False
-            return self._json(path, params, retry=False)
+        status, _, body = self._open(url, headers={"x-csrf": "1", "Accept": accept})
+        if status in (401, 403):
+            log.info("Netze BW %s: HTTP %s%s", step, status, ", logging in again" if retry else "")
+            if retry:  # the portal session may still be valid while this service is not: start from scratch
+                self._new_session()
+                return self._get(path, params, step, accept, retry=False)
+            raise ProviderError(f"Netze BW gibt die {step} trotz Anmeldung nicht frei (Fehler {status}). "
+                                "OpenAmpere versucht es später nochmal.")
         if status >= 400:
-            raise ProviderError(f"Das Kundenportal von Netze BW antwortet mit Fehler {status}.")
+            log.info("Netze BW %s: HTTP %s", step, status)
+            raise _HttpError(f"Netze BW, {step}: Fehler {status}.", status)
+        return body
+
+    def _json(self, path: str, params: dict | None, step: str):
         try:
-            return json.loads(body)
+            return json.loads(self._get(path, params, step, "application/json"))
         except ValueError as err:
-            raise ProviderError("Unerwartete Antwort vom Kundenportal von Netze BW.") from err
+            raise ProviderError(f"Netze BW, {step}: unerwartete Antwort.") from err
 
     # ---- login ---------------------------------------------------------------
 
@@ -126,6 +161,7 @@ class NetzeBw(Provider):
                      "Origin": self.auth_url, "Referer": url})
         form = _Form(answer.decode("utf-8", "replace"))
         if not form.action or "wresult" not in form.hidden:
+            log.info("Netze BW login: HTTP %s without the expected form", status)
             if status >= 500:
                 raise ProviderError(f"Die Anmeldung bei Netze BW ist gerade gestört (Fehler {status}).")
             if status in (400, 401, 403):
@@ -138,50 +174,143 @@ class NetzeBw(Provider):
                             "Referer": answer_url})
         status, _, _ = self._open(f"{self.base_url}/bff/auth/user", headers={"x-csrf": "1"})
         if status != 200:
-            raise ProviderAuthError("Die Anmeldung bei Netze BW hat nicht geklappt.")
+            log.info("Netze BW login: session check HTTP %s", status)
+            raise ProviderAuthError(f"Die Anmeldung bei Netze BW hat nicht geklappt (Fehler {status}).")
         self.logged_in = True
         log.info("logged in to the Netze BW portal")
 
     # ---- data ----------------------------------------------------------------
 
     def meters(self) -> list[Meter]:
-        data = self._json("/bff/api/kuposervice/v1/portal/installations")
-        found: dict[str, tuple[str, Meter]] = {}
+        data = self._json("/bff/api/kuposervice/v1/portal/installations", None, "Zählerliste")
+        # one entry per physical meter and direction; the same pair may show up in several installations
+        chosen: dict[tuple[str, str], dict] = {}
         for item in data.get("installations") or []:
             state = item.get("state")
             state = state.get("code") if isinstance(state, dict) else state
             if item.get("type") != "IMS" or state != "Active" or not isinstance(item.get("id"), str):
-                continue  # only active smart meters ("intelligentes Messsystem") have daily values
-            kinds = [kind for kind, value_type in VALUE_TYPES.items() if value_type in (item.get("valueTypes") or [])]
-            if not kinds:
-                continue
-            physical = item.get("meterId") or item["id"]  # one meter may show up in several installations
-            if physical in found and found[physical][0] < item["id"]:
-                continue
-            found[physical] = (item["id"], Meter(id=item["id"], name=item.get("friendlyName") or item.get("meterId")
-                                                 or "Zähler", kinds=kinds))
-        return sorted((m for _, m in found.values()), key=lambda m: m.name)
+                continue  # only active smart meters ("intelligentes Messsystem") have quarter-hour values
+            for kind, value_type in VALUE_TYPES.items():
+                if value_type in (item.get("valueTypes") or []):
+                    key = (item.get("meterId") or item["id"], kind)
+                    if key not in chosen or item["id"] < chosen[key]["id"]:
+                        chosen[key] = item
+        meters: dict[str, Meter] = {}
+        for (_, kind), item in sorted(chosen.items(), key=lambda entry: entry[1]["id"]):
+            meter = meters.setdefault(item["id"], Meter(id=item["id"], name=item.get("friendlyName") or item.get("meterId")
+                                                        or "Smart Meter", kinds=[]))
+            meter.kinds.append(kind)
+        for meter in meters.values():
+            if len(meter.kinds) == 1:  # grid power and feed-in as separate entries: say which one it is
+                meter.name = f"{meter.name} · {DIRECTION[meter.kinds[0]]}"
+        return sorted(meters.values(), key=lambda m: (m.name, m.id))
 
     def daily(self, meter: Meter, kind: str, first: date, last: date) -> dict[str, float]:
+        """Complete days only, newest first in weekly steps until there are no values (before the smart meter)."""
         result: dict[str, float] = {}
-        chunk = first
-        while chunk < last:
-            end = min(last, chunk + timedelta(days=CHUNK_DAYS))
-            data = self._json(f"/bff/api/imsservice/v1/meters/{quote(meter.id, safe='')}/measurements", {
-                "valueType": VALUE_TYPES[kind], "startDate": _utc(chunk), "endDate": _utc(end), "filter": "1DAY"})
-            for item in data.get("measurements") or []:
-                value, when = item.get("value"), item.get("startDatetime") or item.get("date")
-                if value is None or not when:
-                    continue
-                moment = datetime.fromisoformat(str(when).replace("Z", "+00:00"))
-                day = (moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)).astimezone(PORTAL_TZ).date()
-                if first <= day < last:
-                    factor = 0.001 if str(item.get("unit") or "").lower() == "wh" else 1.0
-                    result[day.isoformat()] = result.get(day.isoformat(), 0.0) + float(value) * factor
-            chunk = end
+        empty = 0
+        end = last
+        while end > first:
+            start = max(first, end - timedelta(days=CHUNK_DAYS))
+            if result and self.pause_s:
+                clock.sleep(self.pause_s)
+            try:
+                days = self._complete_days(meter, kind, start, end)
+            except _HttpError as err:
+                if err.status not in (400, 404, 422):
+                    raise
+                days = {}  # the portal refuses a time before the smart meter existed
+            if not days:
+                empty += 1
+                if result or empty >= 2:
+                    break  # nothing older: the smart meter was installed after this week
+            result.update(days)
+            end = start
+        return result
+
+    def _complete_days(self, meter: Meter, kind: str, first: date, last: date) -> dict[str, float]:
+        start, end = _local_midnight(first), _local_midnight(last)
+        body = self._get(f"/bff/api/imsservice/v1/meters/{quote(meter.id, safe='')}/measurements/download",
+                         {"startDate": _utc(start), "endDate": _utc(end)}, "Messwerte", "text/csv,*/*")
+        quarters = parse_csv(_decode(body), kind)
+        result = {}
+        day = first
+        while day < last:
+            begin, finish = _local_midnight(day), _local_midnight(day + timedelta(days=1))
+            expected = int((finish - begin).total_seconds() // 900)  # 92, 96 or 100 with the clock change
+            values = [kwh for ts, kwh in quarters.items() if begin <= ts < finish]
+            if len(values) == expected:
+                result[day.isoformat()] = round(sum(values), 4)
+            day += timedelta(days=1)
         return result
 
 
-def _utc(day: date) -> str:
-    return datetime.combine(day, time.min, PORTAL_TZ).astimezone(timezone.utc).isoformat(timespec="milliseconds") \
-        .replace("+00:00", "Z")
+def parse_csv(text: str, kind: str) -> dict[datetime, float]:
+    """kWh per quarter hour (key: its start, UTC) from the portal's CSV download."""
+    reader = csv.DictReader(io.StringIO(text), delimiter=";")
+    if not reader.fieldnames:
+        return {}  # nothing published for this time
+    fields = {n.strip().lower(): n for n in reader.fieldnames or [] if n}
+    if "datum" not in fields or "uhrzeit" not in fields:
+        raise ProviderError("Netze BW, Messwerte: die Datei hat ein unbekanntes Format. Bitte ein Issue öffnen.")
+    energy = [orig for low, orig in fields.items() if low not in ("datum", "uhrzeit") and "zaehlerstand" not in low
+              and "zählerstand" not in low and "status" not in low]
+    energy = [n for n in energy if n.lower().startswith(ENERGY_COLUMN[kind])] or energy
+    if not energy:
+        raise ProviderError("Netze BW, Messwerte: keine Spalte mit Energiewerten gefunden. Bitte ein Issue öffnen.")
+    column = energy[0]
+    factor = 0.001 if "(wh)" in column.lower() or "[wh]" in column.lower() else 1.0
+
+    result: dict[datetime, float] = {}
+    previous: datetime | None = None
+    for row in reader:
+        try:
+            local = datetime.strptime(f"{row[fields['datum']].strip()} {row[fields['uhrzeit']].strip()}", "%d.%m.%Y %H:%M")
+        except (ValueError, AttributeError):
+            continue
+        moment = _to_utc(local, previous)
+        value = _number(row.get(column))
+        # the first row is the reading at the start, every later row the energy of the quarter hour up to its time
+        if previous is not None and value is not None and moment - previous == QUARTER:
+            result[previous] = value * factor
+        previous = moment
+    return result
+
+
+def _to_utc(local: datetime, previous: datetime | None) -> datetime:
+    """German wall time to UTC; in the hour that repeats when the clock goes back, the one after the previous row."""
+    options = sorted({local.replace(tzinfo=PORTAL_TZ, fold=f).astimezone(timezone.utc) for f in (0, 1)})
+    if previous is not None:
+        later = [o for o in options if o > previous]
+        if later:
+            return later[0]
+    return options[0]
+
+
+def _number(value) -> float | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _decode(body: bytes) -> str:
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            return body.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return body.decode("utf-8", "replace")
+
+
+def _local_midnight(day: date) -> datetime:
+    return datetime.combine(day, time.min, PORTAL_TZ).astimezone(timezone.utc)
+
+
+def _utc(moment: datetime) -> str:
+    return moment.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")

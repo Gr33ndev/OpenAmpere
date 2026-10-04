@@ -37,7 +37,7 @@ export function GridMeterPage({ onBack }: PageProps) {
     const result = await postJson<GridMeterView>("/api/gridmeter/sync", {});
     setView(result);
     if (result.error) toast(result.error, "error");
-    else if (result.until) toast(`Zählerwerte bis ${dayLabel(result.until)} abgerufen`);
+    else if (result.until) toast(`Zählerwerte vollständig bis ${dayLabel(result.until)}`);
   };
 
   const submit = async () => {
@@ -70,7 +70,7 @@ export function GridMeterPage({ onBack }: PageProps) {
       {(!settings || !view) && <LoadState error={error} onRetry={reload} />}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
       {view?.configured && !view.error && view.until && (
-        <Notice kind="ok">Zählerwerte bis {dayLabel(view.until)}{view.synced ? ` · abgerufen ${updatedLabel(view.synced).replace(/^(Heute|Gestern)/, (w) => w.toLowerCase())}` : ""}</Notice>
+        <Notice kind="ok">Zählerwerte vollständig bis {dayLabel(view.until)}{view.synced ? ` · abgerufen ${updatedLabel(view.synced).replace(/^(Heute|Gestern)/, (w) => w.toLowerCase())}` : ""}</Notice>
       )}
 
       {settings && view && (
@@ -111,16 +111,16 @@ export function GridMeterPage({ onBack }: PageProps) {
               <li key={m.id}>
                 {view.meters.length > 1
                   ? <Checkbox checked={view.active.includes(m.id)} onChange={(on) => toggleMeter(m.id, on)}>
-                      <strong>{m.name}</strong> <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span></Checkbox>
-                  : <span><strong>{m.name}</strong> <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span></span>}
+                      <strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span>}</Checkbox>
+                  : <span><strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span>}</span>}
               </li>
             ))}
           </ul>
         </div>
       </>}
 
-      <p className="hint">Die Werte kommen beim Netzbetreiber etwa einen Tag später an. OpenAmpere fragt alle sechs Stunden
-        nach und rechnet die letzten Tage mit den Werten des Wechselrichters.</p>
+      <p className="hint">Der Netzbetreiber stellt einen Tag oft erst am Nachmittag danach bereit. OpenAmpere fragt alle drei
+        Stunden nach und übernimmt nur vollständige Tage. Bis dahin zählen die Werte des Wechselrichters.</p>
       <p className="hint">Dein Netzbetreiber fehlt? <a href={MISSING_URL} target="_blank" rel="noreferrer">Wünsch ihn dir
         auf GitHub</a>. Jeder Netzbetreiber hat ein eigenes Kundenportal, daher kommt einer nach dem anderen dazu.</p>
     </SubPage>

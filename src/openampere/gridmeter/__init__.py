@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 PROVIDERS: dict[str, type[Provider]] = {p.key: p for p in (NetzeBw,)}
-SYNC_EVERY_S = 6 * 3600
+SYNC_EVERY_S = 3 * 3600  # operators publish the day before at no fixed time
 RETRY_AFTER_ERROR_S = 3600
 BACKFILL_DAYS = 400  # the running billing year and a bit of the one before
 RECHECK_DAYS = 7  # the operator may still correct recent days
@@ -96,7 +96,8 @@ class GridMeter:
                 if last:
                     first = max(first, date.fromisoformat(last) - timedelta(days=RECHECK_DAYS))
                 days = provider.daily(meter, kind, first, today + timedelta(days=1))
-                self.runtime.storage.save_meter_days(stored, kind, days)
+                # the answer counts for the whole range: a day stored before but incomplete now is unknown again
+                self.runtime.storage.replace_meter_days(stored, kind, first.isoformat(), days)
 
     async def sync(self, force: bool = False, now: float | None = None) -> None:
         now = time.time() if now is None else now
