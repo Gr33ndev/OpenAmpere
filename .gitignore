@@ -12,3 +12,4 @@ src/openampere/web/
 *.db.lock
 _site/
 evcc/
+.DS_Store

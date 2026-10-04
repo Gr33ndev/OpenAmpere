@@ -28,8 +28,8 @@ body:
     id: version
     attributes:
       label: OpenAmpere-Version
-      description: Steht unter Mehr → Über.
-      placeholder: z. B. 0.1.0
+      description: Steht unter Mehr → Über OpenAmpere.
+      placeholder: z. B. 0.3.0
     validations:
       required: true
   - type: dropdown
@@ -59,21 +59,29 @@ body:
       multiple: true
       options:
         - Einrichtung / Verbindung
-        - Dashboard / Live-Werte
-        - Report / Verlauf
+        - Übersicht / Live-Werte
+        - Geräte (Speicher, Wallbox, Heizstab)
+        - Auswertung
         - Speicher & Steuerung
         - Einspeisebegrenzung
-        - Tarife / Laden aus dem Netz
-        - Überschuss-Verbraucher
+        - Tarife, Abschläge, Laden aus dem Netz
         - Benachrichtigungen
-        - Cloud-Import
+        - Diagnose
+        - Daten, Export, Sicherung, Cloud-Import
+        - Installation & Updates
         - Anmeldung / Zugriffsschutz
+        - Darstellung / iPhone-App
         - Sonstiges
   - type: input
     id: browser
     attributes:
       label: Browser / Handy
       placeholder: z. B. iPhone 15, Safari, als App auf dem Home-Bildschirm
+  - type: textarea
+    id: cause
+    attributes:
+      label: Vermutete Ursache oder Lösungsidee (optional)
+      description: Falls du eine Idee hast, woran es liegt, oder schon im Code nachgesehen hast.
   - type: textarea
     id: screenshots
     attributes:

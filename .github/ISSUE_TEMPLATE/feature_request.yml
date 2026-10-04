@@ -24,6 +24,26 @@ body:
       label: Gab es das in der bisherigen App?
       description: Falls ja, wie hat es dort funktioniert? (Beschreibung reicht, bitte keine Screenshots der alten App.)
   - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      multiple: true
+      options:
+        - Einrichtung / Verbindung
+        - Übersicht / Live-Werte
+        - Geräte (Speicher, Wallbox, Heizstab)
+        - Auswertung
+        - Speicher & Steuerung
+        - Einspeisebegrenzung
+        - Tarife, Abschläge, Laden aus dem Netz
+        - Benachrichtigungen
+        - Diagnose
+        - Daten, Export, Sicherung, Cloud-Import
+        - Installation & Updates
+        - Anmeldung / Zugriffsschutz
+        - Darstellung / iPhone-App
+        - Sonstiges
+  - type: dropdown
     id: writes
     attributes:
       label: Muss dafür etwas am Wechselrichter geändert werden?
