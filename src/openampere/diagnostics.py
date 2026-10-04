@@ -130,7 +130,7 @@ class Diagnostics:
             block = await self._try(37609, 24, fc)
             singles = {a: await self._try(a, 1, fc) for a in (37609, 37612, 37624)}
             same = block["ok"] and all(s["ok"] and s["words"][0] == block["words"][a - 37609] for a, s in singles.items())
-            checks.append(Check("block_37609", "Blocklesen 37609–37632", "ok" if same else "warn",
+            checks.append(Check("block_37609", "Blocklesen (37609–37632)", "ok" if same else "warn",
                                 "Block und Einzelwerte stimmen überein." if same else
                                 "Block und Einzelwerte weichen ab – bitte Bericht teilen.",
                                 {"block": block.get("words"), "single": {a: s.get("words") for a, s in singles.items()}}))
@@ -139,7 +139,7 @@ class Diagnostics:
             r = await self._try(39141, 1, fc)
             raw = r["words"][0] if r["ok"] else None
             if raw is None:
-                checks.append(Check("temp_scale", "Wechselrichtertemperatur 39141", "info", "nicht lesbar"))
+                checks.append(Check("temp_scale", "Wechselrichtertemperatur (39141)", "info", "nicht lesbar"))
             else:
                 value = raw - 0x10000 if raw & 0x8000 else raw
                 celsius = f"{value / 10:.1f}".replace(".", ",")
@@ -156,16 +156,16 @@ class Diagnostics:
                 value = (r["words"][0] << 16) | r["words"][1]
                 rated = device.rated_power_w if device else None
                 plausible = 0 <= value <= (rated or 30_000)
-                checks.append(Check("export_limit", "Einspeisebegrenzung 46616", "ok" if plausible else "warn",
+                checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "ok" if plausible else "warn",
                                     f"{value} W" + ("" if plausible else " – unplausibel, Einheit/Register prüfen"),
                                     {"words": r["words"], "rated_power_w": rated}))
             else:
-                checks.append(Check("export_limit", "Einspeisebegrenzung 46616", "warn", f"{r['error']}"))
+                checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "warn", f"{r['error']}"))
 
             # 10. bms1_connected
             r = await self._try(37002, 1, fc)
-            checks.append(Check("bms1", "Batterie verbunden (37002)", "info",
-                                f"Wert {r['words'][0]}" if r["ok"] else r["error"], {"words": r.get("words")}))
+            connected = {0: "nein", 1: "ja"}.get(r["words"][0], f"unbekannter Wert {r['words'][0]}") if r["ok"] else None
+            checks.append(Check("bms1", "Batterie verbunden (37002)", "info", connected or r["error"], {"words": r.get("words")}))
 
             # remote control state (another master?)
             r = await self._try(register_map.settings["remote_enable"].address, 1, 3)
@@ -196,7 +196,8 @@ class Diagnostics:
         by_hour = Counter(datetime.fromtimestamp(e["ts"], tz).hour for e in events if e["event"] == "getrennt")
         glitches = self.runtime.storage.get_meta("counter_glitches") or []
         checks.append(Check("night", "Verbindungsabbrüche und Zähler", "ok" if not events and not glitches else "info",
-                            f"{sum(by_hour.values())} Abbrüche, {len(glitches)} Zählerauffälligkeiten gespeichert",
+                            f"{plural(sum(by_hour.values()), 'Abbruch', 'Abbrüche')}, "
+                            f"{plural(len(glitches), 'Zählerauffälligkeit', 'Zählerauffälligkeiten')} gespeichert",
                             {"disconnects_by_hour": dict(sorted(by_hour.items())),
                              "last_errors": [e["detail"] for e in events if e["event"] == "getrennt"][-5:],
                              "glitches": glitches[-10:]}))
@@ -228,11 +229,17 @@ class Diagnostics:
             await driver._read_once(30000, 1, 3)
         except Exception:  # noqa: BLE001
             main_ok = False
-        status = "ok" if main_ok else "warn"
+        # no extra connection: OpenAmpere works, but nothing else (evcc, Home Assistant ...) can read at the same time
+        status = "warn" if not main_ok else "ok" if answered else "info"
         return Check("connections", "Gleichzeitige Verbindungen", status,
                      f"{answered} von {EXTRA_CONNECTIONS} zusätzlichen Verbindungen beantwortet"
-                     + ("" if main_ok else "; die Hauptverbindung wurde dabei getrennt"),
+                     + ("; die Hauptverbindung wurde dabei getrennt" if not main_ok else
+                        "" if answered else ". Andere Programme können dann nicht gleichzeitig mitlesen."),
                      {"extra_answered": answered, "main_connection_survived": main_ok})
+
+
+def plural(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
 
 
 def report_markdown(report: dict) -> str:
@@ -244,6 +251,9 @@ def report_markdown(report: dict) -> str:
              f"Seriennr. {device.get('serial')})",
              f"- Registerkarte: {device.get('register_map')}, Geräteadresse {device.get('unit')}",
              f"- Verbindung: {report['connection']['mode']}, Zeitlimit {report['connection']['timeout_s']} s", ""]
+    attention = [c for c in report["checks"] if c["status"] == "warn"]
+    if attention:
+        lines += ["### Zu prüfen", ""] + [f"- **{c['title']}**: {c['summary']}" for c in attention] + ["", "### Alle Prüfungen", ""]
     for c in report["checks"]:
         lines.append(f"- **{c['title']}** [{c['status']}]: {c['summary']}")
     lines += ["", "<details><summary>Details</summary>", "", "```json"]

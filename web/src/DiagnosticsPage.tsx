@@ -59,7 +59,8 @@ export function DiagnosticsPage({ onBack }: PageProps) {
 
       {data?.report && (
         <>
-          <div className="section-title">Ergebnis vom {updatedLabel(data.report.created)}</div>
+          <div className="section-title">Ergebnis</div>
+          <p className="hint">Stand: {updatedLabel(data.report.created)}</p>
           <div className="card">
             <ul className="checks">
               {data.report.checks.map((c) => (
