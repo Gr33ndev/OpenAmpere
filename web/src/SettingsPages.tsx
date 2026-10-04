@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SettingKey, Settings, Snapshot, Status } from "./api";
-import { activeInputs, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import { postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
@@ -1107,7 +1107,8 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
   const { settings, save, error, reload } = useSettings();
   const [names, setNames] = useState<string[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
-  const inputs = activeInputs(snap); // all inputs with PV, also hidden ones, so they can be shown again
+  // every input the inverter reports, also unconnected and hidden ones, so they can be hidden or shown again (#58)
+  const inputs = (snap?.pv_inputs ?? []).map((input, index) => ({ ...input, index }));
   useEffect(() => {
     if (settings) { setNames(settings["pv.input_names"]); setHidden(settings["pv.hidden_inputs"] ?? []); }
   }, [settings]);
@@ -1115,7 +1116,7 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
     setHidden((h) => (show ? h.filter((x) => x !== String(i + 1)) : [...h, String(i + 1)].sort()));
   const dirty = !!settings && (JSON.stringify(names) !== JSON.stringify(settings["pv.input_names"])
     || JSON.stringify(hidden) !== JSON.stringify(settings["pv.hidden_inputs"] ?? []));
-  const count = Math.max(inputs.length ? Math.max(...inputs.map((i) => i.index)) + 1 : 0, names.length);
+  const count = Math.max(inputs.length, names.length, ...hidden.map(Number).filter(Number.isFinite));
   const setName = (i: number, value: string) => setNames((n) => {
     const next = [...n];
     while (next.length <= i) next.push("");
