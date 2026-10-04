@@ -142,9 +142,13 @@ class Diagnostics:
                 checks.append(Check("temp_scale", "Wechselrichtertemperatur 39141", "info", "nicht lesbar"))
             else:
                 value = raw - 0x10000 if raw & 0x8000 else raw
-                factor = "0,1" if abs(value) > 120 else "1"
-                checks.append(Check("temp_scale", "Wechselrichtertemperatur 39141", "ok" if factor == "1" else "warn",
-                                    f"Rohwert {value} → Faktor vermutlich {factor}", {"raw": value}))
+                celsius = f"{value / 10:.1f}".replace(".", ",")
+                # OpenAmpere reads this register in 0.1 °C; small raw values could also mean whole degrees
+                clear = value > 90
+                checks.append(Check("temp_scale", "Wechselrichtertemperatur (39141)", "ok" if clear else "warn",
+                                    f"{celsius} °C (Rohwert {value}, Faktor 0,1)" if clear else
+                                    f"Rohwert {value}: entweder {celsius} °C oder {value} °C. Bitte mit der Anzeige am "
+                                    "Wechselrichter vergleichen und den Bericht teilen.", {"raw": value}))
 
             # 5. export limit register (read only)
             r = await self._try(46616, 2, 3)

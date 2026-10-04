@@ -62,7 +62,7 @@ H3_NEW = RegisterMap(
         "battery2_temperature": Reg(38309, Kind.I16, 0.1),
         "battery2_cell_temp_max": Reg(38315, Kind.I16, 0.1),
         "battery2_cell_temp_min": Reg(38316, Kind.I16, 0.1),
-        "inverter_temperature": Reg(39141, Kind.I16),
+        "inverter_temperature": Reg(39141, Kind.I16, 0.1),  # 0.1 °C, confirmed on an H3 (raw 452 = 45.2 °C)
         "grid_power": Reg(38814, Kind.I32, 0.1),  # + = export
         "inverter_state": Reg(39063),
         "off_grid_flags": Reg(39065, Kind.U32),
