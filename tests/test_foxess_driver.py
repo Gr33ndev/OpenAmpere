@@ -75,6 +75,18 @@ async def test_write_settings_and_remote_control(register_map, model):
         await driver.close()
 
 
+async def test_inverter_temperature_in_tenths_of_a_degree():
+    """Register 39141 (new map) counts 0.1 °C: raw 452 is 45.2 °C, checked against another reader on an H3 (#11)."""
+    sim, server, port = await start_sim(H3_NEW, "H3-10.0-Smart")
+    sim.regs[39141] = 452
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247)
+        await driver.connect()
+        snap = (await driver.read()).sanitize()
+        await driver.close()
+    assert snap.temperatures["inverter"] == pytest.approx(45.2)
+
+
 async def test_connection_limit():
     sim, server, port = await start_sim(H3_NEW, "H3-10.0-Smart")
     sim.max_connections = 1
