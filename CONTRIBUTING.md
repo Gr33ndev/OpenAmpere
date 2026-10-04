@@ -49,15 +49,11 @@ Vor dem PR:
 cd web && npm run build
 ```
 
-Ändern sich Abhängigkeiten, musst du Lockfiles und Lizenzliste nicht anfassen: Der Workflow „Dependency files“
-erzeugt sie nach dem Push automatisch neu und committet sie auf deinen Branch. Lokal geht es mit:
+Ändern sich Abhängigkeiten, erzeugt ein Befehl Lockfiles und Lizenzliste neu (braucht [uv](https://docs.astral.sh/uv/)).
+Die Dateien gehören in denselben Commit, sonst schlägt die CI fehl, bis der Workflow „Dependency files“ sie nachträgt:
 
 ```bash
-scripts/lock.sh
-```
-
-```bash
-.venv/bin/python scripts/third_party_licenses.py
+scripts/deps.sh
 ```
 
 ## Regeln für den Code

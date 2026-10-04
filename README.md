@@ -169,10 +169,10 @@ Tests:
 Die Python-Abhängigkeiten sind in `requirements.lock` (Docker-Image, mit Prüfsummen) und `requirements-dev.lock` (Entwicklung, CI) fest versioniert. Erzeugt werden beide mit [uv](https://docs.astral.sh/uv/) aus `pyproject.toml`:
 
 ```bash
-scripts/lock.sh
+scripts/deps.sh
 ```
 
-Von Hand muss das niemand machen: Der Workflow `dependencies.yml` erzeugt Lockfiles und Lizenzliste (`THIRD_PARTY_LICENSES.md` und die Liste in der App) bei jedem Push neu, der Abhängigkeiten ändert, auch in Dependabot-PRs, und committet sie auf denselben Branch. Einmal pro Woche hebt er alle Python-Abhängigkeiten auf die neuesten erlaubten Versionen und öffnet dafür einen Pull Request vom Branch `deps/python-updates`. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
+Das erzeugt auch die Lizenzliste (`THIRD_PARTY_LICENSES.md` und die Liste in der App), alles gehört in denselben Commit. Fehlt etwas, etwa in Dependabot-PRs, erzeugt der Workflow `dependencies.yml` die Dateien neu und committet sie auf denselben Branch. Einmal pro Woche hebt er alle Python-Abhängigkeiten auf die neuesten erlaubten Versionen und öffnet dafür einen Pull Request vom Branch `deps/python-updates`. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
 
 Projektseite mit Demo: Die Startseite liegt in `site/`, die Demo ist die normale Web-App, gebaut mit `VITE_DEMO=1`. Sie simuliert eine Anlage im Browser (`web/src/demo/`) und schickt nichts an einen Server. Lokal bauen und ansehen:
 
