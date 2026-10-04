@@ -8,6 +8,7 @@ import time
 
 from .drivers.base import DeviceInfo, InverterDriver, Snapshot, raise_if_cancelled
 from .drivers.modbus import friendly_error
+from .outages import Outages
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class Collector:
         self.driver = driver
         self.release_connection = release_connection  # close the TCP connection after every reading
         self.storage = storage
+        self.outages = Outages(storage)
         self.interval = interval
         self.retention_days = retention_days
         self.latest: Snapshot | None = None
@@ -143,6 +145,10 @@ class Collector:
                     self._event("verbunden")
                     self._check_firmware()
                 self._watch_daily_reset(snap)
+                try:
+                    self.outages.observe(snap)
+                except Exception as err:  # noqa: BLE001 - statistics must never disturb polling
+                    log.warning("could not record power cut: %s", err)
                 self.connected = True
                 self.disconnected_since = None
                 self.last_error = None

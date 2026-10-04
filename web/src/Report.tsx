@@ -8,6 +8,7 @@ import { Segmented } from "./ui";
 import { KeyFigures } from "./KeyFigures";
 import { colorsFor } from "./DevicesPage";
 import { BillingSection } from "./BillingPage";
+import { OutagesSection } from "./Outages";
 import { VehicleStats } from "./VehicleStats";
 import { EvccSessions } from "./WallboxPage";
 
@@ -232,6 +233,7 @@ export function Report() {
         colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />
       <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
       <BillingSection />
+      <OutagesSection />
       <VehicleStats />
       <EvccSessions />
     </div>

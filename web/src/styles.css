@@ -581,3 +581,8 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .off-grid { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; padding: 14px 16px; border-radius: var(--radius-m);
   background: var(--coral); color: #fff; font-size: 14px; }
 .off-grid strong { font-size: 16px; }
+
+/* power cuts in the analysis (#51) */
+.outage-summary { margin: 0 0 10px; font-weight: 600; }
+.sessions.outages li { flex-direction: column; align-items: flex-start; gap: 2px; }
+.warn-text { color: var(--coral); }
