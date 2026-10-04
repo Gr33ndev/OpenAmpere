@@ -61,3 +61,16 @@ async def test_cheapest_quarters_are_chosen(tmp_path):
     assert charging.plan(now, 60)["quarters"] == []
     charging.save({**charging.view(now)["settings"], "max_price_ct": 10})
     assert charging.plan(now, 50)["reason"] == "Kein Zeitraum unter deinem Höchstpreis"
+
+
+async def test_charging_power_is_limited_by_the_battery(tmp_path):
+    """A 6.6 kWh battery allows 5.5 kW even on a 12 kW inverter (datasheet, #23)."""
+    from openampere.charging import validate
+    with pytest.raises(ValueError, match="5500 W"):
+        validate({"power_w": 6000}, 12_000, 5_500)
+    assert validate({"power_w": 5500}, 12_000, 5_500).power_w == 5500
+    assert validate({"power_w": 12000}, 12_000, None).power_w == 12000  # battery limit unknown: the inverter's
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    await runtime.update_settings({"battery.max_charge_kw": 5.5})
+    with pytest.raises(ValueError, match="zulässige Ladeleistung"):
+        GridCharging(runtime).save({"power_w": 8000})

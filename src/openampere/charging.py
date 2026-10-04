@@ -43,7 +43,7 @@ class ChargingSettings:
     legal_confirmed: bool = False
 
 
-def validate(raw: dict, rated_w: int | None) -> ChargingSettings:
+def validate(raw: dict, rated_w: int | None, battery_max_w: int | None = None) -> ChargingSettings:
     try:
         s = ChargingSettings(**{**asdict(ChargingSettings()), **raw})
         s.target_soc, s.ready_by, s.window_start, s.window_end = (int(v) for v in
@@ -61,8 +61,11 @@ def validate(raw: dict, rated_w: int | None) -> ChargingSettings:
         raise ValueError("Uhrzeiten bitte als volle Stunde 0–23 angeben.")
     if not 0.5 <= s.battery_kwh <= 200:
         raise ValueError("Die Speichergröße muss zwischen 0,5 und 200 kWh liegen.")
-    if not MIN_CHARGE_W <= s.power_w <= (rated_w or 15_000):
-        raise ValueError(f"Die Ladeleistung muss zwischen {MIN_CHARGE_W} und {rated_w or 15_000} W liegen.")
+    # the battery may allow less than the inverter: small batteries charge slower (#23)
+    limit = min(w for w in (rated_w or 15_000, battery_max_w or 15_000))
+    if not MIN_CHARGE_W <= s.power_w <= limit:
+        raise ValueError(f"Die Ladeleistung muss zwischen {MIN_CHARGE_W} und {limit} W liegen"
+                         + (" (zulässige Ladeleistung des Speichers)." if battery_max_w and battery_max_w < (rated_w or 15_000) else "."))
     if s.enabled and not s.legal_confirmed:
         raise ValueError("Bitte zuerst die rechtlichen Hinweise bestätigen.")
     return s
@@ -85,7 +88,8 @@ class GridCharging:
 
     def save(self, raw: dict) -> ChargingSettings:
         device = self.runtime.collector.device
-        settings = validate(raw, device.rated_power_w if device else None)
+        battery_max_w = round(self.runtime.config.battery.max_charge_kw * 1000) or None
+        settings = validate(raw, device.rated_power_w if device else None, battery_max_w)
         old = self.settings
         self.runtime.storage.set_meta("grid_charging", asdict(settings))
         if old.enabled != settings.enabled:
