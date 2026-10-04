@@ -27,11 +27,16 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
           <dt>In den Speicher geladen</dt><dd>{kwh(e?.battery_charge)}</dd>
           <dt>Aus dem Speicher genutzt</dt><dd>{kwh(e?.battery_discharge)}</dd>
           <dt>Selbst genutzter Solarstrom</dt><dd>{percent(summary?.self_consumption, true)}</dd>
+          {!!summary?.conversion_loss_wh && summary.conversion_loss_wh >= 50 && <>
+            <dt>Verluste im Wechselrichter</dt><dd>{kwh(summary.conversion_loss_wh)}</dd></>}
           {summary?.money && <><dt>Einspeisevergütung</dt><dd>{euro(summary.money.feed_in_eur)}</dd></>}
           {summary?.money && <><dt>Kosten Netzbezug</dt><dd>{euro(summary.money.grid_cost_eur)}</dd></>}
           {!!summary?.money?.base_fee_eur && <><dt>Grundpreis</dt><dd>{euro(summary.money.base_fee_eur)}</dd></>}
           {summary?.money?.net_cost_eur != null && <><dt>Stromkosten unterm Strich</dt><dd>{euro(summary.money.net_cost_eur)}</dd></>}
         </dl>
+        {!!summary?.conversion_loss_wh && summary.conversion_loss_wh >= 50 && <p className="hint">Der Wechselrichter misst
+          den Solarstrom vor und den Verbrauch nach der Umwandlung in Wechselstrom. Die Differenz geht im Gerät verloren,
+          meist einige Prozent der Erzeugung.</p>}
         {summary?.money && <p className="hint">Die Ersparnis ist eine Schätzung mit deinem Stromtarif (Mehr → Stromtarif):
           selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung. Unterm Strich heißt Netzbezug und Grundpreis
           minus Einspeisevergütung.</p>}

@@ -97,8 +97,30 @@ def test_import_never_overwrites_local(tmp_path):
 
 def test_ratios():
     r = ratios({"load": 1000, "grid_import": 250, "pv": 2000, "grid_export": 1500})
-    assert r == {"autarky": 0.75, "self_consumption": 0.25}
-    assert ratios({}) == {"autarky": None, "self_consumption": None}
+    assert r == {"autarky": 0.75, "self_consumption": 0.25, "conversion_loss_wh": 0.0}
+    assert ratios({}) == {"autarky": None, "self_consumption": None, "conversion_loss_wh": 0.0}
+    # the inverter counts solar on the DC side and the house on the AC side: the difference are its losses (#15)
+    day = {"pv": 24_200, "grid_import": 1_000, "battery_discharge": 4_800, "load": 11_300, "grid_export": 5_300,
+           "battery_charge": 11_600}
+    assert ratios(day)["conversion_loss_wh"] == 1_800
+
+
+def test_first_day_money_follows_the_daily_counters(tmp_path):
+    """Recording starts in the afternoon: the day totals come from the inverter, the savings must too (#15)."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 10, 3, 17, 55, tzinfo=TZ).timestamp()
+    today = EnergyCounters(pv=24_200, load=11_300, grid_import=1_000, grid_export=5_300, battery_charge=11_600,
+                           battery_discharge=4_800)
+    storage.add_snapshot(snap(base, 1000, 400, today=today))
+    storage.add_snapshot(snap(base + 600, 1100, 450, today=today))
+    runtime = Runtime({}, storage)
+    runtime.collector.latest = snap(base + 700, 1110, 455, today=today)
+    client = TestClient(create_app(runtime))
+    summary = client.get("/api/energy/summary", params={"period": "day", "date": "2026-10-03"}).json()
+    assert summary["energy_wh"]["load"] == 11_300 and summary["recorded_since"] is not None
+    # default tariff: 35 ct for self-used power (11.3 - 1.0 kWh), 8 ct for 5.3 kWh feed-in
+    assert summary["money"]["savings_eur"] == round(10.3 * 0.35 + 5.3 * 0.08, 2)
+    assert summary["conversion_loss_wh"] == 1_800
 
 
 def test_periods():

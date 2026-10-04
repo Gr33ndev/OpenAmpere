@@ -58,7 +58,12 @@ def ratios(flows: dict) -> dict:
     grid_import, grid_export = flows.get("grid_import") or 0, flows.get("grid_export") or 0
     autarky = max(0.0, min(1.0, 1 - grid_import / load)) if load > 0 else None
     self_consumption = max(0.0, min(1.0, 1 - grid_export / pv)) if pv > 0 else None
-    return {"autarky": autarky, "self_consumption": self_consumption}
+    # what goes in (solar on the DC side, grid, battery) minus what goes out (export, battery, house): mainly the
+    # conversion losses of the inverter, a few per cent of the solar energy (#15)
+    sources = pv + grid_import + (flows.get("battery_discharge") or 0)
+    sinks = load + grid_export + (flows.get("battery_charge") or 0)
+    return {"autarky": autarky, "self_consumption": self_consumption,
+            "conversion_loss_wh": sources - sinks if sources > sinks else 0.0}
 
 
 class Target(BaseModel):
@@ -470,7 +475,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         quarters = flows.pop("quarters")
         latest = collector.latest
         running = storage.running_quarter(latest)
-        partial_since = None
+        partial_since = recorded_since = None
+        money_rows = None
         if running and start <= running["ts"] < end:
             # stored quarters + the quarter hour that is still running = exactly what the counters say
             flows = {f: (flows[f] or 0) + running[f] for f in FLOWS}
@@ -478,15 +484,17 @@ def create_app(runtime: Runtime) -> FastAPI:
             first = storage.first_quarter(start, end) or running["ts"]
             if period == "day" and first > start + 900:
                 # first day: recording started during the day; the inverter's daily counters are complete
+                recorded_since = first
                 today = latest.today.__dict__
                 if all(today.get(f) is not None for f in FLOWS) and today["pv"] >= flows["pv"]:
                     flows = {f: today[f] for f in FLOWS}
+                    money_rows = [{"ts": start, **flows}]  # the money must follow the same values (#15)
                 else:
                     partial_since = first
-        extra = [running] if running and start <= running["ts"] < end else []
+        extra = [running] if running and start <= running["ts"] < end and money_rows is None else []
         return {"period": period, "from": start, "to": end, "quarters": quarters,
-                "partial_since": partial_since, "energy_wh": flows, **ratios(flows),
-                "money": runtime.tariffs.money(start, end, runtime.tz, extra)}
+                "partial_since": partial_since, "recorded_since": recorded_since, "energy_wh": flows,
+                **ratios(flows), "money": runtime.tariffs.money(start, end, runtime.tz, extra, money_rows)}
 
     # ---- tariffs & exchange prices ------------------------------------------
 

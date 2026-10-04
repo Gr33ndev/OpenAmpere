@@ -103,9 +103,12 @@ class Tariffs:
 
     # ---- money -------------------------------------------------------------
 
-    def money(self, start: float, end: float, tz: ZoneInfo, extra_rows: list[dict] | None = None) -> dict:
-        """Savings for a period: self-used solar energy at the price of that moment plus feed-in pay."""
-        rows = self.storage.energy(start, end) + (extra_rows or [])
+    def money(self, start: float, end: float, tz: ZoneInfo, extra_rows: list[dict] | None = None,
+              rows: list[dict] | None = None) -> dict:
+        """Savings for a period: self-used solar energy at the price of that moment plus feed-in pay.
+
+        rows replaces the stored quarter hours, e.g. by the inverter's daily counters on the first day."""
+        rows = (self.storage.energy(start, end) if rows is None else rows) + (extra_rows or [])
         prices = self.storage.prices(start, end)
         savings = feed_in = grid_cost = 0.0
         missing = 0
