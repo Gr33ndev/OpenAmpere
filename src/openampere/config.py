@@ -67,6 +67,8 @@ class PvConfig:
 @dataclass
 class BatteryConfig:
     capacity_kwh: float = 0.0  # usable capacity of the home battery; 0 = unknown
+    # highest charging power the battery allows (datasheet, often lower for small batteries); 0 = unknown
+    max_charge_kw: float = 0.0
 
 
 @dataclass
@@ -155,6 +157,7 @@ EDITABLE: dict[str, tuple] = {
     "pv.hidden_inputs": ("strlist", 6, 2),
     "pv.installed_kwp": ("float", 0, 1000),
     "battery.capacity_kwh": ("float", 0, 200),
+    "battery.max_charge_kw": ("float", 0, 50),
     "updates.check": ("bool",),
     "updates.auto": ("bool",),
     "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),

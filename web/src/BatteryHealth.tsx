@@ -68,8 +68,8 @@ export function BatteryHealthCard() {
       ) : (
         <button className="link" onClick={() => setEdit(true)}>Kapazität ändern ({num(data.capacity_kwh, 1)} kWh)</button>
       )}
-      <p className="hint">Ein Vollzyklus heißt: einmal die ganze Kapazität entladen. Viele Speicher sind für 6000 Zyklen
-        ausgelegt. Der Wirkungsgrad ist entladene geteilt durch geladene Energie seit Inbetriebnahme, typisch sind 85 bis
+      <p className="hint">Ein Vollzyklus heißt: einmal die ganze Kapazität entladen. Je nach Speicher sind 6.000 bis
+        12.000 Zyklen angegeben (Datenblatt). Der Wirkungsgrad ist entladene geteilt durch geladene Energie seit Inbetriebnahme, typisch sind 85 bis
         95 %. Die Zellen eines gesunden Speichers sind höchstens wenige Grad unterschiedlich warm.</p>
     </div>
   );

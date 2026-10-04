@@ -88,6 +88,7 @@ export type Settings = {
     "pv.installed_kwp": number;
     "pv.hidden_inputs": string[];
     "battery.capacity_kwh": number;
+    "battery.max_charge_kw": number;
     "updates.check": boolean;
     "updates.auto": boolean;
     "grid.feed_in_rule": FeedInRule;

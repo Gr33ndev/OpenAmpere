@@ -1163,12 +1163,21 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (data) setForm(data.settings); }, [data]);
   const rated = status?.device?.rated_power_w ?? 10_000;
+  const { settings, save: saveSettings } = useSettings();
+  const [batteryMax, setBatteryMax] = useState("");
+  useEffect(() => { if (settings) setBatteryMax(settings["battery.max_charge_kw"] ? de(settings["battery.max_charge_kw"]) : ""); }, [settings]);
+  const batteryMaxKw = batteryMax.trim() ? toNumber(batteryMax) : 0;
+  // levels like the former app: 50 / 75 / 100 % of what the battery allows (datasheet), at most the inverter (#23)
+  const base = Math.min(rated, batteryMaxKw > 0 ? batteryMaxKw * 1000 : rated);
+  const level = (share: number) => Math.round((base * share) / 100) * 100;
   const set = (patch: Partial<ChargingSettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
-  const changed = form && data && JSON.stringify(form) !== JSON.stringify(data.settings);
+  const maxChanged = !!settings && batteryMaxKw !== (settings["battery.max_charge_kw"] ?? 0);
+  const changed = (form && data && JSON.stringify(form) !== JSON.stringify(data.settings)) || maxChanged;
 
   const save = async (next: ChargingSettings) => {
     setBusy(true);
     try {
+      if (maxChanged && !(await saveSettings({ "battery.max_charge_kw": Number.isFinite(batteryMaxKw) ? batteryMaxKw : 0 }))) return;
       setData(await putJson<ChargingView>("/api/charging", next));
       toast("Gespeichert");
     } catch (e) {
@@ -1236,12 +1245,21 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
                 </Field>
               </div>
             )}
+            <Field label="Zulässige Ladeleistung des Speichers"
+              hint="Laut Datenblatt, bei kleinen Speichern oft weniger als der Wechselrichter kann, z. B. 5,5 kW bei 6,6 kWh. Leer lassen, wenn unbekannt.">
+              <div className="input-unit"><input className="input" inputMode="decimal" value={batteryMax} placeholder={de(rated / 1000)}
+                onChange={(e) => setBatteryMax(e.target.value)} /><span>kW</span></div>
+            </Field>
             <Field label="Ladeleistung">
-              <Segmented value={form.power_w === Math.round(rated * 0.3) ? "gentle" : form.power_w === Math.round(rated * 0.6) ? "fast"
-                : form.power_w === rated ? "max" : "custom"}
-                onChange={(v) => v !== "custom" && set({ power_w: Math.round(rated * ({ gentle: 0.3, fast: 0.6, max: 1 } as const)[v]) })}
+              <Segmented value={form.power_w === level(0.5) ? "gentle" : form.power_w === level(0.75) ? "fast"
+                : form.power_w === level(1) ? "max" : "custom"}
+                onChange={(v) => v !== "custom" && set({ power_w: level(({ gentle: 0.5, fast: 0.75, max: 1 } as const)[v]) })}
                 options={[["gentle", "Schonend"], ["fast", "Schnell"], ["max", "Maximal"], ["custom", `${num(form.power_w / 1000, 1)} kW`]]} />
             </Field>
+            <p className="hint">Schonend {num(level(0.5) / 1000, 1)}&nbsp;kW, schnell {num(level(0.75) / 1000, 1)}&nbsp;kW,
+              maximal {num(level(1) / 1000, 1)}&nbsp;kW: 50, 75 und 100&nbsp;% der zulässigen Ladeleistung.</p>
+            {form.power_w > base && <Notice kind="warn">Die eingestellte Ladeleistung ist höher, als der Speicher zulässt.
+              Bitte eine Stufe wählen.</Notice>}
             {form.power_w > 4200 && <p className="hint">Über 4,2 kW Ladeleistung aus dem Netz kann der Speicher unter § 14a EnWG
               (steuerbare Verbraucher) fallen. Kläre das mit deinem Netzbetreiber.</p>}
             <Field label="Nutzbare Speichergröße" hint="Aus dem Datenblatt, für die Berechnung der Ladedauer.">
