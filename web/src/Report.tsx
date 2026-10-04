@@ -222,6 +222,11 @@ export function Report() {
         ...(showPower ? (devPower?.devices ?? []).map((d) => ({ color: deviceColors[d.key], label: `${d.name} (gestrichelt)` })) : []),
       ]} />
       {showPower && <p className="hint">Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.</p>}
+      {period === "day" && summary?.recorded_since && (
+        <p className="hint">OpenAmpere zeichnet seit {new Date(summary.recorded_since * 1000).toLocaleTimeString("de-DE",
+          { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })} Uhr auf, deshalb beginnt der Verlauf erst dann. Die
+          Tageswerte oben stammen aus den Zählern des Wechselrichters und gelten für den ganzen Tag.</p>
+      )}
 
       <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
         colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />

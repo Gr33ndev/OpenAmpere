@@ -57,6 +57,8 @@ export type Summary = {
   to: number;
   energy_wh: Counters;
   partial_since?: number | null;
+  recorded_since?: number | null; // first day: the chart starts here, the totals come from the inverter
+  conversion_loss_wh?: number;
   money?: { savings_eur: number; feed_in_eur: number; grid_cost_eur: number; base_fee_eur?: number; net_cost_eur?: number };
   autarky: number | null;
   self_consumption: number | null;
