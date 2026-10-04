@@ -421,6 +421,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/pv/inputs": pvInputs,
   "/api/temperatures/timeline": temperatures,
   "/api/battery/health": batteryHealth,
+  "/api/storage": () => ({ db_bytes: 84_000_000, free_bytes: 21_500_000_000, samples: 259_200, first_sample: now() - 30 * 86400,
+    bytes_per_year: 410_000_000, retention_days: 30 }),
   // the demo is the website: it is updated with every release and has nothing to install
   "/api/update": () => ({ current: "Demo", available: false, updater: false, requested: false, check: false, auto: false,
     latest: null, status: null, checked: null, error: null }),

@@ -399,6 +399,14 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     # ---- data ------------------------------------------------------------
 
+    @app.get("/api/storage")
+    def storage_usage():
+        """Database size, free space and an estimate per year of detail readings (retention setting)."""
+        usage = storage.usage()
+        # one detail row per poll; about 130 bytes each including index and device readings
+        per_day = 86400 / max(1.0, runtime.config.inverter.poll_interval) * 130
+        return {**usage, "bytes_per_year": round(per_day * 365), "retention_days": runtime.config.storage.raw_retention_days}
+
     @app.post("/api/backup/link")
     def backup_link():
         """A download link valid for 10 minutes without the login cookie: on the iPhone, downloads from the

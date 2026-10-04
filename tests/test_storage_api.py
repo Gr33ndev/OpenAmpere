@@ -297,3 +297,18 @@ def test_sanitize_drops_sentinels_and_impossible_values():
     s.sanitize()
     assert s.battery_soc is None and s.battery_temperature is None and s.grid_power is None
     assert s.temperatures == {"inverter": 45.0}
+
+
+def test_retention_forever_and_storage_usage(tmp_path):
+    """Detail readings can be kept forever; the app shows what that costs (#22)."""
+    storage = Storage(tmp_path / "t.db")
+    old = datetime(2025, 1, 10, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(old, 1000, 400))
+    storage.prune(0)  # 0 = keep forever
+    assert len(storage.samples(old - 1, old + 1)) == 1
+    storage.prune(30)
+    assert storage.samples(old - 1, old + 1) == []
+    runtime = Runtime({}, storage)
+    usage = TestClient(create_app(runtime)).get("/api/storage").json()
+    assert usage["db_bytes"] > 0 and usage["free_bytes"] > 0
+    assert usage["bytes_per_year"] == round(86400 / 10 * 130 * 365)  # one reading every 10 s

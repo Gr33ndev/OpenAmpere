@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import sqlite3
 import threading
 import time
@@ -78,6 +79,7 @@ def _lock_exclusively(path: Path) -> int | None:
 class Storage:
     def __init__(self, path: str | Path) -> None:
         path = Path(path)
+        self.path = str(path)
         self._lock_fd = None
         if str(path) != ":memory:":
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -336,10 +338,23 @@ class Storage:
                                  [(soc, ts) for ts, soc in values])
 
     def prune(self, retention_days: int) -> None:
+        if retention_days <= 0:  # keep forever
+            return
         with self._lock, self._db:
             cutoff = time.time() - retention_days * 86400
             self._db.execute("DELETE FROM samples WHERE ts < ?", (cutoff,))
             self._db.execute("DELETE FROM device_power WHERE ts < ?", (cutoff,))
+
+    def usage(self) -> dict:
+        """Size of the database and how many detail readings it holds, for the retention setting."""
+        rows = self._fetchall("SELECT COUNT(*) AS n, MIN(ts) AS first FROM samples")[0]
+        try:
+            size = os.path.getsize(self.path) + sum(os.path.getsize(f"{self.path}{s}") for s in ("-wal", "-shm")
+                                                    if os.path.exists(f"{self.path}{s}"))
+            free = shutil.disk_usage(os.path.dirname(os.path.abspath(self.path))).free
+        except OSError:
+            size, free = None, None
+        return {"db_bytes": size, "free_bytes": free, "samples": rows["n"], "first_sample": rows["first"]}
 
     # ---- devices (wallbox, heating rod, ...) --------------------------------
 

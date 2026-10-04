@@ -546,20 +546,42 @@ function BackupLink() {
   return <a className="btn secondary" href={url} {...downloadProps}>Datensicherung herunterladen</a>;
 }
 
+type StorageUsage = { db_bytes: number | null; free_bytes: number | null; samples: number; first_sample: number | null;
+  bytes_per_year: number; retention_days: number };
+const RETENTION: [number, string][] = [[30, "30 Tage"], [365, "1 Jahr"], [1825, "5 Jahre"], [3650, "10 Jahre"], [0, "Unbegrenzt"]];
+const size = (bytes: number) => (bytes >= 1e9 ? `${num(bytes / 1e9, 1)} GB` : `${num(Math.max(bytes, 1e6) / 1e6, 0)} MB`);
+
+/** What the chosen retention costs: detail readings need about 0.4 GB per year with a reading every 10 s. */
+function storageHint(u: StorageUsage, days: number): string {
+  const now = u.db_bytes != null ? `Die Datenbank ist jetzt ${size(u.db_bytes)} groß` : "";
+  const free = u.free_bytes != null ? `, frei sind noch ${size(u.free_bytes)}.` : ".";
+  const need = days > 0 ? ` Für ${days >= 365 ? `${num(days / 365, 0)} ${days >= 730 ? "Jahre" : "Jahr"}` : `${days} Tage`} Detaildaten `
+    + `braucht OpenAmpere etwa ${size(u.bytes_per_year * days / 365)}.`
+    : ` Ohne Grenze wächst sie um etwa ${size(u.bytes_per_year)} pro Jahr.`;
+  return now + free + need;
+}
+
 export function DataPage({ onBack }: PageProps) {
   const { settings, locked, save, error, reload } = useSettings();
   const { data: auth } = useResource<AuthStatus>("/api/auth/status");
   const [days, setDays] = useState(30);
+  const { data: usage } = useResource<StorageUsage>("/api/storage");
   useEffect(() => { if (settings) setDays(settings["storage.raw_retention_days"]); }, [settings]);
+  const options: [string, string][] = RETENTION.map(([d, label]) => [String(d), label]);
+  if (!RETENTION.some(([d]) => d === days)) options.unshift([String(days), `${days} Tage`]);
 
   return (
     <SubPage title="Daten & Sicherung" onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
       <div className="card form">
         <Field label="Detaildaten aufbewahren" locked={locked("storage.raw_retention_days")}
-          hint="Messwerte im Sekundenbereich für die Leistungskurve. Viertelstunden- und Tageswerte bleiben immer erhalten.">
-          <Slider value={days} min={7} max={365} unit="Tage" onChange={setDays} />
+          hint="Messwerte alle paar Sekunden für die Leistungskurve. Viertelstunden- und Tageswerte bleiben immer erhalten.">
+          <select className="input" value={String(days)} disabled={locked("storage.raw_retention_days")}
+            onChange={(e) => setDays(Number(e.target.value))}>
+            {options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
         </Field>
+        {usage && <p className="hint">{storageHint(usage, days)}</p>}
         <Button variant="secondary" disabled={!settings || days === settings["storage.raw_retention_days"]}
           onClick={() => save({ "storage.raw_retention_days": days })}>Speichern</Button>
         <Unsaved show={!!settings && days !== settings["storage.raw_retention_days"]} />
