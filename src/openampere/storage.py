@@ -299,6 +299,13 @@ class Storage:
             self._db.executemany("INSERT OR REPLACE INTO grid_meter_daily(meter, kind, day, kwh) VALUES(?, ?, ?, ?)",
                                  [(meter, kind, day, kwh) for day, kwh in days.items()])
 
+    def replace_meter_days(self, meter: str, kind: str, first: str, days: dict[str, float]) -> None:
+        """Days from first on are exactly the given ones: a day missing there is unknown, not kept from before."""
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM grid_meter_daily WHERE meter=? AND kind=? AND day >= ?", (meter, kind, first))
+            self._db.executemany("INSERT OR REPLACE INTO grid_meter_daily(meter, kind, day, kwh) VALUES(?, ?, ?, ?)",
+                                 [(meter, kind, day, kwh) for day, kwh in days.items()])
+
     def meter_last_day(self, meter: str, kind: str) -> str | None:
         rows = self._fetchall("SELECT MAX(day) AS day FROM grid_meter_daily WHERE meter=? AND kind=?", (meter, kind))
         return rows[0]["day"] if rows else None

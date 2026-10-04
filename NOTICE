@@ -15,7 +15,8 @@ contains no evcc code. Thanks to the evcc community.
 
 Daily smart-meter values of Netze BW are fetched from its customer portal meine.netze-bw.de. The endpoints and
 the login flow are based on facts from ha-netze-bw (https://github.com/cygnusb/ha-netze-bw), Copyright (c) 2026
-cygnusb, MIT License. OpenAmpere is not affiliated with Netze BW.
+cygnusb, MIT License. The CSV format of the quarter-hour values is based on facts from a working importer a
+user shared in issue #67. OpenAmpere is not affiliated with Netze BW.
 
 my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
 
