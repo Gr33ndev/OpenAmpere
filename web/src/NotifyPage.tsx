@@ -5,7 +5,7 @@ import type { PageProps } from "./SettingsPages";
 import { Button, Field, LearnMore, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
 
 type NotifyKey = "notify.on_unreachable" | "notify.on_alarm" | "notify.on_overwritten" | "notify.on_battery_full"
-  | "notify.on_cheap_power" | "notify.on_firmware" | "notify.on_battery_health";
+  | "notify.on_cheap_power" | "notify.on_firmware" | "notify.on_battery_health" | "notify.on_off_grid";
 
 const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_unreachable", label: "Wechselrichter nicht erreichbar", hint: "Nach 15 Minuten ohne Verbindung, und wenn sie wieder steht." },
@@ -13,6 +13,7 @@ const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_overwritten", label: "Einstellung überschrieben", hint: "Wenn ein anderes Gerät eine Änderung von OpenAmpere zurücksetzt." },
   { key: "notify.on_battery_full", label: "Speicher voll", hint: "Einmal am Tag, guter Moment für große Verbraucher." },
   { key: "notify.on_cheap_power", label: "Günstigster Strom morgen", hint: "Nur mit dynamischem Tarif, sobald die Preise für morgen da sind." },
+  { key: "notify.on_off_grid", label: "Stromausfall", hint: "Wenn das Haus im Notstrombetrieb läuft und wenn das Netz zurück ist." },
   { key: "notify.on_battery_health", label: "Speicher prüfen", hint: "Batteriezellen sehr warm oder ungewöhnlich unterschiedlich warm." },
   { key: "notify.on_firmware", label: "Neue Firmware", hint: "Der Wechselrichter meldet eine andere Firmware, etwa nach einem Update." },
 ];

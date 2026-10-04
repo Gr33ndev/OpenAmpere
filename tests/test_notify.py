@@ -58,3 +58,18 @@ async def test_alarm_and_overwrite(tmp_path, monkeypatch):
     runtime.storage.log_control("battery_settings_check", {"from": {}, "to": {}}, False, "überschrieben")
     assert await notifier.check(now=30) == ["Einstellung überschrieben"]
     assert await notifier.check(now=40) == []
+
+
+async def test_power_cut_is_reported_once_and_its_end(tmp_path, monkeypatch):
+    """Off-grid (backup) mode: message when the grid is gone and when it is back (#48)."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    notifier = Notifier(runtime)
+    runtime.collector.latest = Snapshot(timestamp=0, off_grid=False, battery_soc=64)
+    assert await notifier.check(now=10) == []
+    runtime.collector.latest = Snapshot(timestamp=0, off_grid=True, battery_soc=64)
+    assert await notifier.check(now=20) == ["Stromausfall: Notstrombetrieb"]
+    assert "64 %" in posts[-1][1]["message"]
+    assert await notifier.check(now=30) == []  # only once
+    runtime.collector.latest = Snapshot(timestamp=0, off_grid=False, battery_soc=40)
+    assert await notifier.check(now=40) == ["Strom ist wieder da"]
+    assert await notifier.check(now=50) == []

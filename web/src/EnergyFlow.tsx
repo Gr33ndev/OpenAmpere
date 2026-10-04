@@ -118,7 +118,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   // battery: + = discharging towards the house; grid: + = import from the grid
   const source = stale ? null : chargeSource(snap, gridCharging);
   const battery = direction(snap?.battery_power, "entlädt", "lädt"); // the badge shows sun or grid
-  const grid = direction(snap?.grid_power, "Bezug", "Einspeisung");
+  const grid = snap?.off_grid ? "getrennt" : direction(snap?.grid_power, "Bezug", "Einspeisung");
   const label = snap
     ? [`Solar ${kw(snap.pv_power)}`, `Haus ${kw(house)}`,
        `Speicher ${kw(snap.battery_power)}${battery ? ` ${battery}` : ""}, ${percent(snap.battery_soc)}`,
@@ -133,7 +133,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {/* battery <-> house: + = discharging towards the house */}
         <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />
         {/* grid <-> house: + = import towards the house (drawn from grid side) */}
-        <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale ? null : snap?.grid_power ?? null} />
+        <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale || snap?.off_grid ? null : snap?.grid_power ?? null} />
         {/* house -> devices */}
         {boxes && shown.map((d, i) => {
           const device = boxes.devices[i];

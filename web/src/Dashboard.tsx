@@ -90,6 +90,23 @@ export function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
   );
 }
 
+/** Power cut: the inverter runs the house as an island from battery and solar (#48). */
+function OffGridNotice({ snap }: { snap: Snapshot }) {
+  const { data: settings } = useResource<Settings>("/api/settings");
+  const capacity = settings?.values["battery.capacity_kwh"] ?? 0;
+  const draw = snap.battery_power ?? 0; // + = discharging
+  const hours = capacity > 0 && snap.battery_soc != null && draw > 50 ? (capacity * snap.battery_soc / 100 * 1000) / draw : null;
+  return (
+    <div className="off-grid" role="alert">
+      <strong>Stromausfall: Notstrombetrieb</strong>
+      <span>Das Netz ist weg, das Haus läuft über Speicher und Solaranlage. Speicher {percent(snap.battery_soc)}
+        {hours != null ? `, reicht beim jetzigen Verbrauch etwa ${hours >= 24 ? `${num(hours / 24, 0)} Tage` : `${num(Math.max(hours, 0.1), hours < 10 ? 1 : 0)} Std.`}`
+          : draw <= 50 ? ", die Sonne deckt gerade den Verbrauch" : ""}.
+        {" "}Große Verbraucher besser ausschalten.</span>
+    </div>
+  );
+}
+
 const HIDE_IMPORT_KEY = "openampere.hideImportHint";
 
 /** Until a history import has run, remind people that the old cloud may switch off at any time. */
@@ -177,9 +194,9 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
           {!snap ? "Verbinde …"
             : stale ? `Wechselrichter nicht erreichbar seit ${updatedLabel(snap.timestamp)} – angezeigt werden die letzten Werte`
             : `Zuletzt aktualisiert: ${updatedLabel(snap.timestamp)}`}
-          {snap?.off_grid && " · Notstrombetrieb"}
         </div>
       </div>
+      {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
 
       {status?.clock_wrong && (
         <Notice kind="error">Die Uhrzeit des Servers stimmt nicht (keine Internetzeit?). Bis sie korrekt ist, speichert
