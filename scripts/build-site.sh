@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 rm -rf _site
 (cd web && npm run build:demo)
-cp site/index.html site/impressum.html site/style.css _site/
+cp site/index.html site/impressum.html site/faq.html site/style.css _site/
 cp web/public/icon.svg _site/
 cp scripts/install.sh scripts/updater.sh _site/
 mkdir -p _site/fonts

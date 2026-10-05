@@ -20,6 +20,7 @@
       <nav aria-label="Seitenbereiche">
         <a href="./#funktionen">Funktionen</a>
         <a href="./#installation">Installation</a>
+        <a href="faq.html">Fragen</a>
         <a href="demo/">Demo</a>
         <a href="https://github.com/Gr33ndev/OpenAmpere">GitHub</a>
       </nav>
@@ -67,7 +68,7 @@
           <p>Du startest OpenAmpere einmal mit Docker. Danach sucht ein Assistent den Wechselrichter, und alle
             Einstellungen machst du in der App. Konfigurationsdateien musst du nicht bearbeiten.</p>
           <p class="small">Deine bisherige App funktioniert nur über die Cloud des Herstellers? Dann lies den
-            <a href="#hintergrund">Hintergrund</a>.</p>
+            <a href="#hintergrund">Hintergrund</a> und die <a href="faq.html">häufigen Fragen</a>.</p>
         </div>
       </div>
     </section>
@@ -106,8 +107,8 @@
         <li>
           <h3>Rechner vorbereiten</h3>
           <p>Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit
-            64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Das
-            kann auch der Installationsbetrieb erledigen.</p>
+            64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den
+            von EKD verkauften Speichern ist das schon der Fall, sonst kann es der Installationsbetrieb erledigen.</p>
         </li>
         <li>
           <h3>Installieren</h3>
@@ -191,11 +192,21 @@
 
     <section class="wrap legal" id="hintergrund">
       <h2>Hintergrund und rechtliche Hinweise</h2>
-      <p>Laut <a href="https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html">Handelsblatt</a>
-        hat die Energiekonzepte Deutschland GmbH (EKD) Insolvenz angemeldet. Ihre App „Ampere.IQ“ funktioniert nur über
-        Server von EKD. Werden diese abgeschaltet, kommen Anlagenbesitzer nicht mehr an ihre Daten und Einstellungen.
-        OpenAmpere ist als lokale Alternative von Betroffenen entstanden. Die als „Ampere.StoragePro E3“ verkauften
-        Speicher basieren auf der FoxESS-H3-Serie, ältere „Ampere.StoragePro“ auf SAJ H2 und HS2.</p>
+      <p>Die Energiekonzepte Deutschland GmbH (EKD) und weitere Gesellschaften der Gruppe haben Anfang Oktober 2026
+        Insolvenz beantragt. Die Verfahren laufen beim Amtsgericht Leipzig, die amtlichen Bekanntmachungen findest du unter
+        <a href="https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf">insolvenzbekanntmachungen.de</a> (Gericht Leipzig,
+        Aktenzeichen eingeben): Energiekonzepte Deutschland GmbH 401 IN 2082/26, AMPERE German Electric Innovation GmbH
+        401 IN 2085/26, EKD Montage GmbH 401 IN 2100/26, Energiekonzepte Deutschland Holding GmbH 401 IN 2101/26,
+        Investorenholding 401 IN 2107/26 und PV-Montage GmbH 401 IN 2110/26. Laut
+        <a href="https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html">Handelsblatt</a>
+        sollen insgesamt sieben Gesellschaften betroffen sein, amtlich veröffentlicht sind bisher diese sechs (Stand
+        5. Oktober 2026). Laut EKD läuft der Geschäftsbetrieb uneingeschränkt weiter, Anlaufstelle für Kunden bleibt der
+        Kundenservice (<a href="https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/">pv magazine</a>).</p>
+      <p>Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das
+        Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht
+        direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD. OpenAmpere ist als lokale Alternative
+        von Betroffenen entstanden. Die als „Ampere.StoragePro E3“ verkauften Speicher basieren auf der FoxESS-H3-Serie,
+        ältere „Ampere.StoragePro“ auf SAJ H2 und HS2.</p>
       <p><strong>Keine Verbindung zu EKD oder den Herstellern:</strong> OpenAmpere ist ein unabhängiges, inoffizielles
         Projekt. Es hat nichts mit der Energiekonzepte Deutschland GmbH, ihrer Insolvenzverwaltung, FoxESS, SAJ oder
         Kiwigrid zu tun und wurde von ihnen weder beauftragt noch autorisiert.</p>
