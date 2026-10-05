@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
@@ -536,11 +536,54 @@ export function AppearancePage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
-/** Started from the home screen (iPhone/iPad): downloads must open in their own window, the preview iOS shows
- * in the app window itself has no way back (#13). */
-const HOME_SCREEN_APP = window.matchMedia?.("(display-mode: standalone)").matches
-  || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+/** Started from the home screen: downloads must open in their own window, the preview iOS shows in the app window
+ * itself has no way back (#13). */
+const IOS_HOME_SCREEN = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+const HOME_SCREEN_APP = window.matchMedia?.("(display-mode: standalone)").matches || IOS_HOME_SCREEN;
 const downloadProps = HOME_SCREEN_APP ? { target: "_blank", rel: "noopener" } : { download: "" };
+/** On the iPhone that own window only shows a blank page and saves nothing (#70): there the app fetches the file
+ * itself and hands it to the share sheet ("In Dateien sichern"). */
+const SHARE_FILES = IOS_HOME_SCREEN && (() => {
+  try {
+    return !!navigator.canShare?.({ files: [new File(["x"], "x.csv", { type: "text/csv" })] });
+  } catch {
+    return false;
+  }
+})();
+
+function DownloadButton({ href, label }: { href: string; label: string }) {
+  const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState<File | null>(null);
+  useEffect(() => setReady(null), [href]);
+  if (!SHARE_FILES) return <a className="btn secondary" href={href} {...downloadProps}>{label}</a>;
+
+  const share = (file: File) => navigator.share({ files: [file] }).then(() => setReady(null), (err: Error) => {
+    if (err.name === "NotAllowedError") setReady(file); // loading took too long for iOS: one more tap opens the sheet
+    else {
+      setReady(null);
+      if (err.name !== "AbortError") toast("Die Datei konnte nicht geteilt werden.", "error");
+    }
+  });
+  const load = async () => {
+    setBusy(true);
+    try {
+      const response = await fetch(href, { credentials: "same-origin" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(typeof data.detail === "string" ? data.detail : `Fehler ${response.status}`);
+      }
+      const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "openampere";
+      const blob = await response.blob();
+      await share(new File([blob], name, { type: blob.type || "application/octet-stream" }));
+    } catch (err) {
+      toast(err instanceof TypeError || !(err instanceof Error) ? OFFLINE_MESSAGE : err.message, "error"); // TypeError: network
+    } finally {
+      setBusy(false);
+    }
+  };
+  return ready ? <Button variant="secondary" onClick={() => void share(ready)}>Datei sichern oder teilen</Button>
+    : <Button variant="secondary" busy={busy} onClick={() => void load()}>{label}</Button>;
+}
 
 function CsvExportCard() {
   const thisYear = new Date().getFullYear();
@@ -559,7 +602,7 @@ function CsvExportCard() {
       </div>
       <Segmented value={resolution} onChange={setResolution}
         options={[["15m", "15 min"], ["60m", "Stunde"], ["day", "Tag"], ["month", "Monat"]]} />
-      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <a className="btn secondary" href={href} {...downloadProps}>CSV herunterladen</a>
+      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <DownloadButton href={href} label="CSV herunterladen" />
         : <p className="hint">Bitte einen gültigen Zeitraum wählen.</p>}
     </div>
   );
@@ -626,7 +669,7 @@ export function DataPage({ onBack }: PageProps) {
         <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.
           Passwörter und API-Schlüssel sind nicht enthalten.</p>
         {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : auth?.authenticated ? (
-          <BackupLink />
+          SHARE_FILES ? <DownloadButton href="/api/backup" label="Datensicherung herunterladen" /> : <BackupLink />
         ) : (
           <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
             Anmelden zum Herunterladen
