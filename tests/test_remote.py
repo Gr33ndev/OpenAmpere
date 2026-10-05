@@ -85,6 +85,7 @@ def test_device_approval_and_logout(runtime):
     helper(remote, RUNNING)
     remote.request("logout")
     assert (remote.folder / "request").read_text() == "logout"
+    assert remote.view()["state"] == "stopping"  # until the helper has logged out
     assert runtime.storage.control_log()[0]["details"] == {"from": {"remote_access": "connected"},
                                                            "to": {"remote_access": "logout"}}
     with pytest.raises(ValueError):

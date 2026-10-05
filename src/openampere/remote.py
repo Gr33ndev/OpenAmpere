@@ -17,12 +17,14 @@ from .runtime import Runtime
 
 HELPER_ALIVE_S = 60  # the helper writes a sign of life every few seconds
 STARTING_S = 60  # after "Einrichten", how long to wait for the login link before showing an error
+STOPPING_S = 15  # after "Trennen", until the helper has logged out
 
 
 class Remote:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self.login_requested = 0.0
+        self.logout_requested = 0.0
 
     @property
     def folder(self) -> Path:
@@ -56,7 +58,9 @@ class Remote:
         login_url = str(status.get("AuthURL") or "")
         if not login_url.startswith("https://"):
             login_url = ""
-        if backend == "Running":
+        if backend == "Running" and now - self.logout_requested < STOPPING_S:
+            state = "stopping"
+        elif backend == "Running":
             state = "connected"
         elif backend == "NeedsMachineAuth":
             state = "approval"  # the tailnet wants new devices to be approved in the Tailscale admin console
@@ -85,5 +89,6 @@ class Remote:
         self.folder.mkdir(parents=True, exist_ok=True)
         (self.folder / "request").write_text(action)
         self.login_requested = now if action == "login" else 0.0
+        self.logout_requested = now if action == "logout" else 0.0
         self.runtime.storage.log_control("remote_access", {"from": {"remote_access": before},
                                                            "to": {"remote_access": action}}, False, "ok")

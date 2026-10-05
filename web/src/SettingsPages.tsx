@@ -514,7 +514,7 @@ const LOG_VALUES: Record<string, string> = {
   true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",
   none: "keine Begrenzung", self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugen", backup: "Notstromreserve",
   peak_shaving: "Spitzenlast begrenzen", connected: "verbunden", off: "aus", login: "einrichten", logout: "getrennt",
-  starting: "wird eingerichtet", approval: "wartet auf Freigabe", failed: "fehlgeschlagen",
+  starting: "wird eingerichtet", stopping: "wird getrennt", approval: "wartet auf Freigabe", failed: "fehlgeschlagen",
 };
 const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? String(v));
 

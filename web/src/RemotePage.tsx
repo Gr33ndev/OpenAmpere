@@ -6,7 +6,7 @@ import { Button, copyText, Dialog, LearnMore, LoadState, Notice, SubPage, toast 
 
 type RemoteView = {
   available: boolean; port: number;
-  state: "unavailable" | "off" | "starting" | "login" | "approval" | "connected" | "failed";
+  state: "unavailable" | "off" | "starting" | "login" | "approval" | "connected" | "stopping" | "failed";
   login_url?: string | null; address?: string | null; name?: string | null; ip?: string | null; account?: string | null;
 };
 
@@ -67,8 +67,8 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {data?.state === "starting" && (
-        <div className="card"><p>Verbindung zu Tailscale wird vorbereitet …</p></div>
+      {(data?.state === "starting" || data?.state === "stopping") && (
+        <div className="card"><p>{data.state === "starting" ? "Verbindung zu Tailscale wird vorbereitet …" : "Verbindung wird getrennt …"}</p></div>
       )}
 
       {data?.state === "login" && data.login_url && (
@@ -124,6 +124,8 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
         <Dialog title="Zugriff von unterwegs trennen?" confirm="Trennen" danger
           onConfirm={() => { setDisconnect(false); void act("logout"); }} onCancel={() => setDisconnect(false)}>
           <p>Danach ist OpenAmpere nur noch zu Hause erreichbar. Du kannst es jederzeit wieder einrichten.</p>
+          <p className="hint">In deiner <a href={ADMIN_URL} target="_blank" rel="noopener noreferrer">Tailscale-Übersicht</a> bleibt
+            das Gerät als „offline“ stehen. Dort kannst du es löschen, wenn du Tailscale nicht mehr nutzen willst.</p>
         </Dialog>
       )}
     </SubPage>
