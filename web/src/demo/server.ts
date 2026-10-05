@@ -461,7 +461,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/import/cloud": () => ({ status: "done", phase: "soc", days_total: 487, work_done: 487, soc_done: 487, imported: 46752, key_set: true }),
   "/api/tokens": () => {
     const now = Date.now() / 1000;
-    return { tokens: [{ id: "demo", name: "Home Assistant", scope: "read", created: now - 86400 * 12, last_used: now - 40 }], pairing: [],
+    return { tokens: [{ id: "demo", name: "Home Assistant", scope: "read", created: now - 86400 * 12, last_used: now - 40, live_since: now - 3 * 3600 }], pairing: [],
       tls: { port: 8443, fingerprint: "3f9a0c6be1d24857a6c0f1e93b7d5a2c84e6f0b19d3c7a5e2f8b4d6c0a1e9f37", error: null } };
   },
   "/api/tariffs": () => ({ tariffs: [
