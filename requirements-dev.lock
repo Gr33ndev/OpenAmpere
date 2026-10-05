@@ -80,5 +80,5 @@ typing-inspection==0.4.4
     #   pydantic
 uvicorn==0.54.0
     # via openampere (pyproject.toml)
-websockets==17.1
+websockets==17.2
     # via openampere (pyproject.toml)
