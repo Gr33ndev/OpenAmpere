@@ -148,7 +148,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
             <Field label="Untergrenze im Notstrombetrieb"
               hint="Während eines Stromausfalls wird der Speicher bis hierhin entladen, nicht weiter. Höchstens so hoch wie die Notstrom-Reserve.">
               <SocSlider value={form.min_soc} disabled={!socEditable}
-                min={10} max={form.min_soc_on_grid ?? 100} onChange={(v) => set({ min_soc: v })} />
+                min={0} max={form.min_soc_on_grid ?? 100} onChange={(v) => set({ min_soc: v })} />
             </Field>
           </div>
 
@@ -501,8 +501,8 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
 
 const LOG_KEYS: Record<string, string> = {
   "control.enabled": "Steuerung", "control.dry_run": "Testmodus", "grid.feed_in_rule": "Einspeiseregel",
-  "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Entladegrenze (%)",
-  min_soc_on_grid: "Reserve am Netz (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
+  "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Untergrenze im Notstrombetrieb (%)",
+  min_soc_on_grid: "Notstrom-Reserve (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
   power_w: "Ladeleistung (W)", target_soc: "Ladeziel (%)", enabled: "Eingeschaltet", soc: "Ladestand (%)",
   consumer: "Gerät", on: "An",
 };

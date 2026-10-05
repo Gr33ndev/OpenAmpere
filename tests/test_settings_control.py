@@ -78,6 +78,10 @@ async def _reconnect_and_control(runtime, sim, port):
         await battery.write({"max_soc": 25})  # below the reserve
     log = [e for e in runtime.storage.control_log() if e["action"] == "battery_settings"]
     assert [e["dry_run"] for e in log] == [False, True]
+
+    # the battery may be emptied completely during an outage, and a floor of 0 % must not block other changes (#69)
+    assert (await battery.write({"min_soc": 0}))["result"] == "ok" and sim.energy.min_soc == 0
+    assert (await battery.write({"min_soc_on_grid": 24}))["result"] == "ok" and sim.energy.min_soc_on_grid == 24
     switches = [e["details"]["to"] for e in runtime.storage.control_log() if e["action"] == "control_switches"]
     assert switches == [{"control.dry_run": False}, {"control.enabled": True}]  # newest first
 
@@ -109,6 +113,16 @@ def test_settings_api(tmp_path, authed):
     assert client.put("/api/settings", json={"storage.path": "/x"}).status_code == 400
     assert client.put("/api/battery/settings", json={"min_soc": 20}).status_code in (403, 503)
     assert client.get("/api/backup").status_code == 200
+
+
+def test_soc_limits():
+    from openampere.control import check_limits
+    check_limits({"min_soc": 0, "min_soc_on_grid": 24, "max_soc": 100})  # empty during an outage is allowed (#69)
+    for values, message in (({"min_soc": -1}, "zwischen 0 und 100"), ({"min_soc_on_grid": 5}, "zwischen 10 und 100"),
+                            ({"min_soc": 30, "min_soc_on_grid": 20}, "nicht unter der Untergrenze"),
+                            ({"min_soc_on_grid": 50, "max_soc": 50}, "über der Notstrom-Reserve")):
+        with pytest.raises(ValueError, match=message):
+            check_limits(values)
 
 
 def test_write_order_keeps_every_step_valid():

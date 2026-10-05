@@ -25,6 +25,7 @@ class WriteFailed(Exception):
 
 FIELDS = ("work_mode", "min_soc", "max_soc", "min_soc_on_grid")
 SOC_FIELDS = ("min_soc", "max_soc", "min_soc_on_grid")
+SOC_MIN = {"min_soc": 0, "max_soc": 10, "min_soc_on_grid": 10}  # lowest value per limit in %
 VERIFY_AFTER_S = 45.0  # re-read written values after this time to detect a second master overwriting them
 
 log = logging.getLogger(__name__)
@@ -65,15 +66,18 @@ async def _remote_active(driver) -> bool:
 
 
 def check_limits(values: dict) -> None:
-    """FoxESS rules: 10 <= min_soc <= min_soc_on_grid < max_soc <= 100."""
-    names = {"min_soc": "Die Entladegrenze", "max_soc": "Die Ladegrenze", "min_soc_on_grid": "Die Notstrom-Reserve"}
+    """FoxESS rules: 0 <= min_soc <= min_soc_on_grid < max_soc <= 100, reserve and upper limit at least 10.
+    During an outage the battery may be emptied completely (#69)."""
+    names = {"min_soc": "Die Untergrenze im Notstrombetrieb", "max_soc": "Die Ladegrenze",
+             "min_soc_on_grid": "Die Notstrom-Reserve"}
     for key in SOC_FIELDS:
         value = values.get(key)
-        if value is not None and not 10 <= value <= 100:
-            raise ValueError(f"{names[key]} muss zwischen 10 und 100 % liegen")
+        low = SOC_MIN[key]
+        if value is not None and not low <= value <= 100:
+            raise ValueError(f"{names[key]} muss zwischen {low} und 100 % liegen")
     lo, reserve, hi = values.get("min_soc"), values.get("min_soc_on_grid"), values.get("max_soc")
     if lo is not None and reserve is not None and reserve < lo:
-        raise ValueError("Die Notstrom-Reserve darf nicht unter der Entladegrenze im Inselbetrieb liegen")
+        raise ValueError("Die Notstrom-Reserve darf nicht unter der Untergrenze im Notstrombetrieb liegen")
     if reserve is not None and hi is not None and hi <= reserve:
         raise ValueError("Die Ladegrenze muss über der Notstrom-Reserve liegen")
 
