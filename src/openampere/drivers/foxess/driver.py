@@ -151,8 +151,9 @@ class FoxessDriver(ModbusDevice):
         for name, value in (("min_soc", min_soc), ("max_soc", max_soc), ("min_soc_on_grid", min_soc_on_grid)):
             if value is None:
                 continue
-            if not 10 <= value <= 100:
-                raise ValueError(f"{name} must be between 10 and 100 %")
+            low = 0 if name == "min_soc" else 10  # the outage floor may be 0 % (#69)
+            if not low <= value <= 100:
+                raise ValueError(f"{name} must be between {low} and 100 %")
             await self._write(self.map.settings[name], value)
 
     async def set_remote_power(self, watts: int, timeout_s: int) -> None:

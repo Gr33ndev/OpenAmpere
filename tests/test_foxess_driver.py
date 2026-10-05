@@ -70,8 +70,10 @@ async def test_write_settings_and_remote_control(register_map, model):
         await driver.release_remote_power()
         assert not sim.energy.remote_enabled
 
+        await driver.write_soc_limits(min_soc=0)  # the outage floor may be 0 % (#69)
+        assert (await driver.read_settings()).min_soc == 0
         with pytest.raises(ValueError):
-            await driver.write_soc_limits(min_soc=5)
+            await driver.write_soc_limits(min_soc_on_grid=5)
         await driver.close()
 
 
