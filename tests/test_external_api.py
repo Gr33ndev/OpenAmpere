@@ -259,3 +259,14 @@ def test_pairing_code_vector():
     from openampere.apitokens import pairing_code
 
     assert pairing_code("00" * 32, bytes(range(32)), bytes(range(32, 64))) == "001345"
+
+
+def test_tokens_show_whether_the_app_is_connected_live(runtime, web):
+    """The page "Verbundene Apps" shows whether Home Assistant is connected right now (#79)."""
+    token = new_token(web, "read")
+    assert web.get("/api/tokens").json()["tokens"][0]["live_since"] is None
+    with TestClient(web.app, base_url="https://testserver") as app:
+        with app.websocket_connect(f"wss://testserver{V1}/ws", headers={"Authorization": f"Bearer {token}"}) as ws:
+            ws.receive_json()
+            assert web.get("/api/tokens").json()["tokens"][0]["live_since"] is not None
+    assert web.get("/api/tokens").json()["tokens"][0]["live_since"] is None

@@ -166,6 +166,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     auth = Auth(storage)
     tokens = ApiTokens(storage)
     pairing = Pairing(tokens, lambda: runtime.tls.fingerprint)
+    live_apps: dict[str, dict] = {}  # apps with an open live connection right now (#79)
     # short-lived links for downloads that open in their own window (iPhone home-screen app, see /api/backup/link)
     download_links: dict[str, float] = {}
 
@@ -276,7 +277,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"port": port or None, "fingerprint": runtime.tls.fingerprint if port else None, "error": runtime.tls_error}
 
     def tokens_view() -> dict:
-        return {"tokens": tokens.list(), "pairing": pairing.pending(), "tls": tls_view()}
+        return {"tokens": [{**t, "live_since": (live_apps.get(t["id"]) or {}).get("since")} for t in tokens.list()],
+                "pairing": pairing.pending(), "tls": tls_view()}
 
     @app.get("/api/tokens")
     def get_tokens():
@@ -324,7 +326,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         return tokens_view()
 
     external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
-                      charging=charging, surplus=surplus, devices=devices)
+                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps)
 
     # ---- live ------------------------------------------------------------
 

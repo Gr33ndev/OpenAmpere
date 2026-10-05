@@ -50,7 +50,8 @@ def bearer(value: str | None) -> str | None:
 
 
 def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing, *, installation_id: str,
-             version: str, battery: BatteryControl, charging, surplus, devices) -> None:
+             version: str, battery: BatteryControl, charging, surplus, devices, live_apps: dict) -> None:
+    """live_apps: token id -> {"since", "connections"} of the apps with an open live connection (#79)."""
     collector = runtime.collector
     limits = RateLimit()
 
@@ -144,11 +145,14 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     @app.websocket(f"{PREFIX}/ws")
     async def live_ws(ws: WebSocket):
         # the HTTP middleware does not see WebSockets: the same checks here
-        if ws.url.scheme != "wss" or tokens.check(bearer(ws.headers.get("authorization"))) is None:
+        token = tokens.check(bearer(ws.headers.get("authorization"))) if ws.url.scheme == "wss" else None
+        if token is None:
             await ws.close(code=1008)
             return
         await ws.accept()
         queue = collector.subscribe()
+        entry = live_apps.setdefault(token["id"], {"since": time.time(), "connections": 0})
+        entry["connections"] += 1
 
         async def push():
             await ws.send_json(live_message())
@@ -170,6 +174,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             for task in tasks:
                 task.cancel()
             collector.unsubscribe(queue)
+            entry["connections"] -= 1
+            if entry["connections"] <= 0:
+                live_apps.pop(token["id"], None)
 
     @app.put(f"{PREFIX}/battery")
     async def put_battery(request: Request, changes: dict = Body(...)):

@@ -6,12 +6,16 @@ import { REPO_URL } from "./links";
 import { Button, copyText, Dialog, Field, LoadState, Notice, Segmented, SubPage, toast } from "./ui";
 
 type Scope = "read" | "control";
-type AppToken = { id: string; name: string; scope: Scope; created: number; last_used: number | null };
+type AppToken = { id: string; name: string; scope: Scope; created: number; last_used: number | null; live_since: number | null };
 type PairingRequest = { id: string; name: string; code: string; created: number; expires: number };
 type Tokens = { tokens: AppToken[]; pairing: PairingRequest[];
   tls: { port: number | null; fingerprint: string | null; error: string | null } };
 
 const DOCS_URL = `${REPO_URL}/blob/main/docs/homeassistant.md`;
+// plain links (no images or scripts from other servers in the app): they open the user's own Home Assistant
+const HACS_URL = "https://hacs.xyz/docs/use/";
+const MY_HA_REPOSITORY = "https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration";
+const MY_HA_SETUP = "https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere";
 const SCOPES: [Scope, string][] = [["read", "Nur lesen"], ["control", "Lesen + Steuern"]];
 const when = (ts: number) => new Date(ts * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: timeZone() });
 
@@ -54,6 +58,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
         Speicher steuern. Jede App bekommt einen eigenen Zugang, den du jederzeit entfernen kannst. Die Verbindung ist
         verschlüsselt. <a href={DOCS_URL} target="_blank" rel="noopener">Anleitung für Home Assistant</a></p>
       {!data && <LoadState error={error} onRetry={reload} />}
+      {data && !code && <ConnectionStatus data={data} />}
 
       {data?.tls.error && <Notice kind="warn">HTTPS für andere Apps ist nicht verfügbar: {data.tls.error}. Ein anderes Programm
         nutzt den Port. Abhilfe: in der docker-compose.yml OPENAMPERE_SERVER_TLS_PORT auf einen freien Port setzen, z. B.
@@ -152,5 +157,65 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
         <Button variant="secondary" disabled={busy} onClick={() => void decide(false)}>Ablehnen</Button>
       </div>
     </div>
+  );
+}
+
+/** Is Home Assistant (or another app) connected right now? If not: what to check, or how to set it up (#79). */
+function ConnectionStatus({ data }: { data: Tokens }) {
+  const live = data.tokens.filter((t) => t.live_since);
+  if (live.length) {
+    return (
+      <Notice kind="ok">
+        {live.map((t) => <div key={t.id}><strong>{t.name}</strong> ist verbunden, Live-Werte seit {when(t.live_since!)}.</div>)}
+      </Notice>
+    );
+  }
+  const host = DEMO ? "192.168.178.20" : window.location.hostname; // the demo runs on the project website
+  const port = data.tls.port;
+  if (data.tokens.length) {
+    const last = Math.max(...data.tokens.map((t) => t.last_used ?? 0));
+    return (
+      <div className="card form">
+        <Notice kind="warn">Gerade ist keine App verbunden{last ? `, zuletzt ${when(last)}` : ""}.</Notice>
+        <ul className="plain-list">
+          <li>Läuft Home Assistant, und ist dort die Integration OpenAmpere eingerichtet?</li>
+          <li>Erreicht Home Assistant diese Adresse? In der Integration muss <strong>{host}</strong> mit HTTPS-Port
+            <strong> {port ?? "–"}</strong> eingetragen sein.</li>
+          <li>Zeigt Home Assistant „Neu verbinden“? Dann wurde der Zugang hier entfernt oder das Zertifikat hat sich
+            geändert: einfach neu koppeln.</li>
+        </ul>
+      </div>
+    );
+  }
+  return (
+    <div className="card form">
+      <h2>Home Assistant verbinden</h2>
+      <p className="hint">So siehst du die Werte von OpenAmpere in Home Assistant, auch im Energie-Dashboard, und kannst
+        auf Wunsch den Speicher von dort steuern. OpenAmpere läuft schon, es fehlt nur noch die Integration.</p>
+      <ol className="setup-steps">
+        <li>In Home Assistant <a href={HACS_URL} target="_blank" rel="noopener">HACS</a> installieren, falls noch nicht
+          geschehen.</li>
+        <li>Die Integration OpenAmpere über HACS installieren und Home Assistant neu starten:{" "}
+          <a href={MY_HA_REPOSITORY} target="_blank" rel="noopener">In Home Assistant öffnen</a></li>
+        <li>Integration hinzufügen und „Mit OpenAmpere koppeln“ wählen:{" "}
+          <a href={MY_HA_SETUP} target="_blank" rel="noopener">Integration einrichten</a>. Dort eintragen:
+          <dl className="facts">
+            <dt>Adresse</dt><dd><CopyValue value={host} /></dd>
+            <dt>HTTPS-Port</dt><dd>{port ? <CopyValue value={String(port)} /> : "ausgeschaltet"}</dd>
+          </dl>
+        </li>
+        <li>Die Anfrage erscheint dann hier oben mit einem Code. Stimmt er mit dem in Home Assistant überein, erlauben.</li>
+      </ol>
+      <p className="hint">Ohne HACS oder für andere Apps: unten einen Zugang erstellen und den Verbindungscode einfügen.
+        Die Adresse muss die sein, unter der Home Assistant diesen Rechner erreicht, meist die IP-Adresse.</p>
+    </div>
+  );
+}
+
+function CopyValue({ value }: { value: string }) {
+  return (
+    <span className="copy-value"><code>{value}</code>
+      <button className="link" onClick={async () => { if (await copyText(value)) toast("Kopiert"); }}>Kopieren</button>
+    </span>
   );
 }

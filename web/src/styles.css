@@ -610,3 +610,6 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .token-row .link { flex-shrink: 0; min-height: 44px; }
 .fingerprint { font-size: 12px; word-break: break-all; }
 .pairing-code { font-size: 36px; font-weight: 700; letter-spacing: 0.08em; text-align: center; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.setup-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.5; }
+.copy-value { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.copy-value .link { min-height: 44px; }
