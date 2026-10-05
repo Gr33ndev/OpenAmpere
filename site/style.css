@@ -160,3 +160,31 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
   padding: 14px 16px; }
 .ha-badge { display: inline-block; line-height: 0; }
 .ha-badge img { height: 44px; width: auto; max-width: 100%; }
+
+/* FAQ */
+.faq-page { max-width: 820px; }
+.faq-head { padding: 40px 0 8px; }
+.faq-head .lead { margin-bottom: 18px; }
+.topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; padding: 0; list-style: none; }
+.topics a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 15px; font-weight: 500; }
+.topics a:hover { border-color: var(--accent); }
+.faq-page section { padding-top: 40px; scroll-margin-top: 72px; }
+.faq-page section > p { color: var(--label); }
+.faq-list { display: grid; gap: 10px; }
+.faq { background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 20px; font-weight: 600; font-size: 17px; line-height: 1.4; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ""; flex: none; width: 10px; height: 10px; margin-right: 4px; border: solid var(--label);
+  border-width: 0 2px 2px 0; transform: translateY(-3px) rotate(45deg); transition: transform 0.15s; }
+.faq[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+.faq summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; border-radius: 18px; }
+.faq .answer { padding: 0 20px 18px; color: var(--label); }
+.faq .answer p:last-child, .faq .answer ul:last-child { margin-bottom: 0; }
+.faq .answer ul { margin: 0 0 12px; padding-left: 20px; }
+.faq .answer li { margin: 6px 0; }
+.faq .answer strong { color: var(--text); }
+.faq-page .notice { margin: 0 0 16px; color: var(--label); }
+.faq-page .notice strong { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .faq summary::after { transition: none; } }

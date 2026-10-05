@@ -122,8 +122,8 @@ function ImportHint() {
   };
   return (
     <div className="notice info import-hint">
-      <div><strong>Verlauf aus der EKD-Cloud sichern?</strong> Solange die Cloud noch läuft, kannst du deine bisherigen
-        Daten übernehmen. (OpenAmpere ist ein unabhängiges Projekt ohne Verbindung zu EKD.)</div>
+      <div><strong>Verlauf aus der EKD-Cloud sichern?</strong> Du kannst deine bisherigen Daten übernehmen. Am besten
+        bald, denn ob die Cloud dauerhaft erreichbar bleibt, ist offen. (OpenAmpere ist ein unabhängiges Projekt ohne Verbindung zu EKD.)</div>
       <div className="actions">
         <button className="link" onClick={() => navigate("more/data")}>Einrichten</button>
         <button className="link" onClick={hide}>Ausblenden</button>

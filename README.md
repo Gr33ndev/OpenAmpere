@@ -1,6 +1,6 @@
 # OpenAmpere
 
-[Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md) · [Mitmachen](CONTRIBUTING.md)
+[Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [Häufige Fragen](https://gr33ndev.github.io/OpenAmpere/faq.html) · [Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md) · [Mitmachen](CONTRIBUTING.md)
 
 **Lokale App für Solaranlagen mit Batteriespeicher, ganz ohne Cloud.**
 
@@ -85,7 +85,7 @@ freigegeben ist. Anleitung und Details: [docs/homeassistant.md](docs/homeassista
 
 ## Installation
 
-**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Das Einschalten kann auch der Installationsbetrieb erledigen.
+**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
 
 **1. Installieren:** Auf dem Rechner im Terminal ausführen:
 
@@ -223,8 +223,16 @@ Die Register zum Schreiben stammen aus der Dokumentation der Community und sind 
 ## Hintergrund & rechtliche Hinweise
 
 **Wie OpenAmpere entstanden ist:**
-- Laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) hat die Energiekonzepte Deutschland GmbH (EKD) Insolvenz angemeldet.
-- Ihre App „Ampere.IQ“ funktioniert nur über Server von EKD. Sollten diese abgeschaltet werden, verlieren Anlagenbesitzer den Zugriff auf ihre Daten und Einstellungen.
+- Die Energiekonzepte Deutschland GmbH (EKD) und weitere Gesellschaften der Gruppe haben Anfang Oktober 2026 Insolvenz beantragt. Die Verfahren laufen beim Amtsgericht Leipzig, die amtlichen Bekanntmachungen stehen unter [insolvenzbekanntmachungen.de](https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf) (Gericht Leipzig, Aktenzeichen eingeben):
+  - Energiekonzepte Deutschland GmbH: 401 IN 2082/26
+  - AMPERE German Electric Innovation GmbH: 401 IN 2085/26
+  - EKD Montage GmbH: 401 IN 2100/26
+  - Energiekonzepte Deutschland Holding GmbH: 401 IN 2101/26
+  - Energiekonzepte Deutschland Investorenholding GmbH: 401 IN 2107/26
+  - Energiekonzepte Deutschland PV-Montage GmbH: 401 IN 2110/26
+- Laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) sollen insgesamt sieben Gesellschaften der Gruppe betroffen sein. Amtlich veröffentlicht sind bisher die sechs oben genannten (Stand 5. Oktober 2026).
+- Laut EKD läuft der Geschäftsbetrieb uneingeschränkt weiter, Anlaufstelle für Kunden bleibt der Kundenservice ([pv magazine](https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/)).
+- Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD.
 - OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene.
 
 **Warum es mit EKD-Anlagen funktioniert:** OpenAmpere spricht direkt mit den verbauten Wechselrichtern. Die von EKD als „Ampere.StoragePro E3“ vertriebenen Speicher basieren auf der FoxESS-H3-Serie, die älteren „Ampere.StoragePro“ auf SAJ H2/HS2. OpenAmpere funktioniert genauso mit diesen Geräten aus anderen Quellen.

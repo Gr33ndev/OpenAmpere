@@ -853,7 +853,7 @@ function CloudImportCard() {
     <>
       <div className="section-title">Verlauf aus der EKD-Cloud</div>
       <div className="card form">
-        <p className="hint">Übernimm deinen Verlauf aus der App „Ampere.IQ“, solange die EKD-Cloud noch läuft. Den Schlüssel
+        <p className="hint">Übernimm deinen Verlauf aus der App „Ampere.IQ“, solange die EKD-Cloud erreichbar ist. Den Schlüssel
           findest du in der Ampere.IQ-App unter <strong>Mehr → Konfiguration API-Zugang</strong>.</p>
         <p className="hint"><strong>OpenAmpere ist unabhängig und hat nichts mit EKD zu tun.</strong></p>
         <LearnMore summary="Mehr dazu">

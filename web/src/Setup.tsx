@@ -177,8 +177,8 @@ export function SetupHelp() {
         <ul>
           <li><strong>Netzwerkkabel:</strong> Der Wechselrichter braucht eine Verbindung ins Heimnetz, meist per Kabel am
             LAN-Anschluss. Ein reiner Cloud-WLAN-Stick reicht oft nicht.</li>
-          <li><strong>Modbus TCP:</strong> Die Schnittstelle muss eingeschaltet sein. Bei vielen Geräten ist sie das ab
-            Werk, sonst kann der Installationsbetrieb sie aktivieren. Üblich ist Port 502.</li>
+          <li><strong>Modbus TCP:</strong> Die Schnittstelle muss eingeschaltet sein. Bei den von EKD verkauften
+            Speichern ist sie das schon, sonst kann der Installationsbetrieb sie aktivieren. Üblich ist Port 502.</li>
           <li><strong>FoxESS H3</strong> (auch als „Ampere.StoragePro E3“ verkauft): Geräteadresse 247.</li>
           <li><strong>SAJ H2/HS2</strong> (ältere „Ampere.StoragePro“): Geräteadresse 1 oder 2, je nach Kommunikationsmodul.</li>
           <li><strong>IP-Adresse herausfinden:</strong> In der Geräteliste deines Routers (FRITZ!Box: Heimnetz → Netzwerk)
@@ -206,7 +206,8 @@ export function Setup({ onDone }: { onDone: () => void }) {
         <div className="page-head"><h1>Bisherigen Verlauf übernehmen?</h1></div>
         <div className="card">
           <p>Hast du deine Anlage bisher mit der App „Ampere.IQ“ genutzt? Dann kannst du deinen Verlauf aus der
-            EKD-Cloud übernehmen – <strong>aber nur, solange diese noch läuft.</strong> Danach ist er verloren.</p>
+            EKD-Cloud übernehmen. <strong>Am besten jetzt:</strong> Ob die Cloud dauerhaft erreichbar bleibt, ist offen, und
+            ohne sie lässt sich der alte Verlauf nicht mehr abrufen.</p>
           <p className="hint">Du brauchst dafür den persönlichen API-Schlüssel aus der Ampere.IQ-App. OpenAmpere ist ein
             unabhängiges Projekt ohne Verbindung zu EKD.</p>
         </div>

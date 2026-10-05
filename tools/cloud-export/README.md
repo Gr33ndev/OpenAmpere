@@ -1,6 +1,6 @@
 # Export aus der EKD-Cloud
 
-Sichert den kompletten Verlauf einer Anlage aus der EKD-Cloud (App „Ampere.IQ“), solange diese noch läuft.
+Sichert den kompletten Verlauf einer Anlage aus der EKD-Cloud (App „Ampere.IQ“), solange diese erreichbar ist.
 
 > Inoffizielles Werkzeug: OpenAmpere hat nichts mit der Energiekonzepte Deutschland GmbH (EKD) zu tun und wurde von ihr weder beauftragt noch autorisiert. Das Werkzeug nutzt ausschließlich die öffentliche Kunden-API mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber. Siehe [Hintergrund & rechtliche Hinweise](../../README.md#hintergrund--rechtliche-hinweise).
 
