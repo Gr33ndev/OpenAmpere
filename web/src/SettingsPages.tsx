@@ -221,8 +221,74 @@ function PriceChart() {
   );
 }
 
+type EegZone = { from_kw: number; to_kw: number; kw: number; share: number; ct: number };
+type EegView = { auto: boolean; full: boolean; commissioning_date: string; installed_kwp: number; error: string | null;
+  rate: { ct: number; period_from: string; period_to: string; full: boolean; funding_until: string; zones: EegZone[] } | null };
+const deDate = (iso: string) => iso.split("-").reverse().join(".");
+
+/** Feed-in compensation from the EEG rates: commissioning date, installed power and kind of feed-in (#71). */
+function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
+  const { settings, save, locked } = useSettings();
+  const [form, setForm] = useState({ auto: eeg.auto, date: eeg.commissioning_date, kwp: "", full: eeg.full });
+  const initial = { auto: eeg.auto, date: eeg.commissioning_date, kwp: eeg.installed_kwp ? de(eeg.installed_kwp) : "", full: eeg.full };
+  useEffect(() => setForm(initial), [eeg]);
+  const kwp = form.kwp.trim() === "" ? 0 : toNumber(form.kwp);
+  const valid = Number.isFinite(kwp) && kwp >= 0 && kwp <= 1000;
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const lock = ["tariff.feed_in_auto", "tariff.feed_in_full", "pv.commissioning_date", "pv.installed_kwp"]
+    .some((k) => locked(k as SettingKey));
+  const rate = eeg.rate;
+  return (
+    <div className="card form">
+      <h2>Einspeisevergütung</h2>
+      <SwitchRow label="Nach EEG bestimmen" checked={form.auto} disabled={!settings || lock}
+        hint="OpenAmpere rechnet den Satz aus Inbetriebnahme, Modulleistung und Einspeiseart aus, so wie der Netzbetreiber. Sonst gilt der Wert, den du beim Tarif einträgst."
+        onChange={(auto) => setForm({ ...form, auto })} />
+      {form.auto && (<>
+        <div className="field-row">
+          <Field label="Inbetriebnahme">
+            <input className="input" type="date" value={form.date} min="2000-01-01" max={todayIso()} disabled={lock}
+              onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          </Field>
+          <Field label="Modulleistung">
+            <div className="input-unit"><input className="input" inputMode="decimal" value={form.kwp} placeholder="z. B. 9,8" disabled={lock}
+              onChange={(e) => setForm({ ...form, kwp: e.target.value })} /><span>kWp</span></div>
+          </Field>
+        </div>
+        <p className="hint">Beides steht in der ersten Abrechnung des Netzbetreibers oder im Marktstammdatenregister.</p>
+        <Field label="Einspeiseart">
+          <Segmented value={form.full ? "full" : "partial"} disabled={lock} onChange={(v) => setForm({ ...form, full: v === "full" })}
+            options={[["partial", "Überschuss"], ["full", "Volleinspeisung"]]} />
+        </Field>
+        <p className="hint">Überschuss: Du nutzt Solarstrom selbst und speist nur den Rest ein (der Normalfall mit Speicher).
+          Volleinspeisung: Alles geht ins Netz, dafür gibt es seit 30.07.2022 höhere Sätze.</p>
+        {!dirty && (rate ? (
+          <div>
+            <p><strong>{num(rate.ct, 3)} ct/kWh</strong> für jede eingespeiste Kilowattstunde</p>
+            <p className="hint">
+              {rate.zones.length > 1
+                ? <>Die Leistung wird auf die Stufen aufgeteilt (§ 23c EEG): {rate.zones.map((z, i) => (
+                  <span key={z.from_kw}>{i > 0 && " + "}{num(z.kw, 3)} kW zu {num(z.ct, 2)} ct</span>))}.</>
+                : <>Satz bis 10 kW: {num(rate.zones[0].ct, 2)} ct.</>}
+              {" "}Gilt für Inbetriebnahmen vom {deDate(rate.period_from)} bis {deDate(rate.period_to)}
+              {form.full && !rate.full && ", damals noch ohne eigenen Satz für Volleinspeisung"}.
+              Vergütet wird bis {deDate(rate.funding_until)}.
+            </p>
+            <p className="hint">Weicht die Abrechnung deines Netzbetreibers ab, schalte die Automatik aus und trage den Wert beim Tarif ein.</p>
+          </div>
+        ) : eeg.error && <Notice kind="warn">{eeg.error}</Notice>)}
+      </>)}
+      {dirty && <Button disabled={!valid || lock} onClick={async () => {
+        if (await save({ "tariff.feed_in_auto": form.auto, "tariff.feed_in_full": form.full, "pv.commissioning_date": form.date,
+          "pv.installed_kwp": kwp })) onSaved();
+      }}>Speichern</Button>}
+    </div>
+  );
+}
+
 export function TariffPage({ onBack }: PageProps) {
-  const { data, error, reload, setData } = useResource<{ tariffs: TariffData[] }>("/api/tariffs");
+  const { data, error, reload, setData } = useResource<{ tariffs: TariffData[]; eeg: EegView }>("/api/tariffs");
+  const eegActive = !!data?.eeg.auto && !!data.eeg.rate;
   const [forms, setForms] = useState<TariffForm[]>([]);
   const [busy, setBusy] = useState(false);
   const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
@@ -244,7 +310,7 @@ export function TariffPage({ onBack }: PageProps) {
       const tariffs = forms.map((t) => ({ ...t, price_ct: toNumber(t.price_ct) || 0, surcharge_ct: toNumber(t.surcharge_ct) || 0,
         vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct),
         base_fee_eur_month: toNumber(t.base_fee_eur_month) || 0 }));
-      setData(await putJson<{ tariffs: TariffData[] }>("/api/tariffs", { tariffs }));
+      setData(await putJson<{ tariffs: TariffData[]; eeg: EegView }>("/api/tariffs", { tariffs }));
       toast("Gespeichert");
     } catch (e) {
       toast((e as Error).message, "error");
@@ -258,6 +324,7 @@ export function TariffPage({ onBack }: PageProps) {
       {!data && <LoadState error={error} onRetry={reload} />}
       <p className="hint">Damit rechnet OpenAmpere Ersparnis, Stromkosten und den Abgleich deiner Abschläge (Auswertung). Wechselst
         du den Tarif, lege einen neuen mit Startdatum an. Ältere Zeiträume rechnet OpenAmpere weiter mit dem alten Preis.</p>
+      {data && <EegCard eeg={data.eeg} onSaved={reload} />}
       {forms.map((t, i) => (
         <div className="card form" key={i}>
           <div className="field-row">
@@ -299,10 +366,10 @@ export function TariffPage({ onBack }: PageProps) {
             <div className="input-unit"><input className="input" inputMode="decimal" value={t.base_fee_eur_month}
               onChange={(e) => update(i, { base_fee_eur_month: e.target.value })} /><span>€/Monat</span></div>
           </Field>
-          <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst (EEG).">
+          {!eegActive && <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst. Steht in der Abrechnung des Netzbetreibers.">
             <div className="input-unit"><input className="input" inputMode="decimal" value={t.feed_in_ct}
               onChange={(e) => update(i, { feed_in_ct: e.target.value })} /><span>ct/kWh</span></div>
-          </Field>
+          </Field>}
           {forms.length > 1 && <button className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>Tarif entfernen</button>}
         </div>
       ))}

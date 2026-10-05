@@ -9,6 +9,7 @@ Values set through environment variables are reported as "locked" so the web app
 from __future__ import annotations
 
 import os
+from datetime import date
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from pathlib import Path
 
@@ -55,6 +56,8 @@ class ControlConfig:
 class TariffConfig:
     electricity_price_ct: float = 35.0  # gross price per kWh drawn from the grid
     feed_in_ct: float = 8.0  # feed-in compensation per kWh
+    feed_in_auto: bool = False  # compensation from the EEG rates instead of feed_in_ct (#71)
+    feed_in_full: bool = False  # full feed-in (Volleinspeisung): higher EEG rates
 
 
 @dataclass
@@ -62,6 +65,7 @@ class PvConfig:
     input_names: list = field(default_factory=list)  # e.g. ["Süddach", "Garage"]; empty = "Modulfeld 1", ...
     hidden_inputs: list = field(default_factory=list)  # input numbers ("3") not shown anywhere, e.g. an unused MPPT
     installed_kwp: float = 0.0  # installed module power (kWp, from the Marktstammdatenregister); 0 = unknown
+    commissioning_date: str = ""  # YYYY-MM-DD the plant went into operation (Inbetriebnahme); "" = unknown
 
 
 @dataclass
@@ -162,11 +166,14 @@ EDITABLE: dict[str, tuple] = {
     "control.dry_run": ("bool",),
     "tariff.electricity_price_ct": ("float", -100, 200),
     "tariff.feed_in_ct": ("float", -100, 200),
+    "tariff.feed_in_auto": ("bool",),
+    "tariff.feed_in_full": ("bool",),
     "timezone": ("timezone",),
     "cloud.api_key": ("secret",),
     "pv.input_names": ("strlist", 6, 30),
     "pv.hidden_inputs": ("strlist", 6, 2),
     "pv.installed_kwp": ("float", 0, 1000),
+    "pv.commissioning_date": ("date",),
     "battery.capacity_kwh": ("float", 0, 200),
     "battery.max_charge_kw": ("float", 0, 50),
     "updates.check": ("bool",),
@@ -275,6 +282,7 @@ LABELS = {
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
+    "pv.commissioning_date": "Inbetriebnahme",
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
 }
 
@@ -309,6 +317,10 @@ def validate(changes: dict) -> dict:
             elif kind == "url":
                 value = str(value).strip()
                 if value and not value.startswith(("https://", "http://")):
+                    raise ValueError
+            elif kind == "date":
+                value = str(value).strip() and date.fromisoformat(str(value).strip()).isoformat()  # "" = not set
+                if value and not "2000-01-01" <= value <= "2099-12-31":
                     raise ValueError
             elif kind == "timezone":
                 from zoneinfo import ZoneInfo

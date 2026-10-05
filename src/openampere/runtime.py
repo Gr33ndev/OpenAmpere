@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from . import eeg
 from .collector import Collector
 from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yaml, validate
 from .drivers import registry
@@ -41,7 +44,8 @@ class Runtime:
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
-        self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct))
+        self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct),
+                               self.eeg_rate)
 
     @classmethod
     def from_files(cls, config_path: str | None = None) -> Runtime:
@@ -61,6 +65,30 @@ class Runtime:
     def _save_settings(self, plain: dict) -> None:
         self.storage.save_settings({k: self.secrets.encrypt(k, v) if k in SECRETS and isinstance(v, str) else v
                                     for k, v in plain.items()})
+
+    def eeg_view(self) -> dict:
+        """Feed-in compensation under the EEG for this plant (#71): the rate, or why it cannot be determined."""
+        tariff, pv = self.config.tariff, self.config.pv
+        view = {"auto": tariff.feed_in_auto, "full": tariff.feed_in_full, "commissioning_date": pv.commissioning_date,
+                "installed_kwp": pv.installed_kwp, "rate": None, "error": None}
+        try:
+            if not pv.commissioning_date:
+                raise ValueError("Bitte das Datum der Inbetriebnahme angeben.")
+            view["rate"] = asdict(eeg.rate(date.fromisoformat(pv.commissioning_date), pv.installed_kwp,
+                                           tariff.feed_in_full))
+        except ValueError as err:
+            view["error"] = str(err)
+        return view
+
+    def eeg_rate(self) -> eeg.FeedInRate | None:
+        """The EEG rate when the compensation is determined automatically, otherwise None (own value per tariff)."""
+        tariff, pv = self.config.tariff, self.config.pv
+        if not tariff.feed_in_auto or not pv.commissioning_date:
+            return None
+        try:
+            return eeg.rate(date.fromisoformat(pv.commissioning_date), pv.installed_kwp, tariff.feed_in_full)
+        except ValueError:
+            return None
 
     @property
     def tz(self) -> ZoneInfo:

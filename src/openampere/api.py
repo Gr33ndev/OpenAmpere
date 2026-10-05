@@ -515,7 +515,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.get("/api/tariffs")
     def get_tariffs():
-        return {"tariffs": [asdict(t) for t in runtime.tariffs.all()]}
+        return {"tariffs": [asdict(t) for t in runtime.tariffs.all()], "eeg": runtime.eeg_view()}
 
     @app.get("/api/update")
     def get_update():
@@ -567,7 +567,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await runtime.tariffs.refresh_prices()
-        return {"tariffs": [asdict(t) for t in tariffs]}
+        return {"tariffs": [asdict(t) for t in tariffs], "eeg": runtime.eeg_view()}
 
     @app.get("/api/charging")
     def get_charging():

@@ -84,6 +84,9 @@ export type Settings = {
     "control.dry_run": boolean;
     "tariff.electricity_price_ct": number;
     "tariff.feed_in_ct": number;
+    "tariff.feed_in_auto": boolean;
+    "tariff.feed_in_full": boolean;
+    "pv.commissioning_date": string;
     timezone: string;
     "pv.input_names": string[];
     "pv.installed_kwp": number;
