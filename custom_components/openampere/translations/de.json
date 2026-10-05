@@ -1,0 +1,208 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OpenAmpere",
+        "description": "OpenAmpere muss bereits laufen (z. B. auf deinem Raspberry Pi). Wie möchtest du verbinden?",
+        "menu_options": {
+          "pair": "Mit OpenAmpere koppeln (empfohlen)",
+          "code": "Verbindungscode einfügen"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Neu verbinden",
+        "description": "Der Zugang wurde in OpenAmpere entfernt oder das Zertifikat hat sich geändert.",
+        "menu_options": {
+          "pair": "Mit OpenAmpere koppeln",
+          "code": "Verbindungscode einfügen"
+        }
+      },
+      "pair": {
+        "title": "Mit OpenAmpere koppeln",
+        "description": "Gib die Adresse ein, unter der OpenAmpere läuft. Danach zeigen Home Assistant und OpenAmpere denselben 6-stelligen Code, den du in OpenAmpere bestätigst.",
+        "data": {
+          "host": "Adresse",
+          "port": "HTTPS-Port"
+        },
+        "data_description": {
+          "host": "IP-Adresse oder Name des Geräts, auf dem OpenAmpere läuft, z. B. 192.168.178.20 – ohne http:// und ohne :8080.",
+          "port": "Standard 8443. Nur ändern, wenn du ihn in OpenAmpere geändert hast."
+        }
+      },
+      "code": {
+        "title": "Verbindungscode einfügen",
+        "description": "Erstelle in OpenAmpere unter Mehr → Verbundene Apps einen Zugang und füge den Verbindungscode hier ein.",
+        "data": {
+          "code": "Verbindungscode",
+          "host": "Adresse (optional)"
+        },
+        "data_description": {
+          "code": "Erstellst du in OpenAmpere unter Mehr → Verbundene Apps.",
+          "host": "Nur nötig, wenn Home Assistant OpenAmpere unter einer anderen Adresse erreicht als dein Browser, z. B. die IP-Adresse des Raspberry Pi."
+        }
+      }
+    },
+    "error": {
+      "invalid_code": "Das ist kein gültiger Verbindungscode. Bitte vollständig kopieren.",
+      "invalid_auth": "Der Zugang ist ungültig oder wurde entfernt.",
+      "certificate_mismatch": "Das Zertifikat passt nicht zum Code. Ist es wirklich dein OpenAmpere? Sonst bitte einen neuen Code erstellen.",
+      "cannot_connect": "OpenAmpere ist nicht erreichbar. Adresse und HTTPS-Port (Standard 8443) prüfen.",
+      "unsupported_version": "OpenAmpere und die Integration passen nicht zusammen. Bitte beide aktualisieren.",
+      "unknown": "Unerwarteter Fehler.",
+      "pairing_failed": "OpenAmpere hat die Anfrage nicht angenommen: {detail}"
+    },
+    "abort": {
+      "already_configured": "Dieses OpenAmpere ist schon eingerichtet.",
+      "reauth_successful": "Verbindung erneuert.",
+      "wrong_server": "Der Code gehört zu einem anderen OpenAmpere.",
+      "pairing_rejected": "Die Kopplung wurde in OpenAmpere abgelehnt.",
+      "pairing_expired": "Die Anfrage ist abgelaufen (10 Minuten). Bitte neu starten."
+    },
+    "progress": {
+      "wait_for_approval": "Öffne OpenAmpere → Mehr → Verbundene Apps. Dort steht eine Anfrage von „Home Assistant“.\n\n**Code: {code}**\n\nErlaube die Verbindung nur, wenn OpenAmpere genau diesen Code anzeigt. Steht dort ein anderer, lehne ab."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Live-Werte",
+        "data": {
+          "min_interval": "Mindestabstand zwischen Live-Werten (Sekunden)"
+        },
+        "data_description": {
+          "min_interval": "0 = jeden Wert übernehmen, den OpenAmpere schickt. Höhere Werte schonen kleine Systeme wie einen Raspberry Pi mit SD-Karte."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_power": {
+        "name": "PV-Leistung"
+      },
+      "house_power": {
+        "name": "Hausverbrauch"
+      },
+      "grid_power": {
+        "name": "Netzleistung"
+      },
+      "battery_power": {
+        "name": "Speicherleistung"
+      },
+      "battery_soc": {
+        "name": "Ladestand"
+      },
+      "battery_soh": {
+        "name": "Speicher-Gesundheit"
+      },
+      "battery_voltage": {
+        "name": "Speicherspannung"
+      },
+      "battery_current": {
+        "name": "Speicherstrom"
+      },
+      "battery_temperature": {
+        "name": "Speichertemperatur"
+      },
+      "inverter_temperature": {
+        "name": "Wechselrichter-Temperatur"
+      },
+      "pv_energy": {
+        "name": "PV-Erzeugung"
+      },
+      "load_energy": {
+        "name": "Verbrauch"
+      },
+      "grid_import_energy": {
+        "name": "Netzbezug"
+      },
+      "grid_export_energy": {
+        "name": "Einspeisung"
+      },
+      "battery_charge_energy": {
+        "name": "Speicher geladen"
+      },
+      "battery_discharge_energy": {
+        "name": "Speicher entladen"
+      },
+      "price": {
+        "name": "Strompreis"
+      },
+      "pv_input_power": {
+        "name": "{name}"
+      },
+      "device_power": {
+        "name": "Leistung"
+      },
+      "device_temperature": {
+        "name": "Temperatur"
+      },
+      "control": {
+        "name": "Steuerung",
+        "state": {
+          "off": "Nur ansehen",
+          "test": "Testen",
+          "active": "Aktiv"
+        }
+      }
+    },
+    "binary_sensor": {
+      "inverter_connected": {
+        "name": "Wechselrichter verbunden"
+      },
+      "off_grid": {
+        "name": "Inselbetrieb (Stromausfall)"
+      },
+      "grid_charging_active": {
+        "name": "Lädt aus dem Netz"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "live_connection": {
+        "name": "Live-Verbindung"
+      },
+      "device_on": {
+        "name": "Eingeschaltet"
+      }
+    },
+    "select": {
+      "work_mode": {
+        "name": "Betriebsmodus",
+        "state": {
+          "self_use": "Eigenverbrauch",
+          "feed_in_first": "Einspeisung bevorzugen",
+          "backup": "Notstromreserve",
+          "peak_shaving": "Spitzenlast begrenzen"
+        }
+      },
+      "device_mode": {
+        "name": "Betriebsart",
+        "state": {
+          "auto": "Automatik (Überschuss)",
+          "off": "Aus",
+          "boost": "Boost (volle Leistung)"
+        }
+      }
+    },
+    "number": {
+      "min_soc_on_grid": {
+        "name": "Notstrom-Reserve"
+      },
+      "max_soc": {
+        "name": "Ladegrenze"
+      },
+      "min_soc": {
+        "name": "Untergrenze im Notstrombetrieb"
+      },
+      "grid_charging_target": {
+        "name": "Ladeziel aus dem Netz"
+      }
+    },
+    "switch": {
+      "grid_charging": {
+        "name": "Laden aus dem Netz"
+      }
+    }
+  }
+}

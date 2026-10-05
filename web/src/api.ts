@@ -217,6 +217,7 @@ export function getJson<T>(path: string): Promise<T> {
 export const invalidate = () => recent.clear();
 export const putJson = <T,>(path: string, body: unknown) => { invalidate(); return request<T>("PUT", path, body); };
 export const postJson = <T,>(path: string, body: unknown) => { invalidate(); return request<T>("POST", path, body); };
+export const deleteJson = <T,>(path: string) => { invalidate(); return request<T>("DELETE", path); };
 
 /** Live snapshots over WebSocket with automatic reconnect. */
 export function useLive(): { snap: Snapshot | null; online: boolean } {

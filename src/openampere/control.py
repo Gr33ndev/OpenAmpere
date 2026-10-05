@@ -106,7 +106,8 @@ class BatteryControl:
         data["external_change"] = self.external_change
         return data
 
-    async def write(self, changes: dict) -> dict:
+    async def write(self, changes: dict, source: str | None = None) -> dict:
+        """source: who asked for it if not the web app, e.g. the name of an app's access token (#76)."""
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
@@ -142,7 +143,7 @@ class BatteryControl:
                 return {"dry_run": control.dry_run, "written": {}, "settings": current}
 
             storage = self.runtime.storage
-            details = {"from": {k: current.get(k) for k in diff}, "to": diff}
+            details = {"from": {k: current.get(k) for k in diff}, "to": diff, **({"source": source} if source else {})}
             if control.dry_run:
                 storage.log_control("battery_settings", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": diff, "settings": current}

@@ -148,3 +148,9 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
 .command .copy { margin-top: 8px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 .command .copy:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+
+/* Home Assistant (#76): the official badges, loaded from my.home-assistant.io like in the README */
+.notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px;
+  padding: 14px 16px; }
+.ha-badge { display: inline-block; line-height: 0; }
+.ha-badge img { height: 44px; width: auto; max-width: 100%; }

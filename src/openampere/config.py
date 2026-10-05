@@ -44,6 +44,8 @@ class ServerConfig:
     # extra host names the web app may be opened with (besides IPs, localhost and typical home-network
     # names such as *.local, *.fritz.box, *.ts.net); "*" disables the check (only behind a trusted proxy)
     allowed_hosts: list = field(default_factory=list)
+    # HTTPS with an own certificate for other apps such as Home Assistant (#76); 0 = off
+    tls_port: int = 8443
 
 
 @dataclass

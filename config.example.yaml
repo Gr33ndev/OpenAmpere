@@ -22,6 +22,7 @@ server:
   host: 0.0.0.0
   port: 8080
   allowed_hosts: []         # zusätzliche Hostnamen, z. B. [solar.example.org]; IPs und *.local/*.fritz.box gehen immer
+  tls_port: 8443            # HTTPS für andere Apps wie Home Assistant (eigenes Zertifikat); 0 = aus
 
 pv:
   installed_kwp: 0          # installierte Modulleistung in kWp (0 = unbekannt)

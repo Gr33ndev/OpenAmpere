@@ -83,6 +83,7 @@
         <div class="card"><h3>Stromtarife</h3><p>Festpreis oder Börsenstrom. Mit dynamischem Tarif kann der Speicher zur günstigsten Zeit laden. Diese Funktion ist noch experimentell.</p></div>
         <div class="card"><h3>Heizstab und Wärmepumpe</h3><p>Ein Heizstab von my-PV nimmt genau so viel Strom, wie gerade übrig ist. Wärmepumpe oder andere Geräte schaltet die App über ein Shelly-Relais.</p></div>
         <div class="card"><h3>Wallbox mit evcc</h3><p>Das Auto mit Sonnenstrom laden. Die Wallbox steuert <a href="https://evcc.io">evcc</a>, bedienen kannst du sie direkt in OpenAmpere.</p></div>
+        <div class="card"><h3>Home Assistant</h3><p>Alle Werte live in Home Assistant, auch im Energie-Dashboard, und auf Wunsch den Speicher von dort steuern. <a href="#home-assistant">Mehr dazu</a></p></div>
         <div class="card"><h3>Hinweise, Diagnose, Export</h3><p>Nachricht aufs Handy über ntfy, wenn etwas nicht stimmt. Eine Diagnose prüft, ob die App dein Gerät richtig liest. Alle Werte gibt es als CSV-Datei.</p></div>
       </div>
     </section>
@@ -129,6 +130,36 @@
         <a href="https://github.com/Gr33ndev/OpenAmpere#installation">README auf GitHub</a>.</p>
     </section>
 
+    <section class="wrap" id="home-assistant">
+      <h2>Home Assistant</h2>
+      <p>Mit der Integration <strong>OpenAmpere</strong> siehst du Leistung, Energie und Ladestand live in Home Assistant,
+        passend fürs Energie-Dashboard. Wenn du es erlaubst, steuerst du von dort Speicher, Laden aus dem Netz und
+        Heizstab, etwa in Automationen.</p>
+      <p class="notice"><strong>Zuerst OpenAmpere installieren</strong> (siehe <a href="#installation">Installation</a>).
+        Die Integration verbindet sich nur mit dem laufenden OpenAmpere und ersetzt es nicht. Nur OpenAmpere spricht mit
+        dem Wechselrichter, Home Assistant spricht mit OpenAmpere.</p>
+      <ol class="steps">
+        <li>
+          <h3>Über HACS installieren</h3>
+          <p>Der Button öffnet das Repository in deinem Home Assistant (dafür muss <a href="https://hacs.xyz">HACS</a>
+            installiert sein). Dort herunterladen und Home Assistant neu starten.</p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&amp;repository=OpenAmpere&amp;category=integration"><img
+            src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." height="40" /></a></p>
+        </li>
+        <li>
+          <h3>Koppeln</h3>
+          <p>In Home Assistant die Integration OpenAmpere hinzufügen und die Adresse von OpenAmpere eingeben. Beide zeigen
+            denselben 6-stelligen Code. Du vergleichst ihn in OpenAmpere unter Mehr → Verbundene Apps und erlaubst die
+            Verbindung, nur lesen oder auch steuern.</p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere"><img
+            src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Open your Home Assistant instance and start setting up a new integration." height="40" /></a></p>
+        </li>
+      </ol>
+      <p class="small">Die Verbindung ist verschlüsselt, jede App bekommt einen eigenen Zugang, den du jederzeit entfernen
+        kannst. Hauptschalter, Testmodus und Einspeisebegrenzung bleiben in OpenAmpere.
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.md">Anleitung und Details</a></p>
+    </section>
+
     <section class="wrap" id="sicherheit">
       <h2>Sicherheit</h2>
       <div class="cards two">
@@ -141,7 +172,8 @@
         <div class="card">
           <h3>Zugriff</h3>
           <p>Im Heimnetz kann jeder die Werte ansehen. Ändern geht nur mit Passwort. Von unterwegs erreichst du die App
-            über ein VPN, etwa das der FRITZ!Box. Eine Portfreigabe ins Internet solltest du nicht einrichten.
+            über ein VPN, etwa das der FRITZ!Box. Eine Portfreigabe ins Internet solltest du nicht einrichten. Apps wie
+            Home Assistant verbinden sich verschlüsselt mit einem eigenen Zugang, den du jederzeit entfernen kannst.
             OpenAmpere sammelt keine Nutzungsdaten.</p>
         </div>
       </div>

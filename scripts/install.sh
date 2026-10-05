@@ -90,6 +90,8 @@ main() {
     # keep the choices of the first installation, but bring the files up to date (e.g. the update helper)
     PORT=$(sed -n 's/.*OPENAMPERE_SERVER_PORT: "\([0-9]*\)".*/\1/p' "$COMPOSE")
     PORT=${PORT:-8080}
+    TLS_PORT=$(sed -n 's/.*OPENAMPERE_SERVER_TLS_PORT: "\([0-9]*\)".*/\1/p' "$COMPOSE")
+    TLS_PORT=${TLS_PORT:-8443}
     TZ_NAME=$(sed -n 's/^ *TZ: *//p' "$COMPOSE" | head -n 1)
     TZ_NAME=${TZ_NAME:-Europe/Berlin}
     EVCC_CONTAINER=no
@@ -123,6 +125,12 @@ main() {
     PORT=$((PORT + 1))
     [ "$PORT" -le 8099 ] || fail "Kein freier Port zwischen 8080 und 8099 gefunden."
   done
+  # HTTPS for other apps such as Home Assistant
+  TLS_PORT=8443
+  while port_in_use "$TLS_PORT"; do
+    TLS_PORT=$((TLS_PORT + 1))
+    [ "$TLS_PORT" -le 8459 ] || fail "Kein freier Port zwischen 8443 und 8459 gefunden."
+  done
   TZ_NAME=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || true)
   [ -n "$TZ_NAME" ] || TZ_NAME="Europe/Berlin"
 
@@ -142,7 +150,7 @@ main() {
   start_and_report
 }
 
-# docker-compose.yml and the update helper; uses DIR, COMPOSE, PORT, TZ_NAME, EVCC_CONTAINER
+# docker-compose.yml and the update helper; uses DIR, COMPOSE, PORT, TLS_PORT, TZ_NAME, EVCC_CONTAINER
 write_files() {
   step "Dateien schreiben in $DIR"
   $SUDO mkdir -p "$DIR/data"
@@ -159,6 +167,7 @@ write_files() {
     say "    environment:"
     say "      TZ: $TZ_NAME"
     [ "$PORT" = 8080 ] || say "      OPENAMPERE_SERVER_PORT: \"$PORT\""
+    [ "${TLS_PORT:-8443}" = 8443 ] || say "      OPENAMPERE_SERVER_TLS_PORT: \"$TLS_PORT\""
     if [ "$EVCC_CONTAINER" = yes ]; then
       say "  evcc:  # steuert die Wallbox, https://evcc.io"
       say "    image: $EVCC_IMAGE"
@@ -221,6 +230,11 @@ start_and_report() {
   say "  Im Browser öffnen:  ${BOLD}http://$ip:$port${RESET}"
   say "  Dort ein Passwort festlegen. Der Assistent sucht dann den Wechselrichter."
   say "  Am Wechselrichter muss Modbus TCP eingeschaltet sein."
+  local tls_port
+  tls_port=$(sed -n 's/.*OPENAMPERE_SERVER_TLS_PORT: "\([0-9]*\)".*/\1/p' docker-compose.yml)
+  say ""
+  say "  Home Assistant: Integration OpenAmpere über HACS installieren, dann koppeln mit"
+  say "  Adresse ${BOLD}$ip${RESET} und HTTPS-Port ${BOLD}${tls_port:-8443}${RESET}."
   if grep -q "^  evcc:" docker-compose.yml; then
     say ""
     say "  evcc für die Wallbox:  ${BOLD}http://$ip:7070${RESET}"

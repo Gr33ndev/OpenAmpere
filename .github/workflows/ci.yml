@@ -28,6 +28,33 @@ jobs:
           cd web && npm ci && cd ..
           python scripts/third_party_licenses.py --check
 
+  homeassistant:
+    # the Home Assistant integration (custom_components/openampere, #76): its own Python and pinned test tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: pip install -r tests_ha/requirements.txt
+      - name: Tests
+        run: pytest -q tests_ha
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+
   web:
     runs-on: ubuntu-latest
     steps:

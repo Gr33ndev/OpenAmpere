@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import eeg
+from . import eeg, tls
 from .collector import Collector
 from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yaml, validate
 from .drivers import registry
@@ -39,6 +39,8 @@ class Runtime:
         self.file_values = file_values
         self.storage = storage
         self.secrets = SecretBox(Path(storage.path).resolve().parent / "secret.key")
+        self._tls: tls.Certificate | None = None
+        self.tls_error: str | None = None  # the HTTPS port could not be opened (#76)
         self.config, self.locked = build_config(file_values, self._load_settings())
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
                                    self.config.storage.raw_retention_days,
@@ -89,6 +91,13 @@ class Runtime:
             return eeg.rate(date.fromisoformat(pv.commissioning_date), pv.installed_kwp, tariff.feed_in_full)
         except ValueError:
             return None
+
+    @property
+    def tls(self) -> tls.Certificate:
+        """Certificate of the HTTPS port, created next to the database on first use (#76)."""
+        if self._tls is None:
+            self._tls = tls.ensure_certificate(Path(self.storage.path).resolve().parent)
+        return self._tls
 
     @property
     def tz(self) -> ZoneInfo:
