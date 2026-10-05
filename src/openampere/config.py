@@ -9,8 +9,8 @@ Values set through environment variables are reported as "locked" so the web app
 from __future__ import annotations
 
 import os
-from datetime import date
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from datetime import date
 from pathlib import Path
 
 import yaml
