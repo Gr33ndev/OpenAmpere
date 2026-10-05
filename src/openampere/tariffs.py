@@ -12,7 +12,7 @@ import json
 import logging
 import time
 import urllib.request
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -104,9 +104,10 @@ def validate(raw: list) -> list[Tariff]:
 
 
 class Tariffs:
-    def __init__(self, storage: Storage, fallback) -> None:
+    def __init__(self, storage: Storage, fallback, feed_in=lambda: None) -> None:
         self.storage = storage
         self.fallback = fallback  # () -> (price_ct, feed_in_ct) from the settings
+        self.feed_in = feed_in  # () -> FeedInRate from the EEG rates (#71), or None to use each tariff's own value
         self._last_fetch = 0.0
 
     def all(self) -> list[Tariff]:
@@ -128,6 +129,9 @@ class Tariffs:
         for tariff in tariffs:
             if tariff.valid_from <= day:
                 current = tariff
+        eeg = self.feed_in()
+        if eeg is not None and day <= eeg.funding_until:
+            current = replace(current, feed_in_ct=eeg.ct)
         return current
 
     def quarter_prices(self, start: float, end: float, tz: ZoneInfo) -> dict[int, float]:

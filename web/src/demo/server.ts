@@ -7,7 +7,8 @@ export const DEMO_WRITE_MESSAGE = "Das ist nur die Demo, hier lässt sich nichts
 
 const RATED_W = 10_000;
 const PRICE_CT = 35;
-const FEED_IN_CT = 8;
+const FEED_IN_CT = 8.11; // EEG rate of the demo plant (9.8 kWp, commissioned 05/2024)
+const COMMISSIONED = "2024-05-15";
 const BASE_FEE_EUR_MONTH = 13.7;
 const INPUT_NAMES = ["Süddach", "Westdach"];
 const QUARTER = 900;
@@ -182,6 +183,7 @@ const settings = {
     "inverter.register_map": "auto", "inverter.read_function": "auto", "inverter.poll_interval": 10,
     "inverter.timeout": 3, "inverter.connection_mode": "persistent", "storage.raw_retention_days": 30,
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
+    "tariff.feed_in_auto": true, "tariff.feed_in_full": false, "pv.commissioning_date": COMMISSIONED,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
@@ -462,7 +464,9 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
       base_fee_eur_month: BASE_FEE_EUR_MONTH },
     { valid_from: "2026-04-01", kind: "dynamic", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE",
       base_fee_eur_month: BASE_FEE_EUR_MONTH },
-  ] }),
+  ], eeg: { auto: true, full: false, commissioning_date: COMMISSIONED, installed_kwp: KWP, error: null,
+    rate: { ct: FEED_IN_CT, period_from: "2024-02-01", period_to: "2024-07-31", full: false, funding_until: "2044-12-31",
+      zones: [{ from_kw: 0, to_kw: 10, kw: KWP, share: 1, ct: FEED_IN_CT }] } } }),
   "/api/prices": prices,
   "/api/charging": charging,
   "/api/consumers": consumers,
