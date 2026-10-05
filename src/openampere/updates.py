@@ -90,11 +90,12 @@ class Updates:
             self.error = "Konnte nicht nach Updates suchen."
             log.info("update check failed: %s", err)
 
-    def request(self, reason: str = "manual") -> None:
-        if not self.updater_ready():
+    def request(self, reason: str = "manual", now: float | None = None) -> None:
+        now = time.time() if now is None else now
+        if not self.updater_ready(now):
             raise RuntimeError("Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.")
         self.folder.mkdir(parents=True, exist_ok=True)
-        (self.folder / "request").write_text(json.dumps({"ts": time.time(), "from": self.current,
+        (self.folder / "request").write_text(json.dumps({"ts": now, "from": self.current,
                                                           "to": (self.latest or {}).get("version"), "reason": reason}))
         self.runtime.storage.log_control("update", {"from": self.current, "to": (self.latest or {}).get("version")},
                                          False, reason)
@@ -110,4 +111,4 @@ class Updates:
         target = (self.latest or {}).get("version")
         if local.hour in AUTO_HOURS and tried != target:
             self.runtime.storage.set_meta("update_auto_tried", target)  # once per version, also if it fails
-            self.request("auto")
+            self.request("auto", now)
