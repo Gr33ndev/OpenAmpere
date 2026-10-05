@@ -3,17 +3,20 @@
 #
 #   curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 #
-# Asks at most three questions (install Docker? install folder? wallbox with evcc?) and detects the rest.
-# Running it again updates an existing installation. Without questions, e.g. for automation:
-#   OPENAMPERE_YES=1 OPENAMPERE_DIR=/opt/openampere OPENAMPERE_EVCC=nein bash install.sh
+# Asks at most four questions (install Docker? install folder? wallbox with evcc? access from anywhere with
+# Tailscale?) and detects the rest. Running it again updates an existing installation and keeps the answers.
+# Without questions, e.g. for automation:
+#   OPENAMPERE_YES=1 OPENAMPERE_DIR=/opt/openampere OPENAMPERE_EVCC=nein OPENAMPERE_TAILSCALE=nein bash install.sh
 set -euo pipefail
 
 IMAGE="ghcr.io/gr33ndev/openampere:latest"
 EVCC_IMAGE="evcc/evcc:latest"
+TAILSCALE_IMAGE="tailscale/tailscale:stable"
 UPDATER_IMAGE="docker:cli"
 SITE="https://gr33ndev.github.io/OpenAmpere"
 APP_UID=1000  # user inside the OpenAmpere image
 MARKER="# erzeugt von install.sh"
+NO_TAILSCALE="# Zugriff von unterwegs (Tailscale): nein"  # remembers the answer, so the question comes only once
 DOCS="https://github.com/Gr33ndev/OpenAmpere#installation-von-hand"
 
 if [ -t 1 ]; then BOLD=$'\e[1m' GREEN=$'\e[32m' RED=$'\e[31m' RESET=$'\e[0m'; else BOLD="" GREEN="" RED="" RESET=""; fi
@@ -43,6 +46,17 @@ confirm() {
 }
 
 port_in_use() { (exec 3<>"/dev/tcp/localhost/$1") 2>/dev/null; }
+
+# access from anywhere: OPENAMPERE_TAILSCALE or the question -> TAILSCALE=yes|no
+choose_tailscale() {
+  if [ -n "${OPENAMPERE_TAILSCALE:-}" ]; then
+    case "$OPENAMPERE_TAILSCALE" in [jJyY]*) TAILSCALE=yes ;; *) TAILSCALE=no ;; esac
+  elif confirm "Möchtest du OpenAmpere auch von unterwegs nutzen? Dafür richte ich Tailscale (tailscale.com) mit ein, angemeldet wird später in der App." n; then
+    TAILSCALE=yes
+  else
+    TAILSCALE=no
+  fi
+}
 
 main() {
   say "${BOLD}OpenAmpere installieren${RESET}"
@@ -96,6 +110,15 @@ main() {
     TZ_NAME=${TZ_NAME:-Europe/Berlin}
     EVCC_CONTAINER=no
     grep -q "^  evcc:" "$COMPOSE" && EVCC_CONTAINER=yes
+    if [ -n "${OPENAMPERE_TAILSCALE:-}" ]; then
+      choose_tailscale  # changing the answer on purpose
+    elif grep -q "^  tailscale:" "$COMPOSE"; then
+      TAILSCALE=yes
+    elif grep -qF "$NO_TAILSCALE" "$COMPOSE"; then
+      TAILSCALE=no
+    else
+      choose_tailscale  # installed before this question existed
+    fi
     write_files
     start_and_report
     return
@@ -118,6 +141,9 @@ main() {
       EVCC_CONTAINER=yes
     fi
   fi
+
+  # --- access from anywhere ---
+  choose_tailscale
 
   # --- detected settings ---
   PORT=8080
@@ -150,13 +176,25 @@ main() {
   start_and_report
 }
 
-# docker-compose.yml and the update helper; uses DIR, COMPOSE, PORT, TLS_PORT, TZ_NAME, EVCC_CONTAINER
+# copy_helper name: a helper script next to this script when run from the repository, otherwise from the website
+copy_helper() {
+  local source=${BASH_SOURCE[0]:-}
+  if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/$1" ]; then
+    $SUDO cp "$(dirname "$source")/$1" "$DIR/$1"
+  else
+    curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1" >/dev/null || fail "$1 ließ sich nicht herunterladen."
+  fi
+  $SUDO chmod 755 "$DIR/$1"
+}
+
+# docker-compose.yml and the helpers; uses DIR, COMPOSE, PORT, TLS_PORT, TZ_NAME, EVCC_CONTAINER, TAILSCALE
 write_files() {
   step "Dateien schreiben in $DIR"
   $SUDO mkdir -p "$DIR/data"
   $SUDO chown "$APP_UID:$APP_UID" "$DIR/data"
   {
     say "$MARKER am $(date +%F). Aktualisieren: in der App oder das Script erneut ausführen."
+    [ "$TAILSCALE" = yes ] || say "$NO_TAILSCALE. Ändern: Script erneut mit OPENAMPERE_TAILSCALE=ja ausführen."
     say "services:"
     say "  openampere:"
     say "    image: $IMAGE"
@@ -176,6 +214,17 @@ write_files() {
       say "    volumes:"
       say "      - ./evcc:/root/.evcc"
     fi
+    if [ "$TAILSCALE" = yes ]; then
+      say "  tailscale:  # Zugriff von unterwegs, eingerichtet wird in der App (siehe tailscale.sh)"
+      say "    image: $TAILSCALE_IMAGE"
+      say "    restart: unless-stopped"
+      say "    network_mode: host  # damit Tailscale die App auf diesem Rechner erreicht"
+      say "    entrypoint: [\"sh\", \"/openampere/tailscale.sh\"]"
+      say "    volumes:"
+      say "      - ./tailscale:/var/lib/tailscale"
+      say "      - ./data/remote:/remote"
+      say "      - ./tailscale.sh:/openampere/tailscale.sh:ro"
+    fi
     say "  updater:  # installiert Updates, wenn in der App jemand auf Aktualisieren tippt (siehe updater.sh)"
     say "    image: $UPDATER_IMAGE"
     say "    restart: unless-stopped"
@@ -186,15 +235,8 @@ write_files() {
     say "      - /var/run/docker.sock:/var/run/docker.sock"
     say "      - $DIR:$DIR"
   } | $SUDO tee "$COMPOSE" >/dev/null
-  # the helper script: next to this script when run from the repository, otherwise from the website
-  local source=${BASH_SOURCE[0]:-}
-  if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/updater.sh" ]; then
-    $SUDO cp "$(dirname "$source")/updater.sh" "$DIR/updater.sh"
-  else
-    curl -fsSL "$SITE/updater.sh" | $SUDO tee "$DIR/updater.sh" >/dev/null ||
-      fail "Der Update-Helfer ließ sich nicht herunterladen."
-  fi
-  $SUDO chmod 755 "$DIR/updater.sh"
+  copy_helper updater.sh
+  [ "$TAILSCALE" = yes ] && copy_helper tailscale.sh
   say "Fertig: $COMPOSE"
 }
 
@@ -240,6 +282,10 @@ start_and_report() {
     say "  evcc für die Wallbox:  ${BOLD}http://$ip:7070${RESET}"
     say "  Dort Wallbox und Fahrzeug einrichten. Die Zähler von OpenAmpere übernimmst du"
     say "  aus der App unter Mehr → Verbindung → Wallbox."
+  fi
+  if grep -q "^  tailscale:" docker-compose.yml; then
+    say ""
+    say "  Von unterwegs: in der App unter Mehr → Zugriff von unterwegs auf Einrichten tippen."
   fi
   say ""
   say "  Neue Versionen zeigt die App oben an, ein Tipp auf Aktualisieren genügt."

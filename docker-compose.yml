@@ -23,3 +23,15 @@ services:
   #   network_mode: host
   #   volumes:
   #     - ./evcc:/root/.evcc
+
+  # Optional, für den Zugriff von unterwegs: Tailscale (https://tailscale.com). Zum Einschalten die Zeilen unten
+  # einkommentieren und `docker compose up -d` ausführen, dann in der App unter Mehr → Zugriff von unterwegs einrichten.
+  # tailscale:
+  #   image: tailscale/tailscale:stable
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   entrypoint: ["sh", "/openampere/tailscale.sh"]
+  #   volumes:
+  #     - ./tailscale:/var/lib/tailscale
+  #     - ./data/remote:/remote
+  #     - ./scripts/tailscale.sh:/openampere/tailscale.sh:ro

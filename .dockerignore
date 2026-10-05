@@ -5,3 +5,4 @@ src/openampere/web
 **/__pycache__
 .pytest_cache
 evcc/
+tailscale/

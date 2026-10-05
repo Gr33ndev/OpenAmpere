@@ -212,7 +212,7 @@ function ConnectionStatus({ data }: { data: Tokens }) {
   );
 }
 
-function CopyValue({ value }: { value: string }) {
+export function CopyValue({ value }: { value: string }) {
   return (
     <span className="copy-value"><code>{value}</code>
       <button className="link" onClick={async () => { if (await copyText(value)) toast("Kopiert"); }}>Kopieren</button>

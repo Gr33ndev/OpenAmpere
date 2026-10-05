@@ -449,6 +449,10 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   // the demo is the website: it is updated with every release and has nothing to install
   "/api/update": () => ({ current: "Demo", available: false, updater: false, requested: false, check: false, auto: false,
     latest: null, status: null, checked: null, error: null }),
+  // shows how it looks once set up; setting it up needs a real installation
+  "/api/remote": () => ({ available: true, state: "connected", port: 8080, login_url: null,
+    address: "http://openampere.tail-demo.ts.net:8080", name: "openampere.tail-demo.ts.net", ip: "100.64.0.7",
+    account: "demo@example.org" }),
   "/api/billing": billing,
   "/api/gridmeter": () => ({ providers: [{ key: "netze_bw", label: "Netze BW", portal: "meine.netze-bw.de", region: "Baden-Württemberg" }],
     configured: true, meters: [{ id: "demo-bezug", name: "Smart Meter · Bezug", kinds: ["import"] },

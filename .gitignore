@@ -14,3 +14,4 @@ _site/
 evcc/
 .DS_Store
 .venv-ha/
+tailscale/

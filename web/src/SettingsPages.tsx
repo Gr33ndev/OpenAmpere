@@ -508,12 +508,13 @@ const LOG_KEYS: Record<string, string> = {
   "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Untergrenze im Notstrombetrieb (%)",
   min_soc_on_grid: "Notstrom-Reserve (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
   power_w: "Ladeleistung (W)", target_soc: "Ladeziel (%)", enabled: "Eingeschaltet", soc: "Ladestand (%)",
-  consumer: "Gerät", on: "An",
+  consumer: "Gerät", on: "An", remote_access: "Zugriff von unterwegs",
 };
 const LOG_VALUES: Record<string, string> = {
   true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",
   none: "keine Begrenzung", self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugen", backup: "Notstromreserve",
-  peak_shaving: "Spitzenlast begrenzen",
+  peak_shaving: "Spitzenlast begrenzen", connected: "verbunden", off: "aus", login: "einrichten", logout: "getrennt",
+  starting: "wird eingerichtet", stopping: "wird getrennt", approval: "wartet auf Freigabe", failed: "fehlgeschlagen",
 };
 const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? String(v));
 
