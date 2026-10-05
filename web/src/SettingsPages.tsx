@@ -3,13 +3,13 @@ import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, Expor
 import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
-import { isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { amountInput, ct, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
 import { UpdatesCard } from "./Updates";
-import { Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
+import { AmountInput, Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
@@ -192,8 +192,8 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
         <div className="time-window" key={i}>
           <Field label="Von"><input className="input" type="time" value={w.from} onChange={(e) => set(i, { from: e.target.value })} /></Field>
           <Field label="Bis"><input className="input" type="time" value={w.to} onChange={(e) => set(i, { to: e.target.value })} /></Field>
-          <Field label="Preis"><div className="input-unit"><input className="input" inputMode="decimal" value={de(w.price_ct)}
-            onChange={(e) => set(i, { price_ct: toNumber(e.target.value) || 0 })} /><span>ct</span></div></Field>
+          <Field label="Preis"><div className="input-unit"><AmountInput value={w.price_ct} format={amountInput}
+            onChange={(v) => set(i, { price_ct: v ?? 0 })} /><span>ct</span></div></Field>
           <button className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>Entfernen</button>
         </div>
       ))}
@@ -216,7 +216,7 @@ function PriceChart() {
         xFormat={(ts) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })}
         height={180} label="Strompreis heute je Viertelstunde" />
       <p className="hint">Am günstigsten: {new Date(cheapest.ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })} Uhr
-        mit {num(cheapest.ct, 1)} ct/kWh (inkl. Aufschlag).</p>
+        mit {ct(cheapest.ct)} ct/kWh (inkl. Aufschlag).</p>
     </>
   );
 }
@@ -264,12 +264,12 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
           Volleinspeisung: Alles geht ins Netz, dafür gibt es seit 30.07.2022 höhere Sätze.</p>
         {!dirty && (rate ? (
           <div>
-            <p><strong>{num(rate.ct, 3)} ct/kWh</strong> für jede eingespeiste Kilowattstunde</p>
+            <p><strong>{ct(rate.ct)} ct/kWh</strong> für jede eingespeiste Kilowattstunde</p>
             <p className="hint">
               {rate.zones.length > 1
                 ? <>Die Leistung wird auf die Stufen aufgeteilt (§ 23c EEG): {rate.zones.map((z, i) => (
-                  <span key={z.from_kw}>{i > 0 && " + "}{num(z.kw, 3)} kW zu {num(z.ct, 2)} ct</span>))}.</>
-                : <>Satz bis 10 kW: {num(rate.zones[0].ct, 2)} ct.</>}
+                  <span key={z.from_kw}>{i > 0 && " + "}{num(z.kw, 3)} kW zu {ct(z.ct)} ct</span>))}.</>
+                : <>Satz bis 10 kW: {ct(rate.zones[0].ct)} ct.</>}
               {" "}Gilt für Inbetriebnahmen vom {deDate(rate.period_from)} bis {deDate(rate.period_to)}
               {form.full && !rate.full && ", damals noch ohne eigenen Satz für Volleinspeisung"}.
               Vergütet wird bis {deDate(rate.funding_until)}.
@@ -291,8 +291,8 @@ export function TariffPage({ onBack }: PageProps) {
   const eegActive = !!data?.eeg.auto && !!data.eeg.rate;
   const [forms, setForms] = useState<TariffForm[]>([]);
   const [busy, setBusy] = useState(false);
-  const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: de(t.price_ct), surcharge_ct: de(t.surcharge_ct),
-    vat_percent: de(t.vat_percent), feed_in_ct: de(t.feed_in_ct), base_fee_eur_month: de(t.base_fee_eur_month ?? 0),
+  const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: amountInput(t.price_ct), surcharge_ct: amountInput(t.surcharge_ct),
+    vat_percent: de(t.vat_percent), feed_in_ct: amountInput(t.feed_in_ct), base_fee_eur_month: amountInput(t.base_fee_eur_month ?? 0),
     windows: t.windows ?? [] });
   useEffect(() => {
     if (data) setForms(data.tariffs.map(toForm));
@@ -301,8 +301,8 @@ export function TariffPage({ onBack }: PageProps) {
   const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map(toForm));
   const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "dynamic" ? t.surcharge_ct : t.price_ct]
     .every((v) => Number.isFinite(toNumber(v))) && (t.kind !== "time" || t.windows.length > 0));
-  const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35", surcharge_ct: "20",
-    vat_percent: "19", feed_in_ct: "8", area: "DE", base_fee_eur_month: "0", windows: [] }), valid_from: todayIso() } as TariffForm]);
+  const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35,00", surcharge_ct: "20,00",
+    vat_percent: "19", feed_in_ct: "8,00", area: "DE", base_fee_eur_month: "0,00", windows: [] }), valid_from: todayIso() } as TariffForm]);
 
   const save = async () => {
     setBusy(true);
@@ -1374,9 +1374,8 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
                   </select>
                 </Field>
                 <Field label="Höchstpreis (optional)" hint="Darüber wird nie geladen, auch wenn das Ziel nicht erreicht wird.">
-                  <div className="input-unit"><input className="input" inputMode="decimal"
-                    value={form.max_price_ct == null ? "" : String(form.max_price_ct).replace(".", ",")}
-                    onChange={(e) => set({ max_price_ct: e.target.value.trim() === "" ? null : Number(e.target.value.replace(",", ".")) })} />
+                  <div className="input-unit"><AmountInput value={form.max_price_ct} format={amountInput}
+                    onChange={(v) => set({ max_price_ct: v })} />
                     <span>ct/kWh</span></div>
                 </Field>
               </>

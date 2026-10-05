@@ -158,8 +158,9 @@ class Notifier:
             if tariff.kind == "dynamic" and len(prices) >= 88:  # tomorrow's prices are published (~14:00)
                 best = min(prices, key=lambda ts: sum(prices.get(ts + i * 900, 1e9) for i in range(8)))
                 price = tariff.import_price_ct(sum(prices.get(best + i * 900, 0) for i in range(8)) / 8)
+                price_text = f"{price:.2f}".replace(".", ",")  # German notation, two decimals like everywhere (#87)
                 await notify("cheap_power", tomorrow.isoformat(), "Strompreis morgen",
                              f"Am günstigsten: {datetime.fromtimestamp(best, tz):%H:%M}–"
-                             f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price:.1f} ct/kWh.",
+                             f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price_text} ct/kWh.",
                              "zap")
         return sent

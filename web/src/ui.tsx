@@ -127,6 +127,26 @@ export function LoadState({ error, onRetry }: { error: string | null; onRetry?: 
   );
 }
 
+/** Field for a decimal amount with a comma, e.g. a price in ct. Keeps the text while typing (so "20," stays) and
+ * shows the value formatted (20,50) when the field is left. Empty means null. */
+export function AmountInput({ value, onChange, format }: {
+  value: number | null; onChange: (value: number | null) => void; format: (value: number) => string;
+}) {
+  const shown = value == null ? "" : format(value);
+  const [text, setText] = useState(shown);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setText(shown); }, [shown, editing]);
+  return (
+    <input className="input" inputMode="decimal" value={text} onFocus={() => setEditing(true)} onBlur={() => setEditing(false)}
+      onChange={(e) => {
+        setText(e.target.value);
+        const raw = e.target.value.trim();
+        const parsed = raw === "" ? null : Number(raw.replace(",", "."));
+        if (parsed === null || Number.isFinite(parsed)) onChange(parsed);
+      }} />
+  );
+}
+
 export function Notice({ kind = "info", children }: { kind?: "info" | "warn" | "ok" | "error"; children: ReactNode }) {
   return <div className={`notice ${kind}`}>{children}</div>;
 }

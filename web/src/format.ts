@@ -51,6 +51,17 @@ export function isoDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Cent amounts, always with two decimals (#87), e.g. 32,50 ct */
+export function ct(value: number | null | undefined): string {
+  return num(value, 2);
+}
+
+/** A cent or euro amount as the text of an input field: two decimals, more only if it was entered that way
+ * (e.g. an EEG rate of 8,032 ct), no thousands separator. */
+export function amountInput(value: number): string {
+  return value.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false });
+}
+
 /** Number with fixed decimals in German notation, e.g. 2,6 */
 export function num(value: number | null | undefined, digits = 1): string {
   if (value == null) return "–";

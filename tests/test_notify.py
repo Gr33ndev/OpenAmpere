@@ -73,3 +73,20 @@ async def test_power_cut_is_reported_once_and_its_end(tmp_path, monkeypatch):
     runtime.collector.latest = Snapshot(timestamp=0, off_grid=False, battery_soc=40)
     assert await notifier.check(now=40) == ["Strom ist wieder da"]
     assert await notifier.check(now=50) == []
+
+
+async def test_cheapest_power_tomorrow_in_german_notation_with_two_decimals(tmp_path, monkeypatch):
+    from datetime import datetime
+
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_cheap_power = True
+    runtime.tariffs.save([{"valid_from": "2026-01-01", "kind": "dynamic", "price_ct": 0, "surcharge_ct": 20,
+                           "vat_percent": 19, "feed_in_ct": 8, "area": "DE"}])
+    now = datetime(2026, 10, 5, 15, tzinfo=runtime.tz)
+    start = datetime(2026, 10, 6, tzinfo=runtime.tz).timestamp()
+    runtime.storage.save_prices([(int(start + i * 900), 10.0 + (i % 7) / 3) for i in range(96)])
+    sent = await Notifier(runtime).check(now=now.timestamp())
+    assert "Strompreis morgen" in sent
+    message = posts[-1][1]["message"]
+    assert message.endswith(" ct/kWh.") and "," in message.split("etwa ")[1]
+    assert len(message.split("etwa ")[1].split(" ")[0].split(",")[1]) == 2  # e.g. "36,30"

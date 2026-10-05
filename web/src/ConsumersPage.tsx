@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, SubPage, toast } from "./ui";
+import { AmountInput, Button, Field, LoadState, SubPage, toast } from "./ui";
+import { amountInput } from "./format";
 
 export type ConsumerData = {
   id?: string; name: string; kind: "mypv" | "shelly1" | "shelly2" | "http"; host: string; port: number; unit: number;
@@ -96,9 +97,8 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
           </div>
         )}
         <Field label="Auch mit günstigem Netzstrom" hint="Nur mit dynamischem oder zeitvariablem Tarif. Leer lassen für nur Sonnenstrom.">
-          <div className="input-unit"><input className="input" inputMode="decimal"
-            value={c.price_limit_ct == null ? "" : String(c.price_limit_ct).replace(".", ",")}
-            onChange={(e) => set({ price_limit_ct: e.target.value.trim() === "" ? null : num(e.target.value) })} /><span>ct/kWh</span></div>
+          <div className="input-unit"><AmountInput value={c.price_limit_ct} format={amountInput}
+            onChange={(v) => set({ price_limit_ct: v })} /><span>ct/kWh</span></div>
         </Field>
       </details>
 
