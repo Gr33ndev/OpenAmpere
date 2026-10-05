@@ -40,6 +40,7 @@ from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
 from .devices import Devices
 from .notify import Notifier
+from .remote import Remote
 from .updates import Updates
 from .diagnostics import Diagnostics, report_markdown
 
@@ -84,8 +85,8 @@ class ChangePasswordRequest(BaseModel):
     new: str = Field(min_length=1, max_length=200)
 
 
-# reading these needs a login as well (secrets, grid-operator references, meter numbers)
-PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter", "/api/tokens")
+# reading these needs a login as well (secrets, grid-operator references, meter numbers, the Tailscale login link)
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter", "/api/remote", "/api/tokens")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -122,6 +123,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
     updates = Updates(runtime, VERSION)
+    remote = Remote(runtime)
 
     async def watchdog() -> None:
         """Background jobs: find the inverter after an IP change, exchange prices, grid charging."""
@@ -616,6 +618,22 @@ def create_app(runtime: Runtime) -> FastAPI:
         else:
             raise HTTPException(400, "Unbekannte Aktion.")
         return updates.view()
+
+    # ---- access from anywhere with Tailscale (#83) ----------------------------
+
+    @app.get("/api/remote")
+    def get_remote():
+        return remote.view()
+
+    @app.post("/api/remote")
+    def post_remote(body: dict = Body(...)):
+        try:
+            remote.request(str(body.get("action")))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        except RuntimeError as err:
+            raise HTTPException(409, str(err)) from None
+        return remote.view()
 
     # ---- meter values of the grid operator (#60) -----------------------------
 

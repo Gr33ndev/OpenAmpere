@@ -6,6 +6,7 @@ import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
 import { AppsPage } from "./AppsPage";
+import { RemotePage } from "./RemotePage";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
@@ -150,6 +151,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "about": return <AboutPage {...nav} />;
     case "security": return <SecurityPage onBack={back} />;
     case "apps": return <AppsPage onBack={back} />;
+    case "remote": return <RemotePage onBack={back} />;
     case "licenses": return <LicensesPage onBack={() => goBack("more/about")} />;
   }
 
@@ -173,6 +175,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
         <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy" onClick={() => setPage("notify")} />
         <MenuRow label="Zugriffsschutz" hint="Passwort" onClick={() => setPage("security")} />
         <MenuRow label="Verbundene Apps" hint="Home Assistant und andere" onClick={() => setPage("apps")} />
+        <MenuRow label="Zugriff von unterwegs" hint="Mit Tailscale, ohne Portfreigabe" onClick={() => setPage("remote")} />
         <MenuRow label="Darstellung" hint="Hell, dunkel, Zeitzone" onClick={() => setPage("appearance")} />
       </div>
 

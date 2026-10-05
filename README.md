@@ -93,7 +93,7 @@ freigegeben ist. Anleitung und Details: [docs/homeassistant.md](docs/homeassista
 curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
-Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`) und ob es evcc für eine Wallbox mit einrichten soll. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
+Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`), ob es evcc für eine Wallbox mit einrichten soll und ob du OpenAmpere auch von unterwegs nutzen willst (Tailscale, siehe [Zugriff von unterwegs](#zugriff-von-unterwegs)). Beim erneuten Ausführen bleiben die Antworten erhalten. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
 
 **Updates:** Gibt es eine neue Version, zeigt die App oben einen Hinweis, ein Tipp auf **Aktualisieren** genügt. Unter Mehr → Über OpenAmpere lassen sich Updates auch nachts automatisch installieren. Dafür richtet das Install-Script einen kleinen Helfer-Container ein ([scripts/updater.sh](scripts/updater.sh)): Er hat Zugriff auf Docker, reagiert aber nur auf eine Anfrage-Datei, die die App in den Datenordner schreibt. Dann lädt er die neue Version, startet sie und prüft, ob sie läuft. Startet sie nicht, kommt die bisherige Version zurück. Die App selbst bekommt keinen Zugriff auf Docker. Nach neuen Versionen sucht die App alle 6 Stunden bei GitHub, das lässt sich abschalten. Wer schon vorher mit dem Script installiert hat, führt es einmal erneut aus, damit der Helfer dazukommt.
 
@@ -125,7 +125,14 @@ Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `dat
 
 ### Zugriff von unterwegs
 
-OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sichersten über ein **VPN**: das VPN der FRITZ!Box (WireGuard), einen eigenen WireGuard-Server oder Tailscale. Danach öffnet man die App wie zu Hause über die IP-Adresse des Servers.
+OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sichersten über ein **VPN**.
+
+**Am einfachsten mit Tailscale:** Die Frage „von unterwegs nutzen?“ im Install-Script mit Ja beantworten, dann in der App unter **Mehr → Zugriff von unterwegs** auf **Einrichten** tippen und bei Tailscale anmelden (kostenloses Konto, z. B. mit Google, Apple oder Microsoft). Auf dem Handy die Tailscale-App mit demselben Konto anmelden und die Adresse öffnen, die OpenAmpere anzeigt.
+- Wer schon installiert hat, führt das Script einmal erneut aus: `curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | OPENAMPERE_TAILSCALE=ja bash`. Mit `OPENAMPERE_TAILSCALE=nein` wird es wieder entfernt.
+- Tailscale läuft als eigener Container im Userspace-Modus, ohne Zusatzrechte. Wie beim Update-Helfer bekommt die App keinen Zugriff darauf, sie legt nur eine Anfrage ab ([scripts/tailscale.sh](scripts/tailscale.sh)). Das Senden von Protokolldaten an Tailscale ist abgeschaltet, Funnel (öffentlich ins Internet) wird nicht genutzt.
+- Tailscale ist ein Dienst der Tailscale Inc. (USA). Er vermittelt die Verbindung, die Daten laufen verschlüsselt direkt zwischen den Geräten.
+
+**Ohne Drittanbieter:** das VPN der FRITZ!Box (WireGuard) oder ein eigener WireGuard-Server. Danach öffnet man die App wie zu Hause über die IP-Adresse des Servers.
 
 **Niemals per Portfreigabe direkt ins Internet stellen.** Wer die App so erreicht, kann den Wechselrichter steuern, sobald das Passwort geknackt oder abgefangen ist (kein HTTPS).
 
