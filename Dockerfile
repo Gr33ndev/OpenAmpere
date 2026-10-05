@@ -26,5 +26,5 @@ RUN pip install --no-cache-dir --no-deps . \
     && useradd --system --uid 1000 openampere && mkdir /data && chown openampere /data
 USER openampere
 VOLUME /data
-EXPOSE 8080
+EXPOSE 8080 8443
 CMD ["openampere"]

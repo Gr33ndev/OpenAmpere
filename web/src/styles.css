@@ -603,3 +603,10 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
   padding-bottom: 10px; border-bottom: 1px solid var(--divider); }
 .time-window > * { min-width: 0; }
 .time-window .danger-link { justify-self: start; margin-bottom: 14px; }
+
+/* Verbundene Apps (#76) */
+.code-box { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; resize: none; }
+.token-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.token-row .link { flex-shrink: 0; min-height: 44px; }
+.fingerprint { font-size: 12px; word-break: break-all; }
+.pairing-code { font-size: 36px; font-weight: 700; letter-spacing: 0.08em; text-align: center; margin: 4px 0; font-variant-numeric: tabular-nums; }

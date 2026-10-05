@@ -12,7 +12,10 @@ case "$version" in v*) version=${version#v} ;; esac
 
 sed -i.bak "s/^version = \".*\"/version = \"$version\"/" pyproject.toml && rm pyproject.toml.bak
 (cd web && npm version "$version" --no-git-tag-version --allow-same-version >/dev/null)
-git add pyproject.toml web/package.json web/package-lock.json
+# the Home Assistant integration has the same version: HACS installs it from the same release (#76)
+sed -i.bak "s/\"version\": \".*\"/\"version\": \"$version\"/" custom_components/openampere/manifest.json \
+  && rm custom_components/openampere/manifest.json.bak
+git add pyproject.toml web/package.json web/package-lock.json custom_components/openampere/manifest.json
 git commit -q -m "chore(release): $version"
 git tag -s "v$version" -m "OpenAmpere $version"
 echo "Version $version committet und getaggt. Veröffentlichen mit:"

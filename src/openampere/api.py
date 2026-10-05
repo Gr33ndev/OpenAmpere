@@ -21,7 +21,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, health
+from . import discovery, cloud_import, external, health
+from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import SECRETS
 from .drivers import registry
@@ -84,8 +85,13 @@ class ChangePasswordRequest(BaseModel):
 
 
 # reading these needs a login as well (secrets, grid-operator references, meter numbers)
-PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter")
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter", "/api/tokens")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
+
+
+class TokenRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    scope: str = Field(pattern="^(read|control)$")
 
 
 class ExportLimitRequest(BaseModel):
@@ -158,6 +164,8 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     app = FastAPI(title="OpenAmpere", lifespan=lifespan)
     auth = Auth(storage)
+    tokens = ApiTokens(storage)
+    pairing = Pairing(tokens, lambda: runtime.tls.fingerprint)
     # short-lived links for downloads that open in their own window (iPhone home-screen app, see /api/backup/link)
     download_links: dict[str, float] = {}
 
@@ -181,6 +189,20 @@ def create_app(runtime: Runtime) -> FastAPI:
                                            "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
         path = request.url.path
         writing = request.method not in ("GET", "HEAD", "OPTIONS")
+        if path.startswith(external.PREFIX + "/") or path == external.PREFIX:
+            # other apps (#76): only with a token in the Authorization header and only over HTTPS; no cookies,
+            # so cross-site requests cannot use it and the CSRF checks of the web app do not apply
+            if request.url.scheme != "https":
+                return JSONResponse({"detail": "Nur über HTTPS erreichbar.", "code": "https_required"}, 403)
+            if path.startswith(external.PREFIX + "/pair/"):
+                return await call_next(request)  # pairing: the app gets its token only after approval in the web app
+            token = tokens.check(external.bearer(request.headers.get("authorization")))
+            if token is None:
+                return JSONResponse({"detail": "Zugang ungültig oder widerrufen.", "code": "token_invalid"}, 401)
+            if writing and token["scope"] != "control":
+                return JSONResponse({"detail": "Dieser Zugang darf nur lesen.", "code": "read_only"}, 403)
+            request.state.token = token
+            return await call_next(request)
         if path == "/api/backup" and not writing and download_link_ok(request.query_params.get("token")):
             return await call_next(request)
         if path.startswith("/api/") and (writing or path in PROTECTED_READS):
@@ -246,6 +268,63 @@ def create_app(runtime: Runtime) -> FastAPI:
         auth.revoke(None, everywhere=True)  # other devices must log in again
         start_session(response)
         return {"authenticated": True}
+
+    # ---- access tokens for other apps (#76) --------------------------------------
+
+    def tls_view() -> dict:
+        port = runtime.config.server.tls_port
+        return {"port": port or None, "fingerprint": runtime.tls.fingerprint if port else None, "error": runtime.tls_error}
+
+    def tokens_view() -> dict:
+        return {"tokens": tokens.list(), "pairing": pairing.pending(), "tls": tls_view()}
+
+    @app.get("/api/tokens")
+    def get_tokens():
+        return tokens_view()
+
+    @app.post("/api/tokens/pairing/{request_id}")
+    def decide_pairing(request_id: str, body: dict = Body(...)):
+        approve, scope = bool(body.get("approve")), str(body.get("scope") or "read")
+        if scope not in ("read", "control"):
+            raise HTTPException(400, "Unbekannte Berechtigung.")
+        try:
+            entry = pairing.decide(request_id, approve, scope)
+        except KeyError:
+            raise HTTPException(404, "Die Anfrage ist abgelaufen. Bitte die Kopplung in der App neu starten.") from None
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        if approve:
+            storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"], "via": "Kopplung"},
+                                False, "ok")
+        return tokens_view()
+
+    @app.post("/api/tokens")
+    def create_token(body: TokenRequest, request: Request):
+        port = runtime.config.server.tls_port
+        if not port:
+            raise HTTPException(409, "Der HTTPS-Port ist ausgeschaltet (server.tls_port). Ohne ihn können sich "
+                                     "andere Apps nicht sicher verbinden.")
+        try:
+            token, entry = tokens.create(body.name, body.scope)
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"]}, False, "ok")
+        # the address the browser uses is usually the one Home Assistant can reach, too
+        code = connection_code(request.url.hostname or "", port, runtime.tls.fingerprint, token)
+        return {"token": entry, "code": code, **tokens_view()}
+
+    @app.delete("/api/tokens/{token_id}")
+    def delete_token(token_id: str):
+        try:
+            name = next(t["name"] for t in tokens.list() if t["id"] == token_id)
+            tokens.revoke(token_id)
+        except (StopIteration, KeyError):
+            raise HTTPException(404, "Zugang nicht gefunden.") from None
+        storage.log_control("token_revoked", {"name": name}, False, "ok")
+        return tokens_view()
+
+    external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
+                      charging=charging, surplus=surplus, devices=devices)
 
     # ---- live ------------------------------------------------------------
 

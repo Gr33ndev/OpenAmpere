@@ -25,6 +25,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 | Heizstab, Wärmepumpe (SG-Ready) | ✅ Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. |
 | Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | ✅ Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. |
 | Wallbox | ✅ Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.md](docs/evcc.md). |
+| Home Assistant | ✅ Eigene Integration über HACS: Daten live und Steuerung, siehe [Home Assistant](#home-assistant). |
 
 **Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2. Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
 
@@ -63,6 +64,24 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 - **Diagnose (nur lesen):** prüft Registerkarte, Funktionscodes, optionale Blöcke, Skalierung, Einspeisebegrenzung, Verbindungsabbrüche und Tageszähler des eigenen Geräts und erstellt einen Bericht zum Teilen. **Vor der ersten Änderung am Wechselrichter einmal ausführen.**
 - **Wallbox mit evcc:** Wallboxen steuert das eigenständige Open-Source-Projekt [evcc](https://evcc.io). OpenAmpere liefert evcc die Messwerte von Netz, Solar und Speicher, sodass evcc keine eigene Verbindung zum Wechselrichter braucht, und zeigt die Ladepunkte in der App: Lademodus, Ladeziel, Mindestladung, Ladeplan, Uhrzeit bis zum Ziel und Ladevorgänge. Ist das Auto selbst in evcc eingerichtet, kommen Ladestand und Reichweite dazu, und die Auswertung zeigt gefahrene Kilometer, Kilometer mit Sonnenstrom, Verbrauch pro 100 km und Kosten pro 100 km im Vergleich zu Netzstrom. Ob Wallbox oder Heizstab zuerst Überschuss bekommt, ist einstellbar. Einrichtung: [docs/evcc.md](docs/evcc.md). Danke an die evcc-Community!
 - Siehe auch [docs/architektur.md](docs/architektur.md).
+
+## Home Assistant
+
+Die Integration **OpenAmpere** bringt Leistung, Energie (passend fürs Energie-Dashboard), Ladestand und Zustand live
+nach Home Assistant, auf Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab.
+
+> **Erst OpenAmpere installieren** (siehe [Installation](#installation)), dann die Integration. Sie verbindet sich nur
+> mit dem laufenden OpenAmpere und ersetzt es nicht. Nur OpenAmpere spricht mit dem Wechselrichter.
+
+[![HACS Custom](https://img.shields.io/badge/HACS-custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc)](https://hacs.xyz)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere)
+
+Danach in Home Assistant die Integration OpenAmpere hinzufügen und **koppeln**: Adresse von OpenAmpere eingeben, den
+6-stelligen Code mit dem unter **Mehr → Verbundene Apps** vergleichen und dort erlauben. Die Verbindung ist
+verschlüsselt, jede App bekommt einen eigenen, widerrufbaren Zugang. Gesteuert werden kann nur, was in OpenAmpere
+freigegeben ist. Anleitung und Details: [docs/homeassistant.md](docs/homeassistant.md).
 
 ## Installation
 
@@ -194,6 +213,10 @@ Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wir
 - Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.
 
 Einstellungen wie Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung speichert der Wechselrichter selbst. Sie bleiben aktiv, auch wenn OpenAmpere nicht läuft oder deinstalliert wird. Wer etwas zurücknehmen will, muss es in der App (oder beim Installationsbetrieb) wieder ändern.
+
+Andere Apps wie [Home Assistant](docs/homeassistant.md) steuern nur über einen eigenen Zugang mit der Berechtigung
+„Lesen + Steuern“ und nur, solange die Steuerung freigegeben ist. Den Hauptschalter, den Testmodus und die
+Einspeisebegrenzung können sie nicht ändern, Speicher-Einstellungen höchstens sechsmal pro Stunde.
 
 Die Register zum Schreiben stammen aus der Dokumentation der Community und sind noch nicht an jeder Gerätevariante geprüft. Deshalb liest OpenAmpere jeden geschriebenen Wert zurück und meldet Abweichungen.
 

@@ -4,7 +4,8 @@ services:
     image: openampere:latest
     restart: unless-stopped
     # Host-Netzwerk, damit die Gerätesuche das Heimnetz sieht (Linux, z. B. Proxmox/Raspberry Pi).
-    # Die App ist dann direkt unter http://<server-ip>:8080 erreichbar.
+    # Die App ist dann direkt unter http://<server-ip>:8080 erreichbar, Home Assistant verbindet sich über
+    # HTTPS auf Port 8443 (siehe docs/homeassistant.md).
     network_mode: host
     volumes:
       - ./data:/data

@@ -13,3 +13,4 @@ src/openampere/web/
 _site/
 evcc/
 .DS_Store
+.venv-ha/

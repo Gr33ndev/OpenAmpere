@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+import contextlib
 import logging
 import os
 from pathlib import Path
@@ -22,6 +24,48 @@ def check_data_dir(config_path: str | None) -> None:
     if folder.is_dir() and not os.access(folder, os.W_OK):
         raise SystemExit(f"Kein Schreibzugriff auf {folder} (Benutzer {os.getuid()}). Bei Docker auf dem Server im "
                          f"OpenAmpere-Ordner ausführen: sudo chown -R {os.getuid()}:{os.getgid()} data")
+
+
+class _SecondServer(uvicorn.Server):
+    """The HTTPS port: same app, but the HTTP server owns the signals and the app's startup and shutdown."""
+
+    @contextlib.contextmanager
+    def capture_signals(self):
+        yield
+
+
+async def serve(app, runtime: Runtime) -> None:
+    server = runtime.config.server
+    # bounded graceful shutdown: open browser connections must not keep the process alive
+    main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, log_level="info",
+                                         timeout_graceful_shutdown=5))
+    if not server.tls_port:
+        await main.serve()
+        return
+    cert = runtime.tls
+    secure = _SecondServer(uvicorn.Config(app, host=server.host, port=server.tls_port, log_level="info", lifespan="off",
+                                          ssl_certfile=str(cert.cert_path), ssl_keyfile=str(cert.key_path),
+                                          timeout_graceful_shutdown=5))
+    logging.info("HTTPS for other apps on port %s, certificate SHA-256 %s", server.tls_port, cert.fingerprint)
+
+    async def serve_secure() -> None:
+        # a busy port (e.g. a UniFi controller on 8443) must not stop the app: uvicorn exits the process there
+        try:
+            await secure.serve()
+        except (SystemExit, OSError):
+            runtime.tls_error = f"Port {server.tls_port} ist belegt"
+            logging.warning("HTTPS port %s is in use; other apps cannot connect (set OPENAMPERE_SERVER_TLS_PORT)",
+                            server.tls_port)
+        else:
+            if not secure.started:
+                runtime.tls_error = f"Port {server.tls_port} ließ sich nicht öffnen"
+
+    secure_task = asyncio.create_task(serve_secure())
+    try:
+        await main.serve()
+    finally:
+        secure.should_exit = True
+        await secure_task
 
 
 def main() -> None:
@@ -54,10 +98,7 @@ def main() -> None:
         raise SystemExit(f"OpenAmpere läuft bereits ({err}). Bitte die andere Instanz zuerst beenden.") from None
     if not runtime.collector.configured:
         logging.info("no inverter configured yet – open the web app to run the setup")
-    server = runtime.config.server
-    # bounded graceful shutdown: open browser connections must not keep the process alive
-    uvicorn.run(create_app(runtime), host=server.host, port=server.port, log_level="info",
-                timeout_graceful_shutdown=5)
+    asyncio.run(serve(create_app(runtime), runtime))
 
 
 if __name__ == "__main__":

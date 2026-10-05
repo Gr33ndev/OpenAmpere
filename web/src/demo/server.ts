@@ -459,6 +459,11 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
     legal_max_w: 5880, external_change: null }),
   "/api/control/log": controlLog,
   "/api/import/cloud": () => ({ status: "done", phase: "soc", days_total: 487, work_done: 487, soc_done: 487, imported: 46752, key_set: true }),
+  "/api/tokens": () => {
+    const now = Date.now() / 1000;
+    return { tokens: [{ id: "demo", name: "Home Assistant", scope: "read", created: now - 86400 * 12, last_used: now - 40 }], pairing: [],
+      tls: { port: 8443, fingerprint: "3f9a0c6be1d24857a6c0f1e93b7d5a2c84e6f0b19d3c7a5e2f8b4d6c0a1e9f37", error: null } };
+  },
   "/api/tariffs": () => ({ tariffs: [
     { valid_from: "2025-01-01", kind: "fixed", price_ct: PRICE_CT, surcharge_ct: 20, vat_percent: 19, feed_in_ct: FEED_IN_CT, area: "DE",
       base_fee_eur_month: BASE_FEE_EUR_MONTH },
@@ -486,7 +491,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/consumers/", "/api/evcc/loadpoints/",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test",
-  "/api/setup/scan", "/api/setup/test",
+  "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];
 
 /** Endpoints the demo never reaches: setup (the demo is already set up) and downloads (hidden in the demo). */

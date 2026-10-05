@@ -1,0 +1,13 @@
+{
+  "domain": "openampere",
+  "name": "OpenAmpere",
+  "codeowners": ["@Gr33ndev"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.md",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Gr33ndev/OpenAmpere/issues",
+  "requirements": [],
+  "version": "0.6.0"
+}

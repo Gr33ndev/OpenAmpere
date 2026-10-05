@@ -1,0 +1,208 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OpenAmpere",
+        "description": "OpenAmpere must already be running (e.g. on your Raspberry Pi). How do you want to connect?",
+        "menu_options": {
+          "pair": "Pair with OpenAmpere (recommended)",
+          "code": "Paste a connection code"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Connect again",
+        "description": "The access was removed in OpenAmpere or its certificate changed.",
+        "menu_options": {
+          "pair": "Pair with OpenAmpere",
+          "code": "Paste a connection code"
+        }
+      },
+      "pair": {
+        "title": "Pair with OpenAmpere",
+        "description": "Enter the address OpenAmpere runs on. Then Home Assistant and OpenAmpere show the same 6-digit code, which you confirm in OpenAmpere.",
+        "data": {
+          "host": "Address",
+          "port": "HTTPS port"
+        },
+        "data_description": {
+          "host": "IP address or name of the device OpenAmpere runs on, e.g. 192.168.178.20 – without http:// and without :8080.",
+          "port": "Default 8443. Only change it if you changed it in OpenAmpere."
+        }
+      },
+      "code": {
+        "title": "Paste a connection code",
+        "description": "Create an access in OpenAmpere under Mehr → Verbundene Apps and paste the connection code here.",
+        "data": {
+          "code": "Connection code",
+          "host": "Address (optional)"
+        },
+        "data_description": {
+          "code": "Create it in OpenAmpere under Mehr → Verbundene Apps (More → Connected apps).",
+          "host": "Only if Home Assistant reaches OpenAmpere under a different address than your browser, e.g. the Raspberry Pi's IP address."
+        }
+      }
+    },
+    "error": {
+      "invalid_code": "This is not a valid connection code. Please copy it completely.",
+      "invalid_auth": "The access is invalid or was removed.",
+      "certificate_mismatch": "The certificate does not match the code. Is this really your OpenAmpere? Otherwise create a new code.",
+      "cannot_connect": "Cannot reach OpenAmpere. Check the address and the HTTPS port (default 8443).",
+      "unsupported_version": "OpenAmpere and the integration do not match. Please update both.",
+      "unknown": "Unexpected error.",
+      "pairing_failed": "OpenAmpere did not accept the request: {detail}"
+    },
+    "abort": {
+      "already_configured": "This OpenAmpere is already set up.",
+      "reauth_successful": "Connection renewed.",
+      "wrong_server": "The code belongs to a different OpenAmpere.",
+      "pairing_rejected": "The pairing was rejected in OpenAmpere.",
+      "pairing_expired": "The request expired (10 minutes). Please start again."
+    },
+    "progress": {
+      "wait_for_approval": "Open OpenAmpere → Mehr → Verbundene Apps. There is a request from “Home Assistant”.\n\n**Code: {code}**\n\nOnly allow the connection if OpenAmpere shows exactly this code. If it shows a different one, reject it."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Live values",
+        "data": {
+          "min_interval": "Minimum time between live values (seconds)"
+        },
+        "data_description": {
+          "min_interval": "0 = take every value OpenAmpere sends. Higher values spare small systems such as a Raspberry Pi with an SD card."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_power": {
+        "name": "PV power"
+      },
+      "house_power": {
+        "name": "House consumption"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "battery_soc": {
+        "name": "State of charge"
+      },
+      "battery_soh": {
+        "name": "Battery health"
+      },
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "battery_current": {
+        "name": "Battery current"
+      },
+      "battery_temperature": {
+        "name": "Battery temperature"
+      },
+      "inverter_temperature": {
+        "name": "Inverter temperature"
+      },
+      "pv_energy": {
+        "name": "PV production"
+      },
+      "load_energy": {
+        "name": "Consumption"
+      },
+      "grid_import_energy": {
+        "name": "Grid import"
+      },
+      "grid_export_energy": {
+        "name": "Grid export"
+      },
+      "battery_charge_energy": {
+        "name": "Battery charged"
+      },
+      "battery_discharge_energy": {
+        "name": "Battery discharged"
+      },
+      "price": {
+        "name": "Electricity price"
+      },
+      "pv_input_power": {
+        "name": "{name}"
+      },
+      "device_power": {
+        "name": "Power"
+      },
+      "device_temperature": {
+        "name": "Temperature"
+      },
+      "control": {
+        "name": "Control",
+        "state": {
+          "off": "View only",
+          "test": "Test mode",
+          "active": "Active"
+        }
+      }
+    },
+    "binary_sensor": {
+      "inverter_connected": {
+        "name": "Inverter connected"
+      },
+      "off_grid": {
+        "name": "Off-grid (power cut)"
+      },
+      "grid_charging_active": {
+        "name": "Charging from the grid"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "live_connection": {
+        "name": "Live connection"
+      },
+      "device_on": {
+        "name": "On"
+      }
+    },
+    "select": {
+      "work_mode": {
+        "name": "Work mode",
+        "state": {
+          "self_use": "Self-use",
+          "feed_in_first": "Feed-in first",
+          "backup": "Backup",
+          "peak_shaving": "Peak shaving"
+        }
+      },
+      "device_mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Automatic (surplus)",
+          "off": "Off",
+          "boost": "Boost (full power)"
+        }
+      }
+    },
+    "number": {
+      "min_soc_on_grid": {
+        "name": "Backup reserve"
+      },
+      "max_soc": {
+        "name": "Charge limit"
+      },
+      "min_soc": {
+        "name": "Outage floor"
+      },
+      "grid_charging_target": {
+        "name": "Grid charging target"
+      }
+    },
+    "switch": {
+      "grid_charging": {
+        "name": "Grid charging"
+      }
+    }
+  }
+}
