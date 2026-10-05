@@ -236,7 +236,7 @@
     },
     {
      "name": "websockets",
-     "version": "17.1",
+     "version": "17.2",
      "license": "BSD-3-Clause",
      "url": "https://github.com/python-websockets/websockets",
      "texts": [
