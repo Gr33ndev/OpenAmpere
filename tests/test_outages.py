@@ -88,3 +88,18 @@ def test_entries_from_a_single_reading_are_removed(tmp_path):
             "load_kwh": 1.0, "solar_kwh": 0.2, "battery_kwh": 0.8, "dark_since": 5000}  # empty right away: kept
     storage.set_meta("outages", [bogus, real])
     assert Outages(storage).history() == [real]
+
+
+def test_inverter_switched_off_while_openampere_kept_running(tmp_path):
+    """#93: the inverter was switched off on purpose. OpenAmpere kept asking it, so it had power: not "battery empty"."""
+    storage = Storage(tmp_path / "t.db")
+    outages = Outages(storage)
+    outages.observe(reading(0, True, 15))
+    outages.observe(reading(10, True, 15))
+    outages.unreachable(100)  # a short hiccup does not count yet
+    assert not outages.current.get("polled_in_gap")
+    outages.unreachable(600)
+    assert Outages(storage).current["polled_in_gap"]  # also after a restart
+    done = outages.observe(reading(1800, False, 15))
+    assert done["dark_since"] == 10 and done["gap_reason"] == "inverter_off"
+    outages.unreachable(5000)  # no outage running: nothing to note

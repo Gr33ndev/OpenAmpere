@@ -4,7 +4,7 @@ import { num, timeZone } from "./format";
 type Outage = {
   start: number; end: number; duration_s: number; soc_start: number | null; soc_end: number | null; soc_min: number | null;
   load_kwh: number | null; solar_kwh: number | null; battery_kwh: number | null; dark_since: number | null;
-  gap_reason?: "battery_empty" | "no_data" | null;
+  gap_reason?: "battery_empty" | "no_data" | "inverter_off" | null;
 };
 export type OutagesView = {
   current: { start: number; soc_start: number | null; soc_last: number | null } | null;
@@ -47,7 +47,10 @@ export function OutagesSection() {
                 Speicher {pct(o.soc_start)} → {pct(o.soc_end)}{o.soc_min != null && o.soc_min < (o.soc_end ?? 101) ? ` (tiefster Stand ${pct(o.soc_min)})` : ""}
                 {o.load_kwh != null && <> · Haus {num(o.load_kwh, 1)}&nbsp;kWh{o.solar_kwh != null ? `, davon Sonne ${num(Math.min(o.solar_kwh, o.load_kwh), 1)} kWh` : ""}</>}
               </span>
-              {o.dark_since && (batteryEmpty(o)
+              {o.dark_since && (o.gap_reason === "inverter_off"
+                ? <span className="meta">Ab {time(o.dark_since)} Uhr war der Wechselrichter nicht erreichbar, OpenAmpere lief aber weiter.
+                  Vermutlich wurde er ausgeschaltet oder die Verbindung war unterbrochen. Die Dauer ist deshalb ungenau.</span>
+                : batteryEmpty(o)
                 ? <span className="meta warn-text">Ab {time(o.dark_since)} Uhr ohne Strom, vermutlich war der Speicher leer.</span>
                 : <span className="meta">Ab {time(o.dark_since)} Uhr kamen keine Messwerte, etwa weil die Verbindung unterbrochen war.
                   Die Dauer ist deshalb ungenau.</span>)}
