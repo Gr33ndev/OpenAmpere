@@ -103,3 +103,28 @@ def test_inverter_switched_off_while_openampere_kept_running(tmp_path):
     done = outages.observe(reading(1800, False, 15))
     assert done["dark_since"] == 10 and done["gap_reason"] == "inverter_off"
     outages.unreachable(5000)  # no outage running: nothing to note
+
+
+def test_an_entry_can_be_removed(tmp_path):
+    """#95: "Das war kein Stromausfall", e.g. the inverter was switched off on purpose."""
+    from fastapi.testclient import TestClient
+
+    from openampere.api import create_app
+    from openampere.runtime import Runtime
+
+    from conftest import login
+
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    outages = runtime.collector.outages
+    for ts, flag in ((1000, True), (1010, True), (1600, False), (5000, True), (5010, True), (5600, False)):
+        outages.observe(reading(ts, flag, 80))
+    assert outages.view()["count"] == 2
+
+    client = TestClient(create_app(runtime))
+    assert client.delete("/api/outages/1000").status_code == 403  # only with login
+    login(client)
+    view = client.delete("/api/outages/1000").json()
+    assert view["count"] == 1 and view["outages"][0]["start"] == 5000
+    assert client.delete("/api/outages/1000").status_code == 404
+    entry = runtime.storage.control_log()[0]
+    assert entry["action"] == "outage_removed" and entry["details"]["to"] == {"outage": "entfernt"}
