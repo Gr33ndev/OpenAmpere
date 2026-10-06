@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
 import { num } from "./format";
+import { list, LOCALE, t } from "./i18n";
 import { navigate } from "./route";
 import type { PageProps } from "./SettingsPages";
 import { Button, Field, LoadState, SubPage, toast, Unsaved } from "./ui";
@@ -19,15 +20,14 @@ export type BillingYear = {
 };
 export type Billing = { settings: BillingSettings; status: Record<Kind, BillingYear | null> };
 
-const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-const TEXT: Record<Kind, { title: string; who: string; hint: string }> = {
-  import: { title: "Strombezug", who: "an deinen Stromanbieter",
-    hint: "Der monatliche Abschlag an deinen Stromanbieter. Steht auf der letzten Jahresrechnung oder im Kundenportal." },
-  export: { title: "Einspeisung", who: "vom Netzbetreiber",
-    hint: "Die monatliche Abschlagszahlung für deine Einspeisevergütung. Steht in der Abrechnung des Netzbetreibers." },
+const MONTHS = [t("report.months.january"), t("report.months.february"), t("report.months.march"), t("report.months.april"), t("report.months.may"), t("report.months.june"), t("report.months.july"), t("report.months.august"), t("report.months.september"),
+  t("report.months.october"), t("report.months.november"), t("report.months.december")];
+const TEXT: Record<Kind, { title: string; hint: string }> = {
+  import: { title: t("report.text.gridImport"), hint: t("report.text.importHint") },
+  export: { title: t("common.feedIn"), hint: t("report.text.feedInHint") },
 };
-const euro = (v: number) => v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
-const dateLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
+const euro = (v: number) => v.toLocaleString(LOCALE, { style: "currency", currency: "EUR" });
+const dateLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" });
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 /** Settings: the monthly prepayments and when the billing year starts, for grid power and feed-in. */
@@ -43,7 +43,7 @@ export function BillingPage({ onBack }: PageProps) {
     setBusy(true);
     try {
       setData(await putJson<Billing>("/api/billing", { settings: form }));
-      toast("Gespeichert");
+      toast(t("common.saved"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -52,42 +52,40 @@ export function BillingPage({ onBack }: PageProps) {
   };
 
   return (
-    <SubPage title="Abschläge" onBack={onBack}>
-      <p className="hint">Trag deine monatlichen Abschläge ein. OpenAmpere vergleicht sie mit deinem Verbrauch und deiner
-        Einspeisung bis heute. Das Ergebnis steht in der Auswertung.</p>
+    <SubPage title={t("common.advancePayments")} onBack={onBack}>
+      <p className="hint">{t("report.billingPage.intro")}</p>
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && (["import", "export"] as Kind[]).map((kind) => (
         <div key={kind}>
           <div className="section-title">{TEXT[kind].title}</div>
           <div className="card form">
             <p className="hint">{TEXT[kind].hint}</p>
-            <Field label="Abrechnungsjahr beginnt im">
+            <Field label={t("report.billingPage.billingYearStarts")}>
               <select className="input" value={form[kind].start_month} onChange={(e) => update(kind, { start_month: Number(e.target.value) })}>
                 {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
               </select>
             </Field>
             {form[kind].payments.map((p, i) => (
               <div className="field-row" key={i}>
-                <Field label="Ab Monat"><input className="input" type="month" value={p.from}
+                <Field label={t("report.billingPage.fromMonth")}><input className="input" type="month" value={p.from}
                   onChange={(e) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)) })} /></Field>
-                <Field label="Pro Monat"><div className="input-unit"><input className="input" inputMode="decimal"
-                  value={String(p.eur).replace(".", ",")}
+                <Field label={t("report.billingPage.perMonth")}><div className="input-unit"><input className="input" inputMode="decimal"
+                  value={p.eur.toLocaleString(LOCALE, { useGrouping: false, maximumFractionDigits: 20 })}
                   onChange={(e) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i
                     ? { ...x, eur: Number(e.target.value.replace(",", ".")) || 0 } : x)) })} /><span>€</span></div></Field>
-                <button className="link danger-link" aria-label="Abschlag entfernen"
-                  onClick={() => update(kind, { payments: form[kind].payments.filter((_, j) => j !== i) })}>Entfernen</button>
+                <button className="link danger-link" aria-label={t("report.billingPage.removeAdvancePayment")}
+                  onClick={() => update(kind, { payments: form[kind].payments.filter((_, j) => j !== i) })}>{t("common.remove")}</button>
               </div>
             ))}
             <button className="link" onClick={() => update(kind, { payments: [...form[kind].payments,
               { from: thisMonth(), eur: form[kind].payments[form[kind].payments.length - 1]?.eur ?? 0 }] })}>
-              {form[kind].payments.length ? "Geänderten Abschlag hinzufügen" : "Abschlag eintragen"}</button>
+              {form[kind].payments.length ? t("report.billingPage.addChange") : t("report.billingPage.enterAdvancePayment")}</button>
           </div>
         </div>
       ))}
-      {form && <Button busy={busy} disabled={!dirty} onClick={save}>Speichern</Button>}
+      {form && <Button busy={busy} disabled={!dirty} onClick={save}>{t("common.save")}</Button>}
       <Unsaved show={dirty} />
-      <p className="hint">Ändert sich ein Abschlag, trag den neuen mit dem Monat ein, ab dem er gilt. Die Preise kommen aus
-        deinem Stromtarif (Mehr → Stromtarif), auch der Grundpreis.</p>
+      <p className="hint">{t("report.billingPage.changeHint")}</p>
     </SubPage>
   );
 }
@@ -99,15 +97,15 @@ function TodayRows({ kind, year }: { kind: Kind; year: BillingYear }) {
   const diff = year.balance_today_eur;
   return (
     <>
-      <dt className="billing-group">{TEXT[kind].title} <span className="meta">seit {dateLabel(year.from)}</span></dt><dd />
+      <dt className="billing-group">{TEXT[kind].title} <span className="meta">{t("report.todayRows.since", { date: dateLabel(year.from) })}</span></dt><dd />
       {kind === "import" ? <>
-        <dt>Abschläge bis heute</dt><dd>{euro(year.paid_to_date_eur)}</dd>
-        <dt>Kosten für {num(year.so_far_kwh, 0)}&nbsp;kWh</dt><dd>− {euro(year.so_far_eur)}</dd>
+        <dt>{t("report.todayRows.paidSoFar")}</dt><dd>{euro(year.paid_to_date_eur)}</dd>
+        <dt>{t("report.todayRows.cost", { energy: `${num(year.so_far_kwh, 0)}\u00a0kWh` })}</dt><dd>− {euro(year.so_far_eur)}</dd>
       </> : <>
-        <dt>Vergütung für {num(year.so_far_kwh, 0)}&nbsp;kWh</dt><dd>{euro(year.so_far_eur)}</dd>
-        <dt>Abschläge bis heute</dt><dd>− {euro(year.paid_to_date_eur)}</dd>
+        <dt>{t("report.todayRows.payment", { energy: `${num(year.so_far_kwh, 0)}\u00a0kWh` })}</dt><dd>{euro(year.so_far_eur)}</dd>
+        <dt>{t("report.todayRows.paidSoFar")}</dt><dd>− {euro(year.paid_to_date_eur)}</dd>
       </>}
-      <dt className="sub">Differenz</dt><dd className={`sub ${diff >= 0 ? "good-text" : "bad-text"}`}>{diff >= 0 ? "+" : "−"} {euro(Math.abs(diff))}</dd>
+      <dt className="sub">{t("report.todayRows.difference")}</dt><dd className={`sub ${diff >= 0 ? "good-text" : "bad-text"}`}>{diff >= 0 ? "+" : "−"} {euro(Math.abs(diff))}</dd>
     </>
   );
 }
@@ -119,10 +117,10 @@ export function BillingSection() {
   const kinds = (["import", "export"] as Kind[]).filter((k) => data.status[k]);
   if (!kinds.length) return (
     <>
-      <div className="section-title">Abschläge</div>
+      <div className="section-title">{t("common.advancePayments")}</div>
       <div className="card">
-        <p>Trag deine monatlichen Abschläge ein, dann zeigt OpenAmpere, ob sie zu deinem Verbrauch und deiner Einspeisung passen.</p>
-        <button className="link" onClick={() => navigate("more/billing")}>Abschläge eintragen</button>
+        <p>{t("report.billingSection.emptyState")}</p>
+        <button className="link" onClick={() => navigate("more/billing")}>{t("report.billingSection.enterAdvancePayments")}</button>
       </div>
     </>
   );
@@ -133,34 +131,39 @@ export function BillingSection() {
   const estimated = years.map(([, y]) => y.estimated_before).filter(Boolean).sort()[0];
   const metered = years.flatMap(([k, y]) => (y.meter ? [[k, y.meter] as const] : []));
   const deviations = metered.filter(([, m]) => m.deviation_percent != null && Math.abs(m.deviation_percent) >= 0.5)
-    .map(([k, m]) => `${k === "import" ? "beim Bezug" : "bei der Einspeisung"} ${num(Math.abs(m.deviation_percent!), 1)} % ${m.deviation_percent! < 0 ? "weniger" : "mehr"}`);
+    .map(([k, m]) => {
+      const percent = num(Math.abs(m.deviation_percent!), 1);
+      if (k === "import") return m.deviation_percent! < 0 ? t("report.billingSection.importLess", { percent }) : t("report.billingSection.importMore", { percent });
+      return m.deviation_percent! < 0 ? t("report.billingSection.feedInLess", { percent }) : t("report.billingSection.feedInMore", { percent });
+    });
   return (
     <>
-      <div className="section-title">Abschläge</div>
+      <div className="section-title">{t("common.advancePayments")}</div>
       <div className="card key-figures billing-card">
         <div>
-          <span className="key-label">Stand heute</span>
+          <span className="key-label">{t("report.billingSection.asOfToday")}</span>
           <strong className={`billing-headline ${even ? "" : total > 0 ? "good" : "bad"}`}>
-            {even ? "Abschläge passen" : total > 0 ? `${euro(total)} im Plus` : `${euro(-total)} im Minus`}</strong>
+            {even ? t("report.billingSection.advancePaymentsFit") : total > 0 ? t("report.billingSection.amountCredit", { amount: euro(total) })
+              : t("report.billingSection.amountOwed", { amount: euro(-total) })}</strong>
         </div>
         <dl className="facts billing-sum">
           {years.map(([k, y]) => <TodayRows key={k} kind={k} year={y} />)}
-          {years.length > 1 && <><dt className="sum">Zusammen</dt><dd className="sum">{total >= 0 ? "+" : "−"} {euro(Math.abs(total))}</dd></>}
+          {years.length > 1 && <><dt className="sum">{t("report.billingSection.total")}</dt><dd className="sum">{total >= 0 ? "+" : "−"} {euro(Math.abs(total))}</dd></>}
         </dl>
-        <p className="hint">Plus heißt: Bis heute hast du mehr Abschlag gezahlt als verbraucht{kinds.includes("export")
-          ? " oder mehr eingespeist als ausgezahlt wurde" : ""}. Der laufende Monat zählt anteilig bis heute, die Kosten
-          enthalten den Grundpreis aus deinem Stromtarif.</p>
-        {missing > 0 && <p className="hint warn-text">An {missing} {missing === 1 ? "Tag" : "Tagen"} hat OpenAmpere keine Messwerte,
-          etwa weil die Verbindung gestört war. Verbrauch und Einspeisung sind deshalb etwas zu niedrig.</p>}
-        {estimated && <p className="hint">Vor dem {dateLabel(estimated)} hat OpenAmpere noch nicht gemessen, diese Zeit ist geschätzt.</p>}
+        <p className="hint">{kinds.includes("export")
+          ? t("report.billingSection.explanation")
+          : t("report.billingSection.explanationImportOnly")}</p>
+        {missing > 0 && <p className="hint warn-text">{t("report.billingSection.missingDays", { count: missing })}</p>}
+        {estimated && <p className="hint">{t("report.billingSection.estimatedBefore", { date: dateLabel(estimated) })}</p>}
         {metered.length > 0 && (
-          <p className="hint">Bis {dateLabel(metered.map(([, m]) => m.until).sort()[0])} rechnet OpenAmpere mit den Zählerwerten
-            von {metered[0][1].source}, danach mit denen des Wechselrichters.{deviations.length > 0 && ` Der Wechselrichter misst ${deviations.join(" und ")}.`}</p>
+          <p className="hint">{t("report.billingSection.meterSource", {
+            date: dateLabel(metered.map(([, m]) => m.until).sort()[0]), source: metered[0][1].source })}
+            {deviations.length > 0 && ` ${t("report.billingSection.deviations", { deviations: list(deviations) })}`}</p>
         )}
-        <p className="hint">{metered.length ? "" : "Abgerechnet wird nach den Zählern des Netzbetreibers. Die Werte hier sind eine Orientierung. "}
-          Das Abrechnungsjahr endet am {dateLabel(lastDay(years[0][1].to))}.</p>
+        <p className="hint">{metered.length ? "" : `${t("report.billingSection.meterDisclaimer")} `}
+          {t("report.billingSection.yearEnds", { date: dateLabel(lastDay(years[0][1].to)) })}</p>
         {!metered.length && (
-          <button className="link" onClick={() => navigate("more/gridmeter")}>Zählerwerte vom Netzbetreiber abrufen</button>
+          <button className="link" onClick={() => navigate("more/gridmeter")}>{t("report.billingSection.fetchMeterReadings")}</button>
         )}
       </div>
     </>

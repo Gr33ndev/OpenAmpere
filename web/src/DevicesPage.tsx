@@ -3,6 +3,7 @@ import type { BatteryState, Device, DevicesView, Snapshot } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
+import { LOCALE, t, tx } from "./i18n";
 import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
 import { BatteryPage, ChargingPage, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
@@ -40,18 +41,20 @@ export function DeviceIcon({ kind, size = 44 }: { kind: Device["kind"]; size?: n
 
 export function deviceStatus(d: Device): string {
   if (d.error) return d.error;
-  if (d.override?.mode === "off") return "von Hand aus";
-  if (d.override?.mode === "boost") return `volle Leistung${d.override.until ? ` bis ${clock(d.override.until)}` : ""}`;
+  if (d.override?.mode === "off") return t("devices.deviceStatus.switchedOffManually");
+  if (d.override?.mode === "boost") {
+    return d.override.until ? t("devices.deviceStatus.fullPowerUntil", { time: clock(d.override.until) }) : t("devices.deviceStatus.fullPower");
+  }
   if (d.kind === "wallbox") {
-    if (d.active) return `lädt mit ${kw(d.power_w)}`;
-    return d.connected === false ? "kein Auto angeschlossen" : "angeschlossen, lädt gerade nicht";
+    if (d.active) return t("devices.deviceStatus.charging", { power: kw(d.power_w) });
+    return d.connected === false ? t("devices.deviceStatus.noCarPlugged") : t("devices.deviceStatus.pluggedNotCharging");
   }
   if (d.active) return `${kw(d.power_w)}`;
   if (d.status) return d.status;
-  return d.on == null ? "wartet auf Überschuss" : "aus";
+  return d.on == null ? t("devices.deviceStatus.waitingSurplus") : t("common.offValue");
 }
 
-const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
 
 /** Heating rod or switched device run by OpenAmpere itself. */
 function OwnDeviceCard({ d, today, onChange }: { d: Device; today: number | undefined; onChange: () => void }) {
@@ -81,21 +84,21 @@ function OwnDeviceCard({ d, today, onChange }: { d: Device; today: number | unde
       </div>
       {temp != null && (
         <div className="temp-row">
-          <span>Wasser {num(temp, 1)} °C</span>
-          {target != null && <span className="hint">Ziel {num(target, 0)} °C</span>}
+          <span>{t("devices.ownDeviceCard.water", { temperature: num(temp, 1) })}</span>
+          {target != null && <span className="hint">{t("devices.ownDeviceCard.target", { temperature: num(target, 0) })}</span>}
           {target != null && (
-            <div className="soc-track" role="img" aria-label={`Wassertemperatur ${temp} von ${target} Grad`}>
+            <div className="soc-track" role="img" aria-label={t("devices.ownDeviceCard.temperatureLabel", { temperature: temp, target })}>
               <div className="fill heat" style={{ width: `${Math.max(0, Math.min(100, (temp / target) * 100))}%` }} />
             </div>
           )}
         </div>
       )}
       <Segmented value={mode} disabled={busy} onChange={(v) => void setMode(v)}
-        options={[["auto", "Automatisch"], ["off", "Aus"], ["boost", d.kind === "heating_rod" ? "Volle Leistung" : "An"]]} />
-      <p className="hint">{mode === "auto" ? "Läuft mit Solarüberschuss nach deinen Einstellungen."
-        : mode === "off" ? "Bleibt aus, bis du wieder auf Automatisch stellst."
-        : "Läuft 2 Stunden mit voller Leistung, auch mit Netzstrom. Danach wieder automatisch."}</p>
-      {today != null && <p className="hint">Heute: {kwh(today)}</p>}
+        options={[["auto", t("common.automatic")], ["off", t("common.off")], ["boost", d.kind === "heating_rod" ? t("devices.ownDeviceCard.fullPower") : t("common.on")]]} />
+      <p className="hint">{mode === "auto" ? t("devices.ownDeviceCard.autoHint")
+        : mode === "off" ? t("devices.ownDeviceCard.offHint")
+        : t("devices.ownDeviceCard.fullPowerHint")}</p>
+      {today != null && <p className="hint">{t("devices.ownDeviceCard.today", { energy: kwh(today) })}</p>}
     </div>
   );
 }
@@ -105,32 +108,33 @@ function BatteryCard({ snap }: { snap: Snapshot | null }) {
   const { data: settings } = useResource<BatteryState>("/api/battery/settings", 60_000);
   const { data: charging } = useResource<ChargingView>("/api/charging", 30_000);
   const power = snap?.battery_power ?? null;
-  const state = power == null ? "–" : Math.abs(power) <= 30 ? "ruht" : power > 0 ? `entlädt ${kw(power)}` : `lädt ${kw(power)}`;
+  const state = power == null ? "–" : Math.abs(power) <= 30 ? t("devices.batteryCard.idle")
+    : power > 0 ? t("devices.batteryCard.discharging", { power: kw(power) }) : t("devices.batteryCard.charging", { power: kw(power) });
   return (
     <div className="card device-card">
       <button className="device-card-head as-link" onClick={() => navigate("devices/battery")}>
         <BatteryIcon size={44} soc={snap?.battery_soc ?? null} />
         <div className="grow">
-          <strong>Speicher</strong>
+          <strong>{t("common.battery")}</strong>
           <div className="hint">{state}{settings?.work_mode ? ` · ${WORK_MODE_LABEL[settings.work_mode]}` : ""}</div>
         </div>
         <div className="device-power">{snap?.battery_soc != null ? `${num(snap.battery_soc, 0)} %` : "–"}</div>
       </button>
       {settings?.min_soc_on_grid != null && (
-        <p className="hint">Notstrom-Reserve: {num(settings.min_soc_on_grid, 0)} %</p>
+        <p className="hint">{t("devices.batteryCard.backupReserve", { soc: num(settings.min_soc_on_grid, 0) })}</p>
       )}
       <div className="button-row inline">
-        <button className="link" onClick={() => navigate("devices/battery")}>Speicher einstellen</button>
+        <button className="link" onClick={() => navigate("devices/battery")}>{t("devices.batteryCard.batterySettings")}</button>
         <button className="link" onClick={() => navigate("devices/charging")}>
-          Laden aus dem Netz: {charging ? (charging.active ? "lädt gerade" : charging.settings.enabled ? "an" : "aus") : "…"}
+          {t("devices.batteryCard.gridCharging", { state: charging ? (charging.active ? t("devices.batteryCard.chargingNow") : charging.settings.enabled ? t("common.onValue") : t("common.offValue")) : "…" })}
         </button>
       </div>
     </div>
   );
 }
 
-const WORK_MODE_LABEL: Record<string, string> = { self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugt",
-  backup: "Notstromreserve", peak_shaving: "Spitzenlast begrenzen" };
+const WORK_MODE_LABEL: Record<string, string> = { self_use: t("common.selfConsumption"), feed_in_first: t("devices.workModeLabel.feedFirst"),
+  backup: t("common.backupReserve"), peak_shaving: t("devices.workModeLabel.peakShaving") };
 
 type OrderView = { items: { key: string; name: string; kind: Device["kind"] | "battery" }[]; order: string[];
   battery_soc: number; evcc_error?: string };
@@ -144,7 +148,7 @@ function SurplusOrder() {
     try {
       const view = await putJson<OrderView>("/api/surplus-order", { order: keys, battery_soc: batterySoc });
       setData(view);
-      if (view.evcc_error) toast(`In evcc nicht übernommen: ${view.evcc_error}`, "error");
+      if (view.evcc_error) toast(t("devices.surplusOrder.evccError", { error: view.evcc_error }), "error");
     } catch (e) {
       toast((e as Error).message, "error");
     }
@@ -157,7 +161,7 @@ function SurplusOrder() {
   };
   return (
     <>
-      <div className="section-title">Wer bekommt Sonnenstrom zuerst?</div>
+      <div className="section-title">{t("devices.surplusOrder.title")}</div>
       <div className="card order-list">
         {data.items.map((item, i) => (
           <div key={item.key} className="order-item">
@@ -166,15 +170,15 @@ function SurplusOrder() {
               {item.kind === "battery" ? <BatteryIcon size={32} soc={60} /> : <DeviceIcon kind={item.kind} size={32} />}
               <strong className="grow">{item.name}</strong>
               <div className="order-buttons">
-                <button aria-label={`${item.name} nach oben`} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
-                <button aria-label={`${item.name} nach unten`} disabled={i === data.items.length - 1} onClick={() => move(i, 1)}>▼</button>
+                <button aria-label={t("devices.surplusOrder.moveUp", { name: item.name })} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
+                <button aria-label={t("devices.surplusOrder.moveDown", { name: item.name })} disabled={i === data.items.length - 1} onClick={() => move(i, 1)}>▼</button>
               </div>
             </div>
             {item.kind === "battery" && (
               <div className="order-extra">
                 <Slider value={soc ?? data.battery_soc} min={0} max={100} step={5} unit="%"
                   onChange={setSoc} onCommit={(v) => { setSoc(null); void save(keys, v); }} />
-                <span className="hint">Der Speicher wird bis zu diesem Ladestand geladen. Danach bekommen die Geräte darunter den Sonnenstrom.</span>
+                <span className="hint">{t("devices.surplusOrder.batteryHint")}</span>
               </div>
             )}
           </div>
@@ -200,10 +204,10 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
   if (noExtras) {
     content = (
       <div className="card">
-        <p>Wallbox, Heizstab oder Wärmepumpe können deinen Sonnenstrom nutzen. Füge sie hier hinzu.</p>
+        <p>{t("devices.devicesTab.emptyHint")}</p>
         <div className="button-row">
-          <Button onClick={() => navigate("more/device-setup")}>Heizstab oder Gerät hinzufügen</Button>
-          <Button variant="secondary" onClick={() => navigate("more/wallbox")}>Wallbox mit evcc verbinden</Button>
+          <Button onClick={() => navigate("more/device-setup")}>{t("devices.devicesTab.addDevice")}</Button>
+          <Button variant="secondary" onClick={() => navigate("more/wallbox")}>{t("devices.devicesTab.connectWallbox")}</Button>
         </div>
       </div>
     );
@@ -211,27 +215,27 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
 
   return (
     <div className="page">
-      <div className="page-head"><h1>Geräte</h1></div>
+      <div className="page-head"><h1>{t("common.devices")}</h1></div>
       <ControlModeBar compact />
-      <div className="section-title">Speicher</div>
+      <div className="section-title">{t("common.battery")}</div>
       <BatteryCard snap={snap} />
       {content}
       {!!loadpoints.length && (
         <>
-          <div className="section-title">Wallbox</div>
+          <div className="section-title">{t("common.wallbox")}</div>
           {loadpoints.map((lp) => <WallboxCard key={lp.id} lp={lp} onChange={setEvcc} />)}
-          <p className="hint small-credit">Gesteuert von <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a></p>
+          <p className="hint small-credit">{tx("devices.devicesTab.controlledBy", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
         </>
       )}
       {evcc?.configured && evcc.error && <Notice kind="error">{evcc.error}</Notice>}
       {!!own.length && (
         <>
-          <div className="section-title">Heizstab und weitere Geräte</div>
+          <div className="section-title">{t("devices.devicesTab.otherDevicesTitle")}</div>
           {own.map((d) => <OwnDeviceCard key={d.key} d={d} today={data?.today_wh[d.key]} onChange={reload} />)}
         </>
       )}
       <SurplusOrder />
-      <p className="hint center">Geräte hinzufügen oder einrichten: <button className="link" onClick={() => navigate("more/connection")}>Mehr → Verbindung</button></p>
+      <p className="hint center">{t("devices.devicesTab.addOrSetUp")} <button className="link" onClick={() => navigate("more/connection")}>{t("common.more")} → {t("common.connection")}</button></p>
     </div>
   );
 }

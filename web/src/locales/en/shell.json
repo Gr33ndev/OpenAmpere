@@ -1,0 +1,92 @@
+{
+  "app": {
+    "about": "About",
+    "demo": "Demo",
+    "demoBanner": "{demo} with made-up values",
+    "legalNotice": "Legal notice",
+    "newVersionInstalled": "A new version of OpenAmpere is installed.",
+    "noConnectionRetrying": "No connection to the OpenAmpere server – trying again …",
+    "reloadNow": "Reload now",
+    "serviceRunningHint": "Is the OpenAmpere service running? Trying again every few seconds."
+  },
+  "button": {
+    "pleaseWait": "Please wait …"
+  },
+  "installing": {
+    "close": "Close",
+    "preparingUpdate": "Preparing the update.",
+    "restarting": "OpenAmpere is restarting. The new version will be ready in a moment.",
+    "takesMinutes": "This usually takes one to two minutes. The page then reloads by itself.",
+    "title": "Update",
+    "updateToVersion": "Update to version {version}"
+  },
+  "learnMore": {
+    "learnMore": "Learn more"
+  },
+  "loadState": {
+    "retrying": "Trying again automatically."
+  },
+  "loginDialog": {
+    "loggedIn": "Logged in",
+    "passwordNeeded": "To change settings you need the OpenAmpere password."
+  },
+  "offlineMessage": {
+    "noConnection": "No connection to the OpenAmpere server."
+  },
+  "passwordSetup": {
+    "continue": "Continue",
+    "intro": "The password protects all settings of your system. In your home network anyone can view the values without a password – but only people who know it can change anything.",
+    "passwordHint": "At least 6 characters. Keep it safe – only someone with access to the server can reset it.",
+    "passwordsDoNotMatch": "The passwords do not match.",
+    "repeatPassword": "Repeat password",
+    "setPassword": "Set a password"
+  },
+  "securityPage": {
+    "allDevicesLoggedOut": "All devices logged out",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "forgotPassword": "Forgot your password? Run {command} on the server (Docker: {dockerCommand}), then set a new one.",
+    "logOut": "Log out",
+    "logOutAllDevices": "Log out all devices",
+    "logOutAllHint": "All phones and computers then need to log in again to change settings.",
+    "logOutAllQuestion": "Log out all devices?",
+    "logOutDevice": "Log out this device",
+    "loggedIn": "This device is logged in and can change settings.",
+    "loggedOut": "Logged out",
+    "neverExpose": "never expose OpenAmpere to the internet with port forwarding.",
+    "newPassword": "New password",
+    "notLoggedIn": "This device is not logged in – view only.",
+    "passwordChanged": "Password changed – other devices need to log in again",
+    "passwordHint": "At least 6 characters",
+    "remoteAccessHint": "Viewing works without a password in your home network. For remote access use a VPN (e.g. the one in your FRITZ!Box, WireGuard or Tailscale) – {warning}"
+  },
+  "subPage": {
+    "back": "Back"
+  },
+  "unsaved": {
+    "notSavedYet": "Not saved yet"
+  },
+  "updateBanner": {
+    "remindMeLater": "Remind me later",
+    "update": "Update",
+    "versionAvailable": "Version {version} is available",
+    "whatsNew": "What's new?"
+  },
+  "updatedLabel": {
+    "yesterday": "Yesterday"
+  },
+  "updatesCard": {
+    "autoCheck": "Check for updates",
+    "autoCheckHint": "Every 6 hours on GitHub. No data from your system is sent.",
+    "autoInstall": "Install updates automatically at night",
+    "autoInstallHint": "Between 2 and 5 a.m. If a new version does not start, the previous one comes back.",
+    "checkUpdatesNow": "Check for updates now",
+    "installed": "Installed",
+    "latestVersion": "Latest version",
+    "manualUpdateHint": "Installed manually? Then in the OpenAmpere folder:",
+    "title": "Updates",
+    "upToDate": "OpenAmpere is up to date.",
+    "updateHelperHint": "For one-tap updates, run the install script once more. It sets up the update helper:",
+    "updateTo": "Update to {version}"
+  }
+}

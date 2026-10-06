@@ -38,7 +38,7 @@ export function dayOf(ts: number): string {
 /** "Heute, 16:32:39" / "Gestern, …" / "01.10.2026, …" */
 export function updatedLabel(ts: number): string {
   const now = Date.now() / 1000;
-  const day = dayOf(ts) === dayOf(now) ? t("Heute") : dayOf(ts) === dayOf(now - 86_400) ? t("Gestern")
+  const day = dayOf(ts) === dayOf(now) ? t("common.today") : dayOf(ts) === dayOf(now - 86_400) ? t("shell.updatedLabel.yesterday")
     : new Date(ts * 1000).toLocaleDateString(LOCALE, { timeZone: zone });
   return `${day}, ${time(ts)}`;
 }

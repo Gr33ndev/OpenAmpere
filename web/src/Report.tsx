@@ -3,6 +3,7 @@ import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, S
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
 import { isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
+import { LOCALE, t } from "./i18n";
 import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
 import { KeyFigures } from "./KeyFigures";
@@ -12,7 +13,7 @@ import { OutagesSection } from "./Outages";
 import { VehicleStats } from "./VehicleStats";
 import { EvccSessions } from "./WallboxPage";
 
-const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
+const PERIOD_LABEL: Record<Period, string> = { day: t("common.day"), week: t("report.periodLabel.week"), month: t("common.month"), year: t("report.periodLabel.year") };
 const RESOLUTION: Record<Period, string> = { day: "60m", week: "day", month: "day", year: "month" };
 
 function shift(date: Date, period: Period, step: number): Date {
@@ -25,19 +26,19 @@ function shift(date: Date, period: Period, step: number): Date {
 }
 
 function title(date: Date, period: Period): string {
-  if (period === "day") return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  if (period === "day") return date.toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" });
   if (period === "week") {
     const monday = shift(date, "day", -((date.getDay() + 6) % 7));
     const sunday = shift(monday, "day", 6);
-    return `${monday.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} – ${sunday.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}`;
+    return `${monday.toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit" })} – ${sunday.toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" })}`;
   }
-  if (period === "month") return date.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  if (period === "month") return date.toLocaleDateString(LOCALE, { month: "long", year: "numeric" });
   return String(date.getFullYear());
 }
 
-const fmtHour = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
-const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", timeZone: timeZone() });
-const fmtMonth = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { month: "short", timeZone: timeZone() });
+const fmtHour = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", timeZone: timeZone() });
+const fmtMonth = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { month: "short", timeZone: timeZone() });
 
 function Legend({ items }: { items: { color: string; label: string; value?: string }[] }) {
   return (
@@ -73,24 +74,26 @@ function Readout({ rows, index, showPower, xFormat, extra = [] }: {
   rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
   extra?: { label: string; values: (number | null)[] }[];
 }) {
-  if (index == null || !rows[index]) return <p className="hint readout-hint">Tippe auf das Diagramm, um die Werte zu sehen.</p>;
+  if (index == null || !rows[index]) return <p className="hint readout-hint">{t("report.readout.tapHint")}</p>;
   const r = rows[index];
   const items: [string, string][] = [];
   if (showPower) {
     const p = r as PowerEntry;
-    items.push(["Erzeugung", kw(p.pv)], ["Verbrauch", kw(p.house)],
-      ["Netz", p.grid == null ? "–" : `${kw(Math.abs(p.grid))} ${p.grid >= 0 ? "Bezug" : "Einspeisung"}`],
-      ["Speicher", p.battery == null ? "–" : `${kw(Math.abs(p.battery))} ${p.battery >= 0 ? "entladen" : "laden"}`]);
+    const grid = kw(Math.abs(p.grid ?? 0)), battery = kw(Math.abs(p.battery ?? 0));
+    items.push([t("common.generation"), kw(p.pv)], [t("common.consumption"), kw(p.house)],
+      [t("common.grid"), p.grid == null ? "–" : p.grid >= 0 ? t("report.readout.gridImport", { power: grid }) : t("report.readout.gridFeedIn", { power: grid })],
+      [t("common.battery"), p.battery == null ? "–"
+        : p.battery >= 0 ? t("report.readout.discharging", { power: battery }) : t("report.readout.charging", { power: battery })]);
   } else {
     const e = r as EnergyEntry;
-    items.push(["Erzeugt", kwh(e.pv)], ["Verbraucht", kwh(e.load)], ["Netzbezug", kwh(e.grid_import)],
-      ["Eingespeist", kwh(e.grid_export)], ["Geladen", kwh(e.battery_charge)], ["Entladen", kwh(e.battery_discharge)]);
+    items.push([t("common.generated"), kwh(e.pv)], [t("common.consumed"), kwh(e.load)], [t("common.gridImport"), kwh(e.grid_import)],
+      [t("report.readout.fedIn"), kwh(e.grid_export)], [t("common.charged"), kwh(e.battery_charge)], [t("report.readout.discharged"), kwh(e.battery_discharge)]);
   }
   for (const x of extra) {
     const v = x.values[index];
     if (v != null) items.push([x.label, kw(v * 1000)]);
   }
-  if (r.soc != null) items.push(["Ladestand", percent(r.soc)]);
+  if (r.soc != null) items.push([t("common.stateOfCharge"), percent(r.soc)]);
   return (
     <div className="readout" aria-live="polite">
       <strong>{xFormat(r.ts)}</strong>
@@ -143,7 +146,7 @@ export function Report() {
   };
 
   const chart = useMemo(() => {
-    const soc: Series = { label: "Ladestand", color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
+    const soc: Series = { label: t("common.stateOfCharge"), color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
     const hasSoc = rows.some((r) => r.soc != null);
     if (showPower) {
       const p = rows as PowerEntry[];
@@ -151,10 +154,10 @@ export function Report() {
       return {
         x: p.map((r) => r.ts),
         series: [
-          { label: "Erzeugung", color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
-          { label: "Verbrauch", color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
-          { label: "Netz", color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
-          { label: "Speicher", color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
+          { label: t("common.generation"), color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
+          { label: t("common.consumption"), color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
+          { label: t("common.grid"), color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
+          { label: t("common.battery"), color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
           ...deviceSeries(p.map((r) => r.ts)),
           ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
         ] as Series[],
@@ -166,9 +169,9 @@ export function Report() {
       x: en.map((r) => r.ts),
       // consumption is drawn as total (blue = from grid) with the self-supplied part (orange) on top
       series: [
-        { label: "Erzeugung", color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", barAlign: -1 },
-        { label: "Netzbezug", color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", barAlign: 1 },
-        { label: "Eigenversorgung", color: "var(--house)", unit: "kWh", barAlign: 1,
+        { label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", barAlign: -1 },
+        { label: t("common.gridImport"), color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", barAlign: 1 },
+        { label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", barAlign: 1,
           values: en.map((r) => (r.load == null ? null : Math.max(0, (r.load - (r.grid_import ?? 0)) / 1000))) },
         ...(hasSoc && period === "day" ? [{ ...soc, color: "var(--label)" }] : []),
       ] as Series[],
@@ -177,9 +180,9 @@ export function Report() {
 
   return (
     <div className="page">
-      <div className="page-head"><h1>Auswertung</h1></div>
+      <div className="page-head"><h1>{t("common.report")}</h1></div>
       <div className="toolbar">
-        <label className="cal" aria-label="Datum wählen">
+        <label className="cal" aria-label={t("report.report.chooseDate")}>
           <CalendarIcon />
           <input type="date" value={day} max={today} onChange={(ev) => ev.target.value && setDate(fromIso(ev.target.value))} />
         </label>
@@ -187,46 +190,46 @@ export function Report() {
           onChange={setPeriod} />
       </div>
       <div className="date-nav">
-        <button onClick={() => setDate(shift(date, period, -1))} aria-label="Zeitraum zurück"><Chevron dir="left" /></button>
+        <button onClick={() => setDate(shift(date, period, -1))} aria-label={t("report.report.previousPeriod")}><Chevron dir="left" /></button>
         <span>{title(date, period)}</span>
-        {picked ? <button onClick={() => setPicked(null)} className="today-link">Heute</button> : null}
-        <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label="Zeitraum weiter"><Chevron /></button>
+        {picked ? <button onClick={() => setPicked(null)} className="today-link">{t("common.today")}</button> : null}
+        <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label={t("report.report.nextPeriod")}><Chevron /></button>
       </div>
 
       <KeyFigures summary={summary} />
 
-      <div className="section-title">Verlauf</div>
+      <div className="section-title">{t("report.report.history")}</div>
       {period === "day" && (
         <div className="row-info">
           <Segmented value={dayView} onChange={setDayView}
-            options={[["power", "Leistung"], ["15m", "Arbeit · 15 min"], ["60m", "Arbeit · 1 h"]]} />
+            options={[["power", t("report.report.power")], ["15m", t("report.report.energyQuarterHours")], ["60m", t("report.report.energyHours")]]} />
         </div>
       )}
       {!loaded ? (
-        <p className="empty">{loadError ? `Konnte nicht geladen werden: ${loadError}` : "Lade …"}</p>
+        <p className="empty">{loadError ? t("report.report.loadError", { error: loadError }) : t("common.loading")}</p>
       ) : chart.x.length ? (
         <>
           <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
-            label={`Diagramm ${showPower ? "Leistung" : "Energie"} für ${title(date, period)}`} />
+            label={showPower ? t("report.report.powerChart", { period: title(date, period) })
+              : t("report.report.energyChart", { period: title(date, period) })} />
           <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat}
             extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
         </>
       ) : (
-        <p className="empty">Für diesen Zeitraum liegen keine Daten vor.</p>
+        <p className="empty">{t("report.report.noData")}</p>
       )}
       <Legend items={[
-        { color: "var(--pv)", label: "Erzeugt" },
-        { color: "var(--house)", label: showPower ? "Verbrauch" : "Selbst versorgt" },
-        { color: "var(--grid)", label: showPower ? "Netz" : "Aus dem Netz" },
-        ...(showPower ? [{ color: "var(--battery)", label: "Speicher" }] : []),
-        ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: "Ladestand (rechte Achse)" }] : []),
-        ...(showPower ? (devPower?.devices ?? []).map((d) => ({ color: deviceColors[d.key], label: `${d.name} (gestrichelt)` })) : []),
+        { color: "var(--pv)", label: t("common.generated") },
+        { color: "var(--house)", label: showPower ? t("common.consumption") : t("report.report.selfSupplied") },
+        { color: "var(--grid)", label: showPower ? t("common.grid") : t("report.report.fromGrid") },
+        ...(showPower ? [{ color: "var(--battery)", label: t("common.battery") }] : []),
+        ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: t("report.report.socRightAxis") }] : []),
+        ...(showPower ? (devPower?.devices ?? []).map((d) => ({ color: deviceColors[d.key], label: t("report.report.dashed", { name: d.name }) })) : []),
       ]} />
-      {showPower && <p className="hint">Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.</p>}
+      {showPower && <p className="hint">{t("report.report.signHint")}</p>}
       {period === "day" && summary?.recorded_since && (
-        <p className="hint">OpenAmpere zeichnet seit {new Date(summary.recorded_since * 1000).toLocaleTimeString("de-DE",
-          { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })} Uhr auf, deshalb beginnt der Verlauf erst dann. Die
-          Tageswerte oben stammen aus den Zählern des Wechselrichters und gelten für den ganzen Tag.</p>
+        <p className="hint">{t("report.report.recordingSince", {
+          time: new Date(summary.recorded_since * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() }) })}</p>
       )}
 
       <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
@@ -266,10 +269,10 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   if (!data || data.labels.length < 2) return null;
   return (
     <>
-      <div className="section-title">Nach Modulfeldern</div>
+      <div className="section-title">{t("report.pvInputsSection.title")}</div>
       {chart && chart.x.length ? (
         <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={220} />
-      ) : <p className="empty">Für diesen Zeitraum liegen keine Werte je Modulfeld vor.</p>}
+      ) : <p className="empty">{t("report.pvInputsSection.emptyState")}</p>}
       <div className="legend">
         {data.labels.map((label, i) => (
           <span key={i}>
@@ -282,7 +285,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   );
 }
 
-export function TemperatureSection({ day, refresh, heading = "Temperaturen" }: { day: string; refresh: number; heading?: string | null }) {
+export function TemperatureSection({ day, refresh, heading = t("common.temperatures") }: { day: string; refresh: number; heading?: string | null }) {
   const { data } = useResource<{ entries: { ts: number; inverter: number | null; battery: number | null;
     cell_max?: number | null; cell_min?: number | null }[] }>(
     `/api/temperatures/timeline?date=${day}`, refresh);
@@ -291,12 +294,12 @@ export function TemperatureSection({ day, refresh, heading = "Temperaturen" }: {
     return {
       x: rows.map((r) => r.ts),
       series: [
-        { label: "Wechselrichter", color: "var(--coral)", values: rows.map((r) => r.inverter), unit: "°C" },
-        { label: rows.some((r) => r.cell_max != null) ? "Speicher-Elektronik (BMS)" : "Speicher", color: "var(--battery)",
+        { label: t("common.inverter"), color: "var(--coral)", values: rows.map((r) => r.inverter), unit: "°C" },
+        { label: rows.some((r) => r.cell_max != null) ? t("report.temperatureSection.bms") : t("common.battery"), color: "var(--battery)",
           values: rows.map((r) => r.battery), unit: "°C" },
         ...(rows.some((r) => r.cell_max != null) ? [
-          { label: "Wärmste Zelle", color: "var(--pv)", values: rows.map((r) => r.cell_max ?? null), unit: "°C", dash: true },
-          { label: "Kühlste Zelle", color: "var(--sky)", values: rows.map((r) => r.cell_min ?? null), unit: "°C", dash: true },
+          { label: t("report.temperatureSection.warmestCell"), color: "var(--pv)", values: rows.map((r) => r.cell_max ?? null), unit: "°C", dash: true },
+          { label: t("report.temperatureSection.coolestCell"), color: "var(--sky)", values: rows.map((r) => r.cell_min ?? null), unit: "°C", dash: true },
         ] : []),
       ] as Series[],
     };
@@ -307,10 +310,10 @@ export function TemperatureSection({ day, refresh, heading = "Temperaturen" }: {
       {heading && <div className="section-title">{heading}</div>}
       <Chart x={chart.x} series={chart.series} xFormat={fmtHour} height={180} />
       <div className="legend">
-        <span><span className="dot" style={{ background: "var(--coral)" }} />Wechselrichter</span>
-        <span><span className="dot" style={{ background: "var(--battery)" }} />{chart.series.length > 2 ? "Speicher-Elektronik (BMS)" : "Speicher"}</span>
-        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--pv)" }} />Wärmste Zelle</span>}
-        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--sky)" }} />Kühlste Zelle</span>}
+        <span><span className="dot" style={{ background: "var(--coral)" }} />{t("common.inverter")}</span>
+        <span><span className="dot" style={{ background: "var(--battery)" }} />{chart.series.length > 2 ? t("report.temperatureSection.bms") : t("common.battery")}</span>
+        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--pv)" }} />{t("report.temperatureSection.warmestCell")}</span>}
+        {chart.series.length > 2 && <span><span className="dot" style={{ background: "var(--sky)" }} />{t("report.temperatureSection.coolestCell")}</span>}
       </div>
     </>
   );
@@ -336,12 +339,12 @@ function DevicesSection({ data, power, totals, colors, xFormat, load }: {
   const deviceSum = (totals ?? []).reduce((a, b) => a + b, 0);
   return (
     <>
-      <div className="section-title">Nach Geräten</div>
+      <div className="section-title">{t("report.devicesSection.title")}</div>
       {chart ? <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={200}
-        label="Diagramm Verbrauch je Gerät" />
-        : <p className="empty">In diesem Zeitraum haben die Geräte keinen Strom verbraucht.</p>}
+        label={t("report.devicesSection.chartLabel")} />
+        : <p className="empty">{t("report.devicesSection.emptyState")}</p>}
       <div className="card"><dl className="facts">
-        {load != null && <><dt>Haushalt</dt><dd>{kwh(Math.max(0, load - deviceSum))}</dd></>}
+        {load != null && <><dt>{t("report.devicesSection.household")}</dt><dd>{kwh(Math.max(0, load - deviceSum))}</dd></>}
         {data.devices.map((d, i) => (
           <Fragment key={d.key}>
             <dt><span className="dot" style={{ background: colors[d.key] }} /> {d.name}</dt>

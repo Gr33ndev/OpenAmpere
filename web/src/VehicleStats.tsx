@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useResource } from "./api";
 import { num } from "./format";
+import { LOCALE, t, tx } from "./i18n";
 import { Segmented } from "./ui";
 import type { EvccSession, EvccView } from "./WallboxPage";
 
@@ -53,8 +54,8 @@ export function vehicleStats(sessions: EvccSession[], since: number): VehicleSta
   }).sort((a, b) => b.energy_kwh - a.energy_kwh);
 }
 
-const euro = (v: number) => v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
-const PERIODS: ["30" | "365" | "all", string][] = [["30", "30 Tage"], ["365", "12 Monate"], ["all", "Gesamt"]];
+const euro = (v: number) => v.toLocaleString(LOCALE, { style: "currency", currency: "EUR" });
+const PERIODS: ["30" | "365" | "all", string][] = [["30", t("report.periods.thirtyDays")], ["365", t("report.periods.twelveMonths")], ["all", t("report.periods.allTime")]];
 
 /** Driving with the sun: distance, consumption and cost per 100 km from the evcc sessions, for the analysis page. */
 export function VehicleStats() {
@@ -65,42 +66,40 @@ export function VehicleStats() {
   const stats = vehicleStats(data.sessions, period === "all" ? 0 : Date.now() - Number(period) * 86_400_000);
   return (
     <>
-      <div className="section-title">Auto</div>
+      <div className="section-title">{t("report.vehicleStats.title")}</div>
       <Segmented value={period} onChange={setPeriod} options={PERIODS} />
-      {!stats.length && <p className="hint">In diesem Zeitraum wurde nicht geladen.</p>}
+      {!stats.length && <p className="hint">{t("report.vehicleStats.emptyState")}</p>}
       {stats.map((st) => (
         <div className="card key-figures vehicle-stats" key={st.vehicle}>
-          <div className="key-title">{st.vehicle || "Ohne erkanntes Fahrzeug"}</div>
+          <div className="key-title">{st.vehicle || t("report.vehicleStats.unknownVehicle")}</div>
           {st.km != null ? (
             <div className="key-row">
-              <div><span className="key-label">Gefahren</span><strong>{num(st.km, 0)} km</strong></div>
-              <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />Mit Sonne</span>
+              <div><span className="key-label">{t("report.vehicleStats.driven")}</span><strong>{num(st.km, 0)} km</strong></div>
+              <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarDistance")}</span>
                 <strong>{num(st.solar_km, 0)} km</strong></div>
-              <div><span className="key-label">Verbrauch</span><strong>{num(st.consumption_kwh_100km, 1)}</strong>
+              <div><span className="key-label">{t("common.consumption")}</span><strong>{num(st.consumption_kwh_100km, 1)}</strong>
                 <span className="key-unit"> kWh/100 km</span></div>
             </div>
           ) : (
             <div className="key-row">
-              <div><span className="key-label">Geladen</span><strong>{num(st.energy_kwh, 0)} kWh</strong></div>
-              {st.solar_pct != null && <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />Sonne</span>
+              <div><span className="key-label">{t("common.charged")}</span><strong>{num(st.energy_kwh, 0)} kWh</strong></div>
+              {st.solar_pct != null && <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarShare")}</span>
                 <strong>{num(st.solar_pct, 0)} %</strong></div>}
             </div>
           )}
           {st.cost_100km_eur != null && st.grid_cost_100km_eur != null && (
-            <p className="key-money">{euro(st.cost_100km_eur)} pro 100 km, nur aus dem Netz wären es <strong>{euro(st.grid_cost_100km_eur)}</strong></p>
+            <p className="key-money">{tx("report.vehicleStats.costPer100Km",
+              { cost: euro(st.cost_100km_eur), gridCost: <strong>{euro(st.grid_cost_100km_eur)}</strong> })}</p>
           )}
           <dl className="facts">
-            <dt>Geladen</dt><dd>{num(st.energy_kwh, 1)} kWh in {st.sessions} {st.sessions === 1 ? "Ladevorgang" : "Ladevorgängen"}</dd>
-            {st.solar_pct != null && <><dt>Davon Sonnenstrom</dt><dd>{num(st.solar_pct, 0)} %</dd></>}
-            {st.cost_eur != null && <><dt>Kosten</dt><dd>{euro(st.cost_eur)}</dd></>}
+            <dt>{t("common.charged")}</dt><dd>{t("report.vehicleStats.energySessions", { energy: num(st.energy_kwh, 1), count: st.sessions })}</dd>
+            {st.solar_pct != null && <><dt>{t("report.vehicleStats.ofWhichSolar")}</dt><dd>{num(st.solar_pct, 0)} %</dd></>}
+            {st.cost_eur != null && <><dt>{t("report.vehicleStats.cost")}</dt><dd>{euro(st.cost_eur)}</dd></>}
           </dl>
-          {st.km == null && <p className="hint">Kilometer und Verbrauch erscheinen, sobald das Auto in evcc eingerichtet ist
-            und evcc bei mindestens zwei Ladevorgängen den Kilometerstand kennt.</p>}
+          {st.km == null && <p className="hint">{t("report.vehicleStats.distanceHint")}</p>}
         </div>
       ))}
-      <p className="hint">Gerechnet aus den Ladevorgängen an deiner Wallbox. Lädst du auch unterwegs, wirkt der Verbrauch
-        niedriger, als er ist. Sonnenstrom kostet hier die Einspeisevergütung, die dir dafür entgeht, Netzstrom den Preis
-        aus deinem Stromtarif.</p>
+      <p className="hint">{t("report.vehicleStats.hint")}</p>
     </>
   );
 }

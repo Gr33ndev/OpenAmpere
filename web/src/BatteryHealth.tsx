@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Status } from "./api";
 import { putJson, useResource } from "./api";
 import { num, timeZone } from "./format";
+import { LOCALE, t } from "./i18n";
 import { Button, Field, Notice, toast } from "./ui";
 
 type Extreme = { value: number; ts: number } | null;
@@ -12,19 +13,19 @@ export type BatteryHealth = {
   extremes: { cell_max: Extreme; cell_min: Extreme; spread: Extreme; inverter: Extreme; battery: Extreme };
 };
 
-const when = (ts: number) => new Date(ts * 1000).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit",
+const when = (ts: number) => new Date(ts * 1000).toLocaleString(LOCALE, { day: "2-digit", month: "2-digit", hour: "2-digit",
   minute: "2-digit", timeZone: timeZone() });
 const deg = (v: number | null | undefined) => (v == null ? "–" : `${num(v, 1)} °C`);
 
 function CapacityForm({ current, onSaved }: { current: number | null; onSaved: () => void }) {
-  const [value, setValue] = useState(current ? String(current).replace(".", ",") : "");
+  const [value, setValue] = useState(current ? current.toLocaleString(LOCALE, { useGrouping: false, maximumFractionDigits: 3 }) : "");
   const [busy, setBusy] = useState(false);
   const kwh = Number(value.replace(",", "."));
   const save = async () => {
     setBusy(true);
     try {
       await putJson("/api/settings", { "battery.capacity_kwh": kwh });
-      toast("Gespeichert");
+      toast(t("common.saved"));
       onSaved();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -34,11 +35,11 @@ function CapacityForm({ current, onSaved }: { current: number | null; onSaved: (
   };
   return (
     <div className="form capacity-form">
-      <Field label="Nutzbare Kapazität" hint="Steht im Datenblatt oder auf dem Typenschild des Speichers.">
-        <div className="input-unit"><input className="input" inputMode="decimal" value={value} placeholder="z. B. 10,4"
+      <Field label={t("report.capacityForm.usableCapacity")} hint={t("report.capacityForm.hint")}>
+        <div className="input-unit"><input className="input" inputMode="decimal" value={value} placeholder={t("report.capacityForm.placeholder")}
           onChange={(e) => setValue(e.target.value)} /><span>kWh</span></div>
       </Field>
-      <Button variant="secondary" busy={busy} disabled={!(kwh > 0 && kwh <= 200) || kwh === current} onClick={() => void save()}>Speichern</Button>
+      <Button variant="secondary" busy={busy} disabled={!(kwh > 0 && kwh <= 200) || kwh === current} onClick={() => void save()}>{t("common.save")}</Button>
     </div>
   );
 }
@@ -51,26 +52,24 @@ export function BatteryHealthCard() {
   const x = data.extremes;
   return (
     <div className="card">
-      <strong>Speicher-Gesundheit</strong>
+      <strong>{t("report.batteryHealthCard.title")}</strong>
       {data.warning && <Notice kind="warn">{data.warning}</Notice>}
       <dl className="facts">
-        <dt>Vollzyklen</dt>
-        <dd>{data.cycles != null ? `etwa ${num(data.cycles, 0)}` : "–"}</dd>
-        <dt>Wirkungsgrad</dt><dd>{data.efficiency_pct != null ? `${num(data.efficiency_pct, 0)} %` : "–"}</dd>
-        {data.cell_max_now_c != null && <><dt>Zellen jetzt</dt>
-          <dd>{num(data.cell_min_now_c, 1)} bis {deg(data.cell_max_now_c)}</dd></>}
-        {x.cell_max && <><dt>Wärmste Zelle ({data.days <= 1 ? "bisher" : `${data.days} Tage`})</dt><dd>{deg(x.cell_max.value)} · {when(x.cell_max.ts)}</dd></>}
-        {x.spread && <><dt>Größter Unterschied</dt><dd>{deg(x.spread.value)} · {when(x.spread.ts)}</dd></>}
-        {x.inverter && <><dt>Wechselrichter max.</dt><dd>{deg(x.inverter.value)} · {when(x.inverter.ts)}</dd></>}
+        <dt>{t("report.batteryHealthCard.fullCycles")}</dt>
+        <dd>{data.cycles != null ? t("report.batteryHealthCard.about", { count: num(data.cycles, 0) }) : "–"}</dd>
+        <dt>{t("report.batteryHealthCard.efficiency")}</dt><dd>{data.efficiency_pct != null ? `${num(data.efficiency_pct, 0)} %` : "–"}</dd>
+        {data.cell_max_now_c != null && <><dt>{t("report.batteryHealthCard.cellsNow")}</dt>
+          <dd>{t("report.batteryHealthCard.range", { min: num(data.cell_min_now_c, 1), max: deg(data.cell_max_now_c) })}</dd></>}
+        {x.cell_max && <><dt>{data.days <= 1 ? t("report.batteryHealthCard.warmestCellSoFar") : t("report.batteryHealthCard.warmestCellDays", { days: data.days })}</dt><dd>{deg(x.cell_max.value)} · {when(x.cell_max.ts)}</dd></>}
+        {x.spread && <><dt>{t("report.batteryHealthCard.largestDifference")}</dt><dd>{deg(x.spread.value)} · {when(x.spread.ts)}</dd></>}
+        {x.inverter && <><dt>{t("report.batteryHealthCard.inverterMax")}</dt><dd>{deg(x.inverter.value)} · {when(x.inverter.ts)}</dd></>}
       </dl>
       {(edit || !data.capacity_kwh) ? (
         <CapacityForm current={data.capacity_kwh} onSaved={() => { setEdit(false); reload(); }} />
       ) : (
-        <button className="link" onClick={() => setEdit(true)}>Kapazität ändern ({num(data.capacity_kwh, 1)} kWh)</button>
+        <button className="link" onClick={() => setEdit(true)}>{t("report.batteryHealthCard.changeCapacity", { capacity: num(data.capacity_kwh, 1) })}</button>
       )}
-      <p className="hint">Ein Vollzyklus heißt: einmal die ganze Kapazität entladen. Je nach Speicher sind 6.000 bis
-        12.000 Zyklen angegeben (Datenblatt). Der Wirkungsgrad ist entladene geteilt durch geladene Energie seit Inbetriebnahme, typisch sind 85 bis
-        95 %. Die Zellen eines gesunden Speichers sind höchstens wenige Grad unterschiedlich warm.</p>
+      <p className="hint">{t("report.batteryHealthCard.explanation")}</p>
     </div>
   );
 }
@@ -81,19 +80,18 @@ export function FirmwareFacts({ firmware }: { firmware: Status["firmware"] }) {
   if (!firmware?.since && !history.length) return null;
   return (
     <>
-      {firmware?.since && history.length > 0 && <p className="hint">Diese Firmware meldet der Wechselrichter seit {new Date(firmware.since * 1000)
-        .toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: timeZone() })}.</p>}
+      {firmware?.since && history.length > 0 && <p className="hint">{t("report.firmwareFacts.since", { date: new Date(firmware.since * 1000)
+        .toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric", timeZone: timeZone() }) })}</p>}
       {history.length > 0 && (
         <details className="advanced">
-          <summary>Firmware-Änderungen ({history.length})</summary>
+          <summary>{t("report.firmwareFacts.changes", { count: history.length })}</summary>
           <ul className="sessions">
             {[...history].reverse().map((h) => (
-              <li key={h.ts}><span>{new Date(h.ts * 1000).toLocaleDateString("de-DE", { timeZone: timeZone() })}</span>
+              <li key={h.ts}><span>{new Date(h.ts * 1000).toLocaleDateString(LOCALE, { timeZone: timeZone() })}</span>
                 <span>{h.old} → {h.new}</span></li>
             ))}
           </ul>
-          <p className="hint">Nach einem Update einmal die Diagnose ausführen (Mehr → Diagnose). Ein Update kann Register
-            ändern, dann stimmen einzelne Werte nicht mehr.</p>
+          <p className="hint">{t("report.firmwareFacts.hint")}</p>
         </details>
       )}
     </>

@@ -1,0 +1,200 @@
+{
+  "api": {
+    "accessInvalidRevoked": "Zugang ungültig oder widerrufen.",
+    "accessNotFound": "Zugang nicht gefunden.",
+    "accessReadOnly": "Dieser Zugang darf nur lesen.",
+    "accessViaNotAllowed": "Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse oder trage den Namen unter server.allowed_hosts ein.",
+    "consumerNotFound": "Verbraucher nicht gefunden",
+    "controlDisabled": "Steuerung ist deaktiviert",
+    "currentPasswordIncorrect": "Das bisherige Passwort stimmt nicht.",
+    "endDateBeforeStart": "Das Enddatum liegt vor dem Startdatum",
+    "enterNtfyAddressFirst": "Bitte zuerst eine ntfy-Adresse eintragen.",
+    "fileTooLargeMax": "Datei zu groß (max. 500 MB).",
+    "httpsPortTurnedOff": "Der HTTPS-Port ist ausgeschaltet (server.tls_port). Ohne ihn können sich andere Apps nicht sicher verbinden.",
+    "invalidDate": "Ungültiges Datum",
+    "inverterNotResponding": "Wechselrichter antwortet nicht: {err}",
+    "inverterNotRespondingTry": "Der Wechselrichter antwortet nicht. Bitte später erneut versuchen.",
+    "log": "Bitte anmelden.",
+    "noCurrentReadingsInverter": "Keine aktuellen Messwerte vom Wechselrichter",
+    "noReadingsYet": "Noch keine Messwerte",
+    "onlyAvailableViaHttps": "Nur über HTTPS erreichbar.",
+    "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
+    "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
+    "requestExpiredRestartPairing": "Die Anfrage ist abgelaufen. Bitte die Kopplung in der App neu starten.",
+    "setPasswordFirst": "Bitte zuerst ein Passwort festlegen.",
+    "settingsWereChangedAnother": "Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert. Bitte die Seite neu laden und die Änderung wiederholen.",
+    "thereNoNewerVersion": "Es gibt keine neuere Version.",
+    "unknownAction": "Unbekannte Aktion.",
+    "unknownPeriod": "Unbekannter Zeitraum",
+    "unknownPermission": "Unbekannte Berechtigung.",
+    "wrongPassword": "Falsches Passwort."
+  },
+  "apitokens": {
+    "enterNameEG": "Bitte einen Namen angeben, z. B. „Home Assistant“.",
+    "invalidRequest": "Ungültige Anfrage.",
+    "mostAccessesRemoveOne": "Höchstens {MAX_TOKENS} Zugänge. Bitte zuerst einen nicht mehr genutzten entfernen.",
+    "severalPairingRequestsAlready": "Es warten schon mehrere Kopplungsanfragen. Bitte zuerst in OpenAmpere bestätigen oder ablehnen, oder 10 Minuten warten.",
+    "tooManyPairingRequests": "Zu viele Kopplungsanfragen. Bitte später erneut versuchen."
+  },
+  "auth": {
+    "passwordMustLeastCharacters": "Das Passwort muss mindestens {MIN_PASSWORD_LENGTH} Zeichen haben.",
+    "tooManyFailedAttempts": "Zu viele Fehlversuche. Bitte eine Minute warten."
+  },
+  "billing": {
+    "enterAdvancePaymentsBetween": "Abschläge bitte zwischen 0 und 5000 € angeben.",
+    "enterMonthAmountEach": "Bitte für jeden Abschlag einen Monat und einen Betrag angeben.",
+    "invalidInput": "Ungültige Angaben.",
+    "invalidMonthStartBilling": "Ungültiger Monat für den Beginn des Abrechnungsjahres.",
+    "twoAdvancePaymentsStart": "Zwei Abschläge beginnen im selben Monat."
+  },
+  "charging": {
+    "batterySizeMustBetween": "Die Speichergröße muss zwischen 0,5 und 200 kWh liegen.",
+    "chargeTargetMustBetween": "Das Ladeziel muss zwischen 20 und 100 % liegen.",
+    "confirmLegalNoticesFirst": "Bitte zuerst die rechtlichen Hinweise bestätigen.",
+    "enterTimesFullHours": "Uhrzeiten bitte als volle Stunde 0–23 angeben.",
+    "invalidSettingsChargingGrid": "Ungültige Einstellungen für das Laden aus dem Netz.",
+    "unknownChargingType": "Unbekannte Lade-Art."
+  },
+  "cli": {
+    "noDatabaseFound": "Keine Datenbank unter {path} gefunden.",
+    "noWriteAccessUser": "Kein Schreibzugriff auf {folder} (Benutzer {getuid}). Bei Docker auf dem Server im OpenAmpere-Ordner ausführen: sudo chown -R {getuid2}:{getgid} data",
+    "openampereAlreadyRunningStop": "OpenAmpere läuft bereits ({err}). Bitte die andere Instanz zuerst beenden."
+  },
+  "cloudImport": {
+    "apiKeyWasRejected": "Der API-Schlüssel wurde von der EKD-Cloud abgelehnt.",
+    "ekdCloudTReached": "Die EKD-Cloud ist nicht erreichbar.",
+    "enterApiKeyFirst": "Bitte zuerst den API-Schlüssel hinterlegen.",
+    "noHistoryDataFound": "In der ZIP-Datei wurden keine Verlaufsdaten gefunden (Ordner „work“).",
+    "noHistoryDataFound2": "In der EKD-Cloud wurden keine Verlaufsdaten gefunden.",
+    "noSystemFoundApi": "Zu diesem API-Schlüssel wurde keine Anlage gefunden.",
+    "notValidZipFile": "Das ist keine gültige ZIP-Datei.",
+    "zipFileTooLarge": "Die ZIP-Datei ist zu groß."
+  },
+  "config": {
+    "settingTChangedApp": "Die Einstellung {key} kann in der App nicht geändert werden."
+  },
+  "consumers": {
+    "batteryPriorityMustBetween": "Der Speicher-Vorrang muss zwischen 0 und 100 % liegen.",
+    "chooseDurationUp48": "Bitte eine Dauer bis 48 Stunden wählen.",
+    "deviceNotFound": "Gerät nicht gefunden.",
+    "enterCompleteAddressHttp": "Bitte eine vollständige Adresse mit http:// angeben.",
+    "enterDeviceSIp": "{name}: Bitte die IP-Adresse des Geräts angeben.",
+    "giveEachDeviceName": "Bitte jedem Gerät einen Namen geben.",
+    "invalidInputDevice": "Ungültige Angaben bei einem Gerät.",
+    "invalidPortDeviceAddress": "{name}: Ungültiger Port oder Geräteadresse.",
+    "minimumSurplusMustBetween": "{name}: Der Mindestüberschuss muss zwischen 50 W und der maximalen Leistung liegen.",
+    "minimumTimes0240": "{name}: Mindestzeiten 0–240 Minuten.",
+    "mostDevices": "Höchstens {MAX_CONSUMERS} Geräte.",
+    "orderDoesnTMatch": "Die Reihenfolge passt nicht zu den eingerichteten Geräten. Bitte die Seite neu laden.",
+    "power5030000W": "{name}: Leistung 50–30000 W, Speicher-Vorrang 0–100 %.",
+    "setPriceLimitBetween": "{name}: Preisgrenze bitte zwischen -100 und 200 ct/kWh.",
+    "unknownOperatingMode": "Unbekannte Betriebsart.",
+    "unknownSwitchingType": "Unbekannte Schaltart."
+  },
+  "control": {
+    "backupPowerReserveMust": "Die Notstrom-Reserve darf nicht unter der Untergrenze im Notstrombetrieb liegen",
+    "chargeLimitMustAbove": "Die Ladegrenze muss über der Notstrom-Reserve liegen",
+    "controlDevicesNotEnabled": "Für {manufacturer}-Geräte ist die Steuerung in OpenAmpere noch nicht freigegeben (nur Anzeige).",
+    "currentBatteryLimitsCouldn": "Die aktuellen Speicher-Grenzen konnten nicht vollständig gelesen werden. Bitte später erneut versuchen.",
+    "exportLimitDeviceT": "Die Einspeisebegrenzung lässt sich bei diesem Gerät nicht über Modbus ändern.",
+    "inverterNotConnected": "Wechselrichter ist nicht verbunden",
+    "inverterRejectedChange": "Der Wechselrichter hat die Änderung abgelehnt.",
+    "inverterRejectedChangeFully": "Der Wechselrichter hat die Änderung (ganz oder teilweise) abgelehnt. Hängt er hinter einem schreibgeschützten Modbus-Proxy?",
+    "mustBetween100": "{key} muss zwischen {low} und 100 % liegen",
+    "noResponseInverterCheck": "Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es später erneut.",
+    "noResponseInverterTry": "Keine Antwort vom Wechselrichter. Bitte später erneut versuchen.",
+    "raiseRemoveExportLimit": "Zum Erhöhen oder Aufheben der Einspeisebegrenzung musst du bestätigen, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt, und Datum/Zeichen dieser Bestätigung angeben.",
+    "underConfiguredRuleKwp": "Nach der eingestellten Regel ({rule} von {installed_kwp} kWp) sind höchstens {legal_max} W erlaubt. Gilt die Regel nicht mehr (z. B. weil ein intelligentes Messsystem mit Steuerbox eingebaut wurde), ändere zuerst die Regel.",
+    "unknownSetting": "Unbekannte Einstellung: {unknown}",
+    "unknownWorkMode": "Unbekannter Betriebsmodus",
+    "valueMustBetween0": "Wert muss zwischen 0 und {maximum} W liegen"
+  },
+  "diagnostics": {
+    "diagnosisAlreadyRunning": "Die Diagnose läuft bereits.",
+    "inverterNotConnected": "Der Wechselrichter ist nicht verbunden."
+  },
+  "discovery": {
+    "enterNetworkLike192": "Netz bitte als z. B. 192.168.178 angeben",
+    "onlyPrivateNetworksUp": "Nur private Netze bis /22 können durchsucht werden"
+  },
+  "driver": {
+    "controlNotEnabledYet": "Steuerung ist für SAJ-Geräte noch nicht freigegeben"
+  },
+  "eeg": {
+    "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",
+    "noRatesBeenPublished": "Für dieses Inbetriebnahmedatum sind noch keine Sätze veröffentlicht. Bitte die Vergütung von Hand eintragen.",
+    "openampereDoesnTKnow": "Für Anlagen, die vor 2018 in Betrieb gingen, kennt OpenAmpere die Sätze nicht. Bitte die Vergütung von Hand eintragen.",
+    "systemsOver100Kwp": "Anlagen über 100 kWp vermarkten ihren Strom direkt. Bitte die Vergütung von Hand eintragen."
+  },
+  "evcc": {
+    "changesTurnedOffSwitch": "Änderungen sind ausgeschaltet. Stelle oben auf „Testen“ oder „Aktiv“.",
+    "chargePointDoesnT": "Diesen Ladepunkt gibt es in evcc nicht.",
+    "chooseTargetBetween20": "Bitte ein Ziel zwischen 20 und 100 % und eine Zeit in der Zukunft wählen.",
+    "evccMustDetectVehicle": "Dafür muss in evcc ein Fahrzeug erkannt sein.",
+    "evccNotConnected": "evcc ist nicht verbunden.",
+    "evccReportsError": "evcc meldet einen Fehler ({code}).",
+    "evccRequiresLoginEnter": "evcc verlangt eine Anmeldung. Bitte das Admin-Passwort von evcc eintragen.",
+    "evccTReached": "evcc ist unter {url} nicht erreichbar.",
+    "minimumChargeMustBetween": "Die Mindestladung muss zwischen 0 und 80 % liegen.",
+    "noEvccRespondingAddress": "Unter dieser Adresse antwortet kein evcc.",
+    "unknownChargingMode": "Unbekannter Lademodus.",
+    "unknownCommand": "Unbekannter Befehl."
+  },
+  "external": {
+    "allowedEnabledTargetSoc": "Erlaubt sind enabled und target_soc.",
+    "allowedWorkModeMin": "Erlaubt sind work_mode, min_soc, max_soc und min_soc_on_grid.",
+    "controlTurnedOffOpenampere": "Die Steuerung ist in OpenAmpere ausgeschaltet (Mehr → Steuerung und Protokoll).",
+    "requestNotFoundExpired": "Anfrage nicht gefunden oder abgelaufen.",
+    "setUpChargingGrid": "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten (Geräte → Speicher → Laden aus dem Netz).",
+    "tooManyChangesShort": "Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). Bitte in {wait} min erneut versuchen."
+  },
+  "gridmeter": {
+    "enterEmailPasswordCustomer": "Bitte E-Mail und Passwort für das Kundenportal eintragen.",
+    "loginNetzeBwFailed": "Die Anmeldung bei Netze BW hat nicht geklappt (Fehler {status}).",
+    "loginNetzeBwHaving": "Die Anmeldung bei Netze BW ist gerade gestört (Fehler {status}).",
+    "netzeBwAsksExtra": "Netze BW verlangt bei der Anmeldung einen weiteren Schritt (z. B. Zwei-Faktor oder Captcha). Das kann OpenAmpere nicht.",
+    "netzeBwCustomerPortal": "Das Kundenportal von Netze BW ist gerade nicht erreichbar.",
+    "netzeBwError": "Netze BW, {step}: Fehler {status}.",
+    "netzeBwLoginPage": "Die Anmeldeseite von Netze BW hat sich geändert. Bitte ein Issue öffnen.",
+    "netzeBwMeterReadings": "Netze BW, Messwerte: die Datei hat ein unbekanntes Format. Bitte ein Issue öffnen.",
+    "netzeBwMeterReadings2": "Netze BW, Messwerte: keine Spalte mit Energiewerten gefunden. Bitte ein Issue öffnen.",
+    "netzeBwRejectsLogin": "Netze BW lehnt die Anmeldung ab. Bitte E-Mail und Passwort prüfen.",
+    "netzeBwUnexpectedAnswer": "Netze BW, {step}: unerwartete Antwort.",
+    "netzeBwWonT": "Netze BW gibt die {step} trotz Anmeldung nicht frei (Fehler {status}). OpenAmpere versucht es später nochmal."
+  },
+  "mypv": {
+    "immersionHeaterNotResponding": "Heizstab antwortet nicht: {err}",
+    "immersionHeaterRejectsPower": "Heizstab lehnt die Leistungsvorgabe ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
+    "immersionHeaterRejectsQuery": "Heizstab lehnt die Abfrage ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
+    "immersionHeaterTReached": "Heizstab unter {host}:{port} nicht erreichbar"
+  },
+  "notify": {
+    "ntfyAddressMustForm": "Die ntfy-Adresse muss die Form https://server/thema haben."
+  },
+  "registry": {
+    "noSupportedDeviceFound": "Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?"
+  },
+  "remote": {
+    "tailscaleNotSetUp": "Tailscale ist nicht eingerichtet. Bitte einmal das Install-Script erneut ausführen und die Frage nach dem Zugriff von unterwegs mit Ja beantworten."
+  },
+  "runtime": {
+    "enterCommissioningDate": "Bitte das Datum der Inbetriebnahme angeben.",
+    "setEnvironmentVariableT": "Fest eingestellt (Umgebungsvariable), in der App nicht änderbar: {blocked}"
+  },
+  "secretbox": {
+    "damagedDeleteFileEnter": "{key_path} ist beschädigt. Datei löschen und die Zugangsdaten in der App neu eingeben."
+  },
+  "tariffs": {
+    "enterLeastOneTariff": "Bitte mindestens einen Tarif angeben.",
+    "enterLeastOneTime": "Bitte mindestens ein Zeitfenster mit eigenem Preis angeben.",
+    "enterPricesBetween100": "Preise bitte zwischen -100 und 200 ct/kWh angeben.",
+    "enterStandingChargeBetween": "Den Grundpreis bitte zwischen 0 und 200 € pro Monat angeben.",
+    "invalidTariffCheckDates": "Ungültiger Tarif: bitte Datum und Preise prüfen.",
+    "invalidTariffType": "Ungültige Tarifart.",
+    "most6TimeWindows": "Höchstens 6 Zeitfenster, Preise zwischen -100 und 200 ct/kWh.",
+    "twoTariffsStartSame": "Zwei Tarife beginnen am selben Tag."
+  },
+  "updates": {
+    "updateHelperIsnT": "Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen."
+  }
+}

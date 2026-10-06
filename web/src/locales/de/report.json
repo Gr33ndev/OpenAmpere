@@ -1,0 +1,202 @@
+{
+  "batteryHealthCard": {
+    "about": "etwa {count}",
+    "cellsNow": "Zellen jetzt",
+    "changeCapacity": "Kapazität ändern ({capacity} kWh)",
+    "efficiency": "Wirkungsgrad",
+    "explanation": "Ein Vollzyklus heißt: einmal die ganze Kapazität entladen. Je nach Speicher sind 6.000 bis 12.000 Zyklen angegeben (Datenblatt). Der Wirkungsgrad ist entladene geteilt durch geladene Energie seit Inbetriebnahme, typisch sind 85 bis 95 %. Die Zellen eines gesunden Speichers sind höchstens wenige Grad unterschiedlich warm.",
+    "fullCycles": "Vollzyklen",
+    "inverterMax": "Wechselrichter max.",
+    "largestDifference": "Größter Unterschied",
+    "range": "{min} bis {max}",
+    "title": "Speicher-Gesundheit",
+    "warmestCellDays": "Wärmste Zelle ({days} Tage)",
+    "warmestCellSoFar": "Wärmste Zelle (bisher)"
+  },
+  "billingPage": {
+    "addChange": "Geänderten Abschlag hinzufügen",
+    "billingYearStarts": "Abrechnungsjahr beginnt im",
+    "changeHint": "Ändert sich ein Abschlag, trag den neuen mit dem Monat ein, ab dem er gilt. Die Preise kommen aus deinem Stromtarif (Mehr → Stromtarif), auch der Grundpreis.",
+    "enterAdvancePayment": "Abschlag eintragen",
+    "fromMonth": "Ab Monat",
+    "intro": "Trag deine monatlichen Abschläge ein. OpenAmpere vergleicht sie mit deinem Verbrauch und deiner Einspeisung bis heute. Das Ergebnis steht in der Auswertung.",
+    "perMonth": "Pro Monat",
+    "removeAdvancePayment": "Abschlag entfernen"
+  },
+  "billingSection": {
+    "advancePaymentsFit": "Abschläge passen",
+    "amountCredit": "{amount} im Plus",
+    "amountOwed": "{amount} im Minus",
+    "asOfToday": "Stand heute",
+    "deviations": "Der Wechselrichter misst {deviations}.",
+    "emptyState": "Trag deine monatlichen Abschläge ein, dann zeigt OpenAmpere, ob sie zu deinem Verbrauch und deiner Einspeisung passen.",
+    "enterAdvancePayments": "Abschläge eintragen",
+    "estimatedBefore": "Vor dem {date} hat OpenAmpere noch nicht gemessen, diese Zeit ist geschätzt.",
+    "explanation": "Plus heißt: Bis heute hast du mehr Abschlag gezahlt als verbraucht oder mehr eingespeist als ausgezahlt wurde. Der laufende Monat zählt anteilig bis heute, die Kosten enthalten den Grundpreis aus deinem Stromtarif.",
+    "explanationImportOnly": "Plus heißt: Bis heute hast du mehr Abschlag gezahlt als verbraucht. Der laufende Monat zählt anteilig bis heute, die Kosten enthalten den Grundpreis aus deinem Stromtarif.",
+    "feedInLess": "bei der Einspeisung {percent} % weniger",
+    "feedInMore": "bei der Einspeisung {percent} % mehr",
+    "fetchMeterReadings": "Zählerwerte vom Netzbetreiber abrufen",
+    "importLess": "beim Bezug {percent} % weniger",
+    "importMore": "beim Bezug {percent} % mehr",
+    "meterDisclaimer": "Abgerechnet wird nach den Zählern des Netzbetreibers. Die Werte hier sind eine Orientierung.",
+    "meterSource": "Bis {date} rechnet OpenAmpere mit den Zählerwerten von {source}, danach mit denen des Wechselrichters.",
+    "missingDays": {
+      "one": "An {count} Tag hat OpenAmpere keine Messwerte, etwa weil die Verbindung gestört war. Verbrauch und Einspeisung sind deshalb etwas zu niedrig.",
+      "other": "An {count} Tagen hat OpenAmpere keine Messwerte, etwa weil die Verbindung gestört war. Verbrauch und Einspeisung sind deshalb etwas zu niedrig."
+    },
+    "total": "Zusammen",
+    "yearEnds": "Das Abrechnungsjahr endet am {date}."
+  },
+  "capacityForm": {
+    "hint": "Steht im Datenblatt oder auf dem Typenschild des Speichers.",
+    "placeholder": "z. B. 10,4",
+    "usableCapacity": "Nutzbare Kapazität"
+  },
+  "chart": {
+    "defaultLabel": "Diagramm",
+    "time": "Zeit"
+  },
+  "devicesSection": {
+    "chartLabel": "Diagramm Verbrauch je Gerät",
+    "emptyState": "In diesem Zeitraum haben die Geräte keinen Strom verbraucht.",
+    "household": "Haushalt",
+    "title": "Nach Geräten"
+  },
+  "duration": {
+    "hoursMinutes": "{h} Std. {m} Min.",
+    "minutes": "{m} Min."
+  },
+  "firmwareFacts": {
+    "changes": "Firmware-Änderungen ({count})",
+    "hint": "Nach einem Update einmal die Diagnose ausführen (Mehr → Diagnose). Ein Update kann Register ändern, dann stimmen einzelne Werte nicht mehr.",
+    "since": "Diese Firmware meldet der Wechselrichter seit {date}."
+  },
+  "keyFigures": {
+    "allValues": "Alle Werte",
+    "costGridImport": "Kosten Netzbezug",
+    "feedInPayment": "Einspeisevergütung",
+    "fromBattery": "Aus dem Speicher genutzt",
+    "fromGrid": "Aus dem Netz bezogen",
+    "intoBattery": "In den Speicher geladen",
+    "inverterLosses": "Verluste im Wechselrichter",
+    "lossesHint": "Der Wechselrichter misst den Solarstrom vor und den Verbrauch nach der Umwandlung in Wechselstrom. Die Differenz geht im Gerät verloren, meist einige Prozent der Erzeugung.",
+    "netElectricityCost": "Stromkosten unterm Strich",
+    "savings": "Ersparnis etwa {amount}",
+    "savingsHint": "Die Ersparnis ist eine Schätzung mit deinem Stromtarif (Mehr → Stromtarif): selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung. Unterm Strich heißt Netzbezug und Grundpreis minus Einspeisevergütung.",
+    "selfConsumed": "Selbst genutzter Solarstrom",
+    "toGrid": "Ins Netz eingespeist"
+  },
+  "months": {
+    "april": "April",
+    "august": "August",
+    "december": "Dezember",
+    "february": "Februar",
+    "january": "Januar",
+    "july": "Juli",
+    "june": "Juni",
+    "march": "März",
+    "may": "Mai",
+    "november": "November",
+    "october": "Oktober",
+    "september": "September"
+  },
+  "outagesSection": {
+    "battery": "Speicher {from} → {to}",
+    "batteryEmpty": "Ab {time} Uhr ohne Strom, vermutlich war der Speicher leer.",
+    "dateTime": "{date}, {time} Uhr",
+    "entryRemoved": "Eintrag entfernt",
+    "house": "Haus {energy}",
+    "inverterOff": "Ab {time} Uhr war der Wechselrichter nicht erreichbar, OpenAmpere lief aber weiter. Vermutlich wurde er ausgeschaltet oder die Verbindung war unterbrochen. Die Dauer ist deshalb ungenau.",
+    "lowestSoc": "(tiefster Stand {soc})",
+    "noReadings": "Ab {time} Uhr kamen keine Messwerte, etwa weil die Verbindung unterbrochen war. Die Dauer ist deshalb ungenau.",
+    "notAPowerCut": "Das war kein Stromausfall",
+    "ongoing": "Gerade läuft einer: seit {time} Uhr, Speicher {from} → {to}.",
+    "powerCutCount": {
+      "one": "{count} Stromausfall",
+      "other": "{count} Stromausfälle"
+    },
+    "removeText": "Den Stromausfall vom {date}, {time} Uhr aus der Liste nehmen? Das passt zum Beispiel, wenn du den Wechselrichter selbst ausgeschaltet hast.",
+    "removeTitle": "Eintrag entfernen?",
+    "since": "seit {date}",
+    "solarShare": "davon Sonne {energy}",
+    "title": "Stromausfälle",
+    "totalDuration": "zusammen {duration}"
+  },
+  "periodLabel": {
+    "week": "Woche",
+    "year": "Jahr"
+  },
+  "periods": {
+    "allTime": "Gesamt",
+    "thirtyDays": "30 Tage",
+    "twelveMonths": "12 Monate"
+  },
+  "pvInputsSection": {
+    "emptyState": "Für diesen Zeitraum liegen keine Werte je Modulfeld vor.",
+    "title": "Nach Modulfeldern"
+  },
+  "readout": {
+    "charging": "{power} laden",
+    "discharged": "Entladen",
+    "discharging": "{power} entladen",
+    "fedIn": "Eingespeist",
+    "gridFeedIn": "{power} Einspeisung",
+    "gridImport": "{power} Bezug",
+    "tapHint": "Tippe auf das Diagramm, um die Werte zu sehen."
+  },
+  "report": {
+    "chooseDate": "Datum wählen",
+    "dashed": "{name} (gestrichelt)",
+    "energyChart": "Diagramm Energie für {period}",
+    "energyHours": "Arbeit · 1 h",
+    "energyQuarterHours": "Arbeit · 15 min",
+    "fromGrid": "Aus dem Netz",
+    "history": "Verlauf",
+    "loadError": "Konnte nicht geladen werden: {error}",
+    "nextPeriod": "Zeitraum weiter",
+    "noData": "Für diesen Zeitraum liegen keine Daten vor.",
+    "power": "Leistung",
+    "powerChart": "Diagramm Leistung für {period}",
+    "previousPeriod": "Zeitraum zurück",
+    "recordingSince": "OpenAmpere zeichnet seit {time} Uhr auf, deshalb beginnt der Verlauf erst dann. Die Tageswerte oben stammen aus den Zählern des Wechselrichters und gelten für den ganzen Tag.",
+    "selfSupplied": "Selbst versorgt",
+    "selfSupply": "Eigenversorgung",
+    "signHint": "Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.",
+    "socRightAxis": "Ladestand (rechte Achse)"
+  },
+  "temperatureSection": {
+    "bms": "Speicher-Elektronik (BMS)",
+    "coolestCell": "Kühlste Zelle",
+    "warmestCell": "Wärmste Zelle"
+  },
+  "text": {
+    "feedInHint": "Die monatliche Abschlagszahlung für deine Einspeisevergütung. Steht in der Abrechnung des Netzbetreibers.",
+    "gridImport": "Strombezug",
+    "importHint": "Der monatliche Abschlag an deinen Stromanbieter. Steht auf der letzten Jahresrechnung oder im Kundenportal."
+  },
+  "todayRows": {
+    "cost": "Kosten für {energy}",
+    "difference": "Differenz",
+    "paidSoFar": "Abschläge bis heute",
+    "payment": "Vergütung für {energy}",
+    "since": "seit {date}"
+  },
+  "vehicleStats": {
+    "cost": "Kosten",
+    "costPer100Km": "{cost} pro 100 km, nur aus dem Netz wären es {gridCost}",
+    "distanceHint": "Kilometer und Verbrauch erscheinen, sobald das Auto in evcc eingerichtet ist und evcc bei mindestens zwei Ladevorgängen den Kilometerstand kennt.",
+    "driven": "Gefahren",
+    "emptyState": "In diesem Zeitraum wurde nicht geladen.",
+    "energySessions": {
+      "one": "{energy} kWh in {count} Ladevorgang",
+      "other": "{energy} kWh in {count} Ladevorgängen"
+    },
+    "hint": "Gerechnet aus den Ladevorgängen an deiner Wallbox. Lädst du auch unterwegs, wirkt der Verbrauch niedriger, als er ist. Sonnenstrom kostet hier die Einspeisevergütung, die dir dafür entgeht, Netzstrom den Preis aus deinem Stromtarif.",
+    "ofWhichSolar": "Davon Sonnenstrom",
+    "solarDistance": "Mit Sonne",
+    "solarShare": "Sonne",
+    "title": "Auto",
+    "unknownVehicle": "Ohne erkanntes Fahrzeug"
+  }
+}

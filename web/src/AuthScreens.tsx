@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuthStatus } from "./api";
 import { postJson, useResource } from "./api";
+import { t, tx } from "./i18n";
 import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
 function PasswordInput({ value, onChange, placeholder, autoComplete }: {
@@ -32,19 +33,18 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="page setup">
-      <div className="page-head"><h1>Passwort festlegen</h1></div>
+      <div className="page-head"><h1>{t("shell.passwordSetup.setPassword")}</h1></div>
       <div className="card">
-        <p>Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die Werte im Heimnetz auch ohne
-          Passwort – ändern aber nur, wer es kennt.</p>
-        <p className="hint">Mindestens 6 Zeichen. Bewahre es gut auf – zurücksetzen kann es nur, wer Zugriff auf den Server hat.</p>
+        <p>{t("shell.passwordSetup.intro")}</p>
+        <p className="hint">{t("shell.passwordSetup.passwordHint")}</p>
       </div>
       <form className="card form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-        <Field label="Passwort"><PasswordInput value={password} onChange={setPassword} autoComplete="new-password" /></Field>
-        <Field label="Passwort wiederholen" hint={mismatch ? "Die Passwörter stimmen nicht überein." : undefined}>
+        <Field label={t("common.password")}><PasswordInput value={password} onChange={setPassword} autoComplete="new-password" /></Field>
+        <Field label={t("shell.passwordSetup.repeatPassword")} hint={mismatch ? t("shell.passwordSetup.passwordsDoNotMatch") : undefined}>
           <PasswordInput value={repeat} onChange={setRepeat} autoComplete="new-password" />
         </Field>
         {error && <Notice kind="error">{error}</Notice>}
-        <Button type="submit" busy={busy} disabled={password.length < 6 || password !== repeat}>Weiter</Button>
+        <Button type="submit" busy={busy} disabled={password.length < 6 || password !== repeat}>{t("shell.passwordSetup.continue")}</Button>
       </form>
     </div>
   );
@@ -61,7 +61,7 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
     setBusy(true); setError(null);
     try {
       await postJson("/api/auth/login", { password });
-      toast("Angemeldet");
+      toast(t("shell.loginDialog.loggedIn"));
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -73,13 +73,13 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
     <div className="overlay" onClick={onCancel}>
       <form className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="login-title" onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => { e.preventDefault(); void login(); }}>
-        <h2 id="login-title">Anmelden</h2>
-        <p className="hint">Zum Ändern von Einstellungen brauchst du das Passwort von OpenAmpere.</p>
-        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" placeholder="Passwort" />
+        <h2 id="login-title">{t("common.logIn")}</h2>
+        <p className="hint">{t("shell.loginDialog.passwordNeeded")}</p>
+        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" placeholder={t("common.password")} />
         {error && <Notice kind="error">{error}</Notice>}
         <div className="dialog-actions">
-          <Button type="submit" busy={busy} disabled={!password}>Anmelden</Button>
-          <Button variant="secondary" onClick={onCancel}>Abbrechen</Button>
+          <Button type="submit" busy={busy} disabled={!password}>{t("common.logIn")}</Button>
+          <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
         </div>
       </form>
     </div>
@@ -112,7 +112,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     try {
       await postJson("/api/auth/password", { current, new: next });
-      toast("Passwort geändert – andere Geräte müssen sich neu anmelden");
+      toast(t("shell.securityPage.passwordChanged"));
       setCurrent(""); setNext("");
     } catch (e) {
       toast((e as Error).message, "error");
@@ -122,41 +122,41 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
   };
   const logout = async (everywhere: boolean) => {
     await postJson(`/api/auth/logout${everywhere ? "?everywhere=true" : ""}`, {}).catch(() => undefined);
-    toast(everywhere ? "Alle Geräte abgemeldet" : "Abgemeldet");
+    toast(everywhere ? t("shell.securityPage.allDevicesLoggedOut") : t("shell.securityPage.loggedOut"));
     reload();
   };
 
   return (
-    <SubPage title="Zugriffsschutz" onBack={onBack}>
+    <SubPage title={t("common.accessProtection")} onBack={onBack}>
       <Notice kind={status?.authenticated ? "ok" : "info"}>
-        {status?.authenticated ? "Dieses Gerät ist angemeldet und darf Einstellungen ändern." : "Dieses Gerät ist nicht angemeldet – nur Anzeige."}
+        {status?.authenticated ? t("shell.securityPage.loggedIn") : t("shell.securityPage.notLoggedIn")}
       </Notice>
       <p className="hint">
-        Ansehen ist im Heimnetz ohne Passwort möglich. Für Zugriff von unterwegs nutze ein VPN (z. B. das deiner FRITZ!Box,
-        WireGuard oder Tailscale) – <strong>gib OpenAmpere niemals per Portfreigabe ins Internet frei.</strong>
+        {tx("shell.securityPage.remoteAccessHint", { warning: <strong>{t("shell.securityPage.neverExpose")}</strong> })}
       </p>
-      {status && !status.authenticated && <Button onClick={() => setLoginOpen(true)}>Anmelden</Button>}
+      {status && !status.authenticated && <Button onClick={() => setLoginOpen(true)}>{t("common.logIn")}</Button>}
       {loginOpen && <LoginDialog onDone={() => { setLoginOpen(false); reload(); }} onCancel={() => setLoginOpen(false)} />}
       {status?.authenticated && (
         <>
           <form className="card form" onSubmit={(e) => { e.preventDefault(); void change(); }}>
-            <h2>Passwort ändern</h2>
-            <Field label="Bisheriges Passwort"><PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" /></Field>
-            <Field label="Neues Passwort" hint="Mindestens 6 Zeichen"><PasswordInput value={next} onChange={setNext} autoComplete="new-password" /></Field>
-            <Button type="submit" busy={busy} disabled={!current || next.length < 6}>Passwort ändern</Button>
+            <h2>{t("shell.securityPage.changePassword")}</h2>
+            <Field label={t("shell.securityPage.currentPassword")}><PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" /></Field>
+            <Field label={t("shell.securityPage.newPassword")} hint={t("shell.securityPage.passwordHint")}><PasswordInput value={next} onChange={setNext} autoComplete="new-password" /></Field>
+            <Button type="submit" busy={busy} disabled={!current || next.length < 6}>{t("shell.securityPage.changePassword")}</Button>
           </form>
           <div className="card form">
-            <Button variant="secondary" onClick={() => void logout(false)}>Dieses Gerät abmelden</Button>
-            <Button variant="secondary" onClick={() => setConfirmAll(true)}>Alle Geräte abmelden</Button>
+            <Button variant="secondary" onClick={() => void logout(false)}>{t("shell.securityPage.logOutDevice")}</Button>
+            <Button variant="secondary" onClick={() => setConfirmAll(true)}>{t("shell.securityPage.logOutAllDevices")}</Button>
           </div>
         </>
       )}
-      <p className="hint">Passwort vergessen? Auf dem Server <code>openampere reset-password</code> ausführen
-        (Docker: <code>docker compose exec openampere openampere reset-password</code>), dann ein neues festlegen.</p>
+      <p className="hint">{tx("shell.securityPage.forgotPassword", {
+        command: <code>openampere reset-password</code>,
+        dockerCommand: <code>docker compose exec openampere openampere reset-password</code> })}</p>
       {confirmAll && (
-        <Dialog title="Alle Geräte abmelden?" confirm="Abmelden" onCancel={() => setConfirmAll(false)}
+        <Dialog title={t("shell.securityPage.logOutAllQuestion")} confirm={t("shell.securityPage.logOut")} onCancel={() => setConfirmAll(false)}
           onConfirm={() => { setConfirmAll(false); void logout(true); }}>
-          <p>Alle Handys und Computer müssen sich danach neu anmelden, um Einstellungen zu ändern.</p>
+          <p>{t("shell.securityPage.logOutAllHint")}</p>
         </Dialog>
       )}
     </SubPage>

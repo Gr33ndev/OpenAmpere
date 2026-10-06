@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
+import { t } from "./i18n";
 import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
 import { Button, Checkbox, copyText, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
@@ -9,7 +10,7 @@ type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "inf
 type DiagnosticsData = { running: boolean; markdown: string | null;
   report: { created: number; checks: Check[] } | null };
 
-const STATUS_LABEL: Record<Check["status"], string> = { ok: "OK", warn: "Prüfen", error: "Fehler", info: "Info", skipped: "–" };
+const STATUS_LABEL: Record<Check["status"], string> = { ok: "OK", warn: t("settings.statusLabel.check"), error: t("settings.statusLabel.error"), info: "Info", skipped: "–" };
 
 export function DiagnosticsPage({ onBack }: PageProps) {
   const { data, error, reload, setData } = useResource<DiagnosticsData>("/api/diagnostics");
@@ -21,7 +22,7 @@ export function DiagnosticsPage({ onBack }: PageProps) {
     setBusy(true);
     try {
       setData(await postJson<DiagnosticsData>(`/api/diagnostics?connection_test=${connectionTest}&include_serial=${serial}`, {}));
-      toast("Diagnose fertig");
+      toast(t("settings.diagnosticsPage.done"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -32,35 +33,33 @@ export function DiagnosticsPage({ onBack }: PageProps) {
   const copy = async () => {
     if (!data?.markdown) return;
     if (await copyText(data.markdown)) {
-      toast("Bericht kopiert");
+      toast(t("settings.diagnosticsPage.reportCopied"));
     } else {
       setShowText(true);
-      toast("Kopieren hat nicht geklappt. Bitte den Bericht unten markieren und kopieren.", "error");
+      toast(t("settings.diagnosticsPage.copyFailed"), "error");
     }
   };
 
   return (
-    <SubPage title="Diagnose" onBack={onBack}>
-      <p className="hint">Prüft, ob OpenAmpere deinen Wechselrichter richtig versteht. <strong>Es wird nur gelesen, nichts geändert.</strong></p>
+    <SubPage title={t("common.diagnostics")} onBack={onBack}>
+      <p className="hint">{t("settings.diagnosticsPage.intro")} <strong>{t("settings.diagnosticsPage.readOnly")}</strong></p>
       <LearnMore>
-        <p className="hint">Die Diagnose fragt alle Registerblöcke ab, prüft Skalierungen und Einspeisebegrenzung und wertet aus,
-          wie sich das Gerät nachts und beim Zurücksetzen der Tageszähler verhält. Den Bericht kannst du teilen, damit
-          weitere Geräte unterstützt werden.</p>
+        <p className="hint">{t("settings.diagnosticsPage.explanation")}</p>
       </LearnMore>
       {!data && <LoadState error={error} onRetry={reload} />}
       <div className="card form">
         <Checkbox checked={connectionTest} onChange={setConnectionTest}>
-          Auch testen, wie viele Verbindungen gleichzeitig gehen (kann andere Geräte wie die Smartbox kurz stören)
+          {t("settings.diagnosticsPage.testConnections")}
         </Checkbox>
-        <Checkbox checked={serial} onChange={setSerial}>Seriennummer vollständig in den Bericht aufnehmen</Checkbox>
-        <Button busy={busy} onClick={() => void run()}>Diagnose starten</Button>
-        {busy && <p className="hint">Das dauert etwa eine halbe Minute …</p>}
+        <Checkbox checked={serial} onChange={setSerial}>{t("settings.diagnosticsPage.fullSerial")}</Checkbox>
+        <Button busy={busy} onClick={() => void run()}>{t("settings.diagnosticsPage.start")}</Button>
+        {busy && <p className="hint">{t("settings.diagnosticsPage.takesHalfMinute")}</p>}
       </div>
 
       {data?.report && (
         <>
-          <div className="section-title">Ergebnis</div>
-          <p className="hint">Stand: {updatedLabel(data.report.created)}</p>
+          <div className="section-title">{t("settings.diagnosticsPage.result")}</div>
+          <p className="hint">{t("settings.diagnosticsPage.asOf", { date: updatedLabel(data.report.created) })}</p>
           <div className="card">
             <ul className="checks">
               {data.report.checks.map((c) => (
@@ -72,35 +71,34 @@ export function DiagnosticsPage({ onBack }: PageProps) {
             </ul>
           </div>
           <div className="card form">
-            <p className="hint">Hilf anderen mit demselben Gerät: Kopiere den Bericht und füge ihn in ein Issue auf GitHub ein.</p>
-            <Button variant="secondary" onClick={() => void copy()}>Bericht kopieren</Button>
+            <p className="hint">{t("settings.diagnosticsPage.shareHint")}</p>
+            <Button variant="secondary" onClick={() => void copy()}>{t("settings.diagnosticsPage.copyReport")}</Button>
             <a className="btn secondary" href={`${ISSUES_URL}/new?template=device_report.yml`}
-              target="_blank" rel="noreferrer">Issue auf GitHub öffnen</a>
+              target="_blank" rel="noreferrer">{t("settings.diagnosticsPage.openIssue")}</a>
             {data.markdown && (
               <details className="advanced" open={showText} onToggle={(e) => setShowText(e.currentTarget.open)}>
-                <summary>Bericht als Text anzeigen</summary>
+                <summary>{t("settings.diagnosticsPage.showReport")}</summary>
                 <textarea className="input report-text" readOnly rows={12} value={data.markdown}
-                  onFocus={(e) => e.currentTarget.select()} aria-label="Diagnosebericht" />
+                  onFocus={(e) => e.currentTarget.select()} aria-label={t("settings.diagnosticsPage.report")} />
               </details>
             )}
           </div>
         </>
       )}
 
-      <div className="section-title">Selbst klären</div>
+      <div className="section-title">{t("settings.diagnosticsPage.checkYourself")}</div>
       <div className="card">
         <ul className="plain-list">
-          <li><strong>Netzbetreiber:</strong> Welche Einspeisebegrenzung gilt (Inbetriebnahmedatum, kWp, intelligentes
-            Messsystem)? Läuft die Steuerung nach § 9 EEG bzw. § 14a EnWG über die Smartbox oder eine Steuerbox?</li>
-          <li><strong>Steuerung:</strong> Nach der ersten Änderung im Live-Betrieb in „Meine Anlage“ und im Protokoll
-            prüfen, ob der Wert erhalten bleibt.</li>
-          <li><strong>Wallbox:</strong> Hersteller und Modell notieren und in einem Issue nennen – danach richtet sich, ob
-            und wie OpenAmpere sie einbinden kann.</li>
+          <li><strong>{t("settings.diagnosticsPage.gridOperatorLabel")}</strong>{" "}
+            {t("settings.diagnosticsPage.gridOperatorQuestions")}</li>
+          <li><strong>{t("settings.diagnosticsPage.controlLabel")}</strong>{" "}
+            {t("settings.diagnosticsPage.checkAfterChange")}</li>
+          <li><strong>{t("settings.diagnosticsPage.wallboxLabel")}</strong>{" "}
+            {t("settings.diagnosticsPage.otherDevicesHint")}</li>
         </ul>
       </div>
       {data?.report?.checks.some((c) => c.status === "warn") && (
-        <Notice kind="warn">Bei Punkten mit „Prüfen“ sind Werte womöglich falsch skaliert oder nicht vorhanden.
-          Ein geteilter Bericht hilft, das für dein Gerät zu korrigieren.</Notice>
+        <Notice kind="warn">{t("settings.diagnosticsPage.checkHint")}</Notice>
       )}
     </SubPage>
   );

@@ -29,27 +29,46 @@ issue templates are bilingual.
 - **Ideas:** "Feature request / Funktionswunsch" template. Above all, describe the problem, not just the solution.
 - **Texts and wording:** Unclear wording in the app is a bug – please report it.
 - **Translations:** The app can show other languages besides German (**Mehr → Darstellung → Sprache**, More →
-  Appearance → Language). English is the first one and still incomplete. See [Translating the app](#translating-the-app).
+  Appearance → Language). English is available as a preview. See [Translating the app](#translating-the-app).
+
+**Security vulnerabilities** must never be reported as a public issue; follow [SECURITY.md](SECURITY.md) instead.
 
 ## Translating the app
 
-German is the source language. Every text in the web app is written in German and wrapped in `t("…")` from
-`web/src/i18n.ts`; the German text is also the key. Translations live in `web/src/locales/<language>/<area>.json` (one file per area of the app) as
-`"German text": "translation"`. A text without a translation simply stays German, so pages can be translated one at a
-time.
+The app is German by default and can be switched to other languages under **Mehr → Darstellung → Sprache** (More →
+Appearance → Language). Texts are referenced by English keys, German is the reference language.
 
-- Placeholders are written as `{name}` and must appear in the translation too: `t("Version {version} ist da", { version })`.
-- Only plain string literals in `t("…")`, no template strings, so tools can find them. For a choice, call `t()` for each
-  text: `enabled ? t("Aktiv") : t("Nur ansehen")`.
-- `npm run check:i18n` in `web/` (also run by CI) fails if a translation belongs to a German text that no longer exists
-  or if placeholders differ, and prints how much is translated.
-- New texts in the app: write them in German and wrap them in `t()`. Adding the English translation in the same PR is
-  welcome but not required.
-- Numbers, dates and times follow the language: use `LOCALE` from `i18n.ts` (or the helpers in `format.ts`), never a
-  fixed `"de-DE"`.
-- A new language: add a folder `web/src/locales/<code>/`, register it in `DICTIONARIES` and `LANGUAGES` in `i18n.ts`.
+**Web app** (`web/src/locales/<language>/<area>.json`):
 
-**Security vulnerabilities** must never be reported as a public issue; follow [SECURITY.md](SECURITY.md) instead.
+- A key is `<area>.<component>.<name>`, e.g. `settings.tariffPage.title`. The areas follow the navigation: `shell`
+  (frame, login, updates), `setup`, `overview`, `devices`, `report`, `settings`, plus `common` for words used in many
+  places (`common.save`, `common.cancel`). Inside an area file the texts are grouped by component.
+- In the code: `t("settings.tariffPage.title")`. Keys are typed: a key that does not exist in German is a build error.
+- Values: `t("shell.updates.versionAvailable", { version })` with `"Version {version} ist da"` in the file.
+- Plurals: an object instead of a string, chosen by `count`: `{"one": "1 Tag", "other": "{count} Tage"}`.
+- A link or bold text inside a sentence: one key for the whole sentence with a placeholder, rendered with
+  `tx("…", { link: <a href="…">{t("…")}</a> })`, so every language can put the link where its word order needs it.
+  Never split a sentence into several keys.
+- The same German word with a different meaning (e.g. "Gespeichert" = stored vs. saved) gets separate keys.
+- Numbers, dates and times follow the language: use `LOCALE` from `web/src/i18n.tsx` or the helpers in `format.ts`,
+  never a fixed `"de-DE"`.
+
+**Server messages** (`src/openampere/locales/<language>.json`): error messages are written in German in the code and
+listed in `de.json` under an English key per module. The web app asks for its language and the API translates the
+message on the way out. A new message in the code needs a key in `de.json`; `scripts/i18n_messages.py --missing`
+lists the ones without, and the tests check it.
+
+**Adding a language** needs no code changes:
+
+1. Copy `web/src/locales/de/` to `web/src/locales/<code>/` (e.g. `fr`), set the name in `meta.json`
+   (`{"name": "Français", "complete": false}`) and translate the values, keep the keys. The language appears in the
+   language switch by itself; `"complete": false` marks it as a preview.
+2. Copy `src/openampere/locales/de.json` to `src/openampere/locales/<code>.json` and translate the values.
+3. Run `npm run check:i18n` in `web/` and `.venv/bin/pytest tests/test_i18n.py`. Missing texts are allowed, they appear
+   in German; the check prints how much is translated.
+
+**New texts in the app:** add the German text under a fitting key and, if you can, the English one. A text missing in a
+language falls back to German.
 
 ## Workflow for code contributions
 
@@ -88,7 +107,8 @@ scripts/deps.sh
 ## Code rules
 
 - **Match the surrounding code:** Adapt naming, comment density and style to the code around it. Comments and
-  identifiers in English, all texts in the app in German.
+  identifiers in English; texts in the app always via `t()` with a key, German first (see
+  [Translating the app](#translating-the-app)).
 - **Understandable for non-technical users:** The app is aimed at system owners without technical knowledge. No jargon
   without explanation; error messages as complete German sentences with a hint on what to do.
 - **Everything configurable in the app:** New options belong in the UI, not only in a configuration file.

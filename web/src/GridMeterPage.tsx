@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
+import { list, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { useSettings } from "./SettingsPages";
 import { Button, Checkbox, Field, LoadState, Notice, SubPage, toast } from "./ui";
@@ -13,8 +14,8 @@ export type GridMeterView = {
 };
 
 const MISSING_URL = "https://github.com/Gr33ndev/OpenAmpere/issues/new?template=feature_request.yml&title=Netzbetreiber%3A+";
-const KIND = { import: "Bezug", export: "Einspeisung" };
-const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "long" });
+const KIND = { import: t("common.import"), export: t("common.feedIn") };
+const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(LOCALE, { day: "numeric", month: "long" });
 
 /** Settings: fetch the daily values of the grid operator's smart meter from its customer portal (#60). */
 export function GridMeterPage({ onBack }: PageProps) {
@@ -37,7 +38,7 @@ export function GridMeterPage({ onBack }: PageProps) {
     const result = await postJson<GridMeterView>("/api/gridmeter/sync", {});
     setView(result);
     if (result.error) toast(result.error, "error");
-    else if (result.until) toast(`Zählerwerte vollständig bis ${dayLabel(result.until)}`);
+    else if (result.until) toast(t("settings.gridMeterPage.completeUntil", { date: dayLabel(result.until) }));
   };
 
   const submit = async () => {
@@ -58,71 +59,72 @@ export function GridMeterPage({ onBack }: PageProps) {
   const toggleMeter = (id: string, on: boolean) => {
     if (!view) return;
     const next = on ? [...view.active, id] : view.active.filter((m) => m !== id);
-    if (!next.length) return toast("Mindestens ein Zähler muss zählen.", "error");
+    if (!next.length) return toast(t("settings.gridMeterPage.atLeastOneMeter"), "error");
     void save({ "meter.meter_ids": next }).then(() => reloadView());
   };
 
   return (
-    <SubPage title="Zählerwerte" onBack={onBack}>
-      <p className="hint">Abgerechnet wird nach dem Zähler deines Netzbetreibers. Hast du ein intelligentes Messsystem (Smart
-        Meter), zeigt der Netzbetreiber die Tageswerte in seinem Kundenportal. OpenAmpere holt sie dort ab und vergleicht
-        deine Abschläge dann mit diesen Werten statt mit denen des Wechselrichters.</p>
+    <SubPage title={t("common.meterReadings")} onBack={onBack}>
+      <p className="hint">{t("settings.gridMeterPage.intro")}</p>
       {(!settings || !view) && <LoadState error={error} onRetry={reload} />}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
       {view?.configured && !view.error && view.until && (
-        <Notice kind="ok">Zählerwerte vollständig bis {dayLabel(view.until)}{view.synced ? ` · abgerufen ${updatedLabel(view.synced).replace(/^(Heute|Gestern)/, (w) => w.toLowerCase())}` : ""}</Notice>
+        <Notice kind="ok">{t("settings.gridMeterPage.completeUntil", { date: dayLabel(view.until) })}{view.synced
+          // "abgerufen heute, 16:32": lower-case "Heute"/"Gestern" in the middle of the sentence
+          ? ` · ${t("settings.gridMeterPage.fetched", { date: updatedLabel(view.synced).replace(/^\p{Lu}/u, (c) => c.toLowerCase()) })}` : ""}</Notice>
       )}
 
       {settings && view && (
         <div className="card form">
-          <Field label="Netzbetreiber" locked={locked("meter.provider")}
-            hint={chosen ? `Netzgebiet: ${chosen.region}. Anmeldung wie im Kundenportal ${chosen.portal}.` : "Steht auf deiner Stromrechnung oder am Zähler."}>
+          <Field label={t("common.gridOperator")} locked={locked("meter.provider")}
+            hint={chosen ? t("settings.gridMeterPage.regionHint", { region: chosen.region, portal: chosen.portal })
+              : t("settings.gridMeterPage.operatorHint")}>
             <select className="input" value={provider} onChange={(e) => setProvider(e.target.value)}>
-              <option value="none">Keiner</option>
+              <option value="none">{t("settings.gridMeterPage.none")}</option>
               {view.providers.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
           </Field>
           {provider !== "none" && <>
-            <Field label="E-Mail" locked={locked("meter.username")}>
+            <Field label={t("settings.gridMeterPage.email")} locked={locked("meter.username")}>
               <input className="input" type="email" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
             </Field>
-            <Field label="Passwort" hint={passwordSet ? "Gespeichert. Leer lassen, um es zu behalten." : undefined}>
+            <Field label={t("common.password")} hint={passwordSet ? t("settings.gridMeterPage.savedKeep") : undefined}>
               <input className="input" type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
             </Field>
-            <p className="hint">Die Zugangsdaten bleiben auf deinem Gerät und gehen nur an {chosen?.label ?? "den Netzbetreiber"}.
-              Mit Zwei-Faktor-Anmeldung klappt der Abruf nicht.</p>
+            <p className="hint">{chosen
+              ? t("settings.gridMeterPage.credentialsHint", { operator: chosen.label })
+              : t("settings.gridMeterPage.credentialsHintGeneric")}</p>
           </>}
           <Button busy={busy} disabled={!changed || (provider !== "none" && (!username || (!password && !passwordSet)))}
-            onClick={() => void submit()}>{provider === "none" ? "Speichern" : "Speichern und abrufen"}</Button>
+            onClick={() => void submit()}>{provider === "none" ? t("common.save") : t("settings.gridMeterPage.saveAndFetch")}</Button>
           {view.configured && !changed && (
             <button className="link" disabled={view.busy} onClick={() => void fetchNow().catch((e) => toast((e as Error).message, "error"))}>
-              Jetzt abrufen</button>
+              {t("settings.gridMeterPage.fetchNow")}</button>
           )}
         </div>
       )}
 
       {view?.configured && view.meters.length > 0 && <>
-        <div className="section-title">Zähler</div>
+        <div className="section-title">{t("settings.gridMeterPage.meters")}</div>
         <div className="card">
-          {view.meters.length > 1 && <p className="hint">Wähle die Zähler, die zu deinem Hausanschluss gehören. Ein eigener
-            Zähler, z. B. für die Wärmepumpe, wird getrennt abgerechnet.</p>}
+          {view.meters.length > 1 && <p className="hint">{t("settings.gridMeterPage.metersHint")}</p>}
           <ul className="sessions">
             {view.meters.map((m) => (
               <li key={m.id}>
                 {view.meters.length > 1
                   ? <Checkbox checked={view.active.includes(m.id)} onChange={(on) => toggleMeter(m.id, on)}>
-                      <strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span>}</Checkbox>
-                  : <span><strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{m.kinds.map((k) => KIND[k]).join(" und ")}</span>}</span>}
+                      <strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{list(m.kinds.map((k) => KIND[k]))}</span>}</Checkbox>
+                  : <span><strong>{m.name}</strong> {m.kinds.length > 1 && <span className="meta">{list(m.kinds.map((k) => KIND[k]))}</span>}</span>}
               </li>
             ))}
           </ul>
         </div>
       </>}
 
-      <p className="hint">Der Netzbetreiber stellt einen Tag oft erst am Nachmittag danach bereit. OpenAmpere fragt alle drei
-        Stunden nach und übernimmt nur vollständige Tage. Bis dahin zählen die Werte des Wechselrichters.</p>
-      <p className="hint">Dein Netzbetreiber fehlt? <a href={MISSING_URL} target="_blank" rel="noreferrer">Wünsch ihn dir
-        auf GitHub</a>. Jeder Netzbetreiber hat ein eigenes Kundenportal, daher kommt einer nach dem anderen dazu.</p>
+      <p className="hint">{t("settings.gridMeterPage.delayHint")}</p>
+      <p className="hint">{tx("settings.gridMeterPage.operatorMissing",
+        { link: <a href={MISSING_URL} target="_blank" rel="noreferrer">{t("settings.gridMeterPage.requestOnGithub")}</a> })}{" "}
+        {t("settings.gridMeterPage.moreOperatorsHint")}</p>
     </SubPage>
   );
 }

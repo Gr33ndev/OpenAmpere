@@ -3,7 +3,7 @@ import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, Expor
 import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
-import { LANGUAGES, lang, setLang, t, type Lang } from "./i18n";
+import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
@@ -20,7 +20,7 @@ export function useSettings() {
   const save = async (changes: Partial<Settings["values"]> & Partial<Record<SecretKey, string>>) => {
     try {
       setData(await putJson<Settings>("/api/settings", { ...changes, _revision: data?.revision }));
-      toast("Gespeichert");
+      toast(t("common.saved"));
       return true;
     } catch (e) {
       toast((e as Error).message, "error");
@@ -35,10 +35,10 @@ export function useSettings() {
 // ---------------------------------------------------------------------------
 
 const WORK_MODES: { id: NonNullable<BatterySettings["work_mode"]>; label: string; hint: string }[] = [
-  { id: "self_use", label: "Eigenverbrauch", hint: "Solarstrom zuerst im Haus nutzen, Überschuss speichern. Empfohlen." },
-  { id: "feed_in_first", label: "Einspeisung bevorzugen", hint: "Überschuss zuerst ins Netz, Speicher wird nicht entladen." },
-  { id: "backup", label: "Notstromreserve", hint: "Speicher wird nur geladen und für Stromausfälle voll gehalten." },
-  { id: "peak_shaving", label: "Spitzenlast begrenzen", hint: "Speicher deckt nur hohe Verbrauchsspitzen." },
+  { id: "self_use", label: t("common.selfConsumption"), hint: t("settings.workModes.selfUseHint") },
+  { id: "feed_in_first", label: t("common.preferFeedIn"), hint: t("settings.workModes.feedInFirstHint") },
+  { id: "backup", label: t("common.backupReserve"), hint: t("settings.workModes.backupHint") },
+  { id: "peak_shaving", label: t("settings.workModes.peakShaving"), hint: t("settings.workModes.peakShavingHint") },
 ];
 
 const FIELDS = ["work_mode", "min_soc", "max_soc", "min_soc_on_grid"] as const;
@@ -46,7 +46,7 @@ const FIELDS = ["work_mode", "min_soc", "max_soc", "min_soc_on_grid"] as const;
 function SocSlider({ value, min, max, disabled, onChange }: {
   value: number | null; min: number; max: number; disabled: boolean; onChange: (v: number) => void;
 }) {
-  if (value == null) return <p className="hint">? – konnte nicht gelesen werden</p>;
+  if (value == null) return <p className="hint">{t("settings.socSlider.couldNotRead")}</p>;
   return <Slider value={value} min={min} max={Math.max(min, max)} unit="%" disabled={disabled} onChange={onChange} />;
 }
 
@@ -54,15 +54,15 @@ function SocSlider({ value, min, max, disabled, onChange }: {
 function SocBar({ min, reserve, max }: { min: number | null; reserve: number | null; max: number | null }) {
   if (min == null || reserve == null || max == null) return null;
   const zones = [
-    { from: 0, to: min, cls: "never", label: "Wird nie genutzt" },
-    { from: min, to: reserve, cls: "backup", label: "Nur bei Stromausfall" },
-    { from: reserve, to: max, cls: "daily", label: "Alltag" },
-    { from: max, to: 100, cls: "unused", label: "Wird nicht geladen" },
+    { from: 0, to: min, cls: "never", label: t("settings.socBar.neverUsed") },
+    { from: min, to: reserve, cls: "backup", label: t("settings.socBar.onlyDuringPowerCut") },
+    { from: reserve, to: max, cls: "daily", label: t("settings.socBar.everydayUse") },
+    { from: max, to: 100, cls: "unused", label: t("settings.socBar.notCharged") },
   ].filter((z) => z.to > z.from);
   return (
     <div className="card">
       <div className="soc-bar" role="img"
-        aria-label={zones.map((z) => `${z.label}: ${z.from} bis ${z.to} %`).join(", ")}>
+        aria-label={zones.map((z) => t("settings.socBar.zone", { label: z.label, from: z.from, to: z.to })).join(", ")}>
         {zones.map((z) => <div key={z.cls} className={`zone ${z.cls}`} style={{ flexGrow: z.to - z.from }} />)}
       </div>
       <div className="soc-legend">
@@ -95,7 +95,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
     setBusy(true);
     try {
       const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings", changes);
-      toast(r.dry_run ? "Testmodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Am Wechselrichter gespeichert" : r.result ?? "Gespeichert");
+      toast(r.dry_run ? t("settings.batteryPage.testModeLogged") : r.result === "ok" ? t("settings.batteryPage.saved") : r.result ?? t("common.saved"));
       if (r.warning) toast(r.warning, "error");
       reload();
     } catch (e) {
@@ -106,25 +106,25 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
   };
 
   return (
-    <SubPage title="Speicher & Notstrom" onBack={onBack}>
+    <SubPage title={t("settings.batteryPage.title")} onBack={onBack}>
       {!deviceSupportsControl ? (
-        <Notice kind="info">Nur Anzeige – für {status?.device?.manufacturer}-Geräte kann OpenAmpere Einstellungen noch nicht ändern.</Notice>
+        <Notice kind="info">{t("settings.batteryPage.readOnly",
+          { manufacturer: status?.device?.manufacturer ?? "" })}</Notice>
       ) : <ControlModeBar compact />}
-      {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">Lese Einstellungen vom Wechselrichter …</p>)}
+      {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">{t("settings.batteryPage.reading")}</p>)}
 
       {current?.external_change && (
         <Notice kind="error">
-          Ein anderes Gerät (z. B. die bisherige Smartbox) hat deine Änderung kurz danach wieder überschrieben:{" "}
-          {Object.entries(current.external_change.found).map(([k, v]) => `${LOG_KEYS[k] ?? k} jetzt ${logValue(v)}`).join(", ")}.
-          Solange es angeschlossen ist, lassen sich diese Werte nicht dauerhaft ändern.
-          {" "}Eine bisherige Smartbox holt sich ihre Einstellungen regelmäßig aus der Cloud. Sperrst du ihr im Router den
-          Internetzugang, bleiben deine Änderungen bestehen.
+          {t("settings.batteryPage.overwritten", { changes: Object.entries(current.external_change.found)
+            .map(([k, v]) => t("settings.batteryPage.changedValue", { name: LOG_KEYS[k] ?? k, value: logValue(v) })).join(", ") })}{" "}
+          {t("settings.batteryPage.overwrittenHint")}
+          {" "}{t("settings.batteryPage.smartboxHint")}
         </Notice>
       )}
       {form && current && current.unreadable.length > 0 && (
         <Notice kind="warn">
-          Einige Werte konnten gerade nicht gelesen werden ({current.unreadable.map((k) => LOG_KEYS[k] ?? k).join(", ")}).
-          Sie werden mit „?“ angezeigt; Änderungen an den Grenzen sind erst möglich, wenn alle Werte gelesen wurden.
+          {t("settings.batteryPage.unreadValues",
+            { values: current.unreadable.map((k) => LOG_KEYS[k] ?? k).join(", ") })}
         </Notice>
       )}
 
@@ -132,28 +132,28 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
         <>
           <SocBar min={form.min_soc} reserve={form.min_soc_on_grid} max={form.max_soc} />
 
-          <div className="section-title">Notstrom-Reserve</div>
+          <div className="section-title">{t("settings.batteryPage.backupReserve")}</div>
           <div className="card form">
-            <p className="hint">So viel bleibt im Alltag immer im Speicher, damit bei einem Stromausfall Energie da ist.</p>
+            <p className="hint">{t("settings.batteryPage.backupReserveHint")}</p>
             <SocSlider value={form.min_soc_on_grid} disabled={!socEditable}
               min={Math.max(10, form.min_soc ?? 10)} max={Math.min(99, (form.max_soc ?? 100) - 1)}
               onChange={(v) => set({ min_soc_on_grid: v })} />
           </div>
 
-          <div className="section-title">Ladegrenzen</div>
+          <div className="section-title">{t("settings.batteryPage.chargeLimits")}</div>
           <div className="card form">
-            <Field label="Maximaler Ladestand" hint="Bis zu diesem Wert wird der Speicher geladen.">
+            <Field label={t("settings.batteryPage.maxSoc")} hint={t("settings.batteryPage.maxSocHint")}>
               <SocSlider value={form.max_soc} disabled={!socEditable}
                 min={Math.max(20, (form.min_soc_on_grid ?? 10) + 1)} max={100} onChange={(v) => set({ max_soc: v })} />
             </Field>
-            <Field label="Untergrenze im Notstrombetrieb"
-              hint="Während eines Stromausfalls wird der Speicher bis hierhin entladen, nicht weiter. Höchstens so hoch wie die Notstrom-Reserve.">
+            <Field label={t("settings.batteryPage.backupLowerLimit")}
+              hint={t("settings.batteryPage.backupLowerLimitHint")}>
               <SocSlider value={form.min_soc} disabled={!socEditable}
                 min={0} max={form.min_soc_on_grid ?? 100} onChange={(v) => set({ min_soc: v })} />
             </Field>
           </div>
 
-          <div className="section-title">Betriebsmodus</div>
+          <div className="section-title">{t("common.operatingMode")}</div>
           <div className="card choices">
             {WORK_MODES.map((m) => (
               <button key={m.id} className={`choice ${form.work_mode === m.id ? "active" : ""}`} disabled={!editable}
@@ -164,7 +164,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
             ))}
           </div>
 
-          {editable && <Button onClick={save} busy={busy} disabled={!changed}>Übernehmen</Button>}
+          {editable && <Button onClick={save} busy={busy} disabled={!changed}>{t("settings.batteryPage.apply")}</Button>}
           {editable && <Unsaved show={!!changed} />}
         </>
       )}
@@ -187,19 +187,18 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
   const set = (i: number, patch: Partial<Window>) => onChange(windows.map((w, j) => (j === i ? { ...w, ...patch } : w)));
   return (
     <div className="time-windows">
-      <p className="hint">Zeiten mit eigenem Preis, z. B. Nachtstrom von 00:30 bis 05:30 oder die Zeitfenster eines
-        zeitvariablen Netzentgelts. Ein Fenster darf über Mitternacht gehen.</p>
+      <p className="hint">{t("settings.timeWindows.hint")}</p>
       {windows.map((w, i) => (
         <div className="time-window" key={i}>
-          <Field label="Von"><input className="input" type="time" value={w.from} onChange={(e) => set(i, { from: e.target.value })} /></Field>
-          <Field label="Bis"><input className="input" type="time" value={w.to} onChange={(e) => set(i, { to: e.target.value })} /></Field>
-          <Field label="Preis"><div className="input-unit"><AmountInput value={w.price_ct} format={amountInput}
+          <Field label={t("common.from")}><input className="input" type="time" value={w.from} onChange={(e) => set(i, { from: e.target.value })} /></Field>
+          <Field label={t("common.to")}><input className="input" type="time" value={w.to} onChange={(e) => set(i, { to: e.target.value })} /></Field>
+          <Field label={t("common.price")}><div className="input-unit"><AmountInput value={w.price_ct} format={amountInput}
             onChange={(v) => set(i, { price_ct: v ?? 0 })} /><span>ct</span></div></Field>
-          <button className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>Entfernen</button>
+          <button className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>{t("common.remove")}</button>
         </div>
       ))}
       {windows.length < 6 && <button className="link" onClick={() => onChange([...windows, { from: "00:00", to: "06:00", price_ct: 20 }])}>
-        Zeitfenster hinzufügen</button>}
+        {t("settings.timeWindows.addTimeWindow")}</button>}
     </div>
   );
 }
@@ -207,17 +206,18 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
 function PriceChart() {
   const { data } = useResource<{ kind: string; entries: { ts: number; ct: number }[] }>(`/api/prices?date=${todayIso()}`, 15 * 60_000);
   if (!data || data.kind === "fixed") return null;
-  if (!data.entries.length) return <p className="hint">Noch keine Börsenpreise für heute geladen (braucht Internet).</p>;
+  if (!data.entries.length) return <p className="hint">{t("settings.priceChart.noPrices")}</p>;
   const x = data.entries.map((e) => e.ts);
   const cheapest = data.entries.reduce((a, b) => (b.ct < a.ct ? b : a));
   return (
     <>
-      <div className="section-title">Strompreis heute</div>
-      <Chart x={x} series={[{ label: "Preis", color: "var(--grid)", values: data.entries.map((e) => e.ct), unit: "ct" }]}
-        xFormat={(ts) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })}
-        height={180} label="Strompreis heute je Viertelstunde" />
-      <p className="hint">Am günstigsten: {new Date(cheapest.ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })} Uhr
-        mit {ct(cheapest.ct)} ct/kWh (inkl. Aufschlag).</p>
+      <div className="section-title">{t("settings.priceChart.title")}</div>
+      <Chart x={x} series={[{ label: t("common.price"), color: "var(--grid)", values: data.entries.map((e) => e.ct), unit: "ct" }]}
+        xFormat={(ts) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })}
+        height={180} label={t("settings.priceChart.chartLabel")} />
+      <p className="hint">{t("settings.priceChart.cheapest", {
+        time: new Date(cheapest.ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() }),
+        price: ct(cheapest.ct) })}</p>
     </>
   );
 }
@@ -241,48 +241,49 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
   const rate = eeg.rate;
   return (
     <div className="card form">
-      <h2>Einspeisevergütung</h2>
-      <SwitchRow label="Nach EEG bestimmen" checked={form.auto} disabled={!settings || lock}
-        hint="OpenAmpere rechnet den Satz aus Inbetriebnahme, Modulleistung und Einspeiseart aus, so wie der Netzbetreiber. Sonst gilt der Wert, den du beim Tarif einträgst."
+      <h2>{t("settings.eegCard.title")}</h2>
+      <SwitchRow label={t("settings.eegCard.useEegRates")} checked={form.auto} disabled={!settings || lock}
+        hint={t("settings.eegCard.intro")}
         onChange={(auto) => setForm({ ...form, auto })} />
       {form.auto && (<>
         <div className="field-row">
-          <Field label="Inbetriebnahme">
+          <Field label={t("settings.eegCard.commissioningDate")}>
             <input className="input" type="date" value={form.date} min="2000-01-01" max={todayIso()} disabled={lock}
               onChange={(e) => setForm({ ...form, date: e.target.value })} />
           </Field>
-          <Field label="Modulleistung">
-            <div className="input-unit"><input className="input" inputMode="decimal" value={form.kwp} placeholder="z. B. 9,8" disabled={lock}
+          <Field label={t("settings.eegCard.pvCapacity")}>
+            <div className="input-unit"><input className="input" inputMode="decimal" value={form.kwp} placeholder={t("common.kwpPlaceholder")} disabled={lock}
               onChange={(e) => setForm({ ...form, kwp: e.target.value })} /><span>kWp</span></div>
           </Field>
         </div>
-        <p className="hint">Beides steht in der ersten Abrechnung des Netzbetreibers oder im Marktstammdatenregister.</p>
-        <Field label="Einspeiseart">
+        <p className="hint">{t("settings.eegCard.whereToFind")}</p>
+        <Field label={t("settings.eegCard.feedInType")}>
           <Segmented value={form.full ? "full" : "partial"} disabled={lock} onChange={(v) => setForm({ ...form, full: v === "full" })}
-            options={[["partial", "Überschuss"], ["full", "Volleinspeisung"]]} />
+            options={[["partial", t("settings.eegCard.surplus")], ["full", t("settings.eegCard.fullFeedIn")]]} />
         </Field>
-        <p className="hint">Überschuss: Du nutzt Solarstrom selbst und speist nur den Rest ein (der Normalfall mit Speicher).
-          Volleinspeisung: Alles geht ins Netz, dafür gibt es seit 30.07.2022 höhere Sätze.</p>
+        <p className="hint">{t("settings.eegCard.typeHint")}</p>
         {!dirty && (rate ? (
           <div>
-            <p><strong>{ct(rate.ct)} ct/kWh</strong> für jede eingespeiste Kilowattstunde</p>
+            <p>{tx("settings.eegCard.rate", { rate: <strong>{ct(rate.ct)} ct/kWh</strong> })}</p>
             <p className="hint">
               {rate.zones.length > 1
-                ? <>Die Leistung wird auf die Stufen aufgeteilt (§ 23c EEG): {rate.zones.map((z, i) => (
-                  <span key={z.from_kw}>{i > 0 && " + "}{num(z.kw, 3)} kW zu {ct(z.ct)} ct</span>))}.</>
-                : <>Satz bis 10 kW: {ct(rate.zones[0].ct)} ct.</>}
-              {" "}Gilt für Inbetriebnahmen vom {deDate(rate.period_from)} bis {deDate(rate.period_to)}
-              {form.full && !rate.full && ", damals noch ohne eigenen Satz für Volleinspeisung"}.
-              Vergütet wird bis {deDate(rate.funding_until)}.
+                ? tx("settings.eegCard.tiers", { tiers: <>{rate.zones.map((z, i) => (
+                  <span key={z.from_kw}>{i > 0 && " + "}{t("settings.eegCard.tier", { kw: num(z.kw, 3), price: ct(z.ct) })}</span>))}</> })
+                : <>{t("settings.eegCard.rateUpTo10Kw", { price: ct(rate.zones[0].ct) })}</>}
+              {" "}{form.full && !rate.full
+                ? t("settings.eegCard.periodWithoutFullFeedIn",
+                  { from: deDate(rate.period_from), to: deDate(rate.period_to) })
+                : t("settings.eegCard.period", { from: deDate(rate.period_from), to: deDate(rate.period_to) })}
+              {" "}{t("settings.eegCard.paidUntil", { until: deDate(rate.funding_until) })}
             </p>
-            <p className="hint">Weicht die Abrechnung deines Netzbetreibers ab, schalte die Automatik aus und trage den Wert beim Tarif ein.</p>
+            <p className="hint">{t("settings.eegCard.differentHint")}</p>
           </div>
         ) : eeg.error && <Notice kind="warn">{eeg.error}</Notice>)}
       </>)}
       {dirty && <Button disabled={!valid || lock} onClick={async () => {
         if (await save({ "tariff.feed_in_auto": form.auto, "tariff.feed_in_full": form.full, "pv.commissioning_date": form.date,
           "pv.installed_kwp": kwp })) onSaved();
-      }}>Speichern</Button>}
+      }}>{t("common.save")}</Button>}
     </div>
   );
 }
@@ -312,7 +313,7 @@ export function TariffPage({ onBack }: PageProps) {
         vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct),
         base_fee_eur_month: toNumber(t.base_fee_eur_month) || 0 }));
       setData(await putJson<{ tariffs: TariffData[]; eeg: EegView }>("/api/tariffs", { tariffs }));
-      toast("Gespeichert");
+      toast(t("common.saved"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -321,64 +322,63 @@ export function TariffPage({ onBack }: PageProps) {
   };
 
   return (
-    <SubPage title="Stromtarif" onBack={onBack}>
+    <SubPage title={t("common.electricityTariff")} onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">Damit rechnet OpenAmpere Ersparnis, Stromkosten und den Abgleich deiner Abschläge (Auswertung). Wechselst
-        du den Tarif, lege einen neuen mit Startdatum an. Ältere Zeiträume rechnet OpenAmpere weiter mit dem alten Preis.</p>
+      <p className="hint">{t("settings.tariffPage.intro")}</p>
       {data && <EegCard eeg={data.eeg} onSaved={reload} />}
-      {forms.map((t, i) => (
+      {forms.map((tariff, i) => (
         <div className="card form" key={i}>
           <div className="field-row">
-            <Field label="Gültig ab"><input className="input" type="date" value={t.valid_from}
+            <Field label={t("settings.tariffPage.validFrom")}><input className="input" type="date" value={tariff.valid_from}
               onChange={(e) => update(i, { valid_from: e.target.value })} /></Field>
-            <Field label="Art">
-              <select className="input" value={t.kind} onChange={(e) => update(i, { kind: e.target.value as TariffForm["kind"] })}>
-                <option value="fixed">Festpreis</option>
-                <option value="time">Zeitvariabel (eigene Zeitfenster)</option>
-                <option value="dynamic">Dynamisch (Börsenpreis)</option>
+            <Field label={t("settings.tariffPage.type")}>
+              <select className="input" value={tariff.kind} onChange={(e) => update(i, { kind: e.target.value as TariffForm["kind"] })}>
+                <option value="fixed">{t("settings.tariffPage.fixedPrice")}</option>
+                <option value="time">{t("settings.tariffPage.timeOfUse")}</option>
+                <option value="dynamic">{t("settings.tariffPage.dynamic")}</option>
               </select>
             </Field>
           </div>
-          {t.kind !== "dynamic" ? (<>
-            <Field label={t.kind === "time" ? "Preis außerhalb der Zeitfenster" : "Strompreis (brutto)"}
-              hint={t.kind === "time" ? undefined : "Was du pro Kilowattstunde aus dem Netz bezahlst."}>
-              <div className="input-unit"><input className="input" inputMode="decimal" value={t.price_ct}
+          {tariff.kind !== "dynamic" ? (<>
+            <Field label={tariff.kind === "time" ? t("settings.tariffPage.basePrice") : t("settings.tariffPage.priceGross")}
+              hint={tariff.kind === "time" ? undefined : t("settings.tariffPage.priceHint")}>
+              <div className="input-unit"><input className="input" inputMode="decimal" value={tariff.price_ct}
                 onChange={(e) => update(i, { price_ct: e.target.value })} /><span>ct/kWh</span></div>
             </Field>
-            {t.kind === "time" && <TimeWindows windows={t.windows} onChange={(windows) => update(i, { windows })} />}
+            {tariff.kind === "time" && <TimeWindows windows={tariff.windows} onChange={(windows) => update(i, { windows })} />}
           </>) : (
             <>
-              <Field label="Aufschlag (brutto)" hint="Alles, was zum Börsenpreis dazukommt: Netzentgelt, Umlagen, Steuern, Marge. Steht im Vertrag oder auf der Rechnung.">
-                <div className="input-unit"><input className="input" inputMode="decimal" value={t.surcharge_ct}
+              <Field label={t("settings.tariffPage.surchargeGross")} hint={t("settings.tariffPage.surchargeHint")}>
+                <div className="input-unit"><input className="input" inputMode="decimal" value={tariff.surcharge_ct}
                   onChange={(e) => update(i, { surcharge_ct: e.target.value })} /><span>ct/kWh</span></div>
               </Field>
               <div className="field-row">
-                <Field label="MwSt. auf Börsenpreis"><div className="input-unit"><input className="input" inputMode="decimal"
-                  value={t.vat_percent} onChange={(e) => update(i, { vat_percent: e.target.value })} /><span>%</span></div></Field>
-                <Field label="Preiszone">
-                  <select className="input" value={t.area} onChange={(e) => update(i, { area: e.target.value as TariffForm["area"] })}>
-                    <option value="DE">Deutschland</option><option value="AT">Österreich</option>
+                <Field label={t("settings.tariffPage.vat")}><div className="input-unit"><input className="input" inputMode="decimal"
+                  value={tariff.vat_percent} onChange={(e) => update(i, { vat_percent: e.target.value })} /><span>%</span></div></Field>
+                <Field label={t("settings.tariffPage.priceZone")}>
+                  <select className="input" value={tariff.area} onChange={(e) => update(i, { area: e.target.value as TariffForm["area"] })}>
+                    <option value="DE">{t("settings.tariffPage.germany")}</option><option value="AT">{t("settings.tariffPage.austria")}</option>
                   </select>
                 </Field>
               </div>
             </>
           )}
-          <Field label="Grundpreis" hint="Fester Betrag pro Monat, unabhängig vom Verbrauch. Steht im Vertrag.">
-            <div className="input-unit"><input className="input" inputMode="decimal" value={t.base_fee_eur_month}
-              onChange={(e) => update(i, { base_fee_eur_month: e.target.value })} /><span>€/Monat</span></div>
+          <Field label={t("common.standingCharge")} hint={t("settings.tariffPage.standingChargeHint")}>
+            <div className="input-unit"><input className="input" inputMode="decimal" value={tariff.base_fee_eur_month}
+              onChange={(e) => update(i, { base_fee_eur_month: e.target.value })} /><span>{t("settings.tariffPage.perMonthUnit")}</span></div>
           </Field>
-          {!eegActive && <Field label="Einspeisevergütung" hint="Was du pro eingespeister Kilowattstunde erhältst. Steht in der Abrechnung des Netzbetreibers.">
-            <div className="input-unit"><input className="input" inputMode="decimal" value={t.feed_in_ct}
+          {!eegActive && <Field label={t("settings.tariffPage.feedInTariff")} hint={t("settings.tariffPage.feedInHint")}>
+            <div className="input-unit"><input className="input" inputMode="decimal" value={tariff.feed_in_ct}
               onChange={(e) => update(i, { feed_in_ct: e.target.value })} /><span>ct/kWh</span></div>
           </Field>}
-          {forms.length > 1 && <button className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>Tarif entfernen</button>}
+          {forms.length > 1 && <button className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>{t("settings.tariffPage.removeTariff")}</button>}
         </div>
       ))}
-      <Button variant="secondary" onClick={add}>Tarifwechsel hinzufügen</Button>
-      <Button busy={busy} disabled={!valid || !dirty} onClick={save}>Speichern</Button>
+      <Button variant="secondary" onClick={add}>{t("settings.tariffPage.addTariffChange")}</Button>
+      <Button busy={busy} disabled={!valid || !dirty} onClick={save}>{t("common.save")}</Button>
       <Unsaved show={dirty} />
-      {forms.some((t) => t.kind === "dynamic") && (
-        <p className="hint">Börsenpreise kommen kostenlos von aWATTar (Day-Ahead-Markt). Dafür braucht der Server Internet.</p>
+      {forms.some((tariff) => tariff.kind === "dynamic") && (
+        <p className="hint">{t("settings.tariffPage.exchangePriceHint")}</p>
       )}
       <PriceChart />
     </SubPage>
@@ -405,94 +405,94 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
   }, [settings]);
 
   return (
-    <SubPage title="Verbindung" onBack={onBack}>
+    <SubPage title={t("common.connection")} onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
       <Notice kind={status?.connected ? "ok" : "warn"}>
         {status?.connected
-          ? `Verbunden mit ${status.device?.manufacturer} ${status.device?.model}`
-          : `Nicht verbunden${status?.last_error ? `: ${status.last_error}` : ""}`}
+          ? t("settings.connectionPage.connectedTo", { manufacturer: status.device?.manufacturer ?? "", model: status.device?.model ?? "" })
+          : status?.last_error ? t("settings.connectionPage.notConnectedError", { error: status.last_error }) : t("settings.connectionPage.notConnected")}
       </Notice>
-      <div className="section-title">Weitere Geräte</div>
+      <div className="section-title">{t("common.otherDevices")}</div>
       <div className="card menu">
-        <MenuRow label="Heizstab und weitere Geräte" hint="my-PV, Shelly, eigene Web-Adressen" onClick={() => onNavigate?.("device-setup")} />
-        <MenuRow label="Wallbox" hint="über evcc" onClick={() => onNavigate?.("wallbox")} />
+        <MenuRow label={t("settings.connectionPage.otherDevices")} hint={t("settings.connectionPage.otherDevicesHint")} onClick={() => onNavigate?.("device-setup")} />
+        <MenuRow label={t("common.wallbox")} hint={t("settings.connectionPage.viaEvcc")} onClick={() => onNavigate?.("wallbox")} />
       </div>
-      <div className="section-title">Smart Home</div>
+      <div className="section-title">{t("settings.connectionPage.smartHome")}</div>
       <div className="card menu">
-        <MenuRow label="Home Assistant" hint="Verbindung prüfen oder einrichten" onClick={() => onNavigate?.("apps")} />
+        <MenuRow label="Home Assistant" hint={t("settings.connectionPage.checkConnection")} onClick={() => onNavigate?.("apps")} />
       </div>
-      <div className="section-title">Netzbetreiber</div>
+      <div className="section-title">{t("common.gridOperator")}</div>
       <div className="card menu">
-        <MenuRow label="Zählerwerte" hint="Smart-Meter-Werte aus dem Kundenportal" onClick={() => onNavigate?.("gridmeter")} />
+        <MenuRow label={t("common.meterReadings")} hint={t("settings.connectionPage.gridMeterHint")} onClick={() => onNavigate?.("gridmeter")} />
       </div>
-      <div className="section-title">Wechselrichter</div>
+      <div className="section-title">{t("common.inverter")}</div>
       {settings && (
         <ConnectionForm
           key={settings["inverter.host"]}
           initial={{ host: settings["inverter.host"], port: settings["inverter.port"], unit: settings["inverter.unit"],
             driver: settings["inverter.driver"] }}
           locked={lockedKeys}
-          onSaved={() => toast("Gespeichert – verbinde neu …")}
+          onSaved={() => toast(t("settings.connectionPage.reconnecting"))}
         />
       )}
       {!status?.connected && <SetupHelp />}
 
       {status?.relocated && (
         <Notice kind="info">
-          Der Wechselrichter hatte eine neue IP-Adresse und wurde am {updatedLabel(status.relocated.ts)} automatisch
-          wiedergefunden ({status.relocated.from} → {status.relocated.to}). Tipp: Vergib ihm im Router eine feste Adresse.
+          {t("settings.connectionPage.newIpFound",
+            { when: updatedLabel(status.relocated.ts), from: status.relocated.from, to: status.relocated.to })}
         </Notice>
       )}
 
       {settings && (
         <>
-          <div className="section-title">Erweitert</div>
+          <div className="section-title">{t("common.advanced")}</div>
           <div className="card form">
-            <Field label="Abfrage alle" hint="Wie oft der Wechselrichter abgefragt wird. 10 Sekunden sind ein guter Wert." locked={locked("inverter.poll_interval")}>
+            <Field label={t("settings.connectionPage.pollEvery")} hint={t("settings.connectionPage.pollHint")} locked={locked("inverter.poll_interval")}>
               <Slider value={pollInterval} min={5} max={60} unit="s" onChange={setPollInterval} />
             </Field>
-            <Field label="Zeitlimit pro Anfrage" locked={locked("inverter.timeout")}
-              hint="Hängt der Wechselrichter hinter einem Modbus-Proxy oder im WLAN, kann ein höherer Wert Verbindungsabbrüche vermeiden.">
+            <Field label={t("settings.connectionPage.timeout")} locked={locked("inverter.timeout")}
+              hint={t("settings.connectionPage.timeoutHint")}>
               <Slider value={timeout} min={1} max={30} unit="s" onChange={setTimeoutValue} />
             </Field>
-            <Field label="Verbindung" locked={locked("inverter.connection_mode")}
+            <Field label={t("common.connection")} locked={locked("inverter.connection_mode")}
               hint={mode === "per_poll"
-                ? "OpenAmpere verbindet sich für jede Abfrage neu und gibt den Zugang danach wieder frei – für Geräte, an denen noch ein anderer Energiemanager hängt."
-                : "Eine dauerhafte Verbindung ist am schnellsten. Bricht die Verbindung eines anderen Energiemanagers (z. B. der Smartbox) ab, wähle „Pro Abfrage“."}>
+                ? t("settings.connectionPage.perPollHint")
+                : t("settings.connectionPage.permanentHint")}>
               <Segmented value={mode} onChange={setMode} disabled={locked("inverter.connection_mode")}
-                options={[["persistent", "Dauerhaft"], ["per_poll", "Pro Abfrage"]]} />
+                options={[["persistent", t("settings.connectionPage.permanent")], ["per_poll", t("settings.connectionPage.perPoll")]]} />
             </Field>
             <Button variant="secondary"
               disabled={pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
                 && mode === settings["inverter.connection_mode"]}
               onClick={() => save({ "inverter.poll_interval": pollInterval, "inverter.timeout": timeout,
-                "inverter.connection_mode": mode })}>Speichern</Button>
+                "inverter.connection_mode": mode })}>{t("common.save")}</Button>
             <Unsaved show={!(pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
               && mode === settings["inverter.connection_mode"])} />
           </div>
 
           {(status?.device?.driver ?? settings["inverter.driver"]) === "foxess" && (
             <details className="card expert">
-              <summary>Für Experten</summary>
-              <p className="hint">Nur ändern, wenn die automatische Erkennung falsch liegt. Beim Speichern wird neu verbunden.</p>
-              <Field label="FoxESS-Registerkarte" locked={locked("inverter.register_map")}>
+              <summary>{t("settings.connectionPage.experts")}</summary>
+              <p className="hint">{t("settings.connectionPage.expertHint")}</p>
+              <Field label={t("settings.connectionPage.foxessRegisterMap")} locked={locked("inverter.register_map")}>
                 <select className="input" value={registerMap} onChange={(e) => setRegisterMap(e.target.value)}>
-                  <option value="auto">Automatisch erkennen</option>
-                  <option value="foxess_h3_new">FoxESS H3 – neuere Firmware / Smart / Pro</option>
-                  <option value="foxess_h3_legacy">FoxESS H3 – ältere Firmware</option>
+                  <option value="auto">{t("common.detectAutomatically")}</option>
+                  <option value="foxess_h3_new">{t("settings.connectionPage.foxessNewer")}</option>
+                  <option value="foxess_h3_legacy">{t("settings.connectionPage.foxessOlder")}</option>
                 </select>
               </Field>
-              <Field label="Leseverfahren (Modbus-Funktionscode)" locked={locked("inverter.read_function")}>
+              <Field label={t("settings.connectionPage.readMethod")} locked={locked("inverter.read_function")}>
                 <select className="input" value={readFunction} onChange={(e) => setReadFunction(e.target.value)}>
-                  <option value="auto">Automatisch</option>
-                  <option value="input">Input-Register (FC04)</option>
-                  <option value="holding">Holding-Register (FC03)</option>
+                  <option value="auto">{t("common.automatic")}</option>
+                  <option value="input">{t("settings.connectionPage.inputRegisters")}</option>
+                  <option value="holding">{t("settings.connectionPage.holdingRegisters")}</option>
                 </select>
               </Field>
               <Button variant="secondary"
                 disabled={registerMap === settings["inverter.register_map"] && readFunction === settings["inverter.read_function"]}
                 onClick={() => save({ "inverter.register_map": registerMap, "inverter.read_function": readFunction })}>
-                Speichern und neu verbinden
+                {t("settings.connectionPage.saveAndReconnect")}
               </Button>
             </details>
           )}
@@ -505,17 +505,17 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
 // ---------------------------------------------------------------------------
 
 const LOG_KEYS: Record<string, string> = {
-  "control.enabled": "Steuerung", "control.dry_run": "Testmodus", "grid.feed_in_rule": "Einspeiseregel",
-  "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Untergrenze im Notstrombetrieb (%)",
-  min_soc_on_grid: "Notstrom-Reserve (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
-  power_w: "Ladeleistung (W)", target_soc: "Ladeziel (%)", enabled: "Eingeschaltet", soc: "Ladestand (%)",
-  consumer: "Gerät", on: "An", remote_access: "Zugriff von unterwegs", outage: "Stromausfall",
+  "control.enabled": t("settings.logKeys.control"), "control.dry_run": t("common.testMode"), "grid.feed_in_rule": t("common.feedInRule"),
+  "pv.installed_kwp": t("settings.logKeys.pvCapacityKwp"), export_limit_w: t("settings.logKeys.exportLimitW"), min_soc: t("settings.logKeys.backupLowerLimit"),
+  min_soc_on_grid: t("settings.logKeys.backupReserve"), max_soc: t("settings.logKeys.chargeLimit"), work_mode: t("common.operatingMode"),
+  power_w: t("settings.logKeys.chargingPowerW"), target_soc: t("settings.logKeys.chargeTarget"), enabled: t("settings.logKeys.switchedOn"), soc: t("settings.logKeys.stateOfCharge"),
+  consumer: t("common.device"), on: t("common.on"), remote_access: t("common.remoteAccess"), outage: t("settings.logKeys.powerCut"),
 };
 const LOG_VALUES: Record<string, string> = {
-  true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",
-  none: "keine Begrenzung", self_use: "Eigenverbrauch", feed_in_first: "Einspeisung bevorzugen", backup: "Notstromreserve",
-  peak_shaving: "Spitzenlast begrenzen", connected: "verbunden", off: "aus", login: "einrichten", logout: "getrennt",
-  starting: "wird eingerichtet", stopping: "wird getrennt", approval: "wartet auf Freigabe", failed: "fehlgeschlagen",
+  true: t("common.onValue"), false: t("common.offValue"), unknown: t("settings.logValues.unknown"), limit_60: "60 %", limit_70: "70 %", operator: t("settings.logValues.operatorValue"),
+  none: t("common.noLimitValue"), self_use: t("common.selfConsumption"), feed_in_first: t("common.preferFeedIn"), backup: t("common.backupReserve"),
+  peak_shaving: t("settings.logValues.peakShaving"), connected: t("settings.logValues.connected"), off: t("common.offValue"), login: t("settings.logValues.setUp"), logout: t("common.disconnected"),
+  starting: t("settings.logValues.settingUp"), stopping: t("settings.logValues.disconnecting"), approval: t("settings.logValues.waitingApproval"), failed: t("settings.logValues.failed"),
 };
 const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? String(v));
 
@@ -525,24 +525,23 @@ export function ControlPage({ onBack }: PageProps) {
   const { data: log, reload } = useResource<{ entries: LogEntry[] }>("/api/control/log", 30_000);
 
   return (
-    <SubPage title="Steuerung und Protokoll" onBack={onBack}>
+    <SubPage title={t("common.controlLog")} onBack={onBack}>
       <ControlModeBar />
       <Notice kind="info">
-        Solange ein anderer Energiemanager (z. B. die bisherige Smartbox) angeschlossen ist, kann er Einstellungen wieder überschreiben.
-        Prüfe nach Änderungen, ob sie erhalten bleiben.
+        {t("settings.controlPage.overwriteHint")}
       </Notice>
 
-      <div className="section-title">Protokoll</div>
+      <div className="section-title">{t("settings.controlPage.log")}</div>
       <div className="card">
-        {!log?.entries.length && <p className="hint">Noch keine Änderungen.</p>}
+        {!log?.entries.length && <p className="hint">{t("settings.controlPage.emptyState")}</p>}
         {log?.entries.map((e) => (
           <div className="log-row" key={e.ts}>
-            <div className="meta">{new Date(e.ts * 1000).toLocaleString("de-DE")}{e.dry_run && " · Testmodus"}</div>
+            <div className="meta">{new Date(e.ts * 1000).toLocaleString(LOCALE)}{e.dry_run && ` · ${t("common.testMode")}`}</div>
             <div>{Object.entries(e.details.to).map(([k, v]) => `${LOG_KEYS[k] ?? k}: ${logValue(e.details.from[k])} → ${logValue(v)}`).join(", ")}</div>
             <div className="meta">{e.result}</div>
           </div>
         ))}
-        {!!log?.entries.length && <button className="link" onClick={reload}>Aktualisieren</button>}
+        {!!log?.entries.length && <button className="link" onClick={reload}>{t("settings.controlPage.refresh")}</button>}
       </div>
 
     </SubPage>
@@ -586,22 +585,22 @@ export function AppearancePage({ onBack }: PageProps) {
     try { localStorage.setItem("openampere.theme", value); } catch { /* private mode */ }
   };
   return (
-    <SubPage title={t("Darstellung")} onBack={onBack}>
+    <SubPage title={t("common.appearance")} onBack={onBack}>
       <div className="card form">
-        <Field label={t("Design")} hint={t("„Automatisch“ folgt der Einstellung deines Geräts. Gilt nur für dieses Gerät.")}>
+        <Field label={t("settings.appearancePage.theme")} hint={t("settings.appearancePage.themeHint")}>
           <Segmented value={theme} onChange={change}
-            options={[["auto", t("Automatisch")], ["light", t("Hell")], ["dark", t("Dunkel")]]} />
+            options={[["auto", t("common.automatic")], ["light", t("settings.appearancePage.light")], ["dark", t("settings.appearancePage.dark")]]} />
         </Field>
-        <Field label={t("Sprache")} hint={t("Gilt nur für dieses Gerät. Englisch ist noch unvollständig, fehlende Texte erscheinen auf Deutsch. Übersetzungen sind willkommen.")}>
+        <Field label={t("settings.appearancePage.language")} hint={t("settings.appearancePage.languageHint")}>
           <select className="input" value={lang()} onChange={(e) => setLang(e.target.value as Lang)}>
-            {LANGUAGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.complete ? l.name : `${l.name} (${t("settings.appearancePage.preview")})`}</option>)}
           </select>
         </Field>
       </div>
       {settings && (
         <div className="card form">
-          <Field label={t("Zeitzone der Anlage")} locked={locked("timezone")}
-            hint={t("Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.")}>
+          <Field label={t("settings.appearancePage.timeZone")} locked={locked("timezone")}
+            hint={t("settings.appearancePage.timeZoneHint")}>
             <select className="input" value={settings.timezone} disabled={locked("timezone")}
               onChange={(e) => void save({ timezone: e.target.value })}>
               {[...new Set([settings.timezone, ...TIMEZONES])].map((z) => <option key={z} value={z}>{z.replace("_", " ")}</option>)}
@@ -640,7 +639,7 @@ function DownloadButton({ href, label }: { href: string; label: string }) {
     if (err.name === "NotAllowedError") setReady(file); // loading took too long for iOS: one more tap opens the sheet
     else {
       setReady(null);
-      if (err.name !== "AbortError") toast("Die Datei konnte nicht geteilt werden.", "error");
+      if (err.name !== "AbortError") toast(t("settings.downloadButton.shareFailed"), "error");
     }
   });
   const load = async () => {
@@ -649,7 +648,7 @@ function DownloadButton({ href, label }: { href: string; label: string }) {
       const response = await fetch(href, { credentials: "same-origin" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(typeof data.detail === "string" ? data.detail : `Fehler ${response.status}`);
+        throw new Error(typeof data.detail === "string" ? data.detail : t("settings.downloadButton.error", { status: response.status }));
       }
       const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "openampere";
       const blob = await response.blob();
@@ -660,7 +659,7 @@ function DownloadButton({ href, label }: { href: string; label: string }) {
       setBusy(false);
     }
   };
-  return ready ? <Button variant="secondary" onClick={() => void share(ready)}>Datei sichern oder teilen</Button>
+  return ready ? <Button variant="secondary" onClick={() => void share(ready)}>{t("settings.downloadButton.saveOrShare")}</Button>
     : <Button variant="secondary" busy={busy} onClick={() => void load()}>{label}</Button>;
 }
 
@@ -673,16 +672,16 @@ function CsvExportCard() {
   const href = `/api/export/csv?from=${from}&to=${to}&resolution=${resolution}`;
   return (
     <div className="card form">
-      <h2>Als Tabelle exportieren</h2>
-      <p className="hint">Energiewerte als CSV-Datei, z. B. für Excel, Numbers oder die Steuererklärung.</p>
+      <h2>{t("settings.csvExportCard.title")}</h2>
+      <p className="hint">{t("settings.csvExportCard.hint")}</p>
       <div className="field-row">
-        <Field label="Von"><input className="input" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-        <Field label="Bis"><input className="input" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field>
+        <Field label={t("common.from")}><input className="input" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label={t("common.to")}><input className="input" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field>
       </div>
       <Segmented value={resolution} onChange={setResolution}
-        options={[["15m", "15 min"], ["60m", "Stunde"], ["day", "Tag"], ["month", "Monat"]]} />
-      {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : valid ? <DownloadButton href={href} label="CSV herunterladen" />
-        : <p className="hint">Bitte einen gültigen Zeitraum wählen.</p>}
+        options={[["15m", "15 min"], ["60m", t("settings.csvExportCard.hour")], ["day", t("common.day")], ["month", t("common.month")]]} />
+      {DEMO ? <p className="hint">{t("settings.csvExportCard.notInDemo")}</p> : valid ? <DownloadButton href={href} label={t("settings.csvExportCard.downloadCsv")} />
+        : <p className="hint">{t("settings.csvExportCard.invalidPeriod")}</p>}
     </div>
   );
 }
@@ -697,23 +696,27 @@ function BackupLink() {
     const timer = window.setInterval(fetchLink, 5 * 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  if (!url) return <Button variant="secondary" disabled>Datensicherung herunterladen</Button>;
-  return <a className="btn secondary" href={url} {...downloadProps}>Datensicherung herunterladen</a>;
+  if (!url) return <Button variant="secondary" disabled>{t("common.downloadBackup")}</Button>;
+  return <a className="btn secondary" href={url} {...downloadProps}>{t("common.downloadBackup")}</a>;
 }
 
 type StorageUsage = { db_bytes: number | null; free_bytes: number | null; samples: number; first_sample: number | null;
   bytes_per_year: number; retention_days: number };
-const RETENTION: [number, string][] = [[30, "30 Tage"], [365, "1 Jahr"], [1825, "5 Jahre"], [3650, "10 Jahre"], [0, "Unbegrenzt"]];
+const RETENTION: [number, string][] = [[30, t("settings.retention.days", { days: 30 })], [365, t("settings.retention.years", { count: 1 })],
+  [1825, t("settings.retention.years", { count: 5 })], [3650, t("settings.retention.years", { count: 10 })], [0, t("settings.retention.unlimited")]];
 const size = (bytes: number) => (bytes >= 1e9 ? `${num(bytes / 1e9, 1)} GB` : `${num(Math.max(bytes, 1e6) / 1e6, 0)} MB`);
 
 /** What the chosen retention costs: detail readings need about 0.4 GB per year with a reading every 10 s. */
 function storageHint(u: StorageUsage, days: number): string {
-  const now = u.db_bytes != null ? `Die Datenbank ist jetzt ${size(u.db_bytes)} groß` : "";
-  const free = u.free_bytes != null ? `, frei sind noch ${size(u.free_bytes)}.` : ".";
-  const need = days > 0 ? ` Für ${days >= 365 ? `${num(days / 365, 0)} ${days >= 730 ? "Jahre" : "Jahr"}` : `${days} Tage`} Detaildaten `
-    + `braucht OpenAmpere etwa ${size(u.bytes_per_year * days / 365)}.`
-    : ` Ohne Grenze wächst sie um etwa ${size(u.bytes_per_year)} pro Jahr.`;
-  return now + free + need;
+  // the server reports both sizes or neither
+  const now = u.db_bytes == null ? null : u.free_bytes == null
+    ? t("settings.storageHint.size", { size: size(u.db_bytes) })
+    : t("settings.storageHint.sizeAndFree", { size: size(u.db_bytes), free: size(u.free_bytes) });
+  const period = days >= 365 ? t("settings.storageHint.years", { count: Math.round(days / 365) }) : t("settings.storageHint.days", { days });
+  const need = days > 0
+    ? t("settings.storageHint.needed", { period, size: size(u.bytes_per_year * days / 365) })
+    : t("settings.storageHint.growth", { size: size(u.bytes_per_year) });
+  return now ? `${now} ${need}` : need;
 }
 
 export function DataPage({ onBack }: PageProps) {
@@ -723,14 +726,14 @@ export function DataPage({ onBack }: PageProps) {
   const { data: usage } = useResource<StorageUsage>("/api/storage");
   useEffect(() => { if (settings) setDays(settings["storage.raw_retention_days"]); }, [settings]);
   const options: [string, string][] = RETENTION.map(([d, label]) => [String(d), label]);
-  if (!RETENTION.some(([d]) => d === days)) options.unshift([String(days), `${days} Tage`]);
+  if (!RETENTION.some(([d]) => d === days)) options.unshift([String(days), t("settings.dataPage.days", { days })]);
 
   return (
-    <SubPage title="Daten & Sicherung" onBack={onBack}>
+    <SubPage title={t("common.dataBackup")} onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
       <div className="card form">
-        <Field label="Detaildaten aufbewahren" locked={locked("storage.raw_retention_days")}
-          hint="Messwerte alle paar Sekunden für die Leistungskurve. Viertelstunden- und Tageswerte bleiben immer erhalten.">
+        <Field label={t("settings.dataPage.retention")} locked={locked("storage.raw_retention_days")}
+          hint={t("settings.dataPage.retentionHint")}>
           <select className="input" value={String(days)} disabled={locked("storage.raw_retention_days")}
             onChange={(e) => setDays(Number(e.target.value))}>
             {options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -738,20 +741,19 @@ export function DataPage({ onBack }: PageProps) {
         </Field>
         {usage && <p className="hint">{storageHint(usage, days)}</p>}
         <Button variant="secondary" disabled={!settings || days === settings["storage.raw_retention_days"]}
-          onClick={() => save({ "storage.raw_retention_days": days })}>Speichern</Button>
+          onClick={() => save({ "storage.raw_retention_days": days })}>{t("common.save")}</Button>
         <Unsaved show={!!settings && days !== settings["storage.raw_retention_days"]} />
       </div>
       <CloudImportCard />
       <CsvExportCard />
       <div className="card form">
-        <h2>Sicherung</h2>
-        <p className="hint">Lädt die komplette Datenbank mit allen Messwerten und Einstellungen herunter. Bewahre die Datei sicher auf.
-          Passwörter und API-Schlüssel sind nicht enthalten.</p>
-        {DEMO ? <p className="hint">In der Demo nicht verfügbar.</p> : auth?.authenticated ? (
-          SHARE_FILES ? <DownloadButton href="/api/backup" label="Datensicherung herunterladen" /> : <BackupLink />
+        <h2>{t("settings.dataPage.backup")}</h2>
+        <p className="hint">{t("settings.dataPage.backupHint")}</p>
+        {DEMO ? <p className="hint">{t("settings.dataPage.notInDemo")}</p> : auth?.authenticated ? (
+          SHARE_FILES ? <DownloadButton href="/api/backup" label={t("common.downloadBackup")} /> : <BackupLink />
         ) : (
           <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
-            Anmelden zum Herunterladen
+            {t("settings.dataPage.logInToDownload")}
           </Button>
         )}
       </div>
@@ -764,37 +766,35 @@ export function DataPage({ onBack }: PageProps) {
 export function AboutPage({ onBack, onNavigate }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
   return (
-    <SubPage title="Über OpenAmpere" onBack={onBack}>
+    <SubPage title={t("common.aboutOpenampere")} onBack={onBack}>
       <div className="card">
         <dl className="facts">
-          <dt>Version</dt><dd>{status?.version ?? "–"}</dd>
+          <dt>{t("settings.aboutPage.version")}</dt><dd>{status?.version ?? "–"}</dd>
         </dl>
       </div>
       {!DEMO && <UpdatesCard />}
       <div className="card">
-        <p>OpenAmpere ist ein unabhängiges Community-Projekt für Solaranlagen mit Batteriespeicher. Es läuft komplett lokal und braucht keine Cloud.</p>
-        <p className="hint">Alle genannten Produktnamen und Marken gehören ihren jeweiligen Inhabern. Rechtliche Hinweise und Hintergrund: siehe README im Quellcode.</p>
-        <p className="hint">FoxESS-Registerdefinitionen basieren auf foxess_modbus (MIT-Lizenz).</p>
-        <p className="hint">Wallboxen steuert <a href="https://evcc.io" target="_blank" rel="noreferrer">evcc</a>, ein
-          eigenständiges Open-Source-Projekt. OpenAmpere nutzt dessen offene Schnittstelle. Danke an die evcc-Community!</p>
-        {!DEMO && <p className="hint">Diese Installation betreibst du selbst auf deinem Rechner. OpenAmpere sendet keine
-          Daten an das Projekt.</p>}
+        <p>{t("settings.aboutPage.intro")}</p>
+        <p className="hint">{t("settings.aboutPage.trademarks")}</p>
+        <p className="hint">{t("settings.aboutPage.foxessCredit")}</p>
+        <p className="hint">{tx("settings.aboutPage.evccCredit", { link: <a href="https://evcc.io" target="_blank" rel="noreferrer">evcc</a> })}</p>
+        {!DEMO && <p className="hint">{t("settings.aboutPage.selfHosted")}</p>}
       </div>
       <div className="card menu">
         <a className="menu-row" href={IMPRINT_URL} target="_blank" rel="noopener noreferrer">
-          <span>Projektseite und Impressum<span className="menu-hint">Wer hinter OpenAmpere steht</span></span><span aria-hidden>↗</span>
+          <span>{t("settings.aboutPage.projectWebsite")}<span className="menu-hint">{t("settings.aboutPage.projectWebsiteHint")}</span></span><span aria-hidden>↗</span>
         </a>
         <a className="menu-row" href={REPO_URL} target="_blank" rel="noopener noreferrer">
-          <span>Quellcode auf GitHub<span className="menu-hint">github.com/Gr33ndev/OpenAmpere</span></span><span aria-hidden>↗</span>
+          <span>{t("settings.aboutPage.sourceCode")}<span className="menu-hint">github.com/Gr33ndev/OpenAmpere</span></span><span aria-hidden>↗</span>
         </a>
         <a className="menu-row" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
-          <span>Fehler melden &amp; Ideen<span className="menu-hint">GitHub Issues</span></span><span aria-hidden>↗</span>
+          <span>{t("settings.aboutPage.reportBugs")}<span className="menu-hint">GitHub Issues</span></span><span aria-hidden>↗</span>
         </a>
         <button className="menu-row" onClick={() => onNavigate?.("licenses")}>
-          <span>Open-Source-Lizenzen<span className="menu-hint">Verwendete Komponenten und ihre Lizenzen</span></span><Chevron />
+          <span>{t("common.openSourceLicenses")}<span className="menu-hint">{t("settings.aboutPage.licensesHint")}</span></span><Chevron />
         </button>
       </div>
-      <p className="hint center">OpenAmpere ist freie Software unter der MIT-Lizenz.</p>
+      <p className="hint center">{t("settings.aboutPage.license")}</p>
     </SubPage>
   );
 }
@@ -804,7 +804,7 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
 function duration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
-  return h ? `${h} Std. ${m} Min.` : `${m} Min.`;
+  return h ? t("settings.duration.hoursMinutes", { h, m }) : t("settings.duration.minutes", { m });
 }
 
 function CloudImportCard() {
@@ -837,11 +837,11 @@ function CloudImportCard() {
     }
   };
   const uploadZip = async (file: File) => {
-    setUpload("Lese Datei …");
+    setUpload(t("settings.cloudImportCard.readingFile"));
     try {
       const data = await postFile<{ days: number; inserted: number }>("/api/import/cloud/file", file);
-      setUpload(`${data.days} Tage gelesen, ${data.inserted} Viertelstunden übernommen.`);
-      toast("Import abgeschlossen");
+      setUpload(t("settings.cloudImportCard.fileResult", { days: data.days, inserted: data.inserted }));
+      toast(t("settings.cloudImportCard.importComplete"));
     } catch (e) {
       setUpload(null);
       toast((e as Error).message, "error");
@@ -852,43 +852,42 @@ function CloudImportCard() {
   const done = (job?.work_done ?? 0) + (job?.soc_done ?? 0);
   const progress = total ? done / (2 * total) : 0;
   // two steps, the percentage covers both: energy values first, then the battery's state of charge (#17)
-  const phaseText = !job?.phase ? "Verbinde mit der EKD-Cloud …"
-    : job.phase === "search" ? "Suche den Beginn deiner Aufzeichnungen …"
-    : job?.phase === "soc" ? `Schritt 2 von 2: Ladestand des Speichers, ${job.soc_done} von ${total} Tagen`
-    : `Schritt 1 von 2: Energiewerte, ${job?.work_done ?? 0} von ${total} Tagen`;
+  const phaseText = !job?.phase ? t("settings.cloudImportCard.connecting")
+    : job.phase === "search" ? t("settings.cloudImportCard.findingStart")
+    : job?.phase === "soc" ? t("settings.cloudImportCard.stepBattery", { done: job.soc_done ?? 0, total })
+    : t("settings.cloudImportCard.stepEnergy", { done: job?.work_done ?? 0, total });
 
   return (
     <>
-      <div className="section-title">Verlauf aus der EKD-Cloud</div>
+      <div className="section-title">{t("settings.cloudImportCard.title")}</div>
       <div className="card form">
-        <p className="hint">Übernimm deinen Verlauf aus der App „Ampere.IQ“, solange die EKD-Cloud erreichbar ist. Den Schlüssel
-          findest du in der Ampere.IQ-App unter <strong>Mehr → Konfiguration API-Zugang</strong>.</p>
-        <p className="hint"><strong>OpenAmpere ist unabhängig und hat nichts mit EKD zu tun.</strong></p>
-        <LearnMore summary="Mehr dazu">
-          <p className="hint">OpenAmpere ist ein unabhängiges Projekt und hat nichts mit der Energiekonzepte Deutschland
-            GmbH (EKD) zu tun. Es wurde von EKD weder beauftragt noch autorisiert. Der Import nutzt ausschließlich die
-            Kunden-API der EKD-Cloud mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber.</p>
+        <p className="hint">{tx("settings.cloudImportCard.intro", { menu: <strong>Mehr → Konfiguration API-Zugang</strong> })}</p>
+        <p className="hint"><strong>{t("settings.cloudImportCard.independent")}</strong></p>
+        <LearnMore summary={t("settings.cloudImportCard.learnMore")}>
+          <p className="hint">{t("settings.cloudImportCard.disclaimer")}</p>
         </LearnMore>
 
         {showKeyForm ? (
           <form className="field" onSubmit={(e) => { e.preventDefault(); void saveKey(key.trim()); }}>
-            <span className="field-label">API-Schlüssel</span>
+            <span className="field-label">{t("settings.cloudImportCard.apiKey")}</span>
             <input className="input" type="password" autoComplete="off" spellCheck={false} value={key}
-              onChange={(e) => setKey(e.target.value)} placeholder="Schlüssel hier einfügen" />
-            <span className="field-hint">Wird nur auf diesem Server gespeichert und nie wieder angezeigt.</span>
+              onChange={(e) => setKey(e.target.value)} placeholder={t("settings.cloudImportCard.keyPlaceholder")} />
+            <span className="field-hint">{t("settings.cloudImportCard.keyHint")}</span>
             <div className="button-row">
-              <Button type="submit" disabled={!key.trim()}>Schlüssel speichern</Button>
-              {editing && <Button variant="secondary" onClick={() => { setEditing(false); setKey(""); }}>Abbrechen</Button>}
+              <Button type="submit" disabled={!key.trim()}>{t("settings.cloudImportCard.saveKey")}</Button>
+              {editing && <Button variant="secondary" onClick={() => { setEditing(false); setKey(""); }}>{t("common.cancel")}</Button>}
             </div>
           </form>
         ) : (
           <div className="key-row">
-            <span>API-Schlüssel {keyInfo?.set ? <strong>hinterlegt {keyInfo.hint ?? ""}</strong> : "fehlt"}
-              {keyLocked && <span className="lock">fest eingestellt</span>}</span>
+            <span>{keyInfo?.set
+              ? tx("settings.cloudImportCard.keyStored", { status: <strong>{t("settings.cloudImportCard.keyStoredStatus", { hint: keyInfo.hint ?? "" })}</strong> })
+              : t("settings.cloudImportCard.keyMissing")}
+              {keyLocked && <span className="lock">{t("common.fixedSetting")}</span>}</span>
             {!keyLocked && (
               <span className="key-actions">
-                <button className="link" onClick={() => setEditing(true)}>Ändern</button>
-                {keyInfo?.set && <button className="link" onClick={() => void saveKey("")}>Entfernen</button>}
+                <button className="link" onClick={() => setEditing(true)}>{t("common.change")}</button>
+                {keyInfo?.set && <button className="link" onClick={() => void saveKey("")}>{t("common.remove")}</button>}
               </span>
             )}
           </div>
@@ -897,38 +896,37 @@ function CloudImportCard() {
         {job && job.status !== "idle" && (
           <div className="import-status">
             <div className="ratio-head">
-              <span>{job.status === "done" ? "Import abgeschlossen" : job.status === "paused" ? "Pausiert" : job.status === "error" ? "Abgebrochen" : phaseText}</span>
-              {total > 0 && <strong className="nowrap">{Math.round(progress * 100)} % insgesamt</strong>}
+              <span>{job.status === "done" ? t("settings.cloudImportCard.importComplete") : job.status === "paused" ? t("settings.cloudImportCard.paused") : job.status === "error" ? t("settings.cloudImportCard.stopped") : phaseText}</span>
+              {total > 0 && <strong className="nowrap">{t("settings.cloudImportCard.overall", { percent: Math.round(progress * 100) })}</strong>}
             </div>
             {total > 0 && <div className="bar"><div className="bar-fill" style={{ width: `${progress * 100}%` }} /></div>}
-            {job.start && <div className="field-hint">Zeitraum {new Date(job.start).toLocaleDateString("de-DE")} – {new Date(job.end ?? job.start).toLocaleDateString("de-DE")}
-              {job.imported ? ` · ${job.imported.toLocaleString("de-DE")} Viertelstunden Energiewerte übernommen` : ""}</div>}
-            {job.status === "running" && job.eta_seconds ? <div className="field-hint">Noch ca. {duration(job.eta_seconds)}</div> : null}
+            {job.start && <div className="field-hint">{t("settings.cloudImportCard.period", { from: new Date(job.start).toLocaleDateString(LOCALE),
+              to: new Date(job.end ?? job.start).toLocaleDateString(LOCALE) })}
+              {job.imported ? ` · ${t("settings.cloudImportCard.imported", { count: job.imported.toLocaleString(LOCALE) })}` : ""}</div>}
+            {job.status === "running" && job.eta_seconds ? <div className="field-hint">{t("settings.cloudImportCard.timeLeft", { time: duration(job.eta_seconds) })}</div> : null}
           </div>
         )}
         {job?.notice && job.status === "running" && <Notice kind="warn">{job.notice}</Notice>}
         {job?.status === "error" && job.error && <Notice kind="error">{job.error}</Notice>}
 
         {job?.status === "running" ? (
-          <Button variant="secondary" busy={busy} onClick={() => void action("/api/import/cloud/stop")}>Pausieren</Button>
+          <Button variant="secondary" busy={busy} onClick={() => void action("/api/import/cloud/stop")}>{t("settings.cloudImportCard.pause")}</Button>
         ) : (
           <Button busy={busy} disabled={!job?.key_set} onClick={() => void action("/api/import/cloud/start")}>
-            {job?.status === "paused" ? "Fortsetzen" : job?.status === "error" ? "Erneut versuchen" : job?.status === "done" ? "Erneut abgleichen" : "Import starten"}
+            {job?.status === "paused" ? t("settings.cloudImportCard.resume") : job?.status === "error" ? t("settings.cloudImportCard.tryAgain") : job?.status === "done" ? t("settings.cloudImportCard.syncAgain") : t("settings.cloudImportCard.startImport")}
           </Button>
         )}
-        {job && !job.key_set && <p className="field-hint">Zum Starten zuerst den API-Schlüssel speichern.</p>}
+        {job && !job.key_set && <p className="field-hint">{t("settings.cloudImportCard.saveKeyFirst")}</p>}
         <p className="hint">
-          Die EKD-Cloud erlaubt nur etwa eine Abfrage pro Minute, deshalb dauert der Import einige Stunden (rund 2 Minuten pro Tag).
-          Er läuft im Hintergrund weiter – auch wenn du die App schließt oder OpenAmpere neu startest.
-          Eigene Messwerte von OpenAmpere werden dabei nie überschrieben.
+          {t("settings.cloudImportCard.durationHint")}
         </p>
       </div>
 
       <div className="card form">
-        <h2>Aus Export-Datei übernehmen</h2>
-        <p className="hint">Hast du deinen Verlauf schon mit dem Export-Werkzeug gesichert? Dann den Export-Ordner als ZIP hier auswählen.</p>
+        <h2>{t("settings.cloudImportCard.fromExportFile")}</h2>
+        <p className="hint">{t("settings.cloudImportCard.exportFileHint")}</p>
         <label className="btn secondary file-button">
-          ZIP-Datei auswählen
+          {t("settings.cloudImportCard.chooseZipFile")}
           <input type="file" accept=".zip,application/zip" hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadZip(f); e.target.value = ""; }} />
         </label>
@@ -948,17 +946,17 @@ function LicenseRow({ pkg }: { pkg: LicensePackage }) {
   return (
     <div className="license-item">
       <button className="menu-row" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span>{pkg.name}{pkg.version && <span className="menu-hint">Version {pkg.version}</span>}</span>
+        <span>{pkg.name}{pkg.version && <span className="menu-hint">{t("settings.licenseRow.version", { version: pkg.version })}</span>}</span>
         <span className="license-meta">
-          <span className="pill">{pkg.license || "siehe Text"}</span>
+          <span className="pill">{pkg.license || t("settings.licenseRow.seeText")}</span>
           <span className={`chevron ${open ? "open" : ""}`} aria-hidden>›</span>
         </span>
       </button>
       {open && (
         <div className="license-body">
-          {pkg.url && <a className="link" href={pkg.url.replace(/^git\+/, "")} target="_blank" rel="noopener noreferrer">Projektseite</a>}
-          {pkg.texts.length ? pkg.texts.map((t, i) => <pre key={i} className="license-text">{t}</pre>)
-            : <p className="hint">Lizenz: {pkg.license}</p>}
+          {pkg.url && <a className="link" href={pkg.url.replace(/^git\+/, "")} target="_blank" rel="noopener noreferrer">{t("settings.licenseRow.projectPage")}</a>}
+          {pkg.texts.length ? pkg.texts.map((text, i) => <pre key={i} className="license-text">{text}</pre>)
+            : <p className="hint">{t("settings.licenseRow.license", { license: pkg.license })}</p>}
         </div>
       )}
     </div>
@@ -968,13 +966,12 @@ function LicenseRow({ pkg }: { pkg: LicensePackage }) {
 export function LicensesPage({ onBack }: PageProps) {
   const { data, error, reload } = useResource<LicenseData>(LICENSES_DATA_URL);
   return (
-    <SubPage title="Open-Source-Lizenzen" onBack={onBack}>
+    <SubPage title={t("common.openSourceLicenses")} onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
       {data && (
         <>
           <p className="hint">
-            OpenAmpere ist freie Software unter der MIT-Lizenz und baut auf diesen Open-Source-Komponenten auf.
-            Danke an alle, die sie entwickeln!
+            {t("settings.licensesPage.intro")}
           </p>
           <div className="card menu"><LicenseRow pkg={data.self} /></div>
           {data.groups.map((g) => (
@@ -993,19 +990,19 @@ export function LicensesPage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
-const watt = (w: number | null | undefined) => (w == null ? "–" : `${w.toLocaleString("de-DE")} W`);
+const watt = (w: number | null | undefined) => (w == null ? "–" : `${w.toLocaleString(LOCALE)} W`);
 
 const FEED_IN_RULES: { id: FeedInRule; label: string; hint: string }[] = [
-  { id: "limit_60", label: "60 % der Modulleistung",
-    hint: "Solarspitzengesetz: Inbetriebnahme ab 25.02.2025, solange kein intelligentes Messsystem mit Steuerbox eingebaut ist." },
-  { id: "limit_70", label: "70 % der Modulleistung",
-    hint: "Frühere Regel. Entfallen für Anlagen bis 25 kWp mit Inbetriebnahme nach dem 14.09.2022 und für ältere Anlagen bis 7 kWp." },
-  { id: "operator", label: "Fester Wert vom Netzbetreiber",
-    hint: "Steht in der Netzanschlusszusage, z. B. Nulleinspeisung. Jede Erhöhung braucht seine schriftliche Zustimmung." },
-  { id: "none", label: "Keine Begrenzung",
-    hint: "Weder Gesetz noch Netzanschlusszusage begrenzen die Einspeisung." },
-  { id: "unknown", label: "Weiß ich nicht",
-    hint: "Frag deinen Installationsbetrieb oder Netzbetreiber. Bis dahin braucht jede Erhöhung dessen schriftliche Zustimmung." },
+  { id: "limit_60", label: t("settings.feedInRules.percentOfPv", { percent: 60 }),
+    hint: t("settings.feedInRules.limit60Hint") },
+  { id: "limit_70", label: t("settings.feedInRules.percentOfPv", { percent: 70 }),
+    hint: t("settings.feedInRules.limit70Hint") },
+  { id: "operator", label: t("settings.feedInRules.operator"),
+    hint: t("settings.feedInRules.operatorHint") },
+  { id: "none", label: t("common.noLimit"),
+    hint: t("settings.feedInRules.noneHint") },
+  { id: "unknown", label: t("settings.feedInRules.unknown"),
+    hint: t("settings.feedInRules.unknownHint") },
 ];
 
 function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
@@ -1027,23 +1024,23 @@ function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
 
   return (
     <>
-      <div className="section-title">Deine Anlage</div>
+      <div className="section-title">{t("settings.feedInRuleCard.title")}</div>
       <div className="card form">
-        <Field label="Installierte Modulleistung" locked={locked("pv.installed_kwp")}
-          hint="Summe aller Module, z. B. aus dem Marktstammdatenregister oder der Rechnung. Die Prozentregeln beziehen sich darauf – nicht auf den Wechselrichter.">
+        <Field label={t("settings.feedInRuleCard.installedPvCapacity")} locked={locked("pv.installed_kwp")}
+          hint={t("settings.feedInRuleCard.pvCapacityHint")}>
           <div className="input-unit">
-            <input className="input" inputMode="decimal" value={kwp} placeholder="z. B. 9,8" disabled={locked("pv.installed_kwp")}
+            <input className="input" inputMode="decimal" value={kwp} placeholder={t("common.kwpPlaceholder")} disabled={locked("pv.installed_kwp")}
               onChange={(e) => setKwp(e.target.value)} />
             <span>kWp</span>
           </div>
         </Field>
         {kwpChanged && (
           <Button onClick={async () => { if (await save({ "pv.installed_kwp": kwp.trim() === "" ? 0 : kwpValue })) onSaved(); }}>
-            Modulleistung speichern
+            {t("settings.feedInRuleCard.savePvCapacity")}
           </Button>
         )}
       </div>
-      <div className="section-title">Welche Begrenzung gilt für dich?</div>
+      <div className="section-title">{t("settings.feedInRuleCard.ruleQuestion")}</div>
       <div className="card choices">
         {FEED_IN_RULES.map((r) => (
           <button key={r.id} className={`choice ${rule === r.id ? "active" : ""}`} disabled={locked("grid.feed_in_rule")}
@@ -1054,15 +1051,14 @@ function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
         ))}
       </div>
       {declareNone && (
-        <Dialog title="Keine Begrenzung erklären?" danger confirm="Erklärung abgeben" disabled={!declared}
+        <Dialog title={t("settings.feedInRuleCard.declareTitle")} danger confirm={t("settings.feedInRuleCard.submitDeclaration")} disabled={!declared}
           onCancel={() => setDeclareNone(false)}
           onConfirm={async () => { setDeclareNone(false); if (await save({ "grid.feed_in_rule": "none" })) onSaved(); }}>
-          <p>Danach kannst du die Einspeisung bis zur Leistung des Wechselrichters freigeben, ohne weitere Nachfrage.</p>
+          <p>{t("settings.feedInRuleCard.declareHint")}</p>
           <Checkbox checked={declared} onChange={setDeclared}>
-            Ich erkläre, dass für meine Anlage <strong>weder gesetzlich noch in der Netzanschlusszusage</strong> eine
-            Begrenzung der Einspeisung gilt – zum Beispiel, weil ein intelligentes Messsystem mit Steuerbox eingebaut ist.
+            {tx("settings.feedInRuleCard.declaration", { neither: <strong>{t("settings.feedInRuleCard.neitherLawNorGrid")}</strong> })}
           </Checkbox>
-          <p className="hint">Die Erklärung wird im Protokoll gespeichert.</p>
+          <p className="hint">{t("settings.feedInRuleCard.declarationLogged")}</p>
         </Dialog>
       )}
     </>
@@ -1086,7 +1082,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
   const legalMax = current?.legal_max_w ?? null;
   const cap = legalMax != null ? Math.min(legalMax, rated ?? legalMax) : rated;
   const hasPreset = cap != null && (legalMax != null || rule === "none");
-  const presetLabel = rule === "none" ? "Keine Begrenzung" : `${rule === "limit_70" ? 70 : 60} % (${watt(cap)})`;
+  const presetLabel = rule === "none" ? t("common.noLimit") : `${rule === "limit_70" ? 70 : 60} % (${watt(cap)})`;
 
   // start from the current value, so nothing is "changed" (and no warning shown) until the user picks something
   useEffect(() => {
@@ -1102,7 +1098,8 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
   const unchanged = valid && target === current?.limit_w;
   const editable = !!status?.control.enabled && !!current?.supported;
   const canSubmit = editable && valid && !unchanged && (!needsConsent || (confirmed && reference.trim().length >= 3));
-  const pct = (w: number | null | undefined) => (kwp && w != null ? ` (${Math.round(w / (kwp * 10))} % der Modulleistung)` : "");
+  const pct = (w: number | null | undefined) =>
+    (kwp && w != null ? ` (${t("settings.exportLimitPage.percentOfPv", { percent: Math.round(w / (kwp * 10)) })})` : "");
 
   const submit = async () => {
     setDialog(false);
@@ -1111,7 +1108,7 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
       const r = await putJson<{ dry_run: boolean; result?: string }>("/api/grid/export-limit", {
         limit_w: target, grid_operator_confirmed: confirmed, confirmation_reference: reference,
       });
-      toast(r.dry_run ? "Testmodus: Änderung wurde nur protokolliert" : r.result === "ok" ? "Einspeisebegrenzung geändert" : r.result ?? "Gespeichert");
+      toast(r.dry_run ? t("settings.exportLimitPage.testModeLogged") : r.result === "ok" ? t("settings.exportLimitPage.changed") : r.result ?? t("common.saved"));
       setConfirmed(false);
       setReference("");
       reload();
@@ -1123,78 +1120,73 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
   };
 
   return (
-    <SubPage title="Einspeisebegrenzung" onBack={onBack}>
-      <Notice kind="warn"><strong>Rechtlich vorgegeben:</strong> Wer mehr einspeist als erlaubt, riskiert Zahlungen an den
-        Netzbetreiber.</Notice>
+    <SubPage title={t("common.exportLimit")} onBack={onBack}>
+      <Notice kind="warn"><strong>{t("settings.exportLimitPage.legalLabel")}</strong>{" "}{t("settings.exportLimitPage.penaltyWarning")}</Notice>
       <LearnMore>
-        <p className="hint">Die Begrenzung folgt aus dem Gesetz (z. B. 60 % der Modulleistung nach dem Solarspitzengesetz)
-          oder aus deiner Netzanschlusszusage. Verstöße können nach § 52 EEG Zahlungen auslösen. Normalerweise stellt der
-          Installationsbetrieb die Begrenzung ein.</p>
+        <p className="hint">{t("settings.exportLimitPage.legalHint")}</p>
       </LearnMore>
 
       <FeedInRuleCard onSaved={reload} />
 
       {!current ? <LoadState error={error} onRetry={reload} /> : (
         <>
-          <div className="section-title">Aktuell im Wechselrichter</div>
+          <div className="section-title">{t("settings.exportLimitPage.current")}</div>
           <div className="card">
             {current.supported ? (
               <>
                 <div className="big-value">{watt(current.limit_w)}</div>
                 <p className="hint">
-                  {kwp ? `${Math.round((current.limit_w ?? 0) / (kwp * 10))} % von ${kwp.toLocaleString("de-DE")} kWp` : "Modulleistung nicht angegeben"}
-                  {rated ? ` · Wechselrichter max. ${watt(rated)}` : ""}
+                  {kwp ? t("settings.exportLimitPage.percentOfKwp", { percent: Math.round((current.limit_w ?? 0) / (kwp * 10)), kwp: kwp.toLocaleString(LOCALE) })
+                    : t("settings.exportLimitPage.pvCapacityMissing")}
+                  {rated ? ` · ${t("settings.exportLimitPage.inverterMax", { power: watt(rated) })}` : ""}
                 </p>
                 {legalMax != null && current.limit_w != null && current.limit_w > legalMax && (
-                  <Notice kind="error">Der eingestellte Wert liegt über dem, was die gewählte Regel erlaubt ({watt(legalMax)}).</Notice>
+                  <Notice kind="error">{t("settings.exportLimitPage.aboveRule", { max: watt(legalMax) })}</Notice>
                 )}
               </>
             ) : (
-              <p className="hint">Bei diesem Gerät lässt sich die Einspeisebegrenzung nicht über Modbus lesen oder ändern.
-                Wende dich an einen Elektrofachbetrieb.</p>
+              <p className="hint">{t("settings.exportLimitPage.notSupported")}</p>
             )}
           </div>
 
           {current.supported && (
             <>
-              <div className="section-title">Neue Begrenzung</div>
+              <div className="section-title">{t("settings.exportLimitPage.newLimit")}</div>
               {(rule === "limit_60" || rule === "limit_70") && !kwp && (
-                <Notice kind="info">Gib oben die Modulleistung an, damit OpenAmpere den erlaubten Wert berechnen kann.</Notice>
+                <Notice kind="info">{t("settings.exportLimitPage.enterPvCapacity")}</Notice>
               )}
               <ControlModeBar compact />
               <div className="card form">
                 {hasPreset && (
                   <Segmented value={preset} onChange={setPreset} disabled={!editable}
-                    options={[["max", presetLabel], ["custom", "Eigener Wert"]]} />
+                    options={[["max", presetLabel], ["custom", t("settings.exportLimitPage.customValue")]]} />
                 )}
                 {preset === "custom" && (
-                  <Field label="Maximale Einspeiseleistung" hint={cap != null ? `Höchstens ${watt(cap)}` : undefined}>
+                  <Field label={t("settings.exportLimitPage.maxFeedIn")} hint={cap != null ? t("settings.exportLimitPage.atMost", { max: watt(cap) }) : undefined}>
                     <div className="input-unit">
                       <input className="input" inputMode="numeric" value={custom} disabled={!editable}
-                        onChange={(e) => setCustom(e.target.value)} placeholder={cap != null ? `0 – ${cap}` : "z. B. 6000"} />
+                        onChange={(e) => setCustom(e.target.value)} placeholder={cap != null ? `0 – ${cap}` : t("settings.exportLimitPage.wattPlaceholder")} />
                       <span>W</span>
                     </div>
                   </Field>
                 )}
-                {valid && !unchanged && <p className="hint">Neu: <strong>{watt(target)}</strong>{pct(target)}</p>}
-                {!valid && custom.trim() !== "" && cap != null && <p className="hint">Erlaubt sind 0 bis {watt(cap)}.</p>}
-                {unchanged && <p className="hint">Das ist bereits der aktuelle Wert.</p>}
+                {valid && !unchanged && <p className="hint">{t("settings.exportLimitPage.newLabel")}{" "}<strong>{watt(target)}</strong>{pct(target)}</p>}
+                {!valid && custom.trim() !== "" && cap != null && <p className="hint">{t("settings.exportLimitPage.allowedRange", { max: watt(cap) })}</p>}
+                {unchanged && <p className="hint">{t("settings.exportLimitPage.unchanged")}</p>}
               </div>
 
               {editable && valid && !unchanged && needsConsent && (
                 <>
                   <Notice kind="error">
-                    <strong>Du erhöhst die Einspeiseleistung.</strong> Bei einem festen Wert vom Netzbetreiber (oder wenn
-                    du die Regel nicht kennst) ist das nur mit dessen schriftlicher Zustimmung zulässig. Je nach
-                    Netzbetreiber muss zusätzlich ein eingetragener Elektrofachbetrieb die Änderung vornehmen oder melden.
+                    <strong>{t("settings.exportLimitPage.increasing")}</strong>{" "}{t("settings.exportLimitPage.consentNeeded")}
                   </Notice>
                   <div className="card form">
                     <Checkbox checked={confirmed} onChange={setConfirmed} disabled={!editable}>
-                      Mir liegt die <strong>schriftliche Zustimmung meines Netzbetreibers</strong> zu dieser Einspeiseleistung vor.
+                      {tx("settings.exportLimitPage.consentCheckbox", { consent: <strong>{t("settings.exportLimitPage.writtenConsent")}</strong> })}
                     </Checkbox>
-                    <Field label="Datum und Zeichen der Zustimmung" hint="Wird zusammen mit der Änderung im Protokoll gespeichert.">
+                    <Field label={t("settings.exportLimitPage.consentReference")} hint={t("settings.exportLimitPage.referenceHint")}>
                       <input className="input" value={reference} disabled={!editable} maxLength={200}
-                        onChange={(e) => setReference(e.target.value)} placeholder="z. B. Schreiben vom 01.10.2026, Az. 12345" />
+                        onChange={(e) => setReference(e.target.value)} placeholder={t("settings.exportLimitPage.referencePlaceholder")} />
                     </Field>
                   </div>
                 </>
@@ -1202,25 +1194,24 @@ export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
 
               {editable && (
                 <Button variant={needsConsent ? "danger" : "primary"} busy={busy} disabled={!canSubmit} onClick={() => setDialog(true)}>
-                  Einspeisebegrenzung ändern
+                  {t("settings.exportLimitPage.changeExportLimit")}
                 </Button>
               )}
             </>
           )}
 
           <Notice kind="info">
-            Prüfe, ob die Begrenzung bisher von der Smartbox umgesetzt wurde: Dann steht der Wechselrichter womöglich auf
-            100 %, und ohne die Box gilt nur noch der Wert hier.
+            {t("settings.exportLimitPage.smartboxHint")}
           </Notice>
         </>
       )}
 
       {dialog && current && (
-        <Dialog title="Einspeisebegrenzung wirklich ändern?" danger={needsConsent}
-          confirm={needsConsent ? "Zustimmung liegt vor – ändern" : "Ändern"} onCancel={() => setDialog(false)} onConfirm={() => void submit()}>
-          <p>Bisher: <strong>{watt(current.limit_w)}</strong>{pct(current.limit_w)}<br />Neu: <strong>{watt(target)}</strong>{pct(target)}</p>
-          {needsConsent && <p>Du bestätigst, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt ({reference.trim()}).</p>}
-          <p>Die Verantwortung für die Einhaltung der Netzanschlussbedingungen liegt bei dir als Anlagenbetreiber.</p>
+        <Dialog title={t("settings.exportLimitPage.confirmTitle")} danger={needsConsent}
+          confirm={needsConsent ? t("settings.exportLimitPage.confirmButton") : t("common.change")} onCancel={() => setDialog(false)} onConfirm={() => void submit()}>
+          <p>{t("settings.exportLimitPage.beforeLabel")}{" "}<strong>{watt(current.limit_w)}</strong>{pct(current.limit_w)}<br />{t("settings.exportLimitPage.newLabel")}{" "}<strong>{watt(target)}</strong>{pct(target)}</p>
+          {needsConsent && <p>{t("settings.exportLimitPage.confirmConsent", { reference: reference.trim() })}</p>}
+          <p>{t("settings.exportLimitPage.responsibility")}</p>
         </Dialog>
       )}
     </SubPage>
@@ -1251,35 +1242,33 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
   });
 
   return (
-    <SubPage title="PV-Anlage" onBack={onBack}>
+    <SubPage title={t("common.pvSystem")} onBack={onBack}>
       {!settings && <LoadState error={error} onRetry={reload} />}
-      <p className="hint">Gib deinen Modulfeldern Namen wie „Süddach“ oder „Garage“. Die aktuelle Leistung hilft beim Zuordnen.
-        Meldet der Wechselrichter einen Eingang, an dem nichts angeschlossen ist, blende ihn aus.</p>
+      <p className="hint">{t("settings.pvSystemPage.intro")}</p>
       {settings && (count === 0 ? (
-        <Notice kind="info">Noch keine PV-Eingänge erkannt. Bei Dunkelheit liefern die Eingänge keine Spannung – schau tagsüber noch einmal vorbei.</Notice>
+        <Notice kind="info">{t("settings.pvSystemPage.noInputs")}</Notice>
       ) : (
         <div className="card form">
           {Array.from({ length: count }, (_, i) => {
             const live = inputs.find((x) => x.index === i);
             return (
               <div key={i} className="pv-input-row">
-                <Field label={`Eingang ${i + 1}`}
-                  hint={live ? `jetzt ${kw(live.power)} · ${num(live.voltage, 0)} V` : "derzeit keine Leistung"}>
+                <Field label={t("settings.pvSystemPage.input", { number: i + 1 })}
+                  hint={live ? t("settings.pvSystemPage.livePower", { power: kw(live.power), voltage: num(live.voltage, 0) }) : t("settings.pvSystemPage.noPower")}>
                   <div className="input-unit">
                     <span className="dot" style={{ background: PV_INPUT_COLORS[i % 4] }} />
-                    <input className="input" maxLength={30} value={names[i] ?? ""} placeholder={`Modulfeld ${i + 1}`}
+                    <input className="input" maxLength={30} value={names[i] ?? ""} placeholder={t("settings.pvSystemPage.stringNumber", { number: i + 1 })}
                       disabled={hidden.includes(String(i + 1))} onChange={(e) => setName(i, e.target.value)} />
                   </div>
                 </Field>
-                <SwitchRow label="Anzeigen" checked={!hidden.includes(String(i + 1))} onChange={(v) => toggle(i, v)} />
+                <SwitchRow label={t("settings.pvSystemPage.show")} checked={!hidden.includes(String(i + 1))} onChange={(v) => toggle(i, v)} />
               </div>
             );
           })}
           <Button disabled={!dirty}
-            onClick={() => save({ "pv.input_names": names.slice(0, 6), "pv.hidden_inputs": hidden })}>Speichern</Button>
+            onClick={() => save({ "pv.input_names": names.slice(0, 6), "pv.hidden_inputs": hidden })}>{t("common.save")}</Button>
           <Unsaved show={dirty} />
-          {hidden.length > 0 && <p className="hint">Ausgeblendete Eingänge erscheinen nirgends in Anzeige und Auswertung.
-            Ihre Messwerte speichert OpenAmpere weiter, du kannst sie jederzeit wieder einblenden.</p>}
+          {hidden.length > 0 && <p className="hint">{t("settings.pvSystemPage.hiddenHint")}</p>}
         </div>
       ))}
     </SubPage>
@@ -1300,7 +1289,7 @@ const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
 /** Consecutive quarter hours as readable ranges: "02:00–03:30". */
 function ranges(quarters: number[]): string[] {
   const out: string[] = [];
-  const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+  const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
   let start = quarters[0];
   for (let i = 1; i <= quarters.length; i++) {
     if (i === quarters.length || quarters[i] !== quarters[i - 1] + 900) {
@@ -1335,7 +1324,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
     try {
       if (maxChanged && !(await saveSettings({ "battery.max_charge_kw": Number.isFinite(batteryMaxKw) ? batteryMaxKw : 0 }))) return;
       setData(await putJson<ChargingView>("/api/charging", next));
-      toast("Gespeichert");
+      toast(t("common.saved"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -1344,43 +1333,42 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
   };
 
   return (
-    <SubPage title="Laden aus dem Netz" onBack={onBack}>
-      <p className="hint">Lädt den Speicher aus dem Netz, wenn Strom günstig ist oder in einem festen Zeitfenster
-        (z. B. Nachtstrom). <strong>Experimentell.</strong></p>
+    <SubPage title={t("settings.chargingPage.title")} onBack={onBack}>
+      <p className="hint">{t("settings.chargingPage.intro")}{" "}
+        <strong>{t("settings.chargingPage.experimental")}</strong></p>
       <LearnMore>
-        <p className="hint">OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit Zeitbegrenzung: Stoppt
-          OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück. Für „Günstigste Zeit“
-          brauchst du einen dynamischen oder zeitvariablen Stromtarif.</p>
+        <p className="hint">{t("settings.chargingPage.remoteControlHint")}</p>
       </LearnMore>
       <ControlModeBar compact />
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && data && (
         <>
           <div className="card form">
-            <SwitchRow label="Laden aus dem Netz" checked={form.enabled}
-              hint={data.active ? "Lädt gerade." : data.plan.reason}
+            <SwitchRow label={t("settings.chargingPage.title")} checked={form.enabled}
+              hint={data.active ? t("settings.chargingPage.chargingNow") : data.plan.reason}
               onChange={(v) => (v && !form.legal_confirmed ? setLegal(true) : void save({ ...form, enabled: v }))} />
             {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
             {form.enabled && data.plan.quarters.length > 0 && (
-              <p className="hint">Geplant: {ranges(data.plan.quarters).join(", ")} Uhr
-                {data.plan.needed_wh ? ` – etwa ${num(data.plan.needed_wh / 1000, 1)} kWh` : ""}.</p>
+              <p className="hint">{data.plan.needed_wh
+                ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 1) })
+                : t("settings.chargingPage.planned", { times: ranges(data.plan.quarters).join(", ") })}</p>
             )}
           </div>
 
           <div className="card form">
             <Segmented value={form.mode} onChange={(mode) => set({ mode })}
-              options={[["cheapest", "Günstigste Zeit"], ["window", "Festes Zeitfenster"]]} />
-            <Field label="Laden bis" hint="Ladestand, bei dem das Laden aus dem Netz endet.">
+              options={[["cheapest", t("settings.chargingPage.cheapestTime")], ["window", t("settings.chargingPage.fixedTimeWindow")]]} />
+            <Field label={t("settings.chargingPage.chargeUntil")} hint={t("settings.chargingPage.targetHint")}>
               <Slider value={form.target_soc} min={20} max={100} unit="%" onChange={(v) => set({ target_soc: v })} />
             </Field>
             {form.mode === "cheapest" ? (
               <>
-                <Field label="Fertig bis" hint="Sucht die günstigsten Viertelstunden bis zu dieser Uhrzeit. Braucht einen dynamischen oder zeitvariablen Tarif.">
+                <Field label={t("settings.chargingPage.readyBy")} hint={t("settings.chargingPage.cheapestHint")}>
                   <select className="input" value={form.ready_by} onChange={(e) => set({ ready_by: Number(e.target.value) })}>
                     {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
                   </select>
                 </Field>
-                <Field label="Höchstpreis (optional)" hint="Darüber wird nie geladen, auch wenn das Ziel nicht erreicht wird.">
+                <Field label={t("settings.chargingPage.maxPrice")} hint={t("settings.chargingPage.maxPriceHint")}>
                   <div className="input-unit"><AmountInput value={form.max_price_ct} format={amountInput}
                     onChange={(v) => set({ max_price_ct: v })} />
                     <span>ct/kWh</span></div>
@@ -1388,56 +1376,50 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
               </>
             ) : (
               <div className="field-row">
-                <Field label="Von">
+                <Field label={t("common.from")}>
                   <select className="input" value={form.window_start} onChange={(e) => set({ window_start: Number(e.target.value) })}>
                     {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
                   </select>
                 </Field>
-                <Field label="Bis">
+                <Field label={t("common.to")}>
                   <select className="input" value={form.window_end} onChange={(e) => set({ window_end: Number(e.target.value) })}>
                     {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
                   </select>
                 </Field>
               </div>
             )}
-            <Field label="Zulässige Ladeleistung des Speichers"
-              hint="Laut Datenblatt, bei kleinen Speichern oft weniger als der Wechselrichter kann, z. B. 5,5 kW bei 6,6 kWh. Leer lassen, wenn unbekannt.">
+            <Field label={t("settings.chargingPage.maxChargingPower")}
+              hint={t("settings.chargingPage.maxPowerHint")}>
               <div className="input-unit"><input className="input" inputMode="decimal" value={batteryMax} placeholder={de(rated / 1000)}
                 onChange={(e) => setBatteryMax(e.target.value)} /><span>kW</span></div>
             </Field>
-            <Field label="Ladeleistung">
+            <Field label={t("settings.chargingPage.chargingPower")}>
               <Segmented value={form.power_w === level(0.5) ? "gentle" : form.power_w === level(0.75) ? "fast"
                 : form.power_w === level(1) ? "max" : "custom"}
                 onChange={(v) => v !== "custom" && set({ power_w: level(({ gentle: 0.5, fast: 0.75, max: 1 } as const)[v]) })}
-                options={[["gentle", "Schonend"], ["fast", "Schnell"], ["max", "Maximal"], ["custom", `${num(form.power_w / 1000, 1)} kW`]]} />
+                options={[["gentle", t("settings.chargingPage.gentle")], ["fast", t("settings.chargingPage.fast")], ["max", t("settings.chargingPage.maximum")], ["custom", `${num(form.power_w / 1000, 1)} kW`]]} />
             </Field>
-            <p className="hint">Schonend {num(level(0.5) / 1000, 1)}&nbsp;kW, schnell {num(level(0.75) / 1000, 1)}&nbsp;kW,
-              maximal {num(level(1) / 1000, 1)}&nbsp;kW: 50, 75 und 100&nbsp;% der zulässigen Ladeleistung.</p>
-            {form.power_w > base && <Notice kind="warn">Die eingestellte Ladeleistung ist höher, als der Speicher zulässt.
-              Bitte eine Stufe wählen.</Notice>}
-            {form.power_w > 4200 && <p className="hint">Über 4,2 kW Ladeleistung aus dem Netz kann der Speicher unter § 14a EnWG
-              (steuerbare Verbraucher) fallen. Kläre das mit deinem Netzbetreiber.</p>}
-            <Field label="Nutzbare Speichergröße" hint="Aus dem Datenblatt, für die Berechnung der Ladedauer.">
+            <p className="hint">{t("settings.chargingPage.powerLevels", {
+              gentle: num(level(0.5) / 1000, 1), fast: num(level(0.75) / 1000, 1), max: num(level(1) / 1000, 1) })}</p>
+            {form.power_w > base && <Notice kind="warn">{t("settings.chargingPage.powerTooHigh")}</Notice>}
+            {form.power_w > 4200 && <p className="hint">{t("settings.chargingPage.section14aHint")}</p>}
+            <Field label={t("settings.chargingPage.usableCapacity")} hint={t("settings.chargingPage.capacityHint")}>
               <div className="input-unit"><input className="input" inputMode="decimal" value={String(form.battery_kwh).replace(".", ",")}
                 onChange={(e) => set({ battery_kwh: Number(e.target.value.replace(",", ".")) || 0 })} /><span>kWh</span></div>
             </Field>
-            <Button busy={busy} disabled={!changed} onClick={() => void save(form)}>Speichern</Button>
+            <Button busy={busy} disabled={!changed} onClick={() => void save(form)}>{t("common.save")}</Button>
             <Unsaved show={!!changed} />
           </div>
         </>
       )}
       {legal && form && (
-        <Dialog title="Laden aus dem Netz einschalten?" confirm="Einschalten" danger disabled={!form.legal_confirmed}
+        <Dialog title={t("settings.chargingPage.turnOnTitle")} confirm={t("settings.chargingPage.turnOn")} danger disabled={!form.legal_confirmed}
           onCancel={() => { setLegal(false); set({ legal_confirmed: false }); }}
           onConfirm={() => { setLegal(false); void save({ ...form, enabled: true }); }}>
-          <p>Lädt der Speicher Netzstrom, kann das die EEG-Vergütung für Strom betreffen, der später aus dem Speicher
-            eingespeist wird (Ausschließlichkeitsprinzip). Seit 2025 gibt es dafür Abgrenzungs- und Pauschalregeln, die
-            beim Netzbetreiber angemeldet werden müssen. Ein Speicher mit mehr als 4,2 kW Netzladeleistung kann zudem
-            unter § 14a EnWG fallen.</p>
-          <p className="hint">OpenAmpere lädt nur und entlädt nie ins Netz. Kläre die Anmeldung mit deinem Netzbetreiber
-            oder Steuerberater, bevor du die Funktion nutzt.</p>
+          <p>{t("settings.chargingPage.eegWarning")}</p>
+          <p className="hint">{t("settings.chargingPage.registrationHint")}</p>
           <Checkbox checked={form.legal_confirmed} onChange={(v) => set({ legal_confirmed: v })}>
-            Ich habe das gelesen und kläre die Anmeldung selbst.
+            {t("settings.chargingPage.acceptRegistration")}
           </Checkbox>
         </Dialog>
       )}

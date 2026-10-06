@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Status } from "./api";
 import { getJson, postJson, putJson, useResource } from "./api";
+import { t } from "./i18n";
 import { navigate } from "./route";
 import { Button, Notice, SwitchRow, toast } from "./ui";
 
@@ -27,7 +28,7 @@ async function install(): Promise<boolean> {
 
 /** While the updater replaces the app: progress, then reload once the new version answers. */
 function Installing({ version, from, onClose }: { version: string; from: string; onClose: () => void }) {
-  const [message, setMessage] = useState("Das Update wird vorbereitet.");
+  const [message, setMessage] = useState(() => t("shell.installing.preparingUpdate"));
   const [result, setResult] = useState<"done" | "failed" | null>(null);
   const started = useRef(Date.now() / 1000);
   useEffect(() => {
@@ -41,18 +42,18 @@ function Installing({ version, from, onClose }: { version: string; from: string;
           if (view.status.state === "failed" || view.status.state === "done") setResult(view.status.state);
         }
       } catch {
-        setMessage("OpenAmpere startet neu. Gleich ist die neue Version da.");
+        setMessage(t("shell.installing.restarting"));
       }
     }, 3000);
     return () => window.clearInterval(timer);
   }, [from]);
   return (
     <div className="overlay">
-      <div className="dialog" role="dialog" aria-modal="true" aria-label="Update">
-        <h2>Update auf Version {version}</h2>
+      <div className="dialog" role="dialog" aria-modal="true" aria-label={t("shell.installing.title")}>
+        <h2>{t("shell.installing.updateToVersion", { version })}</h2>
         {result === "failed" ? <Notice kind="error">{message}</Notice> : <p>{message}</p>}
-        {!result && <p className="hint">Das dauert meist ein bis zwei Minuten. Die Seite lädt danach von selbst neu.</p>}
-        {result && <Button variant="secondary" onClick={onClose}>Schließen</Button>}
+        {!result && <p className="hint">{t("shell.installing.takesMinutes")}</p>}
+        {result && <Button variant="secondary" onClick={onClose}>{t("shell.installing.close")}</Button>}
       </div>
     </div>
   );
@@ -68,12 +69,12 @@ export function UpdateBanner() {
   if (!data?.available || !latest || hidden === latest) return null;
   return (
     <div className="update-banner update-available" role="status">
-      <span>Version {latest} ist da
-        {data.latest?.url && <> · <a className="link" href={data.latest.url} target="_blank" rel="noopener noreferrer">Was ist neu?</a></>}</span>
+      <span>{t("shell.updateBanner.versionAvailable", { version: latest })}
+        {data.latest?.url && <> · <a className="link" href={data.latest.url} target="_blank" rel="noopener noreferrer">{t("shell.updateBanner.whatsNew")}</a></>}</span>
       {data.updater
-        ? <button className="banner-button" onClick={async () => setInstalling(await install())}>Aktualisieren</button>
-        : <button className="banner-button" onClick={() => navigate("more/about")}>So geht's</button>}
-      <button className="banner-close" aria-label="Später erinnern" onClick={() => { remember(latest); setHidden(latest); }}>×</button>
+        ? <button className="banner-button" onClick={async () => setInstalling(await install())}>{t("shell.updateBanner.update")}</button>
+        : <button className="banner-button" onClick={() => navigate("more/about")}>{t("common.howItWorks")}</button>}
+      <button className="banner-close" aria-label={t("shell.updateBanner.remindMeLater")} onClick={() => { remember(latest); setHidden(latest); }}>×</button>
     </div>
   );
 }
@@ -106,29 +107,29 @@ export function UpdatesCard() {
   return (
     <>
       {installing && latest && <Installing version={latest} from={data.current} onClose={() => setInstalling(false)} />}
-      <div className="section-title">Updates</div>
+      <div className="section-title">{t("shell.updatesCard.title")}</div>
       <div className="card form">
         <dl className="facts">
-          <dt>Installiert</dt><dd>{data.current}</dd>
-          <dt>Neueste Version</dt><dd>{latest ?? "–"}</dd>
+          <dt>{t("shell.updatesCard.installed")}</dt><dd>{data.current}</dd>
+          <dt>{t("shell.updatesCard.latestVersion")}</dt><dd>{latest ?? "–"}</dd>
         </dl>
         {data.error && <p className="hint">{data.error}</p>}
         {data.status?.state === "failed" && Date.now() / 1000 - data.status.ts < 86_400 && <Notice kind="error">{data.status.message}</Notice>}
         {data.available && latest && (data.updater ? (
-          <Button busy={busy} onClick={async () => setInstalling(await install())}>Auf {latest} aktualisieren</Button>
+          <Button busy={busy} onClick={async () => setInstalling(await install())}>{t("shell.updatesCard.updateTo", { version: latest })}</Button>
         ) : (
           <Notice kind="info">
-            Für Updates per Knopfdruck einmal das Install-Script erneut ausführen, das richtet den Update-Helfer ein:
+            {t("shell.updatesCard.updateHelperHint")}
             <code className="code-inline">curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash</code>
-            Installiert von Hand? Dann im OpenAmpere-Ordner: git pull &amp;&amp; docker compose up -d --build
+            {t("shell.updatesCard.manualUpdateHint")} git pull &amp;&amp; docker compose up -d --build
           </Notice>
         ))}
-        {!data.available && latest && <p className="hint">OpenAmpere ist auf dem neuesten Stand.</p>}
-        <SwitchRow label="Nach Updates suchen" hint="Alle 6 Stunden bei GitHub. Dabei werden keine Daten deiner Anlage gesendet."
+        {!data.available && latest && <p className="hint">{t("shell.updatesCard.upToDate")}</p>}
+        <SwitchRow label={t("shell.updatesCard.autoCheck")} hint={t("shell.updatesCard.autoCheckHint")}
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
-        <SwitchRow label="Updates nachts automatisch installieren" hint="Zwischen 2 und 5 Uhr. Startet eine neue Version nicht, kommt die bisherige zurück."
+        <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
           checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
-        {data.check && <button className="link" disabled={busy} onClick={() => void check()}>Jetzt nach Updates suchen</button>}
+        {data.check && <button className="link" disabled={busy} onClick={() => void check()}>{t("shell.updatesCard.checkUpdatesNow")}</button>}
       </div>
     </>
   );
