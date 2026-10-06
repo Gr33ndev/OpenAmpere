@@ -68,7 +68,17 @@ export function storedLang(): Lang {
   return REFERENCE;
 }
 
-let current: Lang = storedLang();
+// ?lang=en in the address (e.g. from the English website to the demo): choose that language for this device and
+// remove the parameter again, so a bookmark does not override a later choice
+const fromAddress = new URLSearchParams(window.location.search).get("lang");
+if (fromAddress && fromAddress in DICTIONARIES) {
+  try { localStorage.setItem(STORAGE_KEY, fromAddress); } catch { /* private mode: only for this visit */ }
+  const url = new URL(window.location.href);
+  url.searchParams.delete("lang");
+  window.history.replaceState(window.history.state, "", url);
+}
+
+let current: Lang = fromAddress && fromAddress in DICTIONARIES ? fromAddress : storedLang();
 document.documentElement.lang = current;
 
 export function lang(): Lang {

@@ -13,7 +13,7 @@ import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
 import { setTimeZone } from "./format";
 import { DEMO } from "./demo/flag";
-import { t, tx } from "./i18n";
+import { lang, t, tx } from "./i18n";
 import { UpdateBanner } from "./Updates";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
@@ -31,6 +31,8 @@ applyTheme(storedTheme());
 // the demo inside the phone frame on the website: scroll without a visible scrollbar
 if (DEMO && window.self !== window.top) document.documentElement.classList.add("embedded");
 // screenshots for the README (scripts/screenshots.sh) are taken without the demo banner
+// the website around the demo, in the same language (German at the root, others in /<lang>/)
+const SITE = lang() === "de" ? "../" : `../${lang()}/`;
 const SCREENSHOT = DEMO && new URLSearchParams(window.location.search).has("screenshot");
 
 function App() {
@@ -90,8 +92,8 @@ function App() {
       {DEMO && !SCREENSHOT && (
         <div className="demo-banner" role="note">
           <span>{tx("shell.app.demoBanner", { demo: <strong>{t("shell.app.demo")}</strong> })}</span>
-          <a href="../">{t("shell.app.about")}</a>
-          <a href="../impressum.html">{t("shell.app.legalNotice")}</a>
+          <a href={SITE}>{t("shell.app.about")}</a>
+          <a href={`${SITE}impressum.html`}>{t("shell.app.legalNotice")}</a>
         </div>
       )}
       {!DEMO && !error && <UpdateBanner />}

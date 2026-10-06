@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { t } from "./i18n";
-import { Chevron } from "./icons";
+import { lang, LANGUAGES, setLang, t } from "./i18n";
+import { Chevron, GlobeIcon } from "./icons";
 
 export function Segmented<T extends string>({ value, options, onChange, disabled }: {
   value: T; options: [T, string][]; onChange: (v: T) => void; disabled?: boolean;
@@ -145,6 +145,20 @@ export function AmountInput({ value, onChange, format }: {
         const parsed = raw === "" ? null : Number(raw.replace(",", "."));
         if (parsed === null || Number.isFinite(parsed)) onChange(parsed);
       }} />
+  );
+}
+
+/** Language switch for page headers: the names of the languages in their own language, so it is found without
+ * knowing German. Hidden while there is only one language. */
+export function LanguageSwitch() {
+  if (LANGUAGES.length < 2) return null;
+  return (
+    <label className="language-switch">
+      <GlobeIcon />
+      <select aria-label="Sprache / Language" value={lang()} onChange={(e) => setLang(e.target.value)}>
+        {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+      </select>
+    </label>
   );
 }
 
