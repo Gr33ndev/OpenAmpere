@@ -102,3 +102,47 @@ def test_endpoint_needs_login(runtime):
     helper(Remote(runtime), {"BackendState": "NeedsLogin"})
     assert client.post("/api/remote", json={"action": "nonsense"}).status_code == 400
     assert client.post("/api/remote", json={"action": "login"}).json()["state"] == "starting"
+
+
+def test_https_with_tailscale_serve(runtime):
+    """#116: HTTPS on, a link to enable it in the tailnet, the certificate there, off again."""
+    remote = Remote(runtime)
+    helper(remote, RUNNING)
+    view = remote.view()
+    assert view["https"] == {"state": "off"} and view["address"] == "http://openampere.tail1234.ts.net:8080"
+
+    remote.request("https_on", now=1000)
+    assert (remote.folder / "request").read_text() == "https-on"
+    helper(remote, ts=1001)
+    assert remote.view(now=1001)["https"] == {"state": "starting"}
+
+    # HTTPS is not enabled in the tailnet yet: Tailscale prints a link and waits
+    (remote.folder / "serve.log").write_text(
+        "Serve is not enabled on your tailnet.\nTo enable, visit:\n\n    https://login.tailscale.com/f/serve?node=abc123\n")
+    assert remote.view(now=1005)["https"] == {"state": "enable",
+                                              "enable_url": "https://login.tailscale.com/f/serve?node=abc123"}
+
+    # enabled, certificate issued: the address is the HTTPS one, without a port
+    (remote.folder / "serve.json").write_text(json.dumps(
+        {"TCP": {"443": {"HTTPS": True}},
+         "Web": {"openampere.tail1234.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:8080"}}}}}))
+    helper(remote, ts=1100)
+    view = remote.view(now=1100)
+    assert view["https"] == {"state": "on", "url": "https://openampere.tail1234.ts.net"}
+    assert view["address"] == "https://openampere.tail1234.ts.net"
+
+    helper(remote, ts=1200)
+    remote.request("https_off", now=1200)
+    assert (remote.folder / "request").read_text() == "https-off"
+    (remote.folder / "serve.json").write_text("{}")
+    helper(remote, ts=1210)
+    assert remote.view(now=1210)["https"] == {"state": "off"}
+
+
+def test_https_error_is_shown(runtime):
+    remote = Remote(runtime)
+    helper(remote, RUNNING, ts=1000)
+    remote.request("https_on", now=1000)
+    (remote.folder / "serve.log").write_text("error: certificate could not be issued\n")
+    helper(remote, ts=1200)
+    assert remote.view(now=1200)["https"] == {"state": "failed", "error": "error: certificate could not be issued"}

@@ -224,6 +224,8 @@ write_files() {
       say "      - ./tailscale:/var/lib/tailscale"
       say "      - ./data/remote:/remote"
       say "      - ./tailscale.sh:/openampere/tailscale.sh:ro"
+      say "    environment:"
+      say "      OPENAMPERE_PORT: \"$PORT\"  # für HTTPS über Tailscale"
     fi
     say "  updater:  # installiert Updates, wenn in der App jemand auf Aktualisieren tippt (siehe updater.sh)"
     say "    image: $UPDATER_IMAGE"
