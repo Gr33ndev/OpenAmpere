@@ -1,0 +1,92 @@
+{
+  "app": {
+    "about": "Infos",
+    "demo": "Demo",
+    "demoBanner": "{demo} mit erfundenen Werten",
+    "legalNotice": "Impressum",
+    "newVersionInstalled": "Eine neue Version von OpenAmpere ist installiert.",
+    "noConnectionRetrying": "Keine Verbindung zum OpenAmpere-Server – versuche erneut …",
+    "reloadNow": "Jetzt neu laden",
+    "serviceRunningHint": "Läuft der OpenAmpere-Dienst? Neuer Versuch alle paar Sekunden."
+  },
+  "button": {
+    "pleaseWait": "Bitte warten …"
+  },
+  "installing": {
+    "close": "Schließen",
+    "preparingUpdate": "Das Update wird vorbereitet.",
+    "restarting": "OpenAmpere startet neu. Gleich ist die neue Version da.",
+    "takesMinutes": "Das dauert meist ein bis zwei Minuten. Die Seite lädt danach von selbst neu.",
+    "title": "Update",
+    "updateToVersion": "Update auf Version {version}"
+  },
+  "learnMore": {
+    "learnMore": "Mehr erfahren"
+  },
+  "loadState": {
+    "retrying": "Neuer Versuch läuft automatisch."
+  },
+  "loginDialog": {
+    "loggedIn": "Angemeldet",
+    "passwordNeeded": "Zum Ändern von Einstellungen brauchst du das Passwort von OpenAmpere."
+  },
+  "offlineMessage": {
+    "noConnection": "Keine Verbindung zum OpenAmpere-Server."
+  },
+  "passwordSetup": {
+    "continue": "Weiter",
+    "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt.",
+    "passwordHint": "Mindestens 6 Zeichen. Bewahre es gut auf – zurücksetzen kann es nur, wer Zugriff auf den Server hat.",
+    "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
+    "repeatPassword": "Passwort wiederholen",
+    "setPassword": "Passwort festlegen"
+  },
+  "securityPage": {
+    "allDevicesLoggedOut": "Alle Geräte abgemeldet",
+    "changePassword": "Passwort ändern",
+    "currentPassword": "Bisheriges Passwort",
+    "forgotPassword": "Passwort vergessen? Auf dem Server {command} ausführen (Docker: {dockerCommand}), dann ein neues festlegen.",
+    "logOut": "Abmelden",
+    "logOutAllDevices": "Alle Geräte abmelden",
+    "logOutAllHint": "Alle Handys und Computer müssen sich danach neu anmelden, um Einstellungen zu ändern.",
+    "logOutAllQuestion": "Alle Geräte abmelden?",
+    "logOutDevice": "Dieses Gerät abmelden",
+    "loggedIn": "Dieses Gerät ist angemeldet und darf Einstellungen ändern.",
+    "loggedOut": "Abgemeldet",
+    "neverExpose": "gib OpenAmpere niemals per Portfreigabe ins Internet frei.",
+    "newPassword": "Neues Passwort",
+    "notLoggedIn": "Dieses Gerät ist nicht angemeldet – nur Anzeige.",
+    "passwordChanged": "Passwort geändert – andere Geräte müssen sich neu anmelden",
+    "passwordHint": "Mindestens 6 Zeichen",
+    "remoteAccessHint": "Ansehen ist im Heimnetz ohne Passwort möglich. Für Zugriff von unterwegs nutze ein VPN (z. B. das deiner FRITZ!Box, WireGuard oder Tailscale) – {warning}"
+  },
+  "subPage": {
+    "back": "Zurück"
+  },
+  "unsaved": {
+    "notSavedYet": "Noch nicht gespeichert"
+  },
+  "updateBanner": {
+    "remindMeLater": "Später erinnern",
+    "update": "Aktualisieren",
+    "versionAvailable": "Version {version} ist da",
+    "whatsNew": "Was ist neu?"
+  },
+  "updatedLabel": {
+    "yesterday": "Gestern"
+  },
+  "updatesCard": {
+    "autoCheck": "Nach Updates suchen",
+    "autoCheckHint": "Alle 6 Stunden bei GitHub. Dabei werden keine Daten deiner Anlage gesendet.",
+    "autoInstall": "Updates nachts automatisch installieren",
+    "autoInstallHint": "Zwischen 2 und 5 Uhr. Startet eine neue Version nicht, kommt die bisherige zurück.",
+    "checkUpdatesNow": "Jetzt nach Updates suchen",
+    "installed": "Installiert",
+    "latestVersion": "Neueste Version",
+    "manualUpdateHint": "Installiert von Hand? Dann im OpenAmpere-Ordner:",
+    "title": "Updates",
+    "upToDate": "OpenAmpere ist auf dem neuesten Stand.",
+    "updateHelperHint": "Für Updates per Knopfdruck einmal das Install-Script erneut ausführen, das richtet den Update-Helfer ein:",
+    "updateTo": "Auf {version} aktualisieren"
+  }
+}

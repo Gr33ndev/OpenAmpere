@@ -38,4 +38,4 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-openampere = ["web/*", "web/**/*"]
+openampere = ["web/*", "web/**/*", "locales/*.json"]

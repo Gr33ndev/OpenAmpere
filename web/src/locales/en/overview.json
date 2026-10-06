@@ -1,0 +1,67 @@
+{
+  "dashboard": {
+    "batteryStored": "Stored",
+    "batteryUsed": "Used",
+    "clockWrong": "The server's clock is wrong (no internet time?). Until it is correct, OpenAmpere does not store any readings, so they don't end up on the wrong days.",
+    "connecting": "Connecting …",
+    "fromGrid": "From the grid",
+    "inverterUnreachable": "Inverter not reachable since {time} – showing the last values",
+    "lastUpdated": "Last updated: {time}",
+    "recordedSince": "Recorded since {time} (OpenAmpere has only been running since today).",
+    "stringsAndTemperaturesHint": "Power per string and temperatures are under {place}.",
+    "toGrid": "To the grid",
+    "todayTitle": "Today's figures"
+  },
+  "devicesCard": {
+    "batteryChargingFromGrid": "Battery is charging from the grid",
+    "today": "today"
+  },
+  "energyFlow": {
+    "batteryPower": "Battery {power}",
+    "charging": "charging",
+    "chargingFromGrid": "charging from the grid",
+    "chargingFromSolar": "charging with solar power",
+    "discharging": "discharging",
+    "gridPower": "Grid {power}",
+    "housePower": "House {power}",
+    "noData": "Energy flow, no data",
+    "outdated": "outdated",
+    "solarPower": "Solar {power}"
+  },
+  "importHint": {
+    "hide": "Hide",
+    "hint": "You can bring over your previous data. Best do it soon, as it is unclear whether the cloud will stay available. (OpenAmpere is an independent project with no connection to EKD.)",
+    "title": "Save your history from the EKD cloud?"
+  },
+  "inputName": {
+    "stringNumber": "String {number}"
+  },
+  "offGridNotice": {
+    "batteryLastsAbout": "Battery {soc}, lasts about {duration} at the current consumption.",
+    "batterySoc": "Battery {soc}.",
+    "batterySunCovering": "Battery {soc}, the sun is covering the consumption right now.",
+    "days": "{days} days",
+    "gridDown": "The grid is down, the house is running on the battery and solar system.",
+    "hours": "{hours} h",
+    "switchOffLargeLoads": "Better switch off large appliances.",
+    "title": "Power cut: running on backup power"
+  },
+  "pvInputsCard": {
+    "title": "Solar by string"
+  },
+  "temperatureLabels": {
+    "ambient": "Ambient",
+    "battery2": "Battery 2"
+  },
+  "temperaturesCard": {
+    "cellsElectronics": "Cells · electronics {temperature}"
+  },
+  "tips": {
+    "devicesAndMore": "Control the wallbox and immersion heater under “Devices”; all settings are under “More”.",
+    "dismiss": "Got it, hide",
+    "flowLines": "The lines show where power is flowing right now: from the roof, the battery and the grid to the house and to devices such as a wallbox or immersion heater.",
+    "importAndFeedIn": "“Import” means power comes from the grid. “Feed-in” means you are sending power to the grid.",
+    "report": "The report shows days, weeks and years. Tap a chart for the exact values.",
+    "title": "How to read the overview"
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DEMO } from "./demo/flag";
 import { demoRequest, snapshot as demoSnapshot } from "./demo/server";
+import { lang, t } from "./i18n";
 
 export type Counters = {
   pv: number | null;
@@ -166,12 +167,14 @@ export type BatteryState = BatterySettings & {
   external_change: { expected: Record<string, unknown>; found: Record<string, unknown> } | null;
 };
 
-export const OFFLINE_MESSAGE = "Keine Verbindung zum OpenAmpere-Server.";
+export const OFFLINE_MESSAGE = t("shell.offlineMessage.noConnection");
+/** Asks the server for error messages in the language of the app (#104); German needs no header. */
+const LANGUAGE_HEADER: Record<string, string> = lang() === "de" ? {} : { "X-OpenAmpere-Lang": lang() };
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   if (DEMO && path.startsWith("/api/")) return demoRequest<T>(method, path);
   let response: Response;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...LANGUAGE_HEADER };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET") headers["X-OpenAmpere"] = "1"; // required by the server for every change (CSRF protection)
   try {
@@ -314,7 +317,7 @@ export type AuthStatus = { configured: boolean; authenticated: boolean };
 export async function postFile<T>(path: string, file: Blob): Promise<T> {
   if (DEMO) return demoRequest<T>("POST", path);
   const response = await fetch(path, { method: "POST", body: file, credentials: "same-origin",
-    headers: { "X-OpenAmpere": "1", "Content-Type": "application/zip" } }).catch(() => {
+    headers: { ...LANGUAGE_HEADER, "X-OpenAmpere": "1", "Content-Type": "application/zip" } }).catch(() => {
     throw new Error(OFFLINE_MESSAGE);
   });
   const data = await response.json().catch(() => ({}));

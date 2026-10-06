@@ -1,0 +1,195 @@
+{
+  "batteryCard": {
+    "backupReserve": "Notstrom-Reserve: {soc} %",
+    "batterySettings": "Speicher einstellen",
+    "charging": "lädt {power}",
+    "chargingNow": "lädt gerade",
+    "discharging": "entlädt {power}",
+    "gridCharging": "Laden aus dem Netz: {state}",
+    "idle": "ruht"
+  },
+  "choices": {
+    "httpHint": "Für andere Geräte, die sich über eine Adresse zum Ein- und eine zum Ausschalten steuern lassen.",
+    "myPvHint": "AC ELWA-E, AC ELWA 2 oder AC THOR. Nimmt stufenlos genau so viel Sonnenstrom, wie übrig ist.",
+    "shelly": "Gerät mit Shelly-Relais",
+    "shellyHint": "z. B. Wärmepumpe (SG-Ready-Kontakt) oder Heizstab mit fester Leistung. Wird ein- und ausgeschaltet."
+  },
+  "consumersPage": {
+    "addDevice": "Gerät hinzufügen",
+    "chooseKind": "Was möchtest du hinzufügen?",
+    "edit": "Bearbeiten",
+    "emptyState": "Noch keine Geräte eingerichtet.",
+    "hint": "Bedienen kannst du die Geräte unter „Geräte“. Dort legst du auch fest, wer zuerst Sonnenstrom bekommt. Wärmepumpen bitte nur über ihren SG-Ready- oder EVU-Eingang schalten und von einer Elektrofachkraft anschließen lassen.",
+    "title": "Heizstab und weitere Geräte",
+    "webAddresses": "Web-Adressen"
+  },
+  "controlModeBar": {
+    "acceptRisk": "Ich habe das verstanden und handle auf eigene Verantwortung.",
+    "confirmTitle": "Steuerung aktivieren?",
+    "controlActive": "Steuerung aktiv",
+    "disclaimer": "OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne Gewähr und ersetzt keinen Elektrofachbetrieb. Ungeeignete Einstellungen können den Speicher belasten und Garantie- oder Gewährleistungsansprüche (gegenüber Hersteller, Händler oder Insolvenzverwalter) gefährden. Notiere die bisherigen Werte, bevor du etwas änderst.",
+    "liveWarning": "Änderungen werden ab jetzt an Wechselrichter und Geräte gesendet. Falsche Einstellungen können dazu führen, dass der Speicher nicht wie gewohnt arbeitet.",
+    "lockedByEnv": "Fest eingestellt (Umgebungsvariable).",
+    "testModeActive": "Testmodus: nichts wird gesendet",
+    "title": "Änderungen an Geräten",
+    "yesSendChanges": "Ja, Änderungen senden"
+  },
+  "deviceStatus": {
+    "charging": "lädt mit {power}",
+    "fullPower": "volle Leistung",
+    "fullPowerUntil": "volle Leistung bis {time}",
+    "noCarPlugged": "kein Auto angeschlossen",
+    "pluggedNotCharging": "angeschlossen, lädt gerade nicht",
+    "switchedOffManually": "von Hand aus",
+    "waitingSurplus": "wartet auf Überschuss"
+  },
+  "devicesTab": {
+    "addDevice": "Heizstab oder Gerät hinzufügen",
+    "addOrSetUp": "Geräte hinzufügen oder einrichten:",
+    "connectWallbox": "Wallbox mit evcc verbinden",
+    "controlledBy": "Gesteuert von {link}",
+    "emptyHint": "Wallbox, Heizstab oder Wärmepumpe können deinen Sonnenstrom nutzen. Füge sie hier hinzu.",
+    "otherDevicesTitle": "Heizstab und weitere Geräte"
+  },
+  "editor": {
+    "channel": "Kanal",
+    "channelHint": "Bei Shellys mit mehreren Relais, sonst 0.",
+    "cheapGridPower": "Auch mit günstigem Netzstrom",
+    "cheapGridPowerHint": "Nur mit dynamischem oder zeitvariablem Tarif. Leer lassen für nur Sonnenstrom.",
+    "devicePower": "Leistung des Geräts",
+    "example": "z. B. {example}",
+    "firstGeneration": "Generation 1",
+    "heaterIp": "IP-Adresse des Heizstabs",
+    "maxPower": "Höchstens nutzen",
+    "maxPowerHint": "So viel Leistung bekommt der Heizstab höchstens.",
+    "minSurplus": "Mindestüberschuss zum Starten",
+    "minSurplusHint": "Erst ab so viel übrigem Sonnenstrom beginnt der Heizstab.",
+    "minimumPause": "Mindestpause",
+    "minimumRunTime": "Mindestlaufzeit",
+    "myPvSetupHint": "Im Webinterface des Heizstabs die Ansteuerung auf „Modbus TCP“ stellen und den Zeitablauf der Ansteuerung auf 60 Sekunden. Bekommt er keine Vorgabe mehr, schaltet er sich dann von selbst ab.",
+    "newerGeneration": "Plus, Pro und neuer (Generation 2+)",
+    "removeDevice": "Gerät entfernen",
+    "shellyGeneration": "Shelly-Generation",
+    "shellyIp": "IP-Adresse des Shelly",
+    "switchOffUrl": "Adresse zum Ausschalten",
+    "switchOnHint": "Eingeschaltet wird, sobald so viel Sonnenstrom übrig ist.",
+    "switchOnUrl": "Adresse zum Einschalten"
+  },
+  "evccSessions": {
+    "downloadCsv": "Alle Ladevorgänge als CSV (aus evcc)",
+    "solarShare": "{percent} % Sonne",
+    "title": "Ladevorgänge"
+  },
+  "hint": {
+    "live": "Änderungen werden an Wechselrichter und Geräte gesendet.",
+    "off": "OpenAmpere zeigt nur an und ändert nichts an deinen Geräten.",
+    "test": "Du kannst alles einstellen. Änderungen landen nur im Protokoll und werden nicht gesendet."
+  },
+  "kindLabel": {
+    "shellyRelay": "Shelly-Relais"
+  },
+  "minSoc": {
+    "apply": "Mindestladung übernehmen",
+    "hint": "Bis zu diesem Ladestand lädt das Auto sofort, auch mit Netzstrom. Danach gilt der Lademodus. So ist immer genug für eine kurze Fahrt im Akku.",
+    "summary": "Mindestladung: {value}",
+    "turnOff": "Mindestladung ausschalten"
+  },
+  "modeHint": {
+    "minpv": "Lädt immer mit kleiner Leistung, bei Sonne schneller.",
+    "now": "Lädt sofort mit voller Leistung, auch aus dem Netz.",
+    "off": "Lädt nicht.",
+    "pv": "Lädt nur mit Solarüberschuss."
+  },
+  "modes": {
+    "fast": "Sofort",
+    "minSolar": "Min + Solar",
+    "solar": "Solar"
+  },
+  "ownDeviceCard": {
+    "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",
+    "fullPower": "Volle Leistung",
+    "fullPowerHint": "Läuft 2 Stunden mit voller Leistung, auch mit Netzstrom. Danach wieder automatisch.",
+    "offHint": "Bleibt aus, bis du wieder auf Automatisch stellst.",
+    "target": "Ziel {temperature} °C",
+    "temperatureLabel": "Wassertemperatur {temperature} von {target} Grad",
+    "today": "Heute: {energy}",
+    "water": "Wasser {temperature} °C"
+  },
+  "planForm": {
+    "deletePlan": "Ladeplan löschen",
+    "hint": "evcc lädt dann so, dass das Ziel zur Uhrzeit erreicht ist, möglichst mit Sonne oder günstigem Strom.",
+    "setPlan": "Ladeplan setzen",
+    "target": "Ziel",
+    "time": "Uhrzeit",
+    "title": "Bis zu einer Uhrzeit laden"
+  },
+  "status": {
+    "charging": "lädt mit {power}",
+    "heating": "heizt mit {power}",
+    "noVehiclePlugged": "kein Fahrzeug angeschlossen",
+    "notReady": "nicht bereit",
+    "plugged": "angeschlossen",
+    "ready": "bereit",
+    "startsIn": "startet in {duration} (genug Sonne)",
+    "targetReached": "Ziel erreicht",
+    "waitingSolarSurplus": "wartet auf Solarüberschuss"
+  },
+  "surplusOrder": {
+    "batteryHint": "Der Speicher wird bis zu diesem Ladestand geladen. Danach bekommen die Geräte darunter den Sonnenstrom.",
+    "evccError": "In evcc nicht übernommen: {error}",
+    "moveDown": "{name} nach unten",
+    "moveUp": "{name} nach oben",
+    "title": "Wer bekommt Sonnenstrom zuerst?"
+  },
+  "template": {
+    "heatPump": "Wärmepumpe",
+    "immersionHeater": "Heizstab"
+  },
+  "wallboxCard": {
+    "applyTarget": "Ziel übernehmen",
+    "chargeUntil": "Laden bis",
+    "chargedThisSession": "Diesmal geladen",
+    "chargingPlan": "Ladeplan",
+    "doneAt": "Fertig um",
+    "planSocTime": "{soc} % bis {time}",
+    "planTime": "bis {time}",
+    "range": "Reichweite",
+    "socLabel": "Ladestand {soc} %, Ziel {target} %",
+    "solarShare": "{percent} % Sonne",
+    "targetReachedAt": "Ziel erreicht um",
+    "targetTemperature": "Zieltemperatur",
+    "testModeLogged": "Testmodus: nur im Protokoll, nicht an evcc gesendet",
+    "timeIn": "{time} Uhr (in {duration})"
+  },
+  "wallboxPage": {
+    "addressHint": "Auf demselben Rechner {local}, sonst z. B. {example}",
+    "chargePoints": {
+      "one": "{count} Ladepunkt",
+      "other": "{count} Ladepunkte"
+    },
+    "configurationCopied": "Konfiguration kopiert",
+    "connectStep": "evcc mit OpenAmpere verbinden",
+    "connected": "Verbunden mit evcc {version}",
+    "copyConfiguration": "Konfiguration kopieren",
+    "copyFailed": "Kopieren hat nicht geklappt. Bitte die Konfiguration unten markieren und kopieren.",
+    "evccAddress": "Adresse von evcc",
+    "evccAdminPassword": "Admin-Passwort von evcc",
+    "evccCredit": "evcc wird von der evcc-Community entwickelt und steht unter MIT-Lizenz. Für manche Geräte verlangt evcc ein Sponsoring. OpenAmpere nutzt nur die offene Schnittstelle von evcc und enthält keinen Code von evcc.",
+    "evccDocs": "Anleitung von evcc",
+    "installHint": "Am einfachsten mit Docker auf demselben Rechner wie OpenAmpere. Wallbox und Fahrzeug richtest du in evcc ein, siehe {link}.",
+    "installStep": "evcc installieren",
+    "intro": "Die Wallbox steuert {link}, ein eigenständiges Open-Source-Projekt für Solarladen. Bedienen kannst du sie danach unter „Geräte“.",
+    "meterHint": "Dann braucht evcc keine eigene Verbindung zum Wechselrichter, der nur wenige erlaubt. Kopiere die Zähler-Konfiguration und füge sie in evcc ein (evcc.yaml oder „benutzerdefiniertes Gerät“).",
+    "meterStep": "Messwerte von OpenAmpere in evcc übernehmen",
+    "passwordHint": "Nur nötig, wenn evcc für Änderungen eine Anmeldung verlangt.",
+    "priorityHint": "Wer zuerst Sonnenstrom bekommt (Speicher, Wallbox, Heizstab), stellst du unter „Geräte“ ein. OpenAmpere überträgt den Speicher-Vorrang an evcc.",
+    "saveAndConnect": "Speichern und verbinden",
+    "savedKeep": "Gespeichert. Leer lassen, um es zu behalten.",
+    "showConfiguration": "Konfiguration ansehen",
+    "title": "Wallbox einrichten"
+  },
+  "workModeLabel": {
+    "feedFirst": "Einspeisung bevorzugt",
+    "peakShaving": "Spitzenlast begrenzen"
+  }
+}

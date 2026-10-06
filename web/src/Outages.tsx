@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { deleteJson, useResource } from "./api";
 import { num, timeZone } from "./format";
+import { LOCALE, t } from "./i18n";
 import { Dialog, toast } from "./ui";
 
 type Outage = {
@@ -13,12 +14,12 @@ export type OutagesView = {
   outages: Outage[]; count: number; total_s: number;
 };
 
-const day = (ts: number) => new Date(ts * 1000).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric",
+const day = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric",
   timeZone: timeZone() });
-const time = (ts: number) => new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+const time = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
 const duration = (s: number) => {
   const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
-  return h ? `${h} Std. ${m} Min.` : `${Math.max(1, m)} Min.`;
+  return h ? t("report.duration.hoursMinutes", { h, m }) : t("report.duration.minutes", { m: Math.max(1, m) });
 };
 const pct = (v: number | null) => (v == null ? "–" : `${num(v, 0)} %`);
 // recorded before #89 without a reason: a battery that never went below 15 % was not empty
@@ -33,7 +34,7 @@ export function OutagesSection() {
     if (!removing) return;
     try {
       setData(await deleteJson<OutagesView>(`/api/outages/${removing.start}`));
-      toast("Eintrag entfernt");
+      toast(t("report.outagesSection.entryRemoved"));
     } catch (e) {
       toast((e as Error).message, "error");
     }
@@ -41,41 +42,41 @@ export function OutagesSection() {
   };
   return (
     <>
-      <div className="section-title">Stromausfälle</div>
+      <div className="section-title">{t("report.outagesSection.title")}</div>
       <div className="card">
         <p className="outage-summary">
-          {data.count === 1 ? "1 Stromausfall" : `${data.count} Stromausfälle`}
-          {data.count > 0 && <>, zusammen {duration(data.total_s)}</>}
-          {data.outages.length > 0 && <span className="meta"> seit {day(data.outages[data.outages.length - 1].start)}</span>}
+          {t("report.outagesSection.powerCutCount", { count: data.count })}
+          {data.count > 0 && <>, {t("report.outagesSection.totalDuration", { duration: duration(data.total_s) })}</>}
+          {data.outages.length > 0 && <span className="meta"> {t("report.outagesSection.since", { date: day(data.outages[data.outages.length - 1].start) })}</span>}
         </p>
         {data.current && (
-          <p className="hint">Gerade läuft einer: seit {time(data.current.start)} Uhr, Speicher {pct(data.current.soc_start)} →
-            {" "}{pct(data.current.soc_last)}.</p>
+          <p className="hint">{t("report.outagesSection.ongoing", {
+            time: time(data.current.start), from: pct(data.current.soc_start), to: pct(data.current.soc_last) })}</p>
         )}
         <ul className="sessions outages">
           {data.outages.map((o) => (
             <li key={o.start}>
-              <span><strong>{day(o.start)}, {time(o.start)} Uhr</strong> · {duration(o.duration_s)}</span>
+              <span><strong>{t("report.outagesSection.dateTime", { date: day(o.start), time: time(o.start) })}</strong> · {duration(o.duration_s)}</span>
               <span className="meta">
-                Speicher {pct(o.soc_start)} → {pct(o.soc_end)}{o.soc_min != null && o.soc_min < (o.soc_end ?? 101) ? ` (tiefster Stand ${pct(o.soc_min)})` : ""}
-                {o.load_kwh != null && <> · Haus {num(o.load_kwh, 1)}&nbsp;kWh{o.solar_kwh != null ? `, davon Sonne ${num(Math.min(o.solar_kwh, o.load_kwh), 1)} kWh` : ""}</>}
+                {t("report.outagesSection.battery", { from: pct(o.soc_start), to: pct(o.soc_end) })}
+                {o.soc_min != null && o.soc_min < (o.soc_end ?? 101) ? ` ${t("report.outagesSection.lowestSoc", { soc: pct(o.soc_min) })}` : ""}
+                {o.load_kwh != null && <> · {t("report.outagesSection.house", { energy: `${num(o.load_kwh, 1)} kWh` })}
+                  {o.solar_kwh != null ? `, ${t("report.outagesSection.solarShare", { energy: `${num(Math.min(o.solar_kwh, o.load_kwh), 1)} kWh` })}` : ""}</>}
               </span>
               {o.dark_since && (o.gap_reason === "inverter_off"
-                ? <span className="meta">Ab {time(o.dark_since)} Uhr war der Wechselrichter nicht erreichbar, OpenAmpere lief aber weiter.
-                  Vermutlich wurde er ausgeschaltet oder die Verbindung war unterbrochen. Die Dauer ist deshalb ungenau.</span>
+                ? <span className="meta">{t("report.outagesSection.inverterOff", { time: time(o.dark_since) })}</span>
                 : batteryEmpty(o)
-                ? <span className="meta warn-text">Ab {time(o.dark_since)} Uhr ohne Strom, vermutlich war der Speicher leer.</span>
-                : <span className="meta">Ab {time(o.dark_since)} Uhr kamen keine Messwerte, etwa weil die Verbindung unterbrochen war.
-                  Die Dauer ist deshalb ungenau.</span>)}
-              <button className="link" onClick={() => setRemoving(o)}>Das war kein Stromausfall</button>
+                ? <span className="meta warn-text">{t("report.outagesSection.batteryEmpty", { time: time(o.dark_since) })}</span>
+                : <span className="meta">{t("report.outagesSection.noReadings", { time: time(o.dark_since) })}</span>)}
+              <button className="link" onClick={() => setRemoving(o)}>{t("report.outagesSection.notAPowerCut")}</button>
             </li>
           ))}
         </ul>
       </div>
       {removing && (
-        <Dialog title="Eintrag entfernen?" confirm="Entfernen" onConfirm={() => void remove()} onCancel={() => setRemoving(null)}>
-          <p>Den Stromausfall vom {day(removing.start)}, {time(removing.start)} Uhr aus der Liste nehmen? Das passt zum
-            Beispiel, wenn du den Wechselrichter selbst ausgeschaltet hast.</p>
+        <Dialog title={t("report.outagesSection.removeTitle")} confirm={t("common.remove")} onConfirm={() => void remove()} onCancel={() => setRemoving(null)}>
+          <p>{t("report.outagesSection.removeText", {
+            date: day(removing.start), time: time(removing.start) })}</p>
         </Dialog>
       )}
     </>

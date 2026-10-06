@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { ct } from "./format";
+import { LOCALE, t } from "./i18n";
 
 const AXIS_FONT = `12px "DM Sans Variable", system-ui, sans-serif`;
 
@@ -54,13 +55,13 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
       axes: [
         { font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, values: (_u, ticks) => ticks.map(xFormat) },
         { scale: "y", font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, size: 62,
-          values: (_u, ticks) => ticks.map((v) => `${v.toLocaleString("de-DE")} ${unit}`) },
+          values: (_u, ticks) => ticks.map((v) => `${v.toLocaleString(LOCALE)} ${unit}`) },
         ...(series.some((s) => s.scale === "soc")
           ? [{ scale: "soc", side: 1, stroke: axisColor, grid: { show: false }, size: 40 } as uPlot.Axis]
           : []),
       ],
       series: [
-        { label: "Zeit", value: (_u, v) => (v == null ? "–" : xFormat(v)) },
+        { label: t("report.chart.time"), value: (_u, v) => (v == null ? "–" : xFormat(v)) },
         ...series.map((s) => {
           const isBar = bars && s.scale !== "soc";
           const color = resolve(s.color);
@@ -74,7 +75,7 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
             paths: isBar ? uPlot.paths.bars!({ size: s.barAlign === 0 ? [0.7, 60] : [0.46, 48], align: s.barAlign ?? 1 }) : undefined,
             points: { show: false },
             value: (_u: uPlot, v: number | null) =>
-              v == null ? "–" : `${s.unit === "ct" ? ct(v) : v.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ${s.unit}`,
+              v == null ? "–" : `${s.unit === "ct" ? ct(v) : v.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} ${s.unit}`,
           };
         }),
       ],
@@ -88,5 +89,5 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
     };
   }, [x, series, bars, xFormat, height]);
 
-  return <div ref={ref} className="chart" role="img" aria-label={label ?? "Diagramm"} />;
+  return <div ref={ref} className="chart" role="img" aria-label={label ?? t("report.chart.defaultLabel")} />;
 }

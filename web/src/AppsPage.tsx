@@ -2,6 +2,7 @@ import { useState } from "react";
 import { deleteJson, postJson, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { timeZone } from "./format";
+import { LOCALE, t, tx } from "./i18n";
 import { REPO_URL } from "./links";
 import { Button, copyText, Dialog, Field, LoadState, Notice, Segmented, SubPage, toast } from "./ui";
 
@@ -16,8 +17,8 @@ const DOCS_URL = `${REPO_URL}/blob/main/docs/homeassistant.de.md`;
 const HACS_URL = "https://hacs.xyz/docs/use/";
 const MY_HA_REPOSITORY = "https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration";
 const MY_HA_SETUP = "https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere";
-const SCOPES: [Scope, string][] = [["read", "Nur lesen"], ["control", "Lesen + Steuern"]];
-const when = (ts: number) => new Date(ts * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: timeZone() });
+const SCOPES: [Scope, string][] = [["read", t("common.readOnly")], ["control", t("common.readAndControl")]];
+const when = (ts: number) => new Date(ts * 1000).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short", timeZone: timeZone() });
 
 /** Access for other apps such as Home Assistant (#76): one token per app, shown once as a connection code. */
 export function AppsPage({ onBack }: { onBack: () => void }) {
@@ -45,7 +46,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
     if (!revoke) return;
     try {
       setData(await deleteJson<Tokens>(`/api/tokens/${revoke.id}`));
-      toast(`Zugang „${revoke.name}“ entfernt`);
+      toast(t("settings.appsPage.accessRemoved", { name: revoke.name }));
     } catch (e) {
       toast((e as Error).message, "error");
     }
@@ -53,61 +54,54 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <SubPage title="Verbundene Apps" onBack={onBack}>
-      <p className="hint">Andere Apps wie Home Assistant können die Daten von OpenAmpere lesen und, wenn du es erlaubst, den
-        Speicher steuern. Jede App bekommt einen eigenen Zugang, den du jederzeit entfernen kannst. Die Verbindung ist
-        verschlüsselt. <a href={DOCS_URL} target="_blank" rel="noopener">Anleitung für Home Assistant</a></p>
+    <SubPage title={t("common.connectedApps")} onBack={onBack}>
+      <p className="hint">{t("settings.appsPage.intro")}{" "}
+        <a href={DOCS_URL} target="_blank" rel="noopener">{t("settings.appsPage.haGuide")}</a></p>
       {!data && <LoadState error={error} onRetry={reload} />}
       {data && !code && <ConnectionStatus data={data} />}
 
-      {data?.tls.error && <Notice kind="warn">HTTPS für andere Apps ist nicht verfügbar: {data.tls.error}. Ein anderes Programm
-        nutzt den Port. Abhilfe: in der docker-compose.yml OPENAMPERE_SERVER_TLS_PORT auf einen freien Port setzen, z. B.
-        „8444“, und OpenAmpere neu starten.</Notice>}
+      {data?.tls.error && <Notice kind="warn">{t("settings.appsPage.httpsError", { error: data.tls.error })}</Notice>}
       {data?.pairing.map((p) => <PairingCard key={p.id} request={p} onDone={setData} />)}
 
       {code && (
         <div className="card form">
-          <h2>Verbindungscode</h2>
-          <Notice kind="warn">Der Code wird nur jetzt angezeigt. Er ist wie ein Schlüssel: nicht weitergeben, nur in die App
-            einfügen.</Notice>
+          <h2>{t("settings.appsPage.connectionCode")}</h2>
+          <Notice kind="warn">{t("settings.appsPage.codeShownOnce")}</Notice>
           <textarea className="input code-box" readOnly rows={4} value={code} onFocus={(e) => e.target.select()} />
-          <Button onClick={async () => { if (await copyText(code)) toast("Kopiert"); }}>Kopieren</Button>
-          <p className="hint">In Home Assistant: Einstellungen → Geräte & Dienste → Integration hinzufügen → OpenAmpere, dann den
-            Code einfügen.</p>
-          <Button variant="secondary" onClick={() => setCode(null)}>Fertig</Button>
+          <Button onClick={async () => { if (await copyText(code)) toast(t("common.copied")); }}>{t("common.copy")}</Button>
+          <p className="hint">{t("settings.appsPage.haCodeHint")}</p>
+          <Button variant="secondary" onClick={() => setCode(null)}>{t("settings.appsPage.done")}</Button>
         </div>
       )}
 
       {data && !code && (data.tls.port ? (
         <div className="card form">
-          <h2>Neue App verbinden</h2>
-          <p className="hint">Am einfachsten: In Home Assistant die Integration OpenAmpere hinzufügen und „Mit OpenAmpere
-            koppeln“ wählen. Die Anfrage erscheint dann hier. Alternativ hier einen Zugang erstellen und den
-            Verbindungscode einfügen:</p>
-          <Field label="Name"><input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label="Berechtigung">
+          <h2>{t("settings.appsPage.connectNewApp")}</h2>
+          <p className="hint">{t("settings.appsPage.pairingHint")}</p>
+          <Field label={t("common.name")}><input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label={t("common.permission")}>
             <Segmented value={scope} onChange={setScope} options={SCOPES} />
           </Field>
           <p className="hint">{scope === "read"
-            ? "Die App sieht Leistung, Energie, Ladestand und Zustand, ändern kann sie nichts."
-            : "Die App darf zusätzlich Betriebsmodus, Speicher-Grenzen, Laden aus dem Netz und die Betriebsart deiner Geräte ändern – nur, solange die Steuerung hier eingeschaltet ist. Hauptschalter, Einspeisebegrenzung und Einstellungen bleiben OpenAmpere vorbehalten."}</p>
-          <Button busy={busy} disabled={DEMO || !name.trim()} onClick={create}>Zugang erstellen</Button>
-          {DEMO && <p className="hint">In der Demo nicht verfügbar.</p>}
+            ? t("settings.appsPage.readScopeHint")
+            : t("settings.appsPage.controlScopeHint")}</p>
+          <Button busy={busy} disabled={DEMO || !name.trim()} onClick={create}>{t("settings.appsPage.createAccess")}</Button>
+          {DEMO && <p className="hint">{t("settings.appsPage.notInDemo")}</p>}
         </div>
-      ) : <Notice kind="info">Der HTTPS-Port ist ausgeschaltet (server.tls_port = 0). Ohne ihn können sich andere Apps nicht
-        sicher verbinden.</Notice>)}
+      ) : <Notice kind="info">{t("settings.appsPage.httpsOff")}</Notice>)}
 
       {data && data.tokens.length > 0 && (
         <div className="card">
-          <h2>Zugänge</h2>
+          <h2>{t("settings.appsPage.accessList")}</h2>
           <ul className="plain-list">
-            {data.tokens.map((t) => (
-              <li key={t.id} className="token-row">
+            {data.tokens.map((token) => (
+              <li key={token.id} className="token-row">
                 <div>
-                  <strong>{t.name}</strong> · {t.scope === "control" ? "Lesen + Steuern" : "Nur lesen"}
-                  <div className="hint">Erstellt {when(t.created)} · {t.last_used ? `zuletzt benutzt ${when(t.last_used)}` : "noch nie benutzt"}</div>
+                  <strong>{token.name}</strong> · {token.scope === "control" ? t("common.readAndControl") : t("common.readOnly")}
+                  <div className="hint">{t("settings.appsPage.created", { date: when(token.created) })} · {token.last_used
+                    ? t("settings.appsPage.lastUsed", { date: when(token.last_used) }) : t("settings.appsPage.neverUsed")}</div>
                 </div>
-                <button className="link danger-link" onClick={() => setRevoke(t)}>Entfernen</button>
+                <button className="link danger-link" onClick={() => setRevoke(token)}>{t("common.remove")}</button>
               </li>
             ))}
           </ul>
@@ -115,14 +109,13 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
       )}
 
       {data?.tls.fingerprint && (
-        <p className="hint">HTTPS auf Port {data.tls.port}. Fingerabdruck des Zertifikats (SHA-256): <code className="fingerprint">
+        <p className="hint">{t("settings.appsPage.httpsFingerprint", { port: data.tls.port ?? "–" })} <code className="fingerprint">
           {data.tls.fingerprint.match(/.{1,2}/g)?.join(":")}</code></p>
       )}
 
       {revoke && (
-        <Dialog title="Zugang entfernen?" confirm="Entfernen" danger onCancel={() => setRevoke(null)} onConfirm={() => void confirmRevoke()}>
-          <p>„{revoke.name}“ kann danach nicht mehr auf OpenAmpere zugreifen. Für eine neue Verbindung erstellst du einen neuen
-            Zugang.</p>
+        <Dialog title={t("settings.appsPage.removeTitle")} confirm={t("common.remove")} danger onCancel={() => setRevoke(null)} onConfirm={() => void confirmRevoke()}>
+          <p>{t("settings.appsPage.removeText", { name: revoke.name })}</p>
         </Dialog>
       )}
     </SubPage>
@@ -137,7 +130,7 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
     setBusy(true);
     try {
       onDone(await postJson<Tokens>(`/api/tokens/pairing/${request.id}`, { approve, scope }));
-      toast(approve ? `„${request.name}“ ist verbunden` : "Anfrage abgelehnt");
+      toast(approve ? t("settings.pairingCard.connected", { name: request.name }) : t("settings.pairingCard.declined"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -146,15 +139,14 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
   };
   return (
     <div className="card form pairing">
-      <h2>„{request.name}“ möchte sich verbinden</h2>
-      <p className="pairing-code" aria-label={`Code ${request.code.split("").join(" ")}`}>
+      <h2>{t("settings.pairingCard.title", { name: request.name })}</h2>
+      <p className="pairing-code" aria-label={t("settings.pairingCard.codeLabel", { code: request.code.split("").join(" ") })}>
         {request.code.slice(0, 3)} {request.code.slice(3)}</p>
-      <p className="hint">Erlaube die Verbindung nur, wenn die App <strong>genau diesen Code</strong> anzeigt. Steht dort ein
-        anderer, lehne ab: Dann hängt sich womöglich jemand dazwischen.</p>
-      <Field label="Berechtigung"><Segmented value={scope} onChange={setScope} options={SCOPES} /></Field>
+      <p className="hint">{tx("settings.pairingCard.checkCode", { code: <strong>{t("settings.pairingCard.exactCode")}</strong> })}</p>
+      <Field label={t("common.permission")}><Segmented value={scope} onChange={setScope} options={SCOPES} /></Field>
       <div className="button-row">
-        <Button busy={busy} onClick={() => void decide(true)}>Code stimmt – erlauben</Button>
-        <Button variant="secondary" disabled={busy} onClick={() => void decide(false)}>Ablehnen</Button>
+        <Button busy={busy} onClick={() => void decide(true)}>{t("settings.pairingCard.allow")}</Button>
+        <Button variant="secondary" disabled={busy} onClick={() => void decide(false)}>{t("settings.pairingCard.decline")}</Button>
       </div>
     </div>
   );
@@ -162,52 +154,48 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
 
 /** Is Home Assistant (or another app) connected right now? If not: what to check, or how to set it up (#79). */
 function ConnectionStatus({ data }: { data: Tokens }) {
-  const live = data.tokens.filter((t) => t.live_since);
+  const live = data.tokens.filter((token) => token.live_since);
   if (live.length) {
     return (
       <Notice kind="ok">
-        {live.map((t) => <div key={t.id}><strong>{t.name}</strong> ist verbunden, Live-Werte seit {when(t.live_since!)}.</div>)}
+        {live.map((token) => <div key={token.id}><strong>{token.name}</strong>{" "}
+          {t("settings.connectionStatus.connectedSince", { date: when(token.live_since!) })}</div>)}
       </Notice>
     );
   }
   const host = DEMO ? "192.168.178.20" : window.location.hostname; // the demo runs on the project website
   const port = data.tls.port;
   if (data.tokens.length) {
-    const last = Math.max(...data.tokens.map((t) => t.last_used ?? 0));
+    const last = Math.max(...data.tokens.map((token) => token.last_used ?? 0));
     return (
       <div className="card form">
-        <Notice kind="warn">Gerade ist keine App verbunden{last ? `, zuletzt ${when(last)}` : ""}.</Notice>
+        <Notice kind="warn">{last ? t("settings.connectionStatus.notConnectedSince", { date: when(last) }) : t("settings.connectionStatus.notConnected")}</Notice>
         <ul className="plain-list">
-          <li>Läuft Home Assistant, und ist dort die Integration OpenAmpere eingerichtet?</li>
-          <li>Erreicht Home Assistant diese Adresse? In der Integration muss <strong>{host}</strong> mit HTTPS-Port
-            <strong> {port ?? "–"}</strong> eingetragen sein.</li>
-          <li>Zeigt Home Assistant „Neu verbinden“? Dann wurde der Zugang hier entfernt oder das Zertifikat hat sich
-            geändert: einfach neu koppeln.</li>
+          <li>{t("settings.connectionStatus.checkRunning")}</li>
+          <li>{tx("settings.connectionStatus.checkAddress", { host: <strong>{host}</strong>, port: <strong>{port ?? "–"}</strong> })}</li>
+          <li>{t("settings.connectionStatus.reconnectHint")}</li>
         </ul>
       </div>
     );
   }
   return (
     <div className="card form">
-      <h2>Home Assistant verbinden</h2>
-      <p className="hint">So siehst du die Werte von OpenAmpere in Home Assistant, auch im Energie-Dashboard, und kannst
-        auf Wunsch den Speicher von dort steuern. OpenAmpere läuft schon, es fehlt nur noch die Integration.</p>
+      <h2>{t("settings.connectionStatus.title")}</h2>
+      <p className="hint">{t("settings.connectionStatus.intro")}</p>
       <ol className="setup-steps">
-        <li>In Home Assistant <a href={HACS_URL} target="_blank" rel="noopener">HACS</a> installieren, falls noch nicht
-          geschehen.</li>
-        <li>Die Integration OpenAmpere über HACS installieren und Home Assistant neu starten:{" "}
-          <a href={MY_HA_REPOSITORY} target="_blank" rel="noopener">In Home Assistant öffnen</a></li>
-        <li>Integration hinzufügen und „Mit OpenAmpere koppeln“ wählen:{" "}
-          <a href={MY_HA_SETUP} target="_blank" rel="noopener">Integration einrichten</a>. Dort eintragen:
+        <li>{tx("settings.connectionStatus.installHacsStep", { link: <a href={HACS_URL} target="_blank" rel="noopener">HACS</a> })}</li>
+        <li>{t("settings.connectionStatus.installIntegrationStep")}{" "}
+          <a href={MY_HA_REPOSITORY} target="_blank" rel="noopener">{t("settings.connectionStatus.openHomeAssistant")}</a></li>
+        <li>{tx("settings.connectionStatus.addIntegrationStep",
+          { link: <a href={MY_HA_SETUP} target="_blank" rel="noopener">{t("settings.connectionStatus.setUpIntegration")}</a> })}
           <dl className="facts">
-            <dt>Adresse</dt><dd><CopyValue value={host} /></dd>
-            <dt>HTTPS-Port</dt><dd>{port ? <CopyValue value={String(port)} /> : "ausgeschaltet"}</dd>
+            <dt>{t("common.address")}</dt><dd><CopyValue value={host} /></dd>
+            <dt>{t("settings.connectionStatus.httpsPort")}</dt><dd>{port ? <CopyValue value={String(port)} /> : t("settings.connectionStatus.turnedOff")}</dd>
           </dl>
         </li>
-        <li>Die Anfrage erscheint dann hier oben mit einem Code. Stimmt er mit dem in Home Assistant überein, erlauben.</li>
+        <li>{t("settings.connectionStatus.allowStep")}</li>
       </ol>
-      <p className="hint">Ohne HACS oder für andere Apps: unten einen Zugang erstellen und den Verbindungscode einfügen.
-        Die Adresse muss die sein, unter der Home Assistant diesen Rechner erreicht, meist die IP-Adresse.</p>
+      <p className="hint">{t("settings.connectionStatus.manualHint")}</p>
     </div>
   );
 }
@@ -215,7 +203,7 @@ function ConnectionStatus({ data }: { data: Tokens }) {
 export function CopyValue({ value }: { value: string }) {
   return (
     <span className="copy-value"><code>{value}</code>
-      <button className="link" onClick={async () => { if (await copyText(value)) toast("Kopiert"); }}>Kopieren</button>
+      <button className="link" onClick={async () => { if (await copyText(value)) toast(t("common.copied")); }}>{t("common.copy")}</button>
     </span>
   );
 }

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import hashlib
+import json
 import logging
 import secrets
 import shutil
@@ -21,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, external, health
+from . import discovery, cloud_import, external, health, i18n
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import SECRETS
@@ -217,6 +218,26 @@ def create_app(runtime: Runtime) -> FastAPI:
                 if not auth.valid(request.cookies.get(SESSION_COOKIE)):
                     return JSONResponse({"detail": "Bitte anmelden.", "code": "login_required"}, 401)
         return await call_next(request)
+
+    # added after the security check, so it also translates the errors that check returns
+    @app.middleware("http")
+    async def translate_errors(request: Request, call_next):
+        """Error messages in the language of the web app, if it asks for one (#104)."""
+        response = await call_next(request)
+        lang = request.headers.get(i18n.HEADER)
+        if (not lang or lang == "de" or response.status_code < 400
+                or response.headers.get("content-type") != "application/json"):
+            return response
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")}
+        try:
+            data = json.loads(body)
+        except ValueError:
+            data = None
+        if isinstance(data, dict) and isinstance(data.get("detail"), str):
+            data["detail"] = i18n.translate(data["detail"], lang)
+            return JSONResponse(data, status_code=response.status_code, headers=headers)
+        return Response(body, status_code=response.status_code, headers=headers, media_type="application/json")
 
     def start_session(response: Response) -> None:
         response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,

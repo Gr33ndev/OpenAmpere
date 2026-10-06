@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Settings, Status } from "./api";
 import { putJson, refreshAll, useResource } from "./api";
+import { t } from "./i18n";
 import { Checkbox, Dialog, Segmented, toast } from "./ui";
 
 export type ControlMode = "off" | "test" | "live";
@@ -11,9 +12,9 @@ export function controlMode(control: Status["control"] | undefined): ControlMode
 }
 
 const HINT: Record<ControlMode, string> = {
-  off: "OpenAmpere zeigt nur an und ändert nichts an deinen Geräten.",
-  test: "Du kannst alles einstellen. Änderungen landen nur im Protokoll und werden nicht gesendet.",
-  live: "Änderungen werden an Wechselrichter und Geräte gesendet.",
+  off: t("devices.hint.off"),
+  test: t("devices.hint.test"),
+  live: t("devices.hint.live"),
 };
 
 /** One switch for "may OpenAmpere change things?", shown wherever something can be controlled. */
@@ -31,7 +32,7 @@ export function ControlModeBar({ compact = false }: { compact?: boolean }) {
     try {
       await putJson("/api/settings", { "control.enabled": next !== "off", "control.dry_run": next !== "live",
         _revision: settings?.revision });
-      toast(next === "off" ? "Nur ansehen" : next === "test" ? "Testmodus: nichts wird gesendet" : "Steuerung aktiv");
+      toast(next === "off" ? t("common.viewOnly") : next === "test" ? t("devices.controlModeBar.testModeActive") : t("devices.controlModeBar.controlActive"));
       refreshAll();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -52,20 +53,16 @@ export function ControlModeBar({ compact = false }: { compact?: boolean }) {
   if (!status) return null;
   return (
     <div className={`card control-mode ${mode} ${compact ? "compact" : ""}`}>
-      <div className="control-mode-title">Änderungen an Geräten</div>
+      <div className="control-mode-title">{t("devices.controlModeBar.title")}</div>
       <Segmented value={mode} disabled={busy || locked} onChange={choose}
-        options={[["off", "Nur ansehen"], ["test", "Testen"], ["live", "Aktiv"]]} />
-      <p className="hint">{locked ? "Fest eingestellt (Umgebungsvariable)." : HINT[mode]}</p>
+        options={[["off", t("common.viewOnly")], ["test", t("common.testing")], ["live", t("common.active")]]} />
+      <p className="hint">{locked ? t("devices.controlModeBar.lockedByEnv") : HINT[mode]}</p>
       {confirm && (
-        <Dialog title="Steuerung aktivieren?" confirm="Ja, Änderungen senden" danger disabled={!understood}
+        <Dialog title={t("devices.controlModeBar.confirmTitle")} confirm={t("devices.controlModeBar.yesSendChanges")} danger disabled={!understood}
           onCancel={() => setConfirm(false)} onConfirm={() => { setConfirm(false); void apply("live"); }}>
-          <p>Änderungen werden ab jetzt an Wechselrichter und Geräte gesendet. Falsche Einstellungen können dazu führen,
-            dass der Speicher nicht wie gewohnt arbeitet.</p>
-          <p className="hint">OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne Gewähr und ersetzt keinen
-            Elektrofachbetrieb. Ungeeignete Einstellungen können den Speicher belasten und Garantie- oder
-            Gewährleistungsansprüche (gegenüber Hersteller, Händler oder Insolvenzverwalter) gefährden.
-            Notiere die bisherigen Werte, bevor du etwas änderst.</p>
-          <Checkbox checked={understood} onChange={setUnderstood}>Ich habe das verstanden und handle auf eigene Verantwortung.</Checkbox>
+          <p>{t("devices.controlModeBar.liveWarning")}</p>
+          <p className="hint">{t("devices.controlModeBar.disclaimer")}</p>
+          <Checkbox checked={understood} onChange={setUnderstood}>{t("devices.controlModeBar.acceptRisk")}</Checkbox>
         </Dialog>
       )}
     </div>

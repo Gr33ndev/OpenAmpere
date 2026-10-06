@@ -1,0 +1,200 @@
+{
+  "api": {
+    "accessInvalidRevoked": "Access invalid or revoked.",
+    "accessNotFound": "Access not found.",
+    "accessReadOnly": "This access is read-only.",
+    "accessViaNotAllowed": "Access via “{host}” is not allowed. Open OpenAmpere via its IP address or add the name to server.allowed_hosts.",
+    "consumerNotFound": "Consumer not found",
+    "controlDisabled": "Control is disabled",
+    "currentPasswordIncorrect": "The current password is incorrect.",
+    "endDateBeforeStart": "The end date is before the start date",
+    "enterNtfyAddressFirst": "Please enter an ntfy address first.",
+    "fileTooLargeMax": "File too large (max. 500 MB).",
+    "httpsPortTurnedOff": "The HTTPS port is turned off (server.tls_port). Without it, other apps can't connect securely.",
+    "invalidDate": "Invalid date",
+    "inverterNotResponding": "Inverter not responding: {err}",
+    "inverterNotRespondingTry": "The inverter is not responding. Please try again later.",
+    "log": "Please log in.",
+    "noCurrentReadingsInverter": "No current readings from the inverter",
+    "noReadingsYet": "No readings yet",
+    "onlyAvailableViaHttps": "Only available via HTTPS.",
+    "passwordAlreadyBeenSet": "A password has already been set.",
+    "powerOutageDoesnT": "This power outage doesn't exist.",
+    "requestExpiredRestartPairing": "The request has expired. Please restart the pairing in the app.",
+    "setPasswordFirst": "Please set a password first.",
+    "settingsWereChangedAnother": "The settings were changed on another device in the meantime. Please reload the page and make the change again.",
+    "thereNoNewerVersion": "There is no newer version.",
+    "unknownAction": "Unknown action.",
+    "unknownPeriod": "Unknown period",
+    "unknownPermission": "Unknown permission.",
+    "wrongPassword": "Wrong password."
+  },
+  "apitokens": {
+    "enterNameEG": "Please enter a name, e.g. “Home Assistant”.",
+    "invalidRequest": "Invalid request.",
+    "mostAccessesRemoveOne": "At most {MAX_TOKENS} accesses. Please remove one you no longer use first.",
+    "severalPairingRequestsAlready": "Several pairing requests are already waiting. Please confirm or decline them in OpenAmpere first, or wait 10 minutes.",
+    "tooManyPairingRequests": "Too many pairing requests. Please try again later."
+  },
+  "auth": {
+    "passwordMustLeastCharacters": "The password must have at least {MIN_PASSWORD_LENGTH} characters.",
+    "tooManyFailedAttempts": "Too many failed attempts. Please wait a minute."
+  },
+  "billing": {
+    "enterAdvancePaymentsBetween": "Please enter advance payments between 0 and 5000 €.",
+    "enterMonthAmountEach": "Please enter a month and an amount for each advance payment.",
+    "invalidInput": "Invalid input.",
+    "invalidMonthStartBilling": "Invalid month for the start of the billing year.",
+    "twoAdvancePaymentsStart": "Two advance payments start in the same month."
+  },
+  "charging": {
+    "batterySizeMustBetween": "The battery size must be between 0.5 and 200 kWh.",
+    "chargeTargetMustBetween": "The charge target must be between 20 and 100 %.",
+    "confirmLegalNoticesFirst": "Please confirm the legal notices first.",
+    "enterTimesFullHours": "Please enter times as full hours 0–23.",
+    "invalidSettingsChargingGrid": "Invalid settings for charging from the grid.",
+    "unknownChargingType": "Unknown charging type."
+  },
+  "cli": {
+    "noDatabaseFound": "No database found at {path}.",
+    "noWriteAccessUser": "No write access to {folder} (user {getuid}). With Docker, run this on the server in the OpenAmpere folder: sudo chown -R {getuid2}:{getgid} data",
+    "openampereAlreadyRunningStop": "OpenAmpere is already running ({err}). Please stop the other instance first."
+  },
+  "cloudImport": {
+    "apiKeyWasRejected": "The API key was rejected by the EKD cloud.",
+    "ekdCloudTReached": "The EKD cloud can't be reached.",
+    "enterApiKeyFirst": "Please enter the API key first.",
+    "noHistoryDataFound": "No history data found in the ZIP file (folder “work”).",
+    "noHistoryDataFound2": "No history data found in the EKD cloud.",
+    "noSystemFoundApi": "No system found for this API key.",
+    "notValidZipFile": "This is not a valid ZIP file.",
+    "zipFileTooLarge": "The ZIP file is too large."
+  },
+  "config": {
+    "settingTChangedApp": "The setting {key} can't be changed in the app."
+  },
+  "consumers": {
+    "batteryPriorityMustBetween": "The battery priority must be between 0 and 100 %.",
+    "chooseDurationUp48": "Please choose a duration of up to 48 hours.",
+    "deviceNotFound": "Device not found.",
+    "enterCompleteAddressHttp": "Please enter a complete address with http://.",
+    "enterDeviceSIp": "{name}: Please enter the device's IP address.",
+    "giveEachDeviceName": "Please give each device a name.",
+    "invalidInputDevice": "Invalid input for a device.",
+    "invalidPortDeviceAddress": "{name}: Invalid port or device address.",
+    "minimumSurplusMustBetween": "{name}: The minimum surplus must be between 50 W and the maximum power.",
+    "minimumTimes0240": "{name}: minimum times 0–240 minutes.",
+    "mostDevices": "At most {MAX_CONSUMERS} devices.",
+    "orderDoesnTMatch": "The order doesn't match the configured devices. Please reload the page.",
+    "power5030000W": "{name}: power 50–30000 W, battery priority 0–100 %.",
+    "setPriceLimitBetween": "{name}: Please set the price limit between -100 and 200 ct/kWh.",
+    "unknownOperatingMode": "Unknown operating mode.",
+    "unknownSwitchingType": "Unknown switching type."
+  },
+  "control": {
+    "backupPowerReserveMust": "The backup power reserve must not be below the lower limit in backup power mode",
+    "chargeLimitMustAbove": "The charge limit must be above the backup power reserve",
+    "controlDevicesNotEnabled": "Control of {manufacturer} devices is not enabled in OpenAmpere yet (display only).",
+    "currentBatteryLimitsCouldn": "The current battery limits couldn't be read completely. Please try again later.",
+    "exportLimitDeviceT": "The export limit of this device can't be changed via Modbus.",
+    "inverterNotConnected": "Inverter is not connected",
+    "inverterRejectedChange": "The inverter rejected the change.",
+    "inverterRejectedChangeFully": "The inverter rejected the change (fully or partly). Is it behind a read-only Modbus proxy?",
+    "mustBetween100": "{key} must be between {low} and 100 %",
+    "noResponseInverterCheck": "No response from the inverter. Please check the values and try again later.",
+    "noResponseInverterTry": "No response from the inverter. Please try again later.",
+    "raiseRemoveExportLimit": "To raise or remove the export limit, you must confirm that you have your grid operator's written approval, and enter the date/reference of that approval.",
+    "underConfiguredRuleKwp": "Under the configured rule ({rule} of {installed_kwp} kWp), at most {legal_max} W are allowed. If the rule no longer applies (e.g. because a smart meter with a control box was installed), change the rule first.",
+    "unknownSetting": "Unknown setting: {unknown}",
+    "unknownWorkMode": "Unknown work mode",
+    "valueMustBetween0": "Value must be between 0 and {maximum} W"
+  },
+  "diagnostics": {
+    "diagnosisAlreadyRunning": "The diagnosis is already running.",
+    "inverterNotConnected": "The inverter is not connected."
+  },
+  "discovery": {
+    "enterNetworkLike192": "Please enter the network like this: 192.168.178",
+    "onlyPrivateNetworksUp": "Only private networks up to /22 can be scanned"
+  },
+  "driver": {
+    "controlNotEnabledYet": "Control is not enabled yet for SAJ devices"
+  },
+  "eeg": {
+    "enterInstalledPvCapacity": "Please enter the installed PV capacity.",
+    "noRatesBeenPublished": "No rates have been published yet for this commissioning date. Please enter the feed-in tariff manually.",
+    "openampereDoesnTKnow": "OpenAmpere doesn't know the rates for systems commissioned before 2018. Please enter the feed-in tariff manually.",
+    "systemsOver100Kwp": "Systems over 100 kWp sell their power directly. Please enter the feed-in tariff manually."
+  },
+  "evcc": {
+    "changesTurnedOffSwitch": "Changes are turned off. Switch to „Testen“ (Test mode) or „Aktiv“ (Active) at the top.",
+    "chargePointDoesnT": "This charge point doesn't exist in evcc.",
+    "chooseTargetBetween20": "Please choose a target between 20 and 100 % and a time in the future.",
+    "evccMustDetectVehicle": "evcc must detect a vehicle for this.",
+    "evccNotConnected": "evcc is not connected.",
+    "evccReportsError": "evcc reports an error ({code}).",
+    "evccRequiresLoginEnter": "evcc requires a login. Please enter the evcc admin password.",
+    "evccTReached": "evcc can't be reached at {url}.",
+    "minimumChargeMustBetween": "The minimum charge must be between 0 and 80 %.",
+    "noEvccRespondingAddress": "No evcc is responding at this address.",
+    "unknownChargingMode": "Unknown charging mode.",
+    "unknownCommand": "Unknown command."
+  },
+  "external": {
+    "allowedEnabledTargetSoc": "Allowed are enabled and target_soc.",
+    "allowedWorkModeMin": "Allowed are work_mode, min_soc, max_soc and min_soc_on_grid.",
+    "controlTurnedOffOpenampere": "Control is turned off in OpenAmpere: „Mehr → Steuerung und Protokoll“ (More → Control and log).",
+    "requestNotFoundExpired": "Request not found or expired.",
+    "setUpChargingGrid": "Please set up charging from the grid in OpenAmpere once first: „Geräte → Speicher → Laden aus dem Netz“ (Devices → Battery → Charging from the grid).",
+    "tooManyChangesShort": "Too many changes in a short time (at most {per_hour} per hour). Please try again in {wait} min."
+  },
+  "gridmeter": {
+    "enterEmailPasswordCustomer": "Please enter the email and password for the customer portal.",
+    "loginNetzeBwFailed": "The login at Netze BW failed (error {status}).",
+    "loginNetzeBwHaving": "The login at Netze BW is having problems right now (error {status}).",
+    "netzeBwAsksExtra": "Netze BW asks for an extra login step (e.g. two-factor or captcha). OpenAmpere can't do that.",
+    "netzeBwCustomerPortal": "The Netze BW customer portal can't be reached right now.",
+    "netzeBwError": "Netze BW, {step}: error {status}.",
+    "netzeBwLoginPage": "The Netze BW login page has changed. Please open an issue.",
+    "netzeBwMeterReadings": "Netze BW, meter readings: the file has an unknown format. Please open an issue.",
+    "netzeBwMeterReadings2": "Netze BW, meter readings: no column with energy values found. Please open an issue.",
+    "netzeBwRejectsLogin": "Netze BW rejects the login. Please check the email and password.",
+    "netzeBwUnexpectedAnswer": "Netze BW, {step}: unexpected answer.",
+    "netzeBwWonT": "Netze BW won't release the {step} despite the login (error {status}). OpenAmpere will try again later."
+  },
+  "mypv": {
+    "immersionHeaterNotResponding": "Immersion heater not responding: {err}",
+    "immersionHeaterRejectsPower": "The immersion heater rejects the power setting. Is its control mode set to “Modbus TCP”?",
+    "immersionHeaterRejectsQuery": "The immersion heater rejects the query. Is its control mode set to “Modbus TCP”?",
+    "immersionHeaterTReached": "Immersion heater at {host}:{port} can't be reached"
+  },
+  "notify": {
+    "ntfyAddressMustForm": "The ntfy address must have the form https://server/topic."
+  },
+  "registry": {
+    "noSupportedDeviceFound": "No supported device found. Is the address correct and Modbus TCP enabled?"
+  },
+  "remote": {
+    "tailscaleNotSetUp": "Tailscale is not set up. Please run the install script once more and answer yes to the question about access on the go."
+  },
+  "runtime": {
+    "enterCommissioningDate": "Please enter the commissioning date.",
+    "setEnvironmentVariableT": "Set by an environment variable, can't be changed in the app: {blocked}"
+  },
+  "secretbox": {
+    "damagedDeleteFileEnter": "{key_path} is damaged. Delete the file and enter the login details in the app again."
+  },
+  "tariffs": {
+    "enterLeastOneTariff": "Please enter at least one tariff.",
+    "enterLeastOneTime": "Please enter at least one time window with its own price.",
+    "enterPricesBetween100": "Please enter prices between -100 and 200 ct/kWh.",
+    "enterStandingChargeBetween": "Please enter the standing charge between 0 and 200 € per month.",
+    "invalidTariffCheckDates": "Invalid tariff: please check the dates and prices.",
+    "invalidTariffType": "Invalid tariff type.",
+    "most6TimeWindows": "At most 6 time windows, prices between -100 and 200 ct/kWh.",
+    "twoTariffsStartSame": "Two tariffs start on the same day."
+  },
+  "updates": {
+    "updateHelperIsnT": "The update helper isn't running. Please run the install script once more."
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "batteryHealthCard": {
+    "about": "about {count}",
+    "cellsNow": "Cells now",
+    "changeCapacity": "Change capacity ({capacity} kWh)",
+    "efficiency": "Efficiency",
+    "explanation": "A full cycle means discharging the whole capacity once. Depending on the battery, 6,000 to 12,000 cycles are specified (data sheet). Efficiency is discharged divided by charged energy since installation, typically 85 to 95 %. The cells of a healthy battery differ in temperature by a few degrees at most.",
+    "fullCycles": "Full cycles",
+    "inverterMax": "Inverter max.",
+    "largestDifference": "Largest difference",
+    "range": "{min} to {max}",
+    "title": "Battery health",
+    "warmestCellDays": "Warmest cell ({days} days)",
+    "warmestCellSoFar": "Warmest cell (so far)"
+  },
+  "billingPage": {
+    "addChange": "Add a changed advance payment",
+    "billingYearStarts": "Billing year starts in",
+    "changeHint": "If an advance payment changes, enter the new one with the month it applies from. The prices, including the standing charge, come from your electricity tariff (More → Electricity tariff).",
+    "enterAdvancePayment": "Enter advance payment",
+    "fromMonth": "From month",
+    "intro": "Enter your monthly advance payments. OpenAmpere compares them with your consumption and feed-in so far. You see the result in the Report.",
+    "perMonth": "Per month",
+    "removeAdvancePayment": "Remove advance payment"
+  },
+  "billingSection": {
+    "advancePaymentsFit": "Advance payments fit",
+    "amountCredit": "{amount} in credit",
+    "amountOwed": "{amount} owed",
+    "asOfToday": "As of today",
+    "deviations": "The inverter measures {deviations}.",
+    "emptyState": "Enter your monthly advance payments and OpenAmpere shows whether they match your consumption and feed-in.",
+    "enterAdvancePayments": "Enter advance payments",
+    "estimatedBefore": "OpenAmpere was not measuring yet before {date}, so this time is estimated.",
+    "explanation": "Plus means: up to today you have paid more in advance than you used, or fed in more than was paid out. The current month counts up to today, and the costs include the standing charge from your electricity tariff.",
+    "explanationImportOnly": "Plus means: up to today you have paid more in advance than you used. The current month counts up to today, and the costs include the standing charge from your electricity tariff.",
+    "feedInLess": "{percent} % less for feed-in",
+    "feedInMore": "{percent} % more for feed-in",
+    "fetchMeterReadings": "Get meter readings from the grid operator",
+    "importLess": "{percent} % less for grid import",
+    "importMore": "{percent} % more for grid import",
+    "meterDisclaimer": "Billing is based on the grid operator's meters. The values here are a guide.",
+    "meterSource": "Up to {date} OpenAmpere uses the meter readings from {source}, after that those of the inverter.",
+    "missingDays": {
+      "one": "OpenAmpere has no readings for {count} day, for example because the connection was disrupted. Consumption and feed-in are therefore slightly too low.",
+      "other": "OpenAmpere has no readings for {count} days, for example because the connection was disrupted. Consumption and feed-in are therefore slightly too low."
+    },
+    "total": "Total",
+    "yearEnds": "The billing year ends on {date}."
+  },
+  "capacityForm": {
+    "hint": "Found on the battery's data sheet or rating plate.",
+    "placeholder": "e.g. 10.4",
+    "usableCapacity": "Usable capacity"
+  },
+  "chart": {
+    "defaultLabel": "Chart",
+    "time": "Time"
+  },
+  "devicesSection": {
+    "chartLabel": "Chart of consumption per device",
+    "emptyState": "The devices used no power in this period.",
+    "household": "Household",
+    "title": "By device"
+  },
+  "duration": {
+    "hoursMinutes": "{h} h {m} min",
+    "minutes": "{m} min"
+  },
+  "firmwareFacts": {
+    "changes": "Firmware changes ({count})",
+    "hint": "After an update, run the diagnostics once (More → Diagnostics). An update can change registers, and then some values are no longer correct.",
+    "since": "The inverter has reported this firmware since {date}."
+  },
+  "keyFigures": {
+    "allValues": "All values",
+    "costGridImport": "Cost of grid import",
+    "feedInPayment": "Feed-in payment",
+    "fromBattery": "Used from the battery",
+    "fromGrid": "Drawn from the grid",
+    "intoBattery": "Stored in the battery",
+    "inverterLosses": "Inverter losses",
+    "lossesHint": "The inverter measures solar power before and consumption after the conversion to AC. The difference is lost in the device, usually a few percent of generation.",
+    "netElectricityCost": "Net electricity cost",
+    "savings": "Savings of about {amount}",
+    "savingsHint": "The savings are an estimate based on your electricity tariff (More → Electricity tariff): self-consumed solar power at the electricity price plus the feed-in payment. Net cost means grid import and standing charge minus the feed-in payment.",
+    "selfConsumed": "Self-consumption of solar power",
+    "toGrid": "Fed into the grid"
+  },
+  "months": {
+    "april": "April",
+    "august": "August",
+    "december": "December",
+    "february": "February",
+    "january": "January",
+    "july": "July",
+    "june": "June",
+    "march": "March",
+    "may": "May",
+    "november": "November",
+    "october": "October",
+    "september": "September"
+  },
+  "outagesSection": {
+    "battery": "Battery {from} → {to}",
+    "batteryEmpty": "No power from {time}, the battery was probably empty.",
+    "dateTime": "{date}, {time}",
+    "entryRemoved": "Entry removed",
+    "house": "Home {energy}",
+    "inverterOff": "From {time} the inverter could not be reached, but OpenAmpere kept running. It was probably switched off or the connection was interrupted, so the duration is not exact.",
+    "lowestSoc": "(lowest {soc})",
+    "noReadings": "No readings arrived from {time}, for example because the connection was interrupted, so the duration is not exact.",
+    "notAPowerCut": "This was not a power cut",
+    "ongoing": "One is going on right now: since {time}, battery {from} → {to}.",
+    "powerCutCount": {
+      "one": "{count} power cut",
+      "other": "{count} power cuts"
+    },
+    "removeText": "Remove the power cut of {date}, {time} from the list? For example, if you switched off the inverter yourself.",
+    "removeTitle": "Remove entry?",
+    "since": "since {date}",
+    "solarShare": "{energy} of it from solar",
+    "title": "Power cuts",
+    "totalDuration": "{duration} in total"
+  },
+  "periodLabel": {
+    "week": "Week",
+    "year": "Year"
+  },
+  "periods": {
+    "allTime": "All time",
+    "thirtyDays": "30 days",
+    "twelveMonths": "12 months"
+  },
+  "pvInputsSection": {
+    "emptyState": "No values per PV string for this period.",
+    "title": "By PV string"
+  },
+  "readout": {
+    "charging": "{power} charging",
+    "discharged": "Discharged",
+    "discharging": "{power} discharging",
+    "fedIn": "To grid",
+    "gridFeedIn": "{power} to grid",
+    "gridImport": "{power} from grid",
+    "tapHint": "Tap the chart to see the values."
+  },
+  "report": {
+    "chooseDate": "Choose date",
+    "dashed": "{name} (dashed)",
+    "energyChart": "Energy chart for {period}",
+    "energyHours": "Energy · 1 h",
+    "energyQuarterHours": "Energy · 15 min",
+    "fromGrid": "From grid",
+    "history": "History",
+    "loadError": "Could not be loaded: {error}",
+    "nextPeriod": "Next period",
+    "noData": "No data for this period.",
+    "power": "Power",
+    "powerChart": "Power chart for {period}",
+    "previousPeriod": "Previous period",
+    "recordingSince": "OpenAmpere has been recording since {time}, so the chart only starts then. The daily values above come from the inverter's meters and cover the whole day.",
+    "selfSupplied": "Self-supplied",
+    "selfSupply": "Self-supplied",
+    "signHint": "Grid above zero means import, below zero feed-in. Battery above zero means discharging, below zero charging.",
+    "socRightAxis": "State of charge (right axis)"
+  },
+  "temperatureSection": {
+    "bms": "Battery electronics (BMS)",
+    "coolestCell": "Coolest cell",
+    "warmestCell": "Warmest cell"
+  },
+  "text": {
+    "feedInHint": "The monthly advance payment you receive for your feed-in. You find it in the grid operator's statement.",
+    "gridImport": "Grid import",
+    "importHint": "The monthly advance payment to your electricity supplier. You find it on your last annual bill or in the customer portal."
+  },
+  "todayRows": {
+    "cost": "Cost of {energy}",
+    "difference": "Difference",
+    "paidSoFar": "Advance payments to date",
+    "payment": "Payment for {energy}",
+    "since": "since {date}"
+  },
+  "vehicleStats": {
+    "cost": "Cost",
+    "costPer100Km": "{cost} per 100 km, from the grid alone it would be {gridCost}",
+    "distanceHint": "Distance and consumption appear once the car is set up in evcc and evcc knows the odometer reading for at least two charging sessions.",
+    "driven": "Driven",
+    "emptyState": "No charging in this period.",
+    "energySessions": {
+      "one": "{energy} kWh in {count} charging session",
+      "other": "{energy} kWh in {count} charging sessions"
+    },
+    "hint": "Calculated from the charging sessions at your wallbox. If you also charge elsewhere, consumption looks lower than it is. Solar power is counted at the feed-in payment you miss out on, grid power at the price from your electricity tariff.",
+    "ofWhichSolar": "Of which solar",
+    "solarDistance": "With solar",
+    "solarShare": "Solar",
+    "title": "Car",
+    "unknownVehicle": "No vehicle detected"
+  }
+}

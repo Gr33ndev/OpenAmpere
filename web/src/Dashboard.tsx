@@ -6,6 +6,7 @@ import { navigate } from "./route";
 import { Notice } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
+import { t } from "./i18n";
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -31,7 +32,7 @@ export function Ratio({ label, value }: { label: string; value: number | null })
 }
 
 export function inputName(names: string[] | undefined, index: number) {
-  return names?.[index]?.trim() || `Modulfeld ${index + 1}`;
+  return names?.[index]?.trim() || t("overview.inputName.stringNumber", { number: index + 1 });
 }
 
 export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
@@ -41,7 +42,7 @@ export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
   const max = Math.max(...inputs.map((i) => i.power ?? 0), 1);
   return (
     <>
-      <div className="section-title">Solar nach Modulfeldern</div>
+      <div className="section-title">{t("overview.pvInputsCard.title")}</div>
       <div className="card inputs">
         {inputs.map((i) => (
           <div className="input-row" key={i.index}>
@@ -59,30 +60,30 @@ export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
 }
 
 const TEMPERATURE_LABELS: [keyof Snapshot["temperatures"], string][] = [
-  ["inverter", "Wechselrichter"], ["ambient", "Umgebung"], ["battery", "Speicher"],
-  ["battery2", "Speicher 2"],
+  ["inverter", t("common.inverter")], ["ambient", t("overview.temperatureLabels.ambient")], ["battery", t("common.battery")],
+  ["battery2", t("overview.temperatureLabels.battery2")],
 ];
 
 export function TemperaturesCard({ snap }: { snap: Snapshot | null }) {
-  const t = snap?.temperatures ?? {};
-  const rows = TEMPERATURE_LABELS.filter(([key]) => t[key] != null);
+  const temps = snap?.temperatures ?? {};
+  const rows = TEMPERATURE_LABELS.filter(([key]) => temps[key] != null);
   if (!rows.length) return null;
   // with cell temperatures, the battery's own sensor is the electronics (BMS), not the cells (#16)
   const cells = (prefix: "battery" | "battery2") => {
-    const lo = t[`${prefix}_cell_min`], hi = t[`${prefix}_cell_max`];
+    const lo = temps[`${prefix}_cell_min`], hi = temps[`${prefix}_cell_max`];
     return lo != null && hi != null ? `${num(lo, 1)}–${num(hi, 1)}\u00a0°C` : null;
   };
   return (
     <>
-      <div className="section-title">Temperaturen</div>
+      <div className="section-title">{t("common.temperatures")}</div>
       <div className="tiles">
         {rows.map(([key, label]) => (
           <div className="tile" key={key}>
             <div className="tile-label">{label}</div>
             {(key === "battery" || key === "battery2") && cells(key) ? <>
               <div className="tile-value">{cells(key)}</div>
-              <div className="meta">Zellen · Elektronik {num(t[key]!, 1)}&nbsp;°C</div>
-            </> : <div className="tile-value">{num(t[key]!, 1)} °C</div>}
+              <div className="meta">{t("overview.temperaturesCard.cellsElectronics", { temperature: num(temps[key]!, 1) })}&nbsp;°C</div>
+            </> : <div className="tile-value">{num(temps[key]!, 1)} °C</div>}
           </div>
         ))}
       </div>
@@ -96,13 +97,15 @@ function OffGridNotice({ snap }: { snap: Snapshot }) {
   const capacity = settings?.values["battery.capacity_kwh"] ?? 0;
   const draw = snap.battery_power ?? 0; // + = discharging
   const hours = capacity > 0 && snap.battery_soc != null && draw > 50 ? (capacity * snap.battery_soc / 100 * 1000) / draw : null;
+  const soc = percent(snap.battery_soc);
   return (
     <div className="off-grid" role="alert">
-      <strong>Stromausfall: Notstrombetrieb</strong>
-      <span>Das Netz ist weg, das Haus läuft über Speicher und Solaranlage. Speicher {percent(snap.battery_soc)}
-        {hours != null ? `, reicht beim jetzigen Verbrauch etwa ${hours >= 24 ? `${num(hours / 24, 0)} Tage` : `${num(Math.max(hours, 0.1), hours < 10 ? 1 : 0)} Std.`}`
-          : draw <= 50 ? ", die Sonne deckt gerade den Verbrauch" : ""}.
-        {" "}Große Verbraucher besser ausschalten.</span>
+      <strong>{t("overview.offGridNotice.title")}</strong>
+      <span>{t("overview.offGridNotice.gridDown")}{" "}
+        {hours != null ? t("overview.offGridNotice.batteryLastsAbout", { soc, duration: hours >= 24
+          ? t("overview.offGridNotice.days", { days: num(hours / 24, 0) }) : t("overview.offGridNotice.hours", { hours: num(Math.max(hours, 0.1), hours < 10 ? 1 : 0) }) })
+          : draw <= 50 ? t("overview.offGridNotice.batterySunCovering", { soc }) : t("overview.offGridNotice.batterySoc", { soc })}
+        {" "}{t("overview.offGridNotice.switchOffLargeLoads")}</span>
     </div>
   );
 }
@@ -122,11 +125,11 @@ function ImportHint() {
   };
   return (
     <div className="notice info import-hint">
-      <div><strong>Verlauf aus der EKD-Cloud sichern?</strong> Du kannst deine bisherigen Daten übernehmen. Am besten
-        bald, denn ob die Cloud dauerhaft erreichbar bleibt, ist offen. (OpenAmpere ist ein unabhängiges Projekt ohne Verbindung zu EKD.)</div>
+      <div><strong>{t("overview.importHint.title")}</strong>{" "}
+        {t("overview.importHint.hint")}</div>
       <div className="actions">
-        <button className="link" onClick={() => navigate("more/data")}>Einrichten</button>
-        <button className="link" onClick={hide}>Ausblenden</button>
+        <button className="link" onClick={() => navigate("more/data")}>{t("common.setUp")}</button>
+        <button className="link" onClick={hide}>{t("overview.importHint.hide")}</button>
       </div>
     </div>
   );
@@ -146,14 +149,14 @@ function Tips() {
   };
   return (
     <div className="card tips">
-      <strong>So liest du die Übersicht</strong>
+      <strong>{t("overview.tips.title")}</strong>
       <ul>
-        <li>Die Linien zeigen, wohin der Strom gerade fließt: vom Dach, aus dem Speicher und aus dem Netz zum Haus und zu Geräten wie Wallbox oder Heizstab.</li>
-        <li>„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.</li>
-        <li>In der Auswertung siehst du Tage, Wochen und Jahre. Tippe auf ein Diagramm für die genauen Werte.</li>
-        <li>Unter „Geräte“ bedienst du Wallbox und Heizstab, unter „Mehr“ findest du alle Einstellungen.</li>
+        <li>{t("overview.tips.flowLines")}</li>
+        <li>{t("overview.tips.importAndFeedIn")}</li>
+        <li>{t("overview.tips.report")}</li>
+        <li>{t("overview.tips.devicesAndMore")}</li>
       </ul>
-      <button className="link" onClick={hide}>Verstanden, ausblenden</button>
+      <button className="link" onClick={hide}>{t("overview.tips.dismiss")}</button>
     </div>
   );
 }
@@ -163,15 +166,15 @@ function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; to
   if (!devices.length && !gridCharging) return null;
   return (
     <>
-      <div className="section-title">Geräte</div>
+      <div className="section-title">{t("common.devices")}</div>
       <div className="card menu">
-        {gridCharging && <div className="device-row-compact"><span className="grow">Speicher lädt aus dem Netz</span></div>}
+        {gridCharging && <div className="device-row-compact"><span className="grow">{t("overview.devicesCard.batteryChargingFromGrid")}</span></div>}
         {devices.map((d) => (
           <button key={d.key} className="device-row-compact" onClick={() => navigate("devices")}>
             <DeviceIcon kind={d.kind} size={36} />
             <span className="grow"><strong>{d.name}</strong><span className="menu-hint">{deviceStatus(d)}
               {d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</span></span>
-            <span className="device-today">{todayWh[d.key] != null ? kwh(todayWh[d.key]) : ""}<small>heute</small></span>
+            <span className="device-today">{todayWh[d.key] != null ? kwh(todayWh[d.key]) : ""}<small>{t("overview.devicesCard.today")}</small></span>
           </button>
         ))}
       </div>
@@ -189,39 +192,38 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Übersicht</h1>
+        <h1>{t("common.overview")}</h1>
         <div className={`sub ${snap && !stale ? "" : "off"}`} role="status">
-          {!snap ? "Verbinde …"
-            : stale ? `Wechselrichter nicht erreichbar seit ${updatedLabel(snap.timestamp)} – angezeigt werden die letzten Werte`
-            : `Zuletzt aktualisiert: ${updatedLabel(snap.timestamp)}`}
+          {!snap ? t("overview.dashboard.connecting")
+            : stale ? t("overview.dashboard.inverterUnreachable", { time: updatedLabel(snap.timestamp) })
+            : t("overview.dashboard.lastUpdated", { time: updatedLabel(snap.timestamp) })}
         </div>
       </div>
       {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
 
       {status?.clock_wrong && (
-        <Notice kind="error">Die Uhrzeit des Servers stimmt nicht (keine Internetzeit?). Bis sie korrekt ist, speichert
-          OpenAmpere keine Messwerte, damit sie nicht auf falschen Tagen landen.</Notice>
+        <Notice kind="error">{t("overview.dashboard.clockWrong")}</Notice>
       )}
       <ImportHint />
       <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging} />
 
-      <div className="section-title">Tageswerte</div>
-      {today?.partial_since && <p className="hint">Erfasst seit {time(today.partial_since)} Uhr (OpenAmpere läuft erst seit heute).</p>}
+      <div className="section-title">{t("overview.dashboard.todayTitle")}</div>
+      {today?.partial_since && <p className="hint">{t("overview.dashboard.recordedSince", { time: time(today.partial_since) })}</p>}
       <div className="tiles">
-        <Tile label="Erzeugt" value={kwh(e?.pv)} color="var(--pv)" />
-        <Tile label="Verbraucht" value={kwh(e?.load)} color="var(--house)" />
-        <Tile label="Ins Netz" value={kwh(e?.grid_export)} color="var(--grid)" />
-        <Tile label="Aus dem Netz" value={kwh(e?.grid_import)} color="var(--grid)" />
-        <Tile label="Gespeichert" value={kwh(e?.battery_charge)} color="var(--battery)" />
-        <Tile label="Genutzt" value={kwh(e?.battery_discharge)} color="var(--battery)" />
+        <Tile label={t("common.generated")} value={kwh(e?.pv)} color="var(--pv)" />
+        <Tile label={t("common.consumed")} value={kwh(e?.load)} color="var(--house)" />
+        <Tile label={t("overview.dashboard.toGrid")} value={kwh(e?.grid_export)} color="var(--grid)" />
+        <Tile label={t("overview.dashboard.fromGrid")} value={kwh(e?.grid_import)} color="var(--grid)" />
+        <Tile label={t("overview.dashboard.batteryStored")} value={kwh(e?.battery_charge)} color="var(--battery)" />
+        <Tile label={t("overview.dashboard.batteryUsed")} value={kwh(e?.battery_discharge)} color="var(--battery)" />
       </div>
       <div className="card">
-        <Ratio label="Autark" value={today?.autarky ?? null} />
+        <Ratio label={t("common.selfSufficient")} value={today?.autarky ?? null} />
       </div>
 
       <DevicesCard devices={devices} todayWh={devicesView?.today_wh ?? {}} gridCharging={!!status?.devices.grid_charging} />
       <Tips />
-      <p className="hint center">Leistung je Modulfeld und Temperaturen findest du unter Mehr → Meine Anlage.</p>
+      <p className="hint center">{t("overview.dashboard.stringsAndTemperaturesHint", { place: `${t("common.more")} → ${t("common.mySystem")}` })}</p>
     </div>
   );
 }

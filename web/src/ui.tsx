@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { t } from "./i18n";
 import { Chevron } from "./icons";
 
 export function Segmented<T extends string>({ value, options, onChange, disabled }: {
@@ -20,7 +21,7 @@ export function SubPage({ title, onBack, children }: { title: string; onBack: ()
   }, []);
   return (
     <div className="page">
-      <button className="back" onClick={onBack} aria-label="Zurück"><Chevron dir="left" /></button>
+      <button className="back" onClick={onBack} aria-label={t("shell.subPage.back")}><Chevron dir="left" /></button>
       <div className="page-head"><h1>{title}</h1></div>
       {children}
     </div>
@@ -44,7 +45,7 @@ export function Field({ label, hint, locked, children }: {
 }) {
   return (
     <label className="field">
-      <span className="field-label">{label}{locked && <span className="lock">fest eingestellt</span>}</span>
+      <span className="field-label">{label}{locked && <span className="lock">{t("common.fixedSetting")}</span>}</span>
       {children}
       {hint && <span className="field-hint">{hint}</span>}
     </label>
@@ -110,19 +111,19 @@ export function Button({ children, onClick, variant = "primary", disabled, busy,
 }) {
   return (
     <button type={type} className={`btn ${variant}`} onClick={onClick} disabled={disabled || busy}>
-      {busy ? "Bitte warten …" : children}
+      {busy ? t("shell.button.pleaseWait") : children}
     </button>
   );
 }
 
 /** Loading / error placeholder with a retry button. */
 export function LoadState({ error, onRetry }: { error: string | null; onRetry?: () => void }) {
-  if (!error) return <p className="hint">Lade …</p>;
+  if (!error) return <p className="hint">{t("common.loading")}</p>;
   return (
     <Notice kind="error">
       <div>{error}</div>
-      <div className="hint">Neuer Versuch läuft automatisch.</div>
-      {onRetry && <button className="link" onClick={onRetry}>Jetzt erneut versuchen</button>}
+      <div className="hint">{t("shell.loadState.retrying")}</div>
+      {onRetry && <button className="link" onClick={onRetry}>{t("common.tryAgainNow")}</button>}
     </Notice>
   );
 }
@@ -178,7 +179,7 @@ export function useModal(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref]);
 }
 
-export function Dialog({ title, children, confirm, cancel = "Abbrechen", danger, disabled, onConfirm, onCancel }: {
+export function Dialog({ title, children, confirm, cancel = t("common.cancel"), danger, disabled, onConfirm, onCancel }: {
   title: string; children: ReactNode; confirm: string; cancel?: string; danger?: boolean; disabled?: boolean;
   onConfirm: () => void; onCancel: () => void;
 }) {
@@ -257,7 +258,7 @@ export function ToastHost() {
 }
 
 /** Background information that most people do not need every time: folded away. */
-export function LearnMore({ summary = "Mehr erfahren", children }: { summary?: string; children: ReactNode }) {
+export function LearnMore({ summary = t("shell.learnMore.learnMore"), children }: { summary?: string; children: ReactNode }) {
   return (
     <details className="learn">
       <summary>{summary}</summary>
@@ -268,5 +269,5 @@ export function LearnMore({ summary = "Mehr erfahren", children }: { summary?: s
 
 /** Shown next to a save button while the form differs from what is stored. */
 export function Unsaved({ show }: { show: boolean }) {
-  return show ? <p className="hint unsaved" role="status">Noch nicht gespeichert</p> : null;
+  return show ? <p className="hint unsaved" role="status">{t("shell.unsaved.notSavedYet")}</p> : null;
 }

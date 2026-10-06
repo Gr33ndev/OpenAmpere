@@ -1,0 +1,67 @@
+{
+  "dashboard": {
+    "batteryStored": "Gespeichert",
+    "batteryUsed": "Genutzt",
+    "clockWrong": "Die Uhrzeit des Servers stimmt nicht (keine Internetzeit?). Bis sie korrekt ist, speichert OpenAmpere keine Messwerte, damit sie nicht auf falschen Tagen landen.",
+    "connecting": "Verbinde …",
+    "fromGrid": "Aus dem Netz",
+    "inverterUnreachable": "Wechselrichter nicht erreichbar seit {time} – angezeigt werden die letzten Werte",
+    "lastUpdated": "Zuletzt aktualisiert: {time}",
+    "recordedSince": "Erfasst seit {time} Uhr (OpenAmpere läuft erst seit heute).",
+    "stringsAndTemperaturesHint": "Leistung je Modulfeld und Temperaturen findest du unter {place}.",
+    "toGrid": "Ins Netz",
+    "todayTitle": "Tageswerte"
+  },
+  "devicesCard": {
+    "batteryChargingFromGrid": "Speicher lädt aus dem Netz",
+    "today": "heute"
+  },
+  "energyFlow": {
+    "batteryPower": "Speicher {power}",
+    "charging": "lädt",
+    "chargingFromGrid": "lädt aus dem Netz",
+    "chargingFromSolar": "lädt mit Sonnenstrom",
+    "discharging": "entlädt",
+    "gridPower": "Netz {power}",
+    "housePower": "Haus {power}",
+    "noData": "Energiefluss, keine Daten",
+    "outdated": "veraltet",
+    "solarPower": "Solar {power}"
+  },
+  "importHint": {
+    "hide": "Ausblenden",
+    "hint": "Du kannst deine bisherigen Daten übernehmen. Am besten bald, denn ob die Cloud dauerhaft erreichbar bleibt, ist offen. (OpenAmpere ist ein unabhängiges Projekt ohne Verbindung zu EKD.)",
+    "title": "Verlauf aus der EKD-Cloud sichern?"
+  },
+  "inputName": {
+    "stringNumber": "Modulfeld {number}"
+  },
+  "offGridNotice": {
+    "batteryLastsAbout": "Speicher {soc}, reicht beim jetzigen Verbrauch etwa {duration}.",
+    "batterySoc": "Speicher {soc}.",
+    "batterySunCovering": "Speicher {soc}, die Sonne deckt gerade den Verbrauch.",
+    "days": "{days} Tage",
+    "gridDown": "Das Netz ist weg, das Haus läuft über Speicher und Solaranlage.",
+    "hours": "{hours} Std.",
+    "switchOffLargeLoads": "Große Verbraucher besser ausschalten.",
+    "title": "Stromausfall: Notstrombetrieb"
+  },
+  "pvInputsCard": {
+    "title": "Solar nach Modulfeldern"
+  },
+  "temperatureLabels": {
+    "ambient": "Umgebung",
+    "battery2": "Speicher 2"
+  },
+  "temperaturesCard": {
+    "cellsElectronics": "Zellen · Elektronik {temperature}"
+  },
+  "tips": {
+    "devicesAndMore": "Unter „Geräte“ bedienst du Wallbox und Heizstab, unter „Mehr“ findest du alle Einstellungen.",
+    "dismiss": "Verstanden, ausblenden",
+    "flowLines": "Die Linien zeigen, wohin der Strom gerade fließt: vom Dach, aus dem Speicher und aus dem Netz zum Haus und zu Geräten wie Wallbox oder Heizstab.",
+    "importAndFeedIn": "„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.",
+    "report": "In der Auswertung siehst du Tage, Wochen und Jahre. Tippe auf ein Diagramm für die genauen Werte.",
+    "title": "So liest du die Übersicht"
+  }
+}

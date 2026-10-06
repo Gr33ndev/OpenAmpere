@@ -1,0 +1,195 @@
+{
+  "batteryCard": {
+    "backupReserve": "Backup reserve: {soc} %",
+    "batterySettings": "Battery settings",
+    "charging": "charging {power}",
+    "chargingNow": "charging now",
+    "discharging": "discharging {power}",
+    "gridCharging": "Grid charging: {state}",
+    "idle": "idle"
+  },
+  "choices": {
+    "httpHint": "For other devices that can be controlled with one address to switch on and one to switch off.",
+    "myPvHint": "AC ELWA-E, AC ELWA 2 or AC THOR. Takes exactly as much solar power as is left over, continuously variable.",
+    "shelly": "Device with Shelly relay",
+    "shellyHint": "e.g. a heat pump (SG Ready contact) or an immersion heater with fixed power. Is switched on and off."
+  },
+  "consumersPage": {
+    "addDevice": "Add device",
+    "chooseKind": "What would you like to add?",
+    "edit": "Edit",
+    "emptyState": "No devices set up yet.",
+    "hint": "You control the devices under “Devices”. That is also where you decide who gets solar power first. Only switch heat pumps via their SG Ready or utility lock-out input, and have them connected by a qualified electrician.",
+    "title": "Immersion heater and other devices",
+    "webAddresses": "Web addresses"
+  },
+  "controlModeBar": {
+    "acceptRisk": "I understand this and act at my own risk.",
+    "confirmTitle": "Turn on control?",
+    "controlActive": "Control active",
+    "disclaimer": "OpenAmpere is a free community project without any warranty and does not replace a qualified electrician. Unsuitable settings can strain the battery and put warranty or guarantee claims (against the manufacturer, dealer or insolvency administrator) at risk. Write down the current values before you change anything.",
+    "liveWarning": "From now on, changes are sent to the inverter and devices. Wrong settings can cause the battery not to work as usual.",
+    "lockedByEnv": "Fixed setting (environment variable).",
+    "testModeActive": "Test mode: nothing is sent",
+    "title": "Changes to devices",
+    "yesSendChanges": "Yes, send changes"
+  },
+  "deviceStatus": {
+    "charging": "charging at {power}",
+    "fullPower": "full power",
+    "fullPowerUntil": "full power until {time}",
+    "noCarPlugged": "no car plugged in",
+    "pluggedNotCharging": "plugged in, not charging",
+    "switchedOffManually": "switched off manually",
+    "waitingSurplus": "waiting for surplus"
+  },
+  "devicesTab": {
+    "addDevice": "Add immersion heater or device",
+    "addOrSetUp": "Add or set up devices:",
+    "connectWallbox": "Connect wallbox via evcc",
+    "controlledBy": "Controlled by {link}",
+    "emptyHint": "A wallbox, immersion heater or heat pump can use your solar power. Add them here.",
+    "otherDevicesTitle": "Immersion heater and other devices"
+  },
+  "editor": {
+    "channel": "Channel",
+    "channelHint": "For Shellys with several relays, otherwise 0.",
+    "cheapGridPower": "Also with cheap grid power",
+    "cheapGridPowerHint": "Only with a dynamic or time-of-use tariff. Leave empty for solar power only.",
+    "devicePower": "Power of the device",
+    "example": "e.g. {example}",
+    "firstGeneration": "Generation 1",
+    "heaterIp": "IP address of the immersion heater",
+    "maxPower": "Use at most",
+    "maxPowerHint": "The most power the immersion heater gets.",
+    "minSurplus": "Minimum surplus to start",
+    "minSurplusHint": "The immersion heater only starts once this much solar power is left over.",
+    "minimumPause": "Minimum pause",
+    "minimumRunTime": "Minimum run time",
+    "myPvSetupHint": "In the immersion heater's web interface, set the control to “Modbus TCP” and the control timeout to 60 seconds. If it stops receiving commands, it then switches itself off.",
+    "newerGeneration": "Plus, Pro and newer (generation 2+)",
+    "removeDevice": "Remove device",
+    "shellyGeneration": "Shelly generation",
+    "shellyIp": "IP address of the Shelly",
+    "switchOffUrl": "Address to switch off",
+    "switchOnHint": "Switched on as soon as this much solar power is left over.",
+    "switchOnUrl": "Address to switch on"
+  },
+  "evccSessions": {
+    "downloadCsv": "All charging sessions as CSV (from evcc)",
+    "solarShare": "{percent} % solar",
+    "title": "Charging sessions"
+  },
+  "hint": {
+    "live": "Changes are sent to the inverter and devices.",
+    "off": "OpenAmpere only displays and changes nothing on your devices.",
+    "test": "You can set everything. Changes only go to the log and are not sent."
+  },
+  "kindLabel": {
+    "shellyRelay": "Shelly relay"
+  },
+  "minSoc": {
+    "apply": "Apply minimum charge",
+    "hint": "Up to this state of charge, the car charges right away, also from the grid. After that, the charging mode applies. This way there is always enough in the battery for a short trip.",
+    "summary": "Minimum charge: {value}",
+    "turnOff": "Turn off minimum charge"
+  },
+  "modeHint": {
+    "minpv": "Always charges at low power, faster when the sun is out.",
+    "now": "Charges right away at full power, also from the grid.",
+    "off": "Not charging.",
+    "pv": "Charges with solar surplus only."
+  },
+  "modes": {
+    "fast": "Fast",
+    "minSolar": "Min + Solar",
+    "solar": "Solar"
+  },
+  "ownDeviceCard": {
+    "autoHint": "Runs on solar surplus according to your settings.",
+    "fullPower": "Full power",
+    "fullPowerHint": "Runs at full power for 2 hours, also on grid power. Then back to automatic.",
+    "offHint": "Stays off until you switch back to Automatic.",
+    "target": "Target {temperature} °C",
+    "temperatureLabel": "Water temperature {temperature} of {target} degrees",
+    "today": "Today: {energy}",
+    "water": "Water {temperature} °C"
+  },
+  "planForm": {
+    "deletePlan": "Delete charging plan",
+    "hint": "evcc then charges so the target is reached by that time, preferably with solar or cheap power.",
+    "setPlan": "Set charging plan",
+    "target": "Target",
+    "time": "Time",
+    "title": "Charge by a set time"
+  },
+  "status": {
+    "charging": "charging at {power}",
+    "heating": "heating at {power}",
+    "noVehiclePlugged": "no vehicle plugged in",
+    "notReady": "not ready",
+    "plugged": "plugged in",
+    "ready": "ready",
+    "startsIn": "starts in {duration} (enough sun)",
+    "targetReached": "target reached",
+    "waitingSolarSurplus": "waiting for solar surplus"
+  },
+  "surplusOrder": {
+    "batteryHint": "The battery is charged up to this state of charge. After that, the devices below it get the solar power.",
+    "evccError": "Not applied in evcc: {error}",
+    "moveDown": "Move {name} down",
+    "moveUp": "Move {name} up",
+    "title": "Who gets solar power first?"
+  },
+  "template": {
+    "heatPump": "Heat pump",
+    "immersionHeater": "Immersion heater"
+  },
+  "wallboxCard": {
+    "applyTarget": "Apply target",
+    "chargeUntil": "Charge to",
+    "chargedThisSession": "Charged this session",
+    "chargingPlan": "Charging plan",
+    "doneAt": "Done at",
+    "planSocTime": "{soc} % by {time}",
+    "planTime": "by {time}",
+    "range": "Range",
+    "socLabel": "State of charge {soc} %, target {target} %",
+    "solarShare": "{percent} % solar",
+    "targetReachedAt": "Target reached at",
+    "targetTemperature": "Target temperature",
+    "testModeLogged": "Test mode: only logged, not sent to evcc",
+    "timeIn": "{time} (in {duration})"
+  },
+  "wallboxPage": {
+    "addressHint": "On the same computer {local}, otherwise e.g. {example}",
+    "chargePoints": {
+      "one": "{count} charge point",
+      "other": "{count} charge points"
+    },
+    "configurationCopied": "Configuration copied",
+    "connectStep": "Connect evcc to OpenAmpere",
+    "connected": "Connected to evcc {version}",
+    "copyConfiguration": "Copy configuration",
+    "copyFailed": "Copying didn't work. Please select the configuration below and copy it.",
+    "evccAddress": "evcc address",
+    "evccAdminPassword": "evcc admin password",
+    "evccCredit": "evcc is developed by the evcc community and is MIT-licensed. For some devices, evcc requires a sponsorship. OpenAmpere only uses evcc's open interface and contains no code from evcc.",
+    "evccDocs": "evcc documentation",
+    "installHint": "Easiest with Docker on the same computer as OpenAmpere. You set up the wallbox and vehicle in evcc, see the {link}.",
+    "installStep": "Install evcc",
+    "intro": "The wallbox is controlled by {link}, an independent open-source project for solar charging. You can then operate it under “Devices”.",
+    "meterHint": "Then evcc doesn't need its own connection to the inverter, which allows only a few. Copy the meter configuration and paste it into evcc (evcc.yaml or “user-defined device”).",
+    "meterStep": "Use OpenAmpere's readings in evcc",
+    "passwordHint": "Only needed if evcc requires a login for changes.",
+    "priorityHint": "You choose who gets solar power first (battery, wallbox, immersion heater) under “Devices”. OpenAmpere passes the battery priority on to evcc.",
+    "saveAndConnect": "Save and connect",
+    "savedKeep": "Saved. Leave empty to keep it.",
+    "showConfiguration": "Show configuration",
+    "title": "Set up wallbox"
+  },
+  "workModeLabel": {
+    "feedFirst": "Feed-in first",
+    "peakShaving": "Peak shaving"
+  }
+}

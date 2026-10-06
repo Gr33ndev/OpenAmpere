@@ -2,6 +2,7 @@ import { type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "rea
 import type { Device, Snapshot } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import { kw, num, percent } from "./format";
+import { t } from "./i18n";
 import { BatteryIcon, GridIcon, HouseIcon, SolarIcon } from "./icons";
 
 const IDLE_W = 50; // below this the value shows as 0,0 kW, so no flow or direction either
@@ -117,14 +118,14 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const house = snap?.house_power != null ? Math.max(0, snap.house_power - (stale ? 0 : devicePower)) : null;
   // battery: + = discharging towards the house; grid: + = import from the grid
   const source = stale ? null : chargeSource(snap, gridCharging);
-  const battery = direction(snap?.battery_power, "entlädt", "lädt"); // the badge shows sun or grid
-  const grid = snap?.off_grid ? "getrennt" : direction(snap?.grid_power, "Bezug", "Einspeisung");
+  const battery = direction(snap?.battery_power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging")); // the badge shows sun or grid
+  const grid = snap?.off_grid ? t("common.disconnected") : direction(snap?.grid_power, t("common.import"), t("common.feedIn"));
   const label = snap
-    ? [`Solar ${kw(snap.pv_power)}`, `Haus ${kw(house)}`,
-       `Speicher ${kw(snap.battery_power)}${battery ? ` ${battery}` : ""}, ${percent(snap.battery_soc)}`,
-       `Netz ${kw(snap.grid_power)}${grid ? ` ${grid}` : ""}`,
-       ...shown.map((d) => `${d.name} ${kw(d.power_w)}`)].join(", ") + (stale ? " (veraltet)" : "")
-    : "Energiefluss, keine Daten";
+    ? [t("overview.energyFlow.solarPower", { power: kw(snap.pv_power) }), t("overview.energyFlow.housePower", { power: kw(house) }),
+       `${t("overview.energyFlow.batteryPower", { power: kw(snap.battery_power) })}${battery ? ` ${battery}` : ""}, ${percent(snap.battery_soc)}`,
+       `${t("overview.energyFlow.gridPower", { power: kw(snap.grid_power) })}${grid ? ` ${grid}` : ""}`,
+       ...shown.map((d) => `${d.name} ${kw(d.power_w)}`)].join(", ") + (stale ? ` (${t("overview.energyFlow.outdated")})` : "")
+    : t("overview.energyFlow.noData");
   return (
     <div ref={container} className={`flow ${stale ? "stale" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
       <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none">
@@ -148,7 +149,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
       <Node x={12} y={HOUSE.y} h={h} icon={
         <span className="battery-with-source">
           <BatteryIcon soc={snap?.battery_soc ?? null} />
-          {source && <span className={`charge-source ${source}`} title={source === "sun" ? "lädt mit Sonnenstrom" : "lädt aus dem Netz"}>
+          {source && <span className={`charge-source ${source}`} title={source === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>
             {source === "sun" ? <SunGlyph /> : "€"}</span>}
         </span>}>
         {kw(snap?.battery_power)}

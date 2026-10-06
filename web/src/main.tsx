@@ -13,7 +13,7 @@ import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
 import { setTimeZone } from "./format";
 import { DEMO } from "./demo/flag";
-import { t } from "./i18n";
+import { t, tx } from "./i18n";
 import { UpdateBanner } from "./Updates";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
@@ -21,10 +21,10 @@ import "./styles.css";
 type Tab = "dashboard" | "devices" | "report" | "more";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
-  { id: "dashboard", label: t("Übersicht"), icon: <NavHome /> },
-  { id: "devices", label: t("Geräte"), icon: <NavDevices /> },
-  { id: "report", label: t("Auswertung"), icon: <NavReport /> },
-  { id: "more", label: t("Mehr"), icon: <NavMore /> },
+  { id: "dashboard", label: t("common.overview"), icon: <NavHome /> },
+  { id: "devices", label: t("common.devices"), icon: <NavDevices /> },
+  { id: "report", label: t("common.report"), icon: <NavReport /> },
+  { id: "more", label: t("common.more"), icon: <NavMore /> },
 ];
 
 applyTheme(storedTheme());
@@ -35,8 +35,8 @@ const SCREENSHOT = DEMO && new URLSearchParams(window.location.search).has("scre
 
 function App() {
   const route = useRoute();
-  const tab: Tab = TABS.some((t) => t.id === route[0]) ? (route[0] as Tab) : "dashboard";
-  const setTab = (t: Tab) => navigate(t);
+  const tab: Tab = TABS.some((item) => item.id === route[0]) ? (route[0] as Tab) : "dashboard";
+  const setTab = (next: Tab) => navigate(next);
   const { data: status, error, reload } = useResource<Status>("/api/status", 15_000);
   const { data: auth, reload: reloadAuth } = useResource<AuthStatus>("/api/auth/status");
   const { snap, online } = useLive();
@@ -55,11 +55,11 @@ function App() {
               <>
                 <Notice kind="error">
                   <strong>{error}</strong>
-                  <div>Läuft der OpenAmpere-Dienst? Neuer Versuch alle paar Sekunden.</div>
+                  <div>{t("shell.app.serviceRunningHint")}</div>
                 </Notice>
-                <Button variant="secondary" onClick={reload}>Jetzt erneut versuchen</Button>
+                <Button variant="secondary" onClick={reload}>{t("common.tryAgainNow")}</Button>
               </>
-            ) : <p className="hint">Lade …</p>}
+            ) : <p className="hint">{t("common.loading")}</p>}
           </div>
         </main>
         <ToastHost />
@@ -89,17 +89,17 @@ function App() {
       <div className="status-bar-backdrop" aria-hidden="true" />
       {DEMO && !SCREENSHOT && (
         <div className="demo-banner" role="note">
-          <span><strong>Demo</strong> mit erfundenen Werten</span>
-          <a href="../">Infos</a>
-          <a href="../impressum.html">Impressum</a>
+          <span>{tx("shell.app.demoBanner", { demo: <strong>{t("shell.app.demo")}</strong> })}</span>
+          <a href="../">{t("shell.app.about")}</a>
+          <a href="../impressum.html">{t("shell.app.legalNotice")}</a>
         </div>
       )}
       {!DEMO && !error && <UpdateBanner />}
-      {error && <div className="offline-banner" role="alert">Keine Verbindung zum OpenAmpere-Server – versuche erneut …</div>}
+      {error && <div className="offline-banner" role="alert">{t("shell.app.noConnectionRetrying")}</div>}
       {status.web_build && firstBuild.current && status.web_build !== firstBuild.current && (
         <div className="update-banner" role="status">
-          Eine neue Version von OpenAmpere ist installiert.
-          <button className="link" onClick={() => window.location.reload()}>Jetzt neu laden</button>
+          {t("shell.app.newVersionInstalled")}
+          <button className="link" onClick={() => window.location.reload()}>{t("shell.app.reloadNow")}</button>
         </div>
       )}
       <main>
