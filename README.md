@@ -237,7 +237,8 @@ Die Register zum Schreiben stammen aus der Dokumentation der Community und sind 
   - Energiekonzepte Deutschland Holding GmbH: 401 IN 2101/26
   - Energiekonzepte Deutschland Investorenholding GmbH: 401 IN 2107/26
   - Energiekonzepte Deutschland PV-Montage GmbH: 401 IN 2110/26
-- Laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) sollen insgesamt sieben Gesellschaften der Gruppe betroffen sein. Amtlich veröffentlicht sind bisher die sechs oben genannten (Stand 5. Oktober 2026).
+  - ES Energiesysteme GmbH: 401 IN 2111/26
+- Damit sind alle sieben Gesellschaften amtlich veröffentlicht, die laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) betroffen sein sollen (Stand 6. Oktober 2026).
 - Laut EKD läuft der Geschäftsbetrieb uneingeschränkt weiter, Anlaufstelle für Kunden bleibt der Kundenservice ([pv magazine](https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/)).
 - Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD.
 - OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene.
