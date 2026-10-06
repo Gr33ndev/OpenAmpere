@@ -620,3 +620,16 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 
 /* diagnostics: what a result means and what to do (#126) */
 .checks .check-hint { display: block; margin-top: 4px; }
+
+/* notifications: guided ntfy setup (#130) */
+.flush { margin: 0; }
+.notify-topic { font: 600 20px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.03em; text-align: center;
+  overflow-wrap: anywhere; background: var(--card-2); border-radius: var(--radius-m); padding: 14px 12px; user-select: all; }
+.notify-topic-inline { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.qr-box { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.qr { display: block; width: 220px; max-width: 100%; height: auto; border-radius: 8px; }
+.inline-buttons { flex-direction: row; margin-top: 0; }
+.inline-buttons .btn { flex: 1; }
+.notify-help { margin: 10px 0; }
+.notify-advanced { display: flex; flex-direction: column; gap: 16px; }
+.card.notify-advanced-card { padding-top: 8px; padding-bottom: 8px; }
