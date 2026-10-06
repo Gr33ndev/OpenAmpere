@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime
 
 import pytest
@@ -274,12 +275,38 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             check = await remote()
             assert check["status"] == "warn" and "anderes Gerät" in check["summary"]
             assert "3000 W Laden" in check["summary"] and "180 s" in check["summary"]
+            assert "laufend erneuert" in check["summary"] and "Seit mindestens" not in check["summary"]
             assert "Smartbox" in check["hint"] and check["details"]["power_w"] == -3000
+            assert "hat das hier noch nie getan" in check["hint"]
+
+            # #135: held at 0 W for a while, seen by the background job; OpenAmpere charged once, long ago
+            sim._put("remote_power", 0, settings)
+            diagnostics = Diagnostics(runtime)
+            await diagnostics.watch_remote(now=time.time() - 3 * 3600)
+            await diagnostics.watch_remote(now=time.time())
+            runtime.storage.log_control("grid_charging", {}, False, "Laden gestartet (im Ladefenster)")
+            runtime.storage.log_control("grid_charging", {}, True, "würde laden – Testmodus")
+            check = await remote()
+            assert check["status"] == "warn" and "weder Laden noch Entladen" in check["summary"]
+            assert "Seit mindestens 3 Stunden durchgehend an" in check["summary"]
+            assert "zuletzt am" in check["hint"] and "dauerhaft bei 0 W" in check["hint"]
+
+            # a leftover of OpenAmpere's own charging from before a restart: ends by itself
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 30, "power_w": -3000})
+            check = await remote()
+            assert check["status"] == "ok" and "Rest des Ladens aus dem Netz von OpenAmpere" in check["summary"]
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 3600, "power_w": -3000})
+            assert (await remote())["status"] == "warn"  # an hour ago: the watchdog has long ended it
 
             # the same, but OpenAmpere started it (charging from the grid)
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
             driver._remote_owned = True
             check = await remote()
             assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
+
+            # switched off: the background job forgets since when it was on
+            sim._put("remote_enable", 0, settings)
+            await diagnostics.watch_remote(now=time.time() + 600)
+            assert runtime.storage.get_meta("remote_seen")["on_since"] is None
         finally:
             await runtime.collector.stop()

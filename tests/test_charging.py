@@ -32,10 +32,15 @@ async def test_window_charging_respects_test_mode_and_stops(tmp_path):
             await charging.tick()
             assert not sim.energy.remote_enabled
             assert runtime.storage.control_log()[0]["dry_run"]
+            assert runtime.storage.last_control("grid_charging", "Laden gestartet") is None  # test mode does not count
+            assert runtime.storage.get_meta("remote_command") is None
 
             await runtime.update_settings({"control.dry_run": False})
             await charging.tick()
             assert charging.active and sim.energy.remote_enabled and sim.energy.remote_power_w == -3000
+            # remembered beyond a restart, so the diagnostics can tell OpenAmpere's command from another device's (#135)
+            assert runtime.storage.get_meta("remote_command")["power_w"] == -3000
+            assert runtime.storage.last_control("grid_charging", "Laden gestartet") is not None
 
             charging.save({**charging.view()["settings"], "enabled": False})
             await charging.tick()

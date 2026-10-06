@@ -131,7 +131,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         while True:
             await asyncio.sleep(30)
             for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
-                        notifier.check, updates.tick, gridmeter.tick):
+                        notifier.check, updates.tick, gridmeter.tick,
+                        diagnostics.watch_remote):
                 try:
                     await job()
                 except asyncio.CancelledError:
