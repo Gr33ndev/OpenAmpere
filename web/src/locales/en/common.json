@@ -43,5 +43,8 @@
   "Sprache": "Language",
   "Gilt nur für dieses Gerät. Englisch ist noch unvollständig, fehlende Texte erscheinen auf Deutsch. Übersetzungen sind willkommen.": "Applies to this device only. English is not complete yet, missing texts appear in German. Translations are welcome.",
   "Zeitzone der Anlage": "Time zone of the system",
-  "Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.": "Days, times and daily values follow it, even when you open the app abroad."
+  "Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.": "Days, times and daily values follow it, even when you open the app abroad.",
+
+  "Heute": "Today",
+  "Gestern": "Yesterday"
 }
