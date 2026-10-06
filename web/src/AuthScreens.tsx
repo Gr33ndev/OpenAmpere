@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthStatus } from "./api";
 import { postJson, useResource } from "./api";
 import { t, tx } from "./i18n";
-import { Button, Dialog, Field, LanguageSwitch, Notice, SubPage, toast, useModal } from "./ui";
+import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
 function PasswordInput({ value, onChange, placeholder, autoComplete }: {
   value: string; onChange: (v: string) => void; placeholder?: string; autoComplete: string;
@@ -33,7 +33,7 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="page setup">
-      <div className="page-head with-action"><h1>{t("shell.passwordSetup.setPassword")}</h1><LanguageSwitch /></div>
+      <div className="page-head"><h1>{t("shell.passwordSetup.setPassword")}</h1></div>
       <div className="card">
         <p>{t("shell.passwordSetup.intro")}</p>
         <p className="hint">{t("shell.passwordSetup.passwordHint")}</p>
