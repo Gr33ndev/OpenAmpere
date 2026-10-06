@@ -10,6 +10,7 @@ import { RemotePage } from "./RemotePage";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
+import { t } from "./i18n";
 import { deviceStatus } from "./DevicesPage";
 import { PvInputsCard, TemperaturesCard } from "./Dashboard";
 import { TemperatureSection } from "./Report";
@@ -158,32 +159,32 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
   const control = status?.control;
   return (
     <div className="page">
-      <div className="page-head"><h1>Mehr</h1></div>
+      <div className="page-head"><h1>{t("Mehr")}</h1></div>
 
-      <div className="section-title">Anlage</div>
+      <div className="section-title">{t("Anlage")}</div>
       <div className="card menu">
-        <MenuRow label="Meine Anlage" hint="Status, Module, Einspeisebegrenzung, Temperaturen" onClick={() => setPage("installation")} />
-        <MenuRow label="Stromtarif" hint="Preise und Grundpreis" onClick={() => setPage("tariff")} />
-        <MenuRow label="Abschläge" hint="Mit Verbrauch und Einspeisung vergleichen" onClick={() => setPage("billing")} />
+        <MenuRow label={t("Meine Anlage")} hint={t("Status, Module, Einspeisebegrenzung, Temperaturen")} onClick={() => setPage("installation")} />
+        <MenuRow label={t("Stromtarif")} hint={t("Preise und Grundpreis")} onClick={() => setPage("tariff")} />
+        <MenuRow label={t("Abschläge")} hint={t("Mit Verbrauch und Einspeisung vergleichen")} onClick={() => setPage("billing")} />
       </div>
 
-      <div className="section-title">Einstellungen</div>
+      <div className="section-title">{t("Einstellungen")}</div>
       <div className="card menu">
-        <MenuRow label="Verbindung" hint="Wechselrichter, Heizstab, Wallbox, Netzbetreiber" onClick={() => setPage("connection")} />
-        <MenuRow label="Steuerung und Protokoll"
-          hint={control?.enabled ? (control.dry_run ? "Testen" : "Aktiv") : "Nur ansehen"} onClick={() => setPage("control")} />
-        <MenuRow label="Benachrichtigungen" hint="Hinweise aufs Handy" onClick={() => setPage("notify")} />
-        <MenuRow label="Zugriffsschutz" hint="Passwort" onClick={() => setPage("security")} />
-        <MenuRow label="Verbundene Apps" hint="Home Assistant und andere" onClick={() => setPage("apps")} />
-        <MenuRow label="Zugriff von unterwegs" hint="Mit Tailscale, ohne Portfreigabe" onClick={() => setPage("remote")} />
-        <MenuRow label="Darstellung" hint="Hell, dunkel, Zeitzone" onClick={() => setPage("appearance")} />
+        <MenuRow label={t("Verbindung")} hint={t("Wechselrichter, Heizstab, Wallbox, Netzbetreiber")} onClick={() => setPage("connection")} />
+        <MenuRow label={t("Steuerung und Protokoll")}
+          hint={control?.enabled ? (control.dry_run ? t("Testen") : t("Aktiv")) : t("Nur ansehen")} onClick={() => setPage("control")} />
+        <MenuRow label={t("Benachrichtigungen")} hint={t("Hinweise aufs Handy")} onClick={() => setPage("notify")} />
+        <MenuRow label={t("Zugriffsschutz")} hint={t("Passwort")} onClick={() => setPage("security")} />
+        <MenuRow label={t("Verbundene Apps")} hint={t("Home Assistant und andere")} onClick={() => setPage("apps")} />
+        <MenuRow label={t("Zugriff von unterwegs")} hint={t("Mit Tailscale, ohne Portfreigabe")} onClick={() => setPage("remote")} />
+        <MenuRow label={t("Darstellung")} hint={t("Hell, dunkel, Sprache, Zeitzone")} onClick={() => setPage("appearance")} />
       </div>
 
-      <div className="section-title">Daten und Hilfe</div>
+      <div className="section-title">{t("Daten und Hilfe")}</div>
       <div className="card menu">
-        <MenuRow label="Daten & Sicherung" hint="Sicherung, Export, Verlauf aus der EKD-Cloud" onClick={() => setPage("data")} />
-        <MenuRow label="Diagnose" hint="Gerät prüfen und Bericht teilen" onClick={() => setPage("diagnostics")} />
-        <MenuRow label="Über OpenAmpere" onClick={() => setPage("about")} />
+        <MenuRow label={t("Daten & Sicherung")} hint={t("Sicherung, Export, Verlauf aus der EKD-Cloud")} onClick={() => setPage("data")} />
+        <MenuRow label={t("Diagnose")} hint={t("Gerät prüfen und Bericht teilen")} onClick={() => setPage("diagnostics")} />
+        <MenuRow label={t("Über OpenAmpere")} onClick={() => setPage("about")} />
       </div>
     </div>
   );

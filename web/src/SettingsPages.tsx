@@ -3,6 +3,7 @@ import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, Expor
 import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
+import { LANGUAGES, lang, setLang, t, type Lang } from "./i18n";
 import { amountInput, ct, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
@@ -585,16 +586,22 @@ export function AppearancePage({ onBack }: PageProps) {
     try { localStorage.setItem("openampere.theme", value); } catch { /* private mode */ }
   };
   return (
-    <SubPage title="Darstellung" onBack={onBack}>
+    <SubPage title={t("Darstellung")} onBack={onBack}>
       <div className="card form">
-        <Field label="Design" hint="„Automatisch“ folgt der Einstellung deines Geräts. Gilt nur für dieses Gerät.">
-          <Segmented value={theme} onChange={change} options={[["auto", "Automatisch"], ["light", "Hell"], ["dark", "Dunkel"]]} />
+        <Field label={t("Design")} hint={t("„Automatisch“ folgt der Einstellung deines Geräts. Gilt nur für dieses Gerät.")}>
+          <Segmented value={theme} onChange={change}
+            options={[["auto", t("Automatisch")], ["light", t("Hell")], ["dark", t("Dunkel")]]} />
+        </Field>
+        <Field label={t("Sprache")} hint={t("Gilt nur für dieses Gerät. Englisch ist noch unvollständig, fehlende Texte erscheinen auf Deutsch. Übersetzungen sind willkommen.")}>
+          <select className="input" value={lang()} onChange={(e) => setLang(e.target.value as Lang)}>
+            {LANGUAGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
         </Field>
       </div>
       {settings && (
         <div className="card form">
-          <Field label="Zeitzone der Anlage" locked={locked("timezone")}
-            hint="Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.">
+          <Field label={t("Zeitzone der Anlage")} locked={locked("timezone")}
+            hint={t("Tage, Uhrzeiten und Tageswerte richten sich danach – auch wenn du die App gerade im Ausland öffnest.")}>
             <select className="input" value={settings.timezone} disabled={locked("timezone")}
               onChange={(e) => void save({ timezone: e.target.value })}>
               {[...new Set([settings.timezone, ...TIMEZONES])].map((z) => <option key={z} value={z}>{z.replace("_", " ")}</option>)}
