@@ -27,6 +27,24 @@ issue templates are bilingual.
   diagnostics only read and change nothing on the device.
 - **Ideas:** "Feature request / Funktionswunsch" template. Above all, describe the problem, not just the solution.
 - **Texts and wording:** Unclear wording in the app is a bug – please report it.
+- **Translations:** The app can show other languages besides German (**Mehr → Darstellung → Sprache**, More →
+  Appearance → Language). English is the first one and still incomplete. See [Translating the app](#translating-the-app).
+
+## Translating the app
+
+German is the source language. Every text in the web app is written in German and wrapped in `t("…")` from
+`web/src/i18n.ts`; the German text is also the key. Translations live in `web/src/locales/<language>.json` as
+`"German text": "translation"`. A text without a translation simply stays German, so pages can be translated one at a
+time.
+
+- Placeholders are written as `{name}` and must appear in the translation too: `t("Version {version} ist da", { version })`.
+- Only plain string literals in `t("…")`, no template strings, so tools can find them. For a choice, call `t()` for each
+  text: `enabled ? t("Aktiv") : t("Nur ansehen")`.
+- `npm run check:i18n` in `web/` (also run by CI) fails if a translation belongs to a German text that no longer exists
+  or if placeholders differ, and prints how much is translated.
+- New texts in the app: write them in German and wrap them in `t()`. Adding the English translation in the same PR is
+  welcome but not required.
+- A new language: add `web/src/locales/<code>.json`, register it in `DICTIONARIES` and `LANGUAGES` in `i18n.ts`.
 
 **Security vulnerabilities** must never be reported as a public issue; follow [SECURITY.md](SECURITY.md) instead.
 

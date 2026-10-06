@@ -71,6 +71,9 @@ jobs:
       - name: Demo covers every API endpoint
         run: npm run check:demo
         working-directory: web
+      - name: Translations match the texts in the code
+        run: npm run check:i18n
+        working-directory: web
 
   docker:
     runs-on: ubuntu-latest

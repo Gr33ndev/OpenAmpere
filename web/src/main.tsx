@@ -13,6 +13,7 @@ import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
 import { setTimeZone } from "./format";
 import { DEMO } from "./demo/flag";
+import { t } from "./i18n";
 import { UpdateBanner } from "./Updates";
 import { Button, Notice, ToastHost } from "./ui";
 import "./styles.css";
@@ -20,10 +21,10 @@ import "./styles.css";
 type Tab = "dashboard" | "devices" | "report" | "more";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
-  { id: "dashboard", label: "Übersicht", icon: <NavHome /> },
-  { id: "devices", label: "Geräte", icon: <NavDevices /> },
-  { id: "report", label: "Auswertung", icon: <NavReport /> },
-  { id: "more", label: "Mehr", icon: <NavMore /> },
+  { id: "dashboard", label: t("Übersicht"), icon: <NavHome /> },
+  { id: "devices", label: t("Geräte"), icon: <NavDevices /> },
+  { id: "report", label: t("Auswertung"), icon: <NavReport /> },
+  { id: "more", label: t("Mehr"), icon: <NavMore /> },
 ];
 
 applyTheme(storedTheme());
@@ -108,11 +109,11 @@ function App() {
         {tab === "more" && <More snap={snap} page={route[1] ?? null} />}
       </main>
       <nav className="bottom">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? "page" : undefined}>
-            {t.icon}
-            <span className="nav-label">{t.label}</span>
+        {TABS.map((item) => (
+          <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}
+            aria-current={tab === item.id ? "page" : undefined}>
+            {item.icon}
+            <span className="nav-label">{item.label}</span>
           </button>
         ))}
       </nav>
