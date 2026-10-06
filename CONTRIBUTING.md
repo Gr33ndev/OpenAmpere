@@ -24,7 +24,8 @@ issue templates are bilingual.
 - **Report a bug:** Choose the "Bug report / Fehler melden" template. The version is shown under **Mehr → Über** (More → About).
 - **Report a device:** Create a report under **Mehr → Diagnose** (More → Diagnostics) and share it with the "Device
   report / Gerätebericht" template. This is the most important help for supporting more inverters and firmware versions. The
-  diagnostics only read and change nothing on the device.
+  diagnostics only read and change nothing on the device. How a report becomes a driver or a register fix is described
+  in [Writing a driver](docs/writing-a-driver.md#from-a-diagnostics-report-to-a-register-map-and-a-test).
 - **Ideas:** "Feature request / Funktionswunsch" template. Above all, describe the problem, not just the solution.
 - **Texts and wording:** Unclear wording in the app is a bug – please report it.
 - **Translations:** The app can show other languages besides German (**Mehr → Darstellung → Sprache**, More →
@@ -99,6 +100,9 @@ scripts/deps.sh
 - **No new dependencies** without agreeing on them in the issue.
 
 ### Inverters and control
+
+Adding support for a new inverter or battery? Read [Writing a driver](docs/writing-a-driver.md) first: it explains
+detection, the read and write path, the simulator, the tests a driver needs and how to get it reviewed.
 
 Mistakes when writing can affect devices, the warranty or the grid connection requirements. Therefore, additionally:
 
