@@ -1,4 +1,4 @@
-// Checks the translations in src/locales/ (#104): every entry must belong to a t("…") text that still exists in the
+// Checks the translations in src/locales/<lang>/*.json (#104): every entry must belong to a t("…") text that still exists in the
 // code (otherwise it is stale after a German text was changed), and must use the same {placeholders}.
 // Prints how many texts are wrapped in t() and how many of them are translated.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -23,18 +23,27 @@ for (const file of files(SRC)) {
 
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
 let problems = 0;
-for (const name of readdirSync(LOCALES).filter((n) => n.endsWith(".json"))) {
-  const dictionary = JSON.parse(readFileSync(join(LOCALES, name), "utf8"));
-  for (const [german, translation] of Object.entries(dictionary)) {
-    if (!used.has(german)) {
-      console.error(`${name}: not used in the code (German text changed?): ${german}`);
-      problems++;
-    } else if (placeholders(german) !== placeholders(translation)) {
-      console.error(`${name}: placeholders differ: ${german}`);
-      problems++;
+for (const lang of readdirSync(LOCALES).filter((n) => statSync(join(LOCALES, n)).isDirectory())) {
+  // one file per area of the app; the same German text in two files must not get two translations
+  const dictionary = {};
+  for (const name of readdirSync(join(LOCALES, lang)).filter((n) => n.endsWith(".json")).sort()) {
+    const file = `${lang}/${name}`;
+    for (const [german, translation] of Object.entries(JSON.parse(readFileSync(join(LOCALES, lang, name), "utf8")))) {
+      if (german in dictionary && dictionary[german] !== translation) {
+        console.error(`${file}: translated differently in another file: ${german}`);
+        problems++;
+      }
+      dictionary[german] = translation;
+      if (!used.has(german)) {
+        console.error(`${file}: not used in the code (German text changed?): ${german}`);
+        problems++;
+      } else if (placeholders(german) !== placeholders(translation)) {
+        console.error(`${file}: placeholders differ: ${german}`);
+        problems++;
+      }
     }
   }
   const translated = [...used].filter((german) => dictionary[german]).length;
-  console.log(`${name}: ${translated} of ${used.size} texts in t() translated.`);
+  console.log(`${lang}: ${translated} of ${used.size} texts in t() translated.`);
 }
 if (problems) process.exit(1);

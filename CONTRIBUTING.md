@@ -34,7 +34,7 @@ issue templates are bilingual.
 ## Translating the app
 
 German is the source language. Every text in the web app is written in German and wrapped in `t("…")` from
-`web/src/i18n.ts`; the German text is also the key. Translations live in `web/src/locales/<language>.json` as
+`web/src/i18n.ts`; the German text is also the key. Translations live in `web/src/locales/<language>/<area>.json` (one file per area of the app) as
 `"German text": "translation"`. A text without a translation simply stays German, so pages can be translated one at a
 time.
 
@@ -45,7 +45,9 @@ time.
   or if placeholders differ, and prints how much is translated.
 - New texts in the app: write them in German and wrap them in `t()`. Adding the English translation in the same PR is
   welcome but not required.
-- A new language: add `web/src/locales/<code>.json`, register it in `DICTIONARIES` and `LANGUAGES` in `i18n.ts`.
+- Numbers, dates and times follow the language: use `LOCALE` from `i18n.ts` (or the helpers in `format.ts`), never a
+  fixed `"de-DE"`.
+- A new language: add a folder `web/src/locales/<code>/`, register it in `DICTIONARIES` and `LANGUAGES` in `i18n.ts`.
 
 **Security vulnerabilities** must never be reported as a public issue; follow [SECURITY.md](SECURITY.md) instead.
 

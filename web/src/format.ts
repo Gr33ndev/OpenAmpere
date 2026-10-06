@@ -1,5 +1,7 @@
-const nf1 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const nf0 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
+import { LOCALE, t } from "./i18n";
+
+const nf1 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf0 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
 
 export function kw(watts: number | null | undefined): string {
   if (watts == null) return "–";
@@ -24,7 +26,7 @@ export function setTimeZone(value: string | undefined): void {
 export const timeZone = () => zone;
 
 export function time(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: zone });
+  return new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: zone });
 }
 
 /** YYYY-MM-DD of a moment in the plant's time zone. */
@@ -36,8 +38,8 @@ export function dayOf(ts: number): string {
 /** "Heute, 16:32:39" / "Gestern, …" / "01.10.2026, …" */
 export function updatedLabel(ts: number): string {
   const now = Date.now() / 1000;
-  const day = dayOf(ts) === dayOf(now) ? "Heute" : dayOf(ts) === dayOf(now - 86_400) ? "Gestern"
-    : new Date(ts * 1000).toLocaleDateString("de-DE", { timeZone: zone });
+  const day = dayOf(ts) === dayOf(now) ? t("Heute") : dayOf(ts) === dayOf(now - 86_400) ? t("Gestern")
+    : new Date(ts * 1000).toLocaleDateString(LOCALE, { timeZone: zone });
   return `${day}, ${time(ts)}`;
 }
 
@@ -59,11 +61,11 @@ export function ct(value: number | null | undefined): string {
 /** A cent or euro amount as the text of an input field: two decimals, more only if it was entered that way
  * (e.g. an EEG rate of 8,032 ct), no thousands separator. */
 export function amountInput(value: number): string {
-  return value.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false });
+  return value.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false });
 }
 
-/** Number with fixed decimals in German notation, e.g. 2,6 */
+/** Number with fixed decimals in the app's language, e.g. 2,6 (German) or 2.6 (English) */
 export function num(value: number | null | undefined, digits = 1): string {
   if (value == null) return "–";
-  return value.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return value.toLocaleString(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
