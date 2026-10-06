@@ -8,7 +8,7 @@ import { Button, Notice, SwitchRow, toast } from "./ui";
 export type UpdateView = {
   current: string; available: boolean; updater: boolean; requested: boolean; check: boolean; auto: boolean;
   latest: { version: string; url: string | null; notes: string; published: string | null } | null;
-  status: { ts: number; state: "pulling" | "restarting" | "done" | "failed"; message: string } | null;
+  status: { ts: number; state: "pulling" | "verifying" | "restarting" | "done" | "failed"; message: string } | null;
   checked: number | null; error: string | null;
 };
 

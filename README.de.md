@@ -147,6 +147,8 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33nd
 
 `<version>` steht ohne führendes `v`, z. B. `0.10.0`, oder `latest`. Das geht für Releases nach 0.9.0. Die SBOM (die Liste der Pakete im Image) zeigt `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
 
+**Der Update-Helfer prüft das automatisch.** Bevor er eine neue Version startet (Knopf in der App oder nachts), prüft er das Image mit [cosign](https://docs.sigstore.dev/cosign/) gegen den Release-Workflow dieses Repositorys, ein Konto braucht es dafür nicht. Schlägt die Prüfung fehl, wird die neue Version nicht gestartet, die bisherige läuft weiter, und die App zeigt einen Hinweis. Installationen von vor 0.10.1 bekommen diesen Helfer, wenn sie das Install-Script einmal erneut ausführen. Nur für den Notfall schaltet `OPENAMPERE_VERIFY_IMAGES=nein` beim Dienst `updater` die Prüfung ab.
+
 `install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
 
 ### Zugriff von unterwegs
