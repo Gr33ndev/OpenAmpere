@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "title": "Imprint and privacy | OpenAmpere"
+  },
+  "imprint": {
+    "title": "Imprint",
+    "translationNote": "<p>This page is a translation for your convenience; only the <a href=\"{{root}}impressum.html\">German version</a> is legally binding.</p>",
+    "legalBasis": "Information pursuant to § 5 of the Austrian E-Commerce Act (E-Commerce-Gesetz) and disclosure pursuant to § 25 of the Austrian Media Act (Mediengesetz):",
+    "location": "Vienna, Austria",
+    "email": "Email:",
+    "purpose": "This site presents the open source project OpenAmpere. It is private and non-commercial. There are no ads, no donations and no paid offers.",
+    "license": "The software is licensed under the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE\">MIT License</a> and is provided without any warranty."
+  },
+  "privacy": {
+    "title": "Privacy",
+    "intro": "This site sets no cookies and uses no analytics or tracking tools. Fonts and images are hosted on this site itself. The exception are the two buttons in the Home Assistant section, see below.",
+    "hostingTitle": "Hosting on GitHub Pages",
+    "hostingText": "The site is served via GitHub Pages (GitHub Inc., USA). When you visit it, GitHub automatically processes technically necessary data such as IP address, browser type and time in order to deliver and secure the site. The <a href=\"https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement\">GitHub General Privacy Statement</a> applies.",
+    "demoTitle": "Demo",
+    "demoText": "The demo runs entirely in your browser and shows a made-up system. It sends nothing to a server. In your browser's local storage it only remembers whether you have hidden notices or chosen a theme. You can delete this at any time in your browser settings.",
+    "badgesTitle": "Buttons for Home Assistant",
+    "badgesText": "Your browser loads the images of the two buttons in the Home Assistant section from my.home-assistant.io, a service of the Home Assistant project (Open Home Foundation). In doing so, technically necessary data such as IP address, browser type and time are transmitted to this service. If you tap a button, my.home-assistant.io opens your own Home Assistant. The <a href=\"https://www.home-assistant.io/privacy/\">Home Assistant privacy policy</a> applies.",
+    "linksTitle": "Links to other sites",
+    "linksText": "Links to GitHub or to press articles lead to services of other providers. Their privacy policies apply there.",
+    "rightsTitle": "Your rights",
+    "rightsText": "Under the GDPR you have the right of access, rectification, erasure and restriction of processing, as well as the right to lodge a complaint with the Austrian Data Protection Authority (Datenschutzbehörde). You can send questions about data protection to the email address above."
+  }
+}

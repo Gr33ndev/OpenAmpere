@@ -5,7 +5,7 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ["site/**", "web/**", "scripts/build-site.sh", ".github/workflows/pages.yml"]
+    paths: ["site/**", "web/**", "scripts/build-site.sh", "scripts/build-site-pages.mjs", ".github/workflows/pages.yml"]
   # the install scripts on the site come from the newest release tag (see scripts/build-site.sh), so they
   # go live once a release is done. Not "release: published": a release made with GITHUB_TOKEN starts no
   # other workflows, and a tag ref would not pass the github-pages environment's branch rule.

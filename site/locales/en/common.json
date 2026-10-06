@@ -1,0 +1,21 @@
+{
+  "nav": {
+    "label": "Site sections",
+    "features": "Features",
+    "install": "Installation",
+    "faq": "FAQ",
+    "demo": "Demo"
+  },
+  "languageSwitch": {
+    "label": "Language"
+  },
+  "footer": {
+    "imprint": "Imprint and privacy",
+    "source": "Source code",
+    "license": "MIT License",
+    "security": "Security",
+    "evcc": "Wallboxes are controlled by <a href=\"https://evcc.io\">evcc</a>, an independent open source project. Thanks to the evcc community!",
+    "noTracking": "This site sets no cookies and uses no tracking.",
+    "font": "Font: DM Sans (<a href=\"{{root}}fonts/OFL.txt\">SIL Open Font License</a>)."
+  }
+}

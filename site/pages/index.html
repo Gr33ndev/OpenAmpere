@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="{{contentLang}}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{index.meta.title}}</title>
+  <meta name="description" content="{{index.meta.description}}" />
+  <meta name="theme-color" content="#f4f4f4" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#21262b" media="(prefers-color-scheme: dark)" />
+  <meta property="og:title" content="OpenAmpere" />
+  <meta property="og:description" content="{{index.meta.ogDescription}}" />
+  <meta property="og:type" content="website" />
+  {{alternates}}
+  <link rel="icon" href="{{root}}icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{root}}style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="./"><img src="{{root}}icon.svg" alt="" width="32" height="32" />OpenAmpere</a>
+      <nav aria-label="{{common.nav.label}}">
+        <a href="./#funktionen">{{common.nav.features}}</a>
+        <a href="./#installation">{{common.nav.install}}</a>
+        <a href="faq.html">{{common.nav.faq}}</a>
+        <a href="{{root}}demo/?lang={{lang}}">{{common.nav.demo}}</a>
+        <a href="https://github.com/Gr33ndev/OpenAmpere">GitHub</a>
+        {{languageSwitch}}
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow">{{index.hero.eyebrow}}</p>
+          <h1>{{index.hero.title}}</h1>
+          <p class="lead">{{index.hero.lead}}</p>
+          <div class="actions">
+            <a class="btn primary" href="{{root}}demo/?lang={{lang}}">{{index.hero.demoButton}}</a>
+            <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere">{{index.hero.sourceButton}}</a>
+          </div>
+          <p class="small">{{index.hero.demoNote}}</p>
+        </div>
+        <div class="phone" aria-hidden="true">
+          <iframe src="{{root}}demo/?lang={{lang}}" title="{{index.hero.demoFrameTitle}}" loading="lazy" tabindex="-1"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="fuer-wen">
+      <h2>{{index.audience.title}}</h2>
+      <div class="cards two">
+        <div class="card">
+          <h3>{{index.audience.devicesTitle}}</h3>
+          <ul>
+            <li>{{index.audience.foxess}}</li>
+            <li>{{index.audience.saj}}</li>
+            <li>{{index.audience.heater}}</li>
+            <li>{{index.audience.relay}}</li>
+            <li>{{index.audience.wallbox}}</li>
+          </ul>
+          <p class="small">{{index.audience.devicesNote}}</p>
+        </div>
+        <div class="card">
+          <h3>{{index.audience.setupTitle}}</h3>
+          <p>{{index.audience.setupText}}</p>
+          <p class="small">{{index.audience.setupNote}}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="funktionen">
+      <h2>{{index.features.title}}</h2>
+      <div class="cards">
+        <div class="card"><h3>{{index.features.liveTitle}}</h3><p>{{index.features.liveText}}</p></div>
+        <div class="card"><h3>{{index.features.reportTitle}}</h3><p>{{index.features.reportText}}</p></div>
+        <div class="card"><h3>{{index.features.stringsTitle}}</h3><p>{{index.features.stringsText}}</p></div>
+        <div class="card"><h3>{{index.features.batteryTitle}}</h3><p>{{index.features.batteryText}}</p></div>
+        <div class="card"><h3>{{index.features.exportLimitTitle}}</h3><p>{{index.features.exportLimitText}}</p></div>
+        <div class="card"><h3>{{index.features.tariffsTitle}}</h3><p>{{index.features.tariffsText}}</p></div>
+        <div class="card"><h3>{{index.features.heatingTitle}}</h3><p>{{index.features.heatingText}}</p></div>
+        <div class="card"><h3>{{index.features.wallboxTitle}}</h3><p>{{index.features.wallboxText}}</p></div>
+        <div class="card"><h3>{{index.features.homeAssistantTitle}}</h3><p>{{index.features.homeAssistantText}}</p></div>
+        <div class="card"><h3>{{index.features.notificationsTitle}}</h3><p>{{index.features.notificationsText}}</p></div>
+      </div>
+    </section>
+
+    <section class="wrap" id="so-gehts">
+      <h2>{{index.howItWorks.title}}</h2>
+      <svg class="diagram" viewBox="0 0 760 170" role="img" aria-label="{{index.howItWorks.diagramLabel}}">
+        <g class="node"><rect x="10" y="45" width="190" height="80" rx="16" /><text x="105" y="80">{{index.howItWorks.inverter}}</text><text x="105" y="102" class="sub">{{index.howItWorks.inverterSub}}</text></g>
+        <g class="node accent"><rect x="285" y="45" width="190" height="80" rx="16" /><text x="380" y="80">OpenAmpere</text><text x="380" y="102" class="sub">{{index.howItWorks.appSub}}</text></g>
+        <g class="node"><rect x="560" y="45" width="190" height="80" rx="16" /><text x="655" y="80">{{index.howItWorks.client}}</text><text x="655" y="102" class="sub">{{index.howItWorks.clientSub}}</text></g>
+        <g class="link"><line x1="200" y1="85" x2="285" y2="85" /><text x="242" y="72">Modbus TCP</text></g>
+        <g class="link"><line x1="475" y1="85" x2="560" y2="85" /><text x="517" y="72">{{index.howItWorks.webApp}}</text></g>
+        <text x="380" y="155" class="note">{{index.howItWorks.note}}</text>
+      </svg>
+    </section>
+
+    <section class="wrap" id="installation">
+      <h2>{{index.install.title}}</h2>
+      <ol class="steps">
+        <li>
+          <h3>{{index.install.prepareTitle}}</h3>
+          <p>{{index.install.prepareText}}</p>
+        </li>
+        <li>
+          <h3>{{index.install.runTitle}}</h3>
+          <p>{{index.install.runText}}</p>
+          <div class="command">
+            <pre><code id="install-command">curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash</code></pre>
+            <button class="copy" type="button" data-copy="install-command" data-copied="{{index.install.copied}}">{{index.install.copy}}</button>
+          </div>
+          <p>{{index.install.runNote}}</p>
+        </li>
+        <li>
+          <h3>{{index.install.browserTitle}}</h3>
+          <p>{{index.install.browserText}}</p>
+        </li>
+      </ol>
+      <p class="small">{{index.install.manualNote}}</p>
+    </section>
+
+    <section class="wrap" id="home-assistant">
+      <h2>{{index.homeAssistant.title}}</h2>
+      <p>{{index.homeAssistant.intro}}</p>
+      <p class="notice">{{index.homeAssistant.notice}}</p>
+      <ol class="steps">
+        <li>
+          <h3>{{index.homeAssistant.hacsTitle}}</h3>
+          <p>{{index.homeAssistant.hacsText}}</p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&amp;repository=OpenAmpere&amp;category=integration"><img
+            src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." height="40" /></a></p>
+        </li>
+        <li>
+          <h3>{{index.homeAssistant.pairTitle}}</h3>
+          <p>{{index.homeAssistant.pairText}}</p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere"><img
+            src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Open your Home Assistant instance and start setting up a new integration." height="40" /></a></p>
+        </li>
+      </ol>
+      <p class="small">{{index.homeAssistant.note}}
+        {{index.homeAssistant.guideLink}}</p>
+    </section>
+
+    <section class="wrap" id="sicherheit">
+      <h2>{{index.security.title}}</h2>
+      <div class="cards two">
+        <div class="card">
+          <h3>{{index.security.controlTitle}}</h3>
+          <p>{{index.security.controlText}}</p>
+        </div>
+        <div class="card">
+          <h3>{{index.security.accessTitle}}</h3>
+          <p>{{index.security.accessText}}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="mitmachen">
+      <h2>{{index.contribute.title}}</h2>
+      <p>{{index.contribute.text}}</p>
+      <div class="actions">
+        <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere/issues/new/choose">{{index.contribute.issueButton}}</a>
+        <a class="btn secondary" href="https://github.com/Gr33ndev/OpenAmpere/blob/main/CONTRIBUTING.md">{{index.contribute.guideButton}}</a>
+      </div>
+    </section>
+
+    <section class="wrap legal" id="hintergrund">
+      <h2>{{index.background.title}}</h2>
+      <p>{{index.background.insolvency}}</p>
+      <p>{{index.background.ampereIq}}</p>
+      <p>{{index.background.noAffiliation}}</p>
+      <p>{{index.background.trademarks}}</p>
+      <p>{{index.background.ownRisk}}</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p><a href="impressum.html">{{common.footer.imprint}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere">{{common.footer.source}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">{{common.footer.license}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">{{common.footer.security}}</a></p>
+      <p class="small">{{common.footer.evcc}}</p>
+      <p class="small">{{common.footer.noTracking}}
+        {{common.footer.font}}</p>
+    </div>
+  </footer>
+  <script>
+    for (const button of document.querySelectorAll("[data-copy]")) {
+      const label = button.textContent;
+      button.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent);
+        button.textContent = button.dataset.copied;
+        setTimeout(() => (button.textContent = label), 2000);
+      });
+    }
+  </script>
+</body>
+</html>

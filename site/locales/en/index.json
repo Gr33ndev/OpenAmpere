@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "title": "OpenAmpere: solar system and battery without the manufacturer's cloud",
+    "description": "Free open source app for solar systems with a home battery (FoxESS H3, SAJ H2). Runs in your own home network, without an account with the manufacturer.",
+    "ogDescription": "Manage your solar system and battery in your own home network, without the manufacturer's cloud."
+  },
+  "hero": {
+    "eyebrow": "Open source under the MIT License",
+    "title": "Keep an eye on your solar system and battery, even without the manufacturer's cloud.",
+    "lead": "OpenAmpere reads the values directly from the inverter in your home network. You don't need an account or a server from the manufacturer. The app runs on a small computer in your home, for example a Raspberry Pi.",
+    "demoButton": "Try the demo",
+    "sourceButton": "Source code on GitHub",
+    "demoNote": "The demo shows a made-up system and runs only in your browser.",
+    "demoFrameTitle": "OpenAmpere demo"
+  },
+  "audience": {
+    "title": "Who is OpenAmpere for?",
+    "devicesTitle": "Supported devices",
+    "foxess": "<strong>FoxESS H3, H3 Smart, H3 Pro:</strong> monitoring and control",
+    "saj": "<strong>SAJ H2 and HS2:</strong> monitoring",
+    "heater": "<strong>Immersion heater from my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): continuously adjusted",
+    "relay": "Heat pump or other devices via a Shelly relay",
+    "wallbox": "<strong>Wallbox</strong> via <a href=\"https://evcc.io\">evcc</a>",
+    "devicesNote": "The app detects which device you have during setup. It connects via Modbus TCP.",
+    "setupTitle": "Setup",
+    "setupText": "You start OpenAmpere once with Docker. A wizard then finds the inverter, and you make all settings in the app. There are no configuration files to edit.",
+    "setupNote": "Your current app only works through the manufacturer's cloud? Then read the <a href=\"#hintergrund\">background</a> and the <a href=\"faq.html\">frequently asked questions</a>."
+  },
+  "features": {
+    "title": "Features",
+    "liveTitle": "Live view",
+    "liveText": "What the roof is producing right now, what the house is using, whether the battery is charging and whether power is going to the grid.",
+    "reportTitle": "Report",
+    "reportText": "History per day, week, month and year with self-sufficiency, self-consumption and estimated savings.",
+    "stringsTitle": "Module strings and temperatures",
+    "stringsText": "Yield for each side of the roof separately, plus the temperatures of the inverter and the battery.",
+    "batteryTitle": "Battery and backup power",
+    "batteryText": "Set the backup reserve, charge limits and operating mode. You can try new values in test mode first.",
+    "exportLimitTitle": "Export limit",
+    "exportLimitText": "You state which rule applies to your system: 60 %, 70 % or a value set by your grid operator. The app does not allow more.",
+    "tariffsTitle": "Electricity tariffs",
+    "tariffsText": "Fixed price or dynamic spot-market price. With a dynamic tariff the battery can charge when power is cheapest. This feature is still experimental.",
+    "heatingTitle": "Immersion heater and heat pump",
+    "heatingText": "An immersion heater from my-PV takes exactly as much power as is left over. The app switches a heat pump or other devices via a Shelly relay.",
+    "wallboxTitle": "Wallbox with evcc",
+    "wallboxText": "Charge your car with solar power. <a href=\"https://evcc.io\">evcc</a> controls the wallbox, and you can operate it directly in OpenAmpere.",
+    "homeAssistantTitle": "Home Assistant",
+    "homeAssistantText": "All values live in Home Assistant, including the energy dashboard, and control of the battery from there if you want. <a href=\"#home-assistant\">Learn more</a>",
+    "notificationsTitle": "Alerts, diagnostics, export",
+    "notificationsText": "A message on your phone via ntfy when something is wrong. A diagnostics check tests whether the app reads your device correctly. All values are available as a CSV file."
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "diagramLabel": "The inverter is connected via Modbus TCP to the computer that runs OpenAmpere. A phone or browser opens the app in the home network or via VPN.",
+    "inverter": "Inverter",
+    "inverterSub": "with battery",
+    "appSub": "Docker in your home network",
+    "client": "Phone or browser",
+    "clientSub": "at home or via VPN",
+    "webApp": "Web app",
+    "note": "The readings are stored on the computer in your home."
+  },
+  "install": {
+    "title": "Installation",
+    "prepareTitle": "Prepare a computer",
+    "prepareText": "You need a Linux computer on the same network as the inverter, for example a Raspberry Pi with a 64-bit system, a NAS or a Proxmox server. Modbus TCP must be enabled on the inverter. This is already the case for the batteries sold by EKD; otherwise your installer can enable it.",
+    "runTitle": "Install",
+    "runText": "Run this command in the computer's terminal:",
+    "copy": "Copy",
+    "copied": "Copied",
+    "runNote": "The script installs Docker if needed and asks whether you have a wallbox. If so, it sets up <a href=\"https://evcc.io\">evcc</a> as well. If you also want to use OpenAmpere on the go, it sets up Tailscale too. The app shows new versions and installs them at the push of a button, or automatically at night if you like.",
+    "browserTitle": "Set up in the browser",
+    "browserText": "Open the address the script shows at the end and choose a password. The wizard then looks for the inverter. You add an immersion heater under More → Connection, and connect the wallbox there step by step with evcc. On an iPhone you can add the page to your home screen.",
+    "manualNote": "Manual installation and remote access are described in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#installation\">README on GitHub</a>."
+  },
+  "homeAssistant": {
+    "title": "Home Assistant",
+    "intro": "With the <strong>OpenAmpere</strong> integration you see power, energy and state of charge live in Home Assistant, ready for the energy dashboard. If you allow it, you can control the battery, charging from the grid and the immersion heater from there, for example in automations.",
+    "notice": "<strong>Install OpenAmpere first</strong> (see <a href=\"#installation\">Installation</a>). The integration only connects to a running OpenAmpere and does not replace it. Only OpenAmpere talks to the inverter; Home Assistant talks to OpenAmpere.",
+    "hacsTitle": "Install via HACS",
+    "hacsText": "The button opens the repository in your Home Assistant (<a href=\"https://hacs.xyz\">HACS</a> must be installed). Download it there and restart Home Assistant.",
+    "pairTitle": "Pair",
+    "pairText": "In Home Assistant, add the OpenAmpere integration and enter the address of OpenAmpere. Both show the same 6-digit code. You compare it in OpenAmpere under More → Connected apps and allow the connection, either read-only or with control.",
+    "note": "The connection is encrypted, and each app gets its own access that you can remove at any time. The main switch, test mode and export limit stay in OpenAmpere.",
+    "guideLink": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.md\">Guide and details</a>"
+  },
+  "security": {
+    "title": "Security",
+    "controlTitle": "Control is off at first",
+    "controlText": "After installation, OpenAmpere only reads. If you want to change settings, you unlock control and try it out in test mode. The app checks values before writing, reads them back afterwards and records every change in the log.",
+    "accessTitle": "Access",
+    "accessText": "Anyone in your home network can view the values. Changing anything requires the password. On the go, you reach the app via Tailscale, set up with one tap in the app, or via a VPN such as the one in a FRITZ!Box. You should not set up port forwarding to the internet. Apps such as Home Assistant connect encrypted with their own access that you can remove at any time. OpenAmpere collects no usage data."
+  },
+  "contribute": {
+    "title": "Get involved",
+    "text": "You can help even without programming skills. A diagnostics report from your device helps most, because it makes it possible to support more models. You can report bugs and ideas as an issue.",
+    "issueButton": "Open an issue",
+    "guideButton": "How to contribute"
+  },
+  "background": {
+    "title": "Background and legal notes",
+    "insolvency": "Energiekonzepte Deutschland GmbH (EKD) and other companies of the group filed for insolvency in early October 2026. The proceedings are before the Local Court (Amtsgericht) of Leipzig; you can find the official notices at <a href=\"https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf\">insolvenzbekanntmachungen.de</a> (court Leipzig, enter the case number): Energiekonzepte Deutschland GmbH 401 IN 2082/26, AMPERE German Electric Innovation GmbH 401 IN 2085/26, EKD Montage GmbH 401 IN 2100/26, Energiekonzepte Deutschland Holding GmbH 401 IN 2101/26, Investorenholding 401 IN 2107/26, PV-Montage GmbH 401 IN 2110/26 and ES Energiesysteme GmbH 401 IN 2111/26. This means all seven companies that, according to <a href=\"https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html\">Handelsblatt</a> (in German), are said to be affected have been officially published (as of 6 October 2026). According to EKD, business operations continue without restriction, and customer service remains the point of contact for customers (<a href=\"https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/\">pv magazine</a>, in German).",
+    "ampereIq": "The “Ampere.IQ” app only works through EKD's servers. What happens to it is open. Should the insolvency proceedings lead to these servers being shut down, OpenAmpere simply keeps running: it talks directly to the inverter in your home network and needs no server from EKD. OpenAmpere was created by affected owners as a local alternative. The batteries sold as “Ampere.StoragePro E3” are based on the FoxESS H3 series, the older “Ampere.StoragePro” on SAJ H2 and HS2.",
+    "noAffiliation": "<strong>No affiliation with EKD or the manufacturers:</strong> OpenAmpere is an independent, unofficial project. It has nothing to do with Energiekonzepte Deutschland GmbH, its insolvency administration, FoxESS, SAJ or Kiwigrid, and was neither commissioned nor authorized by them.",
+    "trademarks": "<strong>Trademarks:</strong> “AMPERE”, “Ampere.IQ”, “Ampere.StoragePro” and all other product and company names mentioned belong to their respective owners. They appear here only to describe which devices OpenAmpere works with. The project name refers to the ampere, the physical unit. OpenAmpere contains no code, graphics or text from the Ampere.IQ app.",
+    "ownRisk": "<strong>Use at your own risk:</strong> OpenAmpere is free of charge and comes without any warranty. It does not replace a qualified electrician. Anyone who changes settings on the inverter is responsible for complying with the grid connection requirements. These notes are not legal advice."
+  }
+}

@@ -58,6 +58,14 @@ listed in `de.json` under an English key per module. The web app asks for its la
 message on the way out. A new message in the code needs a key in `de.json`; `scripts/i18n_messages.py --missing`
 lists the ones without, and the tests check it.
 
+**Website** (`site/locales/<language>/<page>.json`): the pages in `site/pages/` are templates with a placeholder per
+text, e.g. `{{index.hero.title}}` (page, section, name; `common.json` holds the header and footer). A value is a whole
+sentence and may contain inline HTML such as links. `scripts/build-site.sh` renders German at the root of the site and
+every other language under `/<code>/`, with a language switch in the header. A missing text appears in German with a
+warning; a key missing in German fails the build. To add a language, copy `site/locales/de/` to
+`site/locales/<code>/`, set the name in `meta.json` and translate the values. Every language of the web app also gets
+pages on the website (in German until it has a site translation), because the demo links to them.
+
 **Adding a language** needs no code changes:
 
 1. Copy `web/src/locales/de/` to `web/src/locales/<code>/` (e.g. `fr`), set the name in `meta.json`
@@ -66,6 +74,8 @@ lists the ones without, and the tests check it.
 2. Copy `src/openampere/locales/de.json` to `src/openampere/locales/<code>.json` and translate the values.
 3. Run `npm run check:i18n` in `web/` and `.venv/bin/pytest tests/test_i18n.py`. Missing texts are allowed, they appear
    in German; the check prints how much is translated.
+4. Optionally the website: copy `site/locales/de/` to `site/locales/<code>/` as described above and run
+   `node scripts/build-site-pages.mjs`, which lists the texts still missing.
 
 **New texts in the app:** add the German text under a fitting key and, if you can, the English one. A text missing in a
 language falls back to German.

@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "title": "Frequently asked questions | OpenAmpere",
+    "description": "Answers for owners of systems with Ampere.StoragePro and anyone else interested: devices, setup, safety, warranty and insolvency."
+  },
+  "head": {
+    "eyebrow": "Questions and answers",
+    "title": "Frequently asked questions",
+    "lead": "Most questions come from owners of a system bought from Energiekonzepte Deutschland GmbH (EKD). OpenAmpere is an independent project by affected owners and has nothing to do with EKD, the insolvency administration or the manufacturers.",
+    "topicsLabel": "Topics",
+    "topicGeneral": "General",
+    "topicSystem": "My system",
+    "topicSafety": "Safety",
+    "topicWarranty": "Warranty and insolvency",
+    "topicHelp": "Help"
+  },
+  "general": {
+    "title": "General",
+    "whatIsQ": "What is OpenAmpere?",
+    "whatIsA": "A free app that reads the values of your solar system and battery directly from the inverter, without a cloud and without an account. It runs on a small computer in your home, for example a Raspberry Pi, and you open it in the browser or on your phone. The <a href=\"{{root}}demo/?lang={{lang}}\">demo</a> shows what it looks like.",
+    "byEkdQ": "Is this an app by EKD, or a replacement on EKD's behalf?",
+    "byEkdA": "No. OpenAmpere is a private open source project. It was neither commissioned, authorized nor supported by EKD, the insolvency administration, FoxESS, SAJ or Kiwigrid.",
+    "costQ": "What does OpenAmpere cost?",
+    "costA": "Nothing. There are no subscriptions, no ads and no donations. All you need is a computer that runs permanently in your home network. A Raspberry Pi with power supply and memory card costs about 80 to 120 euros.",
+    "dataQ": "Where does my data go?",
+    "dataA": "Nowhere. All values stay on your computer at home. OpenAmpere collects no usage data. Only what you switch on yourself goes out, such as spot-market electricity prices, notifications to your phone or checking GitHub for updates."
+  },
+  "system": {
+    "title": "My system",
+    "compatibleQ": "Does OpenAmpere work with my battery?",
+    "compatibleA": "The batteries sold as “Ampere.StoragePro E3” are based on the FoxESS H3: monitoring and control. The older “Ampere.StoragePro” are based on SAJ H2 or HS2: monitoring; control will follow once it has been tested on real devices. OpenAmpere detects which device you have during setup.",
+    "cloudGoneQ": "What happens if the EKD cloud stops being available at some point?",
+    "cloudGoneA": "Whether and when that happens is open. Should it happen, OpenAmpere simply keeps running, because it needs no server from EKD. The inverter and battery work on site anyway and keep their last settings. What you lose without the cloud is the Ampere.IQ app and its history.",
+    "historyQ": "Can I keep my history from Ampere.IQ?",
+    "historyA": "Yes, as long as the EKD cloud is available. In OpenAmpere, go to More → Data &amp; backup and enter the API key from the Ampere.IQ app (found there under Mehr → Konfiguration API-Zugang). The import runs in the background and takes a few hours, because the cloud only allows about one request per minute.",
+    "inverterSettingsQ": "Do I need to change anything on the inverter?",
+    "inverterSettingsA": "OpenAmpere talks to the inverter via Modbus TCP. This is already enabled on the batteries sold by EKD. The inverter must be connected to your home network, usually with a network cable.",
+    "smartboxQ": "What about the Smartbox?",
+    "smartboxA": "The Smartbox can keep running alongside OpenAmpere. However, it regularly fetches target values from the cloud and thereby overwrites changes you make in OpenAmpere. How to deal with this is described in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#the-previous-smartbox-resets-settings\">README</a>.",
+    "smartboxCaution": "Before you disconnect the Smartbox from the internet or unplug it: find out whether it belongs to you and whether it is needed for something else, such as control by the grid operator.",
+    "remoteQ": "Can I access my data on the go?",
+    "remoteA": "Yes. The easiest way is Tailscale: answer “yes” when the installer asks whether you want to use it on the go, then tap Set up under More → Remote access in the app and sign in to Tailscale. On your phone, sign in to the Tailscale app with the same account, and you're done. Tailscale is a service of a US company and free for personal use.",
+    "remoteVpn": "Without a third party, you can use the VPN of a FRITZ!Box. Please never expose the app directly to the internet through port forwarding."
+  },
+  "safety": {
+    "title": "Safety",
+    "breakQ": "Can I break something with OpenAmpere?",
+    "breakA": "After installation, OpenAmpere only reads. It only changes settings on the inverter once you explicitly unlock control, and even then first in test mode, where nothing is sent. Every value written is checked, read back and logged.",
+    "breakAdvice": "Still: write down the previous values before you change anything, and only change what you understand.",
+    "exportLimitQ": "Am I allowed to change the export limit?",
+    "exportLimitA": "Only within what applies to your system: 60 % or 70 % of the module power, or the value from your grid connection approval. The app does not allow more. You may only raise a fixed value set by your grid operator with their written consent. As the operator of the system, you are responsible for this."
+  },
+  "warranty": {
+    "title": "Warranty and insolvency",
+    "notice": "These are the questions we hear most often. We cannot answer them for your individual case, and we are not lawyers. Here you find what applies in general and where to get a binding answer. <strong>Not legal advice.</strong>",
+    "loseQ": "Will I lose my warranty because of OpenAmpere?",
+    "loseA": "Only reading values does not interfere with the device. OpenAmpere uses the same interface as other energy managers for this. If you change settings, you stay within the limits the inverter itself allows.",
+    "loseCaveat": "We cannot guarantee that a warrantor will not object anyway. That is why control is off by default, and the log shows at any time what was changed and when.",
+    "termsQ": "Statutory warranty, guarantee, manufacturer's warranty: what is the difference?",
+    "termsStatutory": "<strong>Statutory warranty</strong> (Gewährleistung) is required by law and is a claim against your contractual partner, i.e. the company you bought from.",
+    "termsGuarantee": "<strong>Guarantee</strong> (Garantie) is a voluntary promise. Who gives it is stated in your guarantee documents.",
+    "termsManufacturer": "<strong>Manufacturer's warranty</strong> (Herstellergarantie) is given by the actual manufacturer of the device, here FoxESS or SAJ, if it grants one.",
+    "worthQ": "What is a guarantee from a company in insolvency still worth?",
+    "worthA": "Honestly: often little. If your documents name one of the companies in insolvency proceedings (see <a href=\"./#hintergrund\">background</a>), claims from the time before the proceedings were opened usually become insolvency claims. In the end these are only paid at a rate (quota) that is often low.",
+    "worthOpen": "Whether the business or a buyer voluntarily continues to honor guarantees is open and will become clear in the proceedings.",
+    "whatToDoQ": "What can I do now?",
+    "whatToDoDocuments": "<strong>Keep your documents safe:</strong> purchase contract, invoices, guarantee documents, commissioning report and the serial numbers of the inverter and battery. Ideally also photos of the type plates.",
+    "whatToDoHistory": "<strong>Save your history:</strong> import the history from Ampere.IQ while the cloud is still available.",
+    "whatToDoDefects": "<strong>Report defects in writing:</strong> if something already does not work, report it in writing and keep a copy.",
+    "whatToDoManufacturer": "<strong>Ask the manufacturer:</strong> ask FoxESS or SAJ, giving the serial number, whether there is a manufacturer's warranty for your device.",
+    "whatToDoNotices": "<strong>Follow the official notices:</strong> <a href=\"https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf\">insolvenzbekanntmachungen.de</a> shows when proceedings are opened. Only after that can claims be filed with the insolvency administrator; the deadline is stated in the opening decision.",
+    "whatToDoAdvice": "<strong>Get advice:</strong> the consumer advice center (Verbraucherzentrale) of your federal state helps with questions about contracts, guarantees and filing claims. For larger amounts, a lawyer is worth it."
+  },
+  "help": {
+    "title": "Help and getting involved",
+    "setupQ": "Where can I get help with the setup?",
+    "setupA": "You can report bugs and questions about the app on <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues\">GitHub</a>. A diagnostics report from the app (More → Diagnostics) helps most. We cannot answer individual questions about warranties, contracts or the insolvency proceedings.",
+    "demoButton": "Try the demo",
+    "installButton": "Go to installation"
+  }
+}
