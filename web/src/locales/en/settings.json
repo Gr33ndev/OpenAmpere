@@ -213,7 +213,7 @@
   "diagnosticsPage": {
     "asOf": "As of {date}",
     "checkAfterChange": "After the first change in live mode, check in “My system” and in the log that the value is kept.",
-    "checkHint": "Items marked “Check” may have wrongly scaled or missing values. A shared report helps to fix this for your device.",
+    "checkHint": "Items marked “Check” explain below what they mean. Often values are scaled wrongly or missing; a shared report helps to fix that for your device.",
     "checkYourself": "Things to check yourself",
     "controlLabel": "Control:",
     "copyFailed": "Copying did not work. Please select the report below and copy it.",

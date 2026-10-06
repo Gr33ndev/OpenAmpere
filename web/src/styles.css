@@ -613,3 +613,6 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .setup-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.5; }
 .copy-value { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .copy-value .link { min-height: 44px; }
+
+/* diagnostics: what a result means and what to do (#126) */
+.checks .check-hint { display: block; margin-top: 4px; }

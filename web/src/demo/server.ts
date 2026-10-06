@@ -415,7 +415,7 @@ function diagnostics() {
     ["block_37609", "Blocklesen (37609–37632)", "ok", "Block und Einzelwerte stimmen überein."],
     ["temp_scale", "Wechselrichtertemperatur (39141)", "ok", "31,4 °C (Rohwert 314, Faktor 0,1)"],
     ["export_limit", "Einspeisebegrenzung (46616)", "ok", "5880 W"],
-    ["remote", "Fernsteuerung aktiv?", "ok", "nicht aktiv"],
+    ["remote", "Fernsteuerung (46001)", "ok", "aus – kein Gerät steuert den Speicher gerade von außen"],
     ["connections", "Gleichzeitige Verbindungen", "skipped", "Nicht ausgeführt (kann andere Geräte kurz stören)."],
     ["daily_reset", "Tageszähler-Rücksetzung", "ok", "Beobachtet um 00:00 Uhr"],
     ["night", "Verbindungsabbrüche und Zähler", "ok", "0 Abbrüche, 0 Zählerauffälligkeiten gespeichert"],

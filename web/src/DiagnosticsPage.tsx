@@ -6,7 +6,7 @@ import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
 import { Button, Checkbox, copyText, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
-type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string };
+type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string; hint?: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
   report: { created: number; checks: Check[] } | null };
 
@@ -65,7 +65,7 @@ export function DiagnosticsPage({ onBack }: PageProps) {
               {data.report.checks.map((c) => (
                 <li key={c.id} className={`check ${c.status}`}>
                   <span className="badge">{STATUS_LABEL[c.status]}</span>
-                  <span><strong>{c.title}</strong><span className="meta">{c.summary}</span></span>
+                  <span><strong>{c.title}</strong><span className="meta">{c.summary}</span>{c.hint && <span className="meta check-hint">{c.hint}</span>}</span>
                 </li>
               ))}
             </ul>

@@ -248,3 +248,38 @@ async def test_diagnostics_report(tmp_path):
             assert report_markdown(warn).index("### Zu prüfen") < report_markdown(warn).index("### Alle Prüfungen")
         finally:
             await runtime.collector.stop()
+
+
+async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
+    """#126: the check says whether nobody, OpenAmpere itself or another device controls the battery, with values."""
+    from openampere.diagnostics import Diagnostics
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
+            await wait_connected(runtime)
+
+            async def remote():
+                return next(c for c in (await Diagnostics(runtime).run())["checks"] if c["id"] == "remote")
+
+            check = await remote()
+            assert check["status"] == "ok" and check["summary"].startswith("aus")
+
+            # another device (e.g. the previous smartbox) commands 3000 W charging
+            settings = sim.map.settings
+            sim._put("remote_timeout", 180, settings)
+            sim._put("remote_power", -3000, settings)
+            sim._put("remote_enable", 1, settings)
+            check = await remote()
+            assert check["status"] == "warn" and "anderes Gerät" in check["summary"]
+            assert "3000 W Laden" in check["summary"] and "180 s" in check["summary"]
+            assert "Smartbox" in check["hint"] and check["details"]["power_w"] == -3000
+
+            # the same, but OpenAmpere started it (charging from the grid)
+            driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
+            driver._remote_owned = True
+            check = await remote()
+            assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
+        finally:
+            await runtime.collector.stop()

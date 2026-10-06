@@ -213,7 +213,7 @@
   "diagnosticsPage": {
     "asOf": "Stand: {date}",
     "checkAfterChange": "Nach der ersten Änderung im Live-Betrieb in „Meine Anlage“ und im Protokoll prüfen, ob der Wert erhalten bleibt.",
-    "checkHint": "Bei Punkten mit „Prüfen“ sind Werte womöglich falsch skaliert oder nicht vorhanden. Ein geteilter Bericht hilft, das für dein Gerät zu korrigieren.",
+    "checkHint": "Bei Punkten mit „Prüfen“ steht darunter, was das bedeutet. Oft sind Werte falsch skaliert oder fehlen; ein geteilter Bericht hilft, das für dein Gerät zu korrigieren.",
     "checkYourself": "Selbst klären",
     "controlLabel": "Steuerung:",
     "copyFailed": "Kopieren hat nicht geklappt. Bitte den Bericht unten markieren und kopieren.",
