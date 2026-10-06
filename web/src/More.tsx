@@ -9,7 +9,7 @@ import { AppsPage } from "./AppsPage";
 import { RemotePage } from "./RemotePage";
 import { NotifyPage } from "./NotifyPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
-import { LanguageSwitch, MenuRow, Notice, SubPage } from "./ui";
+import { MenuRow, Notice, SubPage } from "./ui";
 import { t } from "./i18n";
 import { deviceStatus } from "./DevicesPage";
 import { PvInputsCard, TemperaturesCard } from "./Dashboard";
@@ -159,7 +159,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
   const control = status?.control;
   return (
     <div className="page">
-      <div className="page-head with-action"><h1>{t("common.more")}</h1><LanguageSwitch /></div>
+      <div className="page-head"><h1>{t("common.more")}</h1></div>
 
       <div className="section-title">{t("settings.more.systemTitle")}</div>
       <div className="card menu">
