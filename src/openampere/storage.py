@@ -156,6 +156,12 @@ class Storage:
             self._db.execute("INSERT INTO control_log VALUES (?,?,?,?,?)",
                              (time.time(), action, json.dumps(details), int(dry_run), result))
 
+    def last_control(self, action: str, result_prefix: str) -> float | None:
+        """When an action with this result last really happened (test mode not counted), e.g. a grid charging start."""
+        rows = self._fetchall("SELECT ts FROM control_log WHERE action=? AND dry_run=0 AND result LIKE ? "
+                              "ORDER BY ts DESC LIMIT 1", (action, result_prefix.replace("%", "") + "%"))
+        return rows[0]["ts"] if rows else None
+
     def control_log(self, limit: int = 50) -> list[dict]:
         rows = self._fetchall("SELECT * FROM control_log ORDER BY ts DESC LIMIT ?", (limit,))
         return [{**r, "details": json.loads(r["details"]), "dry_run": bool(r["dry_run"])} for r in rows]

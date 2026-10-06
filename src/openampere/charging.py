@@ -27,6 +27,8 @@ CHARGE_SIGN = -1  # remote power: negative = battery charges (verify on site, se
 EFFICIENCY = 0.92
 VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command
 MIN_CHARGE_W = 200
+REMOTE_COMMAND = "remote_command"  # meta: when OpenAmpere last sent a remote command, survives restarts (#135)
+STARTED = "Laden gestartet"
 
 
 @dataclass
@@ -179,11 +181,12 @@ class GridCharging:
             self.last_error = f"Befehl abgelehnt: {err}"
             log.warning("grid charging command failed: %s", err)
             return
+        runtime.storage.set_meta(REMOTE_COMMAND, {"ts": now, "power_w": CHARGE_SIGN * s.power_w})
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
                                                                               "target_soc": s.target_soc}},
-                                        False, f"Laden gestartet ({plan['reason']})")
+                                        False, f"{STARTED} ({plan['reason']})")
 
     async def stop(self, reason: str, *, error: bool = False) -> None:
         if error:

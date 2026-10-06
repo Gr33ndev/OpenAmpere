@@ -13,10 +13,13 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
+from .charging import REMOTE_COMMAND, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .runtime import Runtime
 
 EXTRA_CONNECTIONS = 3
+WATCH_S = 300  # how often the background job looks at the remote control
+REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
 
 
 @dataclass
@@ -35,10 +38,19 @@ def _mask(serial: str | None) -> str | None:
     return serial[:4] + "…" + serial[-2:] if len(serial) > 6 else "…"
 
 
+def _duration(seconds: float) -> str:
+    minutes = int(seconds // 60)
+    if minutes < 120:
+        return f"{minutes} Minuten"
+    hours = minutes // 60
+    return f"{hours} Stunden" if hours < 48 else f"{hours // 24} Tagen"
+
+
 class Diagnostics:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self.running = False
+        self._watched = 0.0
         self.last: dict | None = runtime.storage.get_meta("diagnostics_report")
 
     def _driver(self):
@@ -57,32 +69,81 @@ class Diagnostics:
         except (ModbusTransientError, ModbusReadError, OSError, asyncio.TimeoutError) as err:
             return {"ok": False, "error": "keine Antwort", "detail": str(err)}
 
+    async def _read_remote(self, register_map) -> dict:
+        """On/off, watchdog timeout and power (32 bit, negative = the battery charges) of the remote control."""
+        r = await self._try(register_map.settings["remote_enable"].address, 4, 3)
+        if not r["ok"]:
+            return {"error": r["error"]}
+        power = (r["words"][2] << 16) | r["words"][3]
+        return {"on": bool(r["words"][0]), "timeout_s": r["words"][1],
+                "power_w": power - 0x100000000 if power & 0x80000000 else power, "words": r["words"]}
+
+    async def watch_remote(self, now: float | None = None) -> None:
+        """Background job, read only: every few minutes, whether the remote control is on, so the check can say for
+        how long (#135). A setpoint seen at every visit is renewed all the time, not left over once."""
+        now = time.time() if now is None else now
+        driver = self._driver()
+        register_map = getattr(driver, "map", None)
+        if (now - self._watched < WATCH_S or self.running or not self.runtime.collector.connected
+                or register_map is None or "remote_enable" not in register_map.settings):
+            return
+        self._watched = now
+        remote = await self._read_remote(register_map)
+        if "error" in remote:
+            return
+        seen = self.runtime.storage.get_meta(REMOTE_SEEN) or {}
+        on_since = (seen.get("on_since") or now) if remote["on"] else None
+        self.runtime.storage.set_meta(REMOTE_SEEN, {"on_since": on_since, "checked": now, "power_w": remote["power_w"]})
+
     async def _remote_control(self, register_map) -> Check:
         """Who controls the battery from outside right now: nobody, OpenAmpere itself (charging from the grid) or
         another device, usually the previous smartbox following targets from its cloud."""
-        enable = register_map.settings["remote_enable"]
-        title = f"Fernsteuerung ({enable.address})"
-        r = await self._try(enable.address, 4, 3)  # on/off, watchdog timeout, power (32 bit)
-        if not r["ok"]:
-            return Check("remote", title, "info", f"nicht lesbar ({r['error']})")
-        on, timeout = r["words"][0], r["words"][1]
-        power = (r["words"][2] << 16) | r["words"][3]
-        power = power - 0x100000000 if power & 0x80000000 else power
-        details = {"words": r["words"], "timeout_s": timeout, "power_w": power}
-        if not on:
+        title = f"Fernsteuerung ({register_map.settings['remote_enable'].address})"
+        remote = await self._read_remote(register_map)
+        if "error" in remote:
+            return Check("remote", title, "info", f"nicht lesbar ({remote['error']})")
+        now, tz = time.time(), self.runtime.tz
+        timeout, power = remote["timeout_s"], remote["power_w"]
+        command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
+        details = {"words": remote["words"], "timeout_s": timeout, "power_w": power,
+                   "openampere_last_command": command.get("ts")}
+        if not remote["on"]:
             return Check("remote", title, "ok", "aus – kein Gerät steuert den Speicher gerade von außen", details)
         # negative = the battery charges (sign not verified on every device, the raw value is in the details)
-        what = f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0 else "0 W (Speicher ruht)"
-        lapse = f"die Vorgabe endet von selbst, wenn sie nicht innerhalb von {timeout} s erneuert wird"
+        what = (f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0
+                else "0 W, also weder Laden noch Entladen")
         if getattr(self._driver(), "_remote_owned", False):
-            return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}, {lapse}", details,
+            return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}", details,
                          "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
-        return Check("remote", title, "warn", f"an – ein anderes Gerät gibt dem Speicher {what} vor, {lapse}", details,
-                     "Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres Herstellers um und "
-                     "kann dabei das Laden aus dem Netz und die Speicher-Einstellungen von OpenAmpere überschreiben. "
-                     "Wenn du das nicht möchtest: der Smartbox im Router den Internetzugang sperren oder sie abklemmen "
-                     "(vorher klären, ob sie für etwas anderes gebraucht wird), siehe README „Die bisherige Smartbox "
-                     "setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")
+        if command and now - command["ts"] <= timeout + 60:
+            # sent before a restart: the inverter ends it by itself, nobody renews it
+            return Check("remote", title, "ok", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what}), endet "
+                         f"spätestens {timeout} s nach dem letzten Befehl von selbst", details,
+                         "OpenAmpere wurde während des Ladens neu gestartet. Der Wechselrichter beendet die Vorgabe von "
+                         "selbst, du musst nichts tun.")
+        seen = self.runtime.storage.get_meta(REMOTE_SEEN) or {}
+        if seen.get("on_since") and now - seen.get("checked", 0) <= 2 * WATCH_S:
+            details["on_since"] = seen["on_since"]
+            duration = seen["checked"] - seen["on_since"]
+            since = f" Seit mindestens {_duration(duration)} durchgehend an." if duration >= WATCH_S else ""
+        else:
+            since = ""
+        started = self.runtime.storage.last_control("grid_charging", STARTED)
+        who = ("OpenAmpere war es nicht: Es lädt gerade nicht aus dem Netz und hat das hier "
+               + (f"zuletzt am {datetime.fromtimestamp(started, tz).strftime('%d.%m.%Y um %H:%M')} Uhr getan."
+                  if started else "noch nie getan."))
+        effect = ("Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. Bei 0 W "
+                  "lädt und entlädt der Speicher meist nicht: Schau in der Übersicht, ob die Speicherleistung dauerhaft "
+                  "bei 0 W bleibt, obwohl die Sonne scheint oder das Haus Strom braucht. " if power == 0 else
+                  "Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. ")
+        return Check("remote", title, "warn",
+                     f"an – ein anderes Gerät gibt dem Speicher {what} vor. Ohne neuen Befehl endet die Vorgabe nach "
+                     f"{timeout} s; da sie noch gilt, wird sie offenbar laufend erneuert.{since}", details,
+                     f"{who} {effect}Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres "
+                     "Herstellers um und kann dabei das Laden aus dem Netz und die Speicher-Einstellungen von "
+                     "OpenAmpere überschreiben. Wenn du das nicht möchtest: der Smartbox im Router den Internetzugang "
+                     "sperren oder sie abklemmen (vorher klären, ob sie für etwas anderes gebraucht wird), siehe README "
+                     "„Die bisherige Smartbox setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")
 
     async def run(self, *, connection_test: bool = False, include_serial: bool = False) -> dict:
         if self.running:
