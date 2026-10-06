@@ -22,7 +22,7 @@ my-PV heating rods are controlled through the manufacturer's Modbus TCP interfac
 
 OpenAmpere is an unofficial, independent community project. All product names, company names and
 trademarks mentioned in this project belong to their respective owners and are used only to describe
-compatibility. Background and legal notes: see README.md ("Hintergrund & rechtliche Hinweise").
+compatibility. Background and legal notes: see README.md ("Background & legal notes").
 
 Licenses of all bundled third-party components: see THIRD_PARTY_LICENSES.md
 (also shown in the app under Mehr > Über OpenAmpere > Open-Source-Lizenzen).

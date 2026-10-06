@@ -1,62 +1,74 @@
-name: Funktionswunsch
-description: Eine Idee für eine neue Funktion oder Verbesserung.
+name: Feature request / Funktionswunsch
+description: An idea for a new feature or improvement. / Eine Idee für eine neue Funktion oder Verbesserung.
 labels: ["feature request", "needs triage"]
 body:
   - type: markdown
     attributes:
       value: |
+        Above all, describe **your problem** – there are often several ways to solve it.
+        Please check first whether an issue already exists; if so, vote there with 👍. Reports in German are welcome.
+
         Beschreibe vor allem **dein Problem** – oft gibt es mehrere Wege, es zu lösen.
         Bitte vorher prüfen, ob es schon ein Issue dazu gibt; dann dort mit 👍 abstimmen.
+        **Du kannst dein Anliegen gern auf Deutsch schreiben.**
   - type: textarea
     id: problem
     attributes:
-      label: Welches Problem möchtest du lösen?
-      placeholder: Ich möchte … , weil …
+      label: What problem do you want to solve? / Welches Problem möchtest du lösen?
+      placeholder: |
+        I would like to … because …
+        Ich möchte … , weil …
     validations:
       required: true
   - type: textarea
     id: idea
     attributes:
-      label: Wie stellst du dir die Lösung vor?
+      label: What solution do you have in mind? / Wie stellst du dir die Lösung vor?
   - type: textarea
     id: original
     attributes:
-      label: Gab es das in der bisherigen App?
-      description: Falls ja, wie hat es dort funktioniert? (Beschreibung reicht, bitte keine Screenshots der alten App.)
+      label: Did the previous app have this? / Gab es das in der bisherigen App?
+      description: |
+        If so, how did it work there? (A description is enough; please no screenshots of the old app.)
+
+        Falls ja, wie hat es dort funktioniert? (Beschreibung reicht, bitte keine Screenshots der alten App.)
   - type: dropdown
     id: area
     attributes:
-      label: Bereich
+      label: Area / Bereich
       multiple: true
       options:
-        - Einrichtung / Verbindung
-        - Übersicht / Live-Werte
-        - Geräte (Speicher, Wallbox, Heizstab)
-        - Auswertung
-        - Speicher & Steuerung
-        - Einspeisebegrenzung
-        - Tarife, Abschläge, Laden aus dem Netz
-        - Benachrichtigungen
-        - Diagnose
-        - Daten, Export, Sicherung, Cloud-Import
-        - Installation & Updates
-        - Anmeldung / Zugriffsschutz
-        - Darstellung / iPhone-App
-        - Sonstiges
+        - Setup, connection / Einrichtung, Verbindung
+        - Overview, live values / Übersicht, Live-Werte
+        - Devices (battery, wallbox, heating rod) / Geräte (Speicher, Wallbox, Heizstab)
+        - Reports / Auswertung
+        - Battery & control / Speicher & Steuerung
+        - Feed-in limitation / Einspeisebegrenzung
+        - Tariffs, advance payments, grid charging / Tarife, Abschläge, Laden aus dem Netz
+        - Notifications / Benachrichtigungen
+        - Diagnostics / Diagnose
+        - Data, export, backup, cloud import / Daten, Export, Sicherung, Cloud-Import
+        - Installation & updates / Installation & Updates
+        - Login, access protection / Anmeldung, Zugriffsschutz
+        - Appearance, iPhone app / Darstellung, iPhone-App
+        - Other / Sonstiges
   - type: dropdown
     id: writes
     attributes:
-      label: Muss dafür etwas am Wechselrichter geändert werden?
-      description: Schreibende Funktionen brauchen mehr Prüfung (Sicherheit, Garantie, Recht).
+      label: Does this require changing anything on the inverter? / Muss dafür etwas am Wechselrichter geändert werden?
+      description: |
+        Writing features need more review (safety, warranty, legal).
+
+        Schreibende Funktionen brauchen mehr Prüfung (Sicherheit, Garantie, Recht).
       options:
-        - Nein, nur anzeigen / auswerten
-        - Ja, Einstellungen am Wechselrichter
-        - Ja, andere Geräte schalten (Wallbox, Wärmepumpe …)
-        - Weiß nicht
+        - No, only display or analyze / Nein, nur anzeigen oder auswerten
+        - Yes, inverter settings / Ja, Einstellungen am Wechselrichter
+        - Yes, switching other devices (wallbox, heat pump …) / Ja, andere Geräte schalten (Wallbox, Wärmepumpe …)
+        - Don't know / Weiß nicht
   - type: checkboxes
     id: contribute
     attributes:
-      label: Mithelfen
+      label: Helping out / Mithelfen
       options:
-        - label: Ich würde das gern selbst umsetzen (bitte zuerst den Lösungsweg im Issue abstimmen).
-        - label: Ich kann es an meiner Anlage testen.
+        - label: I would like to implement this myself (please agree on the approach in the issue first). / Ich würde das gern selbst umsetzen (bitte zuerst den Lösungsweg im Issue abstimmen).
+        - label: I can test it on my system. / Ich kann es an meiner Anlage testen.

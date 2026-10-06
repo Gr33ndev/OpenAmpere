@@ -1,55 +1,58 @@
-# Wallbox mit evcc
+Deutsch: [evcc.de.md](evcc.de.md)
 
-OpenAmpere steuert Wallboxen nicht selbst. Das übernimmt [evcc](https://evcc.io), ein eigenständiges
-Open-Source-Projekt für Solarladen (MIT-Lizenz, [GitHub](https://github.com/evcc-io/evcc)). evcc unterstützt sehr
-viele Wallboxen und Fahrzeuge, Ladepläne, dynamische Tarife und Ladevorgänge mit Abrechnung. Wir bauen das nicht
-nach, sondern nutzen es. Danke an die evcc-Community!
+# Wallbox with evcc
 
-## Wie die beiden zusammenarbeiten
+OpenAmpere does not control wallboxes itself. That is the job of [evcc](https://evcc.io), an independent open-source
+project for solar charging (MIT license, [GitHub](https://github.com/evcc-io/evcc)). evcc supports a great many
+wallboxes and vehicles, charging plans, dynamic tariffs and charging sessions with billing. We do not rebuild that,
+we use it. Thanks to the evcc community!
+
+## How the two work together
 
 ```
-Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ──▶ evcc ──▶ Wallbox
-                                     ▲                               │
-                                     └──── REST-API von evcc ◀────────┘
-                                     Anzeige und Bedienung in der App
+Inverter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ──▶ evcc ──▶ Wallbox
+                               ▲                               │
+                               └──── evcc REST API ◀───────────┘
+                               Display and control in the app
 ```
 
-- **evcc bekommt die Messwerte von OpenAmpere.** Netz, Solar und Speicher liest evcc unter `/api/evcc/site`. So
-  braucht evcc keine eigene Verbindung zum Wechselrichter. Viele Wechselrichter erlauben nur wenige gleichzeitige
-  Modbus-Verbindungen.
-- **OpenAmpere zeigt und bedient die Ladepunkte.** Lademodus (Aus, Solar, Min + Solar, Sofort), Ladeziel, Ladeplan
-  bis zu einer Uhrzeit stehen unter „Geräte“. Energiefluss, Tageswerte und Auswertung zeigen das Laden ebenfalls,
-  die Ladevorgänge findest du in der Auswertung.
-- **Überschuss wird aufgeteilt.** Unter „Geräte“ legst du in einer Liste fest, wer Sonnenstrom zuerst bekommt:
-  Speicher (bis zu einem Ladestand), Wallbox, Heizstab und weitere Geräte. Steht der Speicher vor der Wallbox,
-  überträgt OpenAmpere den Ladestand als „Vorrang Hausspeicher“ (priority SoC) an evcc.
+- **evcc gets its readings from OpenAmpere.** evcc reads grid, solar and battery from `/api/evcc/site`. That way
+  evcc does not need its own connection to the inverter. Many inverters allow only a few simultaneous Modbus
+  connections.
+- **OpenAmpere shows and controls the charge points.** Charging mode (Off, Solar, Min + Solar, Fast), charging
+  target and a charging plan up to a given time are under **Geräte** (Devices). The energy flow, daily values and
+  **Auswertung** (Analysis) also show the charging, and you will find the charging sessions in Auswertung.
+- **Surplus is shared.** Under **Geräte** you set in a list who gets solar power first: battery (up to a state of
+  charge), wallbox, immersion heater and other devices. If the battery comes before the wallbox, OpenAmpere sends
+  that state of charge to evcc as **Vorrang Hausspeicher** (home battery priority, "priority SoC").
 
-## Das Auto in evcc
+## The car in evcc
 
-Viele Autos lassen sich in evcc als Fahrzeug einrichten, zum Beispiel VW, Cupra, Skoda, Tesla, BMW oder Renault
-([Liste bei evcc](https://docs.evcc.io/de/vehicles), manche nur mit Sponsoring). evcc fragt dann über die Cloud des
-Herstellers den Ladestand ab, meist nur solange das Auto angesteckt ist. Damit kann OpenAmpere mehr:
+Many cars can be set up as a vehicle in evcc, for example VW, Cupra, Skoda, Tesla, BMW or Renault
+([list at evcc](https://docs.evcc.io/de/vehicles), some only with sponsorship). evcc then queries the state of
+charge through the manufacturer's cloud, usually only while the car is plugged in. This lets OpenAmpere do more:
 
-- **Ladestand und Reichweite** im Energiefluss und auf der Wallbox-Karte, dazu „Ziel erreicht um 15:40 Uhr“.
-- **Laden bis 80 %** und Ladepläne wie „bis 7:00 Uhr auf 80 %“. Ohne Fahrzeug kennt evcc nur die geladenen kWh.
-- **Mindestladung:** Bis zu diesem Ladestand lädt das Auto sofort, auch mit Netzstrom, danach gilt der Lademodus.
-  Das ist eine Einstellung des Fahrzeugs in evcc, OpenAmpere setzt sie unter „Geräte“.
-- **Auswertung „Auto“:** evcc speichert bei jedem Ladevorgang den Kilometerstand. OpenAmpere rechnet daraus gefahrene
-  Kilometer, Kilometer mit Sonnenstrom, Verbrauch pro 100 km und Kosten pro 100 km, für 30 Tage, 12 Monate oder
-  insgesamt. Sonnenstrom zählt dabei mit der entgangenen Einspeisevergütung, Netzstrom mit dem Preis aus deinem
-  Stromtarif in OpenAmpere. Lädst du auch unterwegs, fehlt diese Energie, und der Verbrauch wirkt zu niedrig.
+- **State of charge and range** in the energy flow and on the wallbox card, plus **Ziel erreicht um 15:40 Uhr**
+  (target reached at 15:40).
+- **Charging to 80 %** and charging plans like "80 % by 7:00". Without a vehicle, evcc only knows the kWh charged.
+- **Minimum charge:** Up to this state of charge the car charges immediately, even with grid power; after that the
+  charging mode applies. This is a vehicle setting in evcc; OpenAmpere sets it under **Geräte**.
+- **"Auto" (car) analysis:** evcc stores the odometer reading with every charging session. From this OpenAmpere
+  calculates kilometers driven, kilometers on solar power, consumption per 100 km and cost per 100 km, for 30 days,
+  12 months or in total. Solar power is counted at the feed-in tariff you missed out on, grid power at the price from
+  your electricity tariff in OpenAmpere. If you also charge away from home, that energy is missing and consumption
+  looks too low.
 
-## Einrichtung
+## Setup
 
-evcc bekommt seine Messwerte von OpenAmpere. Deshalb zuerst OpenAmpere einrichten, dann evcc.
+evcc gets its readings from OpenAmpere. So set up OpenAmpere first, then evcc.
 
-1. evcc installieren. Das Install-Script von OpenAmpere erledigt das, wenn man die Frage nach der Wallbox
-   bejaht. Bei einer Installation von Hand siehe unten. Läuft evcc schon, zum Beispiel auf einem anderen
-   Rechner, kann es so bleiben.
-2. In evcc die Zähler von OpenAmpere eintragen. Die fertige Konfiguration mit der richtigen Adresse zeigt die App
-   unter Mehr → Verbindung → Wallbox zum Kopieren an. In der Weboberfläche von evcc fügt man sie als
-   benutzerdefiniertes Gerät ein, alternativ in die `evcc.yaml`. Sie sieht so aus, statt `localhost` steht dort die
-   Adresse, unter der du OpenAmpere geöffnet hast:
+1. Install evcc. The OpenAmpere install script does this if you answer yes to the wallbox question. For a manual
+   installation see below. If evcc is already running, for example on another computer, it can stay that way.
+2. Enter the OpenAmpere meters in evcc. The app shows the ready-made configuration with the correct address for
+   copying under **Mehr → Verbindung → Wallbox** (More → Connection → Wallbox). In the evcc web interface, add it
+   as a user-defined device, or alternatively put it in `evcc.yaml`. It looks like this, with the address you opened
+   OpenAmpere under in place of `localhost`:
 
    ```yaml
    meters:
@@ -87,15 +90,16 @@ evcc bekommt seine Messwerte von OpenAmpere. Deshalb zuerst OpenAmpere einrichte
        battery: [openampere_battery]
    ```
 
-   Die Vorzeichen passen ohne Umrechnung: Netz positiv bei Bezug, Speicher positiv beim Entladen. Hat OpenAmpere
-   keine aktuellen Werte, antwortet die Adresse mit einem Fehler, und evcc lädt nicht auf Basis alter Werte.
-3. Wallbox und Fahrzeug direkt in evcc einrichten.
-4. In OpenAmpere unter Mehr → Verbindung → Wallbox die Adresse von evcc eintragen, auf demselben Rechner
-   `http://localhost:7070`. Ein Passwort ist nur nötig, wenn evcc für Änderungen eine Anmeldung verlangt.
+   The signs match without conversion: grid positive when importing, battery positive when discharging. If
+   OpenAmpere has no current values, the address responds with an error, and evcc does not charge based on stale
+   values.
+3. Set up the wallbox and vehicle directly in evcc.
+4. In OpenAmpere, enter the evcc address under **Mehr → Verbindung → Wallbox**; on the same computer that is
+   `http://localhost:7070`. A password is only needed if evcc requires a login for changes.
 
-## evcc mit Docker neben OpenAmpere
+## evcc with Docker next to OpenAmpere
 
-Die `docker-compose.yml` von OpenAmpere enthält evcc schon als auskommentierten zweiten Dienst:
+OpenAmpere's `docker-compose.yml` already contains evcc as a commented-out second service:
 
 ```yaml
   evcc:
@@ -106,17 +110,18 @@ Die `docker-compose.yml` von OpenAmpere enthält evcc schon als auskommentierten
       - ./evcc:/root/.evcc
 ```
 
-Zeilen einkommentieren, dann `docker compose up -d`. evcc speichert seine Einstellungen im Ordner `evcc/` und ist
-unter `http://<server-ip>:7070` erreichbar. Beide Container nutzen das Host-Netzwerk, so erreicht evcc OpenAmpere
-unter `http://localhost:8080` und OpenAmpere evcc unter `http://localhost:7070`. Wer evcc lieber mit Datei
-konfiguriert, bindet zusätzlich `./evcc.yaml:/etc/evcc.yaml` ein, siehe
-[Docker-Anleitung von evcc](https://docs.evcc.io/en/installation/docker).
+Uncomment the lines, then run `docker compose up -d`. evcc stores its settings in the `evcc/` folder and is
+reachable at `http://<server-ip>:7070`. Both containers use the host network, so evcc reaches OpenAmpere at
+`http://localhost:8080` and OpenAmpere reaches evcc at `http://localhost:7070`. If you prefer to configure evcc with
+a file, also mount `./evcc.yaml:/etc/evcc.yaml`, see the
+[evcc Docker guide](https://docs.evcc.io/en/installation/docker).
 
-## Grenzen
+## Limitations
 
-- Manche Geräte sind in evcc nur mit einem [Sponsoring](https://docs.evcc.io/docs/sponsorship) nutzbar. Das ist
-  Sache von evcc und unterstützt dessen Entwicklung.
-- Den Heizstab von my-PV steuert OpenAmpere selbst (Mehr → Verbindung → Heizstab und weitere Geräte, bedient unter „Geräte“). Ist er stattdessen in evcc
-  eingerichtet, zeigt OpenAmpere ihn als Ladepunkt von evcc an.
-- Die interne Schnittstelle von evcc kann sich zwischen Versionen ändern. OpenAmpere liest sie fehlertolerant und
-  verwendet Befehle, die alte und neue evcc-Versionen verstehen.
+- Some devices can only be used in evcc with a [sponsorship](https://docs.evcc.io/docs/sponsorship). That is evcc's
+  business and supports its development.
+- OpenAmpere controls the my-PV immersion heater itself (**Mehr → Verbindung → Heizstab und weitere Geräte**, More →
+  Connection → Immersion heater and other devices; operated under **Geräte**). If it is set up in evcc instead,
+  OpenAmpere shows it as an evcc charge point.
+- evcc's internal interface may change between versions. OpenAmpere reads it fault-tolerantly and uses commands
+  that both old and new evcc versions understand.

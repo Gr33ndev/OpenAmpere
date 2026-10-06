@@ -11,7 +11,7 @@ type PairingRequest = { id: string; name: string; code: string; created: number;
 type Tokens = { tokens: AppToken[]; pairing: PairingRequest[];
   tls: { port: number | null; fingerprint: string | null; error: string | null } };
 
-const DOCS_URL = `${REPO_URL}/blob/main/docs/homeassistant.md`;
+const DOCS_URL = `${REPO_URL}/blob/main/docs/homeassistant.de.md`;
 // plain links (no images or scripts from other servers in the app): they open the user's own Home Assistant
 const HACS_URL = "https://hacs.xyz/docs/use/";
 const MY_HA_REPOSITORY = "https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration";
