@@ -332,7 +332,9 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 @media (min-width: 640px) { .overlay { align-items: center; } }
 .dialog { width: min(480px, 100%); background: var(--card); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .dialog h2 { margin: 0; font-size: 20px; font-weight: 500; }
-.update-banner.update-available { flex-wrap: nowrap; justify-content: space-between; gap: 10px; text-align: left; }
+.update-banner.update-available { flex-wrap: nowrap; justify-content: flex-start; gap: 10px; text-align: left; }
+/* the text takes the free space, so button and close sit together at the right end of the page column */
+.update-banner.update-available > span { flex: 1; min-width: 0; }
 .banner-button { flex: none; border: 0; border-radius: 999px; padding: 7px 14px; background: var(--accent); color: #fff;
   font: inherit; font-weight: 600; cursor: pointer; }
 .banner-close { flex: none; border: 0; background: none; color: var(--label); font-size: 22px; line-height: 1; padding: 4px; cursor: pointer; }
@@ -429,7 +431,9 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .link { min-height: 32px; }
 .update-banner { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px; justify-content: center; align-items: center;
-  flex-wrap: wrap; font-size: 14px; padding: calc(env(safe-area-inset-top) + 8px) 16px 8px; background: var(--card); color: var(--text);
+  flex-wrap: wrap; font-size: 14px; background: var(--card); color: var(--text);
+  /* full-width background, content as wide as the page column (.page, 640 px) on wide screens */
+  padding: calc(env(safe-area-inset-top) + 8px) max(16px, calc((100% - 640px) / 2)) 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
 .consumer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .button-row.inline { flex-direction: row; flex-wrap: wrap; gap: 6px 18px; }
