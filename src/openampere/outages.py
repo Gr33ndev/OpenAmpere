@@ -132,6 +132,15 @@ class Outages:
             current["polled_in_gap"] = True
             self.storage.set_meta("outage_current", current)
 
+    def remove(self, start: float) -> bool:
+        """Someone says it was not a power cut, e.g. the inverter was switched off on purpose (#95)."""
+        history = self.history()
+        kept = [o for o in history if o["start"] != start]
+        if len(kept) == len(history):
+            return False
+        self.storage.set_meta("outages", kept)
+        return True
+
     def view(self) -> dict:
         history = self.history()
         return {"current": self.current, "outages": list(reversed(history)),

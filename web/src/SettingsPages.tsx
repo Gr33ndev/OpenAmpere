@@ -508,7 +508,7 @@ const LOG_KEYS: Record<string, string> = {
   "pv.installed_kwp": "Modulleistung (kWp)", export_limit_w: "Einspeisebegrenzung (W)", min_soc: "Untergrenze im Notstrombetrieb (%)",
   min_soc_on_grid: "Notstrom-Reserve (%)", max_soc: "Ladegrenze (%)", work_mode: "Betriebsmodus",
   power_w: "Ladeleistung (W)", target_soc: "Ladeziel (%)", enabled: "Eingeschaltet", soc: "Ladestand (%)",
-  consumer: "Gerät", on: "An", remote_access: "Zugriff von unterwegs",
+  consumer: "Gerät", on: "An", remote_access: "Zugriff von unterwegs", outage: "Stromausfall",
 };
 const LOG_VALUES: Record<string, string> = {
   true: "an", false: "aus", unknown: "unbekannt", limit_60: "60 %", limit_70: "70 %", operator: "Wert vom Netzbetreiber",

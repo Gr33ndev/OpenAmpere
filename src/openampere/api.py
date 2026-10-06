@@ -489,6 +489,16 @@ def create_app(runtime: Runtime) -> FastAPI:
         """Power cuts: the running one and the history (off-grid mode of the inverter)."""
         return collector.outages.view()
 
+    @app.delete("/api/outages/{start}")
+    def remove_outage(start: float):
+        """"Das war kein Stromausfall": remove an entry from the history (#95)."""
+        if not collector.outages.remove(start):
+            raise HTTPException(404, "Diesen Stromausfall gibt es nicht.")
+        when = datetime.datetime.fromtimestamp(start, runtime.tz).strftime("%d.%m.%Y %H:%M")
+        storage.log_control("outage_removed", {"from": {"outage": when}, "to": {"outage": "entfernt"}}, False,
+                            "kein Stromausfall")
+        return collector.outages.view()
+
     @app.get("/api/storage")
     def storage_usage():
         """Database size, free space and an estimate per year of detail readings (retention setting)."""

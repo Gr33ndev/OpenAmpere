@@ -1,5 +1,7 @@
-import { useResource } from "./api";
+import { useState } from "react";
+import { deleteJson, useResource } from "./api";
 import { num, timeZone } from "./format";
+import { Dialog, toast } from "./ui";
 
 type Outage = {
   start: number; end: number; duration_s: number; soc_start: number | null; soc_end: number | null; soc_min: number | null;
@@ -24,8 +26,19 @@ const batteryEmpty = (o: Outage) => (o.gap_reason ? o.gap_reason === "battery_em
 
 /** Power cuts recorded from the inverter's off-grid mode: how often, how long, how far battery and sun carried (#51). */
 export function OutagesSection() {
-  const { data } = useResource<OutagesView>("/api/outages", 60_000);
+  const { data, setData } = useResource<OutagesView>("/api/outages", 60_000);
+  const [removing, setRemoving] = useState<Outage | null>(null);
   if (!data || (!data.count && !data.current)) return null;
+  const remove = async () => {
+    if (!removing) return;
+    try {
+      setData(await deleteJson<OutagesView>(`/api/outages/${removing.start}`));
+      toast("Eintrag entfernt");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+    setRemoving(null);
+  };
   return (
     <>
       <div className="section-title">Stromausfälle</div>
@@ -54,10 +67,17 @@ export function OutagesSection() {
                 ? <span className="meta warn-text">Ab {time(o.dark_since)} Uhr ohne Strom, vermutlich war der Speicher leer.</span>
                 : <span className="meta">Ab {time(o.dark_since)} Uhr kamen keine Messwerte, etwa weil die Verbindung unterbrochen war.
                   Die Dauer ist deshalb ungenau.</span>)}
+              <button className="link" onClick={() => setRemoving(o)}>Das war kein Stromausfall</button>
             </li>
           ))}
         </ul>
       </div>
+      {removing && (
+        <Dialog title="Eintrag entfernen?" confirm="Entfernen" onConfirm={() => void remove()} onCancel={() => setRemoving(null)}>
+          <p>Den Stromausfall vom {day(removing.start)}, {time(removing.start)} Uhr aus der Liste nehmen? Das passt zum
+            Beispiel, wenn du den Wechselrichter selbst ausgeschaltet hast.</p>
+        </Dialog>
+      )}
     </>
   );
 }
