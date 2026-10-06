@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Question or setup help / Frage oder Hilfe bei der Einrichtung
+    url: https://github.com/Gr33ndev/OpenAmpere/discussions/categories/q-a
+    about: Ask in the discussions, German or English. / Frag in den Diskussionen, gern auf Deutsch.
   - name: Report a security vulnerability / Sicherheitslücke melden
     url: https://github.com/Gr33ndev/OpenAmpere/security/advisories/new
     about: Please do not report publicly, but privately via GitHub (see SECURITY.md). / Bitte nicht öffentlich melden, sondern privat über GitHub (siehe SECURITY.md).
