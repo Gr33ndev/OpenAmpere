@@ -132,12 +132,14 @@ class Notifier:
                              "arrows_counterclockwise")
 
         if cfg.on_off_grid and snap is not None and snap.off_grid is not None:
-            if snap.off_grid and not self.sent.get("off_grid"):
+            # the confirmed outage, not the flag of one reading, which can be wrong (#89)
+            off_grid = self.runtime.collector.outages.current is not None
+            if off_grid and not self.sent.get("off_grid"):
                 soc = f" Der Speicher ist zu {snap.battery_soc:.0f} % geladen." if snap.battery_soc is not None else ""
                 await notify("off_grid", now, "Stromausfall: Notstrombetrieb",
                              f"Das Netz ist weg, das Haus läuft über Speicher und Solaranlage.{soc} "
                              "Große Verbraucher jetzt besser ausschalten.", "warning")
-            elif not snap.off_grid and self.sent.get("off_grid"):
+            elif not off_grid and self.sent.get("off_grid"):
                 await notify("off_grid", None, "Strom ist wieder da", "Das Netz ist zurück, der Notstrombetrieb ist beendet.",
                              "white_check_mark")
 

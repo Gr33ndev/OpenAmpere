@@ -67,7 +67,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         control = runtime.config.control
         return {"connected": collector.connected, "stale": collector.stale,
                 "last_update": latest.timestamp if latest else None,
-                "off_grid": collector.outages.current is not None or bool(latest and latest.off_grid),
+                "off_grid": collector.outages.current is not None,  # confirmed, not the flag of one reading (#89)
                 "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run}}
 
     def own_devices() -> list[dict]:

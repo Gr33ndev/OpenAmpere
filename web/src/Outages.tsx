@@ -4,6 +4,7 @@ import { num, timeZone } from "./format";
 type Outage = {
   start: number; end: number; duration_s: number; soc_start: number | null; soc_end: number | null; soc_min: number | null;
   load_kwh: number | null; solar_kwh: number | null; battery_kwh: number | null; dark_since: number | null;
+  gap_reason?: "battery_empty" | "no_data" | null;
 };
 export type OutagesView = {
   current: { start: number; soc_start: number | null; soc_last: number | null } | null;
@@ -18,6 +19,8 @@ const duration = (s: number) => {
   return h ? `${h} Std. ${m} Min.` : `${Math.max(1, m)} Min.`;
 };
 const pct = (v: number | null) => (v == null ? "–" : `${num(v, 0)} %`);
+// recorded before #89 without a reason: a battery that never went below 15 % was not empty
+const batteryEmpty = (o: Outage) => (o.gap_reason ? o.gap_reason === "battery_empty" : (o.soc_min ?? 0) <= 15);
 
 /** Power cuts recorded from the inverter's off-grid mode: how often, how long, how far battery and sun carried (#51). */
 export function OutagesSection() {
@@ -44,7 +47,10 @@ export function OutagesSection() {
                 Speicher {pct(o.soc_start)} → {pct(o.soc_end)}{o.soc_min != null && o.soc_min < (o.soc_end ?? 101) ? ` (tiefster Stand ${pct(o.soc_min)})` : ""}
                 {o.load_kwh != null && <> · Haus {num(o.load_kwh, 1)}&nbsp;kWh{o.solar_kwh != null ? `, davon Sonne ${num(Math.min(o.solar_kwh, o.load_kwh), 1)} kWh` : ""}</>}
               </span>
-              {o.dark_since && <span className="meta warn-text">Ab {time(o.dark_since)} Uhr ohne Strom, vermutlich war der Speicher leer.</span>}
+              {o.dark_since && (batteryEmpty(o)
+                ? <span className="meta warn-text">Ab {time(o.dark_since)} Uhr ohne Strom, vermutlich war der Speicher leer.</span>
+                : <span className="meta">Ab {time(o.dark_since)} Uhr kamen keine Messwerte, etwa weil die Verbindung unterbrochen war.
+                  Die Dauer ist deshalb ungenau.</span>)}
             </li>
           ))}
         </ul>

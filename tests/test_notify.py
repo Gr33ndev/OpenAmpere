@@ -67,10 +67,15 @@ async def test_power_cut_is_reported_once_and_its_end(tmp_path, monkeypatch):
     runtime.collector.latest = Snapshot(timestamp=0, off_grid=False, battery_soc=64)
     assert await notifier.check(now=10) == []
     runtime.collector.latest = Snapshot(timestamp=0, off_grid=True, battery_soc=64)
+    runtime.collector.outages.observe(runtime.collector.latest)
+    assert await notifier.check(now=15) == []  # one off-grid reading can be wrong (#89)
+    runtime.collector.latest = Snapshot(timestamp=10, off_grid=True, battery_soc=64)
+    runtime.collector.outages.observe(runtime.collector.latest)
     assert await notifier.check(now=20) == ["Stromausfall: Notstrombetrieb"]
     assert "64 %" in posts[-1][1]["message"]
     assert await notifier.check(now=30) == []  # only once
-    runtime.collector.latest = Snapshot(timestamp=0, off_grid=False, battery_soc=40)
+    runtime.collector.latest = Snapshot(timestamp=30, off_grid=False, battery_soc=40)
+    runtime.collector.outages.observe(runtime.collector.latest)
     assert await notifier.check(now=40) == ["Strom ist wieder da"]
     assert await notifier.check(now=50) == []
 
