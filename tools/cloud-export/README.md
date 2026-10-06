@@ -1,31 +1,33 @@
-# Export aus der EKD-Cloud
+Deutsch: [README.de.md](README.de.md)
 
-Sichert den kompletten Verlauf einer Anlage aus der EKD-Cloud (App „Ampere.IQ“), solange diese erreichbar ist.
+# Export from the EKD cloud
 
-> Inoffizielles Werkzeug: OpenAmpere hat nichts mit der Energiekonzepte Deutschland GmbH (EKD) zu tun und wurde von ihr weder beauftragt noch autorisiert. Das Werkzeug nutzt ausschließlich die öffentliche Kunden-API mit deinem persönlichen Schlüssel. „EKD“ und „Ampere.IQ“ sind Bezeichnungen ihrer Inhaber. Siehe [Hintergrund & rechtliche Hinweise](../../README.md#hintergrund--rechtliche-hinweise).
+Backs up the complete history of a system from the EKD cloud (app "Ampere.IQ") while the cloud is still reachable.
 
-- Nutzt nur die offizielle, lesende Kunden-API der EKD-Cloud.
-- Läuft mit Python 3.9 oder neuer und braucht keine Zusatzpakete.
-- Jede Antwort wird unverändert als JSON gespeichert, eine Datei pro Endpunkt und Tag. Nach einem Abbruch startest du das Skript einfach erneut, es macht dort weiter.
-- Es schickt höchstens eine Anfrage alle 65 Sekunden. Wer öfter abfragt, wird von der API gesperrt.
+> Unofficial tool: OpenAmpere has nothing to do with Energiekonzepte Deutschland GmbH (EKD) and was neither commissioned nor authorized by it. The tool uses only the public customer API with your personal key. "EKD" and "Ampere.IQ" are names belonging to their respective owners. See [Background & legal notes](../../README.md#background--legal-notes).
 
-## 1. API-Schlüssel erstellen
+- Uses only the official, read-only customer API of the EKD cloud.
+- Runs on Python 3.9 or newer and needs no additional packages.
+- Every response is saved unchanged as JSON, one file per endpoint and day. If the script is interrupted, simply start it again and it picks up where it left off.
+- It sends at most one request every 65 seconds. Clients that poll more often get blocked by the API.
 
-In der App „Ampere.IQ“: **Mehr → Konfiguration API-Zugang** → Schlüssel erzeugen.
+## 1. Create an API key
 
-## 2. `.env` anlegen
+In the "Ampere.IQ" app: **Mehr → Konfiguration API-Zugang** (More → API access configuration) → generate a key.
+
+## 2. Create `.env`
 
 ```
 CLOUD_API_KEY=dein-schluessel
 # optional:
-# CLOUD_INSTALLATION_UUID=…     # nur nötig, wenn zum Schlüssel mehrere Anlagen gehören
-# CLOUD_MIN_INTERVAL=65         # Sekunden zwischen Anfragen
+# CLOUD_INSTALLATION_UUID=…     # only needed if the key covers several systems
+# CLOUD_MIN_INTERVAL=65         # seconds between requests
 # CLOUD_EXPORT_DIR=data/cloud-export
 ```
 
-Gib die `.env`-Datei niemals weiter und lade sie nirgends hoch.
+Never share the `.env` file and never upload it anywhere.
 
-## 3. Testen und exportieren
+## 3. Test and export
 
 ```bash
 python3 cloud_export.py check
@@ -35,21 +37,21 @@ python3 cloud_export.py check
 nohup caffeinate -i python3 cloud_export.py export >> cloud-export.log 2>&1 &
 ```
 
-`caffeinate` hält einen Mac wach. Unter Linux lässt du es einfach weg.
+`caffeinate` keeps a Mac awake. On Linux, just leave it out.
 
-Mit `--start YYYY-MM-DD` überspringst du die automatische Suche nach dem ersten Datum mit Daten.
+With `--start YYYY-MM-DD` you skip the automatic search for the first date with data.
 
-## Was gesichert wird
+## What gets backed up
 
-Pro Tag wird Folgendes gesichert, die Verläufe in 15-Minuten-Auflösung:
+The following is backed up for each day, the histories at 15-minute resolution:
 
-| Ordner | Endpunkt |
+| Folder | Endpoint |
 |---|---|
-| `work/` | `history/common/work`: Energieflüsse (PV, Haus, Netz, Batterie) |
-| `stateOfCharge/` | `history/stateOfCharge`: Ladestand des Akkus |
-| `gridDraw/` | `history/gridDraw/work`: Netzbezug |
-| `power/` | `history/common/power`: Leistung |
-| `consumptionWork/`, `consumptionPower/` | Verbrauch |
-| `totalWork/` | `total/common/work`: Tagessummen |
+| `work/` | `history/common/work`: energy flows (PV, house, grid, battery) |
+| `stateOfCharge/` | `history/stateOfCharge`: battery state of charge |
+| `gridDraw/` | `history/gridDraw/work`: grid import |
+| `power/` | `history/common/power`: power |
+| `consumptionWork/`, `consumptionPower/` | consumption |
+| `totalWork/` | `total/common/work`: daily totals |
 
-**Dauer:** etwa 7 Anfragen pro Tag Anlagenlaufzeit, also rund 2 Tage Laufzeit pro Jahr Anlagenbetrieb.
+**Duration:** about 7 requests per day of system operation, so roughly 2 days of runtime per year of system operation.

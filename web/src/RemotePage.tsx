@@ -13,7 +13,7 @@ type RemoteView = {
 const INSTALL = "curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | OPENAMPERE_TAILSCALE=ja bash";
 const DOWNLOAD_URL = "https://tailscale.com/download";
 const ADMIN_URL = "https://login.tailscale.com/admin/machines";
-const DOCS_URL = `${REPO_URL}#zugriff-von-unterwegs`;
+const DOCS_URL = `${REPO_URL}/blob/main/README.de.md#zugriff-von-unterwegs`;
 
 /** Access from anywhere with Tailscale (#83): set up with one tap, the tailscale container does the work. */
 export function RemotePage({ onBack }: { onBack: () => void }) {

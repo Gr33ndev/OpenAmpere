@@ -1,46 +1,56 @@
-name: Fehler melden
-description: Etwas funktioniert nicht wie erwartet.
+name: Bug report / Fehler melden
+description: Something does not work as expected. / Etwas funktioniert nicht wie erwartet.
 labels: ["bug", "needs triage"]
 body:
   - type: markdown
     attributes:
       value: |
+        Thanks for your report! Please do **not** enter IP addresses, serial numbers, passwords or API keys.
+        Do not report security vulnerabilities here; follow SECURITY.md instead. Reports in German are welcome.
+
         Danke für deine Meldung! Bitte **keine IP-Adressen, Seriennummern, Passwörter oder API-Schlüssel** eintragen.
         Sicherheitslücken bitte nicht hier, sondern wie in SECURITY.md beschrieben melden.
+        **Du kannst dein Anliegen gern auf Deutsch schreiben.**
   - type: textarea
     id: what
     attributes:
-      label: Was ist passiert?
-      description: Beschreibe den Fehler. Was hast du gesehen, was hättest du erwartet?
+      label: What happened? / Was ist passiert?
+      description: |
+        Describe the bug. What did you see, and what did you expect?
+
+        Beschreibe den Fehler. Was hast du gesehen, was hättest du erwartet?
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Wie lässt sich der Fehler nachstellen?
+      label: How can the bug be reproduced? / Wie lässt sich der Fehler nachstellen?
       placeholder: |
-        1. Mehr → … öffnen
-        2. Auf … tippen
-        3. Fehlermeldung „…“ erscheint
+        1. Open Mehr → … (More → …) / Mehr → … öffnen
+        2. Tap … / Auf … tippen
+        3. Error message "…" appears / Fehlermeldung „…“ erscheint
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: OpenAmpere-Version
-      description: Steht unter Mehr → Über OpenAmpere.
-      placeholder: z. B. 0.3.0
+      label: OpenAmpere version / OpenAmpere-Version
+      description: |
+        Shown under **Mehr → Über OpenAmpere** (More → About OpenAmpere).
+
+        Steht unter **Mehr → Über OpenAmpere**.
+      placeholder: e.g. 0.3.0 / z. B. 0.3.0
     validations:
       required: true
   - type: dropdown
     id: device
     attributes:
-      label: Gerät
+      label: Device / Gerät
       options:
-        - FoxESS H3 / H3 Smart / H3 Pro (auch „Ampere.StoragePro E3“)
-        - SAJ H2 / HS2 (auch ältere „Ampere.StoragePro“)
+        - FoxESS H3 / H3 Smart / H3 Pro (also / auch „Ampere.StoragePro E3“)
+        - SAJ H2 / HS2 (also older / auch ältere „Ampere.StoragePro“)
         - Simulator
-        - Anderes / weiß nicht
+        - Other, don't know / Anderes, weiß nicht
     validations:
       required: true
   - type: dropdown
@@ -49,56 +59,65 @@ body:
       label: Installation
       options:
         - Docker (Proxmox, NAS, Server)
-        - Docker auf Raspberry Pi
-        - Ohne Docker (Python)
-        - Anderes
+        - Docker on Raspberry Pi / Docker auf Raspberry Pi
+        - Without Docker (Python) / Ohne Docker (Python)
+        - Other / Anderes
   - type: dropdown
     id: area
     attributes:
-      label: Bereich
+      label: Area / Bereich
       multiple: true
       options:
-        - Einrichtung / Verbindung
-        - Übersicht / Live-Werte
-        - Geräte (Speicher, Wallbox, Heizstab)
-        - Auswertung
-        - Speicher & Steuerung
-        - Einspeisebegrenzung
-        - Tarife, Abschläge, Laden aus dem Netz
-        - Benachrichtigungen
-        - Diagnose
-        - Daten, Export, Sicherung, Cloud-Import
-        - Installation & Updates
-        - Anmeldung / Zugriffsschutz
-        - Darstellung / iPhone-App
-        - Sonstiges
+        - Setup, connection / Einrichtung, Verbindung
+        - Overview, live values / Übersicht, Live-Werte
+        - Devices (battery, wallbox, heating rod) / Geräte (Speicher, Wallbox, Heizstab)
+        - Reports / Auswertung
+        - Battery & control / Speicher & Steuerung
+        - Feed-in limitation / Einspeisebegrenzung
+        - Tariffs, advance payments, grid charging / Tarife, Abschläge, Laden aus dem Netz
+        - Notifications / Benachrichtigungen
+        - Diagnostics / Diagnose
+        - Data, export, backup, cloud import / Daten, Export, Sicherung, Cloud-Import
+        - Installation & updates / Installation & Updates
+        - Login, access protection / Anmeldung, Zugriffsschutz
+        - Appearance, iPhone app / Darstellung, iPhone-App
+        - Other / Sonstiges
   - type: input
     id: browser
     attributes:
-      label: Browser / Handy
-      placeholder: z. B. iPhone 15, Safari, als App auf dem Home-Bildschirm
+      label: Browser / phone / Browser / Handy
+      placeholder: e.g. iPhone 15, Safari, as an app on the home screen / z. B. iPhone 15, Safari, als App auf dem Home-Bildschirm
   - type: textarea
     id: cause
     attributes:
-      label: Vermutete Ursache oder Lösungsidee (optional)
-      description: Falls du eine Idee hast, woran es liegt, oder schon im Code nachgesehen hast.
+      label: Suspected cause or fix idea (optional) / Vermutete Ursache oder Lösungsidee (optional)
+      description: |
+        If you have an idea what causes it, or have already looked at the code.
+
+        Falls du eine Idee hast, woran es liegt, oder schon im Code nachgesehen hast.
   - type: textarea
     id: screenshots
     attributes:
       label: Screenshots
-      description: Bei Anzeigefehlern sehr hilfreich. Persönliche Daten vorher schwärzen.
+      description: |
+        Very helpful for display bugs. Black out personal data first.
+
+        Bei Anzeigefehlern sehr hilfreich. Persönliche Daten vorher schwärzen.
   - type: textarea
     id: logs
     attributes:
-      label: Server-Protokoll (optional)
-      description: "Docker: `docker compose logs --tail 100 openampere`. Persönliche Daten vorher entfernen."
+      label: Server log (optional) / Server-Protokoll (optional)
+      description: |
+        Docker: `docker compose logs --tail 100 openampere`. Remove personal data first.
+
+        Docker: `docker compose logs --tail 100 openampere`. Persönliche Daten vorher entfernen.
       render: text
   - type: checkboxes
     id: checks
     attributes:
-      label: Vorab geprüft
+      label: Checked beforehand / Vorab geprüft
       options:
-        - label: Ich habe nach ähnlichen Issues gesucht.
+        - label: I have searched for similar issues. / Ich habe nach ähnlichen Issues gesucht.
           required: true
-        - label: Meine Meldung enthält keine persönlichen Daten.
+        - label: My report contains no personal data. / Meine Meldung enthält keine persönlichen Daten.
           required: true

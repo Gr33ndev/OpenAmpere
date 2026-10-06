@@ -1,31 +1,34 @@
-# Sicherheit
+# Security
 
-OpenAmpere kann Einstellungen eines Wechselrichters ändern. Sicherheitslücken nehmen wir deshalb ernst.
+OpenAmpere can change settings of an inverter. That is why we take security vulnerabilities seriously.
 
-## Lücke melden
+## Reporting a vulnerability
 
-Bitte **nicht** als öffentliches Issue melden. Nutze stattdessen die private Meldung über GitHub:
-**Security → Report a vulnerability** im Repository. Beschreibe, was betroffen ist und wie man es nachvollziehen kann.
+Please do **not** report it as a public issue. Use GitHub's private reporting instead:
+**Security → Report a vulnerability** in the repository. Describe what is affected and how to reproduce it. Reports in
+German are welcome and are handled the same way.
 
-Wir melden uns so bald wie möglich, in der Regel innerhalb einer Woche. Bitte gib uns Zeit für eine Korrektur, bevor
-du Details veröffentlichst.
+We will get back to you as soon as possible, usually within a week. Please give us time to fix it before you publish
+details.
 
-## Was OpenAmpere absichert
+## What OpenAmpere protects
 
-- Ansehen im Heimnetz ist ohne Anmeldung möglich. Ändern, Steuern und Datensicherung brauchen ein Passwort.
-- Schutz gegen fremde Webseiten (CSRF-Header, Origin-Prüfung) und gegen DNS-Rebinding (Host-Prüfung).
-- Steuerfunktionen sind ab Werk aus und starten im Testmodus.
-- Zugangsdaten (Passwörter für das Netzbetreiber-Portal und evcc, ntfy-Token, Cloud-API-Schlüssel) liegen in der
-  Datenbank verschlüsselt (AES-256-GCM). Der Schlüssel steht in `data/secret.key`, nur für den App-Benutzer lesbar.
-  Die Datenbank allein verrät sie also nicht, und Datensicherungen enthalten sie gar nicht. Die App gibt sie nie
-  zurück, bei Passwörtern auch keine Teile davon. Das eigene Zugangspasswort ist nur als scrypt-Hash gespeichert.
+- Viewing on the home network is possible without logging in. Changing settings, control and backups require a
+  password.
+- Protection against third-party websites (CSRF header, origin check) and against DNS rebinding (host check).
+- Control features are off by default and start in test mode.
+- Credentials (passwords for the grid operator portal and evcc, ntfy token, cloud API keys) are stored encrypted in the
+  database (AES-256-GCM). The key is in `data/secret.key`, readable only by the app user. The database alone does not
+  reveal them, and backups do not contain them at all. The app never returns them, and for passwords not even parts of
+  them. The app's own access password is only stored as a scrypt hash.
 
-## Was OpenAmpere nicht absichert
+## What OpenAmpere does not protect
 
-- OpenAmpere spricht kein HTTPS und ist nicht für den Betrieb im offenen Internet gedacht. Zugriff von unterwegs
-  nur über ein VPN, **nie per Portfreigabe**.
-- Wer den ganzen Ordner `data/` lesen kann (Schlüssel und Datenbank), kann die Zugangsdaten entschlüsseln. OpenAmpere
-  muss sie nach jedem Neustart ohne Anmeldung lesen können, für den Abruf beim Netzbetreiber und evcc. Den Ordner
-  daher nicht weitergeben und den Server selbst schützen.
-- Zugangsdaten in `config.yaml` oder Umgebungsvariablen stehen dort im Klartext.
-- Modbus TCP selbst hat keine Anmeldung. Wer im Heimnetz ist, kann den Wechselrichter auch ohne OpenAmpere ansprechen.
+- OpenAmpere does not speak HTTPS and is not meant to run on the open internet. Access from outside the home only via
+  a VPN, **never via port forwarding**.
+- Anyone who can read the entire `data/` folder (key and database) can decrypt the credentials. OpenAmpere has to be
+  able to read them after every restart without a login, to fetch data from the grid operator and evcc. So do not
+  share the folder, and secure the server itself.
+- Credentials in `config.yaml` or environment variables are stored there in plain text.
+- Modbus TCP itself has no authentication. Anyone on the home network can talk to the inverter even without
+  OpenAmpere.

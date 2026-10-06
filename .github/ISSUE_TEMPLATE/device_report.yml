@@ -1,57 +1,67 @@
-name: Gerätebericht
-description: Diagnose deines Wechselrichters teilen, damit weitere Geräte und Firmware-Stände unterstützt werden.
+name: Device report / Gerätebericht
+description: Share your inverter's diagnostics so more devices and firmware versions can be supported. / Diagnose deines Wechselrichters teilen, damit weitere Geräte und Firmware-Stände unterstützt werden.
 labels: ["device report", "needs triage"]
 body:
   - type: markdown
     attributes:
       value: |
+        How to create the report: in the app, open **Mehr → Diagnose → Diagnose starten** (More → Diagnostics → Start diagnostics), then **Bericht kopieren** (Copy report) and paste it below.
+        The diagnostics only read and change nothing. The serial number is shortened in the report unless you explicitly included it. Reports in German are welcome.
+
         So erstellst du den Bericht: In der App **Mehr → Diagnose → Diagnose starten**, dann **Bericht kopieren** und unten einfügen.
         Die Diagnose liest nur und ändert nichts. Die Seriennummer ist im Bericht gekürzt, außer du hast sie ausdrücklich eingeschlossen.
+        **Du kannst dein Anliegen gern auf Deutsch schreiben.**
   - type: input
     id: device
     attributes:
-      label: Gerät laut Typenschild
-      placeholder: z. B. FoxESS H3-10.0-E, verkauft als Ampere.StoragePro E3
+      label: Device according to the type plate / Gerät laut Typenschild
+      placeholder: e.g. FoxESS H3-10.0-E, sold as Ampere.StoragePro E3 / z. B. FoxESS H3-10.0-E, verkauft als Ampere.StoragePro E3
     validations:
       required: true
   - type: input
     id: battery
     attributes:
-      label: Speicher
-      placeholder: z. B. 2 Batteriemodule, 10,4 kWh
+      label: Battery / Speicher
+      placeholder: e.g. 2 battery modules, 10.4 kWh / z. B. 2 Batteriemodule, 10,4 kWh
   - type: dropdown
     id: connection
     attributes:
-      label: Verbindung
+      label: Connection / Verbindung
       options:
-        - Direkt per LAN
-        - Über einen Modbus-Proxy
-        - Per WLAN
-        - Weiß nicht
+        - Directly via LAN / Direkt per LAN
+        - Via a Modbus proxy / Über einen Modbus-Proxy
+        - Via Wi-Fi / Per WLAN
+        - Don't know / Weiß nicht
   - type: dropdown
     id: smartbox
     attributes:
-      label: Hängt noch ein anderer Energiemanager am Wechselrichter?
+      label: Is another energy manager still connected to the inverter? / Hängt noch ein anderer Energiemanager am Wechselrichter?
       options:
-        - Nein
-        - Ja, die bisherige Smartbox
-        - Ja, etwas anderes (bitte unten nennen)
+        - No / Nein
+        - Yes, the previous Smartbox / Ja, die bisherige Smartbox
+        - Yes, something else (please name it below) / Ja, etwas anderes (bitte unten nennen)
   - type: textarea
     id: report
     attributes:
-      label: Diagnosebericht
-      description: Den kopierten Bericht hier einfügen.
+      label: Diagnostics report / Diagnosebericht
+      description: |
+        Paste the copied report here.
+
+        Den kopierten Bericht hier einfügen.
     validations:
       required: true
   - type: textarea
     id: observations
     attributes:
-      label: Eigene Beobachtungen
-      description: Stimmen Werte nicht mit dem Display des Wechselrichters überein? Welche?
+      label: Your own observations / Eigene Beobachtungen
+      description: |
+        Do any values differ from the inverter's display? Which ones?
+
+        Stimmen Werte nicht mit dem Display des Wechselrichters überein? Welche?
   - type: checkboxes
     id: checks
     attributes:
-      label: Datenschutz
+      label: Privacy / Datenschutz
       options:
-        - label: Der Bericht enthält keine IP-Adressen, Passwörter oder API-Schlüssel.
+        - label: The report contains no IP addresses, passwords or API keys. / Der Bericht enthält keine IP-Adressen, Passwörter oder API-Schlüssel.
           required: true

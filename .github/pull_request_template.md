@@ -1,46 +1,46 @@
-<!-- PR-Titel im Format von Conventional Commits, z. B. „fix(report): keep daily totals after midnight“ (siehe CONTRIBUTING.md). -->
+<!-- PR title in Conventional Commits format, e.g. "fix(report): keep daily totals after midnight" (see CONTRIBUTING.md). -->
 
-## Worum geht es?
+## What is this about?
 
-<!-- Kurz: Was ändert dieser PR und warum? -->
+<!-- Briefly: what does this PR change and why? -->
 
-Fixes #<!-- Issue-Nummer. Ohne abgestimmtes Issue bitte zuerst eines öffnen (außer bei Tippfehlern). -->
+Fixes #<!-- Issue number. Without an agreed issue, please open one first (except for typos). -->
 
-## Art der Änderung
+## Type of change
 
-- [ ] Fehlerbehebung
-- [ ] Neue Funktion
-- [ ] Neues Gerät / neue Register
-- [ ] Oberfläche / Texte
-- [ ] Dokumentation
-- [ ] Build, CI, Abhängigkeiten
+- [ ] Bug fix
+- [ ] New feature
+- [ ] New device / new registers
+- [ ] UI / texts
+- [ ] Documentation
+- [ ] Build, CI, dependencies
 
 ## Screenshots
 
-<!-- Pflicht bei Änderungen an der Oberfläche: vorher/nachher, hell und dunkel, in Handybreite (ca. 390 px). -->
+<!-- Required for UI changes: before/after, light and dark, at phone width (approx. 390 px). -->
 
-| Vorher | Nachher |
+| Before | After |
 |---|---|
 |  |  |
 
-## Wie getestet?
+## How was this tested?
 
-<!-- Simulator, echte Anlage (welches Gerät/Firmware), Browser/Handy … -->
+<!-- Simulator, real system (which device/firmware), browser/phone … -->
 
-## Checkliste
+## Checklist
 
-- [ ] `.venv/bin/pytest` ist grün, neue Logik hat Tests.
-- [ ] `npm run build` in `web/` läuft ohne Fehler.
-- [ ] Texte in der App sind deutsch und für Laien verständlich.
-- [ ] Neue Einstellungen sind in der App änderbar, nicht nur per Datei.
-- [ ] Neue Funktionen laufen auch in der Demo: neue API-Endpunkte haben eine Antwort in `web/src/demo/server.ts` (`npm run check:demo`).
-- [ ] Keine persönlichen Daten (IP-Adressen, Seriennummern, Schlüssel) in Code, Tests oder Screenshots.
-- [ ] Kein Code, keine Grafiken oder Texte aus fremden Apps; Quellen für Register/Code sind angegeben.
-- [ ] Bei geänderten Abhängigkeiten: `scripts/deps.sh` ausgeführt, Lockfiles und Lizenzliste sind im selben Commit.
+- [ ] `.venv/bin/pytest` passes, new logic has tests.
+- [ ] `npm run build` in `web/` runs without errors.
+- [ ] Texts in the app are German and understandable for non-technical users.
+- [ ] New settings can be changed in the app, not only via a file.
+- [ ] New features also work in the demo: new API endpoints have a response in `web/src/demo/server.ts` (`npm run check:demo`).
+- [ ] No personal data (IP addresses, serial numbers, keys) in code, tests or screenshots.
+- [ ] No code, graphics or texts from other apps; sources for registers/code are given.
+- [ ] If dependencies changed: `scripts/deps.sh` was run, lockfiles and license list are in the same commit.
 
-### Nur wenn etwas am Wechselrichter geschrieben wird
+### Only if something is written to the inverter
 
-- [ ] Nur über die Steuerung erreichbar, Testmodus wird respektiert.
-- [ ] Grenzwerte werden vor dem Schreiben geprüft, danach wird zurückgelesen und protokolliert.
-- [ ] Register sind belegt (Dokumentation, Quelle oder Diagnosebericht eines echten Geräts).
-- [ ] Rechtliche Fragen (Einspeisebegrenzung, § 14a EnWG, EEG) sind im Issue geklärt.
+- [ ] Only reachable via the control features, test mode is respected.
+- [ ] Limits are checked before writing; afterwards the value is read back and logged.
+- [ ] Registers are backed by a source (documentation, reference or diagnostics report from a real device).
+- [ ] Legal questions (feed-in limitation, § 14a EnWG, EEG) are settled in the issue.

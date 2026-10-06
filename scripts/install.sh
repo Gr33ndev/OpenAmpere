@@ -17,7 +17,7 @@ SITE="https://gr33ndev.github.io/OpenAmpere"
 APP_UID=1000  # user inside the OpenAmpere image
 MARKER="# erzeugt von install.sh"
 NO_TAILSCALE="# Zugriff von unterwegs (Tailscale): nein"  # remembers the answer, so the question comes only once
-DOCS="https://github.com/Gr33ndev/OpenAmpere#installation-von-hand"
+DOCS="https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#installation-von-hand"
 
 if [ -t 1 ]; then BOLD=$'\e[1m' GREEN=$'\e[32m' RED=$'\e[31m' RESET=$'\e[0m'; else BOLD="" GREEN="" RED="" RESET=""; fi
 say() { printf '%s\n' "$*"; }

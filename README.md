@@ -1,10 +1,14 @@
 # OpenAmpere
 
-[Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [Häufige Fragen](https://gr33ndev.github.io/OpenAmpere/faq.html) · [Quellcode](https://github.com/Gr33ndev/OpenAmpere) · [Fehler melden](https://github.com/Gr33ndev/OpenAmpere/issues) · [Lizenz](LICENSE) · [Drittanbieter-Lizenzen](THIRD_PARTY_LICENSES.md) · [Sicherheit](SECURITY.md) · [Mitmachen](CONTRIBUTING.md)
+**Deutsch:** [README.de.md](README.de.md)
 
-**Lokale App für Solaranlagen mit Batteriespeicher, ganz ohne Cloud.**
+[Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [FAQ](https://gr33ndev.github.io/OpenAmpere/faq.html) · [Source code](https://github.com/Gr33ndev/OpenAmpere) · [Report a bug](https://github.com/Gr33ndev/OpenAmpere/issues) · [License](LICENSE) · [Third-party licenses](THIRD_PARTY_LICENSES.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Governance](GOVERNANCE.md)
 
-OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Daten lokal und zeigt sie im Browser an. Auf dem Smartphone lässt sich die Seite zum Home-Bildschirm hinzufügen und verhält sich dann wie eine App. Kein Konto, keine Cloud, keine Abhängigkeit von einem Hersteller-Server.
+**Local app for solar systems with battery storage, no cloud at all.**
+
+OpenAmpere talks to the inverter directly on your home network, stores all data locally and shows it in the browser. On a smartphone you can add the page to the home screen, and it then behaves like an app. No account, no cloud, no dependence on a manufacturer's server.
+
+The app's user interface and the website are in German.
 
 <p align="center">
   <img src="docs/screenshots/overview.png" width="190" alt="Übersicht mit Energiefluss von Solar, Speicher, Netz, Wallbox und Heizstab">
@@ -12,108 +16,108 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
   <img src="docs/screenshots/report.png" width="190" alt="Auswertung mit Tageswerten und Leistungskurve">
   <img src="docs/screenshots/overview-dark.png" width="190" alt="Übersicht im dunklen Design">
 </p>
-<p align="center"><sub>Aus der <a href="https://gr33ndev.github.io/OpenAmpere/demo/">Demo</a> mit erfundenen Werten. Neu erzeugen mit <code>scripts/screenshots.sh</code>.</sub></p>
+<p align="center"><sub>From the <a href="https://gr33ndev.github.io/OpenAmpere/demo/">demo</a> with made-up values. Regenerate with <code>scripts/screenshots.sh</code>.</sub></p>
 
-> Unabhängiges Community-Projekt. Hintergrund und rechtliche Hinweise stehen [am Ende dieser Seite](#hintergrund--rechtliche-hinweise).
+> Independent community project. Background and legal notes are [at the end of this page](#background--legal-notes).
 
-## Unterstützte Geräte
+## Supported devices
 
-| Gerät | Status |
+| Device | Status |
 |---|---|
-| FoxESS H3 / H3 Smart / H3 Pro | ✅ Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. |
-| SAJ H2 / HS2 | ✅ Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. |
-| Heizstab, Wärmepumpe (SG-Ready) | ✅ Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. |
-| Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | ✅ Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. |
-| Wallbox | ✅ Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.md](docs/evcc.md). |
-| Home Assistant | ✅ Eigene Integration über HACS: Daten live und Steuerung, siehe [Home Assistant](#home-assistant). |
+| FoxESS H3 / H3 Smart / H3 Pro | ✅ Monitoring and control. Control is off by default. The new or old register map is detected automatically. |
+| SAJ H2 / HS2 | ✅ Monitoring. Control will only be enabled once the driver has been tested on real devices. |
+| Immersion heater, heat pump (SG-Ready) | ✅ Switching on solar surplus via Shelly relays or web addresses. |
+| Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR | ✅ Continuously variable according to solar surplus, optionally with cheap grid power. |
+| Wallbox | ✅ Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). |
+| Home Assistant | ✅ Dedicated integration via HACS: live data and control, see [Home Assistant](#home-assistant). |
 
-**Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2. Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
+**The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2. So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
 
-## Funktionen
+## Features
 
-- **Menü:** Übersicht, Geräte (Speicher, Wallbox, Heizstab bedienen und die Reihenfolge für Sonnenstrom festlegen), Auswertung und Mehr (Einrichtung und Einstellungen). Ein Schalter „Nur ansehen / Testen / Aktiv“ legt fest, ob OpenAmpere etwas ändern darf.
-- **Übersicht:**
-  - Energiefluss live für PV, Haus, Netz und Speicher mit Ladestand, dazu Wallbox und Heizstab
-  - Tageswerte
-  - Autarkie
-  - **Solar nach Modulfeldern:** Leistung, Spannung und Strom je PV-Eingang (MPPT), etwa für Süddach, Westdach oder Garage
-  - **Temperaturen:** Wechselrichter, Speicher, Batteriezellen
-- **Auswertung:**
-  - Leistungskurve über den Tag mit Ladestand, Werte beim Antippen
-  - Energie pro Tag (15 oder 60 Minuten), Woche, Monat und Jahr
-  - Ertrag je Modulfeld
-  - Temperaturverlauf
-  - Verbrauch je Gerät (Wallbox, Heizstab) und Ladevorgänge
-  - Autarkie, Eigenverbrauch, Verbrauch aufgeteilt nach Haushalt und Geräten, geschätzte Ersparnis
-- **Stromtarife:** Festpreis oder dynamischer Tarif (Börsenpreis plus Aufschlag, Deutschland und Österreich) mit Grundpreis, mehrere Tarife mit Startdatum; daraus Ersparnis und Stromkosten unterm Strich.
-- **Abschläge im Blick:** Monatliche Abschläge für Strombezug und Einspeisung eintragen (Mehr → Abschläge). Die Auswertung zeigt den Stand heute: bisherige Kosten und Vergütung gegen die Abschläge bis heute, der laufende Monat anteilig.
-- **Zählerwerte vom Netzbetreiber:** Mit Smart Meter holt OpenAmpere die Tageswerte aus dem Kundenportal des Netzbetreibers (Mehr → Verbindung → Zählerwerte) und rechnet die Abschläge damit. Bisher für Netze BW, weitere Netzbetreiber können als eigenes Modul dazukommen.
-- **Export:** Energiewerte als CSV-Datei für Excel und Co.
-- **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus
-- **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern. Man gibt die installierte Modulleistung (kWp) und die geltende Regel an: 60 % nach dem Solarspitzengesetz (bis ein intelligentes Messsystem mit Steuerbox eingebaut ist), die frühere 70-%-Regel, ein fester Wert aus der Netzanschlusszusage (z. B. Nulleinspeisung) oder keine Begrenzung. Die Prozente beziehen sich auf die Modulleistung, nicht auf den Wechselrichter; mehr als die Regel erlaubt, lässt die App nicht zu. **Bei einem festen Wert vom Netzbetreiber ist jede Erhöhung nur mit dessen schriftlicher Zustimmung zulässig**; die App verlangt dafür eine Bestätigung und protokolliert Datum und Zeichen. „Keine Begrenzung“ setzt eine ausdrückliche Erklärung voraus, die ebenfalls protokolliert wird.
-- **Verlauf aus der EKD-Cloud übernehmen:** Für bisherige Nutzer der App „Ampere.IQ“. Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der Ampere.IQ-App eintragen und den Import starten. Der Import nutzt nur die öffentliche Kunden-API mit dem eigenen Schlüssel; OpenAmpere hat nichts mit EKD zu tun, siehe [rechtliche Hinweise](#hintergrund--rechtliche-hinweise).
-  - Er läuft im Hintergrund mit höchstens einer Anfrage pro Minute.
-  - Nach einem Neustart macht er dort weiter, wo er aufgehört hat.
-  - Alternativ lässt sich ein ZIP aus dem [Export-Werkzeug](tools/cloud-export/) einlesen.
-- **Cloud-kompatible Schnittstelle:** `/api/v1/customer/installation` und `/api/v1/installation/{id}/now/all/power` antworten wie die bisherige Cloud-Kunden-API. Vorhandene Werkzeuge stellt man nur auf die neue Adresse um.
-- **Laden aus dem Netz (experimentell):** zum günstigsten Börsenpreis oder in einem festen Zeitfenster, bis zu einem Ladeziel. Läuft nur über die Fernsteuerung des Wechselrichters mit Zeitbegrenzung, im Testmodus nur protokolliert; vorher sind rechtliche Hinweise zu bestätigen (EEG-Speicher, § 14a EnWG).
-- **Überschuss nutzen:** Ein my-PV-Heizstab (AC ELWA-E, AC ELWA 2, AC THOR) folgt dem Solarüberschuss stufenlos, mit Mindestüberschuss, Höchstleistung, Speicher-Vorrang und optional günstigem Netzstrom. Wärmepumpe (SG-Ready) oder andere Geräte schaltet OpenAmpere über Shelly-Relais oder Web-Adressen, nach Priorität, mit Mindestlauf- und Mindestpausenzeit.
-- **Speicher-Gesundheit** (Mehr → Meine Anlage): Vollzyklen, Wirkungsgrad seit Inbetriebnahme, Temperatur der wärmsten und kühlsten Zelle und ihr Unterschied, mit Warnung bei auffälligen Werten.
-- **Firmware-Änderungen:** OpenAmpere merkt sich die Firmware des Wechselrichters und zeigt, wann sie sich geändert hat. Ein Update kann Register ändern, danach am besten einmal die Diagnose ausführen.
-- **Benachrichtigungen** über ntfy: Wechselrichter nicht erreichbar, Störung, überschriebene Einstellung, Speicher voll, günstigster Strom morgen, Speicher prüfen, neue Firmware.
-- **Diagnose (nur lesen):** prüft Registerkarte, Funktionscodes, optionale Blöcke, Skalierung, Einspeisebegrenzung, Verbindungsabbrüche und Tageszähler des eigenen Geräts und erstellt einen Bericht zum Teilen. **Vor der ersten Änderung am Wechselrichter einmal ausführen.**
-- **Wallbox mit evcc:** Wallboxen steuert das eigenständige Open-Source-Projekt [evcc](https://evcc.io). OpenAmpere liefert evcc die Messwerte von Netz, Solar und Speicher, sodass evcc keine eigene Verbindung zum Wechselrichter braucht, und zeigt die Ladepunkte in der App: Lademodus, Ladeziel, Mindestladung, Ladeplan, Uhrzeit bis zum Ziel und Ladevorgänge. Ist das Auto selbst in evcc eingerichtet, kommen Ladestand und Reichweite dazu, und die Auswertung zeigt gefahrene Kilometer, Kilometer mit Sonnenstrom, Verbrauch pro 100 km und Kosten pro 100 km im Vergleich zu Netzstrom. Ob Wallbox oder Heizstab zuerst Überschuss bekommt, ist einstellbar. Einrichtung: [docs/evcc.md](docs/evcc.md). Danke an die evcc-Community!
-- Siehe auch [docs/architektur.md](docs/architektur.md).
+- **Menu:** **Übersicht** (Overview), **Geräte** (Devices: operate the battery, wallbox and immersion heater, and set the order in which they get solar power), **Auswertung** (Report) and **Mehr** (More: setup and settings). A switch **„Nur ansehen / Testen / Aktiv“** (View only / Test / Active) determines whether OpenAmpere is allowed to change anything.
+- **Overview:**
+  - Live energy flow for PV, house, grid and battery with state of charge, plus wallbox and immersion heater
+  - Daily totals
+  - Self-sufficiency
+  - **Solar by module array:** power, voltage and current per PV input (MPPT), e.g. for the south roof, west roof or garage
+  - **Temperatures:** inverter, battery, battery cells
+- **Report:**
+  - Power curve over the day with state of charge, values on tap
+  - Energy per day (15 or 60 minutes), week, month and year
+  - Yield per module array
+  - Temperature history
+  - Consumption per device (wallbox, immersion heater) and charging sessions
+  - Self-sufficiency, self-consumption, consumption split between household and devices, estimated savings
+- **Electricity tariffs:** fixed price or dynamic tariff (exchange price plus markup, Germany and Austria) with standing charge, multiple tariffs with start dates; from these, savings and the net electricity cost.
+- **Keep track of advance payments:** enter monthly advance payments for grid consumption and feed-in (**Mehr → Abschläge** (More → Advance payments)). The report shows where you stand today: costs and feed-in compensation so far against the advance payments up to today, with the current month pro rata.
+- **Meter readings from the grid operator:** with a smart meter, OpenAmpere fetches the daily values from the grid operator's customer portal (**Mehr → Verbindung → Zählerwerte** (More → Connection → Meter readings)) and uses them to calculate the advance payments. Currently for Netze BW; other grid operators can be added as separate modules.
+- **Export:** energy values as a CSV file for Excel and similar tools.
+- **Battery & backup power:** backup power reserve, charge limits, operating mode
+- **Feed-in limit:** view and change the maximum feed-in power. You enter the installed module power (kWp) and the applicable rule: 60 % under the Solarspitzengesetz (German solar peak law; until a smart metering system with a control box is installed), the former 70 % rule, a fixed value from the grid connection approval (e.g. zero feed-in) or no limit. The percentages refer to the module power, not the inverter; the app does not allow more than the rule permits. **With a fixed value from the grid operator, any increase is only permitted with the grid operator's written consent**; the app requires a confirmation for this and logs the date and reference. "No limit" requires an explicit declaration, which is also logged.
+- **Import history from the EKD cloud:** for previous users of the "Ampere.IQ" app. Under **Mehr → Daten & Sicherung** (More → Data & backup), enter the API key from the Ampere.IQ app and start the import. The import only uses the public customer API with your own key; OpenAmpere has nothing to do with EKD, see [legal notes](#background--legal-notes).
+  - It runs in the background with at most one request per minute.
+  - After a restart, it continues where it left off.
+  - Alternatively, a ZIP from the [export tool](tools/cloud-export/) can be imported.
+- **Cloud-compatible interface:** `/api/v1/customer/installation` and `/api/v1/installation/{id}/now/all/power` respond like the previous cloud customer API. Existing tools only need to be pointed at the new address.
+- **Charging from the grid (experimental):** at the cheapest exchange price or in a fixed time window, up to a charge target. Only works via the inverter's remote control with a time limit; in test mode it is only logged. Legal notes must be confirmed first (EEG storage, § 14a EnWG).
+- **Use surplus:** a my-PV immersion heater (AC ELWA-E, AC ELWA 2, AC THOR) follows the solar surplus continuously, with minimum surplus, maximum power, battery priority and optionally cheap grid power. OpenAmpere switches a heat pump (SG-Ready) or other devices via Shelly relays or web addresses, by priority, with minimum run time and minimum pause time.
+- **Battery health** (**Mehr → Meine Anlage** (More → My system)): full cycles, efficiency since commissioning, temperature of the warmest and coolest cell and their difference, with a warning for unusual values.
+- **Firmware changes:** OpenAmpere remembers the inverter's firmware and shows when it has changed. An update can change registers; afterwards it's best to run the diagnostics once.
+- **Notifications** via ntfy: inverter unreachable, fault, overwritten setting, battery full, cheapest power tomorrow, check battery, new firmware.
+- **Diagnostics (read-only):** checks the register map, function codes, optional blocks, scaling, feed-in limit, connection drops and daily counters of your own device, and creates a report to share. **Run it once before the first change to the inverter.**
+- **Wallbox with evcc:** wallboxes are controlled by the independent open-source project [evcc](https://evcc.io). OpenAmpere supplies evcc with the grid, solar and battery readings, so evcc doesn't need its own connection to the inverter, and shows the charge points in the app: charging mode, charge target, minimum charge, charging plan, time until target and charging sessions. If the car itself is set up in evcc, state of charge and range are added, and the report shows kilometres driven, kilometres on solar power, consumption per 100 km and cost per 100 km compared with grid power. Whether the wallbox or the immersion heater gets surplus first is configurable. Setup: [docs/evcc.md](docs/evcc.md). Thanks to the evcc community!
+- See also [docs/architecture.md](docs/architecture.md).
 
 ## Home Assistant
 
-Die Integration **OpenAmpere** bringt Leistung, Energie (passend fürs Energie-Dashboard), Ladestand und Zustand live
-nach Home Assistant, auf Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab.
+The **OpenAmpere** integration brings power, energy (suitable for the Energy dashboard), state of charge and status live
+into Home Assistant, and optionally also control of the battery, charging from the grid and the immersion heater.
 
-> **Erst OpenAmpere installieren** (siehe [Installation](#installation)), dann die Integration. Sie verbindet sich nur
-> mit dem laufenden OpenAmpere und ersetzt es nicht. Nur OpenAmpere spricht mit dem Wechselrichter.
+> **Install OpenAmpere first** (see [Installation](#installation)), then the integration. It only connects
+> to the running OpenAmpere and does not replace it. Only OpenAmpere talks to the inverter.
 
 [![HACS Custom](https://img.shields.io/badge/HACS-custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc)](https://hacs.xyz)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere)
 
-Danach in Home Assistant die Integration OpenAmpere hinzufügen und **koppeln**: Adresse von OpenAmpere eingeben, den
-6-stelligen Code mit dem unter **Mehr → Verbundene Apps** vergleichen und dort erlauben. Die Verbindung ist
-verschlüsselt, jede App bekommt einen eigenen, widerrufbaren Zugang. Gesteuert werden kann nur, was in OpenAmpere
-freigegeben ist. Anleitung und Details: [docs/homeassistant.md](docs/homeassistant.md).
+Then add the OpenAmpere integration in Home Assistant and **pair** it: enter the address of OpenAmpere, compare the
+6-digit code with the one under **Mehr → Verbundene Apps** (More → Connected apps) and allow it there. The connection is
+encrypted, and each app gets its own revocable access. Only what is enabled in OpenAmpere can be controlled.
+Instructions and details: [docs/homeassistant.md](docs/homeassistant.md).
 
 ## Installation
 
-**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
+**Requirements:** a Linux computer on the same network as the inverter (Raspberry Pi with a 64-bit system, NAS, Proxmox …) and Modbus TCP enabled on the inverter. For the battery systems sold by EKD this is already the case; for other devices the installer can take care of it.
 
-**1. Installieren:** Auf dem Rechner im Terminal ausführen:
+**1. Install:** run in a terminal on the computer:
 
 ```bash
 curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
-Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`), ob es evcc für eine Wallbox mit einrichten soll und ob du OpenAmpere auch von unterwegs nutzen willst (Tailscale, siehe [Zugriff von unterwegs](#zugriff-von-unterwegs)). Beim erneuten Ausführen bleiben die Antworten erhalten. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
+The script installs Docker if needed and asks for the folder (default `/opt/openampere`), whether it should also set up evcc for a wallbox, and whether you want to use OpenAmpere on the go as well (Tailscale, see [Remote access](#remote-access)). When run again, the answers are kept. It detects the time zone and a free port by itself. At the end it shows the address of the app. What it does is in [scripts/install.sh](scripts/install.sh).
 
-**Updates:** Gibt es eine neue Version, zeigt die App oben einen Hinweis, ein Tipp auf **Aktualisieren** genügt. Unter Mehr → Über OpenAmpere lassen sich Updates auch nachts automatisch installieren. Dafür richtet das Install-Script einen kleinen Helfer-Container ein ([scripts/updater.sh](scripts/updater.sh)): Er hat Zugriff auf Docker, reagiert aber nur auf eine Anfrage-Datei, die die App in den Datenordner schreibt. Dann lädt er die neue Version, startet sie und prüft, ob sie läuft. Startet sie nicht, kommt die bisherige Version zurück. Die App selbst bekommt keinen Zugriff auf Docker. Nach neuen Versionen sucht die App alle 6 Stunden bei GitHub, das lässt sich abschalten. Wer schon vorher mit dem Script installiert hat, führt es einmal erneut aus, damit der Helfer dazukommt.
+**Updates:** when a new version is available, the app shows a notice at the top; a tap on **Aktualisieren** (Update) is all it takes. Under **Mehr → Über OpenAmpere** (More → About OpenAmpere), updates can also be installed automatically at night. For this, the install script sets up a small helper container ([scripts/updater.sh](scripts/updater.sh)): it has access to Docker, but only reacts to a request file that the app writes into the data folder. It then pulls the new version, starts it and checks that it is running. If it doesn't start, the previous version is restored. The app itself gets no access to Docker. The app checks GitHub for new versions every 6 hours; this can be turned off. If you installed with the script before, run it once more so the helper is added.
 
-**2. Im Browser einrichten:** Die angezeigte Adresse öffnen, meist `http://<server-ip>:8080`, und ein **Passwort** festlegen. Ein **Einrichtungsassistent** sucht den Wechselrichter im Heimnetz, alternativ gibt man die IP-Adresse ein. Er testet die Verbindung und speichert sie. Ansehen kann man die Werte im Heimnetz ohne Passwort. Einstellungen ändern, Steuerbefehle und Datensicherung brauchen eine Anmeldung.
+**2. Set up in the browser:** open the displayed address, usually `http://<server-ip>:8080`, and set a **password**. A **setup wizard** searches for the inverter on the home network, or you enter its IP address. It tests the connection and saves it. Values can be viewed on the home network without a password. Changing settings, control commands and data backup require a login.
 
-**3. Optional: Heizstab oder Wärmepumpe.** Dafür braucht es keine weitere Software. In der App unter **Mehr → Verbindung → Heizstab und weitere Geräte** hinzufügen.
+**3. Optional: immersion heater or heat pump.** No additional software is needed. Add it in the app under **Mehr → Verbindung → Heizstab und weitere Geräte** (More → Connection → Immersion heater and other devices).
 
-**4. Optional: Wallbox.** Die Wallbox steuert [evcc](https://evcc.io), ein eigenes Open-Source-Projekt. Hat man im Script „Wallbox“ bejaht, läuft evcc schon als zweiter Container unter `http://<server-ip>:7070`, und OpenAmpere kennt seine Adresse. Dann:
-1. In evcc Wallbox und Fahrzeug einrichten.
-2. In OpenAmpere unter **Mehr → Verbindung → Wallbox** die Zähler-Konfiguration kopieren und in evcc einfügen. So bekommt evcc die Messwerte von Netz, Solar und Speicher von OpenAmpere.
+**4. Optional: wallbox.** The wallbox is controlled by [evcc](https://evcc.io), a separate open-source project. If you answered yes to "Wallbox" in the script, evcc is already running as a second container at `http://<server-ip>:7070`, and OpenAmpere knows its address. Then:
+1. Set up the wallbox and vehicle in evcc.
+2. In OpenAmpere, under **Mehr → Verbindung → Wallbox** (More → Connection → Wallbox), copy the meter configuration and paste it into evcc. This way evcc gets the grid, solar and battery readings from OpenAmpere.
 
-Läuft evcc schon woanders, trägt man unter Mehr → Verbindung → Wallbox dessen Adresse ein. Details stehen in [docs/evcc.md](docs/evcc.md).
+If evcc is already running elsewhere, enter its address under Mehr → Verbindung → Wallbox. Details are in [docs/evcc.md](docs/evcc.md).
 
-**Wo was ist:** Unter **Geräte** bedient man Speicher (Notstrom-Reserve, Ladegrenzen), Wallbox und Heizstab und legt fest, wer zuerst Sonnenstrom bekommt. Unter **Mehr** liegen Meine Anlage (mit Einspeisebegrenzung), Stromtarif, Verbindung, Steuerung und Protokoll, Benachrichtigungen, Zugriffsschutz, Darstellung, Daten & Sicherung und Diagnose.
+**Where to find what:** under **Geräte** you operate the battery (backup power reserve, charge limits), wallbox and immersion heater, and set who gets solar power first. Under **Mehr** you'll find **Meine Anlage** (with the feed-in limit), **Stromtarif** (Electricity tariff), **Verbindung**, **Steuerung und Protokoll** (Control and log), **Benachrichtigungen** (Notifications), **Zugriffsschutz** (Access protection), **Darstellung** (Appearance), **Daten & Sicherung** and **Diagnose** (Diagnostics).
 
-Passwort vergessen? Auf dem Server im Installationsordner `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
+Forgot your password? On the server, run `docker compose exec openampere openampere reset-password` in the installation folder and then set a new one in the app.
 
-### Installation von Hand
+### Manual installation
 
-Wer selbst bauen oder mitentwickeln will, nimmt das Repository statt des Scripts:
+If you want to build it yourself or contribute to development, use the repository instead of the script:
 
 ```bash
 git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
@@ -121,46 +125,46 @@ mkdir -p data && sudo chown 1000:1000 data
 docker compose up -d --build
 ```
 
-Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.md](docs/evcc.md).
+The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md).
 
-### Zugriff von unterwegs
+### Remote access
 
-OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sichersten über ein **VPN**.
+OpenAmpere is built for the home network. The safest way to reach it on the go is via a **VPN**.
 
-**Am einfachsten mit Tailscale:** Die Frage „von unterwegs nutzen?“ im Install-Script mit Ja beantworten, dann in der App unter **Mehr → Zugriff von unterwegs** auf **Einrichten** tippen und bei Tailscale anmelden (kostenloses Konto, z. B. mit Google, Apple oder Microsoft). Auf dem Handy die Tailscale-App mit demselben Konto anmelden und die Adresse öffnen, die OpenAmpere anzeigt.
-- Wer schon installiert hat, führt das Script einmal erneut aus: `curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | OPENAMPERE_TAILSCALE=ja bash`. Mit `OPENAMPERE_TAILSCALE=nein` wird es wieder entfernt.
-- Tailscale läuft als eigener Container im Userspace-Modus, ohne Zusatzrechte. Wie beim Update-Helfer bekommt die App keinen Zugriff darauf, sie legt nur eine Anfrage ab ([scripts/tailscale.sh](scripts/tailscale.sh)). Das Senden von Protokolldaten an Tailscale ist abgeschaltet, Funnel (öffentlich ins Internet) wird nicht genutzt.
-- Tailscale ist ein Dienst der Tailscale Inc. (USA). Er vermittelt die Verbindung, die Daten laufen verschlüsselt direkt zwischen den Geräten.
+**Easiest with Tailscale:** answer yes to the question „von unterwegs nutzen?“ (use on the go?) in the install script, then in the app tap **Einrichten** (Set up) under **Mehr → Zugriff von unterwegs** (More → Remote access) and sign in to Tailscale (free account, e.g. with Google, Apple or Microsoft). On your phone, sign in to the Tailscale app with the same account and open the address that OpenAmpere shows.
+- If you have already installed, run the script once more: `curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | OPENAMPERE_TAILSCALE=ja bash`. With `OPENAMPERE_TAILSCALE=nein` it is removed again.
+- Tailscale runs as its own container in userspace mode, without additional privileges. As with the update helper, the app gets no access to it; it only drops a request ([scripts/tailscale.sh](scripts/tailscale.sh)). Sending log data to Tailscale is disabled, and Funnel (public access from the internet) is not used.
+- Tailscale is a service of Tailscale Inc. (USA). It brokers the connection; the data travels encrypted directly between the devices.
 
-**Ohne Drittanbieter:** das VPN der FRITZ!Box (WireGuard) oder ein eigener WireGuard-Server. Danach öffnet man die App wie zu Hause über die IP-Adresse des Servers.
+**Without a third party:** the FRITZ!Box VPN (WireGuard) or your own WireGuard server. Then open the app via the server's IP address, just like at home.
 
-**Niemals per Portfreigabe direkt ins Internet stellen.** Wer die App so erreicht, kann den Wechselrichter steuern, sobald das Passwort geknackt oder abgefangen ist (kein HTTPS).
+**Never expose it directly to the internet via port forwarding.** Anyone who reaches the app that way can control the inverter as soon as the password is cracked or intercepted (no HTTPS).
 
-Eigene Hostnamen (z. B. ein Reverse-Proxy im Heimnetz) müssen unter `server.allowed_hosts` eingetragen werden; IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag.
+Custom hostnames (e.g. a reverse proxy on the home network) must be added under `server.allowed_hosts`; IP addresses, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` and Tailscale names (`*.ts.net`) work without an entry.
 
-Für eine automatisierte Installation lassen sich alle Werte zusätzlich per `data/config.yaml` (siehe `config.example.yaml`) oder per Umgebungsvariable `OPENAMPERE_…` vorgeben. Umgebungsvariablen haben Vorrang und erscheinen in der App als „fest eingestellt“.
+For an automated installation, all values can additionally be preset via `data/config.yaml` (see `config.example.yaml`) or via `OPENAMPERE_…` environment variables. Environment variables take precedence and appear in the app as „fest eingestellt“ (fixed).
 
-### Betrieb hinter einem Modbus-Proxy
+### Running behind a Modbus proxy
 
-Hängt am Wechselrichter noch ein anderer Energiemanager (z. B. die bisherige Smartbox), teilt man den Modbus-Zugang oft über einen **Modbus-TCP-Proxy**. OpenAmpere kommt damit zurecht:
-- In der App unter **Mehr → Verbindung** Adresse, **Port** und **Geräteadresse** des Proxys eintragen. Die Netzsuche nutzt den dort eingestellten Port.
-- Meldet der Proxy kurzzeitig, dass der Wechselrichter nicht antwortet (Modbus-Fehler 10/11), oder kommt eine Antwort zu spät, wiederholt OpenAmpere die Anfrage. Erst nach mehreren Fehlschlägen in Folge gilt die Verbindung als getrennt. Dabei werden keine Register fälschlich als ungültig gemerkt.
-- Bei langsamen Proxys oder WLAN das **Zeitlimit pro Anfrage** erhöhen (Mehr → Verbindung → Erweitert).
-- Ein schreibgeschützter Proxy lehnt Steuerbefehle ab. OpenAmpere zeigt das als verständliche Meldung an.
+If another energy manager is also connected to the inverter (e.g. the previous Smartbox), the Modbus access is often shared via a **Modbus TCP proxy**. OpenAmpere handles this:
+- In the app, under **Mehr → Verbindung**, enter the proxy's address, **port** and **device address**. The network search uses the port set there.
+- If the proxy briefly reports that the inverter is not responding (Modbus error 10/11), or a response arrives too late, OpenAmpere retries the request. Only after several consecutive failures is the connection considered lost. No registers are wrongly marked as invalid in the process.
+- For slow proxies or Wi-Fi, increase the **timeout per request** (**Mehr → Verbindung → Erweitert** (More → Connection → Advanced)).
+- A read-only proxy rejects control commands. OpenAmpere shows this as an understandable message.
 
-**Wichtig:** Der Wechselrichter erlaubt nur wenige gleichzeitige Modbus-Verbindungen. Wenn noch ein anderer Energiemanager (z. B. eine bisherige Smartbox) oder eine andere Integration mit ihm spricht, kann es zu Verbindungsabbrüchen kommen.
+**Important:** the inverter only allows a few simultaneous Modbus connections. If another energy manager (e.g. a previous Smartbox) or another integration is also talking to it, connection drops can occur.
 
-### Die bisherige Smartbox setzt Einstellungen zurück
+### The previous Smartbox resets settings
 
-Eine bisherige Smartbox holt sich etwa alle 100 Sekunden ihre Soll-Einstellungen aus der Cloud ihres Herstellers und schreibt sie in den Wechselrichter. Damit überschreibt sie Änderungen von OpenAmpere, etwa an Notstrom-Reserve, Betriebsmodus oder Laden aus dem Netz. OpenAmpere erkennt das, zeigt einen Hinweis und kann eine Benachrichtigung „Einstellung überschrieben“ senden.
+A previous Smartbox fetches its target settings from its manufacturer's cloud roughly every 100 seconds and writes them to the inverter. In doing so, it overwrites changes made by OpenAmpere, for example to the backup power reserve, operating mode or charging from the grid. OpenAmpere detects this, shows a notice and can send a notification „Einstellung überschrieben“ (Setting overwritten).
 
-Abhilfe:
-- **Internetzugang der Smartbox sperren**, z. B. in der FRITZ!Box unter Internet → Filter → Kindersicherung (Zugangsprofil „gesperrt“). Ein Nutzer hat so erfolgreich auf preisbasiertes Laden umgeschaltet und die Notstrom-Reserve geändert. Die Smartbox liest dann weiter mit, bekommt aber keine Soll-Werte und keine Updates mehr, und die Hersteller-App zeigt keine aktuellen Daten.
-- **Smartbox abklemmen**, wenn sie nicht mehr gebraucht wird. Vorher klären, ob sie für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber.
+Remedies:
+- **Block the Smartbox's internet access**, e.g. on the FRITZ!Box under Internet → Filter → Kindersicherung (Internet → Filters → Parental Controls), access profile „gesperrt“ (blocked). One user successfully switched to price-based charging and changed the backup power reserve this way. The Smartbox then keeps reading along, but no longer receives target values or updates, and the manufacturer's app no longer shows current data.
+- **Disconnect the Smartbox** if it is no longer needed. Check beforehand whether it is required for anything else, such as control by the grid operator.
 
-## Entwicklung ohne echte Anlage
+## Development without a real system
 
-OpenAmpere enthält einen Simulator für den FoxESS H3.
+OpenAmpere includes a simulator for the FoxESS H3.
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"
@@ -178,9 +182,9 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 .venv/bin/python -m openampere.demo_data --db data/openampere.db --days 60
 ```
 
-Der letzte Befehl ist optional und erzeugt Demo-Verlaufsdaten.
+The last command is optional and generates demo history data.
 
-Web-App mit Live-Reload, sie leitet die API an Port 8089 weiter:
+Web app with live reload; it forwards the API to port 8089:
 
 ```bash
 cd web && npm install && npm run dev
@@ -192,15 +196,15 @@ Tests:
 .venv/bin/pytest
 ```
 
-Die Python-Abhängigkeiten sind in `requirements.lock` (Docker-Image, mit Prüfsummen) und `requirements-dev.lock` (Entwicklung, CI) fest versioniert. Erzeugt werden beide mit [uv](https://docs.astral.sh/uv/) aus `pyproject.toml`:
+The Python dependencies are pinned in `requirements.lock` (Docker image, with hashes) and `requirements-dev.lock` (development, CI). Both are generated with [uv](https://docs.astral.sh/uv/) from `pyproject.toml`:
 
 ```bash
 scripts/deps.sh
 ```
 
-Das erzeugt auch die Lizenzliste (`THIRD_PARTY_LICENSES.md` und die Liste in der App), alles gehört in denselben Commit. Fehlt etwas, etwa in Dependabot-PRs, erzeugt der Workflow `dependencies.yml` die Dateien neu und committet sie auf denselben Branch. Einmal pro Woche hebt er alle Python-Abhängigkeiten auf die neuesten erlaubten Versionen und öffnet dafür einen Pull Request vom Branch `deps/python-updates`. Die CI auf GitHub prüft Tests, Web-Build, Docker-Build und ob die Lizenzliste aktuell ist.
+This also generates the license list (`THIRD_PARTY_LICENSES.md` and the list in the app); everything belongs in the same commit. If something is missing, e.g. in Dependabot PRs, the `dependencies.yml` workflow regenerates the files and commits them to the same branch. Once a week it upgrades all Python dependencies to the latest allowed versions and opens a pull request for this from the `deps/python-updates` branch. CI on GitHub checks the tests, web build, Docker build and whether the license list is up to date.
 
-Projektseite mit Demo: Die Startseite liegt in `site/`, die Demo ist die normale Web-App, gebaut mit `VITE_DEMO=1`. Sie simuliert eine Anlage im Browser (`web/src/demo/`) und schickt nichts an einen Server. Lokal bauen und ansehen:
+Project site with demo: the landing page lives in `site/`; the demo is the regular web app, built with `VITE_DEMO=1`. It simulates a system in the browser (`web/src/demo/`) and sends nothing to a server. Build and view locally:
 
 ```bash
 scripts/build-site.sh
@@ -210,27 +214,27 @@ scripts/build-site.sh
 python3 -m http.server 8090 -d _site
 ```
 
-Der Workflow `pages.yml` veröffentlicht die Seite auf GitHub Pages (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen). Ein Versions-Tag (`v…`) veröffentlicht das Image für x86 und ARM unter `ghcr.io`.
+The `pages.yml` workflow publishes the site to GitHub Pages (once, under Settings → Pages, select "GitHub Actions" as the source). A version tag (`v…`) publishes the image for x86 and ARM under `ghcr.io`.
 
-## Sicherheit bei Steuerfunktionen
+## Safety of control functions
 
-Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wird es in der App unter **Mehr → Steuerung**, mit Sicherheitsabfrage:
-- Nach der Freigabe läuft die Steuerung zunächst im **Testmodus**. Änderungen werden dann nur protokolliert.
-- Erst wenn man den Testmodus ausdrücklich beendet, werden Werte an den Wechselrichter gesendet.
-- Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.
+Everything that writes to the inverter is **off** by default. It is enabled in the app under **Mehr → Steuerung** (More → Control), with a safety confirmation:
+- After enabling, control first runs in **test mode**. Changes are then only logged.
+- Only once you explicitly end test mode are values sent to the inverter.
+- Every change is recorded in the log with its old and new value, and is read back from the device after writing.
 
-Einstellungen wie Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung speichert der Wechselrichter selbst. Sie bleiben aktiv, auch wenn OpenAmpere nicht läuft oder deinstalliert wird. Wer etwas zurücknehmen will, muss es in der App (oder beim Installationsbetrieb) wieder ändern.
+Settings such as charge limits, operating mode or feed-in limit are stored by the inverter itself. They remain active even if OpenAmpere is not running or is uninstalled. To undo something, you have to change it again in the app (or have the installer do it).
 
-Andere Apps wie [Home Assistant](docs/homeassistant.md) steuern nur über einen eigenen Zugang mit der Berechtigung
-„Lesen + Steuern“ und nur, solange die Steuerung freigegeben ist. Den Hauptschalter, den Testmodus und die
-Einspeisebegrenzung können sie nicht ändern, Speicher-Einstellungen höchstens sechsmal pro Stunde.
+Other apps such as [Home Assistant](docs/homeassistant.md) can only control via their own access with the permission
+„Lesen + Steuern“ (Read + control), and only while control is enabled. They cannot change the main switch, test mode or the
+feed-in limit, and can change battery settings at most six times per hour.
 
-Die Register zum Schreiben stammen aus der Dokumentation der Community und sind noch nicht an jeder Gerätevariante geprüft. Deshalb liest OpenAmpere jeden geschriebenen Wert zurück und meldet Abweichungen.
+The registers used for writing come from community documentation and have not yet been verified on every device variant. That is why OpenAmpere reads back every written value and reports deviations.
 
-## Hintergrund & rechtliche Hinweise
+## Background & legal notes
 
-**Wie OpenAmpere entstanden ist:**
-- Die Energiekonzepte Deutschland GmbH (EKD) und weitere Gesellschaften der Gruppe haben Anfang Oktober 2026 Insolvenz beantragt. Die Verfahren laufen beim Amtsgericht Leipzig, die amtlichen Bekanntmachungen stehen unter [insolvenzbekanntmachungen.de](https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf) (Gericht Leipzig, Aktenzeichen eingeben):
+**How OpenAmpere came about:**
+- Energiekonzepte Deutschland GmbH (EKD) and other companies of the group filed for insolvency in early October 2026. The proceedings are being conducted at the Local Court (Amtsgericht) of Leipzig; the official announcements are available at [insolvenzbekanntmachungen.de](https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf) (court: Leipzig, enter the case number):
   - Energiekonzepte Deutschland GmbH: 401 IN 2082/26
   - AMPERE German Electric Innovation GmbH: 401 IN 2085/26
   - EKD Montage GmbH: 401 IN 2100/26
@@ -238,25 +242,25 @@ Die Register zum Schreiben stammen aus der Dokumentation der Community und sind 
   - Energiekonzepte Deutschland Investorenholding GmbH: 401 IN 2107/26
   - Energiekonzepte Deutschland PV-Montage GmbH: 401 IN 2110/26
   - ES Energiesysteme GmbH: 401 IN 2111/26
-- Damit sind alle sieben Gesellschaften amtlich veröffentlicht, die laut [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html) betroffen sein sollen (Stand 6. Oktober 2026).
-- Laut EKD läuft der Geschäftsbetrieb uneingeschränkt weiter, Anlaufstelle für Kunden bleibt der Kundenservice ([pv magazine](https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/)).
-- Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD.
-- OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene.
+- This means that all seven companies which, according to [Handelsblatt](https://www.handelsblatt.com/unternehmen/energie/solarenergie-solarspezialist-energiekonzepte-deutschland-meldet-insolvenz-an/100258988.html), are said to be affected have now been officially published (as of 6 October 2026).
+- According to EKD, business operations continue without restriction, and customer service remains the point of contact for customers ([pv magazine](https://www.pv-magazine.de/2026/10/02/energiekonzepte-deutschland-stellt-insolvenzantrag/)).
+- The "Ampere.IQ" app only works via EKD's servers. What will happen to it is unclear. Should the insolvency proceedings lead to these servers being shut down, OpenAmpere simply keeps running: it talks to the inverter directly on the home network and does not need any EKD server.
+- OpenAmpere was created as a local alternative by affected owners for affected owners.
 
-**Warum es mit EKD-Anlagen funktioniert:** OpenAmpere spricht direkt mit den verbauten Wechselrichtern. Die von EKD als „Ampere.StoragePro E3“ vertriebenen Speicher basieren auf der FoxESS-H3-Serie, die älteren „Ampere.StoragePro“ auf SAJ H2/HS2. OpenAmpere funktioniert genauso mit diesen Geräten aus anderen Quellen.
+**Why it works with EKD systems:** OpenAmpere talks directly to the installed inverters. The battery systems sold by EKD as "Ampere.StoragePro E3" are based on the FoxESS H3 series, the older "Ampere.StoragePro" on SAJ H2/HS2. OpenAmpere works just the same with these devices from other sources.
 
-**Keine Verbindung zu EKD oder den Herstellern:** OpenAmpere ist ein unabhängiges, inoffizielles Community-Projekt. Es steht in keinerlei Verbindung zur Energiekonzepte Deutschland GmbH, zu deren Insolvenzverwaltung, zu FoxESS, SAJ oder Kiwigrid. Es wurde von ihnen weder beauftragt noch autorisiert oder unterstützt.
+**No affiliation with EKD or the manufacturers:** OpenAmpere is an independent, unofficial community project. It has no affiliation whatsoever with Energiekonzepte Deutschland GmbH, its insolvency administration, FoxESS, SAJ or Kiwigrid. It was neither commissioned, authorized nor supported by them.
 
-**Marken:** „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ sowie alle weiteren genannten Produkt- und Firmennamen sind Marken oder Bezeichnungen ihrer jeweiligen Inhaber. Alle Rechte daran liegen selbstverständlich bei diesen. Sie werden hier ausschließlich genannt, um zu beschreiben, mit welchen Geräten OpenAmpere zusammenarbeitet. Der Projektname bezieht sich auf die physikalische Einheit Ampere.
+**Trademarks:** "AMPERE", "Ampere.IQ", "Ampere.StoragePro" and all other product and company names mentioned are trademarks or designations of their respective owners. All rights to them naturally remain with those owners. They are mentioned here solely to describe which devices OpenAmpere works with. The project name refers to the ampere, the physical unit.
 
-**Kein fremder Code:** OpenAmpere enthält keinen Code, keine Grafiken und keine Texte der Ampere.IQ-App. Der Cloud-Import nutzt ausschließlich die Kunden-API, die EKD für Kunden unter developer.ekd-solar.de beschrieben hat, mit dem persönlichen Schlüssel aus der App des jeweiligen Nutzers.
+**No third-party code:** OpenAmpere contains no code, graphics or text from the Ampere.IQ app. The cloud import exclusively uses the customer API that EKD documented for customers at developer.ekd-solar.de, with the personal key from the respective user's app.
 
-**Nutzung auf eigene Verantwortung:** OpenAmpere ist ein kostenloses Gemeinschaftsprojekt ohne Gewähr. Es ersetzt keinen Elektrofachbetrieb. Steuerfunktionen sind ab Werk ausgeschaltet. Wer Einstellungen am Wechselrichter ändert, insbesondere die Einspeisebegrenzung, ist selbst für die Einhaltung der Netzanschlussbedingungen verantwortlich. Ungeeignete Einstellungen können den Speicher belasten und Garantie- oder Gewährleistungsansprüche gegenüber Hersteller, Händler oder Insolvenzverwalter gefährden. Notiere die bisherigen Werte, bevor du etwas änderst. Die Hinweise in der App sind keine Rechtsberatung.
+**Use at your own risk:** OpenAmpere is a free community project without any warranty. It does not replace a qualified electrician. Control functions are switched off by default. Anyone who changes settings on the inverter, in particular the feed-in limit, is personally responsible for complying with the grid connection conditions. Unsuitable settings can put strain on the battery and jeopardize guarantee or warranty claims against the manufacturer, dealer or insolvency administrator. Note down the previous values before you change anything. The notes in the app are not legal advice.
 
-## Mitmachen
+## Contributing
 
-Fehler, Gerätediagnosen und Ideen sind willkommen – auch ohne Programmierkenntnisse. Erst ein Issue, dann der Pull Request; Details in [CONTRIBUTING.md](CONTRIBUTING.md).
+Bug reports, device diagnostics and ideas are welcome – even without programming skills. First an issue, then the pull request; details in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Lizenz
+## License
 
-[MIT](LICENSE). Hinweise zu verwendeten Quellen und Marken stehen in [NOTICE](NOTICE), die Lizenzen aller mitgelieferten Open-Source-Komponenten in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Diese Datei wird mit `scripts/third_party_licenses.py` erzeugt. Bitte neu erzeugen, wenn sich Abhängigkeiten ändern.
+[MIT](LICENSE). Notes on the sources and trademarks used are in [NOTICE](NOTICE), and the licenses of all bundled open-source components are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). This file is generated with `scripts/third_party_licenses.py`. Please regenerate it when dependencies change.

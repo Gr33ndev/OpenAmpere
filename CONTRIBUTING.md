@@ -1,45 +1,52 @@
-# Mitmachen bei OpenAmpere
+# Contributing to OpenAmpere
 
-Danke, dass du helfen möchtest! OpenAmpere lebt davon, dass Betroffene ihre Geräte, Fehler und Ideen einbringen –
-auch ohne Programmierkenntnisse.
+Thanks for wanting to help! OpenAmpere depends on affected owners sharing their devices, bugs and ideas – no
+programming skills needed.
 
-## Kurz gesagt
+## Languages
 
-1. **Erst ein Issue, dann der Code.** Für alles außer Tippfehlern bitte zuerst ein Issue öffnen oder ein vorhandenes
-   nutzen. So klären wir vorher, ob und wie etwas umgesetzt wird, und niemand arbeitet umsonst.
-2. **Kleine Pull Requests.** Ein PR löst ein Problem. Lieber zwei kleine als einen großen.
-3. **UI-Änderung = Screenshots.** Vorher/Nachher, hell und dunkel, in Handybreite.
-4. **Tests und Build müssen grün sein.**
-5. **Keine persönlichen Daten** (IP-Adressen, Seriennummern, API-Schlüssel, Passwörter) in Issues, Code, Screenshots
-   oder Logs.
+The repository is in English: code, comments, commits, issues and documentation. The app UI and all user-facing texts
+stay German, because the app is made for German system owners: texts in the app must be German and understandable for
+non-technical users. Issues and reports in German are welcome and are handled the same way as English ones; the
+issue templates are bilingual.
 
-## Ohne Code helfen
+## In short
 
-- **Fehler melden:** Vorlage „Fehler melden“ wählen. Die Version steht unter Mehr → Über.
-- **Gerät melden:** Unter Mehr → Diagnose einen Bericht erstellen und mit der Vorlage „Gerätebericht“ teilen. Das ist
-  die wichtigste Hilfe, um weitere Wechselrichter und Firmware-Stände zu unterstützen. Die Diagnose liest nur und
-  ändert nichts am Gerät.
-- **Ideen:** Vorlage „Funktionswunsch“. Beschreibe vor allem das Problem, nicht nur die Lösung.
-- **Texte und Übersetzungen:** Unklare Formulierungen in der App sind ein Fehler – bitte melden.
+1. **Issue first, then code.** For anything except typos, please open an issue first or use an existing one. That way
+   we agree beforehand whether and how something gets done, and nobody works for nothing.
+2. **Small pull requests.** One PR solves one problem. Two small ones are better than one big one.
+3. **UI change = screenshots.** Before/after, light and dark, at phone width.
+4. **Tests and build must pass.**
+5. **No personal data** (IP addresses, serial numbers, API keys, passwords) in issues, code, screenshots or logs.
 
-**Sicherheitslücken** bitte nie als öffentliches Issue, sondern wie in [SECURITY.md](SECURITY.md) beschrieben.
+## Helping without code
 
-## Ablauf für Code-Beiträge
+- **Report a bug:** Choose the "Bug report / Fehler melden" template. The version is shown under **Mehr → Über** (More → About).
+- **Report a device:** Create a report under **Mehr → Diagnose** (More → Diagnostics) and share it with the "Device
+  report / Gerätebericht" template. This is the most important help for supporting more inverters and firmware versions. The
+  diagnostics only read and change nothing on the device.
+- **Ideas:** "Feature request / Funktionswunsch" template. Above all, describe the problem, not just the solution.
+- **Texts and wording:** Unclear wording in the app is a bug – please report it.
 
-1. Issue öffnen oder kommentieren, dass du es übernehmen möchtest. Warte bei größeren Änderungen auf eine kurze
-   Rückmeldung zum Lösungsweg.
-2. Repository forken, einen Branch anlegen (`fix/…`, `feature/…`, `docs/…`).
-3. Änderung umsetzen, Tests ergänzen, lokal prüfen (siehe unten).
-4. Pull Request mit der Vorlage öffnen, Titel im [Commit-Format](#commits-und-pr-titel), Issue verlinken (`Fixes #123`).
-5. Review abwarten und Anmerkungen einarbeiten. Bitte keine Force-Pushes, während ein Review läuft.
+**Security vulnerabilities** must never be reported as a public issue; follow [SECURITY.md](SECURITY.md) instead.
 
-## Entwicklungsumgebung
+## Workflow for code contributions
 
-Voraussetzungen: Python 3.11+ und Node.js 22. Eine echte Anlage brauchst du nicht – der Simulator bildet FoxESS- und
-SAJ-Geräte nach, inklusive Proxy-Fehlern und Verzögerungen. Die Befehle stehen im
-[README](README.md#entwicklung-ohne-echte-anlage).
+1. Open an issue or comment that you would like to take it on. For larger changes, wait for brief feedback on the
+   approach.
+2. Fork the repository and create a branch (`fix/…`, `feature/…`, `docs/…`).
+3. Make the change, add tests, check locally (see below).
+4. Open a pull request using the template, with the title in [commit format](#commits-and-pr-titles), and link the
+   issue (`Fixes #123`).
+5. Wait for the review and address the comments. Please do not force-push while a review is in progress.
 
-Vor dem PR:
+## Development environment
+
+Requirements: Python 3.11+ and Node.js 22. You do not need a real system – the simulator emulates FoxESS and SAJ
+devices, including proxy errors and delays. The commands are in the
+[README](README.md#development-without-a-real-system).
+
+Before the PR:
 
 ```bash
 .venv/bin/pytest
@@ -49,98 +56,97 @@ Vor dem PR:
 cd web && npm run build
 ```
 
-Ändern sich Abhängigkeiten, erzeugt ein Befehl Lockfiles und Lizenzliste neu (braucht [uv](https://docs.astral.sh/uv/)).
-Die Dateien gehören in denselben Commit, sonst schlägt die CI fehl, bis der Workflow „Dependency files“ sie nachträgt:
+If dependencies change, one command regenerates the lockfiles and the license list (requires
+[uv](https://docs.astral.sh/uv/)). The files belong in the same commit; otherwise CI fails until the "Dependency
+files" workflow adds them:
 
 ```bash
 scripts/deps.sh
 ```
 
-## Regeln für den Code
+## Code rules
 
-- **Wie der Code drumherum:** Benennung, Kommentardichte und Stil an die Umgebung anpassen. Kommentare und Bezeichner
-  auf Englisch, alle Texte in der App auf Deutsch.
-- **Verständlich für Laien:** Die App richtet sich an Anlagenbesitzer ohne Technikwissen. Keine Fachbegriffe ohne
-  Erklärung, Fehlermeldungen als ganze deutsche Sätze mit einem Hinweis, was man tun kann.
-- **Alles in der App einstellbar:** Neue Optionen gehören in die Oberfläche, nicht nur in eine Konfigurationsdatei.
-- **Demo immer mitziehen:** Die Demo auf der Projektseite ist dieselbe Web-App, nur die Daten kommen aus einer
-  Simulation im Browser (`web/src/demo/`). Neue Oberflächen erscheinen dort automatisch. Liest die App einen neuen
-  API-Endpunkt, braucht er eine Demo-Antwort in `web/src/demo/server.ts` (oder einen Eintrag als nur schreibend bzw.
-  in der Demo nicht nötig). `npm run check:demo` prüft das, die CI auch.
-- **Tests:** Neue Logik bekommt Tests, Fehlerbehebungen einen Test, der den Fehler vorher zeigt. Tests mit dem
-  Simulator stoppen den Collector immer in einem `finally`-Block.
-- **Barrierefreiheit:** Tippflächen mindestens 44 px, ausreichender Kontrast in hell und dunkel, sinnvolle
-  `aria`-Attribute.
-- **Keine neuen Abhängigkeiten** ohne Absprache im Issue.
+- **Match the surrounding code:** Adapt naming, comment density and style to the code around it. Comments and
+  identifiers in English, all texts in the app in German.
+- **Understandable for non-technical users:** The app is aimed at system owners without technical knowledge. No jargon
+  without explanation; error messages as complete German sentences with a hint on what to do.
+- **Everything configurable in the app:** New options belong in the UI, not only in a configuration file.
+- **Always keep the demo up to date:** The demo on the project page is the same web app, only the data comes from a
+  simulation in the browser (`web/src/demo/`). New screens appear there automatically. If the app reads a new API
+  endpoint, it needs a demo response in `web/src/demo/server.ts` (or an entry marking it as write-only or not needed in
+  the demo). `npm run check:demo` checks this, and so does CI.
+- **Tests:** New logic gets tests; bug fixes get a test that shows the bug beforehand. Tests using the simulator always
+  stop the collector in a `finally` block.
+- **Accessibility:** Touch targets at least 44 px, sufficient contrast in light and dark, meaningful `aria` attributes.
+- **No new dependencies** without agreeing on them in the issue.
 
-### Wechselrichter und Steuerung
+### Inverters and control
 
-Fehler beim Schreiben können Geräte, Garantie oder die Netzanschlussbedingungen betreffen. Deshalb gilt zusätzlich:
+Mistakes when writing can affect devices, the warranty or the grid connection requirements. Therefore, additionally:
 
-- **Neue Register nur mit Quelle:** Herstellerdokumentation, ein Projekt mit kompatibler Lizenz (Quelle in
-  `docs/registers.md` und `NOTICE` nennen) oder ein Diagnosebericht von einem echten Gerät.
-- **Schreibende Funktionen** sind nur über die Steuerung erreichbar, respektieren den Testmodus, prüfen Grenzwerte vor
-  dem Schreiben, lesen danach zurück und schreiben ins Protokoll.
-- **Dauerhaftes Steuern** (z. B. Laden nach Preis) nur über die Fernsteuerung mit Watchdog, nie über dauerhaft
-  gespeicherte Register.
-- **Rechtliche Themen** (Einspeisebegrenzung, § 14a EnWG, EEG) im Issue ansprechen, bevor Code entsteht.
+- **New registers only with a source:** manufacturer documentation, a project with a compatible license (name the
+  source in `docs/registers.md` and `NOTICE`) or a diagnostics report from a real device.
+- **Writing functions** are only reachable via the control features, respect test mode, check limits before writing,
+  read back afterwards and write to the log.
+- **Continuous control** (e.g. charging based on price) only via remote control with a watchdog, never via
+  permanently stored registers.
+- **Legal topics** (feed-in limitation, § 14a EnWG, EEG) must be raised in the issue before any code is written.
 
-### Netzbetreiber ergänzen (Zählerwerte)
+### Adding grid operators (meter readings)
 
-Jeder Netzbetreiber hat ein eigenes Kundenportal. Für einen weiteren Netzbetreiber:
+Every grid operator has its own customer portal. To add another grid operator:
 
-1. Ein Modul in `src/openampere/gridmeter/` mit einer Klasse, die `Provider` aus `base.py` erweitert: `meters()` liefert
-   die aktiven Zähler, `daily()` die kWh pro Tag für Bezug (`import`) und Einspeisung (`export`). Fehlermeldungen als
-   `ProviderAuthError` (Anmeldung abgelehnt, wird nicht automatisch wiederholt) oder `ProviderError` (später nochmal).
-2. Die Klasse in `PROVIDERS` in `gridmeter/__init__.py` und den Schlüssel bei `meter.provider` in `config.py` eintragen.
-3. Ein Test mit nachgebautem Portal wie in `tests/test_gridmeter.py`, ohne echte Zugangsdaten.
-4. Die Quelle für Endpunkte und Anmeldung in der Moduldoku und in `NOTICE` nennen. Bevorzugt offizielle Schnittstellen.
+1. A module in `src/openampere/gridmeter/` with a class that extends `Provider` from `base.py`: `meters()` returns the
+   active meters, `daily()` the kWh per day for consumption (`import`) and feed-in (`export`). Errors as
+   `ProviderAuthError` (login rejected, not retried automatically) or `ProviderError` (try again later).
+2. Add the class to `PROVIDERS` in `gridmeter/__init__.py` and the key to `meter.provider` in `config.py`.
+3. A test with a mocked portal as in `tests/test_gridmeter.py`, without real credentials.
+4. Name the source for the endpoints and login in the module docs and in `NOTICE`. Prefer official interfaces.
 
-Speicherung, Abruf alle sechs Stunden, Auswahl der Zähler und die Abrechnung sind für alle Netzbetreiber gleich.
+Storage, fetching every six hours, meter selection and billing are the same for all grid operators.
 
-### Fremder Code und Marken
+### Third-party code and trademarks
 
-- **Kein Code, keine Grafiken und keine Texte aus fremden Apps**, insbesondere nicht aus der Ampere.IQ-App oder deren
-  dekompiliertem Code. Übernommen werden nur Fakten (Registeradressen, Datenformate, Schnittstellen).
-- Code aus anderen Open-Source-Projekten nur mit kompatibler Lizenz und Quellenangabe.
-- Firmen- und Produktnamen nur beschreibend verwenden, siehe [rechtliche Hinweise](README.md#hintergrund--rechtliche-hinweise).
+- **No code, graphics or texts from other apps**, in particular not from the Ampere.IQ app or its decompiled code.
+  Only facts are taken over (register addresses, data formats, interfaces).
+- Code from other open-source projects only with a compatible license and attribution.
+- Use company and product names only descriptively, see the [legal notes](README.md#background--legal-notes).
 
-## Commits und PR-Titel
+## Commits and PR titles
 
-Wir nutzen [Conventional Commits](https://www.conventionalcommits.org/de/v1.0.0/). Die CI prüft das.
+We use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). CI checks this.
 
 ```
-<typ>(<bereich>): <kurze Beschreibung im Imperativ, englisch, klein>
+<type>(<scope>): <short description in imperative mood, English, lowercase>
 ```
 
-Beispiele: `fix(report): keep daily totals after midnight`, `feat(saj): read battery temperature`,
+Examples: `fix(report): keep daily totals after midnight`, `feat(saj): read battery temperature`,
 `docs: explain the VPN setup`.
 
-| Typ | Wofür |
+| Type | Used for |
 |---|---|
-| `feat` | neue Funktion für Nutzer |
-| `fix` | Fehlerbehebung |
-| `docs` | nur Dokumentation |
-| `refactor` | Umbau ohne geänderte Funktion |
-| `perf` | schneller oder sparsamer |
-| `test` | nur Tests |
-| `build` | Docker, Abhängigkeiten, Paketierung |
+| `feat` | new feature for users |
+| `fix` | bug fix |
+| `docs` | documentation only |
+| `refactor` | restructuring without changed behavior |
+| `perf` | faster or more efficient |
+| `test` | tests only |
+| `build` | Docker, dependencies, packaging |
 | `ci` | GitHub Actions |
-| `chore` | Pflege, die in keine andere Kategorie passt |
-| `revert` | nimmt einen Commit zurück |
+| `chore` | maintenance that fits no other category |
+| `revert` | reverts a commit |
 
-- **Bereich** (optional): z. B. `modbus`, `foxess`, `saj`, `report`, `dashboard`, `ui`, `api`, `auth`, `control`,
+- **Scope** (optional): e.g. `modbus`, `foxess`, `saj`, `report`, `dashboard`, `ui`, `api`, `auth`, `control`,
   `charging`, `tariffs`, `import`, `diagnostics`, `docker`, `deps`.
-- **Breaking Changes** (z. B. geänderte Datenbank oder Einstellungen, die man anpassen muss): `!` nach dem Typ,
-  z. B. `feat(api)!: …`, und im Text ein Absatz `BREAKING CHANGE: …` mit der nötigen Anpassung.
-- Im Text das Warum erklären, nicht nur das Was.
-- PRs werden per Squash zusammengeführt; der **PR-Titel** wird dabei zur Commit-Nachricht und muss deshalb ebenfalls
-  diesem Format folgen.
-- Keine Links zu privaten Chats, Tickets oder Sitzungen und keine persönlichen Daten in Commits.
+- **Breaking changes** (e.g. a changed database or settings that users have to adjust): `!` after the type,
+  e.g. `feat(api)!: …`, and a `BREAKING CHANGE: …` paragraph in the body describing the required adjustment.
+- Explain the why in the body, not just the what.
+- PRs are squash-merged; the **PR title** becomes the commit message and must therefore follow this format as well.
+- No links to private chats, tickets or sessions and no personal data in commits.
 
 ## Releases
 
-Releases macht das Maintainer-Team von `main` aus:
+The maintainer team creates releases from `main`:
 
 ```bash
 scripts/release.sh 0.2.0
@@ -150,16 +156,16 @@ scripts/release.sh 0.2.0
 git push origin main v0.2.0
 ```
 
-Das Script setzt die Version in `pyproject.toml` und `web/package.json`, committet sie und legt einen signierten Tag
-an. Der Workflow „Release“ baut daraus das Docker-Image und erstellt das GitHub-Release. Die Release-Notes entstehen
-aus den Commit-Nachrichten seit dem letzten Tag, deshalb lohnen sich gute Commit-Titel: `feat` landet unter „Neu“,
-`fix` unter „Behoben“.
+The script sets the version in `pyproject.toml` and `web/package.json`, commits it and creates a signed tag. The
+"Release" workflow then builds the Docker image and creates the GitHub release. The release notes are generated from
+the commit messages since the last tag, so good commit titles pay off: `feat` ends up under "Neu" (New), `fix` under
+"Behoben" (Fixed).
 
-## Lizenz
+## License
 
-Mit deinem Beitrag stimmst du zu, dass er unter der [MIT-Lizenz](LICENSE) des Projekts veröffentlicht wird.
+By contributing, you agree that your contribution is published under the project's [MIT License](LICENSE).
 
-## Umgang miteinander
+## How we treat each other
 
-Freundlich, sachlich, geduldig – viele hier sind keine Entwickler, sondern Betroffene, die ihre Anlage weiter nutzen
-wollen. Herabsetzende Kommentare werden entfernt.
+Friendly, factual, patient – many people here are not developers but affected owners who want to keep using their
+system. Disparaging comments will be removed.
