@@ -253,6 +253,11 @@ class ExportLimitControl:
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
+        # like the battery settings: not only rely on the driver reporting the limit as unsupported (#113)
+        device = self.runtime.collector.device
+        if device is not None and not device.supports_control:
+            raise ValueError(f"Für {device.manufacturer}-Geräte ist die Steuerung in OpenAmpere noch nicht freigegeben "
+                             "(nur Anzeige).")
         async with control_lock(self.runtime):
             current = await self.read()
             if not current["supported"]:
