@@ -185,7 +185,7 @@ const settings = {
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
     "tariff.feed_in_auto": true, "tariff.feed_in_full": false, "pv.commissioning_date": COMMISSIONED,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
-    "notify.ntfy_url": "", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
+    "notify.ntfy_url": "https://ntfy.sh/openampere-demo4xk7qm2p", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
     "notify.on_battery_health": true, "notify.on_off_grid": true, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
