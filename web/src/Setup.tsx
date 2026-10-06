@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
 import { InverterIcon } from "./icons";
-import { Button, Field, Notice } from "./ui";
+import { Button, Field, LanguageSwitch, Notice } from "./ui";
 import { navigate } from "./route";
 import { t, tx } from "./i18n";
 
@@ -216,7 +216,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
     <div className="page setup">
       {step === "welcome" ? (
         <>
-          <div className="page-head"><h1>{t("setup.setup.welcome")}</h1></div>
+          <div className="page-head with-action"><h1>{t("setup.setup.welcome")}</h1><LanguageSwitch /></div>
           <div className="card">
             <p>{t("setup.setup.intro")}</p>
             <p>{tx("setup.setup.connectsVia", { protocol: <strong>Modbus TCP</strong> })}</p>
