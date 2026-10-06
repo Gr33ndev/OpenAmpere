@@ -13,6 +13,8 @@ body:
         Die Diagnose liest nur und ändert nichts. Die Seriennummer ist im Bericht gekürzt, außer du hast sie ausdrücklich eingeschlossen.
         Welche Geräte unterstützt und schon an echten Anlagen bestätigt sind: [docs/devices.de.md](https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.de.md).
         **Du kannst dein Anliegen gern auf Deutsch schreiben.**
+
+        For developers: how a report becomes a driver or a register fix is described in [Writing a driver](https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/writing-a-driver.md). / Für Entwickler: Wie aus einem Bericht ein Treiber oder eine Registerkorrektur wird, steht in [Writing a driver](https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/writing-a-driver.md).
   - type: input
     id: device
     attributes:

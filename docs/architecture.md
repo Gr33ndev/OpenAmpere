@@ -51,6 +51,8 @@ OpenAmpere is a locally running, open-source app for solar systems with battery 
 | `simulator.py` | Modbus TCP simulator for FoxESS and SAJ, with PV strings, temperatures, export limit and proxy errors. This makes it possible to develop and test without a real system. |
 | `web/` | React PWA: dashboard, report, **Mehr** (More) with all settings, setup wizard. |
 
+How to add support for another device: [Writing a driver](writing-a-driver.md).
+
 ## Data model
 
 - **samples:** Raw values of every poll (power values, state of charge, power per PV input, temperatures). How long they are kept is configurable.
