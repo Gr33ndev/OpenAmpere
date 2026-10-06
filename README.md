@@ -131,6 +131,16 @@ docker compose up -d --build
 
 The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md).
 
+### Verifying a release
+
+Release images are built by the [release workflow](.github/workflows/release.yml) of this repository and come with a signed build provenance attestation and an SBOM. With the [GitHub CLI](https://cli.github.com) you can check that an image really was built here:
+
+```bash
+gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+```
+
+`<version>` is written without the leading `v`, e.g. `0.10.0`, or `latest`. This works for releases after 0.9.0. The SBOM (the list of packages in the image) is shown by `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+
 ### Remote access
 
 OpenAmpere is built for the home network. The safest way to reach it on the go is via a **VPN**.

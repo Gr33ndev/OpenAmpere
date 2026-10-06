@@ -1,8 +1,9 @@
 name: Release
 
 # A version tag (e.g. v0.2.0, made with scripts/release.sh) builds the Docker image for x86 and ARM
-# (Raspberry Pi), publishes it as ghcr.io/<owner>/openampere and creates a GitHub release with notes
-# from the commits since the previous tag. "Run workflow" with a tag only (re)writes that release.
+# (Raspberry Pi), publishes it as ghcr.io/<owner>/openampere with an SBOM and a signed build provenance
+# attestation and creates a GitHub release with notes from the commits since the previous tag.
+# "Run workflow" with a tag only (re)writes that release.
 on:
   push:
     tags: ["v*"]
@@ -22,6 +23,8 @@ jobs:
     permissions:
       contents: read
       packages: write  # publish the image
+      id-token: write      # sign the provenance attestation (Sigstore)
+      attestations: write  # store the attestation
     steps:
       - uses: actions/checkout@v7
       - name: Tag matches the version in pyproject.toml, web/package.json and the Home Assistant integration
@@ -38,20 +41,32 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image  # registry names must be lowercase, the owner is not
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/openampere" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository_owner }}/openampere
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
-      - uses: docker/build-push-action@v7
+      - id: build
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+      # check with: gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false  # storage records exist only for organization-owned repositories
 
   release:
     needs: image
