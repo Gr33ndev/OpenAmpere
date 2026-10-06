@@ -432,8 +432,8 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 .link { min-height: 32px; }
 .update-banner { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px; justify-content: center; align-items: center;
   flex-wrap: wrap; font-size: 14px; background: var(--card); color: var(--text);
-  /* full-width background, content as wide as the page column (.page, 640 px) on wide screens */
-  padding: calc(env(safe-area-inset-top) + 8px) max(16px, calc((100% - 640px) / 2)) 8px;
+  /* full-width background, content in line with the page column (main: 20 px on phones, .page: 640 px) */
+  padding: calc(env(safe-area-inset-top) + 8px) max(20px, calc((100% - 640px) / 2)) 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
 .consumer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .button-row.inline { flex-direction: row; flex-wrap: wrap; gap: 6px 18px; }

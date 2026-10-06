@@ -4,6 +4,8 @@ __pycache__/
 data/
 config.yaml
 web/node_modules/
+web/test-results/
+web/playwright-report/
 src/openampere/web/
 .pytest_cache/
 
