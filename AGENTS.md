@@ -41,12 +41,13 @@ cd web && npm ci && npm run dev                              # web app with live
 cd web && npm run build                                      # tsc + build into src/openampere/web/
 cd web && npm run check:demo                                 # every API endpoint the app uses has a demo answer
 cd web && npm run check:i18n                                 # translation keys, placeholders, plurals, coverage
+cd web && npm run test:ui                                    # UI tests (Playwright, after npm run build; once: npx playwright install chromium webkit)
 scripts/build-site.sh                                        # website + demo into _site/ (needs web/node_modules)
 scripts/i18n_messages.py --missing                           # server messages without a key in locales/de.json
 scripts/deps.sh                                              # after dependency changes: lockfiles + license list (uv)
 ```
 
-CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n), `docker`, `homeassistant`,
+CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n), `ui` (Playwright), `docker`, `homeassistant`,
 `hassfest`, `hacs`, and `check` (Conventional Commits for the PR title and every commit).
 
 ## Rules
@@ -65,7 +66,8 @@ CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n
 - **Demo:** a new API endpoint the app reads needs an answer in `web/src/demo/server.ts` (or a write-only/not-needed
   entry).
 - **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
-  collector in a `finally` block, otherwise the test run hangs.
+  collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
+  into `PAGES` in `web/ui-tests/fixtures.ts`.
 - **No new dependencies** without agreeing in the issue (they also change the license list).
 - **No personal data** (IP addresses, serial numbers, keys, passwords, e-mail addresses) in code, tests, issues,
   commits or screenshots. **No links to private chats, tickets or sessions.**

@@ -108,6 +108,19 @@ Before the PR:
 cd web && npm run build
 ```
 
+UI tests ([Playwright](https://playwright.dev), `web/ui-tests/`) open every page of the built app on a desktop browser
+and an iPhone (Safari's engine), with the API answered by the demo simulation. They fail on errors in the browser
+console and on broken layout rules: nothing wider than the screen, the bottom navigation stays at the bottom while
+scrolling. Once, install the browsers; then run them after `npm run build`:
+
+```bash
+cd web && npx playwright install chromium webkit
+```
+
+```bash
+cd web && npm run test:ui
+```
+
 If dependencies change, one command regenerates the lockfiles and the license list (requires
 [uv](https://docs.astral.sh/uv/)). The files belong in the same commit; otherwise CI fails until the "Dependency
 files" workflow adds them:
