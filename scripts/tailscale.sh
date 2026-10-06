@@ -3,14 +3,17 @@
 # that install.sh sets up when someone wants to use OpenAmpere away from home.
 #
 # Like the updater it reacts to one thing only: the file data/remote/request, which the app writes when someone
-# taps "Einrichten" (login) or "Trennen" (logout). It writes the state of Tailscale back next to it
-# (status.json, the output of `tailscale status --json`). The app itself never gets access to Tailscale.
+# taps "Einrichten" (login), "Trennen" (logout) or switches HTTPS on or off (https-on, https-off: `tailscale serve`
+# with a certificate for openampere.<tailnet>.ts.net, #116). It writes the state of Tailscale back next to it
+# (status.json and serve.json, the output of `tailscale status --json` and `tailscale serve status --json`, plus the
+# output of the last serve command in serve.log). The app itself never gets access to Tailscale.
 # Until someone logs in, Tailscale stays logged out.
 set -u
 
 STATE=${OPENAMPERE_REMOTE_DIR:-/remote}
 SOCKET=/tmp/tailscaled.sock
 NAME=${OPENAMPERE_REMOTE_NAME:-openampere} # name of this machine in the tailnet: openampere.<tailnet>.ts.net
+PORT=${OPENAMPERE_PORT:-8080} # where OpenAmpere listens on this machine, for HTTPS via tailscale serve
 
 mkdir -p "$STATE"
 chown 1000:1000 "$STATE" 2>/dev/null || true # the app (user 1000) writes the request here
@@ -27,16 +30,26 @@ publish() {
   else
     rm -f "$STATE/status.json.tmp"
   fi
+  if ts serve status --json >"$STATE/serve.json.tmp" 2>/dev/null; then
+    mv "$STATE/serve.json.tmp" "$STATE/serve.json"
+  else
+    rm -f "$STATE/serve.json.tmp"
+  fi
 }
 
 login_pid=""
+serve_pid=""
 while true; do
   date +%s >"$STATE/alive"
   if [ -f "$STATE/request" ]; then
     request=$(cat "$STATE/request" 2>/dev/null)
     rm -f "$STATE/request"
-    [ -n "$login_pid" ] && kill "$login_pid" 2>/dev/null
-    login_pid=""
+    case "$request" in
+      login | logout)
+        [ -n "$login_pid" ] && kill "$login_pid" 2>/dev/null
+        login_pid=""
+        ;;
+    esac
     case "$request" in
       login)
         # waits until someone has logged in with the link; the link also shows up in status.json (AuthURL).
@@ -46,6 +59,18 @@ while true; do
         ;;
       logout)
         ts logout >"$STATE/login.log" 2>&1
+        ;;
+      https-on)
+        # HTTPS with a certificate for this machine's tailnet name, forwarded to OpenAmpere. If HTTPS (or serve) is
+        # not enabled in the tailnet yet, Tailscale prints a link to enable it and waits; the app shows that link.
+        [ -n "$serve_pid" ] && kill "$serve_pid" 2>/dev/null
+        ts serve --bg --https=443 "http://127.0.0.1:$PORT" >"$STATE/serve.log" 2>&1 &
+        serve_pid=$!
+        ;;
+      https-off)
+        [ -n "$serve_pid" ] && kill "$serve_pid" 2>/dev/null
+        serve_pid=""
+        ts serve --https=443 off >"$STATE/serve.log" 2>&1
         ;;
     esac
   fi

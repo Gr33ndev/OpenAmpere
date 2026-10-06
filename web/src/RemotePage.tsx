@@ -9,11 +9,13 @@ type RemoteView = {
   available: boolean; port: number;
   state: "unavailable" | "off" | "starting" | "login" | "approval" | "connected" | "stopping" | "failed";
   login_url?: string | null; address?: string | null; name?: string | null; ip?: string | null; account?: string | null;
+  https?: { state: "off" | "starting" | "enable" | "on" | "failed"; url?: string | null; enable_url?: string; error?: string };
 };
 
 const INSTALL = "curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | OPENAMPERE_TAILSCALE=ja bash";
 const DOWNLOAD_URL = "https://tailscale.com/download";
 const ADMIN_URL = "https://login.tailscale.com/admin/machines";
+const DNS_URL = "https://login.tailscale.com/admin/dns";
 const DOCS_URL = `${REPO_URL}/blob/main/README.de.md#zugriff-von-unterwegs`;
 
 /** Access from anywhere with Tailscale (#83): set up with one tap, the tailscale container does the work. */
@@ -23,7 +25,7 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [disconnect, setDisconnect] = useState(false);
 
-  const act = async (action: "login" | "logout") => {
+  const act = async (action: "login" | "logout" | "https_on" | "https_off") => {
     setBusy(true);
     try {
       setData(await postJson<RemoteView>("/api/remote", { action }));
@@ -94,6 +96,7 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
               {data.account && <><dt>{t("settings.remotePage.account")}</dt><dd>{data.account}</dd></>}
             </dl>
           </div>
+          <HttpsCard https={data.https} busy={busy} onSwitch={(on) => void act(on ? "https_on" : "https_off")} />
           <div className="section-title">{t("settings.remotePage.phoneTitle")}</div>
           <div className="card">
             <ol className="steps-list">
@@ -124,5 +127,34 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
         </Dialog>
       )}
     </SubPage>
+  );
+}
+
+/** Optional HTTPS with a certificate for the tailnet name, through `tailscale serve` (#116). */
+function HttpsCard({ https, busy, onSwitch }: {
+  https: RemoteView["https"]; busy: boolean; onSwitch: (on: boolean) => void;
+}) {
+  const state = https?.state ?? "off";
+  return (
+    <>
+      <div className="section-title">{t("settings.remotePage.httpsTitle")}</div>
+      <div className="card form">
+        <p className="hint">{tx("settings.remotePage.httpsHint",
+          { link: <a href={DNS_URL} target="_blank" rel="noopener noreferrer">{t("settings.remotePage.httpsDnsLink")}</a> })}</p>
+        {state === "on" && <Notice kind="ok">{t("settings.remotePage.httpsOn")}</Notice>}
+        {state === "starting" && <p>{t("settings.remotePage.httpsStarting")}</p>}
+        {state === "enable" && https?.enable_url && (
+          <>
+            <Notice kind="info">{t("settings.remotePage.httpsEnable")}</Notice>
+            <a className="btn primary" href={https.enable_url} target="_blank" rel="noopener noreferrer">
+              {t("settings.remotePage.httpsEnableButton")}</a>
+          </>
+        )}
+        {state === "failed" && <Notice kind="error">{t("settings.remotePage.httpsFailed", { error: https?.error ?? "" })}</Notice>}
+        {state === "on" || state === "starting" || state === "enable"
+          ? <Button variant="secondary" disabled={busy} onClick={() => onSwitch(false)}>{t("settings.remotePage.httpsSwitchOff")}</Button>
+          : <Button disabled={busy} onClick={() => onSwitch(true)}>{t("settings.remotePage.httpsSwitchOn")}</Button>}
+      </div>
+    </>
   );
 }
