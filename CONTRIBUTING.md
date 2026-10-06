@@ -3,6 +3,8 @@
 Thanks for wanting to help! OpenAmpere depends on affected owners sharing their devices, bugs and ideas – no
 programming skills needed.
 
+Working with an AI coding agent? Point it to [AGENTS.md](AGENTS.md) (Claude Code reads it through `CLAUDE.md`).
+
 ## Languages
 
 The repository is in English: code, comments, commits, issues and documentation. The app UI and all user-facing texts
