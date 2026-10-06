@@ -170,6 +170,10 @@ class Collector:
                 raise
             except Exception as err:  # keep running whatever the inverter does
                 raise_if_cancelled()
+                try:
+                    self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
+                except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling
+                    log.warning("could not record power cut: %s", note_err)
                 # Single hiccups (timeouts, a Modbus proxy that briefly cannot reach the inverter) keep the
                 # connection; only repeated failures count as "disconnected".
                 if getattr(err, "transient", False) and self.connected and transient_failures < MAX_TRANSIENT:

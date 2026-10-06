@@ -37,8 +37,16 @@ def off_grid(snap: Snapshot) -> bool | None:
     return snap.off_grid
 
 
-def gap_reason(soc: float | None) -> str:
-    """Why there were no readings for a while: the battery ran empty, or only the readings were missing."""
+def gap_reason(current: dict) -> str:
+    """Why there were no readings for a while during an outage:
+    - "inverter_off": OpenAmpere kept running and asked in vain, so it had power and only the inverter was gone
+      (switched off, or the connection was lost) (#93)
+    - "battery_empty": OpenAmpere was not running either and the charge was low before
+    - "no_data": no readings, but the battery was charged
+    """
+    if current.get("polled_in_gap"):
+        return "inverter_off"
+    soc = current.get("soc_last")
     return "battery_empty" if soc is None or soc <= EMPTY_SOC else "no_data"
 
 
@@ -84,8 +92,8 @@ class Outages:
                 self._saved_at = 0.0
             if snap.timestamp - current["last"] > GAP_S and current.get("dark_since") is None:
                 current["dark_since"] = current["last"]  # no readings in between
-                current["gap_reason"] = gap_reason(current["soc_last"])
-            current["last"], current["soc_last"] = snap.timestamp, soc
+                current["gap_reason"] = gap_reason(current)
+            current["last"], current["soc_last"], current["polled_in_gap"] = snap.timestamp, soc, False
             if soc is not None and (current["soc_min"] is None or soc < current["soc_min"]):
                 current["soc_min"] = soc
             current["counters_last"] = _counters(snap)
@@ -104,7 +112,7 @@ class Outages:
         battery = round(discharged - charged, 2) if discharged is not None and charged is not None else None
         dark, reason = current.get("dark_since"), current.get("gap_reason")
         if dark is None and snap.timestamp - current["last"] > GAP_S:
-            dark, reason = current["last"], gap_reason(current["soc_last"])
+            dark, reason = current["last"], gap_reason(current)
         outage = {
             "start": current["start"], "end": snap.timestamp, "duration_s": round(snap.timestamp - current["start"]),
             "soc_start": current["soc_start"], "soc_end": snap.battery_soc, "soc_min": current["soc_min"],
@@ -116,6 +124,13 @@ class Outages:
         self.storage.set_meta("outage_current", None)
         self._current = None
         return outage
+
+    def unreachable(self, now: float) -> None:
+        """The collector could not read the inverter, so OpenAmpere itself is running (#93)."""
+        current = self.current
+        if current is not None and not current.get("polled_in_gap") and now - current["last"] > GAP_S:
+            current["polled_in_gap"] = True
+            self.storage.set_meta("outage_current", current)
 
     def view(self) -> dict:
         history = self.history()
