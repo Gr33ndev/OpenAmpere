@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="{{contentLang}}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{faq.meta.title}}</title>
+  <meta name="description" content="{{faq.meta.description}}" />
+  <meta name="theme-color" content="#f4f4f4" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#21262b" media="(prefers-color-scheme: dark)" />
+  {{alternates}}
+  <link rel="icon" href="{{root}}icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{root}}style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="./"><img src="{{root}}icon.svg" alt="" width="32" height="32" />OpenAmpere</a>
+      <nav aria-label="{{common.nav.label}}">
+        <a href="./#funktionen">{{common.nav.features}}</a>
+        <a href="./#installation">{{common.nav.install}}</a>
+        <a href="faq.html">{{common.nav.faq}}</a>
+        <a href="{{root}}demo/?lang={{lang}}">{{common.nav.demo}}</a>
+        <a href="https://github.com/Gr33ndev/OpenAmpere">GitHub</a>
+        {{languageSwitch}}
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap faq-page">
+    <div class="faq-head">
+      <p class="eyebrow">{{faq.head.eyebrow}}</p>
+      <h1>{{faq.head.title}}</h1>
+      <p class="lead">{{faq.head.lead}}</p>
+      <ul class="topics" aria-label="{{faq.head.topicsLabel}}">
+        <li><a href="#allgemein">{{faq.head.topicGeneral}}</a></li>
+        <li><a href="#anlage">{{faq.head.topicSystem}}</a></li>
+        <li><a href="#sicherheit">{{faq.head.topicSafety}}</a></li>
+        <li><a href="#garantie">{{faq.head.topicWarranty}}</a></li>
+        <li><a href="#hilfe">{{faq.head.topicHelp}}</a></li>
+      </ul>
+    </div>
+
+    <section id="allgemein">
+      <h2>{{faq.general.title}}</h2>
+      <div class="faq-list">
+        <details class="faq">
+          <summary>{{faq.general.whatIsQ}}</summary>
+          <div class="answer">
+            <p>{{faq.general.whatIsA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.general.byEkdQ}}</summary>
+          <div class="answer">
+            <p>{{faq.general.byEkdA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.general.costQ}}</summary>
+          <div class="answer">
+            <p>{{faq.general.costA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.general.dataQ}}</summary>
+          <div class="answer">
+            <p>{{faq.general.dataA}}</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="anlage">
+      <h2>{{faq.system.title}}</h2>
+      <div class="faq-list">
+        <details class="faq">
+          <summary>{{faq.system.compatibleQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.compatibleA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.system.cloudGoneQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.cloudGoneA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.system.historyQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.historyA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.system.inverterSettingsQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.inverterSettingsA}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.system.smartboxQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.smartboxA}}</p>
+            <p>{{faq.system.smartboxCaution}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.system.remoteQ}}</summary>
+          <div class="answer">
+            <p>{{faq.system.remoteA}}</p>
+            <p>{{faq.system.remoteVpn}}</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="sicherheit">
+      <h2>{{faq.safety.title}}</h2>
+      <div class="faq-list">
+        <details class="faq">
+          <summary>{{faq.safety.breakQ}}</summary>
+          <div class="answer">
+            <p>{{faq.safety.breakA}}</p>
+            <p>{{faq.safety.breakAdvice}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.safety.exportLimitQ}}</summary>
+          <div class="answer">
+            <p>{{faq.safety.exportLimitA}}</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="garantie">
+      <h2>{{faq.warranty.title}}</h2>
+      <p class="notice">{{faq.warranty.notice}}</p>
+      <div class="faq-list">
+        <details class="faq">
+          <summary>{{faq.warranty.loseQ}}</summary>
+          <div class="answer">
+            <p>{{faq.warranty.loseA}}</p>
+            <p>{{faq.warranty.loseCaveat}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.warranty.termsQ}}</summary>
+          <div class="answer">
+            <ul>
+              <li>{{faq.warranty.termsStatutory}}</li>
+              <li>{{faq.warranty.termsGuarantee}}</li>
+              <li>{{faq.warranty.termsManufacturer}}</li>
+            </ul>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.warranty.worthQ}}</summary>
+          <div class="answer">
+            <p>{{faq.warranty.worthA}}</p>
+            <p>{{faq.warranty.worthOpen}}</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>{{faq.warranty.whatToDoQ}}</summary>
+          <div class="answer">
+            <ul>
+              <li>{{faq.warranty.whatToDoDocuments}}</li>
+              <li>{{faq.warranty.whatToDoHistory}}</li>
+              <li>{{faq.warranty.whatToDoDefects}}</li>
+              <li>{{faq.warranty.whatToDoManufacturer}}</li>
+              <li>{{faq.warranty.whatToDoNotices}}</li>
+              <li>{{faq.warranty.whatToDoAdvice}}</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="hilfe">
+      <h2>{{faq.help.title}}</h2>
+      <div class="faq-list">
+        <details class="faq">
+          <summary>{{faq.help.setupQ}}</summary>
+          <div class="answer">
+            <p>{{faq.help.setupA}}</p>
+          </div>
+        </details>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="{{root}}demo/?lang={{lang}}">{{faq.help.demoButton}}</a>
+        <a class="btn secondary" href="./#installation">{{faq.help.installButton}}</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p><a href="impressum.html">{{common.footer.imprint}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere">{{common.footer.source}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">{{common.footer.license}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">{{common.footer.security}}</a></p>
+      <p class="small">{{common.footer.evcc}}</p>
+      <p class="small">{{common.footer.noTracking}}
+        {{common.footer.font}}</p>
+    </div>
+  </footer>
+</body>
+</html>

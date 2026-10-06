@@ -72,7 +72,19 @@ p { margin: 0 0 12px; }
 nav { display: flex; gap: 4px 18px; flex-wrap: wrap; justify-content: flex-end; }
 nav a { color: var(--text); text-decoration: none; font-size: 15px; padding: 10px 0; }
 nav a:hover { color: var(--accent-text); }
-@media (max-width: 560px) { nav a[href="./#funktionen"], nav a[href="./#installation"] { display: none; } }
+@media (max-width: 620px) { nav a[href="./#funktionen"], nav a[href="./#installation"] { display: none; } }
+/* language switch (#104): a small segmented control at the end of the nav; the ::after enlarges the touch target */
+.lang-switch { display: flex; align-self: center; gap: 2px; padding: 3px; border: 1px solid var(--line);
+  border-radius: 999px; background: var(--card); }
+nav .lang-switch a { position: relative; padding: 2px 8px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  line-height: 1.5; letter-spacing: 0.03em; color: var(--label); }
+nav .lang-switch a::after { content: ""; position: absolute; inset: -9px -1px; }
+nav .lang-switch a:hover { color: var(--text); }
+nav .lang-switch a[aria-current] { background: var(--text); color: var(--bg); }
+/* the header stays one row with the switch: the least needed links go first (GitHub and the demo are also linked
+   from the page itself) */
+@media (max-width: 700px) { nav > a[href="https://github.com/Gr33ndev/OpenAmpere"] { display: none; } }
+@media (max-width: 420px) { nav > a[href*="demo/"] { display: none; } }
 
 /* hero */
 .hero { padding: 48px 0 8px; }

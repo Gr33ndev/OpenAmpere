@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Builds the project website into _site/: landing page (site/) + demo of the web app (_site/demo/).
 # Usage (from the repository root, after `npm ci` in web/): scripts/build-site.sh
+# The pages are rendered by scripts/build-site-pages.mjs from the templates in site/pages/ and the texts in
+# site/locales/<lang>/: German at the root (index.html, faq.html, impressum.html), every other language of the site
+# or of the web app (web/src/locales/) in _site/<lang>/. A new language needs only a new folder, see that script.
 # The site comes from the working tree, but install.sh, tailscale.sh and updater.sh (plus their SHA256SUMS)
 # come from the newest stable release tag, so a change on main reaches new installations only with a
 # release. SCRIPTS_REF=<git ref> takes them from another ref instead (e.g. SCRIPTS_REF=HEAD). Without a
@@ -13,7 +16,8 @@ scripts_ref=${SCRIPTS_REF:-$(git tag -l 'v*' --sort=-v:refname 2>/dev/null | gre
 
 rm -rf _site
 (cd web && npm run build:demo)
-cp site/index.html site/impressum.html site/faq.html site/style.css _site/
+node scripts/build-site-pages.mjs _site
+cp site/style.css _site/
 cp web/public/icon.svg _site/
 if [ -n "$scripts_ref" ]; then
   echo "install scripts from $scripts_ref"
