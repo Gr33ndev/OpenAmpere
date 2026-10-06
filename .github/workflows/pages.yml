@@ -6,6 +6,12 @@ on:
   push:
     branches: [main]
     paths: ["site/**", "web/**", "scripts/build-site.sh", ".github/workflows/pages.yml"]
+  # the install scripts on the site come from the newest release tag (see scripts/build-site.sh), so they
+  # go live once a release is done. Not "release: published": a release made with GITHUB_TOKEN starts no
+  # other workflows, and a tag ref would not pass the github-pages environment's branch rule.
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -17,12 +23,15 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: read  # configure-pages reads the Pages settings
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the release tags for the install scripts
       - uses: actions/setup-node@v7
         with:
           node-version: 22

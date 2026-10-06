@@ -2,8 +2,8 @@ name: Release
 
 # A version tag (e.g. v0.2.0, made with scripts/release.sh) builds the Docker image for x86 and ARM
 # (Raspberry Pi), publishes it as ghcr.io/<owner>/openampere with an SBOM and a signed build provenance
-# attestation and creates a GitHub release with notes from the commits since the previous tag.
-# "Run workflow" with a tag only (re)writes that release.
+# attestation and creates a GitHub release with notes from the commits since the previous tag and the
+# install scripts plus SHA256SUMS attached. "Run workflow" with a tag only (re)writes that release.
 on:
   push:
     tags: ["v*"]
@@ -86,14 +86,21 @@ jobs:
         run: |
           python3 scripts/release_notes.py "$TAG" > notes.md
           cat notes.md
+          # the install scripts as of the tag (a manual run checks out main) with checksums to verify a download
+          mkdir assets
+          for f in install.sh tailscale.sh updater.sh; do
+            if git cat-file -e "$TAG:scripts/$f" 2>/dev/null; then git show "$TAG:scripts/$f" > "assets/$f"; fi
+          done
+          (cd assets && sha256sum *.sh > SHA256SUMS && cat SHA256SUMS)
           # only the highest stable version is "Latest", also when an older release is written afterwards
           newest=$(git tag -l 'v*' --sort=-v:refname | grep -v -- - | head -n 1)
           latest=$([ "$TAG" = "$newest" ] && echo true || echo false)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --notes-file notes.md --latest="$latest"
+            gh release upload "$TAG" assets/* --clobber
           else
             flags=""
             case "$TAG" in *-*) flags="--prerelease" ;; esac
             gh release create "$TAG" --verify-tag --title "OpenAmpere ${TAG#v}" --notes-file notes.md \
-              --latest="$latest" $flags
+              --latest="$latest" $flags assets/*
           fi
