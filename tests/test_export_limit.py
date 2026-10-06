@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import replace
 from datetime import datetime
 
 import pytest
@@ -118,6 +119,23 @@ async def test_export_limit_dry_run_and_unsupported(tmp_path):
         with pytest.raises(ValueError):
             await control.write(5000)
         await runtime.collector.stop()
+
+
+async def test_export_limit_not_written_to_a_device_without_control(tmp_path):
+    """#113: even if a driver reports the export limit as supported, a read-only device is never written."""
+    sim, server, port = await start()
+    async with server:
+        runtime = await connected_runtime(tmp_path, port)
+        try:
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
+            runtime.collector.device = replace(runtime.collector.device, supports_control=False)
+            with pytest.raises(ValueError, match="nur Anzeige"):
+                await ExportLimitControl(runtime).write(5000)
+            assert sim.energy.export_limit_w == 6000
+            # refused before anything was tried: no export limit entry in the control log
+            assert not [e for e in runtime.storage.control_log() if e["action"] == "export_limit"]
+        finally:
+            await runtime.collector.stop()
 
 
 def test_export_limit_api_requires_confirmation(tmp_path, authed):
