@@ -29,9 +29,7 @@ on:
         default: false
 
 permissions:
-  contents: write  # commit the regenerated files
-  actions: write  # start CI for that commit
-  pull-requests: write  # open the weekly update pull request
+  contents: read
 
 concurrency:
   group: dependencies-${{ github.ref }}-${{ github.event_name == 'schedule' || inputs.upgrade }}
@@ -43,6 +41,10 @@ env:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # commit the regenerated files
+      actions: write  # start CI for that commit
+      pull-requests: write  # open the weekly update pull request
     env:
       UPGRADE: ${{ github.event_name == 'schedule' || inputs.upgrade == true }}
     steps:
