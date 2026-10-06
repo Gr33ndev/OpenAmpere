@@ -97,6 +97,16 @@ freigegeben ist. Anleitung und Details: [docs/homeassistant.de.md](docs/homeassi
 curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
+Lieber erst prüfen, dann ausführen? Dann das Script mit seinen Helfern und `SHA256SUMS` aus dem [neuesten Release](https://github.com/Gr33ndev/OpenAmpere/releases/latest) laden, die Prüfsummen vergleichen und es danach starten. Liegen die Helfer daneben, nimmt `install.sh` diese, statt sie nachzuladen:
+
+```bash
+mkdir openampere-install && cd openampere-install
+for f in install.sh updater.sh tailscale.sh SHA256SUMS; do
+  curl -fsSLO "https://github.com/Gr33ndev/OpenAmpere/releases/latest/download/$f"
+done
+sha256sum -c SHA256SUMS && bash install.sh
+```
+
 Das Script installiert bei Bedarf Docker, fragt nach dem Ordner (Standard `/opt/openampere`), ob es evcc für eine Wallbox mit einrichten soll und ob du OpenAmpere auch von unterwegs nutzen willst (Tailscale, siehe [Zugriff von unterwegs](#zugriff-von-unterwegs)). Beim erneuten Ausführen bleiben die Antworten erhalten. Zeitzone und einen freien Port erkennt es selbst. Am Ende zeigt es die Adresse der App. Was es tut, steht in [scripts/install.sh](scripts/install.sh).
 
 **Updates:** Gibt es eine neue Version, zeigt die App oben einen Hinweis, ein Tipp auf **Aktualisieren** genügt. Unter Mehr → Über OpenAmpere lassen sich Updates auch nachts automatisch installieren. Dafür richtet das Install-Script einen kleinen Helfer-Container ein ([scripts/updater.sh](scripts/updater.sh)): Er hat Zugriff auf Docker, reagiert aber nur auf eine Anfrage-Datei, die die App in den Datenordner schreibt. Dann lädt er die neue Version, startet sie und prüft, ob sie läuft. Startet sie nicht, kommt die bisherige Version zurück. Die App selbst bekommt keinen Zugriff auf Docker. Nach neuen Versionen sucht die App alle 6 Stunden bei GitHub, das lässt sich abschalten. Wer schon vorher mit dem Script installiert hat, führt es einmal erneut aus, damit der Helfer dazukommt.
@@ -126,6 +136,18 @@ docker compose up -d --build
 ```
 
 Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.de.md](docs/evcc.de.md).
+
+### Release prüfen
+
+Die Release-Images baut der [Release-Workflow](.github/workflows/release.yml) dieses Repositorys, mit signiertem Herkunftsnachweis (Build Provenance) und SBOM. Mit der [GitHub CLI](https://cli.github.com) lässt sich prüfen, ob ein Image wirklich hier gebaut wurde:
+
+```bash
+gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+```
+
+`<version>` steht ohne führendes `v`, z. B. `0.10.0`, oder `latest`. Das geht für Releases nach 0.9.0. Die SBOM (die Liste der Pakete im Image) zeigt `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+
+`install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
 
 ### Zugriff von unterwegs
 

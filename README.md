@@ -101,6 +101,16 @@ Instructions and details: [docs/homeassistant.md](docs/homeassistant.md).
 curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
 ```
 
+Prefer to check the script before it runs? Download it with its helpers and `SHA256SUMS` from the [latest release](https://github.com/Gr33ndev/OpenAmpere/releases/latest), compare the checksums and then start it. With the helpers next to it, `install.sh` uses those instead of downloading them:
+
+```bash
+mkdir openampere-install && cd openampere-install
+for f in install.sh updater.sh tailscale.sh SHA256SUMS; do
+  curl -fsSLO "https://github.com/Gr33ndev/OpenAmpere/releases/latest/download/$f"
+done
+sha256sum -c SHA256SUMS && bash install.sh
+```
+
 The script installs Docker if needed and asks for the folder (default `/opt/openampere`), whether it should also set up evcc for a wallbox, and whether you want to use OpenAmpere on the go as well (Tailscale, see [Remote access](#remote-access)). When run again, the answers are kept. It detects the time zone and a free port by itself. At the end it shows the address of the app. What it does is in [scripts/install.sh](scripts/install.sh).
 
 **Updates:** when a new version is available, the app shows a notice at the top; a tap on **Aktualisieren** (Update) is all it takes. Under **Mehr → Über OpenAmpere** (More → About OpenAmpere), updates can also be installed automatically at night. For this, the install script sets up a small helper container ([scripts/updater.sh](scripts/updater.sh)): it has access to Docker, but only reacts to a request file that the app writes into the data folder. It then pulls the new version, starts it and checks that it is running. If it doesn't start, the previous version is restored. The app itself gets no access to Docker. The app checks GitHub for new versions every 6 hours; this can be turned off. If you installed with the script before, run it once more so the helper is added.
@@ -130,6 +140,18 @@ docker compose up -d --build
 ```
 
 The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md).
+
+### Verifying a release
+
+Release images are built by the [release workflow](.github/workflows/release.yml) of this repository and come with a signed build provenance attestation and an SBOM. With the [GitHub CLI](https://cli.github.com) you can check that an image really was built here:
+
+```bash
+gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+```
+
+`<version>` is written without the leading `v`, e.g. `0.10.0`, or `latest`. This works for releases after 0.9.0. The SBOM (the list of packages in the image) is shown by `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+
+`install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
 
 ### Remote access
 
