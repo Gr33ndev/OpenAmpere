@@ -26,6 +26,7 @@ class Check:
     status: str = "info"  # ok | warn | error | info | skipped
     summary: str = ""
     details: dict = field(default_factory=dict)
+    hint: str = ""  # what it means and what to do, shown below the result
 
 
 def _mask(serial: str | None) -> str | None:
@@ -55,6 +56,33 @@ class Diagnostics:
             return {"ok": False, "error": "abgelehnt", "detail": str(err)}
         except (ModbusTransientError, ModbusReadError, OSError, asyncio.TimeoutError) as err:
             return {"ok": False, "error": "keine Antwort", "detail": str(err)}
+
+    async def _remote_control(self, register_map) -> Check:
+        """Who controls the battery from outside right now: nobody, OpenAmpere itself (charging from the grid) or
+        another device, usually the previous smartbox following targets from its cloud."""
+        enable = register_map.settings["remote_enable"]
+        title = f"Fernsteuerung ({enable.address})"
+        r = await self._try(enable.address, 4, 3)  # on/off, watchdog timeout, power (32 bit)
+        if not r["ok"]:
+            return Check("remote", title, "info", f"nicht lesbar ({r['error']})")
+        on, timeout = r["words"][0], r["words"][1]
+        power = (r["words"][2] << 16) | r["words"][3]
+        power = power - 0x100000000 if power & 0x80000000 else power
+        details = {"words": r["words"], "timeout_s": timeout, "power_w": power}
+        if not on:
+            return Check("remote", title, "ok", "aus – kein Gerät steuert den Speicher gerade von außen", details)
+        # negative = the battery charges (sign not verified on every device, the raw value is in the details)
+        what = f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0 else "0 W (Speicher ruht)"
+        lapse = f"die Vorgabe endet von selbst, wenn sie nicht innerhalb von {timeout} s erneuert wird"
+        if getattr(self._driver(), "_remote_owned", False):
+            return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}, {lapse}", details,
+                         "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
+        return Check("remote", title, "warn", f"an – ein anderes Gerät gibt dem Speicher {what} vor, {lapse}", details,
+                     "Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres Herstellers um und "
+                     "kann dabei das Laden aus dem Netz und die Speicher-Einstellungen von OpenAmpere überschreiben. "
+                     "Wenn du das nicht möchtest: der Smartbox im Router den Internetzugang sperren oder sie abklemmen "
+                     "(vorher klären, ob sie für etwas anderes gebraucht wird), siehe README „Die bisherige Smartbox "
+                     "setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")
 
     async def run(self, *, connection_test: bool = False, include_serial: bool = False) -> dict:
         if self.running:
@@ -167,12 +195,7 @@ class Diagnostics:
             connected = {0: "nein", 1: "ja"}.get(r["words"][0], f"unbekannter Wert {r['words'][0]}") if r["ok"] else None
             checks.append(Check("bms1", "Batterie verbunden (37002)", "info", connected or r["error"], {"words": r.get("words")}))
 
-            # remote control state (another master?)
-            r = await self._try(register_map.settings["remote_enable"].address, 1, 3)
-            active = r["ok"] and bool(r["words"][0])
-            checks.append(Check("remote", "Fernsteuerung aktiv?", "warn" if active else "ok",
-                                "Ein anderes Gerät steuert den Wechselrichter gerade." if active else "nicht aktiv",
-                                {"words": r.get("words")}))
+            checks.append(await self._remote_control(register_map))
 
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
