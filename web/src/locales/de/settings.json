@@ -193,6 +193,7 @@
     "batteryOverwritten": "Ein anderes Gerät hat die Speicher-Einstellung geändert: {changes}.",
     "batterySettings": "Speicher-Einstellung geändert: {changes}.",
     "byApp": "in der App",
+    "byAppAccess": "{name} (Zugang für Apps)",
     "byAuto": "automatisch",
     "byNight": "automatisch in der Nacht",
     "byOtherDevice": "von einem anderen Gerät",

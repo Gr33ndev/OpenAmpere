@@ -1,8 +1,9 @@
 import { kw, num, percent, timeZone } from "./format";
 import { LOCALE, list, t } from "./i18n";
 
-/** One entry of /api/control/log. `details` differs per action and was not always an object (#153). */
-export type LogEntry = { ts: number; action: string; details: unknown; dry_run: boolean; result: string };
+/** One entry of /api/control/log. `details` differs per action and was not always an object; `result` is the stored
+ * German text, `note` the reason or error from it in the app's language (#153). */
+export type LogEntry = { ts: number; action: string; details: unknown; dry_run: boolean; result: string; note?: string | null };
 
 export type LogStatus = "ok" | "test" | "warning" | "error";
 
@@ -168,7 +169,10 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
 }
 
 function by(e: LogEntry, details: Values): string {
-  if (typeof details.source === "string" && details.source) return details.source;
+  if (typeof details.source === "string" && details.source) { // "Home Assistant (Zugang für Apps)", made by the server
+    const app = /^(.*) \(Zugang für Apps\)$/.exec(details.source)?.[1];
+    return app ? t("settings.controlLog.byAppAccess", { name: app }) : details.source;
+  }
   switch (e.action) {
     case "update": return (details.by ?? e.result) === "auto" ? t("settings.controlLog.byNight") : t("settings.controlLog.byApp");
     case "grid_charging": return t("settings.controlLog.byAuto");
@@ -185,32 +189,15 @@ function status(e: LogEntry): LogStatus {
   return "ok";
 }
 
-/** The server's result text without what the sentence and the status already say. */
-const NOTES: [RegExp, string | null][] = [
-  [/^(ok|manual|auto|kein Stromausfall|von einem anderen Gerät überschrieben|nicht ausgeführt \(Testmodus\)|nicht gesendet \(Testmodus\))$/, null],
-  [/^nicht (?:geschaltet|gesendet) \(Testmodus\): (.*)$/s, "$1"],
-  [/^würde laden \((.*)\) – Testmodus$/s, "$1"],
-  [/^Laden gestartet \((.*)\)$/s, "$1"],
-  [/^Laden beendet: (.*)$/s, "$1"],
-  [/^Fernsteuerung nachträglich abgeschaltet: (.*)$/s, "$1"],
-];
-
-function note(result: string): string | null {
-  for (const [pattern, replacement] of NOTES) {
-    if (pattern.test(result)) return replacement === null ? null : result.replace(pattern, replacement);
-  }
-  return result.trim() || null;
-}
-
 /** Never throws: an entry of an unknown or broken shape becomes a general sentence (#153). */
 export function describe(e: LogEntry): DescribedEntry {
   const entry = { ...e, action: str(e.action), result: str(e.result) };
   const details = obj(entry.details);
   try {
     return { text: sentence(entry, details, obj(details.from), obj(details.to)), by: by(entry, details), status: status(entry),
-      note: note(entry.result) };
+      note: e.note ?? null };
   } catch {
-    return { text: t("settings.controlLog.unknown", { action: entry.action }), by: "", status: status(entry), note: entry.result || null };
+    return { text: t("settings.controlLog.unknown", { action: entry.action }), by: "", status: status(entry), note: e.note ?? null };
   }
 }
 

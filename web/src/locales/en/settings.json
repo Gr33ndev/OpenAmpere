@@ -193,6 +193,7 @@
     "batteryOverwritten": "Another device changed the battery settings: {changes}.",
     "batterySettings": "Battery settings changed: {changes}.",
     "byApp": "in the app",
+    "byAppAccess": "{name} (app access)",
     "byAuto": "automatically",
     "byNight": "automatically at night",
     "byOtherDevice": "by another device",

@@ -34,7 +34,7 @@ VERIFY_AFTER_S = 90  # the battery must be charging this long after the first co
 MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
 AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
-STARTED = "Laden gestartet"
+STARTED = "Laden gestartet"  # start of the result logged when charging starts, see tick()
 
 
 @dataclass
@@ -197,7 +197,7 @@ class GridCharging:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
                                                                               "target_soc": s.target_soc}},
-                                        False, f"{STARTED} ({plan['reason']})")
+                                        False, f"Laden gestartet ({plan['reason']})")
 
     async def stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging and switches the remote control off. Called on every tick without charging, so a switch-off
@@ -235,11 +235,10 @@ class GridCharging:
                 self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten")
         elif was_active:
             self._log_stop(f"Laden beendet: {reason}")
-        elif switched_off and pending:
-            self._log_stop("Fernsteuerung nachträglich abgeschaltet: Sie war vom Laden aus dem Netz noch an")
         elif switched_off:
-            self._log_stop("Fernsteuerung nachträglich abgeschaltet: Der Wechselrichter hatte die Werte von OpenAmpere "
-                           "wieder eingeschaltet, zum Beispiel nach einem Neustart")
+            reason = ("Sie war vom Laden aus dem Netz noch an" if pending else "Der Wechselrichter hatte die Werte von "
+                      "OpenAmpere wieder eingeschaltet, zum Beispiel nach einem Neustart")
+            self._log_stop(f"Fernsteuerung nachträglich abgeschaltet: {reason}")
 
     def _log_stop(self, result: str) -> None:
         snap = self.runtime.collector.latest

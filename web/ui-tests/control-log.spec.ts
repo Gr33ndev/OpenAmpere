@@ -18,8 +18,8 @@ const ENTRIES = [
   { action: "battery_settings_check", details: { from: { min_soc_on_grid: 20 }, to: { min_soc_on_grid: 15 } }, dry_run: false,
     result: "von einem anderen Gerät überschrieben" },
   { action: "consumer", details: { from: { consumer: "Heizstab", on: false }, to: { consumer: "Heizstab", on: true } }, dry_run: true,
-    result: "nicht geschaltet (Testmodus): Überschuss 2600 W" },
-  { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort" },
+    result: "nicht geschaltet (Testmodus): Überschuss 2600 W", note: "Überschuss 2600 W" },
+  { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort", note: "Fehler: keine Antwort" },
 ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
 
 test("control log entries read as sentences and can be exported", async ({ page, api }) => {
@@ -43,6 +43,10 @@ test("control log entries read as sentences and can be exported", async ({ page,
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();
   await expect(page.getByText("Testmodus – nichts geändert", { exact: false })).toBeVisible();
+  await expect(page.getByText("Home Assistant (Zugang für Apps)", { exact: false }).first()).toBeVisible();
+  // the reason from the server, without repeating what the sentence says
+  await expect(page.getByText("Überschuss 2600 W", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fehler: keine Antwort", { exact: true })).toBeVisible();
   // the update used to be listed character by character, the trigger as a raw word
   const visible = await page.locator(".log-row > div").allInnerTexts();
   expect(visible.join("\n")).not.toMatch(/\b0: 0|\bmanual\b|→/);
