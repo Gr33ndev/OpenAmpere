@@ -210,5 +210,3 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
 .release h3 { margin: 18px 0 6px; font-size: 17px; }
 .release ul { margin: 0; padding-left: 20px; overflow-wrap: anywhere; }
 .release li { margin: 4px 0; }
-.release details summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; margin-top: 10px; }
-.release details ul { color: var(--label); }

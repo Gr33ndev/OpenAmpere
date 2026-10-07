@@ -42,7 +42,7 @@ const out = process.argv[2] ?? "_site";
 const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}/g;
 const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog"]);
 const CHANGELOG_FILE = "web/public/changelog.json";
-const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "moreChanges"].map((k) => `changelog.list.${k}`);
+const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
 
 const errors = [];
@@ -111,14 +111,13 @@ function renderChangelog(text, contentLang) {
   const part = (title, items) => (items.length ? `<h3>${title}</h3>${list(items)}` : "");
   return changelog.map((v) => {
     const date = new Date(`${v.date}T12:00:00Z`).toLocaleDateString(contentLang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-    const other = v.groups.other.length
-      ? `<details><summary>${text("changelog.list.moreChanges").replace("{count}", v.groups.other.length)}</summary>${list(v.groups.other)}</details>` : "";
     return `<section class="release" id="v${escapeText(v.version)}">`
       + `<h2>${text("changelog.list.version").replace("{version}", escapeText(v.version))}</h2>`
       + `<p class="date"><time datetime="${escapeText(v.date)}">${date}</time></p>`
       + (v.first ? `<p>${text("changelog.list.first")}</p>` : "")
       + part(text("changelog.list.attention"), v.breaking) + part(text("changelog.list.new"), v.groups.feat)
-      + part(text("changelog.list.fixed"), v.groups.fix) + part(text("changelog.list.faster"), v.groups.perf) + other
+      + part(text("changelog.list.fixed"), v.groups.fix) + part(text("changelog.list.faster"), v.groups.perf)
+      + part(text("changelog.list.otherChanges"), v.groups.other)
       + "</section>";
   }).join("\n    ");
 }

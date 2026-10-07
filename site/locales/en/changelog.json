@@ -15,6 +15,6 @@
     "new": "New",
     "fixed": "Fixed",
     "faster": "Faster",
-    "moreChanges": "More changes ({count})"
+    "otherChanges": "Other changes"
   }
 }

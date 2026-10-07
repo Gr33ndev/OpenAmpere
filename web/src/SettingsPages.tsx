@@ -1026,7 +1026,7 @@ export function ChangelogPage({ onBack }: PageProps) {
   const { data, error, reload } = useResource<{ versions: ChangelogVersion[] }>(CHANGELOG_URL);
   const { data: status } = useResource<Status>("/api/status");
   const sections = [["feat", t("settings.changelogPage.new")], ["fix", t("settings.changelogPage.fixed")],
-    ["perf", t("settings.changelogPage.faster")]] as const;
+    ["perf", t("settings.changelogPage.faster")], ["other", t("settings.changelogPage.otherChanges")]] as const;
   return (
     <SubPage title={t("settings.changelogPage.title")} onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
@@ -1043,12 +1043,6 @@ export function ChangelogPage({ onBack }: PageProps) {
           {sections.map(([group, title]) => v.groups[group].length > 0 && (
             <Fragment key={group}><h3>{title}</h3><ChangeList items={v.groups[group]} /></Fragment>
           ))}
-          {v.groups.other.length > 0 && (
-            <details className="help">
-              <summary>{t("settings.changelogPage.moreChanges", { count: v.groups.other.length })}</summary>
-              <ChangeList items={v.groups.other} />
-            </details>
-          )}
         </div>
       ))}
     </SubPage>
