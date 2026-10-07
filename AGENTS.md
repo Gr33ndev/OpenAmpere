@@ -69,8 +69,16 @@ CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n
   collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
   into `PAGES` in `web/ui-tests/fixtures.ts`.
 - **No new dependencies** without agreeing in the issue (they also change the license list).
-- **No personal data** (IP addresses, serial numbers, keys, passwords, e-mail addresses) in code, tests, issues,
-  commits or screenshots. **No links to private chats, tickets or sessions.**
+- **No personal data** in code, tests, docs, issues, PRs, commits or screenshots: names, e-mail and postal addresses,
+  locations, IP and MAC addresses, host and tailnet names, serial numbers, meter, customer and Marktstammdatenregister
+  numbers, keys, passwords, tokens. **No links to private chats, tickets or sessions.**
+- **Nothing that identifies an installation** either: exact system size (kWp, battery kWh), commissioning date,
+  roof orientation, exact model and firmware of a user's device, real energy figures, dates and times of a user's
+  actions or outages. Many plants can be found in the public Marktstammdatenregister by size and date. Use round
+  example values ("about 10 kWp", "a FoxESS H3", "at night").
+- **Reports, logs and screenshots from users** (diagnostics, control log, app screenshots) contain such data, e.g.
+  the IP address in connection errors, the shortened serial number, model, firmware and timestamps. Quote only what
+  the issue needs (usually register values) and check the text before posting.
 - **Legal/trademarks:** no code, graphics or texts from the Ampere.IQ app. Name companies and products only
   descriptively. Keep the "no affiliation" and "not legal advice" notes intact when editing README or website.
 
