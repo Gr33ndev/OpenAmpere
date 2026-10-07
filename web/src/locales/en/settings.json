@@ -76,11 +76,8 @@
     "fixed": "Fixed",
     "installed": "Installed",
     "intro": "What changed in every version, taken directly from development.",
-    "moreChanges": {
-      "one": "1 more change",
-      "other": "{count} more changes"
-    },
     "new": "New",
+    "otherChanges": "Other changes",
     "title": "Changelog",
     "version": "Version {version}"
   },

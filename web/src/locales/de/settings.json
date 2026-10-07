@@ -76,11 +76,8 @@
     "fixed": "Behoben",
     "installed": "Installiert",
     "intro": "Was sich in jeder Version geändert hat. Die Einträge kommen direkt aus der Entwicklung und sind deshalb auf Englisch.",
-    "moreChanges": {
-      "one": "1 weitere Änderung",
-      "other": "{count} weitere Änderungen"
-    },
     "new": "Neu",
+    "otherChanges": "Weitere Änderungen",
     "title": "Changelog",
     "version": "Version {version}"
   },
