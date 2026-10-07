@@ -146,3 +146,56 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             assert runtime.storage.get_meta("remote_command")["released"]
         finally:
             await runtime.collector.stop()
+
+
+async def test_values_brought_back_after_an_inverter_restart_are_switched_off(tmp_path):
+    """#143: the inverter may restore OpenAmpere's values (1 / 180 s) after its own restart, after OpenAmpere had
+    switched them off. For a few minutes after a new connection they are switched off again, others' never."""
+    import time
+
+    from openampere.charging import AFTER_CONNECT_S
+    sim, server, runtime = await connected(tmp_path)
+    async with server:
+        try:
+            await runtime.update_settings({"control.dry_run": False})
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            charging.save({**charging.view()["settings"], "enabled": False})
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0 and runtime.storage.get_meta("remote_command")["released"]
+            entries = len(runtime.storage.control_log())
+            settings, collector = sim.map.settings, runtime.collector
+
+            def restore(enable, timeout):
+                sim._put("remote_power", 0, settings)
+                sim._put("remote_timeout", timeout, settings)
+                sim._put("remote_enable", enable, settings)
+
+            # long-standing connection: read only, nothing written
+            collector.connected_at = time.time() - 2 * AFTER_CONNECT_S
+            restore(1, 180)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 1
+
+            # new connection (the inverter restarted): OpenAmpere's values are switched off and logged
+            collector.connected_at = time.time()
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0
+            assert len(runtime.storage.control_log()) == entries + 1
+            assert "wieder eingeschaltet" in runtime.storage.control_log()[0]["result"]
+            await charging.tick()  # nothing left to do: no further entries
+            assert len(runtime.storage.control_log()) == entries + 1
+
+            # the smartbox's values are never touched
+            restore(5, 30)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 5
+            # OpenAmpere never sent a command: not its values, even with 1 / 180 s
+            runtime.storage.set_meta("remote_command", None)
+            restore(1, 180)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 1
+        finally:
+            await runtime.collector.stop()

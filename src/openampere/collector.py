@@ -28,6 +28,7 @@ class Collector:
         self.latest: Snapshot | None = None
         self.device: DeviceInfo | None = None
         self.connected = False
+        self.connected_at: float | None = None  # when the current connection was established (#143)
         self.last_error: str | None = None
         self.disconnected_since: float | None = None  # first failed attempt since the last good reading
         self._last_today_pv: float | None = None
@@ -75,6 +76,7 @@ class Collector:
         self.release_connection = release_connection
         self.device = None
         self.connected = False
+        self.connected_at = None
         self.disconnected_since = None
         self.last_error = None
         self.latest = None
@@ -142,6 +144,7 @@ class Collector:
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
                     log.info("inverter connected")
+                    self.connected_at = time.time()
                     self._event("verbunden")
                     self._check_firmware()
                 self._watch_daily_reset(snap)

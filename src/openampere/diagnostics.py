@@ -135,7 +135,9 @@ class Diagnostics:
         last = (f"am {datetime.fromtimestamp(started, tz).strftime('%d.%m.%Y um %H:%M')} Uhr aus dem Netz geladen"
                 if started else "noch nie aus dem Netz geladen")
         who = (f"OpenAmpere benutzt dieselben Werte, hat zuletzt {last} und die Fernsteuerung danach abgeschaltet. "
-               "Vielleicht steuert ein zweites Programm den Wechselrichter, zum Beispiel ein zweites OpenAmpere."
+               "Vielleicht hat der Wechselrichter die Werte nach einem Neustart wiederhergestellt: Dann schaltet "
+               "OpenAmpere sie nach dem nächsten Verbindungsaufbau selbst ab. Oder ein zweites Programm steuert den "
+               "Wechselrichter, zum Beispiel ein zweites OpenAmpere."
                if ours else f"OpenAmpere war es nicht: Es schaltet die Fernsteuerung mit anderen Werten ein (1 und "
                f"{REMOTE_TIMEOUT_S} s) und hat zuletzt {last}.")
         effect = ("Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. Bei 0 W "
