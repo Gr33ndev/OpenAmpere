@@ -1,6 +1,27 @@
 {
   "versions": [
     {
+      "version": "0.14.0",
+      "date": "2026-10-07",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": null,
+            "text": "Show a changelog in the app and on the website (#156)"
+          },
+          {
+            "scope": "control",
+            "text": "Show the control log as sentences and export it as csv (#154)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.13.3",
       "date": "2026-10-07",
       "first": false,
