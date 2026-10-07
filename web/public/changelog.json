@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.15.0",
+      "date": "2026-10-07",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "changelog",
+            "text": "Show every change without folding (#160)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Run the ui tests in the playwright container image (#158)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.14.0",
       "date": "2026-10-07",
       "first": false,
