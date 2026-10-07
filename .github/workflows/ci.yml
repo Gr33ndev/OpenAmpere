@@ -77,6 +77,13 @@ jobs:
 
   ui:
     runs-on: ubuntu-latest
+    # usually about 2 minutes; a stuck step fails instead of running for hours (#157)
+    timeout-minutes: 15
+    # browsers and their system packages come with the image: no download from the package mirrors on every run (#157).
+    # The version must be the one of @playwright/test in web/package.json, the first step after npm ci checks it.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -86,9 +93,15 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
         working-directory: web
-      - run: npm run build
+      - name: Container image has the browsers of @playwright/test
+        run: |
+          for dir in $(npx playwright install --dry-run chromium webkit | sed -n 's/^ *Install location: *//p'); do
+            [ -d "$dir" ] && continue
+            echo "::error::$dir is missing: set the image in .github/workflows/ci.yml to the version of @playwright/test ($(node -p "require('@playwright/test/package.json').version"))"
+            exit 1
+          done
         working-directory: web
-      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
         working-directory: web
       - name: UI tests (every page, desktop and iPhone)
         run: npm run test:ui
