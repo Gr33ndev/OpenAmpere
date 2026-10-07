@@ -80,7 +80,8 @@ CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n
   respected, `supports_control` of the device checked, limits checked before writing, value read back afterwards,
   every change in the control log.
 - Continuous control (e.g. grid charging) only via the inverter's remote control with a watchdog timeout, never via
-  permanently stored registers. Release only what OpenAmpere started (`_remote_owned`).
+  permanently stored registers. Release only what OpenAmpere started (`_remote_owned`; after a restart the
+  `remote_command` meta plus its own register values, #141).
 - New registers need a source: manufacturer docs, a project with a compatible license (credit in `NOTICE` and
   `docs/registers.md`) or a diagnostics report from a real device.
 - Legal topics (export limit, § 14a EnWG, EEG) are settled in the issue before code. Label such issues `safety`.

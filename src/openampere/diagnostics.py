@@ -13,7 +13,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from .charging import REMOTE_COMMAND, STARTED
+from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .runtime import Runtime
 
@@ -112,15 +112,18 @@ class Diagnostics:
         # negative = the battery charges (sign not verified on every device, the raw value is in the details)
         what = (f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0
                 else "0 W, also weder Laden noch Entladen")
-        if getattr(self._driver(), "_remote_owned", False):
+        # OpenAmpere switches it on with exactly 1 and its own timeout; the smartbox uses other values (#141)
+        ours = bool(command) and remote["words"][0] == 1 and timeout == command.get("timeout_s", REMOTE_TIMEOUT_S)
+        if ours and getattr(self._driver(), "_remote_owned", None):
             return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}", details,
                          "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
-        if command and now - command["ts"] <= timeout + 60:
-            # sent before a restart: the inverter ends it by itself, nobody renews it
-            return Check("remote", title, "ok", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what}), endet "
-                         f"spätestens {timeout} s nach dem letzten Befehl von selbst", details,
-                         "OpenAmpere wurde während des Ladens neu gestartet. Der Wechselrichter beendet die Vorgabe von "
-                         "selbst, du musst nichts tun.")
+        if ours and not command.get("released"):
+            last = datetime.fromtimestamp(command["ts"], tz).strftime("%d.%m.%Y um %H:%M")
+            return Check("remote", title, "info", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what})", details,
+                         f"OpenAmpere hat die Fernsteuerung zuletzt am {last} Uhr benutzt und am Ende nicht "
+                         "abgeschaltet, zum Beispiel wegen eines Neustarts oder einer kurz unterbrochenen Verbindung. "
+                         "Es schaltet sie innerhalb einer Minute selbst ab, du musst nichts tun. Ist sie danach noch "
+                         "an, melde das bitte als Fehler.")
         seen = self.runtime.storage.get_meta(REMOTE_SEEN) or {}
         if seen.get("on_since") and now - seen.get("checked", 0) <= 2 * WATCH_S:
             details["on_since"] = seen["on_since"]
@@ -129,21 +132,25 @@ class Diagnostics:
         else:
             since = ""
         started = self.runtime.storage.last_control("grid_charging", STARTED)
-        who = ("OpenAmpere war es nicht: Es lädt gerade nicht aus dem Netz und hat das hier "
-               + (f"zuletzt am {datetime.fromtimestamp(started, tz).strftime('%d.%m.%Y um %H:%M')} Uhr getan."
-                  if started else "noch nie getan."))
+        last = (f"am {datetime.fromtimestamp(started, tz).strftime('%d.%m.%Y um %H:%M')} Uhr aus dem Netz geladen"
+                if started else "noch nie aus dem Netz geladen")
+        who = (f"OpenAmpere benutzt dieselben Werte, hat zuletzt {last} und die Fernsteuerung danach abgeschaltet. "
+               "Vielleicht steuert ein zweites Programm den Wechselrichter, zum Beispiel ein zweites OpenAmpere."
+               if ours else f"OpenAmpere war es nicht: Es schaltet die Fernsteuerung mit anderen Werten ein (1 und "
+               f"{REMOTE_TIMEOUT_S} s) und hat zuletzt {last}.")
         effect = ("Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. Bei 0 W "
                   "lädt und entlädt der Speicher meist nicht: Schau in der Übersicht, ob die Speicherleistung dauerhaft "
                   "bei 0 W bleibt, obwohl die Sonne scheint oder das Haus Strom braucht. " if power == 0 else
                   "Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. ")
         return Check("remote", title, "warn",
-                     f"an – ein anderes Gerät gibt dem Speicher {what} vor. Ohne neuen Befehl endet die Vorgabe nach "
-                     f"{timeout} s; da sie noch gilt, wird sie offenbar laufend erneuert.{since}", details,
-                     f"{who} {effect}Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres "
+                     f"an – ein anderes Gerät gibt dem Speicher {what} vor (Wert {remote['words'][0]}, Zeitlimit "
+                     f"{timeout} s).{since}", details,
+                     (f"{who} {effect}" + ("" if ours else
+                     "Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres "
                      "Herstellers um und kann dabei das Laden aus dem Netz und die Speicher-Einstellungen von "
                      "OpenAmpere überschreiben. Wenn du das nicht möchtest: der Smartbox im Router den Internetzugang "
                      "sperren oder sie abklemmen (vorher klären, ob sie für etwas anderes gebraucht wird), siehe README "
-                     "„Die bisherige Smartbox setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")
+                     "„Die bisherige Smartbox setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")).strip())
 
     async def run(self, *, connection_test: bool = False, include_serial: bool = False) -> dict:
         if self.running:

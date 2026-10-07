@@ -303,7 +303,8 @@ A driver's write methods are only called from `control.py` and `charging.py`, wh
 - Let errors propagate; `control.py` logs them and turns them into German messages. A read-only Modbus proxy answers
   with "illegal function", which ends up as `ModbusIllegalError`.
 - Follow the device's rules for remote control, e.g. FoxESS: timeout first, then enable, then the power setpoint;
-  `release_remote_power()` only ends remote control that OpenAmpere started itself. Implement `remote_active()` so
+  `release_remote_power()` only ends remote control that OpenAmpere started itself (after a restart it recognises
+  OpenAmpere's leftover by the timeout it wrote, `timeout_s`) and reads back that it is off. Implement `remote_active()` so
   the app can warn when another device is in control.
 - Set `supports_control=True` in the `DeviceInfo` only when the write path is implemented, tested and verified.
 
