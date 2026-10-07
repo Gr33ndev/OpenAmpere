@@ -5,10 +5,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for your report! Please do **not** enter IP addresses, serial numbers, passwords or API keys.
+        Thanks for your report! Please do **not** enter personal data: IP or MAC addresses, serial numbers, passwords,
+        API keys, addresses or meter numbers. Give plant data only roughly (e.g. "about 10 kWp").
         Do not report security vulnerabilities here; follow SECURITY.md instead. Reports in German are welcome.
 
-        Danke für deine Meldung! Bitte **keine IP-Adressen, Seriennummern, Passwörter oder API-Schlüssel** eintragen.
+        Danke für deine Meldung! Bitte **keine persönlichen Daten** eintragen: keine IP- oder MAC-Adressen,
+        Seriennummern, Passwörter, API-Schlüssel, Adressen oder Zählernummern. Anlagendaten nur ungefähr angeben
+        (z. B. „etwa 10 kWp“).
         Sicherheitslücken bitte nicht hier, sondern wie in SECURITY.md beschrieben melden.
         **Du kannst dein Anliegen gern auf Deutsch schreiben.**
   - type: textarea

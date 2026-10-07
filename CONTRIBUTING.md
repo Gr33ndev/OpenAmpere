@@ -19,7 +19,10 @@ issue templates are bilingual.
 2. **Small pull requests.** One PR solves one problem. Two small ones are better than one big one.
 3. **UI change = screenshots.** Before/after, light and dark, at phone width.
 4. **Tests and build must pass.**
-5. **No personal data** (IP addresses, serial numbers, API keys, passwords) in issues, code, screenshots or logs.
+5. **No personal data** (names, addresses, locations, IP and MAC addresses, host and tailnet names, serial numbers,
+   meter, customer and Marktstammdatenregister numbers, API keys, passwords, tokens) in issues, code, screenshots or
+   logs. Plant data that identifies an installation (exact system size, commissioning date, roof orientation) only as
+   round values, e.g. "about 10 kWp". Details in [AGENTS.md](AGENTS.md#rules).
 
 ## Helping without code
 
@@ -211,7 +214,8 @@ Examples: `fix(report): keep daily totals after midnight`, `feat(saj): read batt
   e.g. `feat(api)!: …`, and a `BREAKING CHANGE: …` paragraph in the body describing the required adjustment.
 - Explain the why in the body, not just the what.
 - PRs are squash-merged; the **PR title** becomes the commit message and must therefore follow this format as well.
-- No links to private chats, tickets or sessions and no personal data in commits.
+- No links to private chats, tickets or sessions, no personal data and nothing that identifies an installation in
+  commits.
 
 ## Releases
 
