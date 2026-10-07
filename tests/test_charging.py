@@ -92,3 +92,57 @@ async def test_cheapest_quarters_with_a_time_tariff(tmp_path):
                    "power_w": 4000})
     night = datetime(2026, 6, 2, 2, 0, tzinfo=runtime.tz).timestamp()
     assert charging.plan(now, 50)["quarters"] == [int(night), int(night) + QUARTER]
+
+
+async def test_leftover_remote_control_is_switched_off_later(tmp_path):
+    """#141: the watchdog may leave the remote control on. A switch-off that was skipped (restart, new driver object
+    after an IP change) or failed is done later, but only for OpenAmpere's own values, never the smartbox's."""
+    from openampere.drivers.modbus import ModbusTransientError
+    sim, server, runtime = await connected(tmp_path)
+    async with server:
+        try:
+            await runtime.update_settings({"control.dry_run": False})
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            assert charging.active and sim._get_setting("remote_enable") == 1
+            driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
+
+            # switching off fails once: logged, and done on the next tick
+            write = driver._write
+            async def broken(reg, value):
+                raise ModbusTransientError("timeout")
+            driver._write = broken
+            charging.save({**charging.view()["settings"], "enabled": False})
+            await charging.tick()
+            assert not charging.active and sim._get_setting("remote_enable") == 1
+            assert runtime.storage.control_log()[0]["result"].startswith("Beenden fehlgeschlagen")
+            driver._write = write
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0
+            assert runtime.storage.get_meta("remote_command")["released"]
+
+            # restart (or a new driver object): the in-memory flag is gone, the inverter still has 1 / 180 s
+            charging.save({**charging.view()["settings"], "enabled": True})
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 1 and sim._get_setting("remote_timeout") == 180
+            driver._remote_owned = None
+            charging = GridCharging(runtime)
+            charging.save({**charging.view()["settings"], "enabled": False})
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0 and not sim.energy.remote_enabled
+            assert runtime.storage.control_log()[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
+            await charging.tick()  # nothing left to do: no further entries
+            assert runtime.storage.control_log()[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
+
+            # the smartbox took over (on = 5, 30 s): never switched off by OpenAmpere
+            runtime.storage.set_meta("remote_command", {**runtime.storage.get_meta("remote_command"), "released": None})
+            settings = sim.map.settings
+            sim._put("remote_timeout", 30, settings)
+            sim._put("remote_enable", 5, settings)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 5
+            assert runtime.storage.get_meta("remote_command")["released"]
+        finally:
+            await runtime.collector.stop()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -168,16 +169,29 @@ class FoxessDriver(ModbusDevice):
         s = self.map.settings
         await self._write(s["remote_timeout"], int(timeout_s))
         await self._write(s["remote_enable"], 1)
-        self._remote_owned = True
+        self._remote_owned = int(timeout_s)
         await self._write(s["remote_power"], int(watts))
 
-    async def release_remote_power(self) -> None:
-        """Ends remote control, but only if OpenAmpere started it – never someone else's (e.g. a smartbox)."""
+    async def release_remote_power(self, timeout_s: int | None = None) -> bool:
+        """Ends remote control, but only if OpenAmpere started it – never someone else's (e.g. a smartbox).
+
+        Ours means switched on with 1 and our watchdog timeout (the smartbox uses other values, #141). timeout_s
+        recognises a leftover of OpenAmpere after a restart or a new driver object, when the in-memory flag is gone.
+        The watchdog may leave the switch on (#141), so it is read back. Returns whether it switched it off."""
         assert self.map is not None
-        if not getattr(self, "_remote_owned", False):
-            return
-        await self._write(self.map.settings["remote_enable"], 0)
-        self._remote_owned = False
+        s = self.map.settings
+        timeout_s = getattr(self, "_remote_owned", None) or timeout_s
+        enable, timeout = await self._read(s["remote_enable"].address, 2, 3)
+        if not timeout_s or enable != 1 or timeout != timeout_s:
+            self._remote_owned = None  # off already, or someone else's now
+            return False
+        await self._write(s["remote_enable"], 0)
+        for wait_s in (0, 1, 2, 3):  # the read-back may be delayed by a few seconds (registers.md)
+            await asyncio.sleep(wait_s)
+            if not await self._read_reg(s["remote_enable"], 3):
+                self._remote_owned = None
+                return True
+        raise ModbusReadError("remote control is still on after switching it off")
 
     async def read_export_limit(self) -> ExportLimit:
         assert self.map is not None

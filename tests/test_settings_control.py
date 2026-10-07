@@ -275,9 +275,9 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             check = await remote()
             assert check["status"] == "warn" and "anderes Gerät" in check["summary"]
             assert "3000 W Laden" in check["summary"] and "180 s" in check["summary"]
-            assert "laufend erneuert" in check["summary"] and "Seit mindestens" not in check["summary"]
+            assert "Seit mindestens" not in check["summary"]
             assert "Smartbox" in check["hint"] and check["details"]["power_w"] == -3000
-            assert "hat das hier noch nie getan" in check["hint"]
+            assert "noch nie aus dem Netz geladen" in check["hint"]
 
             # #135: held at 0 W for a while, seen by the background job; OpenAmpere charged once, long ago
             sim._put("remote_power", 0, settings)
@@ -291,16 +291,30 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             assert "Seit mindestens 3 Stunden durchgehend an" in check["summary"]
             assert "zuletzt am" in check["hint"] and "dauerhaft bei 0 W" in check["hint"]
 
-            # a leftover of OpenAmpere's own charging from before a restart: ends by itself
-            runtime.storage.set_meta("remote_command", {"ts": time.time() - 30, "power_w": -3000})
+            # #141: a leftover of OpenAmpere's own charging (on = 1, its timeout), also long after the last command:
+            # the watchdog may leave the switch on, so it is not another device, and OpenAmpere switches it off
+            for ago in (30, 3 * 24 * 3600):
+                runtime.storage.set_meta("remote_command", {"ts": time.time() - ago, "power_w": -3000})
+                check = await remote()
+                assert check["status"] == "info" and "Rest des Ladens aus dem Netz von OpenAmpere" in check["summary"]
+                assert "anderes Gerät" not in check["summary"] and "schaltet sie" in check["hint"]
+            # the previous smartbox uses other values (on = 5, 30 s): another device, even though OpenAmpere charged
+            sim._put("remote_enable", 5, settings)
+            sim._put("remote_timeout", 30, settings)
             check = await remote()
-            assert check["status"] == "ok" and "Rest des Ladens aus dem Netz von OpenAmpere" in check["summary"]
-            runtime.storage.set_meta("remote_command", {"ts": time.time() - 3600, "power_w": -3000})
-            assert (await remote())["status"] == "warn"  # an hour ago: the watchdog has long ended it
+            assert check["status"] == "warn" and "anderes Gerät" in check["summary"] and "Wert 5" in check["summary"]
+            assert "Smartbox" in check["hint"] and "OpenAmpere war es nicht" in check["hint"]
+            # OpenAmpere's values although it switched its own command off: no blaming of the smartbox
+            sim._put("remote_enable", 1, settings)
+            sim._put("remote_timeout", 180, settings)
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 3600, "power_w": -3000,
+                                                        "timeout_s": 180, "released": time.time() - 3500})
+            check = await remote()
+            assert check["status"] == "warn" and "dieselben Werte" in check["hint"] and "Smartbox" not in check["hint"]
 
             # the same, but OpenAmpere started it (charging from the grid)
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
-            driver._remote_owned = True
+            driver._remote_owned = 180
             check = await remote()
             assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
 
