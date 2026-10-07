@@ -4,6 +4,7 @@
     "features": "Funktionen",
     "install": "Installation",
     "faq": "Fragen",
+    "changelog": "Changelog",
     "demo": "Demo"
   },
   "languageSwitch": {
@@ -11,6 +12,7 @@
   },
   "footer": {
     "imprint": "Impressum und Datenschutz",
+    "changelog": "Changelog",
     "source": "Quellcode",
     "license": "MIT-Lizenz",
     "security": "Sicherheit",

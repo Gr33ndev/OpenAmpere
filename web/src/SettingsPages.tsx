@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
 import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
-import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
+import { CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { Chart } from "./Chart";
@@ -790,6 +790,9 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
         <a className="menu-row" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
           <span>{t("settings.aboutPage.reportBugs")}<span className="menu-hint">GitHub Issues</span></span><span aria-hidden>↗</span>
         </a>
+        <button className="menu-row" onClick={() => onNavigate?.("changelog")}>
+          <span>{t("settings.changelogPage.title")}<span className="menu-hint">{t("settings.aboutPage.changelogHint")}</span></span><Chevron />
+        </button>
         <button className="menu-row" onClick={() => onNavigate?.("licenses")}>
           <span>{t("common.openSourceLicenses")}<span className="menu-hint">{t("settings.aboutPage.licensesHint")}</span></span><Chevron />
         </button>
@@ -960,6 +963,58 @@ function LicenseRow({ pkg }: { pkg: LicensePackage }) {
         </div>
       )}
     </div>
+  );
+}
+
+type ChangeItem = { scope: string | null; text: string };
+type ChangelogVersion = { version: string; date: string; first: boolean; breaking: ChangeItem[];
+  groups: Record<"feat" | "fix" | "perf" | "other", ChangeItem[]> };
+
+/** "(#152)" in a commit title links to the pull request or issue. */
+function withLinks(text: string) {
+  return text.split(/(#\d+)/).map((part, i) => (/^#\d+$/.test(part)
+    ? <a key={i} href={`${ISSUES_URL}/${part.slice(1)}`} target="_blank" rel="noopener noreferrer">{part}</a> : part));
+}
+
+function ChangeList({ items }: { items: ChangeItem[] }) {
+  return (
+    <ul className="changes">
+      {items.map((item, i) => <li key={i}>{item.scope && <strong>{item.scope}: </strong>}{withLinks(item.text)}</li>)}
+    </ul>
+  );
+}
+
+/** Every version with its changes, from the commit titles (#155). */
+export function ChangelogPage({ onBack }: PageProps) {
+  const { data, error, reload } = useResource<{ versions: ChangelogVersion[] }>(CHANGELOG_URL);
+  const { data: status } = useResource<Status>("/api/status");
+  const sections = [["feat", t("settings.changelogPage.new")], ["fix", t("settings.changelogPage.fixed")],
+    ["perf", t("settings.changelogPage.faster")]] as const;
+  return (
+    <SubPage title={t("settings.changelogPage.title")} onBack={onBack}>
+      {!data && <LoadState error={error} onRetry={reload} />}
+      {data && <p className="hint">{t("settings.changelogPage.intro")}</p>}
+      {data?.versions.map((v) => (
+        <div className="card changelog" key={v.version}>
+          <div className="changelog-head">
+            <h2>{t("settings.changelogPage.version", { version: v.version })}</h2>
+            {v.version === status?.version && <span className="badge">{t("settings.changelogPage.installed")}</span>}
+          </div>
+          <p className="meta">{new Date(`${v.date}T12:00:00Z`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" })}</p>
+          {v.first && <p>{t("settings.changelogPage.first")}</p>}
+          {v.breaking.length > 0 && <><h3>{t("settings.changelogPage.attention")}</h3><ChangeList items={v.breaking} /></>}
+          {sections.map(([group, title]) => v.groups[group].length > 0 && (
+            <Fragment key={group}><h3>{title}</h3><ChangeList items={v.groups[group]} /></Fragment>
+          ))}
+          {v.groups.other.length > 0 && (
+            <details className="help">
+              <summary>{t("settings.changelogPage.moreChanges", { count: v.groups.other.length })}</summary>
+              <ChangeList items={v.groups.other} />
+            </details>
+          )}
+        </div>
+      ))}
+    </SubPage>
   );
 }
 

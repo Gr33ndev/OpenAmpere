@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>{{impressum.meta.title}}</title>
+  <title>{{changelog.meta.title}}</title>
+  <meta name="description" content="{{changelog.meta.description}}" />
   <meta name="theme-color" content="#f4f4f4" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#21262b" media="(prefers-color-scheme: dark)" />
   {{alternates}}
@@ -26,31 +27,14 @@
     </div>
   </header>
 
-  <main class="wrap legal-page">
-    <section>
-      <h1>{{impressum.imprint.title}}</h1>
-      {{impressum.imprint.translationNote}}
-      <p>{{impressum.imprint.legalBasis}}</p>
-      <p class="address">Gilian Rehm<br />{{impressum.imprint.location}}<br />{{impressum.imprint.email}}
-        <a href="mailto:blaettrig-airbus71@icloud.com">blaettrig-airbus71@icloud.com</a></p>
-      <p>{{impressum.imprint.purpose}}</p>
-      <p>{{impressum.imprint.license}}</p>
-    </section>
+  <main class="wrap changelog-page">
+    <div class="faq-head">
+      <p class="eyebrow">{{changelog.head.eyebrow}}</p>
+      <h1>{{changelog.head.title}}</h1>
+      <p class="lead">{{changelog.head.lead}}</p>
+    </div>
 
-    <section>
-      <h2>{{impressum.privacy.title}}</h2>
-      <p>{{impressum.privacy.intro}}</p>
-      <h3>{{impressum.privacy.hostingTitle}}</h3>
-      <p>{{impressum.privacy.hostingText}}</p>
-      <h3>{{impressum.privacy.demoTitle}}</h3>
-      <p>{{impressum.privacy.demoText}}</p>
-      <h3>{{impressum.privacy.badgesTitle}}</h3>
-      <p>{{impressum.privacy.badgesText}}</p>
-      <h3>{{impressum.privacy.linksTitle}}</h3>
-      <p>{{impressum.privacy.linksText}}</p>
-      <h3>{{impressum.privacy.rightsTitle}}</h3>
-      <p>{{impressum.privacy.rightsText}}</p>
-    </section>
+    {{changelog}}
   </main>
 
   <footer>
