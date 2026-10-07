@@ -3,8 +3,10 @@
 
 Reads the Python code (not running it) and collects the German texts of
   - exceptions that are raised: raise SomeError("…"),
-  - HTTPException(status, "…") and
-  - {"detail": "…"} in JSON responses.
+  - HTTPException(status, "…"),
+  - {"detail": "…"} in JSON responses and
+  - results and reasons of the control log (#153): the result of log_control(…), reasons handed to stop(…),
+    _log_stop(…), switch(…), set_power(…) and _safe_off(…), {"reason": "…"}, reason = "…" and result = "…".
 Strings split over several lines are joined, values in f-strings become {name} placeholders.
 
   scripts/i18n_messages.py              print every message
@@ -56,13 +58,25 @@ def template(node: ast.AST) -> str | None:
     return None
 
 
+# control log: function -> position of the result or reason argument
+LOG_ARGS = {"log_control": 3, "stop": 0, "_log_stop": 0, "switch": 2, "set_power": 2, "_safe_off": 1}
+# results that are codes, not texts: the app shows them in its own words
+LOG_CODES = {"ok", "manual", "auto"}
+
+
 def messages() -> dict[str, str]:
     """German message -> file:line where it appears first."""
     found: dict[str, str] = {}
 
-    def add(node: ast.AST, path: Path) -> None:
+    def add(node: ast.AST, path: Path, log: bool = False) -> None:
+        if isinstance(node, ast.IfExp):  # "a" if … else "b"
+            add(node.body, path, log)
+            add(node.orelse, path, log)
+            return
         text = template(node)
-        if text and GERMAN.search(text) and text not in found:
+        # every text of the control log is German, also short ones like "im Ladefenster"
+        german = text not in LOG_CODES and re.search(r"[A-Za-zÄÖÜäöü]", text) if log and text else GERMAN.search(text or "")
+        if text and german and text not in found:
             found[text] = f"{path.relative_to(ROOT)}:{node.lineno}"
 
     for path in sorted(SRC.rglob("*.py")):
@@ -77,6 +91,20 @@ def messages() -> dict[str, str]:
                 for key, value in zip(node.keys, node.values):
                     if isinstance(key, ast.Constant) and key.value == "detail" and value is not None:
                         add(value, path)
+                    elif isinstance(key, ast.Constant) and key.value == "reason" and value is not None:
+                        add(value, path, log=True)
+            if isinstance(node, ast.Call):
+                name = getattr(node.func, "attr", None) or getattr(node.func, "id", None)
+                if name in LOG_ARGS and len(node.args) > LOG_ARGS[name]:
+                    add(node.args[LOG_ARGS[name]], path, log=True)
+            elif isinstance(node, ast.Assign) and len(node.targets) == 1:
+                target, value = node.targets[0], node.value
+                if isinstance(target, ast.Name) and target.id in ("reason", "result"):
+                    add(value, path, log=True)
+                elif isinstance(target, ast.Tuple) and isinstance(value, ast.Tuple):
+                    for t, v in zip(target.elts, value.elts):
+                        if isinstance(t, ast.Name) and t.id == "reason":
+                            add(v, path, log=True)
     return found
 
 

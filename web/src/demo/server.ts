@@ -397,12 +397,22 @@ function evccSessions(params: URLSearchParams) {
 
 function controlLog() {
   const t = now();
+  // "note": made by the server from "result" in the language of the app
   return { entries: [
     { ts: t - 3600 * 5, action: "consumer", details: { from: { consumer: "Heizstab", on: false }, to: { consumer: "Heizstab", on: true } },
-      dry_run: true, result: "nicht geschaltet (Testmodus): Überschuss 2600 W" },
+      dry_run: true, result: "nicht geschaltet (Testmodus): Überschuss 2600 W", note: "Überschuss 2600 W" },
+    { ts: t - 3600 * 9, action: "grid_charging", details: { from: { soc: 22 }, to: { soc: 80 } },
+      dry_run: false, result: "Laden beendet: Ladeziel 80 % erreicht", note: "Ladeziel 80 % erreicht" },
+    { ts: t - 3600 * 12, action: "grid_charging", details: { from: {}, to: { power_w: 3000, target_soc: 80 } },
+      dry_run: false, result: "Laden gestartet (günstigste Viertelstunden)", note: "günstigste Viertelstunden" },
+    { ts: t - 86400 - 3600 * 3, action: "grid_charging_switch", details: { from: { enabled: false }, to: { enabled: true } },
+      dry_run: false, result: "ok" },
     { ts: t - 86400 * 2, action: "battery_settings", details: { from: { min_soc_on_grid: 10 }, to: { min_soc_on_grid: 20 } },
-      dry_run: true, result: "nicht ausgeführt (Testmodus)" },
+      dry_run: false, result: "ok" },
+    { ts: t - 86400 * 2 - 600, action: "token_created", details: { name: "Home Assistant", scope: "read" }, dry_run: false, result: "ok" },
     { ts: t - 86400 * 3, action: "control_switches", details: { from: { "control.enabled": false }, to: { "control.enabled": true } },
+      dry_run: false, result: "ok" },
+    { ts: t - 86400 * 3 - 300, action: "update", details: { from: { version: "0.13.2" }, to: { version: "0.13.3" }, by: "manual" },
       dry_run: false, result: "ok" },
   ] };
 }

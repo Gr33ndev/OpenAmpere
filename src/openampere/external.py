@@ -209,7 +209,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             raise HTTPException(400, "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten "
                                      "(Geräte → Speicher → Laden aus dem Netz).")
         try:
-            new = charging.save({**asdict(old), **body})
+            new = charging.save({**asdict(old), **body}, source=source(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         runtime.storage.log_control("grid_charging", {"source": source(request), "to": body}, runtime.config.control.dry_run, "ok")
@@ -221,11 +221,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         require_control()
         limits.check(f"device:{device_id}", OTHER_WRITES_PER_HOUR)
         try:
-            surplus.set_override(device_id, str(body.get("mode")), body.get("hours"))
+            # logged there with the device's name, once (#153)
+            surplus.set_override(device_id, str(body.get("mode")), body.get("hours"), source=source(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        runtime.storage.log_control("device_mode", {"source": source(request), "device": device_id,
-                                                    "to": {"mode": body.get("mode"), "hours": body.get("hours")}},
-                                    runtime.config.control.dry_run, "ok")
         await surplus.tick()
         return {"devices": own_devices()}

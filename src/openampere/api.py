@@ -472,8 +472,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte später erneut versuchen.") from None
 
     @app.get("/api/control/log")
-    def get_control_log(limit: int = Query(50, ge=1, le=500)):
-        return {"entries": storage.control_log(limit)}
+    def get_control_log(request: Request, limit: int = Query(50, ge=0)):
+        """limit=0: the whole log, for the export. "note": the reason or error in the language of the app (#153)."""
+        lang = request.headers.get(i18n.HEADER)
+        return {"entries": [{**e, "note": i18n.log_note(e["result"], lang)} for e in storage.control_log(limit)]}
 
     # ---- history import from the former vendor cloud ---------------------
 

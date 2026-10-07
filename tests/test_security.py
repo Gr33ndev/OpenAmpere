@@ -83,6 +83,16 @@ def test_control_switches_are_audited(tmp_path):
     assert log[0]["action"] == "control_switches" and log[0]["details"]["to"] == {"control.enabled": True}
 
 
+def test_control_log_export_returns_every_entry(tmp_path):
+    runtime, client = app_client(tmp_path)
+    headers = {"x-openampere": "1"}
+    client.post("/api/auth/setup", json={"password": PASSWORD}, headers=headers)
+    for i in range(60):
+        runtime.storage.log_control("consumer", {"from": {"on": False}, "to": {"on": True}}, False, f"test {i}")
+    assert len(client.get("/api/control/log").json()["entries"]) == 50
+    assert len(client.get("/api/control/log?limit=0").json()["entries"]) == 60  # export (#153)
+
+
 def test_reset_password_command(tmp_path, monkeypatch):
     import sys
 

@@ -97,8 +97,9 @@ class Updates:
         self.folder.mkdir(parents=True, exist_ok=True)
         (self.folder / "request").write_text(json.dumps({"ts": now, "from": self.current,
                                                           "to": (self.latest or {}).get("version"), "reason": reason}))
-        self.runtime.storage.log_control("update", {"from": self.current, "to": (self.latest or {}).get("version")},
-                                         False, reason)
+        self.runtime.storage.log_control("update", {"from": {"version": self.current},
+                                                    "to": {"version": (self.latest or {}).get("version")}, "by": reason},
+                                         False, "ok")
 
     async def tick(self, now: float | None = None) -> None:
         """Hourly job: look for a new version and, if wanted, install it at night."""
