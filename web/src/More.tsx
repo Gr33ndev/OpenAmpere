@@ -3,7 +3,7 @@ import type { Settings, Snapshot, Status } from "./api";
 import { activeInputs, useResource, useStale } from "./api";
 import { kwh, percent, todayIso, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
-import { AboutPage, AppearancePage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
+import { AboutPage, AppearancePage, ChangelogPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
 import { AppsPage } from "./AppsPage";
 import { RemotePage } from "./RemotePage";
@@ -154,6 +154,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "apps": return <AppsPage onBack={back} />;
     case "remote": return <RemotePage onBack={back} />;
     case "licenses": return <LicensesPage onBack={() => goBack("more/about")} />;
+    case "changelog": return <ChangelogPage onBack={() => goBack("more/about")} />;
   }
 
   const control = status?.control;

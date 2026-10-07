@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "title": "Changelog | OpenAmpere",
+    "description": "Was sich in jeder Version von OpenAmpere geändert hat: neue Funktionen, behobene Fehler und weitere Änderungen."
+  },
+  "head": {
+    "eyebrow": "Versionen",
+    "title": "Changelog",
+    "lead": "Was sich in jeder Version geändert hat, neueste zuerst. Die Einträge kommen direkt aus der Entwicklung und sind deshalb auf Englisch. Ein Update installierst du in der App unter <strong>Mehr → Über OpenAmpere</strong>."
+  },
+  "list": {
+    "version": "Version {version}",
+    "first": "Erste veröffentlichte Version von OpenAmpere.",
+    "attention": "Achtung",
+    "new": "Neu",
+    "fixed": "Behoben",
+    "faster": "Schneller",
+    "moreChanges": "Weitere Änderungen ({count})"
+  }
+}

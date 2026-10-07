@@ -1,0 +1,747 @@
+{
+  "versions": [
+    {
+      "version": "0.13.3",
+      "date": "2026-10-07",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "report",
+            "text": "Show complete bars and one label per bucket in energy charts (#152)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.13.2",
+      "date": "2026-10-07",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "diagnostics",
+            "text": "Pseudonymise addresses and leave out times in the shared report (#150)"
+          },
+          {
+            "scope": "charging",
+            "text": "Switch off openampere's remote control values after an inverter restart (#144)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Align contributing guide and issue templates with the privacy rules (#148)"
+          },
+          {
+            "scope": "agents",
+            "text": "List personal and installation data that must not be published (#146)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.13.1",
+      "date": "2026-10-07",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "charging",
+            "text": "Switch off a leftover remote control and stop blaming the smartbox (#142)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.13.0",
+      "date": "2026-10-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "remote",
+            "text": "Optional HTTPS for remote access with tailscale serve (#140)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.12.0",
+      "date": "2026-10-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "diagnostics",
+            "text": "Tell who holds the remote control and for how long (#136)"
+          },
+          {
+            "scope": "notify",
+            "text": "Guided ntfy setup with a QR code and help when nothing arrives (#134)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Keep the update banner within the page column on wide screens (#133)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "ui",
+            "text": "Note that the date field width is a Playwright WebKit quirk, not an iOS bug (#139)"
+          },
+          {
+            "scope": "ui",
+            "text": "Add Playwright UI tests for every page on desktop and iPhone (#138)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.11.0",
+      "date": "2026-10-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "updates",
+            "text": "Verify the image provenance before switching to a new version (#125)"
+          },
+          {
+            "scope": "site",
+            "text": "Add English and a language switch to the website (#124)"
+          },
+          {
+            "scope": "ui",
+            "text": "Offer the language switch on the first screens (#122)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "diagnostics",
+            "text": "Explain who uses the remote control, with real values (#127)"
+          },
+          {
+            "scope": "ui",
+            "text": "Keep the language switch in the settings only (#123)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Add AGENTS.md for AI coding agents and point CLAUDE.md to it (#129)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.10.0",
+      "date": "2026-10-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "ui",
+            "text": "Translate the whole app with English keys and add languages without code (#120)"
+          },
+          {
+            "scope": "ui",
+            "text": "Split translations by area and follow the language in numbers and dates (#118)"
+          },
+          {
+            "scope": "ui",
+            "text": "Add a language switch with English as a preview (#108)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "control",
+            "text": "Do not write the export limit to a read-only device (#119)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Link the public roadmap (#117)"
+          },
+          {
+            "scope": "release",
+            "text": "Provenance, SBOM and install scripts per release (#114)"
+          },
+          {
+            "scope": null,
+            "text": "Point questions to GitHub Discussions (#110)"
+          },
+          {
+            "scope": null,
+            "text": "Add a guide for writing a driver (#112)"
+          },
+          {
+            "scope": null,
+            "text": "Add a device compatibility page (#111)"
+          },
+          {
+            "scope": null,
+            "text": "Add the OpenSSF Scorecard and narrow workflow token permissions (#109)"
+          },
+          {
+            "scope": null,
+            "text": "Make the repository English and keep the user guides German (#107)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.9.0",
+      "date": "2026-10-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "outages",
+            "text": "Remove an entry with \"Das war kein Stromausfall\" (#96)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "outages",
+            "text": "Tell a switched-off inverter from an empty battery (#94)"
+          },
+          {
+            "scope": "outages",
+            "text": "Need two off-grid readings and tell missing data from an empty battery (#90)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Add the seventh insolvency case of the EKD group (#92)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.8.1",
+      "date": "2026-10-05",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Show cent amounts with two decimals and keep typed decimals (#88)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.8.0",
+      "date": "2026-10-05",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "remote",
+            "text": "Set up access from anywhere with tailscale in the app (#86)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Add faq for affected owners and link official insolvency notices (#85)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.7.0",
+      "date": "2026-10-05",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "apps",
+            "text": "Show whether Home Assistant is connected and how to connect (#81)"
+          },
+          {
+            "scope": "homeassistant",
+            "text": "Home Assistant integration via HACS with a secure API (#77)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "site",
+            "text": "Fit the demo into the phone mockup (#80)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#82)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.6.0",
+      "date": "2026-10-05",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "tariffs",
+            "text": "Determine the feed-in compensation from the EEG rates (#74)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "control",
+            "text": "Allow an outage floor of 0 % (#72)"
+          },
+          {
+            "scope": "ui",
+            "text": "Save CSV export and backup from the iPhone home-screen app (#73)"
+          },
+          {
+            "scope": "updates",
+            "text": "Check the update helper at the time of the hourly tick (#75)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.5.1",
+      "date": "2026-10-04",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "billing",
+            "text": "Fetch Netze BW values the way real accounts deliver them (#68)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "deps",
+            "text": "Regenerate lockfiles and license list in one step (#66)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.5.0",
+      "date": "2026-10-04",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "billing",
+            "text": "Fetch the grid operator's meter values, starting with Netze BW (#63)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "security",
+            "text": "Encrypt stored secrets in the database (#65)"
+          },
+          {
+            "scope": "settings",
+            "text": "Move the grid operator's meter values under Verbindung (#64)"
+          },
+          {
+            "scope": "report",
+            "text": "One prepayment block with the stand today instead of two forecasts (#62)"
+          },
+          {
+            "scope": "pv",
+            "text": "Unconnected inputs appear in the settings and drop out of the analysis (#61)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.4.0",
+      "date": "2026-10-04",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "tariffs",
+            "text": "Time tariff with own price windows (#54)"
+          },
+          {
+            "scope": "report",
+            "text": "History of power cuts (#52)"
+          },
+          {
+            "scope": "ui",
+            "text": "Show and report a power cut (off-grid mode) (#50)"
+          },
+          {
+            "scope": "charging",
+            "text": "Charge levels relative to what the battery allows (#49)"
+          },
+          {
+            "scope": "data",
+            "text": "Keep detail readings for years or forever, with the space it needs (#47)"
+          },
+          {
+            "scope": "ui",
+            "text": "Show whether the battery charges from the sun or the grid (#46)"
+          },
+          {
+            "scope": "pv",
+            "text": "Hide module arrays that are not connected (#40)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "No overflow or clipped text on narrow phones (#56)"
+          },
+          {
+            "scope": "ui",
+            "text": "Small display issues from the field (#45)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Clearer texts and ratings (#44)"
+          },
+          {
+            "scope": "ui",
+            "text": "Capacity button, date fields in cards, single temperature heading (#43)"
+          },
+          {
+            "scope": "import",
+            "text": "Name both steps of the cloud import progress (#42)"
+          },
+          {
+            "scope": "ui",
+            "text": "Label the battery's own sensor as electronics (BMS) when cell temperatures exist (#41)"
+          },
+          {
+            "scope": "report",
+            "text": "One balance per annual bill, with the calculation behind it (#39)"
+          },
+          {
+            "scope": "report",
+            "text": "Consistent values on the first day (#36)"
+          },
+          {
+            "scope": "ui",
+            "text": "Content no longer runs under the iPhone status bar (#35)"
+          },
+          {
+            "scope": "ui",
+            "text": "Downloads from the iPhone home-screen app open in their own window (#34)"
+          },
+          {
+            "scope": "ui",
+            "text": "Copying works on the iPhone over plain HTTP (#33)"
+          },
+          {
+            "scope": "foxess",
+            "text": "Read the inverter temperature in 0.1 °C (#26)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "New README screenshots (#57)"
+          },
+          {
+            "scope": null,
+            "text": "The former smartbox resets settings from the cloud (#53)"
+          },
+          {
+            "scope": null,
+            "text": "Bump actions/checkout from 4 to 7 (#30)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump vite from 8.3.1 to 8.3.2 in /web in the vite group (#29)"
+          },
+          {
+            "scope": null,
+            "text": "Bump actions/deploy-pages from 4 to 5 (#32)"
+          },
+          {
+            "scope": null,
+            "text": "Bump actions/configure-pages from 5 to 6 (#31)"
+          },
+          {
+            "scope": null,
+            "text": "Bump docker/build-push-action from 6 to 7 (#28)"
+          },
+          {
+            "scope": null,
+            "text": "Bump actions/setup-node from 4 to 7 (#27)"
+          },
+          {
+            "scope": "deps",
+            "text": "Label Dependabot pull requests only with dependencies"
+          },
+          {
+            "scope": "github",
+            "text": "English issue labels"
+          },
+          {
+            "scope": "github",
+            "text": "Issue templates with the current app areas and a cause field"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-10-03",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": null,
+            "text": "Updates from the app with one tap"
+          },
+          {
+            "scope": null,
+            "text": "Annual bill forecast, battery health and firmware changes"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-10-03",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "ui",
+            "text": "Link to the project imprint in Über OpenAmpere"
+          },
+          {
+            "scope": "evcc",
+            "text": "Car battery, minimum charge and driving statistics"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.1.2",
+      "date": "2026-10-03",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Device lines in the energy flow run from corner to corner"
+          },
+          {
+            "scope": "ui",
+            "text": "Car and heating rod icons in the energy flow match the others"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Screenshots in the README"
+          },
+          {
+            "scope": null,
+            "text": "Mark only the newest version as latest release"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.1.1",
+      "date": "2026-10-03",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Lower the nav bar on iPhone, collapse \"Alle Werte\" in the analysis"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "GitHub release with notes for every version tag"
+          },
+          {
+            "scope": null,
+            "text": "Run the dependency sync on branches only, not on version tags"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-10-03",
+      "first": true,
+      "groups": {
+        "feat": [
+          {
+            "scope": null,
+            "text": "One-line install script"
+          },
+          {
+            "scope": "ui",
+            "text": "Tiles back on the start page, open analysis, setup under Verbindung"
+          },
+          {
+            "scope": "ui",
+            "text": "Clearer wallbox status, unsaved hints, one-line demo banner"
+          },
+          {
+            "scope": "ui",
+            "text": "Short intros, background on request"
+          },
+          {
+            "scope": "ui",
+            "text": "Wallbox setup as three numbered steps"
+          },
+          {
+            "scope": "ui",
+            "text": "Guided device setup instead of one long form"
+          },
+          {
+            "scope": "report",
+            "text": "One analysis page with key figures and foldable sections"
+          },
+          {
+            "scope": "ui",
+            "text": "A shorter start page with the numbers that matter"
+          },
+          {
+            "scope": null,
+            "text": "One list for who gets solar power first"
+          },
+          {
+            "scope": "ui",
+            "text": "Battery under Geräte, a tidier Mehr menu"
+          },
+          {
+            "scope": "ui",
+            "text": "One switch for control: view only, test, active"
+          },
+          {
+            "scope": "ui",
+            "text": "Label the bottom menu and call the start page Übersicht"
+          },
+          {
+            "scope": "demo",
+            "text": "Show charging and heating on days with solar surplus"
+          },
+          {
+            "scope": "ui",
+            "text": "Give devices their own menu and show them everywhere"
+          },
+          {
+            "scope": "devices",
+            "text": "Record power and energy per device, add manual modes"
+          },
+          {
+            "scope": null,
+            "text": "Control my-PV heating rods and wallboxes via evcc"
+          },
+          {
+            "scope": "site",
+            "text": "Add imprint and privacy page, rewrite landing page text"
+          },
+          {
+            "scope": "site",
+            "text": "Add project website with live demo on GitHub Pages"
+          },
+          {
+            "scope": "web",
+            "text": "Add an in-browser demo mode"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Add read-only diagnostics for on-site verification"
+          },
+          {
+            "scope": null,
+            "text": "Add tariffs, grid charging, surplus consumers and notifications"
+          },
+          {
+            "scope": "report",
+            "text": "Improve report, accessibility and release quality"
+          },
+          {
+            "scope": "app",
+            "text": "Make everyday use more trustworthy and easier"
+          },
+          {
+            "scope": null,
+            "text": "Add access protection and a legally correct feed-in limit"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    }
+  ]
+}

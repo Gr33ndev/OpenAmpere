@@ -83,7 +83,7 @@ nav .lang-switch a:hover { color: var(--text); }
 nav .lang-switch a[aria-current] { background: var(--text); color: var(--bg); }
 /* the header stays one row with the switch: the least needed links go first (GitHub and the demo are also linked
    from the page itself) */
-@media (max-width: 700px) { nav > a[href="https://github.com/Gr33ndev/OpenAmpere"] { display: none; } }
+@media (max-width: 700px) { nav > a[href="https://github.com/Gr33ndev/OpenAmpere"], nav > a[href="changelog.html"] { display: none; } }
 @media (max-width: 420px) { nav > a[href*="demo/"] { display: none; } }
 
 /* hero */
@@ -200,3 +200,15 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
 .faq-page .notice { margin: 0 0 16px; color: var(--label); }
 .faq-page .notice strong { color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .faq summary::after { transition: none; } }
+
+/* changelog (#155) */
+.changelog-page { max-width: 820px; }
+.release { padding: 28px 0 8px; border-top: 1px solid var(--line); scroll-margin-top: 72px; }
+.faq-head + .release { border-top: 0; }
+.release h2 { margin: 0; font-size: clamp(22px, 3vw, 28px); }
+.release .date { margin: 4px 0 0; color: var(--label); font-size: 14px; }
+.release h3 { margin: 18px 0 6px; font-size: 17px; }
+.release ul { margin: 0; padding-left: 20px; overflow-wrap: anywhere; }
+.release li { margin: 4px 0; }
+.release details summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; margin-top: 10px; }
+.release details ul { color: var(--label); }

@@ -16,6 +16,8 @@
  *                       site translation at all
  *   {{alternates}}      <link rel="alternate" hreflang> for every translated language plus x-default (German)
  *   {{languageSwitch}}  links to the same page in every translated language, the current one with aria-current
+ *   {{changelog}}       every version of web/public/changelog.json (scripts/changelog.py, #155), headings from
+ *                       changelog.list.* of the page's language; the entries are the commit titles
  * A template line that holds only a placeholder whose value is empty is left out.
  *
  * Languages: German (de) is the reference and goes to the root of the output (index.html, faq.html, impressum.html),
@@ -38,7 +40,10 @@ const REFERENCE = "de";
 const SITE_URL = (process.env.SITE_URL ?? "https://gr33ndev.github.io/OpenAmpere/").replace(/\/?$/, "/");
 const out = process.argv[2] ?? "_site";
 const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}/g;
-const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch"]);
+const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog"]);
+const CHANGELOG_FILE = "web/public/changelog.json";
+const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "moreChanges"].map((k) => `changelog.list.${k}`);
+const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
 
 const errors = [];
 const warnings = [];
@@ -98,6 +103,26 @@ function keysOf(node, prefix) {
   return Object.entries(node).flatMap(([name, child]) => keysOf(child, `${prefix}.${name}`));
 }
 
+/** The versions as HTML: headings in the page's language, "#123" linked to the issue or pull request. */
+function renderChangelog(text, contentLang) {
+  const item = (i) => `<li>${i.scope ? `<strong>${escapeText(i.scope)}:</strong> ` : ""}`
+    + `${escapeText(i.text).replace(/#(\d+)/g, `<a href="${ISSUES}$1">#$1</a>`)}</li>`;
+  const list = (items) => `<ul>${items.map(item).join("")}</ul>`;
+  const part = (title, items) => (items.length ? `<h3>${title}</h3>${list(items)}` : "");
+  return changelog.map((v) => {
+    const date = new Date(`${v.date}T12:00:00Z`).toLocaleDateString(contentLang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const other = v.groups.other.length
+      ? `<details><summary>${text("changelog.list.moreChanges").replace("{count}", v.groups.other.length)}</summary>${list(v.groups.other)}</details>` : "";
+    return `<section class="release" id="v${escapeText(v.version)}">`
+      + `<h2>${text("changelog.list.version").replace("{version}", escapeText(v.version))}</h2>`
+      + `<p class="date"><time datetime="${escapeText(v.date)}">${date}</time></p>`
+      + (v.first ? `<p>${text("changelog.list.first")}</p>` : "")
+      + part(text("changelog.list.attention"), v.breaking) + part(text("changelog.list.new"), v.groups.feat)
+      + part(text("changelog.list.fixed"), v.groups.fix) + part(text("changelog.list.faster"), v.groups.perf) + other
+      + "</section>";
+  }).join("\n    ");
+}
+
 const escapeText = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const pagePath = (lang, page) => `${lang === REFERENCE ? "" : `${lang}/`}${page === "index" ? "" : `${page}.html`}`;
 
@@ -112,6 +137,14 @@ for (const [page, template] of Object.entries(templates)) {
     if (!name.includes(".")) errors.push(`site/pages/${page}.html: unknown placeholder {{${name}}}`);
     else if (lookup(REFERENCE, name) === undefined) errors.push(`site/pages/${page}.html: {{${name}}} is missing in site/locales/${REFERENCE}/`);
     used.add(name);
+  }
+}
+const changelogUsed = Object.values(templates).some((template) => template.includes("{{changelog}}"));
+const changelog = changelogUsed ? readJson(CHANGELOG_FILE).versions ?? [] : [];
+if (changelogUsed) {
+  for (const key of CHANGELOG_KEYS) {
+    if (lookup(REFERENCE, key) === undefined) errors.push(`{{changelog}} needs ${key} in site/locales/${REFERENCE}/`);
+    used.add(key);
   }
 }
 const germanKeys = Object.entries(texts[REFERENCE] ?? {}).flatMap(([file, node]) => keysOf(node, file));
@@ -155,7 +188,7 @@ if (!errors.length) {
           + ` hreflang="${code}" lang="${code}" title="${escapeText(name)}" aria-label="${escapeText(name)}"`
           + `${code === lang ? ' aria-current="page"' : ""}>${code.toUpperCase()}</a>`).join("")
         + "</span>";
-      const generated = { ...vars, alternates, languageSwitch };
+      const generated = { ...vars, alternates, languageSwitch, changelog: changelogUsed ? renderChangelog(text, vars.contentLang) : "" };
 
       const html = templates[page].split("\n").flatMap((line) => {
         const rendered = line.replace(PLACEHOLDER, (match, name, offset) => {

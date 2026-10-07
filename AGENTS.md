@@ -108,7 +108,9 @@ CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n
   workflow or the repository breaks updates.
 - **The Website workflow cancels older runs** (`concurrency: pages`); a "cancelled" run on `main` is normal.
 - **Release:** maintainers only, from a clean `main`: `scripts/release.sh X.Y.Z` then
-  `git push origin main vX.Y.Z`. Release notes are generated from the commit titles (`feat` → "Neu", `fix` → "Behoben").
+  `git push origin main vX.Y.Z`. The commit titles since the last tag become the version's entry in
+  `web/public/changelog.json` (`feat` → "Neu", `fix` → "Behoben"): the changelog in the app, on the website and the
+  GitHub release notes. Good commit titles are what owners read.
 - **Agent worktrees** (e.g. `.claude/worktrees/`) must never be committed; `release.sh` refuses an unclean tree.
 - **The demo is the website:** UI changes show up in the public demo with the next website build.
 

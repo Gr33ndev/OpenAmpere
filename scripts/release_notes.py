@@ -1,62 +1,48 @@
 #!/usr/bin/env python3
-"""Release notes for a version tag, built from the Conventional Commits since the previous tag.
+"""Release notes for a version tag, from its entry in web/public/changelog.json (#155).
+
+The entry is written by scripts/changelog.py from the Conventional Commits since the previous tag (scripts/release.sh
+adds it to the release commit). A tag without an entry gets one built from the commits the same way.
 
 Usage: scripts/release_notes.py v0.1.1   (prints Markdown)
 """
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 
-SECTIONS = [("feat", "Neu"), ("fix", "Behoben"), ("perf", "Schneller")]
-OTHER = "Weitere Änderungen"
-COMMIT = re.compile(r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$")
+import changelog
 
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout.strip()
+SECTIONS = [("feat", "Neu"), ("fix", "Behoben"), ("perf", "Schneller"), ("other", "Weitere Änderungen")]
 
 
 def previous_tag(tag: str) -> str | None:
     try:
-        return git("describe", "--tags", "--abbrev=0", "--match", "v*", f"{tag}^")
+        return changelog.git("describe", "--tags", "--abbrev=0", "--match", "v*", f"{tag}^")
     except subprocess.CalledProcessError:
         return None
+
+
+def line(item: dict) -> str:
+    return f"**{item['scope']}:** {item['text']}" if item["scope"] else item["text"]
 
 
 def main() -> None:
     tag = sys.argv[1]
     version = tag.removeprefix("v")
     prev = previous_tag(tag)
-    log = git("log", "--no-merges", "--format=%s%x1f%b%x1e", f"{prev}..{tag}" if prev else tag)
-
-    groups: dict[str, list[str]] = {}
-    breaking: list[str] = []
-    for entry in filter(None, (e.strip() for e in log.split("\x1e"))):
-        subject, _, body = entry.partition("\x1f")
-        m = COMMIT.match(subject)
-        if not m:
-            groups.setdefault(OTHER, []).append(subject)
-            continue
-        if m["type"] == "chore" and (m["scope"] or "").startswith("release"):
-            continue
-        text = m["subject"][0].upper() + m["subject"][1:]
-        line = f"**{m['scope']}:** {text}" if m["scope"] else text
-        if m["breaking"] or "BREAKING CHANGE" in body:
-            breaking.append(line)
-        groups.setdefault(dict(SECTIONS).get(m["type"], OTHER), []).append(line)
+    found = next((v for v in changelog.load() if v["version"] == version), None)
+    entry = found or changelog.entry(version, "", prev, tag)
 
     out: list[str] = []
-    if not prev:
+    if entry["first"]:
         out += ["Erste veröffentlichte Version von OpenAmpere.", ""]
-        groups = {k: v for k, v in groups.items() if k == "Neu"}  # the full history is too long for a first release
-    if breaking:
-        out += ["### Achtung", "", *(f"- {b}" for b in breaking), ""]
-    for title in [t for _, t in SECTIONS] + [OTHER]:
-        if groups.get(title):
-            out += [f"### {title}", "", *(f"- {line}" for line in groups[title]), ""]
+    if entry["breaking"]:
+        out += ["### Achtung", "", *(f"- {line(b)}" for b in entry["breaking"]), ""]
+    for group, title in SECTIONS:
+        if entry["groups"].get(group):
+            out += [f"### {title}", "", *(f"- {line(item)}" for item in entry["groups"][group]), ""]
 
     out += [
         "### Installieren oder aktualisieren",

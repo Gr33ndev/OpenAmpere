@@ -1,5 +1,6 @@
 {
   "aboutPage": {
+    "changelogHint": "What changed in every version",
     "evccCredit": "Wallboxes are controlled by {link}, an independent open source project. OpenAmpere uses its open interface. Thanks to the evcc community!",
     "foxessCredit": "FoxESS register definitions are based on foxess_modbus (MIT License).",
     "intro": "OpenAmpere is an independent community project for solar systems with battery storage. It runs entirely locally and needs no cloud.",
@@ -67,6 +68,21 @@
     "testModeLogged": "Test mode: the change was only logged",
     "title": "Battery & backup power",
     "unreadValues": "Some values could not be read just now ({values}). They are shown as “?”; the limits can only be changed once all values have been read."
+  },
+  "changelogPage": {
+    "attention": "Attention",
+    "faster": "Faster",
+    "first": "First published version of OpenAmpere.",
+    "fixed": "Fixed",
+    "installed": "Installed",
+    "intro": "What changed in every version, taken directly from development.",
+    "moreChanges": {
+      "one": "1 more change",
+      "other": "{count} more changes"
+    },
+    "new": "New",
+    "title": "Changelog",
+    "version": "Version {version}"
   },
   "chargingPage": {
     "acceptRegistration": "I have read this and will take care of the registration myself.",
