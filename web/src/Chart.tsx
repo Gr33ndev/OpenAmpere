@@ -6,6 +6,27 @@ import { LOCALE, t } from "./i18n";
 
 const AXIS_FONT = `12px "DM Sans Variable", system-ui, sans-serif`;
 
+const H = 3600, D = 24 * H, MO = 30 * D;
+/** Tick steps for the time axis; uPlot handles the month steps as calendar months. */
+const TIME_INCRS = [900, 1800, H, 2 * H, 3 * H, 4 * H, 6 * H, 12 * H, D, 2 * D, 3 * D, 7 * D, 14 * D, MO, 2 * MO, 3 * MO, 6 * MO, 365 * D];
+
+/** Smallest gap between two data points = width of one bucket (hour, day, month). */
+function bucketWidth(x: number[]): number {
+  let width = Infinity;
+  for (let i = 1; i < x.length; i++) width = Math.min(width, x[i] - x[i - 1]);
+  return Number.isFinite(width) && width > 0 ? width : D;
+}
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+/** Width of the y axis, so long labels like "1.750 kWh" are not cut off. */
+function axisSize(labels: string[] | null): number {
+  if (!labels?.length) return 62;
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return 62;
+  measureCtx.font = AXIS_FONT;
+  return Math.max(40, Math.ceil(Math.max(...labels.map((l) => measureCtx!.measureText(l).width))) + 18);
+}
+
 export type Series = {
   label: string;
   color: string;
@@ -44,6 +65,9 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
     const unit = series.find((s) => s.scale !== "soc")?.unit ?? "";
     const axisColor = cssVar("--text-dim", "#888");
     const gridColor = cssVar("--line", "#333");
+    // bars: half a bucket of room at both ends so the outer bars are not cut off, ticks no finer than one bucket
+    // (otherwise one day gets several "05.10." labels) and bars that grow from zero
+    const bucket = bucketWidth(x);
 
     const opts: uPlot.Options = {
       width: el.clientWidth,
@@ -51,10 +75,15 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
       cursor: { drag: { x: false, y: false } },
       legend: { show: false },
       hooks: { setCursor: [(u) => hover.current?.(u.cursor.idx ?? null)] },
-      scales: { x: { time: true }, soc: { range: [0, 100] } },
+      scales: {
+        x: bars ? { time: true, range: (_u, min, max) => [min - bucket / 2, max + bucket / 2] } : { time: true },
+        ...(bars ? { y: { range: (_u, min, max) => uPlot.rangeNum(Math.min(0, min), Math.max(0, max), 0.1, true) } } : {}),
+        soc: { range: [0, 100] },
+      },
       axes: [
-        { font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, values: (_u, ticks) => ticks.map(xFormat) },
-        { scale: "y", font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, size: 62,
+        { font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, values: (_u, ticks) => ticks.map(xFormat),
+          ...(bars ? { incrs: TIME_INCRS.filter((incr) => incr >= bucket * 0.9) } : {}) },
+        { scale: "y", font: AXIS_FONT, stroke: axisColor, grid: { stroke: gridColor, width: 1 }, size: (_u, labels) => axisSize(labels),
           values: (_u, ticks) => ticks.map((v) => `${v.toLocaleString(LOCALE)} ${unit}`) },
         ...(series.some((s) => s.scale === "soc")
           ? [{ scale: "soc", side: 1, stroke: axisColor, grid: { show: false }, size: 40 } as uPlot.Axis]
