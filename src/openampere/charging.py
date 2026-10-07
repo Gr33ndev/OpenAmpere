@@ -5,6 +5,8 @@ Safety rules:
   inverter returns to its normal mode by itself after REMOTE_TIMEOUT_S. Nothing is stored permanently.
 - The watchdog may leave the remote control switched on (#141): OpenAmpere remembers in storage that it switched
   it on and switches it off until that worked, also after a restart or a new connection.
+- The inverter may bring back OpenAmpere's values after its own restart (#143): for a few minutes after every new
+  connection, they are switched off again while OpenAmpere does not charge.
 - Needs the control switch, respects the test mode and logs every start and stop.
 - Verifies after the first commands that the battery really charges; otherwise it stops and reports
   (the sign of the remote power command is not verified on every device yet).
@@ -31,6 +33,7 @@ EFFICIENCY = 0.92
 VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command
 MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
+AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
 STARTED = "Laden gestartet"
 
 
@@ -196,7 +199,8 @@ class GridCharging:
 
     async def stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging and switches the remote control off. Called on every tick without charging, so a switch-off
-        that failed or was skipped (restart, new driver object after an IP change) is done later (#141)."""
+        that failed or was skipped (restart, new driver object after an IP change) is done later (#141), and
+        OpenAmpere's values that come back after a new connection are switched off again (#143)."""
         if error:
             self.last_error = reason
         storage, collector = self.runtime.storage, self.runtime.collector
@@ -207,7 +211,9 @@ class GridCharging:
             if was_active:
                 self._log_stop(f"Laden beendet: {reason}")
             return
-        if not was_active and not (pending and collector.connected):
+        reconnected = (bool(command) and collector.connected_at is not None
+                       and time.time() - collector.connected_at <= AFTER_CONNECT_S)
+        if not was_active and not ((pending or reconnected) and collector.connected):
             return
         try:
             switched_off = await collector.driver.release_remote_power(command.get("timeout_s", REMOTE_TIMEOUT_S))
@@ -223,11 +229,15 @@ class GridCharging:
         if command:
             storage.set_meta(REMOTE_COMMAND, {**command, "released": time.time()})
         if failed is not None:
-            self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten")
+            if was_active or pending:
+                self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten")
         elif was_active:
             self._log_stop(f"Laden beendet: {reason}")
-        elif switched_off:
+        elif switched_off and pending:
             self._log_stop("Fernsteuerung nachträglich abgeschaltet: Sie war vom Laden aus dem Netz noch an")
+        elif switched_off:
+            self._log_stop("Fernsteuerung nachträglich abgeschaltet: Der Wechselrichter hatte die Werte von OpenAmpere "
+                           "wieder eingeschaltet, zum Beispiel nach einem Neustart")
 
     def _log_stop(self, result: str) -> None:
         snap = self.runtime.collector.latest
