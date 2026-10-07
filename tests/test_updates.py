@@ -47,6 +47,9 @@ async def test_finds_and_requests_an_update(runtime):
     upd.request()
     request = json.loads((upd.folder / "request").read_text())
     assert (request["from"], request["to"]) == ("0.2.0", "0.3.0")
+    # objects, not plain strings: the app listed a string character by character (#153)
+    assert runtime.storage.control_log()[0]["details"] == {"from": {"version": "0.2.0"}, "to": {"version": "0.3.0"},
+                                                           "by": "manual"}
     (upd.folder / "status.json").write_text('{"ts": 1, "state": "pulling", "message": "lädt"}')
     view = upd.view()
     assert view["requested"] and view["updater"] and view["status"]["state"] == "pulling"
@@ -80,6 +83,7 @@ async def test_automatic_update_at_night_once_per_version(runtime):
     alive(upd, night)
     await upd.tick(now=night)
     assert (upd.folder / "request").exists()
+    assert runtime.storage.control_log()[0]["details"]["by"] == "auto"
     (upd.folder / "request").unlink()
     await upd.tick(now=night + 600)
     assert not (upd.folder / "request").exists()  # not again for the same version, even if it failed

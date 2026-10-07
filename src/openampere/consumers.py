@@ -214,8 +214,10 @@ class SurplusControl:
             return entry
         return None
 
-    def set_override(self, consumer_id: str, mode: str, hours: float | None = None, now: float | None = None) -> None:
-        """mode: auto (follow the surplus), off (stay off), boost (full power, e.g. hot water now)."""
+    def set_override(self, consumer_id: str, mode: str, hours: float | None = None, now: float | None = None,
+                     source: str | None = None) -> None:
+        """mode: auto (follow the surplus), off (stay off), boost (full power, e.g. hot water now).
+        source: who asked for it if not the web app, e.g. the name of an app's access token."""
         now = time.time() if now is None else now
         if consumer_id not in {c.id for c in self.consumers}:
             raise ValueError("Gerät nicht gefunden.")
@@ -231,7 +233,7 @@ class SurplusControl:
         self.runtime.storage.set_meta("consumer_overrides", overrides)
         name = next(c.name for c in self.consumers if c.id == consumer_id)
         self.runtime.storage.log_control("consumer_mode", {"from": {"consumer": name}, "to": {"consumer": name, "mode": mode,
-                                         "hours": hours}}, False, "ok")
+                                         "hours": hours}, **({"source": source} if source else {})}, False, "ok")
 
     def _rod(self, c: Consumer) -> MyPvHeatingRod:
         key = (c.host.strip(), c.port, c.unit)

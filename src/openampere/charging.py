@@ -94,7 +94,8 @@ class GridCharging:
     def settings(self) -> ChargingSettings:
         return ChargingSettings(**{**asdict(ChargingSettings()), **(self.runtime.storage.get_meta("grid_charging") or {})})
 
-    def save(self, raw: dict) -> ChargingSettings:
+    def save(self, raw: dict, source: str | None = None) -> ChargingSettings:
+        """source: who asked for it if not the web app, e.g. the name of an app's access token."""
         device = self.runtime.collector.device
         battery_max_w = round(self.runtime.config.battery.max_charge_kw * 1000) or None
         settings = validate(raw, device.rated_power_w if device else None, battery_max_w)
@@ -102,7 +103,8 @@ class GridCharging:
         self.runtime.storage.set_meta("grid_charging", asdict(settings))
         if old.enabled != settings.enabled:
             self.runtime.storage.log_control("grid_charging_switch", {"from": {"enabled": old.enabled},
-                                                                      "to": {"enabled": settings.enabled}}, False, "ok")
+                                                                      "to": {"enabled": settings.enabled},
+                                                                      **({"source": source} if source else {})}, False, "ok")
         return settings
 
     # ---- planning ------------------------------------------------------------

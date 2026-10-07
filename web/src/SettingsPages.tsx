@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import { getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
-import { amountInput, ct, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { amountInput, ct, dayOf, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { batterySettingName, batterySettingValue, describe, logCsv, statusLabel, type LogEntry } from "./controlLog";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
@@ -116,7 +117,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
       {current?.external_change && (
         <Notice kind="error">
           {t("settings.batteryPage.overwritten", { changes: Object.entries(current.external_change.found)
-            .map(([k, v]) => t("settings.batteryPage.changedValue", { name: LOG_KEYS[k] ?? k, value: logValue(v) })).join(", ") })}{" "}
+            .map(([k, v]) => t("settings.batteryPage.changedValue", { name: batterySettingName(k), value: batterySettingValue(k, v) })).join(", ") })}{" "}
           {t("settings.batteryPage.overwrittenHint")}
           {" "}{t("settings.batteryPage.smartboxHint")}
         </Notice>
@@ -124,7 +125,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
       {form && current && current.unreadable.length > 0 && (
         <Notice kind="warn">
           {t("settings.batteryPage.unreadValues",
-            { values: current.unreadable.map((k) => LOG_KEYS[k] ?? k).join(", ") })}
+            { values: current.unreadable.map(batterySettingName).join(", ") })}
         </Notice>
       )}
 
@@ -504,25 +505,41 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
-const LOG_KEYS: Record<string, string> = {
-  "control.enabled": t("settings.logKeys.control"), "control.dry_run": t("common.testMode"), "grid.feed_in_rule": t("common.feedInRule"),
-  "pv.installed_kwp": t("settings.logKeys.pvCapacityKwp"), export_limit_w: t("settings.logKeys.exportLimitW"), min_soc: t("settings.logKeys.backupLowerLimit"),
-  min_soc_on_grid: t("settings.logKeys.backupReserve"), max_soc: t("settings.logKeys.chargeLimit"), work_mode: t("common.operatingMode"),
-  power_w: t("settings.logKeys.chargingPowerW"), target_soc: t("settings.logKeys.chargeTarget"), enabled: t("settings.logKeys.switchedOn"), soc: t("settings.logKeys.stateOfCharge"),
-  consumer: t("common.device"), on: t("common.on"), remote_access: t("common.remoteAccess"), outage: t("settings.logKeys.powerCut"),
-};
-const LOG_VALUES: Record<string, string> = {
-  true: t("common.onValue"), false: t("common.offValue"), unknown: t("settings.logValues.unknown"), limit_60: "60 %", limit_70: "70 %", operator: t("settings.logValues.operatorValue"),
-  none: t("common.noLimitValue"), self_use: t("common.selfConsumption"), feed_in_first: t("common.preferFeedIn"), backup: t("common.backupReserve"),
-  peak_shaving: t("settings.logValues.peakShaving"), connected: t("settings.logValues.connected"), off: t("common.offValue"), login: t("settings.logValues.setUp"), logout: t("common.disconnected"),
-  starting: t("settings.logValues.settingUp"), stopping: t("settings.logValues.disconnecting"), approval: t("settings.logValues.waitingApproval"), failed: t("settings.logValues.failed"),
-};
-const logValue = (v: unknown) => (v == null ? "–" : LOG_VALUES[String(v)] ?? String(v));
+/** "Heute", "Gestern" or the date with weekday, in the plant's time zone. */
+function logDay(ts: number): string {
+  const day = dayOf(ts), now = Date.now() / 1000;
+  if (day === dayOf(now)) return t("common.today");
+  if (day === dayOf(now - 86_400)) return t("shell.updatedLabel.yesterday");
+  return new Date(ts * 1000).toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: timeZone() });
+}
 
-type LogEntry = { ts: number; action: string; details: { from: Record<string, unknown>; to: Record<string, unknown> }; dry_run: boolean; result: string };
+function LogRow({ entry }: { entry: LogEntry }) {
+  const d = describe(entry);
+  const clock = new Date(entry.ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
+  return (
+    <div className={`log-row ${d.status}`}>
+      <div>{d.text}</div>
+      <div className="meta">
+        {[clock, d.by].filter(Boolean).join(" · ")}
+        {d.status !== "ok" && <span className="log-status"> · {statusLabel(d.status)}</span>}
+      </div>
+      {d.note && <div className="meta">{d.note}</div>}
+    </div>
+  );
+}
 
 export function ControlPage({ onBack }: PageProps) {
   const { data: log, reload } = useResource<{ entries: LogEntry[] }>("/api/control/log", 30_000);
+  const days: [string, LogEntry[]][] = [];
+  for (const e of log?.entries ?? []) {
+    const day = logDay(e.ts);
+    if (days.at(-1)?.[0] === day) days.at(-1)![1].push(e);
+    else days.push([day, [e]]);
+  }
+  const exportLog = async () => {
+    const { entries } = await getJson<{ entries: LogEntry[] }>("/api/control/log?limit=0");
+    return new File([logCsv(entries)], `${t("settings.controlLog.fileName")}-${todayIso()}.csv`, { type: "text/csv;charset=utf-8" });
+  };
 
   return (
     <SubPage title={t("common.controlLog")} onBack={onBack}>
@@ -534,16 +551,20 @@ export function ControlPage({ onBack }: PageProps) {
       <div className="section-title">{t("settings.controlPage.log")}</div>
       <div className="card">
         {!log?.entries.length && <p className="hint">{t("settings.controlPage.emptyState")}</p>}
-        {log?.entries.map((e) => (
-          <div className="log-row" key={e.ts}>
-            <div className="meta">{new Date(e.ts * 1000).toLocaleString(LOCALE)}{e.dry_run && ` · ${t("common.testMode")}`}</div>
-            <div>{Object.entries(e.details.to).map(([k, v]) => `${LOG_KEYS[k] ?? k}: ${logValue(e.details.from[k])} → ${logValue(v)}`).join(", ")}</div>
-            <div className="meta">{e.result}</div>
-          </div>
+        {days.map(([day, entries]) => (
+          <section key={day} className="log-day">
+            <h3>{day}</h3>
+            {entries.map((e, i) => <LogRow key={`${e.ts}-${i}`} entry={e} />)}
+          </section>
         ))}
         {!!log?.entries.length && <button className="link" onClick={reload}>{t("settings.controlPage.refresh")}</button>}
       </div>
-
+      {!!log?.entries.length && (
+        <div className="card form">
+          <p className="hint">{t("settings.controlLog.exportHint")}</p>
+          <DownloadButton file={exportLog} label={t("settings.controlLog.export")} />
+        </div>
+      )}
     </SubPage>
   );
 }
@@ -629,11 +650,22 @@ const SHARE_FILES = IOS_HOME_SCREEN && (() => {
   }
 })();
 
-function DownloadButton({ href, label }: { href: string; label: string }) {
+/** Saves a file made in the browser, e.g. the control log as CSV. */
+function saveFile(file: File) {
+  const url = URL.createObjectURL(file);
+  const link = Object.assign(document.createElement("a"), { href: url, download: file.name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** A file from the server (`href`) or made in the browser (`file`). */
+function DownloadButton({ href, file, label }: { href?: string; file?: () => Promise<File>; label: string }) {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState<File | null>(null);
   useEffect(() => setReady(null), [href]);
-  if (!SHARE_FILES) return <a className="btn secondary" href={href} {...downloadProps}>{label}</a>;
+  if (href && !SHARE_FILES) return <a className="btn secondary" href={href} {...downloadProps}>{label}</a>;
 
   const share = (file: File) => navigator.share({ files: [file] }).then(() => setReady(null), (err: Error) => {
     if (err.name === "NotAllowedError") setReady(file); // loading took too long for iOS: one more tap opens the sheet
@@ -642,17 +674,22 @@ function DownloadButton({ href, label }: { href: string; label: string }) {
       if (err.name !== "AbortError") toast(t("settings.downloadButton.shareFailed"), "error");
     }
   });
+  const fetchFile = async (url: string) => {
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(typeof data.detail === "string" ? data.detail : t("settings.downloadButton.error", { status: response.status }));
+    }
+    const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "openampere";
+    const blob = await response.blob();
+    return new File([blob], name, { type: blob.type || "application/octet-stream" });
+  };
   const load = async () => {
     setBusy(true);
     try {
-      const response = await fetch(href, { credentials: "same-origin" });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(typeof data.detail === "string" ? data.detail : t("settings.downloadButton.error", { status: response.status }));
-      }
-      const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "openampere";
-      const blob = await response.blob();
-      await share(new File([blob], name, { type: blob.type || "application/octet-stream" }));
+      const made = file ? await file() : await fetchFile(href!);
+      if (SHARE_FILES) await share(made);
+      else saveFile(made);
     } catch (err) {
       toast(err instanceof TypeError || !(err instanceof Error) ? OFFLINE_MESSAGE : err.message, "error"); // TypeError: network
     } finally {

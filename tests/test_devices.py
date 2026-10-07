@@ -71,6 +71,10 @@ async def test_manual_boost_and_off(tmp_path, monkeypatch, rod):  # noqa: F811
         assert control.override(cid, now=60) is None
         modes = [e["details"]["to"]["mode"] for e in runtime.storage.control_log() if e["action"] == "consumer_mode"]
         assert modes == ["auto", "boost", "off", "boost"]
+        # an app names itself, in the one entry with the device's name (#153)
+        control.set_override(cid, "boost", hours=2, now=70, source="Home Assistant (Zugang für Apps)")
+        entry = runtime.storage.control_log()[0]
+        assert entry["action"] == "consumer_mode" and entry["details"]["source"] == "Home Assistant (Zugang für Apps)"
     finally:
         await control.stop()
 
