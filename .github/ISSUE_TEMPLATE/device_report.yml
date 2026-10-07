@@ -6,11 +6,11 @@ body:
     attributes:
       value: |
         How to create the report: in the app, open **Mehr → Diagnose → Diagnose starten** (More → Diagnostics → Start diagnostics), then **Bericht kopieren** (Copy report) and paste it below.
-        The diagnostics only read and change nothing. The serial number is shortened in the report unless you explicitly included it. Reports in German are welcome.
+        The diagnostics only read and change nothing. The serial number is shortened in the report unless you explicitly included it. Before pasting, remove IP addresses from the report (they can appear in connection errors). Reports in German are welcome.
         Which devices are supported and already confirmed on real hardware: [docs/devices.md](https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.md).
 
         So erstellst du den Bericht: In der App **Mehr → Diagnose → Diagnose starten**, dann **Bericht kopieren** und unten einfügen.
-        Die Diagnose liest nur und ändert nichts. Die Seriennummer ist im Bericht gekürzt, außer du hast sie ausdrücklich eingeschlossen.
+        Die Diagnose liest nur und ändert nichts. Die Seriennummer ist im Bericht gekürzt, außer du hast sie ausdrücklich eingeschlossen. Bitte vor dem Einfügen IP-Adressen aus dem Bericht entfernen (sie können in Verbindungsfehlern stehen).
         Welche Geräte unterstützt und schon an echten Anlagen bestätigt sind: [docs/devices.de.md](https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.de.md).
         **Du kannst dein Anliegen gern auf Deutsch schreiben.**
 
@@ -67,5 +67,5 @@ body:
     attributes:
       label: Privacy / Datenschutz
       options:
-        - label: The report contains no IP addresses, passwords or API keys. / Der Bericht enthält keine IP-Adressen, Passwörter oder API-Schlüssel.
+        - label: The report contains no IP or MAC addresses, passwords or API keys. / Der Bericht enthält keine IP- oder MAC-Adressen, Passwörter oder API-Schlüssel.
           required: true
