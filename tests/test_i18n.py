@@ -51,3 +51,27 @@ def test_api_errors_follow_the_language_of_the_web_app(tmp_path):
     response = client.get("/api/remote", headers={i18n.HEADER: "en"})
     assert response.status_code == 401 and response.json()["detail"] == i18n.translate("Bitte anmelden.", "en")
     assert response.json()["detail"] != "Bitte anmelden." and response.json()["code"] == "login_required"
+
+
+def test_control_log_notes_follow_the_language_of_the_web_app():
+    note = i18n.log_note
+    assert note("ok", "en") is None and note("manual", "en") is None
+    assert note("von einem anderen Gerät überschrieben", "en") is None  # the app's sentence says it
+    # wrapped reasons lose what the sentence already says, the reason itself is translated
+    assert note("Laden beendet: Ladeziel 80 % erreicht", "de") == "Ladeziel 80 % erreicht"
+    assert note("Laden beendet: Ladeziel 80 % erreicht", "en") == "charge target of 80 % reached"
+    assert note("Laden gestartet (günstigste Viertelstunden)", "en") == "cheapest quarter hours"
+    assert note("nicht geschaltet (Testmodus): Überschuss 2600 W", "en") == "surplus 2600 W"
+    # errors stay complete, with the inner message translated as well
+    assert note("Fehler: keine Antwort – Rücklesen fehlgeschlagen", "en") == "Error: keine Antwort – reading back failed"
+    assert note("Etwas Unbekanntes", "en") == "Etwas Unbekanntes"
+
+
+def test_control_log_endpoint_sends_translated_notes(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    client = TestClient(create_app(runtime))
+    login(client)
+    runtime.storage.log_control("consumer", {"from": {"on": False}, "to": {"on": True}}, False, "Überschuss 2600 W")
+    entry = client.get("/api/control/log", headers={i18n.HEADER: "en"}).json()["entries"][0]
+    assert entry["note"] == "surplus 2600 W" and entry["result"] == "Überschuss 2600 W"  # the stored text stays
+    assert client.get("/api/control/log").json()["entries"][0]["note"] == "Überschuss 2600 W"

@@ -63,17 +63,46 @@ def _patterns() -> list[tuple[re.Pattern, str, list[str]]]:
     return patterns
 
 
+def match(text: str) -> tuple[str, dict[str, str]] | None:
+    """The key of a German message and the values in its placeholders, None for an unknown text."""
+    for pattern, key, names in _patterns():
+        found = pattern.match(text)
+        if found:
+            return key, {name: found.group(name) for name in names}
+    return None
+
+
 def translate(text: str, lang: str | None) -> str:
-    """The message in the requested language, unchanged if there is no translation."""
+    """The message in the requested language, unchanged if there is no translation. Values that are messages
+    themselves are translated as well, e.g. the reason in "Laden beendet: {reason}"."""
     if not text or not lang or lang == REFERENCE or lang not in languages():
         return text
-    for pattern, key, names in _patterns():
-        match = pattern.match(text)
-        if match:
-            translated = catalog(lang).get(key)
-            if translated is None:
-                return text
-            for name in names:
-                translated = translated.replace("{" + name + "}", match.group(name))
-            return translated
-    return text
+    found = match(text)
+    if found is None:
+        return text
+    key, values = found
+    translated = catalog(lang).get(key)
+    if translated is None:
+        return text
+    for name, value in values.items():
+        translated = translated.replace("{" + name + "}", translate(value, lang))
+    return translated
+
+
+# Results of the control log that the app already says in its own sentence, and results that only wrap a reason (#153)
+LOG_SAID = {"ok", "manual", "auto"}
+LOG_SAID_KEYS = {"api.logNoPowerCut", "control.logOverwritten", "control.logNotDoneTestMode", "evcc.logNotSentTestMode"}
+LOG_REASON_KEYS = {"charging.logStarted", "charging.logFinished", "charging.logWouldCharge", "charging.logRemoteReleased",
+                   "consumers.logNotSwitchedTestMode", "consumers.logNotSentTestMode"}
+
+
+def log_note(result: str, lang: str | None) -> str | None:
+    """What the app shows below a control log entry: the reason or the error, in the language of the app."""
+    if not result or result in LOG_SAID:
+        return None
+    found = match(result)
+    if found and found[0] in LOG_SAID_KEYS:
+        return None
+    if found and found[0] in LOG_REASON_KEYS:
+        return translate(found[1]["reason"], lang)
+    return translate(result, lang)

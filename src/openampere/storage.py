@@ -163,7 +163,8 @@ class Storage:
         return rows[0]["ts"] if rows else None
 
     def control_log(self, limit: int = 50) -> list[dict]:
-        rows = self._fetchall("SELECT * FROM control_log ORDER BY ts DESC LIMIT ?", (limit,))
+        """The newest entries first; limit 0 returns all of them."""
+        rows = self._fetchall("SELECT * FROM control_log ORDER BY ts DESC LIMIT ?", (limit or -1,))
         return [{**r, "details": json.loads(r["details"]), "dry_run": bool(r["dry_run"])} for r in rows]
 
     def backup(self, target: str | Path, *, drop_settings: set[str] | frozenset = frozenset()) -> None:
