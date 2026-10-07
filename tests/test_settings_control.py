@@ -236,7 +236,7 @@ async def test_diagnostics_report(tmp_path):
             checks = {c["id"]: c for c in report["checks"]}
             assert checks["blocks"]["status"] == "ok"
             assert checks["block_37609"]["status"] == "ok"
-            assert checks["export_limit"]["summary"] == "6000 W"
+            assert checks["export_limit"]["summary"] == "etwa 6000 W"
             assert checks["connections"]["details"]["main_connection_survived"]
             assert report["device"]["serial"] != "SN1"  # masked unless asked
             assert "OpenAmpere-Diagnose" in report_markdown(report)
@@ -247,6 +247,48 @@ async def test_diagnostics_report(tmp_path):
             warn = {**report, "checks": report["checks"] + [{"id": "x", "title": "Beispiel (1)", "status": "warn",
                                                              "summary": "bitte prüfen"}]}
             assert report_markdown(warn).index("### Zu prüfen") < report_markdown(warn).index("### Alle Prüfungen")
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_diagnostics_report_hides_addresses_and_times(tmp_path):
+    """#149: the report is shared in public issues. Addresses and local host names are pseudonymised (the same value
+    always the same way), times of the user's actions become durations, the export limit is rounded."""
+    import time
+
+    from openampere.diagnostics import Diagnostics, report_markdown
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
+            await wait_connected(runtime)
+            now = time.time()
+            runtime.storage.set_meta("connection_events", [
+                {"ts": now - 7200, "event": "getrennt", "detail": f"Not connected[AsyncModbusTcpClient 127.0.0.1:{port}]"},
+                {"ts": now - 3600, "event": "getrennt", "detail": "proxy 192.168.178.20 (AA:BB:CC:DD:EE:FF) unreachable"},
+                {"ts": now - 1800, "event": "getrennt", "detail": "proxy 192.168.178.20 via nas.fritz.box at 12:34:56"}])
+            runtime.storage.set_meta("counter_glitches", [{"ts": now - 600, "kind": "Zähler rückwärts"}])
+            runtime.storage.set_meta("remote_command", {"ts": now - 5400, "power_w": -3000, "released": now - 5000})
+            sim._put("export_limit", 7209, sim.map.settings)
+
+            report = await Diagnostics(runtime).run()
+            text = report_markdown(report)
+            for secret in ("127.0.0.1", "192.168.178.20", "AA:BB:CC:DD:EE:FF", "nas.fritz.box", "7209", str(int(now))[:6]):
+                assert secret not in text, secret
+            checks = {c["id"]: c for c in report["checks"]}
+            assert checks["night"]["details"]["last_errors"] == [
+                f"Not connected[AsyncModbusTcpClient <Wechselrichter>:{port}]", "proxy <IP-1> (<MAC-1>) unreachable",
+                "proxy <IP-1> via <Host-1> at 12:34:56"]
+            assert checks["night"]["details"]["glitches"][0].keys() == {"kind", "hour"}
+            assert checks["export_limit"]["summary"] == "etwa 7200 W"
+            assert checks["remote"]["details"]["openampere_last_command_min_ago"] == 90
+
+            # a report stored by an older version is pseudonymised when it is shown again
+            runtime.storage.set_meta("diagnostics_report", {**report, "checks": [
+                {"id": "night", "title": "x", "status": "info", "summary": "", "hint": "",
+                 "details": {"last_errors": ["timeout 127.0.0.1:502"]}}]})
+            assert "127.0.0.1" not in report_markdown(Diagnostics(runtime).last)
         finally:
             await runtime.collector.stop()
 

@@ -2,12 +2,15 @@
 
 Everything here only reads. The result is a report that users can share (e.g. in a GitHub issue) so
 register maps, scaling factors and device behaviour can be verified for more devices. The serial number
-is masked unless the user explicitly includes it.
+is masked unless the user explicitly includes it; addresses, host names and times of the user's actions are
+pseudonymised or left out (#149).
 """
 
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import re
 import time
 from collections import Counter
 from dataclasses import asdict, dataclass, field
@@ -38,6 +41,53 @@ def _mask(serial: str | None) -> str | None:
     return serial[:4] + "…" + serial[-2:] if len(serial) > 6 else "…"
 
 
+_IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
+_IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
+_MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])")
+_HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
+                   r"(?![\w-])", re.I)
+
+
+class _Pseudonyms:
+    """Replaces addresses and local host names in report texts, the same value always by the same pseudonym (#149):
+    the report stays readable ("the same address twice") without telling anyone the user's network."""
+
+    def __init__(self, inverter_host: str | None) -> None:
+        self.known = {inverter_host.lower(): "<Wechselrichter>"} if inverter_host else {}
+        self.counts: Counter = Counter()
+
+    def _name(self, value: str, kind: str) -> str:
+        key = value.lower()
+        if key not in self.known:
+            self.counts[kind] += 1
+            self.known[key] = f"<{kind}-{self.counts[kind]}>"
+        return self.known[key]
+
+    def _ip(self, match: re.Match, kind: str = "IP") -> str:
+        try:
+            ipaddress.ip_address(match.group(0))
+        except ValueError:  # e.g. a time like 12:34:56 or a version number
+            return match.group(0)
+        return self._name(match.group(0), kind)
+
+    def text(self, text: str) -> str:
+        for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
+            text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", name, text, flags=re.I)
+        text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
+        text = _IPV4.sub(self._ip, text)
+        text = _IPV6.sub(self._ip, text)
+        return _HOST.sub(lambda m: self._name(m.group(0), "Host"), text)
+
+    def apply(self, value):
+        if isinstance(value, str):
+            return self.text(value)
+        if isinstance(value, list):
+            return [self.apply(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.apply(v) for k, v in value.items()}
+        return value
+
+
 def _duration(seconds: float) -> str:
     minutes = int(seconds // 60)
     if minutes < 120:
@@ -51,7 +101,8 @@ class Diagnostics:
         self.runtime = runtime
         self.running = False
         self._watched = 0.0
-        self.last: dict | None = runtime.storage.get_meta("diagnostics_report")
+        last = runtime.storage.get_meta("diagnostics_report")
+        self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
     def _driver(self):
         driver = self.runtime.collector.driver
@@ -105,8 +156,9 @@ class Diagnostics:
         now, tz = time.time(), self.runtime.tz
         timeout, power = remote["timeout_s"], remote["power_w"]
         command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
+        # durations instead of times of the user's actions (#149)
         details = {"words": remote["words"], "timeout_s": timeout, "power_w": power,
-                   "openampere_last_command": command.get("ts")}
+                   "openampere_last_command_min_ago": round((now - command["ts"]) / 60) if command else None}
         if not remote["on"]:
             return Check("remote", title, "ok", "aus – kein Gerät steuert den Speicher gerade von außen", details)
         # negative = the battery charges (sign not verified on every device, the raw value is in the details)
@@ -126,8 +178,8 @@ class Diagnostics:
                          "an, melde das bitte als Fehler.")
         seen = self.runtime.storage.get_meta(REMOTE_SEEN) or {}
         if seen.get("on_since") and now - seen.get("checked", 0) <= 2 * WATCH_S:
-            details["on_since"] = seen["on_since"]
             duration = seen["checked"] - seen["on_since"]
+            details["on_for_min"] = round(duration / 60)
             since = f" Seit mindestens {_duration(duration)} durchgehend an." if duration >= WATCH_S else ""
         else:
             since = ""
@@ -169,13 +221,18 @@ class Diagnostics:
         info = asdict(device) if device else {}
         if not include_serial:
             info["serial"] = _mask(info.get("serial"))
-        report = {"created": time.time(), "version": self._version(), "device": info,
-                  "connection": {"mode": self.runtime.config.inverter.connection_mode,
-                                 "timeout_s": self.runtime.config.inverter.timeout},
-                  "checks": [asdict(c) for c in checks]}
+        report = self._pseudonymise({"created": time.time(), "version": self._version(), "device": info,
+                                     "connection": {"mode": self.runtime.config.inverter.connection_mode,
+                                                    "timeout_s": self.runtime.config.inverter.timeout},
+                                     "checks": [asdict(c) for c in checks]})
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
         return report
+
+    def _pseudonymise(self, report: dict) -> dict:
+        """The checks can quote connection errors with the inverter's address; the report is shared publicly."""
+        pseudonyms = _Pseudonyms(self.runtime.config.inverter.host)
+        return {**report, "checks": pseudonyms.apply(report.get("checks", []))}
 
     @staticmethod
     def _version() -> str:
@@ -254,9 +311,11 @@ class Diagnostics:
                 value = (r["words"][0] << 16) | r["words"][1]
                 rated = device.rated_power_w if device else None
                 plausible = 0 <= value <= (rated or 30_000)
+                # rounded: the exact limit tells the exact system size (60 or 70 % of the kWp, #149)
+                rounded = round(value, -2)
                 checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "ok" if plausible else "warn",
-                                    f"{value} W" + ("" if plausible else " – unplausibel, Einheit/Register prüfen"),
-                                    {"words": r["words"], "rated_power_w": rated}))
+                                    f"etwa {rounded} W" + ("" if plausible else " – unplausibel, Einheit/Register prüfen"),
+                                    {"high_word": r["words"][0], "rounded_w": rounded, "rated_power_w": rated}))
             else:
                 checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "warn", f"{r['error']}"))
 
@@ -293,7 +352,8 @@ class Diagnostics:
                             f"{plural(len(glitches), 'Zählerauffälligkeit', 'Zählerauffälligkeiten')} gespeichert",
                             {"disconnects_by_hour": dict(sorted(by_hour.items())),
                              "last_errors": [e["detail"] for e in events if e["event"] == "getrennt"][-5:],
-                             "glitches": glitches[-10:]}))
+                             "glitches": [{"kind": g["kind"], "hour": datetime.fromtimestamp(g["ts"], tz).hour}
+                                          for g in glitches[-10:]]}))
         return checks
 
     async def _connection_test(self) -> Check:
