@@ -456,7 +456,8 @@
     "regionHint": "Grid area: {region}. Log in as in the customer portal {portal}.",
     "requestOnGithub": "Request it on GitHub",
     "saveAndFetch": "Save and fetch",
-    "savedKeep": "Saved. Leave empty to keep it."
+    "savedKeep": "Saved. Leave empty to keep it.",
+    "unofficialHint": "Fetching is not an official service of the grid operator. OpenAmpere logs in to the customer portal with your own login details, just as you do in the browser. If the grid operator changes its portal, fetching can stop working without warning. For days without meter readings, the inverter's values count then."
   },
   "installationPage": {
     "bms": "Electronics (BMS)",
