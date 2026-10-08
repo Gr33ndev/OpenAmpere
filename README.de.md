@@ -20,18 +20,21 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 ## Unterstützte Geräte
 
-| Gerät | Status |
-|---|---|
-| FoxESS H3 / H3 Smart / H3 Pro | ✅ Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. |
-| SAJ H2 / HS2 | ✅ Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. |
-| Heizstab, Wärmepumpe (SG-Ready) | ✅ Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. |
-| Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | ✅ Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. |
-| Wallbox | ✅ Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). |
-| Home Assistant | ✅ Eigene Integration über HACS: Daten live und Steuerung, siehe [Home Assistant](#home-assistant). |
+| Gerät | Was OpenAmpere kann | An echter Anlage bestätigt? |
+|---|---|---|
+| FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige bestätigt, Steuerung teilweise bestätigt |
+| FoxESS H3, ältere Firmware / H3 Smart / H3 Pro | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
+| SAJ H2 / HS2 | Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. | Noch nicht bestätigt |
+| Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
+| Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
+| Wallbox | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). | Noch nicht bestätigt |
+| Home Assistant | Eigene Integration über HACS: Daten live und Steuerung, siehe [Home Assistant](#home-assistant). | – |
+
+**Noch nicht bestätigt** heißt: Die Unterstützung beruht auf Unterlagen der Hersteller oder der Community und ist mit Tests und dem Simulator geprüft, aber noch niemand hat sie von einer echten Anlage gemeldet. Gut möglich, dass alles klappt. Hast du so ein Gerät, hilf mit einem **Gerätebericht**: Starte in der App unter **Mehr → Diagnose** die Diagnose (sie liest nur und ändert nichts), tippe auf **Bericht kopieren** und füge den Bericht in das [Formular für Geräteberichte](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml) ein. Entferne vorher IP-Adressen, Passwörter und API-Schlüssel. Jeder Bericht hilft, eine Zeile auf „bestätigt“ zu bringen.
 
 **Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2. Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
 
-Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je Modell angezeigt und gesteuert wird und was schon an echten Anlagen bestätigt ist.
+Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je Modell angezeigt und gesteuert wird und was genau schon an echten Anlagen bestätigt ist.
 
 ## Funktionen
 

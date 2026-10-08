@@ -16,12 +16,12 @@
   "audience": {
     "title": "Für wen ist OpenAmpere?",
     "devicesTitle": "Unterstützte Geräte",
-    "foxess": "<strong>FoxESS H3, H3 Smart, H3 Pro:</strong> Anzeige und Steuerung",
-    "saj": "<strong>SAJ H2 und HS2:</strong> Anzeige",
-    "heater": "<strong>Heizstab von my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): stufenlos geregelt",
-    "relay": "Wärmepumpe oder andere Geräte über ein Shelly-Relais",
-    "wallbox": "<strong>Wallbox</strong> über <a href=\"https://evcc.io\">evcc</a>",
-    "devicesNote": "Welches Gerät du hast, erkennt die App beim Einrichten selbst. Die Verbindung läuft über Modbus TCP.",
+    "foxess": "<strong>FoxESS H3, H3 Smart, H3 Pro:</strong> Anzeige und Steuerung. Bestätigt an einem H3 mit neuerer Firmware, die anderen Varianten noch nicht",
+    "saj": "<strong>SAJ H2 und HS2:</strong> Anzeige, noch nicht bestätigt",
+    "heater": "<strong>Heizstab von my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): stufenlos geregelt, noch nicht bestätigt",
+    "relay": "Wärmepumpe oder andere Geräte über ein Shelly-Relais, noch nicht bestätigt",
+    "wallbox": "<strong>Wallbox</strong> über <a href=\"https://evcc.io\">evcc</a>, noch nicht bestätigt",
+    "devicesNote": "Welches Gerät du hast, erkennt die App beim Einrichten selbst. Die Verbindung läuft über Modbus TCP. „Noch nicht bestätigt“ heißt: nach Unterlagen der Hersteller oder der Community gebaut und mit Tests geprüft, aber noch von keiner echten Anlage gemeldet. Hast du so ein Gerät, hilft ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> mit der Diagnose aus der App. Alle Einzelheiten stehen in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.de.md\">Geräteliste</a>.",
     "setupTitle": "Einrichtung",
     "setupText": "Du startest OpenAmpere einmal mit Docker. Danach sucht ein Assistent den Wechselrichter, und alle Einstellungen machst du in der App. Konfigurationsdateien musst du nicht bearbeiten.",
     "setupNote": "Deine bisherige App funktioniert nur über die Cloud des Herstellers? Dann lies den <a href=\"#hintergrund\">Hintergrund</a> und die <a href=\"faq.html\">häufigen Fragen</a>."
@@ -93,7 +93,7 @@
   },
   "contribute": {
     "title": "Mitmachen",
-    "text": "Du kannst auch ohne Programmierkenntnisse helfen. Am meisten bringt ein Diagnosebericht von deinem Gerät, weil sich damit weitere Modelle unterstützen lassen. Fehler und Ideen kannst du als Issue melden.",
+    "text": "Du kannst auch ohne Programmierkenntnisse helfen. Am meisten bringt ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> mit der Diagnose aus der App, weil sich damit weitere Modelle unterstützen und bestätigen lassen. Fehler und Ideen kannst du als Issue melden.",
     "issueButton": "Issue öffnen",
     "guideButton": "Anleitung zum Mitmachen"
   },

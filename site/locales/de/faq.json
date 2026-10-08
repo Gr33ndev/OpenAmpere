@@ -28,7 +28,7 @@
   "system": {
     "title": "Meine Anlage",
     "compatibleQ": "Funktioniert OpenAmpere mit meinem Speicher?",
-    "compatibleA": "Die als „Ampere.StoragePro E3“ verkauften Speicher basieren auf dem FoxESS H3: Anzeige und Steuerung. Die älteren „Ampere.StoragePro“ basieren auf SAJ H2 oder HS2: Anzeige, die Steuerung folgt, sobald sie an echten Geräten geprüft ist. Welches Gerät du hast, erkennt OpenAmpere beim Einrichten selbst.",
+    "compatibleA": "Die als „Ampere.StoragePro E3“ verkauften Speicher basieren auf dem FoxESS H3: Anzeige und Steuerung. Die älteren „Ampere.StoragePro“ basieren auf SAJ H2 oder HS2: Anzeige, die Steuerung folgt, sobald sie an echten Geräten geprüft ist. Welches Gerät du hast, erkennt OpenAmpere beim Einrichten selbst. An einer echten Anlage bestätigt ist bisher ein FoxESS H3 mit neuerer Firmware. Für die anderen FoxESS-Varianten und die SAJ-Geräte fehlt noch ein Bericht von einer echten Anlage. Mit einem <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> hilfst du dabei.",
     "cloudGoneQ": "Was passiert, wenn die EKD-Cloud irgendwann nicht mehr erreichbar ist?",
     "cloudGoneA": "Ob und wann das passiert, ist offen. Sollte es so kommen, läuft OpenAmpere einfach weiter, weil es keinen Server von EKD braucht. Wechselrichter und Speicher arbeiten ohnehin vor Ort und behalten ihre zuletzt eingestellten Werte. Was ohne Cloud fehlt, ist die Ampere.IQ-App mit ihrem Verlauf.",
     "historyQ": "Kann ich meinen bisherigen Verlauf aus Ampere.IQ behalten?",
