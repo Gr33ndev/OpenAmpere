@@ -10,6 +10,7 @@ import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
+import { LastRestore, RestoreButton } from "./Restore";
 import { UpdatesCard } from "./Updates";
 import { AmountInput, Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
@@ -767,6 +768,7 @@ export function DataPage({ onBack }: PageProps) {
   const { data: auth } = useResource<AuthStatus>("/api/auth/status");
   const [days, setDays] = useState(30);
   const { data: usage } = useResource<StorageUsage>("/api/storage");
+  const { data: status } = useResource<Status>("/api/status");
   useEffect(() => { if (settings) setDays(settings["storage.raw_retention_days"]); }, [settings]);
   const options: [string, string][] = RETENTION.map(([d, label]) => [String(d), label]);
   if (!RETENTION.some(([d]) => d === days)) options.unshift([String(days), t("settings.dataPage.days", { days })]);
@@ -799,6 +801,16 @@ export function DataPage({ onBack }: PageProps) {
             {t("settings.dataPage.logInToDownload")}
           </Button>
         )}
+      </div>
+      <div className="card form">
+        <h2>{t("settings.restoreCard.title")}</h2>
+        <p className="hint">{t("settings.restoreCard.hint")}</p>
+        {DEMO ? <p className="hint">{t("settings.dataPage.notInDemo")}</p> : auth?.authenticated ? <RestoreButton /> : (
+          <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
+            {t("settings.restoreCard.logInToRestore")}
+          </Button>
+        )}
+        <LastRestore restored={status?.database.restored ?? null} />
       </div>
     </SubPage>
   );

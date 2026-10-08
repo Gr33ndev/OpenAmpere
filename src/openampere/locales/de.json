@@ -4,11 +4,13 @@
     "accessNotFound": "Zugang nicht gefunden.",
     "accessReadOnly": "Dieser Zugang darf nur lesen.",
     "accessViaNotAllowed": "Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse oder trage den Namen unter server.allowed_hosts ein.",
+    "backupCouldNotBeStored": "Die Sicherung ließ sich nicht speichern. Bitte prüfen, ob genug freier Speicherplatz da ist.",
     "consumerNotFound": "Verbraucher nicht gefunden",
     "controlDisabled": "Steuerung ist deaktiviert",
     "currentPasswordIncorrect": "Das bisherige Passwort stimmt nicht.",
     "endDateBeforeStart": "Das Enddatum liegt vor dem Startdatum",
     "enterNtfyAddressFirst": "Bitte zuerst eine ntfy-Adresse eintragen.",
+    "fileTooLarge4Gb": "Datei zu groß (max. 4 GB).",
     "fileTooLargeMax": "Datei zu groß (max. 500 MB).",
     "httpsPortTurnedOff": "Der HTTPS-Port ist ausgeschaltet (server.tls_port). Ohne ihn können sich andere Apps nicht sicher verbinden.",
     "invalidDate": "Ungültiges Datum",
@@ -20,6 +22,7 @@
     "logSwitchedByHand": "von Hand geschaltet",
     "noCurrentReadingsInverter": "Keine aktuellen Messwerte vom Wechselrichter",
     "noReadingsYet": "Noch keine Messwerte",
+    "notEnoughSpaceBackup": "Nicht genug freier Speicherplatz für die Sicherung.",
     "onlyAvailableViaHttps": "Nur über HTTPS erreichbar.",
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
@@ -222,6 +225,10 @@
   },
   "secretbox": {
     "damagedDeleteFileEnter": "{key_path} ist beschädigt. Datei löschen und die Zugangsdaten in der App neu eingeben."
+  },
+  "storage": {
+    "backupDamaged": "Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine andere Sicherung wählen.",
+    "notABackup": "Das ist keine Sicherung von OpenAmpere. Bitte die Datei wählen, die unter „Datensicherung herunterladen“ gespeichert wurde."
   },
   "tariffs": {
     "enterLeastOneTariff": "Bitte mindestens einen Tarif angeben.",

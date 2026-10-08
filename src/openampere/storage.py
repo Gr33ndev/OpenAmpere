@@ -61,8 +61,87 @@ CREATE TABLE IF NOT EXISTS control_log (
 """
 
 
+SIDE_FILES = ("-wal", "-shm")  # SQLite's write-ahead log and its index belong to the database file
+DAMAGED_SUFFIX = ".damaged-"  # a damaged database is kept under this name plus the time (#165)
+RESTORE_SUFFIX = ".restore"  # a checked backup that replaces the database on the next start
+KEPT_SUFFIX = ".before-restore-"  # the database a restored backup replaced, plus the time
+REQUIRED_TABLES = {"samples", "energy_15m", "meta"}  # every OpenAmpere database has them since the first release
+# Access and device state stay those of the running installation when a backup is restored: backups contain no
+# sessions, and an empty or old password would let anyone in the home network take over (or lock out the owner).
+# api_tokens: tokens revoked since the backup must stay revoked. remote_command: whether OpenAmpere still has to
+# switch off the inverter's remote control right now (#141).
+KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command")
+SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26
+
+
 class DatabaseInUse(RuntimeError):
     pass
+
+
+class DatabaseDamaged(sqlite3.DatabaseError):
+    """The integrity check found errors in the database file."""
+
+
+class InvalidBackup(ValueError):
+    """An uploaded file that cannot be restored, with the reason for the owner."""
+
+
+def _is_damage(err: sqlite3.DatabaseError) -> bool:
+    """Only a damaged file is moved aside, never one that is locked, read-only or on a missing disk."""
+    if isinstance(err, DatabaseDamaged):
+        return True
+    code = getattr(err, "sqlite_errorcode", None)
+    if code is not None:
+        return code & 0xFF in (SQLITE_CORRUPT, SQLITE_NOTADB)
+    text = str(err).lower()
+    return "malformed" in text or "not a database" in text
+
+
+def _move_with_side_files(source: Path, target: Path) -> None:
+    """Renames a database together with its write-ahead log, so the copy can still be opened as it was."""
+    for suffix in ("", *SIDE_FILES):
+        if os.path.exists(f"{source}{suffix}"):
+            os.replace(f"{source}{suffix}", f"{target}{suffix}")
+
+
+def _stamp() -> str:
+    return time.strftime("%Y%m%d-%H%M%S")
+
+
+def _apply_pending_restore(path: Path) -> Path | None:
+    """Puts a backup that was restored in the app in place of the database, before anything opens it.
+    The previous database is kept next to it. Returns where."""
+    pending = Path(f"{path}{RESTORE_SUFFIX}")
+    if not pending.is_file():
+        return None
+    kept = path.with_name(f"{path.name}{KEPT_SUFFIX}{_stamp()}")
+    _move_with_side_files(path, kept)  # also a write-ahead log without its database: it must not meet the backup
+    os.replace(pending, path)
+    log.warning("restored a backup; the previous database is kept as %s", kept.name)
+    return kept
+
+
+def check_backup(path: str | Path) -> None:
+    """Raises InvalidBackup unless the file is an intact OpenAmpere database."""
+    with open(path, "rb") as file:
+        header = file.read(16)
+    if header != b"SQLite format 3\x00":
+        raise InvalidBackup("Das ist keine Sicherung von OpenAmpere. Bitte die Datei wählen, die unter "
+                            "„Datensicherung herunterladen“ gespeichert wurde.")
+    db = sqlite3.connect(str(path))
+    try:
+        problems = [row[0] for row in db.execute("PRAGMA integrity_check(5)")]
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    except sqlite3.DatabaseError:
+        problems, tables = ["error"], set()
+    finally:
+        db.close()
+    if problems != ["ok"]:
+        raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine "
+                            "andere Sicherung wählen.")
+    if not REQUIRED_TABLES <= tables:
+        raise InvalidBackup("Das ist keine Sicherung von OpenAmpere. Bitte die Datei wählen, die unter "
+                            "„Datensicherung herunterladen“ gespeichert wurde.")
 
 
 def _lock_exclusively(path: Path) -> int | None:
@@ -85,27 +164,58 @@ class Storage:
         path = Path(path)
         self.path = str(path)
         self._lock_fd = None
-        if str(path) != ":memory:":
-            path.parent.mkdir(parents=True, exist_ok=True)
-            self._lock_fd = _lock_exclusively(path)
-        self._db = sqlite3.connect(str(path), check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.executescript(SCHEMA)
-        existing = {row["name"] for row in self._db.execute("PRAGMA table_info(samples)")}
-        for column in SAMPLE_EXTRA_COLUMNS:
-            if column not in existing:
-                self._db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
         # One connection shared by the event loop, worker threads and the web server's thread pool.
         # SQLite connections must not be used by several threads at the same time (crashes with a
         # segmentation fault on some builds), so EVERY access - reads included - holds this lock.
         self._lock = threading.RLock()
+        memory = str(path) == ":memory:"
+        kept = None
+        if not memory:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._lock_fd = _lock_exclusively(path)
+            kept = _apply_pending_restore(path)
+        try:
+            self._db = self._open(check=not memory)
+        except sqlite3.DatabaseError as err:
+            if memory or not _is_damage(err):
+                raise
+            # typical after a power cut on an SD card: without this the app would not start at all, and the
+            # owner could not even download a backup (#165)
+            damaged = path.with_name(f"{path.name}{DAMAGED_SUFFIX}{_stamp()}")
+            log.error("the database is damaged (%s); it is kept as %s and OpenAmpere starts with an empty one",
+                      err, damaged.name)
+            _move_with_side_files(path, damaged)
+            self._db = self._open(check=False)
+            self.set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
+        if kept is not None:
+            self.set_meta("database_restored", {"ts": time.time(), "kept": str(kept.resolve())})
         # per-input energy of the running quarter; persisted so a restart does not lose it
         self._pv_acc: dict | None = self._get_meta("pv_input_state")
         self._quarter: dict | None = self._get_meta("quarter_state")
         row = self._db.execute("SELECT MAX(ts) FROM samples").fetchone()
         self._last_sample_ts: float = row[0] or 0.0
         self._clock_warned = False
+
+    def _open(self, check: bool) -> sqlite3.Connection:
+        """Connects and brings the tables up to date. check: run SQLite's quick integrity check, which reads the
+        whole file once (a few seconds for a large database on an SD card), so damage is found at the start."""
+        db = sqlite3.connect(self.path, check_same_thread=False)
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA journal_mode=WAL")
+            if check:
+                problems = [row[0] for row in db.execute("PRAGMA quick_check(5)")]
+                if problems != ["ok"]:
+                    raise DatabaseDamaged("; ".join(problems))
+            db.executescript(SCHEMA)
+            existing = {row["name"] for row in db.execute("PRAGMA table_info(samples)")}
+            for column in SAMPLE_EXTRA_COLUMNS:
+                if column not in existing:
+                    db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
+        except BaseException:
+            db.close()
+            raise
+        return db
 
     def close(self) -> None:
         with self._lock:
@@ -131,6 +241,10 @@ class Storage:
     def set_meta(self, key: str, value) -> None:
         with self._lock, self._db:
             self._set_meta(key, value)
+
+    def delete_meta(self, key: str) -> None:
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM meta WHERE key=?", (key,))
 
     def _set_meta(self, key: str, value) -> None:
         self._db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, json.dumps(value)))
@@ -182,6 +296,42 @@ class Storage:
                 dest.execute("DELETE FROM meta WHERE key='sessions'")
             dest.execute("VACUUM")  # really remove the deleted data from the file
             dest.close()
+
+    def stage_restore(self, upload: str | Path, *, keep_settings: set[str] | frozenset = frozenset()) -> None:
+        """Checks an uploaded backup and moves it next to the database, where it replaces it on the next start
+        (nothing has the database open then). The password, sessions, app tokens and the given secret settings
+        (not in a backup) are taken over from the running installation; raises InvalidBackup."""
+        check_backup(upload)
+        with self._lock:
+            keep = {key: self._get_meta(key) for key in KEEP_ON_RESTORE}
+            settings = self.get_settings()
+            revision = int(self._get_meta("settings_revision") or 0)
+        db = sqlite3.connect(str(upload))
+        try:
+            db.execute("PRAGMA journal_mode=DELETE")  # everything in the one file that is moved
+            with db:
+                row = db.execute("SELECT value FROM meta WHERE key='settings'").fetchone()
+                restored = json.loads(row[0]) if row else {}
+                if not isinstance(restored, dict):
+                    raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. "
+                                        "Bitte eine andere Sicherung wählen.")
+                restored = {k: v for k, v in restored.items() if k not in keep_settings}
+                restored.update({k: v for k, v in settings.items() if k in keep_settings})
+                values = {**keep, "settings": restored, "settings_revision": revision + 1,
+                          "database_damaged": None, "database_restored": None}
+                for key, value in values.items():
+                    if value is None:
+                        db.execute("DELETE FROM meta WHERE key=?", (key,))
+                    else:
+                        db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, json.dumps(value)))
+        except InvalidBackup:
+            raise
+        except (sqlite3.DatabaseError, TypeError, ValueError) as err:  # e.g. other columns, broken JSON
+            raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine "
+                                "andere Sicherung wählen.") from err
+        finally:
+            db.close()
+        os.replace(upload, f"{self.path}{RESTORE_SUFFIX}")
 
     # ---- writing ---------------------------------------------------------
 

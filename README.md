@@ -216,7 +216,9 @@ sudo docker compose start openampere
 
 The file `openampere-sicherung.tar.gz` is then in your home folder on the server. Copy it to another computer or a USB stick. If you set up evcc with the install script, its configuration is in the folder `evcc` next to it. Then write `data evcc` instead of `data` so that it is backed up as well.
 
-**Restore:** this is not possible in the app yet; it is being worked on in [#165](https://github.com/Gr33ndev/OpenAmpere/issues/165). Until then, you copy the backup back by hand. The file must be in your home folder on the server:
+**Restore in the app:** under **More → Data & backup**, choose the file from the app at **Restore backup**. You need to be logged in. OpenAmpere checks the file, keeps your password and the stored login details and then restarts. The previous database is kept as a copy in the `data` folder.
+
+**Bring back the whole data folder:** if you backed up the `data` folder as above, copy it back by hand. The file must be in your home folder on the server:
 
 ```bash
 cd /opt/openampere
@@ -227,20 +229,6 @@ sudo docker compose start openampere
 ```
 
 The previous data folder is kept as `data-alt`. Once everything runs again, you can delete it with `sudo rm -r /opt/openampere/data-alt`.
-
-If you only have the file from the app, you replace the database with it. Put the file in your home folder on the server first and use its name below:
-
-```bash
-cd /opt/openampere
-sudo docker compose stop openampere
-sudo mv data/openampere.db data/openampere-alt.db
-sudo rm -f data/openampere.db-wal data/openampere.db-shm
-sudo cp ~/openampere-backup-<date>.db data/openampere.db
-sudo chown 1000:1000 data/openampere.db
-sudo docker compose start openampere
-```
-
-Then enter the passwords and API keys you had set up in OpenAmpere again in the app.
 
 ## Moving to a new computer
 

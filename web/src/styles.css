@@ -363,6 +363,9 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 }
 .toast.error { background: var(--delight-strong); color: #fff; }
 .setup { padding-top: 20px; }
+.code-inline.wrap { white-space: normal; overflow-wrap: anywhere; }
+.page.top-notice { margin-bottom: 20px; }
+.top-notice .notice p { margin: 0 0 10px; }
 .setup .card p { margin: 0 0 10px; }
 
 .offline-banner {

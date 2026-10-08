@@ -12,6 +12,14 @@
   "button": {
     "pleaseWait": "Please wait …"
   },
+  "databaseNotice": {
+    "fileKept": "The damaged file was not deleted, it is here: {file}",
+    "hide": "Hide notice",
+    "restoreHint": "Do you have a backup? Then restore it here or under More → Data & backup. Without a backup, please set up OpenAmpere again.",
+    "setPasswordNow": "Set a new password right away, so nobody else in your home network can change the settings. Afterwards you can restore a backup.",
+    "title": "The database was damaged",
+    "whatHappened": "OpenAmpere could no longer read its database at the start ({date}), for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing."
+  },
   "installing": {
     "close": "Close",
     "preparingUpdate": "Preparing the update.",

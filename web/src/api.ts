@@ -40,6 +40,9 @@ export type Status = {
   stale: boolean;
   poll_interval: number;
   relocated: { from: string; to: string; ts: number } | null;
+  /** damaged: the database could not be read at the start and was replaced by an empty one (#165);
+   *  restored: the last backup restored in the app, with the file of the database it replaced */
+  database: { damaged: { ts: number; file: string } | null; restored: { ts: number; kept: string } | null };
   timezone: string;
   web_build: string | null;
   clock_wrong: boolean;
@@ -321,10 +324,10 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
 export type AuthStatus = { configured: boolean; authenticated: boolean };
 
 /** POST with a raw body (file upload) – same headers as JSON requests. */
-export async function postFile<T>(path: string, file: Blob): Promise<T> {
+export async function postFile<T>(path: string, file: Blob, type = "application/zip"): Promise<T> {
   if (DEMO) return demoRequest<T>("POST", path);
   const response = await fetch(path, { method: "POST", body: file, credentials: "same-origin",
-    headers: { ...LANGUAGE_HEADER, "X-OpenAmpere": "1", "Content-Type": "application/zip" } }).catch(() => {
+    headers: { ...LANGUAGE_HEADER, "X-OpenAmpere": "1", "Content-Type": type } }).catch(() => {
     throw new Error(OFFLINE_MESSAGE);
   });
   const data = await response.json().catch(() => ({}));

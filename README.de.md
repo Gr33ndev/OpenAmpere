@@ -212,7 +212,9 @@ sudo docker compose start openampere
 
 Die Datei `openampere-sicherung.tar.gz` liegt danach in deinem Benutzerordner auf dem Server. Kopiere sie auf einen anderen Rechner oder einen USB-Stick. Hast du evcc mit dem Install-Script eingerichtet, liegt dessen Einrichtung im Ordner `evcc` daneben. Schreib dann `data evcc` statt `data`, damit sie mitgesichert wird.
 
-**Wiederherstellen:** In der App geht das noch nicht, daran wird in [#165](https://github.com/Gr33ndev/OpenAmpere/issues/165) gearbeitet. Bis dahin kopierst du die Sicherung von Hand zurück. Die Datei muss dafür in deinem Benutzerordner auf dem Server liegen:
+**Wiederherstellen in der App:** Unter **Mehr → Daten & Sicherung** wählst du bei **Sicherung wiederherstellen** die Datei aus der App aus. Dafür musst du angemeldet sein. OpenAmpere prüft die Datei, behält dein Passwort und die gespeicherten Zugangsdaten und startet danach neu. Die bisherige Datenbank bleibt als Kopie im Ordner `data` erhalten.
+
+**Ganzen Datenordner zurückholen:** Hast du den Ordner `data` wie oben gesichert, kopierst du ihn von Hand zurück. Die Datei muss dafür in deinem Benutzerordner auf dem Server liegen:
 
 ```bash
 cd /opt/openampere
@@ -223,20 +225,6 @@ sudo docker compose start openampere
 ```
 
 Der bisherige Datenordner bleibt als `data-alt` erhalten. Läuft alles wieder, kannst du ihn mit `sudo rm -r /opt/openampere/data-alt` löschen.
-
-Hast du nur die Datei aus der App, ersetzt du damit die Datenbank. Lege die Datei vorher in deinen Benutzerordner auf dem Server und setze unten ihren Namen ein:
-
-```bash
-cd /opt/openampere
-sudo docker compose stop openampere
-sudo mv data/openampere.db data/openampere-alt.db
-sudo rm -f data/openampere.db-wal data/openampere.db-shm
-sudo cp ~/openampere-backup-<Datum>.db data/openampere.db
-sudo chown 1000:1000 data/openampere.db
-sudo docker compose start openampere
-```
-
-Danach trägst du die Passwörter und API-Schlüssel, die du in OpenAmpere eingerichtet hattest, in der App neu ein.
 
 ## Umziehen auf einen neuen Rechner
 
