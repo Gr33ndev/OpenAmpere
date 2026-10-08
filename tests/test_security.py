@@ -45,8 +45,8 @@ def test_cross_site_requests_are_rejected(tmp_path):
     evil = {"x-openampere": "1", "origin": "http://evil.example"}
     assert client.put("/api/settings", json={"control.enabled": True}, headers=evil).status_code == 403
     # DNS rebinding: attacker domain resolving to the LAN IP
-    rebinding = client.get("/api/status", headers={"host": "evil.example"})
-    assert rebinding.status_code == 421
+    for evil_host in ("evil.example", "evil.box", "fritz.box.evil.example"):
+        assert client.get("/api/status", headers={"host": evil_host}).status_code == 421, evil_host
     for ok_host in ("192.168.178.50:8080", "openampere.local", "proxmox", "pi.fritz.box", "[::1]:8080"):
         assert client.get("/api/status", headers={"host": ok_host}).status_code == 200, ok_host
 

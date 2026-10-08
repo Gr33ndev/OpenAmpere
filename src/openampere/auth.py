@@ -24,7 +24,8 @@ LOCKOUT_S = 60
 
 # Host names that are typical for home networks. Anything else (e.g. evil.example resolving to a LAN IP)
 # is rejected to defeat DNS rebinding. Users can allow more names via server.allowed_hosts.
-HOME_SUFFIXES = (".local", ".lan", ".home", ".home.arpa", ".fritz.box", ".box", ".internal", ".intranet",
+# Only names nobody can register publicly: ".box" is a public top-level domain, so only ".fritz.box" (#163).
+HOME_SUFFIXES = (".local", ".lan", ".home", ".home.arpa", ".fritz.box", ".internal", ".intranet",
                  ".localdomain", ".ts.net")
 
 
