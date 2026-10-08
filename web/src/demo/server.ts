@@ -195,6 +195,7 @@ const settings = {
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
     "evcc.password": { set: false, hint: null }, "meter.password": { set: true, hint: null } },
   locked: [],
+  hidden: [], // the demo is always logged in (see /api/auth/status)
   revision: 1,
 };
 

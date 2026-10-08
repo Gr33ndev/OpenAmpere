@@ -210,6 +210,12 @@ EDITABLE: dict[str, tuple] = {
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 
+# Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
+# are only shown after login: the meter portal login and meter numbers, and the ntfy address (its topic is the only
+# protection of the push messages). Facts about the plant (size, battery, commissioning date) stay readable: whoever
+# is on the home network is at the house anyway, and the dashboard and the household need them.
+PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url"}
+
 
 def _coerce(current, value):
     if isinstance(current, list):

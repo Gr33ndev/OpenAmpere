@@ -15,12 +15,16 @@ import { AmountInput, Button, Checkbox, Dialog, Field, LearnMore, LoadState, Men
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
+/** A value hidden without login (#164) arrives as null; it is never sent back, so it cannot overwrite the real one. */
+const withoutPlaceholders = (changes: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== null));
+
 /** Loads settings and saves partial changes. */
 export function useSettings() {
   const { data, setData, error, reload } = useResource<Settings>("/api/settings");
   const save = async (changes: Partial<Settings["values"]> & Partial<Record<SecretKey, string>>) => {
     try {
-      setData(await putJson<Settings>("/api/settings", { ...changes, _revision: data?.revision }));
+      setData(await putJson<Settings>("/api/settings", { ...withoutPlaceholders(changes), _revision: data?.revision }));
       toast(t("common.saved"));
       return true;
     } catch (e) {
@@ -29,7 +33,9 @@ export function useSettings() {
     }
   };
   const locked = (key: SettingKey | "cloud.api_key") => data?.locked.includes(key) ?? false;
-  return { settings: data?.values ?? null, secrets: data?.secrets ?? null, locked, lockedKeys: data?.locked ?? [],
+  /** Shown only after login (#164). */
+  const hidden = (key: SettingKey) => data?.hidden?.includes(key) ?? false;
+  return { settings: data?.values ?? null, secrets: data?.secrets ?? null, locked, hidden, lockedKeys: data?.locked ?? [],
            save, error, reload };
 }
 

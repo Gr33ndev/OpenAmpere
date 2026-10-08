@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yaml, validate
+from .config import EDITABLE, PRIVATE, SECRETS, Config, build_config, get_value, read_yaml, validate
 from .drivers import registry
 from .cloud_import import CloudImport
 from .secretbox import SecretBox
@@ -104,17 +104,21 @@ class Runtime:
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.config.timezone)
 
-    def settings_view(self) -> dict:
-        """Secrets are never sent back; only whether they are set and their last characters."""
-        values = {key: get_value(self.config, key) for key in EDITABLE if key not in SECRETS}
+    def settings_view(self, authenticated: bool = True) -> dict:
+        """Secrets are never sent back; only whether they are set and their last characters.
+
+        Without login the private values (config.PRIVATE) are null and listed under "hidden", and secrets show no
+        hint (#164): reads are open on the home network, these values identify the owner or give access to data."""
+        hidden = set() if authenticated else PRIVATE
+        values = {key: None if key in hidden else get_value(self.config, key) for key in EDITABLE if key not in SECRETS}
         secrets = {}
         for key in SECRETS:
             value = get_value(self.config, key)
             # the end of a long key helps to recognise it, a password shows nothing of itself
-            hint = f"…{value[-4:]}" if len(value) >= 8 and not key.endswith(".password") else None
+            hint = f"…{value[-4:]}" if authenticated and len(value) >= 8 and not key.endswith(".password") else None
             secrets[key] = {"set": bool(value), "hint": hint}
         return {"values": values, "secrets": secrets, "locked": sorted(self.locked & set(EDITABLE)),
-                "revision": self.settings_revision}
+                "hidden": sorted(hidden), "revision": self.settings_revision}
 
     @property
     def settings_revision(self) -> int:

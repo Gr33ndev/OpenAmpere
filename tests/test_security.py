@@ -131,3 +131,82 @@ def test_backup_link_works_without_the_cookie_for_a_while(tmp_path, monkeypatch)
     later = api_module.time.time() + 601
     monkeypatch.setattr(api_module.time, "time", lambda: later)
     assert window.get(url).status_code == 401  # expired after 10 minutes
+
+
+PRIVATE_VALUES = {"meter.provider": "netze_bw", "meter.username": "owner@example.org",
+                  "meter.meter_ids": ["METER-AAA", "METER-BBB"], "notify.ntfy_url": "https://ntfy.sh/secret-topic-xyz",
+                  "pv.installed_kwp": 9.5, "pv.commissioning_date": "2020-06-01", "battery.capacity_kwh": 10.0,
+                  "cloud.api_key": "super-secret-key-wxyz"}
+HIDDEN = {"meter.username", "meter.meter_ids", "notify.ntfy_url"}
+
+
+def test_settings_hide_private_values_without_login(tmp_path):
+    """Reads are open on the home network; values that identify the owner or give access to data need a login (#164)."""
+    _, client = app_client(tmp_path)
+    login(client)
+    assert client.put("/api/settings", json=PRIVATE_VALUES, headers={"x-openampere": "1"}).status_code == 200
+
+    shown = client.get("/api/settings").json()  # logged in: everything as before
+    assert shown["hidden"] == []
+    assert shown["values"]["meter.username"] == "owner@example.org"
+    assert shown["values"]["meter.meter_ids"] == ["METER-AAA", "METER-BBB"]
+    assert shown["values"]["notify.ntfy_url"] == "https://ntfy.sh/secret-topic-xyz"
+    assert shown["values"]["pv.installed_kwp"] == 9.5 and shown["values"]["pv.commissioning_date"] == "2020-06-01"
+    assert shown["values"]["battery.capacity_kwh"] == 10.0
+    assert shown["secrets"]["cloud.api_key"] == {"set": True, "hint": "…wxyz"}
+
+    other = TestClient(client.app)  # another device in the home network, not logged in
+    response = other.get("/api/settings")
+    assert response.status_code == 200
+    for private in ("owner@example.org", "METER-AAA", "secret-topic-xyz", "wxyz"):
+        assert private not in response.text, private
+    body = response.json()
+    assert set(body["hidden"]) == HIDDEN
+    assert all(body["values"][key] is None for key in HIDDEN)
+    assert body["secrets"]["cloud.api_key"] == {"set": True, "hint": None}
+    # the rest stays readable, also the facts about the plant: whoever is on the home network is at the house
+    assert body["values"]["meter.provider"] == "netze_bw"
+    assert body["values"]["pv.installed_kwp"] == 9.5 and body["values"]["pv.commissioning_date"] == "2020-06-01"
+    assert body["values"]["battery.capacity_kwh"] == 10.0
+    eeg = other.get("/api/tariffs").json()["eeg"]
+    assert eeg["commissioning_date"] == "2020-06-01" and eeg["installed_kwp"] == 9.5
+
+
+def test_settings_hidden_before_a_password_is_set(tmp_path):
+    _, client = app_client(tmp_path)
+    assert set(client.get("/api/settings").json()["hidden"]) == HIDDEN
+
+
+def test_hidden_placeholders_are_not_saved(tmp_path):
+    """A form loaded without login holds null for hidden values; saving it after login keeps the real ones (#164)."""
+    _, client = app_client(tmp_path)
+    login(client)
+    client.put("/api/settings", json=PRIVATE_VALUES, headers={"x-openampere": "1"})
+    placeholders = {key: None for key in HIDDEN} | {"tariff.feed_in_ct": 7}
+    saved = client.put("/api/settings", json=placeholders, headers={"x-openampere": "1"})
+    assert saved.status_code == 200
+    values = saved.json()["values"]
+    assert values["meter.username"] == "owner@example.org" and values["meter.meter_ids"] == ["METER-AAA", "METER-BBB"]
+    assert values["notify.ntfy_url"] == "https://ntfy.sh/secret-topic-xyz"
+    assert values["pv.installed_kwp"] == 9.5 and values["pv.commissioning_date"] == "2020-06-01"
+    assert values["battery.capacity_kwh"] == 10.0 and values["tariff.feed_in_ct"] == 7
+
+
+def test_diagnostics_need_login(tmp_path):
+    """The last report can hold the full serial number (#164)."""
+    _, client = app_client(tmp_path)
+    assert client.get("/api/diagnostics").json()["code"] == "setup_required"
+    login(client)
+    assert client.get("/api/diagnostics").status_code == 200
+    denied = TestClient(client.app).get("/api/diagnostics")
+    assert denied.status_code == 401 and denied.json()["code"] == "login_required"
+
+
+def test_api_docs_are_switched_off(tmp_path):
+    """Not needed by the app and open on the home network (#164). Unknown paths get the web app, if it is built."""
+    _, client = app_client(tmp_path)
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        response = client.get(path)
+        assert response.status_code in (200, 404), path
+        assert "swagger" not in response.text.lower() and "redoc" not in response.text.lower(), path
+        assert '"openapi"' not in response.text, path

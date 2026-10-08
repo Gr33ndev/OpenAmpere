@@ -30,12 +30,15 @@
     "loggedIn": "Logged in",
     "passwordNeeded": "To change settings you need the OpenAmpere password."
   },
+  "loginToSee": {
+    "text": "You can see these details after logging in. This way not everyone on your home network can read them."
+  },
   "offlineMessage": {
     "noConnection": "No connection to the OpenAmpere server."
   },
   "passwordSetup": {
     "continue": "Continue",
-    "intro": "The password protects all settings of your system. In your home network anyone can view the values without a password – but only people who know it can change anything.",
+    "intro": "The password protects all settings of your system. In your home network anyone can view most values without a password – but only people who know it can change anything. Login details and the address of your push messages are only shown after logging in.",
     "passwordHint": "At least 6 characters. Keep it safe – only someone with access to the server can reset it.",
     "passwordsDoNotMatch": "The passwords do not match.",
     "repeatPassword": "Repeat password",

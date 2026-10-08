@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from . import discovery, cloud_import, external, health, i18n
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
-from .config import SECRETS
+from .config import PRIVATE, SECRETS
 from .drivers import registry
 from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, ExportLimitControl, NotConnected,
                       WriteFailed)
@@ -86,8 +86,10 @@ class ChangePasswordRequest(BaseModel):
     new: str = Field(min_length=1, max_length=200)
 
 
-# reading these needs a login as well (secrets, grid-operator references, meter numbers, the Tailscale login link)
-PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/gridmeter", "/api/remote", "/api/tokens")
+# reading these needs a login as well (secrets, grid-operator references, meter numbers, the Tailscale login link,
+# the diagnostics report that can hold the full serial number); /api/settings hides its private values instead (#164)
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
+                   "/api/tokens")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -166,7 +168,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         await runtime.cloud_import.stop(status="running")  # keeps running after the next start
         await collector.stop()
 
-    app = FastAPI(title="OpenAmpere", lifespan=lifespan)
+    # no /docs, /redoc and /openapi.json: the app does not need them and they are open on the home network (#164)
+    app = FastAPI(title="OpenAmpere", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     auth = Auth(storage)
     tokens = ApiTokens(storage)
     pairing = Pairing(tokens, lambda: runtime.tls.fingerprint)
@@ -240,6 +243,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             return JSONResponse(data, status_code=response.status_code, headers=headers)
         return Response(body, status_code=response.status_code, headers=headers, media_type="application/json")
 
+    def logged_in(request: Request) -> bool:
+        return auth.valid(request.cookies.get(SESSION_COOKIE))
+
     def start_session(response: Response) -> None:
         response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,
                             samesite="strict", path="/")
@@ -248,7 +254,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.get("/api/auth/status")
     def auth_status(request: Request):
-        return {"configured": auth.configured, "authenticated": auth.valid(request.cookies.get(SESSION_COOKIE))}
+        return {"configured": auth.configured, "authenticated": logged_in(request)}
 
     @app.post("/api/auth/setup")
     def auth_setup(body: PasswordRequest, response: Response):
@@ -379,12 +385,14 @@ def create_app(runtime: Runtime) -> FastAPI:
     # ---- settings & setup ------------------------------------------------
 
     @app.get("/api/settings")
-    def get_settings():
-        return runtime.settings_view()
+    def get_settings(request: Request):
+        return runtime.settings_view(authenticated=logged_in(request))
 
     @app.put("/api/settings")
     async def put_settings(changes: dict = Body(...)):
         expected = changes.pop("_revision", None)
+        # null is the placeholder of a value hidden without login (#164): never store it over the real value
+        changes = {k: v for k, v in changes.items() if not (k in PRIVATE and v is None)}
         if expected is not None and expected != runtime.settings_revision:
             raise HTTPException(409, "Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert. "
                                      "Bitte die Seite neu laden und die Änderung wiederholen.")
