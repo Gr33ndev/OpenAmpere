@@ -23,7 +23,7 @@
     "costQ": "What does OpenAmpere cost?",
     "costA": "Nothing. There are no subscriptions, no ads and no donations. All you need is a computer that runs permanently in your home network. A Raspberry Pi with power supply and memory card costs about 80 to 120 euros.",
     "dataQ": "Where does my data go?",
-    "dataA": "Nowhere. All values stay on your computer at home. OpenAmpere collects no usage data. Only what you switch on yourself goes out, such as spot-market electricity prices, notifications to your phone or checking GitHub for updates."
+    "dataA": "The values of your system stay on your computer at home. OpenAmpere collects no usage data. Only the update check is switched on from the start: every 6 hours, OpenAmpere asks GitHub whether there is a new version. No data from your system is sent. You can switch this off in the app under More → About OpenAmpere with the switch “Check for updates”. Everything else only goes out if you set it up yourself: spot-market electricity prices for a dynamic tariff, notifications to your phone, remote access, importing your history from the Ampere.IQ cloud and fetching meter readings from your grid operator."
   },
   "system": {
     "title": "My system",

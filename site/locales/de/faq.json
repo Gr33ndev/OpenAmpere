@@ -23,7 +23,7 @@
     "costQ": "Was kostet OpenAmpere?",
     "costA": "Nichts. Es gibt keine Abos, keine Werbung und keine Spenden. Du brauchst nur einen Rechner, der dauerhaft im Heimnetz läuft. Ein Raspberry Pi kostet mit Netzteil und Speicherkarte etwa 80 bis 120 Euro.",
     "dataQ": "Wohin gehen meine Daten?",
-    "dataA": "Nirgendwohin. Alle Werte bleiben auf deinem Rechner zu Hause. OpenAmpere sammelt keine Nutzungsdaten. Nach außen geht nur, was du selbst einschaltest, etwa Börsenstrompreise, Benachrichtigungen aufs Handy oder die Suche nach Updates bei GitHub."
+    "dataA": "Die Werte deiner Anlage bleiben auf deinem Rechner zu Hause. OpenAmpere sammelt keine Nutzungsdaten. Ab Werk eingeschaltet ist nur die Suche nach Updates: Alle 6 Stunden fragt OpenAmpere bei GitHub nach, ob es eine neue Version gibt. Dabei werden keine Daten deiner Anlage gesendet. Du kannst das in der App unter Mehr → Über OpenAmpere mit dem Schalter „Nach Updates suchen“ ausschalten. Alles andere geht nur nach außen, wenn du es selbst einrichtest: Börsenstrompreise für einen dynamischen Tarif, Benachrichtigungen aufs Handy, der Zugriff von unterwegs, die Übernahme des Verlaufs aus der Ampere.IQ-Cloud und das Abholen der Zählerwerte beim Netzbetreiber."
   },
   "system": {
     "title": "Meine Anlage",
