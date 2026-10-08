@@ -14,6 +14,20 @@ from .storage import Storage
 log = logging.getLogger(__name__)
 
 MAX_TRANSIENT = 3  # consecutive temporary errors tolerated before the inverter counts as disconnected
+# below this, the owner is warned: SQLite needs room for its journal, and a full disk stops the history (#170)
+LOW_DISK_BYTES = 200 * 1024 * 1024
+STORAGE_LOG_EVERY_S = 3600  # while writing keeps failing, repeat the error in the log only this often
+
+
+def storage_problem(err: BaseException) -> str:
+    """What kind of storage error this is, for the notice in the app: full | read_only | other."""
+    text = str(err).lower()
+    errno = getattr(err, "errno", None)
+    if errno == 28 or "disk is full" in text or "no space" in text:  # ENOSPC
+        return "full"
+    if errno in (13, 30) or "readonly" in text or "read-only" in text or "permission denied" in text:  # EACCES, EROFS
+        return "read_only"
+    return "other"
 
 
 class Collector:
@@ -31,6 +45,10 @@ class Collector:
         self.connected_at: float | None = None  # when the current connection was established (#143)
         self.last_error: str | None = None
         self.disconnected_since: float | None = None  # first failed attempt since the last good reading
+        # readings cannot be written to the database (e.g. disk full) since this time; None while it works (#170)
+        self.storage_failing_since: float | None = None
+        self.storage_error: str | None = None  # full | read_only | other
+        self._storage_logged = 0.0
         self._last_today_pv: float | None = None
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
@@ -124,11 +142,31 @@ class Collector:
             pass
 
     async def _store(self, snap: Snapshot) -> None:
-        """Storage problems (e.g. disk full) must not tear down the Modbus connection."""
+        """Storage problems (e.g. disk full) must not tear down the Modbus connection. They are shown in the app and
+        sent as a notification instead (#170); the log gets them once and then only every hour, not every poll."""
         try:
             await asyncio.to_thread(self.storage.add_snapshot, snap)
         except Exception as err:  # noqa: BLE001
-            log.error("could not store reading: %s", err)
+            now = time.time()
+            self.storage_error = storage_problem(err)
+            if self.storage_failing_since is None:
+                self.storage_failing_since = now
+                self._storage_logged = now
+                log.error("could not store reading: %s", err)
+            elif now - self._storage_logged >= STORAGE_LOG_EVERY_S:
+                self._storage_logged = now
+                log.error("still cannot store readings (for %.0f min): %s", (now - self.storage_failing_since) / 60, err)
+            return
+        if self.storage_failing_since is not None:
+            log.info("readings are stored again after %.0f min", (time.time() - self.storage_failing_since) / 60)
+            self.storage_failing_since = None
+            self.storage_error = None
+
+    def storage_state(self) -> dict:
+        """Whether readings get stored (#170): a failed write and how much space is left on the disk."""
+        free = self.storage.free_bytes()
+        return {"failing_since": self.storage_failing_since, "error": self.storage_error, "free_bytes": free,
+                "low_space": free is not None and free < LOW_DISK_BYTES}
 
     async def _run(self) -> None:
         assert self.driver is not None

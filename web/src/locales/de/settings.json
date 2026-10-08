@@ -382,6 +382,8 @@
     "overwrittenHint": "Wenn ein anderes Gerät eine Änderung von OpenAmpere zurücksetzt.",
     "powerOutage": "Stromausfall",
     "settingOverwritten": "Einstellung überschrieben",
+    "storage": "Speicherplatz und Messwerte",
+    "storageHint": "Wenn Messwerte nicht gespeichert werden können oder der Speicherplatz knapp wird, und wenn es wieder geht.",
     "unreachableHint": "Nach 15 Minuten ohne Verbindung, und wenn sie wieder steht."
   },
   "exportLimitPage": {

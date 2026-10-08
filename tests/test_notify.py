@@ -95,3 +95,46 @@ async def test_cheapest_power_tomorrow_in_german_notation_with_two_decimals(tmp_
     message = posts[-1][1]["message"]
     assert message.endswith(" ct/kWh.") and "," in message.split("etwa ")[1]
     assert len(message.split("etwa ")[1].split(" ")[0].split(",")[1]) == 2  # e.g. "36,30"
+
+
+async def test_storage_problems_are_reported_once_and_their_end(tmp_path, monkeypatch):
+    """#170: a failing database write or a nearly full disk is sent once, and once more when it is fine again."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    free = {"bytes": 50 * 10**9}
+    monkeypatch.setattr(runtime.storage, "free_bytes", lambda: free["bytes"])
+    notifier = Notifier(runtime)
+    collector = runtime.collector
+    collector.storage_failing_since, collector.storage_error = 1000.0, "full"
+    assert await notifier.check(now=1000 + 60) == []  # a single failed write is no reason to warn
+    assert await notifier.check(now=1000 + 6 * 60) == ["Messwerte werden nicht gespeichert"]
+    assert "Speicherplatz ist voll" in posts[-1][1]["message"]
+    assert await notifier.check(now=1000 + 30 * 60) == []  # only once
+    collector.storage_failing_since, collector.storage_error = None, None
+    assert await notifier.check(now=4000) == ["Messwerte werden wieder gespeichert"]
+    assert await notifier.check(now=4100) == []
+
+    free["bytes"] = 100 * 1024 * 1024
+    assert await notifier.check(now=5000) == ["Wenig Speicherplatz"]
+    assert "105 MB" in posts[-1][1]["message"]
+    free["bytes"] = 210 * 1024 * 1024  # just above the limit: no back-and-forth
+    assert await notifier.check(now=5100) == []
+    free["bytes"] = 300 * 1024 * 1024
+    assert await notifier.check(now=5200) == ["Wieder genug Speicherplatz"]
+
+    runtime.config.notify.on_storage = False
+    free["bytes"] = 1024
+    assert await notifier.check(now=6000) == []
+
+
+async def test_storage_message_is_not_repeated_when_its_state_cannot_be_saved(tmp_path, monkeypatch):
+    """With a full disk, the notification state cannot be written either: it must not be sent every 30 s."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    monkeypatch.setattr(runtime.storage, "free_bytes", lambda: 1024)
+
+    def full(*_args):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(runtime.storage, "set_meta", full)
+    notifier = Notifier(runtime)
+    assert await notifier.check(now=10) == ["Wenig Speicherplatz"]
+    assert await notifier.check(now=40) == []

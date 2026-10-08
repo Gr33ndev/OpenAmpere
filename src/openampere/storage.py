@@ -396,6 +396,13 @@ class Storage:
             self._db.execute("DELETE FROM samples WHERE ts < ?", (cutoff,))
             self._db.execute("DELETE FROM device_power WHERE ts < ?", (cutoff,))
 
+    def free_bytes(self) -> int | None:
+        """Free space on the disk that holds the database; None if it cannot be determined."""
+        try:
+            return shutil.disk_usage(os.path.dirname(os.path.abspath(self.path))).free
+        except OSError:
+            return None
+
     def usage(self) -> dict:
         """Size of the database and how many detail readings it holds, for the retention setting."""
         rows = self._fetchall("SELECT COUNT(*) AS n, MIN(ts) AS first FROM samples")[0]

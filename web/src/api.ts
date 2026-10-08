@@ -47,6 +47,9 @@ export type Status = {
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
   control: { enabled: boolean; dry_run: boolean };
+  // whether readings get stored (#170); missing on servers before this field
+  storage?: { failing_since: number | null; error: "full" | "read_only" | "other" | null; free_bytes: number | null;
+    low_space: boolean };
   firmware?: { serial?: string | null; firmware?: string; since?: number; history: { ts: number; old: string; new: string }[] };
 };
 
@@ -106,6 +109,7 @@ export type Settings = {
     "notify.on_firmware": boolean;
     "notify.on_battery_health": boolean;
     "notify.on_off_grid": boolean;
+    "notify.on_storage": boolean;
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
     "meter.provider": string;
