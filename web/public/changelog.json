@@ -1,6 +1,89 @@
 {
   "versions": [
     {
+      "version": "0.17.0",
+      "date": "2026-10-08",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "storage",
+            "text": "Version the database schema and keep a copy before upgrades (#191)"
+          },
+          {
+            "scope": "storage",
+            "text": "Warn in the app and by notification when readings cannot be stored (#190)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Include the recent log in the report and make the log level adjustable (#183)"
+          },
+          {
+            "scope": "changelog",
+            "text": "Show an optional summary per version for owners (#187)"
+          },
+          {
+            "scope": "update",
+            "text": "Add a container health check and pin actions by commit (#181)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Show energy from 0.1 kWh counters with one decimal (#195)"
+          },
+          {
+            "scope": "install",
+            "text": "Limit container logs and explain what to do on errors (#188)"
+          },
+          {
+            "scope": "storage",
+            "text": "Start after a damaged database and restore backups in the app (#189)"
+          },
+          {
+            "scope": "api",
+            "text": "Hide private settings and diagnostics without login (#184)"
+          },
+          {
+            "scope": "gridmeter",
+            "text": "Send an honest user agent to the netze bw portal (#180)"
+          },
+          {
+            "scope": "auth",
+            "text": "Accept only .fritz.box, not every .box host name (#177)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "site",
+            "text": "Base the imprint on the media act and complete the privacy notice (#193)"
+          },
+          {
+            "scope": null,
+            "text": "Regenerate the readme screenshots with two decimals (#186)"
+          },
+          {
+            "scope": null,
+            "text": "Show which devices are confirmed on a real system (#185)"
+          },
+          {
+            "scope": null,
+            "text": "Add backup, move, uninstall and troubleshooting guides (#182)"
+          },
+          {
+            "scope": "site",
+            "text": "Say the update check is on by default and call the report auswertung (#179)"
+          }
+        ]
+      },
+      "breaking": [],
+      "summary": {
+        "de": "Diese Version macht OpenAmpere sicherer und robuster. Bitte aktualisiere bald: Eine Lücke beim Schutz vor fremden Webseiten im Heimnetz ist geschlossen (#163), und Zugangsdaten wie der Login für das Kundenportal oder die Adresse der Push-Nachrichten sind nur noch nach der Anmeldung sichtbar (#164).\n\nNeu: Eine beschädigte Datenbank legt die App nicht mehr lahm, und eine Datensicherung kannst du jetzt direkt in der App wiederherstellen (Mehr → Daten & Sicherung). Ist die Speicherkarte voll, sagt dir die App das sofort. Der Diagnosebericht enthält die letzten Meldungen des Servers, ohne IP-Adressen und Seriennummer. Energiewerte von Wechselrichtern, die nur in 0,1-kWh-Schritten zählen, zeigt die App mit einer Nachkommastelle.",
+        "en": "This version makes OpenAmpere more secure and more robust. Please update soon: a gap in the protection against other web sites on the home network is closed (#163), and login details such as the customer portal login or the address of the push messages are only visible after logging in (#164).\n\nNew: a damaged database no longer stops the app, and you can now restore a backup right in the app (More → Data & backup). If the memory card is full, the app tells you right away. The diagnostics report contains the server's latest messages, without IP addresses and serial number. Energy values of inverters that only count in 0.1 kWh steps are shown with one decimal."
+      }
+    },
+    {
       "version": "0.16.0",
       "date": "2026-10-08",
       "first": false,
