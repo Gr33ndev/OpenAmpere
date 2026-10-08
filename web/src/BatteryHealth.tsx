@@ -67,7 +67,7 @@ export function BatteryHealthCard() {
       {(edit || !data.capacity_kwh) ? (
         <CapacityForm current={data.capacity_kwh} onSaved={() => { setEdit(false); reload(); }} />
       ) : (
-        <button className="link" onClick={() => setEdit(true)}>{t("report.batteryHealthCard.changeCapacity", { capacity: num(data.capacity_kwh, 1) })}</button>
+        <button className="link" onClick={() => setEdit(true)}>{t("report.batteryHealthCard.changeCapacity", { capacity: num(data.capacity_kwh, 2) })}</button>
       )}
       <p className="hint">{t("report.batteryHealthCard.explanation")}</p>
     </div>

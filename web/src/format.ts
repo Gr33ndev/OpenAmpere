@@ -1,16 +1,17 @@
 import { LOCALE, t } from "./i18n";
 
-const nf1 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+/** kW and kWh: always two decimals (#161) */
+const nf2 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nf0 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
 
 export function kw(watts: number | null | undefined): string {
   if (watts == null) return "–";
-  return `${nf1.format(Math.abs(watts) / 1000)} kW`;
+  return `${nf2.format(Math.abs(watts) / 1000)} kW`;
 }
 
 export function kwh(wh: number | null | undefined): string {
   if (wh == null) return "–";
-  return `${nf1.format(wh / 1000)} kWh`;
+  return `${nf2.format(wh / 1000)} kWh`;
 }
 
 export function percent(value: number | null | undefined, ratio = false): string {

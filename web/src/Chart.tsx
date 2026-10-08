@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
-import { ct } from "./format";
+import { ct, num } from "./format";
 import { LOCALE, t } from "./i18n";
 
 const AXIS_FONT = `12px "DM Sans Variable", system-ui, sans-serif`;
@@ -104,7 +104,7 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
             paths: isBar ? uPlot.paths.bars!({ size: s.barAlign === 0 ? [0.7, 60] : [0.46, 48], align: s.barAlign ?? 1 }) : undefined,
             points: { show: false },
             value: (_u: uPlot, v: number | null) =>
-              v == null ? "–" : `${s.unit === "ct" ? ct(v) : v.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} ${s.unit}`,
+              v == null ? "–" : `${s.unit === "ct" ? ct(v) : (s.unit === "kW" || s.unit === "kWh" ? num(v, 2) : v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }))} ${s.unit}`,
           };
         }),
       ],

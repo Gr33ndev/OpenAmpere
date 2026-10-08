@@ -100,9 +100,9 @@ function TodayRows({ kind, year }: { kind: Kind; year: BillingYear }) {
       <dt className="billing-group">{TEXT[kind].title} <span className="meta">{t("report.todayRows.since", { date: dateLabel(year.from) })}</span></dt><dd />
       {kind === "import" ? <>
         <dt>{t("report.todayRows.paidSoFar")}</dt><dd>{euro(year.paid_to_date_eur)}</dd>
-        <dt>{t("report.todayRows.cost", { energy: `${num(year.so_far_kwh, 0)}\u00a0kWh` })}</dt><dd>− {euro(year.so_far_eur)}</dd>
+        <dt>{t("report.todayRows.cost", { energy: `${num(year.so_far_kwh, 2)}\u00a0kWh` })}</dt><dd>− {euro(year.so_far_eur)}</dd>
       </> : <>
-        <dt>{t("report.todayRows.payment", { energy: `${num(year.so_far_kwh, 0)}\u00a0kWh` })}</dt><dd>{euro(year.so_far_eur)}</dd>
+        <dt>{t("report.todayRows.payment", { energy: `${num(year.so_far_kwh, 2)}\u00a0kWh` })}</dt><dd>{euro(year.so_far_eur)}</dd>
         <dt>{t("report.todayRows.paidSoFar")}</dt><dd>− {euro(year.paid_to_date_eur)}</dd>
       </>}
       <dt className="sub">{t("report.todayRows.difference")}</dt><dd className={`sub ${diff >= 0 ? "good-text" : "bad-text"}`}>{diff >= 0 ? "+" : "−"} {euro(Math.abs(diff))}</dd>
