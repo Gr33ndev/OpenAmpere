@@ -24,18 +24,21 @@ The app's user interface and the website are in German.
 
 ## Supported devices
 
-| Device | Status |
-|---|---|
-| FoxESS H3 / H3 Smart / H3 Pro | ✅ Monitoring and control. Control is off by default. The new or old register map is detected automatically. |
-| SAJ H2 / HS2 | ✅ Monitoring. Control will only be enabled once the driver has been tested on real devices. |
-| Immersion heater, heat pump (SG-Ready) | ✅ Switching on solar surplus via Shelly relays or web addresses. |
-| Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR | ✅ Continuously variable according to solar surplus, optionally with cheap grid power. |
-| Wallbox | ✅ Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). |
-| Home Assistant | ✅ Dedicated integration via HACS: live data and control, see [Home Assistant](#home-assistant). |
+| Device | What OpenAmpere does | Confirmed on a real system? |
+|---|---|---|
+| FoxESS H3, newer firmware | Monitoring and control. Control is off by default. The new or old register map is detected automatically. | ✅ Monitoring confirmed, control partly confirmed |
+| FoxESS H3, older firmware / H3 Smart / H3 Pro | Monitoring and control; with older firmware without the feed-in limit | Not yet confirmed |
+| SAJ H2 / HS2 | Monitoring. Control will only be enabled once the driver has been tested on real devices. | Not yet confirmed |
+| Immersion heater, heat pump (SG-Ready) | Switching on solar surplus via Shelly relays or web addresses. | Not yet confirmed |
+| Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR | Continuously variable according to solar surplus, optionally with cheap grid power. | Not yet confirmed |
+| Wallbox | Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). | Not yet confirmed |
+| Home Assistant | Dedicated integration via HACS: live data and control, see [Home Assistant](#home-assistant). | – |
+
+**Not yet confirmed** means: the support is based on documentation from the manufacturers or the community and is checked with tests and the simulator, but nobody has reported it from a real system yet. It may well work. If you have such a device, help with a **device report**: in the app, start the diagnostics under **Mehr → Diagnose** (More → Diagnostics; it only reads and changes nothing), tap **Bericht kopieren** (Copy report) and paste the report into the [device report form](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml). Remove IP addresses, passwords and API keys first. Every report helps to move a row to "confirmed".
 
 **The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2. So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
 
-Full list: [docs/devices.md](docs/devices.md), with what is read and controlled per model and what has been confirmed on real hardware.
+Full list: [docs/devices.md](docs/devices.md), with what is read and controlled per model and what exactly has been confirmed on real hardware.
 
 ## Features
 

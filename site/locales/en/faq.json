@@ -28,7 +28,7 @@
   "system": {
     "title": "My system",
     "compatibleQ": "Does OpenAmpere work with my battery?",
-    "compatibleA": "The batteries sold as “Ampere.StoragePro E3” are based on the FoxESS H3: monitoring and control. The older “Ampere.StoragePro” are based on SAJ H2 or HS2: monitoring; control will follow once it has been tested on real devices. OpenAmpere detects which device you have during setup.",
+    "compatibleA": "The batteries sold as “Ampere.StoragePro E3” are based on the FoxESS H3: monitoring and control. The older “Ampere.StoragePro” are based on SAJ H2 or HS2: monitoring; control will follow once it has been tested on real devices. OpenAmpere detects which device you have during setup. So far, a FoxESS H3 with newer firmware is confirmed on a real system. For the other FoxESS variants and the SAJ devices, a report from a real system is still missing. You can help with a <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">device report</a>.",
     "cloudGoneQ": "What happens if the EKD cloud stops being available at some point?",
     "cloudGoneA": "Whether and when that happens is open. Should it happen, OpenAmpere simply keeps running, because it needs no server from EKD. The inverter and battery work on site anyway and keep their last settings. What you lose without the cloud is the Ampere.IQ app and its history.",
     "historyQ": "Can I keep my history from Ampere.IQ?",
