@@ -66,6 +66,7 @@ export function GridMeterPage({ onBack }: PageProps) {
   return (
     <SubPage title={t("common.meterReadings")} onBack={onBack}>
       <p className="hint">{t("settings.gridMeterPage.intro")}</p>
+      <p className="hint">{t("settings.gridMeterPage.unofficialHint")}</p>
       {(!settings || !view) && <LoadState error={error} onRetry={reload} />}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
       {view?.configured && !view.error && view.until && (

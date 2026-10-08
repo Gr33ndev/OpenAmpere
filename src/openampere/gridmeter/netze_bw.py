@@ -26,6 +26,7 @@ import time as clock
 from datetime import date, datetime, time, timedelta, timezone
 from html.parser import HTMLParser
 from http.cookiejar import CookieJar
+from importlib.metadata import PackageNotFoundError, version
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, urlencode, urljoin, urlparse
 from urllib.request import HTTPCookieProcessor, Request, build_opener
@@ -39,7 +40,6 @@ BASE_URL = "https://meine.netze-bw.de"
 AUTH_URL = "https://login.netze-bw.de"
 # identifies the login widget to Auth0, the login page sends the same value
 AUTH0_CLIENT = "eyJuYW1lIjoibG9jay5qcy11bHAiLCJ2ZXJzaW9uIjoiMTEuMTcuMyIsImVudiI6eyJhdXRoMC5qcy11bHAiOiI5LjExLjIifX0="
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 PORTAL_TZ = ZoneInfo("Europe/Berlin")
 VALUE_TYPES = {"import": "CONSUMPTION", "export": "FEEDIN"}
 ENERGY_COLUMN = {"import": "verbrauch", "export": "einspeisung"}
@@ -47,6 +47,18 @@ DIRECTION = {"import": "Bezug", "export": "Einspeisung"}
 CHUNK_DAYS = 7  # quarter hours of a week per request
 PAUSE_S = 0.3  # between requests while catching up, to go easy on the portal
 QUARTER = timedelta(minutes=15)
+
+
+def _user_agent() -> str:
+    """An honest user agent: the import is OpenAmpere logging in for the owner, not a browser (#174)."""
+    try:
+        release = version("openampere")
+    except PackageNotFoundError:  # running from source
+        release = "dev"
+    return f"Mozilla/5.0 (compatible; OpenAmpere/{release}; +https://github.com/Gr33ndev/OpenAmpere)"
+
+
+USER_AGENT = _user_agent()
 
 
 class _HttpError(ProviderError):

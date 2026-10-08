@@ -50,6 +50,7 @@ class Portal:
         self.ims_sessions: set[str] = set()  # sessions the meter-value service still accepts
         self.logins = 0
         self.requests: list[dict] = []
+        self.user_agents: set[str] = set()
         self.installed = datetime(2026, 3, 13, tzinfo=TZ)  # the smart meter: values only from here on
         self.published_until = datetime(2026, 6, 30, 14, 0, tzinfo=TZ)  # 29 June complete, 30 June only partly
         portal = self
@@ -73,6 +74,7 @@ class Portal:
                 return cookies.get("session")
 
             def do_GET(self):
+                portal.user_agents.add(self.headers.get("User-Agent", ""))
                 host, url = self.headers["Host"].split(":")[0], urlparse(self.path)
                 query = {k: v[0] for k, v in parse_qs(url.query).items()}
                 if host == "localhost" and url.path == "/login":
@@ -122,6 +124,7 @@ class Portal:
                 return self._send(200, "\n".join(rows) + "\n", kind="csv")
 
             def do_POST(self):
+                portal.user_agents.add(self.headers.get("User-Agent", ""))
                 host, url = self.headers["Host"].split(":")[0], urlparse(self.path)
                 body = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()
                 if host == "localhost" and url.path == "/usernamepassword/login":
@@ -161,6 +164,15 @@ def test_grid_power_and_feed_in_are_separate_meters(portal):
         {"id": "cons-1", "name": "1XYZ0000000001 · Bezug", "kinds": ["import"]},
         {"id": "feed-1", "name": "1XYZ0000000001 · Einspeisung", "kinds": ["export"]},
     ]
+
+
+def test_names_openampere_instead_of_a_browser(portal):
+    """Login and downloads say who is asking (#174), they do not pretend to be a desktop browser."""
+    portal.client().meters()
+    assert len(portal.user_agents) == 1
+    agent = portal.user_agents.pop()
+    assert agent.startswith("Mozilla/5.0 (compatible; OpenAmpere/") and "github.com/Gr33ndev/OpenAmpere" in agent
+    assert "Chrome" not in agent and "Safari" not in agent
 
 
 def test_only_complete_days_since_the_smart_meter(portal):

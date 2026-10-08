@@ -456,7 +456,8 @@
     "regionHint": "Netzgebiet: {region}. Anmeldung wie im Kundenportal {portal}.",
     "requestOnGithub": "Wünsch ihn dir auf GitHub",
     "saveAndFetch": "Speichern und abrufen",
-    "savedKeep": "Gespeichert. Leer lassen, um es zu behalten."
+    "savedKeep": "Gespeichert. Leer lassen, um es zu behalten.",
+    "unofficialHint": "Der Abruf ist kein offizielles Angebot des Netzbetreibers. OpenAmpere meldet sich dafür mit deinen eigenen Zugangsdaten im Kundenportal an, so wie du es im Browser tust. Ändert der Netzbetreiber sein Portal, kann der Abruf ohne Vorwarnung aufhören zu funktionieren. Für Tage ohne Zählerwerte zählen dann die Werte des Wechselrichters."
   },
   "installationPage": {
     "bms": "Elektronik (BMS)",
