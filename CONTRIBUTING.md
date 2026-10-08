@@ -235,6 +235,20 @@ changelog (`web/public/changelog.json`, built by `scripts/changelog.py`) is gene
 the last tag and shown in the app (Mehr → Über OpenAmpere → Changelog), on the website and as the release notes, so
 good commit titles pay off: `feat` ends up under "Neu" (New), `fix` under "Behoben" (Fixed).
 
+The commit titles are English. For owners, a version can also get a short summary in plain German (and optionally
+English). Write it before running the script, in `changelog/<version>.json`:
+
+```json
+{"de": "Kurz gesagt: …", "en": "In short: …"}
+```
+
+German is required, English optional, a blank line (`\n\n`) starts a new paragraph, `#123` becomes a link. The file
+does not need to be committed: `release.sh` checks it, adds the summary to the version's entry in the changelog and
+commits the file with the release. The app shows the summary above the list in the app's language (else German), the
+website in the page's language (else German), the GitHub release notes German and then English. A version without a
+file has no summary; when the changelog is built again (`scripts/changelog.py rebuild`), summaries already in it are
+kept.
+
 ## License
 
 By contributing, you agree that your contribution is published under the project's [MIT License](LICENSE).
