@@ -138,12 +138,14 @@ def main() -> None:
     check_data_dir(args.config)
     from .api import create_app
     from .runtime import Runtime
-    from .storage import DatabaseInUse
+    from .storage import DatabaseInUse, SchemaError
 
     try:
         runtime = Runtime.from_files(args.config)
     except DatabaseInUse as err:
         raise SystemExit(f"OpenAmpere läuft bereits ({err}). Bitte die andere Instanz zuerst beenden.") from None
+    except SchemaError as err:  # a database from a newer version without a copy, or no space for the copy (#166)
+        raise SystemExit(str(err)) from None
     if not runtime.collector.configured:
         logging.info("no inverter configured yet – open the web app to run the setup")
     asyncio.run(serve(create_app(runtime), runtime))

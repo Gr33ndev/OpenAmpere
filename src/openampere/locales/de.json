@@ -228,6 +228,9 @@
   },
   "storage": {
     "backupDamaged": "Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine andere Sicherung wählen.",
+    "backupFromNewerVersion": "Die Sicherung stammt von einer neueren Version von OpenAmpere. Bitte zuerst OpenAmpere aktualisieren und die Sicherung dann wiederherstellen.",
+    "databaseFromNewerVersion": "Die Datenbank stammt von einer neueren Version von OpenAmpere (Datenbank-Version {version}, diese Version kennt nur bis {SCHEMA_VERSION}) und es gibt keine Kopie von vorher. Bitte wieder die neuere Version von OpenAmpere installieren.",
+    "noSpaceForCopy": "Für das Update der Datenbank fehlt Speicherplatz: OpenAmpere legt vorher eine Kopie an (etwa {size} MB). Bitte Speicherplatz freigeben und OpenAmpere neu starten.",
     "notABackup": "Das ist keine Sicherung von OpenAmpere. Bitte die Datei wählen, die unter „Datensicherung herunterladen“ gespeichert wurde."
   },
   "tariffs": {

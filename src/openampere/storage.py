@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import glob
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 from .drivers.base import Snapshot
 
@@ -23,7 +25,7 @@ log = logging.getLogger(__name__)
 FLOWS = ("pv", "load", "grid_import", "grid_export", "battery_charge", "battery_discharge")
 QUARTER = 900
 MAX_PV_INPUTS = 4
-# columns added after the first release; created on start-up if missing
+# columns added after the first release, before schema versions; created on start-up if missing
 SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery", "t_cell_max",
                                                                           "t_cell_min"]
 MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
@@ -31,6 +33,8 @@ MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger
 EARLIEST_PLAUSIBLE_TS = 1_735_689_600  # 2025-01-01: anything earlier is an unset clock
 MAX_GAP_S = 48 * 3600  # outages up to this length are filled by spreading the counter difference
 
+# Version 1 of the database: the tables when schema versions were introduced (#166). Do not change it; a change to
+# the database is a new step in MIGRATIONS and SCHEMA_VERSION + 1.
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS samples (
     ts REAL PRIMARY KEY, pv REAL, house REAL, grid REAL, battery REAL, soc REAL
@@ -60,6 +64,16 @@ CREATE TABLE IF NOT EXISTS control_log (
 );
 """
 
+# MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
+# Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
+# previous image when a new version does not start) the older version continues with that copy instead of a
+# database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database.
+MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
+SCHEMA_VERSION = 1
+COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
+NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
+COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
+
 
 SIDE_FILES = ("-wal", "-shm")  # SQLite's write-ahead log and its index belong to the database file
 DAMAGED_SUFFIX = ".damaged-"  # a damaged database is kept under this name plus the time (#165)
@@ -84,6 +98,16 @@ class DatabaseDamaged(sqlite3.DatabaseError):
 
 class InvalidBackup(ValueError):
     """An uploaded file that cannot be restored, with the reason for the owner."""
+
+
+class SchemaError(RuntimeError):
+    """This version of OpenAmpere cannot use the database; the message tells the owner what to do."""
+
+
+class _NewerSchema(Exception):
+    def __init__(self, version: int) -> None:
+        super().__init__(version)
+        self.version = version
 
 
 def _is_damage(err: sqlite3.DatabaseError) -> bool:
@@ -132,8 +156,9 @@ def check_backup(path: str | Path) -> None:
     try:
         problems = [row[0] for row in db.execute("PRAGMA integrity_check(5)")]
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        version = db.execute("PRAGMA user_version").fetchone()[0]
     except sqlite3.DatabaseError:
-        problems, tables = ["error"], set()
+        problems, tables, version = ["error"], set(), 0
     finally:
         db.close()
     if problems != ["ok"]:
@@ -142,6 +167,9 @@ def check_backup(path: str | Path) -> None:
     if not REQUIRED_TABLES <= tables:
         raise InvalidBackup("Das ist keine Sicherung von OpenAmpere. Bitte die Datei wählen, die unter "
                             "„Datensicherung herunterladen“ gespeichert wurde.")
+    if version > SCHEMA_VERSION:
+        raise InvalidBackup("Die Sicherung stammt von einer neueren Version von OpenAmpere. Bitte zuerst OpenAmpere "
+                            "aktualisieren und die Sicherung dann wiederherstellen.")
 
 
 def _lock_exclusively(path: Path) -> int | None:
@@ -174,8 +202,13 @@ class Storage:
             path.parent.mkdir(parents=True, exist_ok=True)
             self._lock_fd = _lock_exclusively(path)
             kept = _apply_pending_restore(path)
+        rolled_back = None
         try:
-            self._db = self._open(check=not memory)
+            try:
+                self._db = self._open(check=not memory)
+            except _NewerSchema as newer:
+                rolled_back = self._use_own_copy(path, newer.version)
+                self._db = self._open(check=not memory)
         except sqlite3.DatabaseError as err:
             if memory or not _is_damage(err):
                 raise
@@ -189,6 +222,8 @@ class Storage:
             self.set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
         if kept is not None:
             self.set_meta("database_restored", {"ts": time.time(), "kept": str(kept.resolve())})
+        if rolled_back is not None:
+            self.set_meta("database_rollback", rolled_back)
         # per-input energy of the running quarter; persisted so a restart does not lose it
         self._pv_acc: dict | None = self._get_meta("pv_input_state")
         self._quarter: dict | None = self._get_meta("quarter_state")
@@ -207,15 +242,86 @@ class Storage:
                 problems = [row[0] for row in db.execute("PRAGMA quick_check(5)")]
                 if problems != ["ok"]:
                     raise DatabaseDamaged("; ".join(problems))
-            db.executescript(SCHEMA)
-            existing = {row["name"] for row in db.execute("PRAGMA table_info(samples)")}
-            for column in SAMPLE_EXTRA_COLUMNS:
-                if column not in existing:
-                    db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
+            version = db.execute("PRAGMA user_version").fetchone()[0]
+            if version > SCHEMA_VERSION:
+                raise _NewerSchema(version)
+            new = db.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0] == 0
+            if version == 0:
+                # a new database, or one from before schema versions: brought to version 1 the way all versions
+                # before did it (and still do, they ignore the version), so no copy is needed
+                db.executescript(SCHEMA)
+                existing = {row["name"] for row in db.execute("PRAGMA table_info(samples)")}
+                for column in SAMPLE_EXTRA_COLUMNS:
+                    if column not in existing:
+                        db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
+                db.execute("PRAGMA user_version=1")
+                version = 1
+            if version < SCHEMA_VERSION:
+                if not new:
+                    self._copy_before_upgrade(db, version)
+                self._migrate(db, version)
         except BaseException:
             db.close()
             raise
         return db
+
+    @staticmethod
+    def _migrate(db: sqlite3.Connection, version: int) -> None:
+        for step in range(version, SCHEMA_VERSION):
+            log.info("updating the database from schema version %s to %s", step, step + 1)
+            db.execute("BEGIN")
+            try:
+                MIGRATIONS[step](db)
+                db.execute(f"PRAGMA user_version={step + 1}")
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+
+    def _copy_before_upgrade(self, db: sqlite3.Connection, version: int) -> None:
+        """Copies the database to <db>.schema-<version> (SQLite's backup, consistent also with a write-ahead log).
+        Copies of older versions are removed: each is as large as the database and only the newest can still be
+        needed. Without enough free space the upgrade does not start (the updater then keeps the old version)."""
+        path = Path(self.path)
+        target = Path(f"{path}{COPY_SUFFIX}{version}")
+        size = sum(os.path.getsize(f"{path}{s}") for s in ("", *SIDE_FILES) if os.path.exists(f"{path}{s}"))
+        free = shutil.disk_usage(path.resolve().parent).free + (target.stat().st_size if target.exists() else 0)
+        if free < size + COPY_SPARE_BYTES:
+            raise SchemaError(f"Für das Update der Datenbank fehlt Speicherplatz: OpenAmpere legt vorher eine Kopie an "
+                              f"(etwa {size // 1_000_000 + 1} MB). Bitte Speicherplatz freigeben und OpenAmpere neu "
+                              "starten.")
+        partial = Path(f"{target}.partial")
+        dest = sqlite3.connect(str(partial))
+        try:
+            db.backup(dest)
+        except BaseException:
+            dest.close()
+            partial.unlink(missing_ok=True)
+            raise
+        dest.close()
+        os.replace(partial, target)
+        for old in path.parent.glob(f"{glob.escape(path.name)}{COPY_SUFFIX}*"):
+            number = old.name[len(path.name) + len(COPY_SUFFIX):]
+            if number.isdigit() and int(number) < version:
+                old.unlink()
+        log.warning("copied the database to %s before updating its schema", target.name)
+
+    @staticmethod
+    def _use_own_copy(path: Path, version: int) -> dict:
+        """A newer version has upgraded the database and this older one runs again (e.g. rolled back by the
+        updater): continue with the copy made before that upgrade, and keep the newer database aside (#166)."""
+        copy = Path(f"{path}{COPY_SUFFIX}{SCHEMA_VERSION}")
+        if not copy.is_file():
+            raise SchemaError(f"Die Datenbank stammt von einer neueren Version von OpenAmpere (Datenbank-Version "
+                              f"{version}, diese Version kennt nur bis {SCHEMA_VERSION}) und es gibt keine Kopie von "
+                              "vorher. Bitte wieder die neuere Version von OpenAmpere installieren.")
+        newer = path.with_name(f"{path.name}{NEWER_SUFFIX}{version}-{_stamp()}")
+        log.warning("the database is from a newer version of OpenAmpere (schema %s, this one knows up to %s): using "
+                    "the copy %s from before that upgrade, the newer database is kept as %s",
+                    version, SCHEMA_VERSION, copy.name, newer.name)
+        _move_with_side_files(path, newer)
+        _move_with_side_files(copy, path)
+        return {"ts": time.time(), "version": version, "kept": str(newer.resolve())}
 
     def close(self) -> None:
         with self._lock:
