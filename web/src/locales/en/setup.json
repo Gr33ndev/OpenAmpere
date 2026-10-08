@@ -54,7 +54,7 @@
     "fixedIpTitle": "Tip: assign a fixed IP address",
     "foxessAddress": "{model} (also sold as “Ampere.StoragePro E3”): device address 247.",
     "modbusHint": "The interface must be turned on. On the batteries sold by EKD it already is; otherwise your installer can turn it on. The usual port is 502.",
-    "otherManager": "{lead} (e.g. the previous Smartbox) connected to the inverter? Then all connections may be in use. In that case, after setup choose “Per request” under More → Connection.",
+    "otherManager": "{lead} (e.g. the previous Smartbox) connected to the inverter? Then all connections may be in use. In that case, after setup choose “Per poll” under More → Connection.",
     "otherManagerLead": "Is another energy manager",
     "sajAddress": "{model} (older “Ampere.StoragePro”): device address 1 or 2, depending on the communication module."
   }
