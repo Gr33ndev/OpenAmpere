@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.16.0",
+      "date": "2026-10-08",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "ui",
+            "text": "Show kWh and kW with two decimals everywhere (#162)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.15.0",
       "date": "2026-10-07",
       "first": false,
