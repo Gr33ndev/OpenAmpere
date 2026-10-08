@@ -6,6 +6,7 @@ import logging
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
@@ -41,6 +42,9 @@ class Runtime:
         self.secrets = SecretBox(Path(storage.path).resolve().parent / "secret.key")
         self._tls: tls.Certificate | None = None
         self.tls_error: str | None = None  # the HTTPS port could not be opened (#76)
+        # set by the server: ends it, after which the process starts again (a restored backup is put in place then)
+        self.restart_hook: Callable[[], None] | None = None
+        self.restart_requested = False
         self.config, self.locked = build_config(file_values, self._load_settings())
         logs.apply_level(self.config.log.level)
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
@@ -92,6 +96,14 @@ class Runtime:
             return eeg.rate(date.fromisoformat(pv.commissioning_date), pv.installed_kwp, tariff.feed_in_full)
         except ValueError:
             return None
+
+    def request_restart(self) -> bool:
+        """Starts OpenAmpere again; False if this server cannot do it itself (tests, embedded use)."""
+        self.restart_requested = True
+        if self.restart_hook is None:
+            return False
+        self.restart_hook()
+        return True
 
     @property
     def tls(self) -> tls.Certificate:

@@ -4,11 +4,13 @@
     "accessNotFound": "Access not found.",
     "accessReadOnly": "This access is read-only.",
     "accessViaNotAllowed": "Access via “{host}” is not allowed. Open OpenAmpere via its IP address or add the name to server.allowed_hosts.",
+    "backupCouldNotBeStored": "The backup could not be stored. Please check that there is enough free storage space.",
     "consumerNotFound": "Consumer not found",
     "controlDisabled": "Control is disabled",
     "currentPasswordIncorrect": "The current password is incorrect.",
     "endDateBeforeStart": "The end date is before the start date",
     "enterNtfyAddressFirst": "Please enter an ntfy address first.",
+    "fileTooLarge4Gb": "File too large (max. 4 GB).",
     "fileTooLargeMax": "File too large (max. 500 MB).",
     "httpsPortTurnedOff": "The HTTPS port is turned off (server.tls_port). Without it, other apps can't connect securely.",
     "invalidDate": "Invalid date",
@@ -20,6 +22,7 @@
     "logSwitchedByHand": "switched by hand",
     "noCurrentReadingsInverter": "No current readings from the inverter",
     "noReadingsYet": "No readings yet",
+    "notEnoughSpaceBackup": "Not enough free storage space for the backup.",
     "onlyAvailableViaHttps": "Only available via HTTPS.",
     "passwordAlreadyBeenSet": "A password has already been set.",
     "powerOutageDoesnT": "This power outage doesn't exist.",
@@ -222,6 +225,10 @@
   },
   "secretbox": {
     "damagedDeleteFileEnter": "{key_path} is damaged. Delete the file and enter the login details in the app again."
+  },
+  "storage": {
+    "backupDamaged": "The backup is damaged and cannot be restored. Please choose another backup.",
+    "notABackup": "This is not an OpenAmpere backup. Please choose the file that was saved with “Download backup”."
   },
   "tariffs": {
     "enterLeastOneTariff": "Please enter at least one tariff.",

@@ -32,7 +32,7 @@ from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, Exp
 from .drivers.base import Snapshot
 from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
-from .storage import FLOWS, Storage
+from .storage import FLOWS, InvalidBackup, Storage
 from .discovery import Rediscovery
 from .billing import Billing
 from .gridmeter import GridMeter
@@ -54,6 +54,8 @@ except PackageNotFoundError:  # running from source
 
 WEB_DIST = Path(__file__).parent / "web"
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+# a backup holds every detail reading (about 0.4 GB per year at the default interval); written to disk, not memory
+MAX_BACKUP_BYTES = 4 * 1024 * 1024 * 1024
 
 
 def ratios(flows: dict) -> dict:
@@ -375,6 +377,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             "clock_wrong": storage.clock_wrong,
             "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
+            "database": {"damaged": storage.get_meta("database_damaged"),
+                         "restored": storage.get_meta("database_restored")},
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
@@ -555,6 +559,44 @@ def create_app(runtime: Runtime) -> FastAPI:
         background.add_task(shutil.rmtree, tmp.parent, ignore_errors=True)  # incl. SQLite side files
         name = time.strftime("openampere-backup-%Y-%m-%d.db")
         return FileResponse(tmp, filename=name, media_type="application/vnd.sqlite3")
+
+    @app.post("/api/backup/restore")
+    async def restore_backup(request: Request):
+        """Replaces the database with an uploaded backup and starts OpenAmpere again (#165). The current database
+        is kept as a copy; password, sessions and secrets stay those of the running installation."""
+        folder = Path(storage.path).resolve().parent
+        length = int(request.headers.get("content-length") or 0)
+        if length > MAX_BACKUP_BYTES:
+            raise HTTPException(413, "Datei zu groß (max. 4 GB).")
+        if length > shutil.disk_usage(folder).free:
+            raise HTTPException(507, "Nicht genug freier Speicherplatz für die Sicherung.")
+        fd, name = tempfile.mkstemp(prefix=".restore-upload-", dir=folder)
+        upload, size = Path(name), 0
+        try:
+            with open(fd, "wb") as file:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > MAX_BACKUP_BYTES:
+                        raise HTTPException(413, "Datei zu groß (max. 4 GB).")
+                    file.write(chunk)
+            await asyncio.to_thread(storage.stage_restore, upload, keep_settings=SECRETS)
+        except InvalidBackup as err:
+            raise HTTPException(400, str(err)) from None
+        except OSError as err:
+            log.warning("could not store the uploaded backup: %s", err)
+            raise HTTPException(507, "Die Sicherung ließ sich nicht speichern. Bitte prüfen, ob genug freier "
+                                     "Speicherplatz da ist.") from None
+        finally:
+            for suffix in ("", "-wal", "-shm", "-journal"):  # the file was already moved when it was valid
+                Path(f"{upload}{suffix}").unlink(missing_ok=True)
+        log.warning("backup uploaded, OpenAmpere starts again to restore it")
+        return {"restarting": runtime.request_restart()}
+
+    @app.delete("/api/database/damaged")
+    def dismiss_damaged_database():
+        """The owner has read the notice about the damaged database (and restored a backup or not)."""
+        storage.delete_meta("database_damaged")
+        return {"ok": True}
 
     @app.get("/api/live")
     def live():

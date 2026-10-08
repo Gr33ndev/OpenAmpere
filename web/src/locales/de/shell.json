@@ -12,6 +12,14 @@
   "button": {
     "pleaseWait": "Bitte warten …"
   },
+  "databaseNotice": {
+    "fileKept": "Die beschädigte Datei wurde nicht gelöscht, sie liegt hier: {file}",
+    "hide": "Hinweis ausblenden",
+    "restoreHint": "Hast du eine Datensicherung? Dann stelle sie hier oder unter Mehr → Daten & Sicherung wieder her. Ohne Sicherung richte OpenAmpere bitte neu ein.",
+    "setPasswordNow": "Lege jetzt sofort ein neues Passwort fest, damit niemand sonst im Heimnetz die Einstellungen ändern kann. Danach kannst du eine Datensicherung wiederherstellen.",
+    "title": "Die Datenbank war beschädigt",
+    "whatHappened": "OpenAmpere konnte seine Datenbank beim Start ({date}) nicht mehr lesen, zum Beispiel nach einem Stromausfall. Damit die App weiterläuft, hat OpenAmpere mit einer leeren Datenbank neu begonnen: Messwerte und Einstellungen von vorher fehlen."
+  },
   "installing": {
     "close": "Schließen",
     "preparingUpdate": "Das Update wird vorbereitet.",

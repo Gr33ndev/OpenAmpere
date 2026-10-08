@@ -639,6 +639,21 @@
     "tailscaleOverview": "Tailscale overview",
     "whatIsTailscale": "What is Tailscale?"
   },
+  "restoreCard": {
+    "checking": "Uploading and checking the backup …",
+    "chooseBackup": "Choose backup file",
+    "confirmKept": "The current database is not deleted but kept as a copy in the data folder.",
+    "confirmReplace": "All readings and settings will be replaced with those from “{name}”. OpenAmpere then restarts, which takes about a minute.",
+    "confirmTitle": "Restore backup?",
+    "dontClose": "Please do not close this page.",
+    "hint": "Replaces all readings and settings with those from a backup. The current database is kept as a copy. Your password and the stored credentials (e.g. API keys) stay as they are now, because they are not in the backup.",
+    "lastRestore": "Last restored: {date}. The database from before is kept as a copy here: {file} If everything is right, you can delete it to save space.",
+    "logInToRestore": "Log in to restore",
+    "restartManually": "The backup has been checked and will be used at the next start. Please restart OpenAmpere now.",
+    "restarting": "OpenAmpere is restarting with the backup. The app reloads by itself afterwards.",
+    "restore": "Restore",
+    "title": "Restore backup"
+  },
   "retention": {
     "days": "{days} days",
     "unlimited": "Unlimited",

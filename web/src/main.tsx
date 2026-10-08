@@ -9,6 +9,7 @@ import { DevicesTab } from "./DevicesPage";
 import { More } from "./More";
 import { Report } from "./Report";
 import { applyTheme, storedTheme } from "./SettingsPages";
+import { DatabaseNotice } from "./Restore";
 import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
 import { setTimeZone } from "./format";
@@ -71,7 +72,7 @@ function App() {
   if (auth && !auth.configured) {
     return (
       <div className="app">
-        <main><PasswordSetup onDone={reloadAuth} /></main>
+        <main><DatabaseNotice status={status} auth={auth} /><PasswordSetup onDone={reloadAuth} /></main>
         <ToastHost />
       </div>
     );
@@ -79,7 +80,7 @@ function App() {
   if (!status.configured) {
     return (
       <div className="app">
-        <main><Setup onDone={reload} /></main>
+        <main><DatabaseNotice status={status} auth={auth} /><Setup onDone={reload} /></main>
         {login.dialog}
         <ToastHost />
       </div>
@@ -105,6 +106,7 @@ function App() {
         </div>
       )}
       <main>
+        <DatabaseNotice status={status} auth={auth} />
         {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
         {tab === "devices" && <DevicesTab page={route[1] ?? null} snap={snap} />}
         {tab === "report" && <Report />}

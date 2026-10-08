@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -77,6 +78,9 @@ async def serve(app, runtime: Runtime) -> None:
     # bounded graceful shutdown: open browser connections must not keep the process alive
     main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, timeout_graceful_shutdown=5, **quiet))
     logging.getLogger("uvicorn.access").addFilter(_HideHealthchecks())
+    loop = asyncio.get_running_loop()
+    # a second later, so the answer to the request that asked for it still goes out
+    runtime.restart_hook = lambda: loop.call_soon_threadsafe(loop.call_later, 1.0, setattr, main, "should_exit", True)
     if not server.tls_port:
         await main.serve()
         return
@@ -143,6 +147,10 @@ def main() -> None:
     if not runtime.collector.configured:
         logging.info("no inverter configured yet – open the web app to run the setup")
     asyncio.run(serve(create_app(runtime), runtime))
+    if runtime.restart_requested:  # e.g. a restored backup: the same command again, in this process (#165)
+        logging.info("starting OpenAmpere again")
+        runtime.storage.close()
+        os.execv(sys.executable, sys.orig_argv)
 
 
 if __name__ == "__main__":

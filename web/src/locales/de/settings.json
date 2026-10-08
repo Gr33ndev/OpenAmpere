@@ -639,6 +639,21 @@
     "tailscaleOverview": "Tailscale-Übersicht",
     "whatIsTailscale": "Was ist Tailscale?"
   },
+  "restoreCard": {
+    "checking": "Die Sicherung wird hochgeladen und geprüft …",
+    "chooseBackup": "Sicherungsdatei auswählen",
+    "confirmKept": "Die bisherige Datenbank wird nicht gelöscht, sondern als Kopie im Datenordner aufbewahrt.",
+    "confirmReplace": "Alle Messwerte und Einstellungen werden durch die aus „{name}“ ersetzt. Danach startet OpenAmpere neu, das dauert etwa eine Minute.",
+    "confirmTitle": "Sicherung wiederherstellen?",
+    "dontClose": "Bitte diese Seite nicht schließen.",
+    "hint": "Ersetzt alle Messwerte und Einstellungen durch die aus einer Datensicherung. Die bisherige Datenbank bleibt als Kopie erhalten. Dein Passwort und die eingetragenen Zugangsdaten (z. B. API-Schlüssel) bleiben, wie sie jetzt sind, denn sie stehen nicht in der Sicherung.",
+    "lastRestore": "Zuletzt wiederhergestellt: {date}. Die Datenbank von davor liegt als Kopie hier: {file} Wenn alles stimmt, kannst du sie löschen, um Speicherplatz zu sparen.",
+    "logInToRestore": "Anmelden zum Wiederherstellen",
+    "restartManually": "Die Sicherung ist geprüft und wird beim nächsten Start übernommen. Bitte OpenAmpere jetzt neu starten.",
+    "restarting": "OpenAmpere startet mit der Sicherung neu. Die App lädt sich danach von selbst neu.",
+    "restore": "Wiederherstellen",
+    "title": "Sicherung wiederherstellen"
+  },
   "retention": {
     "days": "{days} Tage",
     "unlimited": "Unbegrenzt",
