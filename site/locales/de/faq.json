@@ -74,7 +74,9 @@
   "help": {
     "title": "Hilfe und Mitmachen",
     "setupQ": "Wo bekomme ich Hilfe bei der Einrichtung?",
-    "setupA": "Fehler und Fragen zur App kannst du auf <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues\">GitHub</a> melden. Am meisten hilft ein Diagnosebericht aus der App (Mehr → Diagnose). Zu Garantie, Verträgen und dem Insolvenzverfahren können wir keine Einzelfragen beantworten.",
+    "setupA": "Die häufigsten Probleme beim Einrichten und ihre Lösung stehen in der Anleitung unter <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#fehlerbehebung\">Fehlerbehebung</a>. Fehler und Fragen zur App kannst du auf <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues\">GitHub</a> melden. Am meisten hilft ein Diagnosebericht aus der App (Mehr → Diagnose). Zu Garantie, Verträgen und dem Insolvenzverfahren können wir keine Einzelfragen beantworten.",
+    "backupQ": "Wie sichere ich meine Daten, ziehe auf einen neuen Rechner um oder deinstalliere OpenAmpere?",
+    "backupA": "Eine Sicherung lädst du in der App unter Mehr → Daten &amp; Sicherung herunter. Wie du eine Sicherung zurückspielst, auf einen neuen Rechner umziehst oder OpenAmpere wieder entfernst, steht Schritt für Schritt in der Anleitung unter <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#sichern-und-wiederherstellen\">Sichern und Wiederherstellen</a>. Einstellungen, die OpenAmpere am Wechselrichter geändert hat, bleiben auch nach dem Deinstallieren aktiv.",
     "demoButton": "Demo ansehen",
     "installButton": "Zur Installation"
   }

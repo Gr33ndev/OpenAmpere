@@ -123,7 +123,15 @@ Läuft evcc schon woanders, trägt man unter Mehr → Verbindung → Wallbox des
 
 **Wo was ist:** Unter **Geräte** bedient man Speicher (Notstrom-Reserve, Ladegrenzen), Wallbox und Heizstab und legt fest, wer zuerst Sonnenstrom bekommt. Unter **Mehr** liegen Meine Anlage (mit Einspeisebegrenzung), Stromtarif, Verbindung, Steuerung und Protokoll, Benachrichtigungen, Zugriffsschutz, Darstellung, Daten & Sicherung und Diagnose.
 
-Passwort vergessen? Auf dem Server im Installationsordner `docker compose exec openampere openampere reset-password` ausführen und danach in der App ein neues festlegen.
+**Passwort vergessen?** Führe auf dem Server im Terminal diesen Befehl aus und lege danach in der App ein neues Passwort fest:
+
+```bash
+cd /opt/openampere && sudo docker compose exec openampere openampere reset-password
+```
+
+Liegt OpenAmpere in einem anderen Ordner (bei der Installation von Hand im Ordner des Repositorys), ersetze `/opt/openampere` durch diesen Ordner.
+
+Probleme beim Einrichten? Siehe [Fehlerbehebung](#fehlerbehebung). Wie du Daten sicherst, auf einen neuen Rechner umziehst oder OpenAmpere wieder entfernst, steht unter [Sichern und Wiederherstellen](#sichern-und-wiederherstellen), [Umziehen auf einen neuen Rechner](#umziehen-auf-einen-neuen-rechner) und [Deinstallieren](#deinstallieren).
 
 ### Installation von Hand
 
@@ -187,6 +195,133 @@ Abhilfe:
 - **Internetzugang der Smartbox sperren**, z. B. in der FRITZ!Box unter Internet → Filter → Kindersicherung (Zugangsprofil „gesperrt“). Ein Nutzer hat so erfolgreich auf preisbasiertes Laden umgeschaltet und die Notstrom-Reserve geändert. Die Smartbox liest dann weiter mit, bekommt aber keine Soll-Werte und keine Updates mehr, und die Hersteller-App zeigt keine aktuellen Daten.
 - **Smartbox abklemmen**, wenn sie nicht mehr gebraucht wird. Vorher klären, ob sie für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber.
 
+## Sichern und Wiederherstellen
+
+Die Befehle in diesem und den nächsten Abschnitten gelten für eine Installation mit dem Script im Standardordner `/opt/openampere`. Hast du einen anderen Ordner gewählt, ersetze `/opt/openampere` durch deinen Ordner.
+
+**Sicherung in der App:** Unter **Mehr → Daten & Sicherung** lädt **Datensicherung herunterladen** die komplette Datenbank mit allen Messwerten und Einstellungen als eine Datei herunter (`openampere-backup-<Datum>.db`). Dafür musst du angemeldet sein. Passwörter und API-Schlüssel, etwa für evcc, ntfy, das Kundenportal des Netzbetreibers oder den Ampere.IQ-Import, sind nicht enthalten. Bewahre die Datei an einem anderen Ort auf, zum Beispiel auf deinem Computer oder einem USB-Stick.
+
+**Alles sichern:** Alle Daten von OpenAmpere liegen im Ordner `data` im Installationsordner. Dazu gehört neben der Datenbank die Datei `secret.key`, der Schlüssel für die gespeicherten Passwörter und API-Schlüssel. Wer diesen Ordner sichert, hat alles. Auf dem Server im Terminal:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo tar czf ~/openampere-sicherung.tar.gz data
+sudo docker compose start openampere
+```
+
+Die Datei `openampere-sicherung.tar.gz` liegt danach in deinem Benutzerordner auf dem Server. Kopiere sie auf einen anderen Rechner oder einen USB-Stick. Hast du evcc mit dem Install-Script eingerichtet, liegt dessen Einrichtung im Ordner `evcc` daneben. Schreib dann `data evcc` statt `data`, damit sie mitgesichert wird.
+
+**Wiederherstellen:** In der App geht das noch nicht, daran wird in [#165](https://github.com/Gr33ndev/OpenAmpere/issues/165) gearbeitet. Bis dahin kopierst du die Sicherung von Hand zurück. Die Datei muss dafür in deinem Benutzerordner auf dem Server liegen:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo mv data data-alt
+sudo tar xzf ~/openampere-sicherung.tar.gz
+sudo docker compose start openampere
+```
+
+Der bisherige Datenordner bleibt als `data-alt` erhalten. Läuft alles wieder, kannst du ihn mit `sudo rm -r /opt/openampere/data-alt` löschen.
+
+Hast du nur die Datei aus der App, ersetzt du damit die Datenbank. Lege die Datei vorher in deinen Benutzerordner auf dem Server und setze unten ihren Namen ein:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo mv data/openampere.db data/openampere-alt.db
+sudo rm -f data/openampere.db-wal data/openampere.db-shm
+sudo cp ~/openampere-backup-<Datum>.db data/openampere.db
+sudo chown 1000:1000 data/openampere.db
+sudo docker compose start openampere
+```
+
+Danach trägst du die Passwörter und API-Schlüssel, die du in OpenAmpere eingerichtet hattest, in der App neu ein.
+
+## Umziehen auf einen neuen Rechner
+
+Du nimmst den ganzen Installationsordner mit. Darin liegen der Datenordner `data` mit `secret.key` und, falls eingerichtet, evcc und Tailscale. So bleiben Verlauf, Einstellungen und gespeicherte Passwörter erhalten.
+
+1. **Auf dem alten Rechner** OpenAmpere beenden und den Ordner einpacken:
+   ```bash
+   cd /opt/openampere
+   sudo docker compose down
+   sudo tar czf ~/openampere-umzug.tar.gz -C /opt openampere
+   ```
+2. Die Datei `openampere-umzug.tar.gz` auf den neuen Rechner kopieren, etwa mit einem USB-Stick oder mit `scp ~/openampere-umzug.tar.gz <benutzer>@<neuer-rechner>:`.
+3. **Auf dem neuen Rechner** (Linux mit 64-Bit-System) den Ordner auspacken und das Install-Script ausführen. Es erkennt die vorhandene Installation, installiert bei Bedarf Docker und startet OpenAmpere mit deinen bisherigen Antworten:
+   ```bash
+   sudo tar xzf ~/openampere-umzug.tar.gz -C /opt
+   curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
+   ```
+4. Die App unter der Adresse öffnen, die das Script am Ende anzeigt. Hat der neue Rechner eine andere IP-Adresse, brauchen auch das Lesezeichen auf dem Handy und verbundene Apps wie Home Assistant die neue Adresse.
+
+Starte OpenAmpere auf dem alten Rechner danach nicht wieder. Sonst sprechen zwei Programme mit dem Wechselrichter und stören sich gegenseitig.
+
+## Deinstallieren
+
+**Vorher bedenken:** Einstellungen, die OpenAmpere am Wechselrichter geändert hat, etwa Notstrom-Reserve, Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung, speichert der Wechselrichter selbst. Sie bleiben auch nach dem Deinstallieren aktiv, siehe [Sicherheit bei Steuerfunktionen](#sicherheit-bei-steuerfunktionen). Willst du die früheren Werte zurück, stelle sie vorher in der App wieder ein. Welche Werte vorher galten, steht unter **Mehr → Steuerung und Protokoll**. Nutzt du **Laden aus dem Netz**, schalte es vorher aus und warte ein paar Minuten, bis OpenAmpere die Fernsteuerung des Wechselrichters wieder freigegeben hat.
+
+Willst du deine Daten behalten, lade vorher eine Sicherung herunter (siehe [Sichern und Wiederherstellen](#sichern-und-wiederherstellen)). Dann auf dem Server im Terminal:
+
+```bash
+cd /opt/openampere
+sudo docker compose down
+cd /
+sudo rm -r /opt/openampere
+```
+
+Das beendet OpenAmpere mit allen Helfern und löscht den Ordner mit allen Messwerten. Docker selbst bleibt installiert. Hast du Tailscale genutzt, entferne den Rechner danach auch in der Tailscale-Verwaltung. In Home Assistant entfernst du die Integration OpenAmpere.
+
+## Fehlerbehebung
+
+Viele Hinweise zeigt schon der Einrichtungsassistent unter **Gerät wird nicht gefunden?**. Hilft das nicht, findest du hier die häufigsten Ursachen. Wenn du Hilfe brauchst, [melde ein Problem](https://github.com/Gr33ndev/OpenAmpere/issues) und hänge einen Bericht aus **Mehr → Diagnose** an.
+
+### Meldungen des Servers ansehen
+
+Was OpenAmpere gerade tut und welche Fehler auftreten, steht in den Meldungen des Servers:
+
+```bash
+cd /opt/openampere && sudo docker compose logs --tail 100 openampere
+```
+
+Mit `sudo docker compose logs -f openampere` laufen neue Meldungen fortlaufend mit, beenden mit Strg+C. Bevor du Meldungen öffentlich teilst, entferne IP-Adressen, Seriennummern und andere Angaben zu deiner Anlage.
+
+### Der Wechselrichter wird nicht gefunden
+
+- **Netzwerkkabel:** Der Wechselrichter braucht eine Verbindung ins Heimnetz, meist per Kabel am LAN-Anschluss. Ein reiner Cloud-WLAN-Stick reicht oft nicht.
+- **IP-Adresse von Hand eingeben:** Du findest sie in der Geräteliste deines Routers (FRITZ!Box: Heimnetz → Netzwerk) oder im Menü am Display des Wechselrichters. Vergib ihm im Router am besten eine feste Adresse.
+- **Modbus TCP muss eingeschaltet sein**, üblich ist Port 502. Bei den von EKD verkauften Speichern ist das schon der Fall. Siehe auch [Modbus TCP ist nicht eingeschaltet](#modbus-tcp-ist-nicht-eingeschaltet).
+- **Gleiches Netz:** Server und Wechselrichter müssen im selben Heimnetz hängen. Ein Gastnetz trennt die Geräte voneinander.
+
+### „Das Gerät lehnt die Verbindung ab“
+
+Unter der Adresse antwortet ein Gerät, lässt aber keine Modbus-Verbindung zu. Meist ist Modbus TCP nicht eingeschaltet oder der Port stimmt nicht (üblich ist 502, bei einem Modbus-Proxy der Port des Proxys). Es kann auch sein, dass ein anderer Energiemanager alle Verbindungen belegt, siehe [unten](#ein-anderer-energiemanager-nutzt-die-verbindung).
+
+### „Kein unterstütztes Gerät erkannt“: Geräteadresse prüfen
+
+Das Gerät ist erreichbar, antwortet aber nicht wie erwartet. Meist stimmt die Geräteadresse nicht. Normalerweise probiert OpenAmpere alle bekannten Adressen selbst. Klappt das nicht, trage die Adresse im Einrichtungsassistenten unter **Erweitert: Gerätetyp, Port, Geräteadresse** oder unter **Mehr → Verbindung** ein:
+- FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft): Geräteadresse 247.
+- SAJ H2 / HS2 (ältere „Ampere.StoragePro“): Geräteadresse 1 oder 2, je nach Kommunikationsmodul.
+
+Hängt ein Modbus-Proxy dazwischen, gilt die Geräteadresse, die im Proxy eingestellt ist.
+
+### Ein anderer Energiemanager nutzt die Verbindung
+
+Der Wechselrichter erlaubt nur wenige gleichzeitige Modbus-Verbindungen. Hängt noch ein anderer Energiemanager am Wechselrichter, zum Beispiel die bisherige Smartbox, sind eventuell alle belegt. Dann bricht die Verbindung von OpenAmpere oder vom anderen Gerät immer wieder ab. Abhilfe: In der App unter **Mehr → Verbindung → Erweitert** bei **Verbindung** die Einstellung **Pro Abfrage** wählen und speichern. OpenAmpere verbindet sich dann für jede Abfrage neu und gibt den Zugang danach wieder frei. Mehr dazu unter [Betrieb hinter einem Modbus-Proxy](#betrieb-hinter-einem-modbus-proxy).
+
+### Modbus TCP ist nicht eingeschaltet
+
+Bei den von EKD verkauften Speichern ist Modbus TCP schon eingeschaltet. Bei anderen Geräten schaltet es der Installationsbetrieb ein. Gibt es den Betrieb nicht mehr, frag einen anderen Elektro- oder Solarfachbetrieb in deiner Nähe oder den Kundendienst des Herstellers (FoxESS oder SAJ) mit der Seriennummer deines Geräts. Ändere im Service-Menü des Wechselrichters nichts, wenn du dir nicht sicher bist, was die Einstellung bewirkt.
+
+### „32-Bit-System erkannt“
+
+OpenAmpere braucht ein 64-Bit-System. Ob deines eines ist, zeigt der Befehl `uname -m`: `aarch64` oder `x86_64` passen, `armv7l` oder `armv6l` bedeuten 32 Bit. Auf einem Raspberry Pi 3, 4, 5 oder Zero 2 W spielst du mit dem Raspberry Pi Imager „Raspberry Pi OS (64-bit)“ auf die Speicherkarte und installierst OpenAmpere danach neu. Das löscht die Speicherkarte, sichere vorher alles, was du behalten willst. Ältere Modelle können kein 64-Bit-System ausführen.
+
+### Der Port ist belegt
+
+Das Install-Script sucht sich selbst einen freien Port zwischen 8080 und 8099. Belegt später ein anderes Programm diesen Port, startet OpenAmpere nicht, und in den Meldungen des Servers steht „address already in use“. Gib OpenAmpere dann einen anderen Port: Öffne `/opt/openampere/docker-compose.yml`, zum Beispiel mit `sudo nano /opt/openampere/docker-compose.yml`. Trage beim Dienst `openampere` unter `environment:` mit derselben Einrückung wie `TZ` eine Zeile wie `OPENAMPERE_SERVER_PORT: "8081"` ein. Steht dort schon eine solche Zeile, ändere nur die Zahl. Führe danach das Install-Script erneut aus. Es übernimmt den neuen Port und startet OpenAmpere neu. Die App öffnest du dann unter der neuen Adresse.
+
 ## Entwicklung ohne echte Anlage
 
 OpenAmpere enthält einen Simulator für den FoxESS H3.
@@ -243,7 +378,7 @@ Der Workflow `pages.yml` veröffentlicht die Seite auf GitHub Pages (einmalig un
 
 ## Sicherheit bei Steuerfunktionen
 
-Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wird es in der App unter **Mehr → Steuerung**, mit Sicherheitsabfrage:
+Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wird es in der App unter **Mehr → Steuerung und Protokoll**, mit Sicherheitsabfrage:
 - Nach der Freigabe läuft die Steuerung zunächst im **Testmodus**. Änderungen werden dann nur protokolliert.
 - Erst wenn man den Testmodus ausdrücklich beendet, werden Werte an den Wechselrichter gesendet.
 - Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.

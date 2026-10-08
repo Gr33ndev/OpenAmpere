@@ -74,7 +74,9 @@
   "help": {
     "title": "Help and getting involved",
     "setupQ": "Where can I get help with the setup?",
-    "setupA": "You can report bugs and questions about the app on <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues\">GitHub</a>. A diagnostics report from the app (More → Diagnostics) helps most. We cannot answer individual questions about warranties, contracts or the insolvency proceedings.",
+    "setupA": "The most common setup problems and how to solve them are in the guide under <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#troubleshooting\">Troubleshooting</a>. You can report bugs and questions about the app on <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues\">GitHub</a>. A diagnostics report from the app (More → Diagnostics) helps most. We cannot answer individual questions about warranties, contracts or the insolvency proceedings.",
+    "backupQ": "How do I back up my data, move to a new computer or uninstall OpenAmpere?",
+    "backupA": "You download a backup in the app under More → Data &amp; backup. How to restore a backup, move to a new computer or remove OpenAmpere again is described step by step in the guide under <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#backup-and-restore\">Backup and restore</a>. Settings that OpenAmpere changed on the inverter stay active after uninstalling.",
     "demoButton": "Try the demo",
     "installButton": "Go to installation"
   }

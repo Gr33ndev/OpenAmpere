@@ -151,8 +151,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
         </>
       )}
       <p className="hint">{tx("shell.securityPage.forgotPassword", {
-        command: <code>openampere reset-password</code>,
-        dockerCommand: <code>docker compose exec openampere openampere reset-password</code> })}</p>
+        command: <code>cd /opt/openampere && sudo docker compose exec openampere openampere reset-password</code> })}</p>
       {confirmAll && (
         <Dialog title={t("shell.securityPage.logOutAllQuestion")} confirm={t("shell.securityPage.logOut")} onCancel={() => setConfirmAll(false)}
           onConfirm={() => { setConfirmAll(false); void logout(true); }}>

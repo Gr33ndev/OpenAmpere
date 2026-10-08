@@ -127,7 +127,15 @@ If evcc is already running elsewhere, enter its address under Mehr → Verbindun
 
 **Where to find what:** under **Geräte** you operate the battery (backup power reserve, charge limits), wallbox and immersion heater, and set who gets solar power first. Under **Mehr** you'll find **Meine Anlage** (with the feed-in limit), **Stromtarif** (Electricity tariff), **Verbindung**, **Steuerung und Protokoll** (Control and log), **Benachrichtigungen** (Notifications), **Zugriffsschutz** (Access protection), **Darstellung** (Appearance), **Daten & Sicherung** and **Diagnose** (Diagnostics).
 
-Forgot your password? On the server, run `docker compose exec openampere openampere reset-password` in the installation folder and then set a new one in the app.
+**Forgot your password?** Run this in a terminal on the server, then set a new password in the app:
+
+```bash
+cd /opt/openampere && sudo docker compose exec openampere openampere reset-password
+```
+
+If OpenAmpere is in a different folder (for a manual installation, the folder of the repository), replace `/opt/openampere` with that folder.
+
+Problems during setup? See [Troubleshooting](#troubleshooting). How to back up your data, move to a new computer or remove OpenAmpere again is described under [Backup and restore](#backup-and-restore), [Moving to a new computer](#moving-to-a-new-computer) and [Uninstalling](#uninstalling).
 
 ### Manual installation
 
@@ -191,6 +199,133 @@ Remedies:
 - **Block the Smartbox's internet access**, e.g. on the FRITZ!Box under Internet → Filter → Kindersicherung (Internet → Filters → Parental Controls), access profile „gesperrt“ (blocked). One user successfully switched to price-based charging and changed the backup power reserve this way. The Smartbox then keeps reading along, but no longer receives target values or updates, and the manufacturer's app no longer shows current data.
 - **Disconnect the Smartbox** if it is no longer needed. Check beforehand whether it is required for anything else, such as control by the grid operator.
 
+## Backup and restore
+
+The commands in this and the following sections are for an installation with the script in the default folder `/opt/openampere`. If you chose a different folder, replace `/opt/openampere` with your folder.
+
+**Backup in the app:** under **Mehr → Daten & Sicherung** (More → Data & backup), **Datensicherung herunterladen** (Download backup) downloads the complete database with all readings and settings as one file (`openampere-backup-<date>.db`). You need to be logged in for this. Passwords and API keys, for example for evcc, ntfy, the customer portal of the grid operator or the Ampere.IQ import, are not included. Keep the file in another place, for example on your computer or a USB stick.
+
+**Backing up everything:** all data of OpenAmpere is in the folder `data` in the installation folder. Besides the database, it contains the file `secret.key`, the key for the stored passwords and API keys. If you back up this folder, you have everything. In a terminal on the server:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo tar czf ~/openampere-sicherung.tar.gz data
+sudo docker compose start openampere
+```
+
+The file `openampere-sicherung.tar.gz` is then in your home folder on the server. Copy it to another computer or a USB stick. If you set up evcc with the install script, its configuration is in the folder `evcc` next to it. Then write `data evcc` instead of `data` so that it is backed up as well.
+
+**Restore:** this is not possible in the app yet; it is being worked on in [#165](https://github.com/Gr33ndev/OpenAmpere/issues/165). Until then, you copy the backup back by hand. The file must be in your home folder on the server:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo mv data data-alt
+sudo tar xzf ~/openampere-sicherung.tar.gz
+sudo docker compose start openampere
+```
+
+The previous data folder is kept as `data-alt`. Once everything runs again, you can delete it with `sudo rm -r /opt/openampere/data-alt`.
+
+If you only have the file from the app, you replace the database with it. Put the file in your home folder on the server first and use its name below:
+
+```bash
+cd /opt/openampere
+sudo docker compose stop openampere
+sudo mv data/openampere.db data/openampere-alt.db
+sudo rm -f data/openampere.db-wal data/openampere.db-shm
+sudo cp ~/openampere-backup-<date>.db data/openampere.db
+sudo chown 1000:1000 data/openampere.db
+sudo docker compose start openampere
+```
+
+Then enter the passwords and API keys you had set up in OpenAmpere again in the app.
+
+## Moving to a new computer
+
+You take the whole installation folder with you. It contains the data folder `data` with `secret.key` and, if set up, evcc and Tailscale. This way your history, settings and stored passwords are kept.
+
+1. **On the old computer**, stop OpenAmpere and pack the folder:
+   ```bash
+   cd /opt/openampere
+   sudo docker compose down
+   sudo tar czf ~/openampere-umzug.tar.gz -C /opt openampere
+   ```
+2. Copy the file `openampere-umzug.tar.gz` to the new computer, for example with a USB stick or with `scp ~/openampere-umzug.tar.gz <user>@<new-computer>:`.
+3. **On the new computer** (Linux with a 64-bit system), unpack the folder and run the install script. It detects the existing installation, installs Docker if needed and starts OpenAmpere with your previous answers:
+   ```bash
+   sudo tar xzf ~/openampere-umzug.tar.gz -C /opt
+   curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash
+   ```
+4. Open the app at the address the script shows at the end. If the new computer has a different IP address, the bookmark on your phone and connected apps such as Home Assistant need the new address too.
+
+Do not start OpenAmpere on the old computer again afterwards. Otherwise two programs talk to the inverter and disturb each other.
+
+## Uninstalling
+
+**Before you start:** settings that OpenAmpere changed on the inverter, such as the backup power reserve, charge limits, operating mode or feed-in limit, are stored by the inverter itself. They stay active after uninstalling, see [Safety of control functions](#safety-of-control-functions). If you want the earlier values back, set them again in the app first. Which values applied before is shown under **Mehr → Steuerung und Protokoll** (More → Control and log). If you use **Laden aus dem Netz** (Charging from the grid), switch it off first and wait a few minutes until OpenAmpere has released the inverter's remote control.
+
+If you want to keep your data, download a backup first (see [Backup and restore](#backup-and-restore)). Then, in a terminal on the server:
+
+```bash
+cd /opt/openampere
+sudo docker compose down
+cd /
+sudo rm -r /opt/openampere
+```
+
+This stops OpenAmpere with all helpers and deletes the folder with all readings. Docker itself stays installed. If you used Tailscale, also remove the computer in the Tailscale admin console. In Home Assistant, remove the OpenAmpere integration.
+
+## Troubleshooting
+
+The setup wizard already shows many hints under **Gerät wird nicht gefunden?** (Device not found?). If that does not help, here are the most common causes. If you need help, [report a problem](https://github.com/Gr33ndev/OpenAmpere/issues) and attach a report from **Mehr → Diagnose** (More → Diagnostics).
+
+### Viewing the server messages
+
+What OpenAmpere is doing and which errors occur is shown in the server messages:
+
+```bash
+cd /opt/openampere && sudo docker compose logs --tail 100 openampere
+```
+
+With `sudo docker compose logs -f openampere`, new messages keep coming in; stop with Ctrl+C. Before you share messages publicly, remove IP addresses, serial numbers and other details about your system.
+
+### The inverter is not found
+
+- **Network cable:** the inverter needs a connection to your home network, usually a cable in its LAN port. A cloud-only Wi-Fi stick is often not enough.
+- **Enter the IP address by hand:** you find it in the device list of your router (FRITZ!Box: Home Network → Network) or in the menu on the inverter's display. Ideally, give it a fixed address in the router.
+- **Modbus TCP must be turned on**; the usual port is 502. On the batteries sold by EKD it already is. See also [Modbus TCP is not turned on](#modbus-tcp-is-not-turned-on).
+- **Same network:** the server and the inverter must be in the same home network. A guest network separates the devices from each other.
+
+### "Das Gerät lehnt die Verbindung ab" (the device refuses the connection)
+
+A device answers at this address but does not allow a Modbus connection. Usually Modbus TCP is not turned on or the port is wrong (usually 502; with a Modbus proxy, the port of the proxy). It can also be that another energy manager uses all connections, see [below](#another-energy-manager-uses-the-connection).
+
+### "Kein unterstütztes Gerät erkannt" (no supported device found): check the device address
+
+The device is reachable but does not answer as expected. Usually the device address is wrong. Normally OpenAmpere tries all known addresses by itself. If that does not work, enter the address in the setup wizard under **Erweitert: Gerätetyp, Port, Geräteadresse** (Advanced: device type, port, device address) or under **Mehr → Verbindung** (More → Connection):
+- FoxESS H3 (also sold as "Ampere.StoragePro E3"): device address 247.
+- SAJ H2 / HS2 (older "Ampere.StoragePro"): device address 1 or 2, depending on the communication module.
+
+If a Modbus proxy sits in between, the device address set in the proxy applies.
+
+### Another energy manager uses the connection
+
+The inverter allows only a few Modbus connections at the same time. If another energy manager is connected to the inverter, for example the previous Smartbox, all of them may be in use. Then the connection of OpenAmpere or of the other device keeps dropping. Fix: in the app under **Mehr → Verbindung → Erweitert** (More → Connection → Advanced), choose **Pro Abfrage** (Per poll) for **Verbindung** (Connection) and save. OpenAmpere then connects anew for every poll and releases the connection afterwards. More on this under [Running behind a Modbus proxy](#running-behind-a-modbus-proxy).
+
+### Modbus TCP is not turned on
+
+On the batteries sold by EKD, Modbus TCP is already turned on. On other devices, the installer turns it on. If the installer no longer exists, ask another electrician or solar installer near you, or the manufacturer's customer service (FoxESS or SAJ) with the serial number of your device. Do not change anything in the inverter's service menu if you are not sure what the setting does.
+
+### "32-Bit-System erkannt" (32-bit system detected)
+
+OpenAmpere needs a 64-bit system. The command `uname -m` shows whether yours is one: `aarch64` or `x86_64` are fine, `armv7l` or `armv6l` mean 32 bit. On a Raspberry Pi 3, 4, 5 or Zero 2 W, write "Raspberry Pi OS (64-bit)" to the memory card with Raspberry Pi Imager and then install OpenAmpere again. This erases the memory card, so back up everything you want to keep first. Older models cannot run a 64-bit system.
+
+### The port is in use
+
+The install script finds a free port between 8080 and 8099 by itself. If another program takes this port later, OpenAmpere does not start, and the server messages say "address already in use". Then give OpenAmpere another port: open `/opt/openampere/docker-compose.yml`, for example with `sudo nano /opt/openampere/docker-compose.yml`. For the service `openampere`, add a line such as `OPENAMPERE_SERVER_PORT: "8081"` under `environment:`, indented like `TZ`. If there already is such a line, only change the number. Then run the install script again. It takes over the new port and restarts OpenAmpere. You then open the app at the new address.
+
 ## Development without a real system
 
 OpenAmpere includes a simulator for the FoxESS H3.
@@ -247,7 +382,7 @@ The `pages.yml` workflow publishes the site to GitHub Pages (once, under Setting
 
 ## Safety of control functions
 
-Everything that writes to the inverter is **off** by default. It is enabled in the app under **Mehr → Steuerung** (More → Control), with a safety confirmation:
+Everything that writes to the inverter is **off** by default. It is enabled in the app under **Mehr → Steuerung und Protokoll** (More → Control and log), with a safety confirmation:
 - After enabling, control first runs in **test mode**. Changes are then only logged.
 - Only once you explicitly end test mode are values sent to the inverter.
 - Every change is recorded in the log with its old and new value, and is read back from the device after writing.

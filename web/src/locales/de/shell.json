@@ -45,7 +45,7 @@
     "allDevicesLoggedOut": "Alle Geräte abgemeldet",
     "changePassword": "Passwort ändern",
     "currentPassword": "Bisheriges Passwort",
-    "forgotPassword": "Passwort vergessen? Auf dem Server {command} ausführen (Docker: {dockerCommand}), dann ein neues festlegen.",
+    "forgotPassword": "Passwort vergessen? Auf dem Server im Terminal {command} ausführen und danach hier ein neues Passwort festlegen. Liegt OpenAmpere in einem anderen Ordner, /opt/openampere durch diesen Ordner ersetzen.",
     "logOut": "Abmelden",
     "logOutAllDevices": "Alle Geräte abmelden",
     "logOutAllHint": "Alle Handys und Computer müssen sich danach neu anmelden, um Einstellungen zu ändern.",
