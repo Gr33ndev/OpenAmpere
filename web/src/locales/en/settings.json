@@ -375,6 +375,8 @@
     "overwrittenHint": "When another device reverts a change made by OpenAmpere.",
     "powerOutage": "Power outage",
     "settingOverwritten": "Setting overwritten",
+    "storage": "Disk space and readings",
+    "storageHint": "When readings cannot be stored or disk space runs low, and when it works again.",
     "unreachableHint": "After 15 minutes without a connection, and when it is back."
   },
   "exportLimitPage": {

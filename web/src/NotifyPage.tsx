@@ -7,7 +7,8 @@ import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LearnMore, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
 
 type NotifyKey = "notify.on_unreachable" | "notify.on_alarm" | "notify.on_overwritten" | "notify.on_battery_full"
-  | "notify.on_cheap_power" | "notify.on_firmware" | "notify.on_battery_health" | "notify.on_off_grid";
+  | "notify.on_cheap_power" | "notify.on_firmware" | "notify.on_battery_health" | "notify.on_off_grid"
+  | "notify.on_storage";
 
 const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_unreachable", label: t("settings.events.inverterUnreachable"), hint: t("settings.events.unreachableHint") },
@@ -18,6 +19,7 @@ const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_off_grid", label: t("settings.events.powerOutage"), hint: t("settings.events.offGridHint") },
   { key: "notify.on_battery_health", label: t("settings.events.checkBattery"), hint: t("settings.events.batteryHealthHint") },
   { key: "notify.on_firmware", label: t("settings.events.newFirmware"), hint: t("settings.events.firmwareHint") },
+  { key: "notify.on_storage", label: t("settings.events.storage"), hint: t("settings.events.storageHint") },
 ];
 
 // the official store pages, as linked on docs.ntfy.sh/subscribe/phone/

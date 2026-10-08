@@ -12,11 +12,13 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
 
+from .collector import LOW_DISK_BYTES
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
 
 UNREACHABLE_AFTER_S = 15 * 60
+STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database briefly locked) is no reason to warn
 
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
@@ -61,7 +63,10 @@ class Notifier:
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
-        self.runtime.storage.set_meta("notify_state", self.sent)
+        try:
+            self.runtime.storage.set_meta("notify_state", self.sent)
+        except Exception as err:  # noqa: BLE001 - e.g. disk full (#170): kept in memory, so nothing is sent twice
+            log.debug("could not store the notification state: %s", err)
 
     async def push(self, title: str, message: str, tags: str = "") -> bool:
         cfg = self.runtime.config.notify
@@ -102,6 +107,9 @@ class Notifier:
             elif collector.connected and self.sent.get("unreachable"):
                 await notify("unreachable", None, "Wechselrichter wieder erreichbar", "Die Verbindung steht wieder.",
                              "white_check_mark")
+
+        if cfg.on_storage:
+            await self._check_storage(notify, now)
 
         if cfg.on_alarm and snap is not None:
             codes = [a for a in snap.alarms if a]
@@ -166,3 +174,31 @@ class Notifier:
                              f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price_text} ct/kWh.",
                              "zap")
         return sent
+
+    async def _check_storage(self, notify, now: float) -> None:
+        """Once when readings cannot be stored or the disk is nearly full, once when it is fine again (#170)."""
+        state = self.runtime.collector.storage_state()
+        since = state["failing_since"]
+        if since is not None and now - since >= STORAGE_FAILING_AFTER_S:
+            reason = {"full": " Der Speicherplatz ist voll.",
+                      "read_only": " Die Datenbank lässt sich nicht beschreiben (Zugriffsrechte oder Datenträger)."}
+            await notify("storage_failing", since, "Messwerte werden nicht gespeichert",
+                         f"Seit {datetime.fromtimestamp(since, self.runtime.tz):%H:%M} Uhr kann OpenAmpere keine "
+                         f"Messwerte speichern.{reason.get(state['error'], '')} Bis das behoben ist, fehlen sie im "
+                         "Verlauf und in den Auswertungen. Bitte Speicherplatz auf dem Gerät freigeben, auf dem "
+                         "OpenAmpere läuft, und den Datenträger prüfen.", "warning")
+        elif since is None and self.sent.get("storage_failing"):
+            await notify("storage_failing", None, "Messwerte werden wieder gespeichert",
+                         "OpenAmpere kann wieder Messwerte speichern.", "white_check_mark")
+
+        free = state["free_bytes"]
+        if state["low_space"] and not self.sent.get("storage_low"):
+            await notify("storage_low", now, "Wenig Speicherplatz",
+                         f"Auf dem Gerät, auf dem OpenAmpere läuft, sind nur noch {free / 1e6:.0f} MB frei. Ist der "
+                         "Platz voll, werden keine Messwerte mehr gespeichert. Bitte Platz freigeben, zum Beispiel "
+                         "alte Docker-Images löschen, oder die Aufbewahrungsdauer unter Mehr → Daten & Sicherung "
+                         "verkürzen.", "warning")
+        # a little more than the limit, so free space around the limit does not send a message every few minutes
+        elif self.sent.get("storage_low") and (free is None or free >= LOW_DISK_BYTES * 1.25):
+            await notify("storage_low", None, "Wieder genug Speicherplatz",
+                         "Auf dem Gerät, auf dem OpenAmpere läuft, ist wieder genug Platz frei.", "white_check_mark")

@@ -112,6 +112,7 @@ class NotifyConfig:
     on_firmware: bool = True  # the inverter reports a different firmware (after an update)
     on_battery_health: bool = True  # battery cells unusually warm or far apart in temperature
     on_off_grid: bool = True  # power cut: the house runs on the battery (backup / off-grid mode)
+    on_storage: bool = True  # readings cannot be stored (e.g. disk full) or little free space left (#170)
 
 
 @dataclass
@@ -191,6 +192,7 @@ EDITABLE: dict[str, tuple] = {
     "notify.on_firmware": ("bool",),
     "notify.on_battery_health": ("bool",),
     "notify.on_off_grid": ("bool",),
+    "notify.on_storage": ("bool",),
     "evcc.url": ("url",),
     "evcc.password": ("secret",),
     "evcc.priority": ("choice", "wallbox_first", "devices_first"),

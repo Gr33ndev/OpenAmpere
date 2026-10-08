@@ -49,6 +49,13 @@
   "pvInputsCard": {
     "title": "Solar by string"
   },
+  "storageNotice": {
+    "failing": "OpenAmpere has not been able to store readings since {time}. Until this is fixed, they are missing from the history and the reports.",
+    "full": "The disk of the device OpenAmpere runs on is full. Please free up space, for example by deleting old Docker images, or shorten the retention period under {place}.",
+    "lowSpace": "Only {free} are left on the device OpenAmpere runs on. When it is full, no more readings are stored. Please free up space, for example by deleting old Docker images, or shorten the retention period under {place}.",
+    "readOnly": "The database cannot be written. Please check whether the disk is full or write-protected and whether OpenAmpere may write to its data folder.",
+    "unknown": "Please check whether there is enough free space on the device OpenAmpere runs on and the disk is fine, and restart OpenAmpere. If that does not help, please report the error."
+  },
   "temperatureLabels": {
     "ambient": "Ambient",
     "battery2": "Battery 2"

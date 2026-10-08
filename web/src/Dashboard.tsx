@@ -8,6 +8,25 @@ import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { kw, kwh, percent, time, updatedLabel, num } from "./format";
 import { t } from "./i18n";
 
+/** Readings that cannot be stored are lost for the history: say so and what to do (#170). */
+function StorageNotice({ storage }: { storage: Status["storage"] }) {
+  if (!storage) return null;
+  const place = `${t("common.more")} → ${t("common.dataBackup")}`;
+  if (storage.failing_since != null) {
+    const what = storage.error === "full" ? t("overview.storageNotice.full", { place })
+      : storage.error === "read_only" ? t("overview.storageNotice.readOnly") : t("overview.storageNotice.unknown");
+    return (
+      <Notice kind="error">
+        <strong>{t("overview.storageNotice.failing", { time: updatedLabel(storage.failing_since) })}</strong> {what}
+      </Notice>
+    );
+  }
+  if (storage.low_space && storage.free_bytes != null) {
+    return <Notice kind="warn">{t("overview.storageNotice.lowSpace", { free: `${num(storage.free_bytes / 1e6, 0)} MB`, place })}</Notice>;
+  }
+  return null;
+}
+
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="tile">
@@ -204,6 +223,7 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
       {status?.clock_wrong && (
         <Notice kind="error">{t("overview.dashboard.clockWrong")}</Notice>
       )}
+      <StorageNotice storage={status?.storage} />
       <ImportHint />
       <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging} />
 

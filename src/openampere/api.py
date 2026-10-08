@@ -374,6 +374,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "device": collector.device.__dict__ if collector.device else None,
             "firmware": {**(storage.get_meta("firmware") or {}), "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
+            "storage": collector.storage_state(),
         }
 
     # ---- settings & setup ------------------------------------------------

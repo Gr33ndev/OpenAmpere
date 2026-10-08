@@ -49,6 +49,13 @@
   "pvInputsCard": {
     "title": "Solar nach Modulfeldern"
   },
+  "storageNotice": {
+    "failing": "OpenAmpere kann seit {time} keine Messwerte speichern. Bis das behoben ist, fehlen sie im Verlauf und in den Auswertungen.",
+    "full": "Der Speicherplatz auf dem Gerät, auf dem OpenAmpere läuft, ist voll. Bitte Platz freigeben, zum Beispiel alte Docker-Images löschen, oder die Aufbewahrungsdauer unter {place} verkürzen.",
+    "lowSpace": "Auf dem Gerät, auf dem OpenAmpere läuft, sind nur noch {free} frei. Ist der Platz voll, werden keine Messwerte mehr gespeichert. Bitte Platz freigeben, zum Beispiel alte Docker-Images löschen, oder die Aufbewahrungsdauer unter {place} verkürzen.",
+    "readOnly": "Die Datenbank lässt sich nicht beschreiben. Bitte prüfen, ob der Datenträger voll oder schreibgeschützt ist und ob OpenAmpere in seinen Daten-Ordner schreiben darf.",
+    "unknown": "Bitte prüfen, ob auf dem Gerät, auf dem OpenAmpere läuft, genug Speicherplatz frei ist und der Datenträger in Ordnung ist, und OpenAmpere neu starten. Hilft das nicht, melde den Fehler bitte."
+  },
   "temperatureLabels": {
     "ambient": "Umgebung",
     "battery2": "Speicher 2"
