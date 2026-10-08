@@ -101,6 +101,9 @@ CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n
   GraphQL `enablePullRequestAutoMerge` mutation or the web UI and check that the PR is still open and waiting.
 - **Data files of the Python package** (e.g. `src/openampere/locales/*.json`) must be listed under
   `[tool.setuptools.package-data]` in `pyproject.toml`, otherwise they are missing in the Docker image.
+- **Database changes** go into `storage.py` as a new step in `MIGRATIONS` plus `SCHEMA_VERSION + 1`; never edit
+  `SCHEMA` (it is version 1). Before the upgrade the database is copied, so a rolled-back version can continue
+  with the copy. Test the step with an existing database, not only with a new one.
 - **Helper scripts reach existing installations only through `install.sh`.** `updater.sh` and `tailscale.sh` are
   copied by the installer; users must run it again to get changes. The website serves the scripts of the latest
   release tag, not of `main`.

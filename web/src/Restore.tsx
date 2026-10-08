@@ -82,36 +82,60 @@ export function LastRestore({ restored }: { restored: Status["database"]["restor
   );
 }
 
-/** The database could not be read at the start and OpenAmpere began with an empty one: what happened and what to
- *  do, on every screen until the owner hides it. */
+/** Hides a notice on the server, for every device. */
+async function dismiss(path: string, hide: () => void) {
+  try {
+    await deleteJson(path);
+    hide();
+  } catch (e) {
+    toast((e as Error).message, "error");
+  }
+}
+
+/** What happened to the database at the start, on every screen until the owner hides it: it could not be read and
+ *  OpenAmpere began with an empty one (#165), or an older version continues with the copy from before an update
+ *  (#166). */
 export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthStatus | null }) {
-  const damaged = status.database?.damaged;
-  const [hidden, setHidden] = useState(false);
-  if (!damaged || hidden) return null;
-  const dismiss = async () => {
-    try {
-      await deleteJson("/api/database/damaged");
-      setHidden(true);
-    } catch (e) {
-      toast((e as Error).message, "error");
-    }
-  };
+  const { damaged, rollback } = status.database ?? {};
+  const [hidden, setHidden] = useState<string[]>([]);
+  const hide = (kind: string) => () => setHidden((list) => [...list, kind]);
+  const showDamaged = !!damaged && !hidden.includes("damaged");
+  const showRollback = !!rollback && !hidden.includes("rollback");
+  if (!showDamaged && !showRollback) return null;
   return (
     <div className="page top-notice">
-      <Notice kind="error">
-        <p><strong>{t("shell.databaseNotice.title")}</strong></p>
-        <p>{t("shell.databaseNotice.whatHappened", { date: updatedLabel(damaged.ts) })}</p>
-        <p>{tx("shell.databaseNotice.fileKept", { file: <code className="code-inline wrap">{damaged.file}</code> })}</p>
-        {auth && !auth.configured
-          ? <p><strong>{t("shell.databaseNotice.setPasswordNow")}</strong></p>
-          : <p>{t("shell.databaseNotice.restoreHint")}</p>}
-        {auth?.authenticated && (
-          <div className="button-row">
-            <RestoreButton variant="primary" />
-            <Button variant="secondary" onClick={() => void dismiss()}>{t("shell.databaseNotice.hide")}</Button>
-          </div>
-        )}
-      </Notice>
+      {damaged && showDamaged && (
+        <Notice kind="error">
+          <p><strong>{t("shell.databaseNotice.title")}</strong></p>
+          <p>{t("shell.databaseNotice.whatHappened", { date: updatedLabel(damaged.ts) })}</p>
+          <p>{tx("shell.databaseNotice.fileKept", { file: <code className="code-inline wrap">{damaged.file}</code> })}</p>
+          {auth && !auth.configured
+            ? <p><strong>{t("shell.databaseNotice.setPasswordNow")}</strong></p>
+            : <p>{t("shell.databaseNotice.restoreHint")}</p>}
+          {auth?.authenticated && (
+            <div className="button-row">
+              <RestoreButton variant="primary" />
+              <Button variant="secondary" onClick={() => void dismiss("/api/database/damaged", hide("damaged"))}>
+                {t("shell.databaseNotice.hide")}
+              </Button>
+            </div>
+          )}
+        </Notice>
+      )}
+      {rollback && showRollback && (
+        <Notice kind="warn">
+          <p><strong>{t("shell.databaseNotice.rollbackTitle")}</strong></p>
+          <p>{t("shell.databaseNotice.rollbackWhat", { date: updatedLabel(rollback.ts) })}</p>
+          <p>{tx("shell.databaseNotice.rollbackFileKept", { file: <code className="code-inline wrap">{rollback.kept}</code> })}</p>
+          {auth?.authenticated && (
+            <div className="button-row">
+              <Button variant="secondary" onClick={() => void dismiss("/api/database/rollback", hide("rollback"))}>
+                {t("shell.databaseNotice.hide")}
+              </Button>
+            </div>
+          )}
+        </Notice>
+      )}
     </div>
   );
 }

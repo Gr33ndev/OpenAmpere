@@ -228,6 +228,9 @@
   },
   "storage": {
     "backupDamaged": "The backup is damaged and cannot be restored. Please choose another backup.",
+    "backupFromNewerVersion": "The backup is from a newer version of OpenAmpere. Please update OpenAmpere first and then restore the backup.",
+    "databaseFromNewerVersion": "The database is from a newer version of OpenAmpere (database version {version}, this version only knows up to {SCHEMA_VERSION}) and there is no copy from before. Please install the newer version of OpenAmpere again.",
+    "noSpaceForCopy": "There is not enough storage space to update the database: OpenAmpere makes a copy first (about {size} MB). Please free up space and restart OpenAmpere.",
     "notABackup": "This is not an OpenAmpere backup. Please choose the file that was saved with “Download backup”."
   },
   "tariffs": {

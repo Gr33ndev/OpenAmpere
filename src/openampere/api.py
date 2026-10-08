@@ -378,7 +378,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
             "database": {"damaged": storage.get_meta("database_damaged"),
-                         "restored": storage.get_meta("database_restored")},
+                         "restored": storage.get_meta("database_restored"),
+                         "rollback": storage.get_meta("database_rollback")},
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
@@ -596,6 +597,12 @@ def create_app(runtime: Runtime) -> FastAPI:
     def dismiss_damaged_database():
         """The owner has read the notice about the damaged database (and restored a backup or not)."""
         storage.delete_meta("database_damaged")
+        return {"ok": True}
+
+    @app.delete("/api/database/rollback")
+    def dismiss_database_rollback():
+        """The owner has read that an older version continues with the copy from before an upgrade (#166)."""
+        storage.delete_meta("database_rollback")
         return {"ok": True}
 
     @app.get("/api/live")

@@ -16,6 +16,9 @@
     "fileKept": "Die beschädigte Datei wurde nicht gelöscht, sie liegt hier: {file}",
     "hide": "Hinweis ausblenden",
     "restoreHint": "Hast du eine Datensicherung? Dann stelle sie hier oder unter Mehr → Daten & Sicherung wieder her. Ohne Sicherung richte OpenAmpere bitte neu ein.",
+    "rollbackFileKept": "Die Datenbank der neueren Version wurde nicht gelöscht, sie liegt hier: {file}",
+    "rollbackTitle": "OpenAmpere nutzt die Datenbank von vor dem Update",
+    "rollbackWhat": "Beim Start ({date}) war die Datenbank neuer als diese Version von OpenAmpere, zum Beispiel weil ein Update zurückgenommen wurde. Damit alles weiterläuft, nutzt OpenAmpere die Kopie, die vor dem Update angelegt wurde. Messwerte und Änderungen seit dem Update fehlen deshalb.",
     "setPasswordNow": "Lege jetzt sofort ein neues Passwort fest, damit niemand sonst im Heimnetz die Einstellungen ändern kann. Danach kannst du eine Datensicherung wiederherstellen.",
     "title": "Die Datenbank war beschädigt",
     "whatHappened": "OpenAmpere konnte seine Datenbank beim Start ({date}) nicht mehr lesen, zum Beispiel nach einem Stromausfall. Damit die App weiterläuft, hat OpenAmpere mit einer leeren Datenbank neu begonnen: Messwerte und Einstellungen von vorher fehlen."
