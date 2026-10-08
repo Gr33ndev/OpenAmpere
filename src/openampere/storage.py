@@ -32,6 +32,9 @@ MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
 MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger counter jumps are garbage
 EARLIEST_PLAUSIBLE_TS = 1_735_689_600  # 2025-01-01: anything earlier is an unset clock
 MAX_GAP_S = 48 * 3600  # outages up to this length are filled by spreading the counter difference
+STEP_QUARTERS = 7 * 96  # latest quarters looked at to find the step of the energy counters (#194)
+STEP_MIN_DELTAS = 20  # non-zero counter differences needed before the recorded data decides the step
+STEP_CACHE_S = 3600
 
 # Version 1 of the database: the tables when schema versions were introduced (#166). Do not change it; a change to
 # the database is a new step in MIGRATIONS and SCHEMA_VERSION + 1.
@@ -230,6 +233,7 @@ class Storage:
         row = self._db.execute("SELECT MAX(ts) FROM samples").fetchone()
         self._last_sample_ts: float = row[0] or 0.0
         self._clock_warned = False
+        self._step: tuple[float, int | None] | None = None  # (computed at, step of the energy counters in Wh)
 
     def _open(self, check: bool) -> sqlite3.Connection:
         """Connects and brings the tables up to date. check: run SQLite's quick integrity check, which reads the
@@ -554,6 +558,34 @@ class Storage:
         rows = self._fetchall("SELECT COUNT(DISTINCT CAST(ts / 86400 AS INTEGER)) AS n FROM energy_15m WHERE ts >= ? AND ts < ?",
                               (start, end))
         return int(rows[0]["n"] or 0)
+
+    def energy_step_wh(self, now: float | None = None) -> int | None:
+        """Step of the inverter's energy counters in Wh as seen in the recorded quarter hours (#194): 100 if
+        enough non-zero differences are all multiples of 0.1 kWh (classic FoxESS map, or firmware that reports
+        0.01 kWh units but counts in 0.1 kWh), otherwise 10. None if there is too little data to tell.
+
+        Looks at the latest local quarters only (bounded) and caches the result for an hour. Quarters filled by
+        spreading an outage (neighbouring rows with the same values) are skipped: they hold a share of a
+        difference, not a counter step."""
+        now = time.time() if now is None else now
+        cached = self._step
+        if cached is not None and 0 <= now - cached[0] < STEP_CACHE_S:
+            return cached[1]
+        with self._lock:
+            rows = self._db.execute(
+                f"SELECT ts, {', '.join(FLOWS)} FROM energy_15m WHERE source = 'local' ORDER BY ts DESC LIMIT ?",
+                (STEP_QUARTERS,)).fetchall()
+        deltas = []
+        for i, row in enumerate(rows):
+            neighbours = (rows[j] for j in (i - 1, i + 1) if 0 <= j < len(rows))
+            if any(abs(other[0] - row[0]) == QUARTER and other[1:] == row[1:] for other in neighbours):
+                continue
+            deltas.extend(v for v in row[1:] if v is not None and abs(v) >= 0.5)
+        step = None
+        if len(deltas) >= STEP_MIN_DELTAS:
+            step = 100 if all(abs(v - round(v / 100) * 100) < 0.5 for v in deltas) else 10
+        self._step = (now, step)
+        return step
 
     # ---- daily values of the grid operator's meters (#60) ------------------
 

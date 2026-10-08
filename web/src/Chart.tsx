@@ -38,6 +38,8 @@ export type Series = {
   dash?: boolean;
   /** Bars only: -1 = left of the tick, 1 = right of the tick (two series side by side), 0 = centred (stacked) */
   barAlign?: -1 | 0 | 1;
+  /** Decimals of kW/kWh values in the readout (default 2); counter-based energy uses energyDigits() (#194) */
+  digits?: number;
 };
 
 /** Thin uPlot wrapper: lines for power, side-by-side bar pairs for energy. */
@@ -104,7 +106,7 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
             paths: isBar ? uPlot.paths.bars!({ size: s.barAlign === 0 ? [0.7, 60] : [0.46, 48], align: s.barAlign ?? 1 }) : undefined,
             points: { show: false },
             value: (_u: uPlot, v: number | null) =>
-              v == null ? "–" : `${s.unit === "ct" ? ct(v) : (s.unit === "kW" || s.unit === "kWh" ? num(v, 2) : v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }))} ${s.unit}`,
+              v == null ? "–" : `${s.unit === "ct" ? ct(v) : (s.unit === "kW" || s.unit === "kWh" ? num(v, s.digits ?? 2) : v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }))} ${s.unit}`,
           };
         }),
       ],

@@ -39,6 +39,13 @@ def decode(reg: Reg, words: list[int]) -> float:
     return round(raw * reg.scale, 3)
 
 
+def counter_step_wh(values: dict[str, Reg]) -> int | None:
+    """Step of the lifetime energy counters ("*_total", scaled to Wh) in Wh: one raw count is `scale` Wh.
+    The coarsest counter decides, None without counters."""
+    scales = [reg.scale for name, reg in values.items() if name.endswith("_total")]
+    return round(max(scales)) if scales else None
+
+
 def encode(reg: Reg, value: int) -> list[int]:
     if reg.count == 1:
         return [value & 0xFFFF]

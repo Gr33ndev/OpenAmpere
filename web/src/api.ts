@@ -50,7 +50,10 @@ export type Status = {
   clock_wrong: boolean;
   devices: { grid_charging: boolean; items: Device[] };
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
-    driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean } | null;
+    driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean;
+    energy_step_wh?: number | null } | null;
+  /** step of the inverter's energy counters in Wh (#194): 100 = 0.1 kWh; missing on servers before this field */
+  energy_step_wh?: number;
   control: { enabled: boolean; dry_run: boolean };
   // whether readings get stored (#170); missing on servers before this field
   storage?: { failing_since: number | null; error: "full" | "read_only" | "other" | null; free_bytes: number | null;

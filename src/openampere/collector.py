@@ -168,6 +168,12 @@ class Collector:
         return {"failing_since": self.storage_failing_since, "error": self.storage_error, "free_bytes": free,
                 "low_space": free is not None and free < LOW_DISK_BYTES}
 
+    def energy_step_wh(self) -> int:
+        """Step of the energy counters in Wh (#194), so the app shows no decimal the inverter does not count:
+        what the recorded data shows, else what the driver's register map says, else 0.01 kWh."""
+        hint = self.device.energy_step_wh if self.device else None
+        return self.storage.energy_step_wh() or hint or 10
+
     async def _run(self) -> None:
         assert self.driver is not None
         backoff = 5.0

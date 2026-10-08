@@ -10,6 +10,7 @@ import time
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
 from ..modbus import (ModbusDevice, ModbusIllegalError, ModbusReadError,  # noqa: F401  (re-exported)
                       ModbusTransientError, _ascii)
+from ..regs import counter_step_wh
 from .registers import (H3_LEGACY, H3_NEW, MAPS, MODEL_ADDRESS, MODEL_LENGTH, SERIAL_ADDRESS,
                         Reg, RegisterMap, decode, encode)
 
@@ -100,7 +101,8 @@ class FoxessDriver(ModbusDevice):
 
         self.info = DeviceInfo(manufacturer="FoxESS", model=model or "unknown", serial=serial,
                                firmware=firmware, register_map=self.map.name, driver=self.KEY, unit=self._unit,
-                               rated_power_w=rated_power_w(model), supports_control=True)
+                               rated_power_w=rated_power_w(model), supports_control=True,
+                               energy_step_wh=counter_step_wh(self.map.values))
         log.info("connected: %s (map %s, fc%02d)", self.info, self.map.name, self.read_function)
         return self.info
 

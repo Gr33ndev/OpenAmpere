@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
-import { isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
+import { energyDigits, energyKwh, isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
 import { LOCALE, t } from "./i18n";
 import { CalendarIcon, Chevron } from "./icons";
 import { Segmented } from "./ui";
@@ -86,8 +86,8 @@ function Readout({ rows, index, showPower, xFormat, extra = [] }: {
         : p.battery >= 0 ? t("report.readout.discharging", { power: battery }) : t("report.readout.charging", { power: battery })]);
   } else {
     const e = r as EnergyEntry;
-    items.push([t("common.generated"), kwh(e.pv)], [t("common.consumed"), kwh(e.load)], [t("common.gridImport"), kwh(e.grid_import)],
-      [t("report.readout.fedIn"), kwh(e.grid_export)], [t("common.charged"), kwh(e.battery_charge)], [t("report.readout.discharged"), kwh(e.battery_discharge)]);
+    items.push([t("common.generated"), energyKwh(e.pv)], [t("common.consumed"), energyKwh(e.load)], [t("common.gridImport"), energyKwh(e.grid_import)],
+      [t("report.readout.fedIn"), energyKwh(e.grid_export)], [t("common.charged"), energyKwh(e.battery_charge)], [t("report.readout.discharged"), energyKwh(e.battery_discharge)]);
   }
   for (const x of extra) {
     const v = x.values[index];
@@ -145,6 +145,7 @@ export function Report() {
     }));
   };
 
+  const digits = energyDigits();
   const chart = useMemo(() => {
     const soc: Series = { label: t("common.stateOfCharge"), color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
     const hasSoc = rows.some((r) => r.soc != null);
@@ -169,14 +170,14 @@ export function Report() {
       x: en.map((r) => r.ts),
       // consumption is drawn as total (blue = from grid) with the self-supplied part (orange) on top
       series: [
-        { label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", barAlign: -1 },
-        { label: t("common.gridImport"), color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", barAlign: 1 },
-        { label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", barAlign: 1,
+        { label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", digits, barAlign: -1 },
+        { label: t("common.gridImport"), color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", digits, barAlign: 1 },
+        { label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", digits, barAlign: 1,
           values: en.map((r) => (r.load == null ? null : Math.max(0, (r.load - (r.grid_import ?? 0)) / 1000))) },
         ...(hasSoc && period === "day" ? [{ ...soc, color: "var(--label)" }] : []),
       ] as Series[],
     };
-  }, [showPower, rows, period, devPower, deviceColors]);
+  }, [showPower, rows, period, devPower, deviceColors, digits]);
 
   return (
     <div className="page">
@@ -344,7 +345,7 @@ function DevicesSection({ data, power, totals, colors, xFormat, load }: {
         label={t("report.devicesSection.chartLabel")} />
         : <p className="empty">{t("report.devicesSection.emptyState")}</p>}
       <div className="card"><dl className="facts">
-        {load != null && <><dt>{t("report.devicesSection.household")}</dt><dd>{kwh(Math.max(0, load - deviceSum))}</dd></>}
+        {load != null && <><dt>{t("report.devicesSection.household")}</dt><dd>{energyKwh(Math.max(0, load - deviceSum))}</dd></>}
         {data.devices.map((d, i) => (
           <Fragment key={d.key}>
             <dt><span className="dot" style={{ background: colors[d.key] }} /> {d.name}</dt>

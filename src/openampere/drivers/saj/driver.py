@@ -7,7 +7,7 @@ import time
 
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
 from ..modbus import ModbusDevice, ModbusIllegalError, ascii_text
-from ..regs import decode
+from ..regs import counter_step_wh, decode
 from .registers import (BLOCKS, DEVICE_TYPE_RANGE, DEVICE_TYPES, INFO_ADDRESS, INFO_LENGTH, OFF_GRID_MODE,
                         READ_FUNCTION, VALUES)
 
@@ -50,7 +50,8 @@ class SajDriver(ModbusDevice):
         firmware = " / ".join(f"{v / 1000:.3f}" for v in versions[:3]) if any(versions) else None
         self.info = DeviceInfo(manufacturer="SAJ", model=model, serial=serial or product, firmware=firmware,
                                register_map="saj_h2", driver=self.KEY, unit=self._unit,
-                               rated_power_w=rated_w or None, supports_control=False)
+                               rated_power_w=rated_w or None, supports_control=False,
+                               energy_step_wh=counter_step_wh(VALUES))
         log.info("connected: %s", self.info)
         return self.info
 
