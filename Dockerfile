@@ -27,4 +27,7 @@ RUN pip install --no-cache-dir --no-deps . \
 USER openampere
 VOLUME /data
 EXPOSE 8080 8443
+# a hung server counts as unhealthy, the updater then brings back the previous version (#167).
+# Generous start period: the first start on a Raspberry Pi (database migrations) can take a while.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 CMD ["openampere", "healthcheck"]
 CMD ["openampere"]

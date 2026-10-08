@@ -3,7 +3,8 @@
 #
 # It reacts to one thing only: the file data/update/request, which the app writes when someone taps
 # "Aktualisieren" (or at night with automatic updates). Then it pulls the new images of this installation,
-# restarts the containers and checks that OpenAmpere keeps running. If not, the previous version comes back.
+# restarts the containers and checks that OpenAmpere keeps running and answers (health check of the image). If not, the
+# previous version comes back.
 # The app itself never gets access to Docker, it can only ask for an update.
 #
 # Before a new OpenAmpere image is started, its build provenance is verified with cosign (#115): the image must have
@@ -16,6 +17,7 @@ DIR=${OPENAMPERE_DIR:-/opt/openampere}
 STATE="$DIR/data/update"
 APP=openampere
 CHECK_AFTER_S=${OPENAMPERE_CHECK_AFTER_S:-60} # how long the new version must run without crashing
+HEALTH_WAIT_S=${OPENAMPERE_HEALTH_WAIT_S:-240} # extra wait while the health check is starting (start period 180 s in the Dockerfile)
 VERIFY=${OPENAMPERE_VERIFY_IMAGES:-ja}
 OWN_IMAGE=ghcr.io/gr33ndev/openampere
 SIGNER='^https://github.com/Gr33ndev/OpenAmpere/\.github/workflows/release\.yml@refs/tags/v'
@@ -30,6 +32,26 @@ status() { # state message
 }
 
 container() { docker compose ps -q "$APP" 2>/dev/null | head -n 1; }
+
+# exit code 0 if the new version runs: not restarted by Docker (a version that crashes is restarted again and again,
+# then its restart count grows) and healthy, if the image has a health check (#167; older images have none).
+# While the health check is still starting (slow first start, e.g. on a Raspberry Pi), wait a bit longer.
+started() {
+  waited=0
+  while :; do
+    # shellcheck disable=SC2046 # three words: running, restart count, health status (empty without a health check)
+    set -- $(docker inspect -f '{{.State.Running}} {{.RestartCount}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$(container)" 2>/dev/null)
+    if [ "${1:-}" != true ] || [ "${2:-}" != 0 ]; then return 1; fi
+    case "${3:-}" in
+      "" | healthy) return 0 ;;
+      starting) [ "$waited" -lt "$HEALTH_WAIT_S" ] || return 1 ;;
+      *) return 1 ;; # unhealthy: e.g. the server hangs
+    esac
+    date +%s >"$STATE/updater-alive"
+    sleep 10
+    waited=$((waited + 10))
+  done
+}
 
 # verified image: exit code 0 if the image may be started. Only OpenAmpere's own image is checked.
 verified() {
@@ -72,8 +94,7 @@ update() {
     return
   fi
   sleep "$CHECK_AFTER_S"
-  # a version that crashes is restarted again and again by Docker: then its restart count grows
-  if [ "$(docker inspect -f '{{.State.Running}} {{.RestartCount}}' "$(container)" 2>/dev/null)" = "true 0" ]; then
+  if started; then
     status "done" "Update installiert."
     docker image prune -f >/dev/null 2>&1
   elif [ -n "$old" ]; then

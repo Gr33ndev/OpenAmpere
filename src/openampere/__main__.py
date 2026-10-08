@@ -8,12 +8,16 @@ import contextlib
 import logging
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import uvicorn
 
-from .api import create_app
-from .runtime import Runtime
-from .storage import DatabaseInUse
+# the app itself (FastAPI, drivers, ...) is imported in main() only: the health check runs regularly and
+# must stay light, also on a Raspberry Pi
+if TYPE_CHECKING:
+    from .runtime import Runtime
+
+HEALTH_PATH = "/api/auth/status?healthcheck=1"  # needs no login and no inverter
 
 
 def check_data_dir(config_path: str | None) -> None:
@@ -24,6 +28,35 @@ def check_data_dir(config_path: str | None) -> None:
     if folder.is_dir() and not os.access(folder, os.W_OK):
         raise SystemExit(f"Kein Schreibzugriff auf {folder} (Benutzer {os.getuid()}). Bei Docker auf dem Server im "
                          f"OpenAmpere-Ordner ausführen: sudo chown -R {os.getuid()}:{os.getgid()} data")
+
+
+def healthcheck(config_path: str | None, timeout: float = 5.0) -> int:
+    """For Docker's HEALTHCHECK: 0 if the web server answers on its configured port, 1 if not."""
+    import urllib.request
+
+    from .config import build_config, read_yaml
+
+    server = build_config(read_yaml(config_path))[0].server
+    host = server.host if server.host not in ("", "0.0.0.0", "::") else "127.0.0.1"
+    if ":" in host:
+        host = f"[{host}]"
+    url = f"http://{host}:{server.port}{HEALTH_PATH}"
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # never via a proxy from the environment
+    try:
+        with opener.open(url, timeout=timeout) as response:
+            response.read()
+            return 0 if response.status == 200 else 1
+    except (OSError, ValueError) as err:  # includes HTTP errors and timeouts
+        print(f"OpenAmpere antwortet nicht unter {url}: {err}")
+        return 1
+
+
+class _HideHealthchecks(logging.Filter):
+    """The health check runs every 30 seconds: keep it out of the access log, so the log stays readable."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        return not (isinstance(args, tuple) and len(args) > 2 and args[2] == HEALTH_PATH)
 
 
 class _SecondServer(uvicorn.Server):
@@ -39,6 +72,7 @@ async def serve(app, runtime: Runtime) -> None:
     # bounded graceful shutdown: open browser connections must not keep the process alive
     main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, log_level="info",
                                          timeout_graceful_shutdown=5))
+    logging.getLogger("uvicorn.access").addFilter(_HideHealthchecks())
     if not server.tls_port:
         await main.serve()
         return
@@ -70,10 +104,13 @@ async def serve(app, runtime: Runtime) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="OpenAmpere – local energy system app")
-    parser.add_argument("command", nargs="?", choices=["serve", "reset-password"], default="serve",
-                        help="reset-password: forget the access password (set a new one in the web app)")
+    parser.add_argument("command", nargs="?", choices=["serve", "reset-password", "healthcheck"],
+                        default="serve", help="reset-password: forget the access password (set a new one in the web "
+                        "app); healthcheck: exit code 0 if the running server answers")
     parser.add_argument("--config", help="path to config.yaml (default: $OPENAMPERE_CONFIG or ./config.yaml)")
     args = parser.parse_args()
+    if args.command == "healthcheck":
+        raise SystemExit(healthcheck(args.config))
     if args.command == "reset-password":
         import sqlite3
 
@@ -91,6 +128,9 @@ def main() -> None:
         return
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     check_data_dir(args.config)
+    from .api import create_app
+    from .runtime import Runtime
+    from .storage import DatabaseInUse
 
     try:
         runtime = Runtime.from_files(args.config)
