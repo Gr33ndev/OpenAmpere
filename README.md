@@ -26,7 +26,7 @@ The app's user interface and the website are in German.
 
 | Device | What OpenAmpere does | Confirmed on a real system? |
 |---|---|---|
-| FoxESS H3, newer firmware | Monitoring and control. Control is off by default. The new or old register map is detected automatically. | ✅ Monitoring confirmed, control partly confirmed |
+| FoxESS H3, newer firmware | Monitoring and control. Control is off by default. The new or old register map is detected automatically. | ✅ Monitoring and control confirmed |
 | FoxESS H3, older firmware / H3 Smart / H3 Pro | Monitoring and control; with older firmware without the feed-in limit | Not yet confirmed |
 | SAJ H2 / HS2 | Monitoring. Control will only be enabled once the driver has been tested on real devices. | Not yet confirmed |
 | Immersion heater, heat pump (SG-Ready) | Switching on solar surplus via Shelly relays or web addresses. | Not yet confirmed |
