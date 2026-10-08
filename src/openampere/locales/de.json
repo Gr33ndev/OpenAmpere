@@ -149,8 +149,7 @@
     "valueMustBetween0": "Wert muss zwischen 0 und {maximum} W liegen"
   },
   "diagnostics": {
-    "diagnosisAlreadyRunning": "Die Diagnose läuft bereits.",
-    "inverterNotConnected": "Der Wechselrichter ist nicht verbunden."
+    "diagnosisAlreadyRunning": "Die Diagnose läuft bereits."
   },
   "discovery": {
     "enterNetworkLike192": "Netz bitte als z. B. 192.168.178 angeben",

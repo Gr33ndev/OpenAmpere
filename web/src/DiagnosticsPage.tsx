@@ -1,19 +1,29 @@
 import { useState } from "react";
+import type { Settings } from "./api";
 import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
 import { t } from "./i18n";
 import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
-import { Button, Checkbox, copyText, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
+import { useSettings } from "./SettingsPages";
+import { Button, Checkbox, copyText, Field, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
 type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string; hint?: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
   report: { created: number; checks: Check[] } | null };
 
+type LogLevel = Settings["values"]["log.level"];
+const LOG_LEVELS: [LogLevel, string][] = [
+  ["info", t("settings.diagnosticsPage.logLevelInfo")],
+  ["debug", t("settings.diagnosticsPage.logLevelDebug")],
+  ["warning", t("settings.diagnosticsPage.logLevelWarning")],
+];
+
 const STATUS_LABEL: Record<Check["status"], string> = { ok: "OK", warn: t("settings.statusLabel.check"), error: t("settings.statusLabel.error"), info: "Info", skipped: "–" };
 
 export function DiagnosticsPage({ onBack }: PageProps) {
   const { data, error, reload, setData } = useResource<DiagnosticsData>("/api/diagnostics");
+  const { settings, locked, save } = useSettings();
   const [connectionTest, setConnectionTest] = useState(false);
   const [serial, setSerial] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -99,6 +109,22 @@ export function DiagnosticsPage({ onBack }: PageProps) {
       </div>
       {data?.report?.checks.some((c) => c.status === "warn") && (
         <Notice kind="warn">{t("settings.diagnosticsPage.checkHint")}</Notice>
+      )}
+
+      {settings && (
+        <>
+          <div className="section-title">{t("settings.diagnosticsPage.logTitle")}</div>
+          <div className="card form">
+            <p className="hint flush">{t("settings.diagnosticsPage.logIntro")}</p>
+            <Field label={t("settings.diagnosticsPage.logLevel")} locked={locked("log.level")}
+              hint={t("settings.diagnosticsPage.logLevelHint")}>
+              <select className="input" value={settings["log.level"]} disabled={locked("log.level")}
+                onChange={(e) => void save({ "log.level": e.target.value as LogLevel })}>
+                {LOG_LEVELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </Field>
+          </div>
+        </>
       )}
     </SubPage>
   );

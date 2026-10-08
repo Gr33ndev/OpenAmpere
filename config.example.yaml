@@ -36,3 +36,6 @@ grid:
 control:
   enabled: false            # Hauptschalter für alles, was auf den Wechselrichter schreibt
   dry_run: true             # true = Befehle nur protokollieren, nicht ausführen
+
+log:
+  level: info               # info | debug (ausführlich, für die Fehlersuche) | warning; auch in der App unter Mehr → Diagnose

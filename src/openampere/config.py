@@ -132,6 +132,12 @@ class MeterConfig:
 
 
 @dataclass
+class LogConfig:
+    # info: normal operation; debug: more details for finding a fault; warning: only problems
+    level: str = "info"
+
+
+@dataclass
 class Config:
     inverter: InverterConfig = field(default_factory=InverterConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
@@ -146,6 +152,7 @@ class Config:
     notify: NotifyConfig = field(default_factory=NotifyConfig)
     evcc: EvccConfig = field(default_factory=EvccConfig)
     meter: MeterConfig = field(default_factory=MeterConfig)
+    log: LogConfig = field(default_factory=LogConfig)
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
@@ -198,6 +205,7 @@ EDITABLE: dict[str, tuple] = {
     "meter.username": ("str",),
     "meter.password": ("secret",),
     "meter.meter_ids": ("strlist", 10, 100),
+    "log.level": ("choice", "debug", "info", "warning"),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
@@ -265,6 +273,7 @@ def build_config(file_values: dict | None = None, saved: dict | None = None) -> 
     _merge(config, nest(saved or {}))
     locked: set[str] = set()
     _apply_env(config, "OPENAMPERE", "", locked)
+    config.log.level = config.log.level.strip().lower()  # OPENAMPERE_LOG_LEVEL=DEBUG as usual for log levels
     return config, locked
 
 

@@ -111,6 +111,7 @@ export type Settings = {
     "meter.provider": string;
     "meter.username": string;
     "meter.meter_ids": string[];
+    "log.level": "debug" | "info" | "warning";
   };
   secrets: Record<SecretKey, { set: boolean; hint: string | null }>;
   locked: string[];

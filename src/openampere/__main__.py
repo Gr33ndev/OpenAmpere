@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 
 import uvicorn
 
+from . import logs
+
 # the app itself (FastAPI, drivers, ...) is imported in main() only: the health check runs regularly and
 # must stay light, also on a Raspberry Pi
 if TYPE_CHECKING:
@@ -69,17 +71,19 @@ class _SecondServer(uvicorn.Server):
 
 async def serve(app, runtime: Runtime) -> None:
     server = runtime.config.server
+    # uvicorn logs through our handlers (level from the settings, kept for the diagnostics report); no access log:
+    # a line with the client's address for every request of the browser and of Home Assistant does not help (#169)
+    quiet = dict(log_config=None, log_level=None, access_log=False)
     # bounded graceful shutdown: open browser connections must not keep the process alive
-    main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, log_level="info",
-                                         timeout_graceful_shutdown=5))
+    main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, timeout_graceful_shutdown=5, **quiet))
     logging.getLogger("uvicorn.access").addFilter(_HideHealthchecks())
     if not server.tls_port:
         await main.serve()
         return
     cert = runtime.tls
-    secure = _SecondServer(uvicorn.Config(app, host=server.host, port=server.tls_port, log_level="info", lifespan="off",
+    secure = _SecondServer(uvicorn.Config(app, host=server.host, port=server.tls_port, lifespan="off",
                                           ssl_certfile=str(cert.cert_path), ssl_keyfile=str(cert.key_path),
-                                          timeout_graceful_shutdown=5))
+                                          timeout_graceful_shutdown=5, **quiet))
     logging.info("HTTPS for other apps on port %s, certificate SHA-256 %s", server.tls_port, cert.fingerprint)
 
     async def serve_secure() -> None:
@@ -126,7 +130,7 @@ def main() -> None:
         db.close()
         print("Passwort zurückgesetzt. Beim nächsten Öffnen der App kann ein neues festgelegt werden.")
         return
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logs.setup()
     check_data_dir(args.config)
     from .api import create_app
     from .runtime import Runtime

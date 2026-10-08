@@ -190,6 +190,7 @@ const settings = {
     "notify.on_battery_health": true, "notify.on_off_grid": true, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
     "meter.provider": "netze_bw", "meter.username": "demo@example.org", "meter.meter_ids": [],
+    "log.level": "info",
   },
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
     "evcc.password": { set: false, hint: null }, "meter.password": { set: true, hint: null } },

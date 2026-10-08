@@ -3,7 +3,8 @@
 Everything here only reads. The result is a report that users can share (e.g. in a GitHub issue) so
 register maps, scaling factors and device behaviour can be verified for more devices. The serial number
 is masked unless the user explicitly includes it; addresses, host names and times of the user's actions are
-pseudonymised or left out (#149).
+pseudonymised or left out (#149). The report ends with the last lines of the server log, pseudonymised the same way,
+so owners do not have to read and black out the console output themselves (#169).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
+from . import logs
 from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .runtime import Runtime
@@ -46,14 +48,19 @@ _IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:
 _MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])")
 _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
                    r"(?![\w-])", re.I)
+_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
 
 
 class _Pseudonyms:
     """Replaces addresses and local host names in report texts, the same value always by the same pseudonym (#149):
     the report stays readable ("the same address twice") without telling anyone the user's network."""
 
-    def __init__(self, inverter_host: str | None) -> None:
-        self.known = {inverter_host.lower(): "<Wechselrichter>"} if inverter_host else {}
+    def __init__(self, inverter_host: str | None, known: dict[str, str] | None = None) -> None:
+        """`known`: further values with their replacement, e.g. the serial number or the ntfy address."""
+        self.known = {k.strip().lower(): v for k, v in (known or {}).items() if k and k.strip()}
+        if inverter_host:
+            self.known[inverter_host.lower()] = "<Wechselrichter>"
         self.counts: Counter = Counter()
 
     def _name(self, value: str, kind: str) -> str:
@@ -72,7 +79,9 @@ class _Pseudonyms:
 
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
-            text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", name, text, flags=re.I)
+            text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
+        text = _EMAIL.sub(lambda m: self._name(m.group(0), "E-Mail"), text)
+        text = _HOME.sub(r"\1/<Benutzer>", text)
         text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
         text = _IPV4.sub(self._ip, text)
         text = _IPV6.sub(self._ip, text)
@@ -210,29 +219,52 @@ class Diagnostics:
         if self.running:
             raise RuntimeError("Die Diagnose läuft bereits.")
         collector = self.runtime.collector
-        if collector.driver is None or not collector.connected:
-            raise RuntimeError("Der Wechselrichter ist nicht verbunden.")
         self.running = True
         try:
-            checks = await self._checks(connection_test)
+            if collector.driver is not None and collector.connected:
+                checks = await self._checks(connection_test)
+            else:  # the report is still worth sharing: the log usually tells why the connection fails (#169)
+                checks = [self._not_connected(), *self._history_checks()]
         finally:
             self.running = False
         device = collector.device
         info = asdict(device) if device else {}
         if not include_serial:
             info["serial"] = _mask(info.get("serial"))
-        report = self._pseudonymise({"created": time.time(), "version": self._version(), "device": info,
+        now = time.time()
+        report = self._pseudonymise({"created": now, "version": self._version(), "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
-                                     "checks": [asdict(c) for c in checks]})
+                                     "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now)},
+                                    include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
         return report
 
-    def _pseudonymise(self, report: dict) -> dict:
-        """The checks can quote connection errors with the inverter's address; the report is shared publicly."""
-        pseudonyms = _Pseudonyms(self.runtime.config.inverter.host)
-        return {**report, "checks": pseudonyms.apply(report.get("checks", []))}
+    def _not_connected(self) -> Check:
+        collector = self.runtime.collector
+        if collector.driver is None:
+            return Check("connection", "Verbindung zum Wechselrichter", "skipped", "Noch kein Wechselrichter eingerichtet.")
+        return Check("connection", "Verbindung zum Wechselrichter", "error",
+                     f"nicht verbunden: {collector.last_error or 'noch keine Antwort'}",
+                     hint="Die Prüfungen am Gerät brauchen eine Verbindung. Die letzten Zeilen des Protokolls am Ende "
+                          "des Berichts zeigen meist, woran es liegt.")
+
+    def _pseudonymise(self, report: dict, include_serial: bool = False) -> dict:
+        """The checks and the log can quote connection errors with the inverter's address, the log also the serial
+        number and the addresses of other services; the report is shared publicly."""
+        config = self.runtime.config
+        known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
+                 config.meter.username: "<Benutzername>"}
+        if not include_serial:
+            device = self.runtime.collector.device
+            stored = (self.runtime.storage.get_meta("firmware") or {}).get("serial")
+            for serial in {device.serial if device else None, stored}:
+                if serial:
+                    known[serial] = _mask(serial)
+        pseudonyms = _Pseudonyms(config.inverter.host, known)
+        return {**report, "checks": pseudonyms.apply(report.get("checks", [])),
+                "log": pseudonyms.apply(report.get("log", []))}
 
     @staticmethod
     def _version() -> str:
@@ -333,6 +365,11 @@ class Diagnostics:
             checks.append(Check("connections", "Gleichzeitige Verbindungen", "skipped",
                                 "Nicht ausgeführt (kann andere Geräte kurz stören)."))
 
+        return checks + self._history_checks()
+
+    def _history_checks(self) -> list[Check]:
+        """What OpenAmpere observed while polling; needs no connection right now."""
+        checks: list[Check] = []
         # 8. daily counter reset times (observed passively)
         tz = self.runtime.tz
         resets = self.runtime.storage.get_meta("daily_resets") or []
@@ -397,11 +434,11 @@ def plural(n: int, one: str, many: str) -> str:
 
 def report_markdown(report: dict) -> str:
     """Plain text for copying into an issue."""
-    device = report.get("device", {})
+    device = report.get("device") or {}
     lines = [f"## OpenAmpere-Diagnose ({datetime.fromtimestamp(report['created']):%d.%m.%Y %H:%M})", "",
              f"- Version: {report.get('version')}",
              f"- Gerät: {device.get('manufacturer')} {device.get('model')} (Firmware {device.get('firmware')}, "
-             f"Seriennr. {device.get('serial')})",
+             f"Seriennr. {device.get('serial')})" if device.get("model") else "- Gerät: nicht erkannt",
              f"- Registerkarte: {device.get('register_map')}, Geräteadresse {device.get('unit')}",
              f"- Verbindung: {report['connection']['mode']}, Zeitlimit {report['connection']['timeout_s']} s", ""]
     attention = [c for c in report["checks"] if c["status"] == "warn"]
@@ -413,4 +450,8 @@ def report_markdown(report: dict) -> str:
     import json
     lines.append(json.dumps(report["checks"], ensure_ascii=False, indent=1))
     lines += ["```", "", "</details>"]
+    log = report.get("log") or []
+    if log:  # times relative to the report (-HH:MM:SS)
+        lines += ["", f"<details><summary>Protokoll (letzte {len(log)} Zeilen)</summary>", "", "```text",
+                  *[line.replace("```", "` ` `") for line in log], "```", "", "</details>"]
     return "\n".join(lines)
