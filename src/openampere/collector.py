@@ -141,6 +141,7 @@ class Collector:
                     self.device = await self.driver.connect()
                 started = time.monotonic()
                 snap = (await self.driver.read()).sanitize()
+                log.debug("reading took %.0f ms", (time.monotonic() - started) * 1000)
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
                     log.info("inverter connected")

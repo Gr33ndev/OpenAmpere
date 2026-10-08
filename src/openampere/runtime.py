@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import eeg, tls
+from . import eeg, logs, tls
 from .collector import Collector
 from .config import EDITABLE, SECRETS, Config, build_config, get_value, read_yaml, validate
 from .drivers import registry
@@ -42,6 +42,7 @@ class Runtime:
         self._tls: tls.Certificate | None = None
         self.tls_error: str | None = None  # the HTTPS port could not be opened (#76)
         self.config, self.locked = build_config(file_values, self._load_settings())
+        logs.apply_level(self.config.log.level)
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
@@ -138,6 +139,8 @@ class Runtime:
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 
         self.collector.retention_days = new.storage.raw_retention_days
+        if old.log.level != new.log.level:
+            logs.apply_level(new.log.level)
         control_changes = {k: (get_value(old, k), get_value(new, k))
                            for k in ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp")
                            if get_value(old, k) != get_value(new, k)}

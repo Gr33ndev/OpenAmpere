@@ -109,12 +109,21 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: Server log (optional) / Server-Protokoll (optional)
+      label: Diagnostics report (recommended) / Diagnosebericht (empfohlen)
       description: |
-        Docker: `docker compose logs --tail 100 openampere`. Remove personal data first.
+        **Mehr → Diagnose** (More → Diagnostics): start the diagnostics, tap "Bericht kopieren" (copy report) and paste
+        it here. It ends with the last lines of the server log; IP addresses, host names and the serial number are
+        already replaced, and it also works while the inverter is not connected. For a hard-to-find bug, first set
+        **Protokoll** (log) on the same page to "Ausführlich (für Fehlersuche)" (detailed), let the bug happen again
+        and then create the report. Only if the app does not open at all: `docker compose logs --tail 100 openampere`,
+        and remove personal data first.
 
-        Docker: `docker compose logs --tail 100 openampere`. Persönliche Daten vorher entfernen.
-      render: text
+        **Mehr → Diagnose**: Diagnose starten, auf „Bericht kopieren“ tippen und hier einfügen. Am Ende stehen die
+        letzten Zeilen des Server-Protokolls; IP-Adressen, Gerätenamen und die Seriennummer sind darin schon ersetzt,
+        und es geht auch, wenn der Wechselrichter gerade nicht verbunden ist. Bei schwer zu findenden Fehlern vorher auf
+        derselben Seite unter **Protokoll** „Ausführlich (für Fehlersuche)“ wählen, den Fehler noch einmal auftreten
+        lassen und dann den Bericht erstellen. Nur wenn sich die App gar nicht öffnen lässt:
+        `docker compose logs --tail 100 openampere`, persönliche Daten vorher entfernen.
   - type: checkboxes
     id: checks
     attributes:

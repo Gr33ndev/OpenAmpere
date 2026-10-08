@@ -128,8 +128,9 @@ class ModbusDevice:
         for attempt in range(1, self._attempts + 1):
             try:
                 return await self._read_once(address, count, function)
-            except ModbusTransientError:
+            except ModbusTransientError as err:
                 raise_if_cancelled()
+                log.debug("attempt %d/%d failed: %s", attempt, self._attempts, err)
                 if attempt == self._attempts:
                     raise
                 await asyncio.sleep(RETRY_DELAY_S)
@@ -217,6 +218,7 @@ class ModbusDevice:
             words = await self._read(start, count, self.read_function)
             return {start + i: w for i, w in enumerate(words)}
         except ModbusIllegalError:
+            log.debug("block %s+%s rejected, reading the registers one by one", start, count)
             values = {}
             now = time.monotonic()
             for address in range(start, start + count):
