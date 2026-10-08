@@ -30,12 +30,15 @@
     "loggedIn": "Angemeldet",
     "passwordNeeded": "Zum Ändern von Einstellungen brauchst du das Passwort von OpenAmpere."
   },
+  "loginToSee": {
+    "text": "Diese Angaben siehst du erst nach der Anmeldung. So kann sie nicht jeder in deinem Heimnetz lesen."
+  },
   "offlineMessage": {
     "noConnection": "Keine Verbindung zum OpenAmpere-Server."
   },
   "passwordSetup": {
     "continue": "Weiter",
-    "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt.",
+    "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die meisten Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt. Zugangsdaten und die Adresse deiner Push-Nachrichten siehst du nur nach der Anmeldung.",
     "passwordHint": "Mindestens 6 Zeichen. Bewahre es gut auf – zurücksetzen kann es nur, wer Zugriff auf den Server hat.",
     "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
     "repeatPassword": "Passwort wiederholen",

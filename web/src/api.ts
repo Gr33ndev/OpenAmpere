@@ -100,7 +100,7 @@ export type Settings = {
     "updates.check": boolean;
     "updates.auto": boolean;
     "grid.feed_in_rule": FeedInRule;
-    "notify.ntfy_url": string;
+    "notify.ntfy_url": string | null; // null without login (see hidden)
     "notify.on_unreachable": boolean;
     "notify.on_alarm": boolean;
     "notify.on_overwritten": boolean;
@@ -113,12 +113,14 @@ export type Settings = {
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
     "meter.provider": string;
-    "meter.username": string;
-    "meter.meter_ids": string[];
+    "meter.username": string | null; // null without login (see hidden)
+    "meter.meter_ids": string[] | null; // null without login (see hidden)
     "log.level": "debug" | "info" | "warning";
   };
   secrets: Record<SecretKey, { set: boolean; hint: string | null }>;
   locked: string[];
+  /** Values that identify the owner or give access to data: null until logged in (#164). */
+  hidden: SettingKey[];
   revision: number;
 };
 

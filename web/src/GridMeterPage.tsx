@@ -4,6 +4,7 @@ import { updatedLabel } from "./format";
 import { list, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { useSettings } from "./SettingsPages";
+import { LoginToSee } from "./AuthScreens";
 import { Button, Checkbox, Field, LoadState, Notice, SubPage, toast } from "./ui";
 
 type Provider = { key: string; label: string; portal: string; region: string };
@@ -19,7 +20,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
 
 /** Settings: fetch the daily values of the grid operator's smart meter from its customer portal (#60). */
 export function GridMeterPage({ onBack }: PageProps) {
-  const { settings, secrets, save, locked, error, reload } = useSettings();
+  const { settings, secrets, save, locked, hidden, error, reload } = useSettings();
   const { data: view, setData: setView, reload: reloadView } = useResource<GridMeterView>("/api/gridmeter");
   const [provider, setProvider] = useState("none");
   const [username, setUsername] = useState("");
@@ -28,7 +29,7 @@ export function GridMeterPage({ onBack }: PageProps) {
   useEffect(() => {
     if (!settings) return;
     setProvider(settings["meter.provider"]);
-    setUsername(settings["meter.username"]);
+    setUsername(settings["meter.username"] ?? "");
   }, [settings]);
   const chosen = view?.providers.find((p) => p.key === provider);
   const passwordSet = secrets?.["meter.password"]?.set ?? false;
@@ -75,7 +76,8 @@ export function GridMeterPage({ onBack }: PageProps) {
           ? ` · ${t("settings.gridMeterPage.fetched", { date: updatedLabel(view.synced).replace(/^\p{Lu}/u, (c) => c.toLowerCase()) })}` : ""}</Notice>
       )}
 
-      {settings && view && (
+      {settings && view && hidden("meter.username") && <LoginToSee />}
+      {settings && view && !hidden("meter.username") && (
         <div className="card form">
           <Field label={t("common.gridOperator")} locked={locked("meter.provider")}
             hint={chosen ? t("settings.gridMeterPage.regionHint", { region: chosen.region, portal: chosen.portal })

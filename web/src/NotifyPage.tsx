@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import { t, tx } from "./i18n";
+import { LoginToSee } from "./AuthScreens";
 import { QrCode } from "./QrCode";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LearnMore, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
@@ -73,8 +74,10 @@ export function NotifyPage({ onBack }: PageProps) {
   const [suggesting, setSuggesting] = useState(false);
   const [sent, setSent] = useState(false);
   const [arrived, setArrived] = useState<boolean | null>(null);
-  useEffect(() => { if (data) setUrl(data.values["notify.ntfy_url"]); }, [data]);
+  useEffect(() => { if (data) setUrl(data.values["notify.ntfy_url"] ?? ""); }, [data]);
   const values = data?.values;
+  // the topic is the only protection of the messages: shown only after login (#164)
+  const urlHidden = data?.hidden?.includes("notify.ntfy_url") ?? false;
   const locked = (key: string) => data?.locked.includes(key) ?? false;
   const saved = values?.["notify.ntfy_url"] ?? "";
   const target = parseTopic(saved);
@@ -140,6 +143,7 @@ export function NotifyPage({ onBack }: PageProps) {
           </div>
 
           <div className="section-title">{t("settings.notifyPage.subscribeTitle")}</div>
+          {urlHidden ? <LoginToSee /> : <>
           <div className="card form">
             {!saved && (
               <>
@@ -233,6 +237,7 @@ export function NotifyPage({ onBack }: PageProps) {
               </div>
             </LearnMore>
           </div>
+          </>}
 
           <div className="section-title">{t("settings.notifyPage.eventsTitle")}</div>
           <div className="card form">

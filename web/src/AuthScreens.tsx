@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuthStatus } from "./api";
-import { postJson, useResource } from "./api";
+import { postJson, refreshAll, useResource } from "./api";
 import { t, tx } from "./i18n";
 import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
@@ -23,6 +23,7 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
     setBusy(true); setError(null);
     try {
       await postJson("/api/auth/setup", { password });
+      refreshAll(); // logged in now: load the values that are hidden without login (#164)
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -61,6 +62,7 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
     setBusy(true); setError(null);
     try {
       await postJson("/api/auth/login", { password });
+      refreshAll(); // pages loaded before show the values that are hidden without login (#164)
       toast(t("shell.loginDialog.loggedIn"));
       onDone();
     } catch (e) {
@@ -82,6 +84,18 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
           <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/** In place of values that are only shown after login (#164): says why and offers the login. */
+export function LoginToSee() {
+  return (
+    <div className="card form">
+      <p className="flush login-to-see">{t("shell.loginToSee.text")}</p>
+      <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("openampere:auth", { detail: "login_required" }))}>
+        {t("common.logIn")}
+      </Button>
     </div>
   );
 }
@@ -123,7 +137,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
   const logout = async (everywhere: boolean) => {
     await postJson(`/api/auth/logout${everywhere ? "?everywhere=true" : ""}`, {}).catch(() => undefined);
     toast(everywhere ? t("shell.securityPage.allDevicesLoggedOut") : t("shell.securityPage.loggedOut"));
-    reload();
+    refreshAll(); // hides the private values again (#164)
   };
 
   return (
