@@ -5,24 +5,29 @@
   "imprint": {
     "title": "Impressum",
     "translationNote": "",
-    "legalBasis": "Angaben nach § 5 E-Commerce-Gesetz und Offenlegung nach § 25 Mediengesetz (Österreich):",
+    "legalBasis": "Offenlegung nach § 25 Mediengesetz (Österreich):",
     "location": "Wien, Österreich",
     "email": "E-Mail:",
     "purpose": "Diese Seite stellt das Open-Source-Projekt OpenAmpere vor. Sie ist privat und nicht kommerziell. Es gibt keine Werbung, keine Spenden und keine bezahlten Angebote.",
+    "direction": "Grundlegende Richtung: Information über das freie Open-Source-Projekt OpenAmpere für Besitzerinnen und Besitzer von Solaranlagen mit Batteriespeicher.",
     "license": "Die Software steht unter der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE\">MIT-Lizenz</a> und wird ohne Gewähr bereitgestellt."
   },
   "privacy": {
     "title": "Datenschutz",
     "intro": "Diese Seite setzt keine Cookies und nutzt keine Analyse- oder Tracking-Werkzeuge. Schrift und Bilder liegen auf dieser Seite selbst. Ausnahme sind die beiden Buttons im Abschnitt Home Assistant, siehe unten.",
+    "controllerTitle": "Verantwortlicher",
+    "controllerText": "Verantwortlich für die Verarbeitung personenbezogener Daten auf dieser Seite ist der oben im Impressum genannte Betreiber. Kontakt: die oben genannte E-Mail-Adresse. Der Betreiber selbst speichert keine Daten über die Besucherinnen und Besucher dieser Seite und hat keinen Zugriff auf die Protokolle von GitHub.",
     "hostingTitle": "Hosting über GitHub Pages",
-    "hostingText": "Die Seite wird über GitHub Pages ausgeliefert (GitHub Inc., USA). Beim Aufruf verarbeitet GitHub automatisch technisch notwendige Daten wie IP-Adresse, Browsertyp und Uhrzeit, um die Seite auszuliefern und abzusichern. Dafür gilt die <a href=\"https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement\">Datenschutzerklärung von GitHub</a>.",
+    "hostingText": "Die Seite wird über GitHub Pages ausgeliefert (GitHub Inc., USA). Beim Aufruf verarbeitet GitHub automatisch technisch notwendige Daten wie IP-Adresse, Browsertyp und Uhrzeit, um die Seite auszuliefern und vor Angriffen zu schützen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO: Das berechtigte Interesse liegt darin, die Seite zuverlässig und sicher bereitzustellen. Die Daten werden dabei in die USA übermittelt. GitHub stützt diese Übermittlung auf das EU-US Data Privacy Framework und auf Standardvertragsklauseln der EU-Kommission (Art. 45 und 46 DSGVO). Wie lange GitHub diese Daten speichert, legt GitHub fest. Näheres steht in der <a href=\"https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement\">Datenschutzerklärung von GitHub</a>.",
     "demoTitle": "Demo",
     "demoText": "Die Demo läuft vollständig in deinem Browser und zeigt eine erfundene Anlage. Sie überträgt nichts an einen Server. Im lokalen Speicher deines Browsers merkt sie sich nur, ob du Hinweise ausgeblendet oder ein Design gewählt hast. Das kannst du jederzeit über die Browsereinstellungen löschen.",
     "badgesTitle": "Buttons für Home Assistant",
-    "badgesText": "Die Grafiken der beiden Buttons im Abschnitt Home Assistant lädt dein Browser von my.home-assistant.io, einem Dienst des Home-Assistant-Projekts (Open Home Foundation). Dabei werden technisch notwendige Daten wie IP-Adresse, Browsertyp und Uhrzeit an diesen Dienst übertragen. Tippst du auf einen Button, öffnet my.home-assistant.io dein eigenes Home Assistant. Dafür gelten die <a href=\"https://www.home-assistant.io/privacy/\">Datenschutzbestimmungen von Home Assistant</a>.",
+    "badgesText": "Die Grafiken der beiden Buttons im Abschnitt Home Assistant lädt dein Browser von my.home-assistant.io, einem Dienst des Home-Assistant-Projekts. Dahinter steht die Open Home Foundation mit Sitz in der Schweiz, für die ein Angemessenheitsbeschluss der EU-Kommission besteht. Dabei werden technisch notwendige Daten wie IP-Adresse, Browsertyp und Uhrzeit an diesen Dienst übertragen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO: Das berechtigte Interesse liegt darin, die Einrichtung der Integration in Home Assistant mit einem Tipp zu ermöglichen. Tippst du auf einen Button, öffnet my.home-assistant.io dein eigenes Home Assistant. Dafür gelten die <a href=\"https://www.home-assistant.io/privacy/\">Datenschutzbestimmungen von Home Assistant</a>.",
     "linksTitle": "Links zu anderen Seiten",
     "linksText": "Links zu GitHub oder zu Presseartikeln führen zu Angeboten anderer Anbieter. Dort gelten deren Datenschutzbestimmungen.",
+    "emailTitle": "Kontakt per E-Mail",
+    "emailText": "Schreibst du eine E-Mail, werden deine Adresse und deine Nachricht nur verwendet, um dein Anliegen zu beantworten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse liegt in der Beantwortung deiner Anfrage. Die E-Mail wird gelöscht, wenn sie erledigt ist und keine gesetzliche Pflicht zur Aufbewahrung besteht.",
     "rightsTitle": "Deine Rechte",
-    "rightsText": "Du hast nach der DSGVO das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung sowie auf Beschwerde bei der österreichischen Datenschutzbehörde. Fragen zum Datenschutz kannst du an die oben genannte E-Mail-Adresse schicken."
+    "rightsText": "Du hast nach der DSGVO das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit. Du kannst einer Verarbeitung, die auf einem berechtigten Interesse beruht, jederzeit widersprechen (Art. 21 DSGVO). Außerdem kannst du dich bei der österreichischen Datenschutzbehörde beschweren. Fragen zum Datenschutz kannst du an die oben genannte E-Mail-Adresse schicken. Eine automatisierte Entscheidungsfindung oder ein Profiling findet nicht statt."
   }
 }

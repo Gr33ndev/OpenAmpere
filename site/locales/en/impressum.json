@@ -5,24 +5,29 @@
   "imprint": {
     "title": "Imprint",
     "translationNote": "<p>This page is a translation for your convenience; only the <a href=\"{{root}}impressum.html\">German version</a> is legally binding.</p>",
-    "legalBasis": "Information pursuant to § 5 of the Austrian E-Commerce Act (E-Commerce-Gesetz) and disclosure pursuant to § 25 of the Austrian Media Act (Mediengesetz):",
+    "legalBasis": "Disclosure pursuant to § 25 of the Austrian Media Act (Mediengesetz):",
     "location": "Vienna, Austria",
     "email": "Email:",
     "purpose": "This site presents the open source project OpenAmpere. It is private and non-commercial. There are no ads, no donations and no paid offers.",
+    "direction": "Basic direction: information about the free open source project OpenAmpere for owners of solar systems with battery storage.",
     "license": "The software is licensed under the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE\">MIT License</a> and is provided without any warranty."
   },
   "privacy": {
     "title": "Privacy",
     "intro": "This site sets no cookies and uses no analytics or tracking tools. Fonts and images are hosted on this site itself. The exception are the two buttons in the Home Assistant section, see below.",
+    "controllerTitle": "Controller",
+    "controllerText": "The controller responsible for processing personal data on this site is the operator named in the imprint above. Contact: the email address above. The operator stores no data about visitors to this site and has no access to GitHub's logs.",
     "hostingTitle": "Hosting on GitHub Pages",
-    "hostingText": "The site is served via GitHub Pages (GitHub Inc., USA). When you visit it, GitHub automatically processes technically necessary data such as IP address, browser type and time in order to deliver and secure the site. The <a href=\"https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement\">GitHub General Privacy Statement</a> applies.",
+    "hostingText": "The site is served via GitHub Pages (GitHub Inc., USA). When you visit it, GitHub automatically processes technically necessary data such as IP address, browser type and time in order to deliver the site and protect it against attacks. The legal basis is Art. 6 (1) (f) GDPR: the legitimate interest is to provide the site reliably and securely. The data is transferred to the USA. GitHub bases this transfer on the EU-U.S. Data Privacy Framework and on standard contractual clauses of the EU Commission (Art. 45 and 46 GDPR). How long GitHub stores this data is determined by GitHub. Details are in the <a href=\"https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement\">GitHub General Privacy Statement</a>.",
     "demoTitle": "Demo",
     "demoText": "The demo runs entirely in your browser and shows a made-up system. It sends nothing to a server. In your browser's local storage it only remembers whether you have hidden notices or chosen a theme. You can delete this at any time in your browser settings.",
     "badgesTitle": "Buttons for Home Assistant",
-    "badgesText": "Your browser loads the images of the two buttons in the Home Assistant section from my.home-assistant.io, a service of the Home Assistant project (Open Home Foundation). In doing so, technically necessary data such as IP address, browser type and time are transmitted to this service. If you tap a button, my.home-assistant.io opens your own Home Assistant. The <a href=\"https://www.home-assistant.io/privacy/\">Home Assistant privacy policy</a> applies.",
+    "badgesText": "Your browser loads the images of the two buttons in the Home Assistant section from my.home-assistant.io, a service of the Home Assistant project. It is run by the Open Home Foundation, based in Switzerland, for which an adequacy decision of the EU Commission exists. In doing so, technically necessary data such as IP address, browser type and time are transmitted to this service. The legal basis is Art. 6 (1) (f) GDPR: the legitimate interest is to let you set up the integration in Home Assistant with one tap. If you tap a button, my.home-assistant.io opens your own Home Assistant. The <a href=\"https://www.home-assistant.io/privacy/\">Home Assistant privacy policy</a> applies.",
     "linksTitle": "Links to other sites",
     "linksText": "Links to GitHub or to press articles lead to services of other providers. Their privacy policies apply there.",
+    "emailTitle": "Contact by email",
+    "emailText": "If you send an email, your address and your message are only used to answer your request. The legal basis is Art. 6 (1) (f) GDPR, the legitimate interest is answering your request. The email is deleted once it has been dealt with and there is no legal obligation to keep it.",
     "rightsTitle": "Your rights",
-    "rightsText": "Under the GDPR you have the right of access, rectification, erasure and restriction of processing, as well as the right to lodge a complaint with the Austrian Data Protection Authority (Datenschutzbehörde). You can send questions about data protection to the email address above."
+    "rightsText": "Under the GDPR you have the right of access, rectification, erasure, restriction of processing and data portability. You can object at any time to processing based on a legitimate interest (Art. 21 GDPR). You also have the right to lodge a complaint with the Austrian Data Protection Authority (Datenschutzbehörde). You can send questions about data protection to the email address above. There is no automated decision-making or profiling."
   }
 }
