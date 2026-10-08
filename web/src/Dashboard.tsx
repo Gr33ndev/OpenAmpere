@@ -5,7 +5,7 @@ import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
 import { Notice } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
-import { kw, kwh, percent, time, updatedLabel, num } from "./format";
+import { energyKwh, kw, kwh, percent, time, updatedLabel, num } from "./format";
 import { t } from "./i18n";
 
 /** Readings that cannot be stored are lost for the history: say so and what to do (#170). */
@@ -230,12 +230,12 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
       <div className="section-title">{t("overview.dashboard.todayTitle")}</div>
       {today?.partial_since && <p className="hint">{t("overview.dashboard.recordedSince", { time: time(today.partial_since) })}</p>}
       <div className="tiles">
-        <Tile label={t("common.generated")} value={kwh(e?.pv)} color="var(--pv)" />
-        <Tile label={t("common.consumed")} value={kwh(e?.load)} color="var(--house)" />
-        <Tile label={t("overview.dashboard.toGrid")} value={kwh(e?.grid_export)} color="var(--grid)" />
-        <Tile label={t("overview.dashboard.fromGrid")} value={kwh(e?.grid_import)} color="var(--grid)" />
-        <Tile label={t("overview.dashboard.batteryStored")} value={kwh(e?.battery_charge)} color="var(--battery)" />
-        <Tile label={t("overview.dashboard.batteryUsed")} value={kwh(e?.battery_discharge)} color="var(--battery)" />
+        <Tile label={t("common.generated")} value={energyKwh(e?.pv)} color="var(--pv)" />
+        <Tile label={t("common.consumed")} value={energyKwh(e?.load)} color="var(--house)" />
+        <Tile label={t("overview.dashboard.toGrid")} value={energyKwh(e?.grid_export)} color="var(--grid)" />
+        <Tile label={t("overview.dashboard.fromGrid")} value={energyKwh(e?.grid_import)} color="var(--grid)" />
+        <Tile label={t("overview.dashboard.batteryStored")} value={energyKwh(e?.battery_charge)} color="var(--battery)" />
+        <Tile label={t("overview.dashboard.batteryUsed")} value={energyKwh(e?.battery_discharge)} color="var(--battery)" />
       </div>
       <div className="card">
         <Ratio label={t("common.selfSufficient")} value={today?.autarky ?? null} />

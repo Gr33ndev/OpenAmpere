@@ -42,6 +42,7 @@ async def test_detects_saj_on_either_unit(unit):
         await driver.close()
     assert (info.driver, info.unit, info.manufacturer) == ("saj", unit, "SAJ")
     assert info.model == "H2 5-10K S3" and info.serial == "HST2103SIM00001" and not info.supports_control
+    assert info.energy_step_wh == 10  # counters in 0.01 kWh (#194)
     e = sim.energy
     assert snap.pv_power == pytest.approx(e.pv_w, abs=2)
     assert snap.grid_power == pytest.approx(e.grid_w, abs=2)  # + = import

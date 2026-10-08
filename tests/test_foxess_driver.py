@@ -37,6 +37,7 @@ async def test_detect_and_read(register_map, model, strict, expected_fc):
         driver = FoxessDriver("127.0.0.1", port, 247)
         info = await driver.connect()
         assert info.register_map == register_map.name
+        assert info.energy_step_wh == (100 if register_map is H3_LEGACY else 10)  # 0.1 kWh counters (#194)
         assert driver.read_function == expected_fc
         snap = await driver.read()
         await driver.close()

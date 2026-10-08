@@ -204,7 +204,10 @@ Implement `_detect()`. It must only read, and it must raise `ConnectionError` wh
   retried later instead of guessing.
 - `DeviceInfo` fields: `manufacturer`, `model` (shown next to the manufacturer, without repeating it), `serial`,
   `firmware` (the collector logs firmware changes, which may change registers), `register_map` (a name for the map
-  in use), `driver` (your `KEY`), `unit`, `rated_power_w` (nominal power in W) and `supports_control`.
+  in use), `driver` (your `KEY`), `unit`, `rated_power_w` (nominal power in W), `supports_control` and
+  `energy_step_wh`: the step of the lifetime energy counters in Wh (`counter_step_wh(VALUES)` from `regs.py` derives it
+  from the `*_total` registers). The app shows counter-based energy with one decimal for 100 (0.1 kWh), otherwise two.
+  The recorded quarter hours can override it when the firmware counts coarser than its unit.
 - `ascii_text()` in `modbus.py` decodes ASCII strings stored two characters per register.
 
 ### Step 4: `read()`

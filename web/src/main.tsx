@@ -12,7 +12,7 @@ import { applyTheme, storedTheme } from "./SettingsPages";
 import { DatabaseNotice } from "./Restore";
 import { Setup } from "./Setup";
 import { navigate, useRoute } from "./route";
-import { setTimeZone } from "./format";
+import { setEnergyStep, setTimeZone } from "./format";
 import { DEMO } from "./demo/flag";
 import { lang, t, tx } from "./i18n";
 import { UpdateBanner } from "./Updates";
@@ -45,6 +45,7 @@ function App() {
   const { snap, online } = useLive();
   const login = useLoginPrompt(reloadAuth);
   setTimeZone(status?.timezone);
+  setEnergyStep(status?.energy_step_wh);
   const firstBuild = useRef<string | null>(null);
   if (status?.web_build && !firstBuild.current) firstBuild.current = status.web_build;
 

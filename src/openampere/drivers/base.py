@@ -34,6 +34,9 @@ class DeviceInfo:
     unit: int | None = None  # Modbus unit id the device answered on
     rated_power_w: int | None = None
     supports_control: bool = False  # writing settings is implemented and tested for this device
+    # smallest step of the lifetime energy counters in Wh according to the register map (100 = 0.1 kWh, #194);
+    # None if unknown. Firmware may count coarser than its unit, the recorded data can show that (Storage).
+    energy_step_wh: int | None = None
 
 
 @dataclass

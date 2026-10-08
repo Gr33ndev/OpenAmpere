@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import type { Settings, Snapshot, Status } from "./api";
 import { activeInputs, useResource, useStale } from "./api";
-import { kwh, percent, todayIso, updatedLabel, num } from "./format";
+import { energyKwh, percent, todayIso, updatedLabel, num } from "./format";
 import { BatteryIcon, CheckCircle, InverterIcon, WarnCircle } from "./icons";
 import { AboutPage, AppearancePage, ChangelogPage, ConnectionPage, ControlPage, DataPage, ExportLimitPage, LicensesPage, PvSystemPage, TariffPage } from "./SettingsPages";
 import { SecurityPage } from "./AuthScreens";
@@ -62,8 +62,8 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
             <dt>{t("settings.installationPage.cells")}</dt><dd>{num(snap.temperatures.battery_cell_min, 1)} – {num(snap.temperatures.battery_cell_max, 1)} °C</dd>
             <dt>{t("settings.installationPage.bms")}</dt><dd>{snap.battery_temperature != null ? `${num(snap.battery_temperature, 1)} °C` : "–"}</dd>
           </> : <><dt>{t("settings.installationPage.temperature")}</dt><dd>{snap?.battery_temperature != null ? `${num(snap.battery_temperature, 1)} °C` : "–"}</dd></>}
-          <dt>{t("settings.installationPage.totalCharged")}</dt><dd>{kwh(snap?.totals.battery_charge)}</dd>
-          <dt>{t("settings.installationPage.totalDischarged")}</dt><dd>{kwh(snap?.totals.battery_discharge)}</dd>
+          <dt>{t("settings.installationPage.totalCharged")}</dt><dd>{energyKwh(snap?.totals.battery_charge)}</dd>
+          <dt>{t("settings.installationPage.totalDischarged")}</dt><dd>{energyKwh(snap?.totals.battery_discharge)}</dd>
         </dl>
       </div>
       <BatteryHealthCard />
@@ -113,10 +113,10 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       <div className="section-title">{t("settings.installationPage.meterTotals")}</div>
       <div className="card">
         <dl className="facts">
-          <dt>{t("settings.installationPage.pvGeneration")}</dt><dd>{kwh(snap?.totals.pv)}</dd>
-          <dt>{t("common.consumption")}</dt><dd>{kwh(snap?.totals.load)}</dd>
-          <dt>{t("common.gridImport")}</dt><dd>{kwh(snap?.totals.grid_import)}</dd>
-          <dt>{t("common.feedIn")}</dt><dd>{kwh(snap?.totals.grid_export)}</dd>
+          <dt>{t("settings.installationPage.pvGeneration")}</dt><dd>{energyKwh(snap?.totals.pv)}</dd>
+          <dt>{t("common.consumption")}</dt><dd>{energyKwh(snap?.totals.load)}</dd>
+          <dt>{t("common.gridImport")}</dt><dd>{energyKwh(snap?.totals.grid_import)}</dd>
+          <dt>{t("common.feedIn")}</dt><dd>{energyKwh(snap?.totals.grid_export)}</dd>
         </dl>
       </div>
     </SubPage>

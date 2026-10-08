@@ -383,6 +383,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": collector.device.__dict__ if collector.device else None,
+            "energy_step_wh": collector.energy_step_wh(),
             "firmware": {**(storage.get_meta("firmware") or {}), "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
             "storage": collector.storage_state(),

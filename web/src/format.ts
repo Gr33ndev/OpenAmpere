@@ -14,6 +14,23 @@ export function kwh(wh: number | null | undefined): string {
   return `${nf2.format(wh / 1000)} kWh`;
 }
 
+/** Energy from the inverter's energy counters (overview, report, key figures, lifetime counters): one decimal if the
+ * counters only count in 0.1 kWh steps, otherwise two (#194). The step comes from /api/status. Energy of devices
+ * (heating rod, wallbox, own devices) is measured differently and stays with kwh(). */
+const nf1 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+let energyStep = 10;
+export function setEnergyStep(wh: number | null | undefined): void {
+  energyStep = wh ?? 10;
+}
+
+/** Decimals of counter-based kWh values: 1 for counters in 0.1 kWh steps, else 2. */
+export const energyDigits = () => (energyStep >= 100 ? 1 : 2);
+
+export function energyKwh(wh: number | null | undefined): string {
+  if (wh == null) return "–";
+  return `${(energyDigits() === 1 ? nf1 : nf2).format(wh / 1000)} kWh`;
+}
+
 export function percent(value: number | null | undefined, ratio = false): string {
   if (value == null) return "–";
   return `${nf0.format(ratio ? value * 100 : value)} %`;
