@@ -18,6 +18,7 @@ APP_UID=1000  # user inside the OpenAmpere image
 MARKER="# erzeugt von install.sh"
 NO_TAILSCALE="# Zugriff von unterwegs (Tailscale): nein"  # remembers the answer, so the question comes only once
 DOCS="https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#installation-von-hand"
+HELP="https://github.com/Gr33ndev/OpenAmpere/discussions/categories/q-a"  # questions and answers
 
 if [ -t 1 ]; then BOLD=$'\e[1m' GREEN=$'\e[32m' RED=$'\e[31m' RESET=$'\e[0m'; else BOLD="" GREEN="" RED="" RESET=""; fi
 say() { printf '%s\n' "$*"; }
@@ -182,9 +183,19 @@ copy_helper() {
   if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/$1" ]; then
     $SUDO cp "$(dirname "$source")/$1" "$DIR/$1"
   else
-    curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1" >/dev/null || fail "$1 ließ sich nicht herunterladen."
+    curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1" >/dev/null ||
+      fail "$1 ließ sich nicht herunterladen. Bitte die Internetverbindung prüfen und das Script noch einmal ausführen."
   fi
   $SUDO chmod 755 "$DIR/$1"
+}
+
+# Docker keeps the messages of a container without limit by default, which fills SD cards over time
+log_limit() {
+  say "    logging:  # höchstens 3 × 10 MB Meldungen, damit der Speicher nicht vollläuft"
+  say "      driver: json-file"
+  say "      options:"
+  say "        max-size: \"10m\""
+  say "        max-file: \"3\""
 }
 
 # docker-compose.yml and the helpers; uses DIR, COMPOSE, PORT, TLS_PORT, TZ_NAME, EVCC_CONTAINER, TAILSCALE
@@ -206,6 +217,7 @@ write_files() {
     say "      TZ: $TZ_NAME"
     [ "$PORT" = 8080 ] || say "      OPENAMPERE_SERVER_PORT: \"$PORT\""
     [ "${TLS_PORT:-8443}" = 8443 ] || say "      OPENAMPERE_SERVER_TLS_PORT: \"$TLS_PORT\""
+    log_limit
     if [ "$EVCC_CONTAINER" = yes ]; then
       say "  evcc:  # steuert die Wallbox, https://evcc.io"
       say "    image: $EVCC_IMAGE"
@@ -213,6 +225,7 @@ write_files() {
       say "    network_mode: host"
       say "    volumes:"
       say "      - ./evcc:/root/.evcc"
+      log_limit
     fi
     if [ "$TAILSCALE" = yes ]; then
       say "  tailscale:  # Zugriff von unterwegs, eingerichtet wird in der App (siehe tailscale.sh)"
@@ -226,6 +239,7 @@ write_files() {
       say "      - ./tailscale.sh:/openampere/tailscale.sh:ro"
       say "    environment:"
       say "      OPENAMPERE_PORT: \"$PORT\"  # für HTTPS über Tailscale"
+      log_limit
     fi
     say "  updater:  # installiert Updates, wenn in der App jemand auf Aktualisieren tippt (siehe updater.sh)"
     say "    image: $UPDATER_IMAGE"
@@ -236,6 +250,7 @@ write_files() {
     say "    volumes:"
     say "      - /var/run/docker.sock:/var/run/docker.sock"
     say "      - $DIR:$DIR"
+    log_limit
   } | $SUDO tee "$COMPOSE" >/dev/null
   copy_helper updater.sh
   [ "$TAILSCALE" = yes ] && copy_helper tailscale.sh
@@ -246,7 +261,7 @@ start_and_report() {
   step "OpenAmpere herunterladen und starten"
   cd "$DIR"
   $DOCKER compose pull ||
-    fail "Herunterladen fehlgeschlagen. Internetverbindung prüfen, oder ist das Image noch nicht veröffentlicht?"
+    fail "OpenAmpere ließ sich nicht herunterladen. Bitte die Internetverbindung dieses Rechners prüfen und das Script noch einmal ausführen. Klappt es dann immer noch nicht, frag hier nach (die Meldungen oben helfen dabei): $HELP"
   $DOCKER compose up -d --remove-orphans
 
   local port ip
@@ -265,7 +280,7 @@ start_and_report() {
   say ""
   if [ "$ok" != yes ]; then
     $DOCKER compose logs --tail 30 openampere || true
-    fail "OpenAmpere ist nicht gestartet. Die letzten Meldungen stehen oben."
+    fail "OpenAmpere ist nicht gestartet. Die letzten Meldungen stehen oben. Bitte das Script noch einmal ausführen. Klappt es dann immer noch nicht, frag hier nach (mit diesen Meldungen): $HELP"
   fi
 
   say ""
