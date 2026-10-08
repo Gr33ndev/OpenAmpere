@@ -1005,7 +1005,18 @@ function LicenseRow({ pkg }: { pkg: LicensePackage }) {
 
 type ChangeItem = { scope: string | null; text: string };
 type ChangelogVersion = { version: string; date: string; first: boolean; breaking: ChangeItem[];
-  groups: Record<"feat" | "fix" | "perf" | "other", ChangeItem[]> };
+  groups: Record<"feat" | "fix" | "perf" | "other", ChangeItem[]>; summary?: Record<string, string> };
+
+/** The maintainer's summary of a version (#176) in the app's language, else German, else English. */
+function Summary({ summary }: { summary?: Record<string, string> }) {
+  const code = [lang(), "de", "en"].find((c) => summary?.[c]);
+  if (!summary || !code) return null;
+  return (
+    <div className="changelog-summary" lang={code}>
+      {summary[code].split(/\n\s*\n/).map((paragraph, i) => <p key={i}>{withLinks(paragraph)}</p>)}
+    </div>
+  );
+}
 
 /** "(#152)" in a commit title links to the pull request or issue. */
 function withLinks(text: string) {
@@ -1038,6 +1049,7 @@ export function ChangelogPage({ onBack }: PageProps) {
             {v.version === status?.version && <span className="badge">{t("settings.changelogPage.installed")}</span>}
           </div>
           <p className="meta">{new Date(`${v.date}T12:00:00Z`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" })}</p>
+          <Summary summary={v.summary} />
           {v.first && <p>{t("settings.changelogPage.first")}</p>}
           {v.breaking.length > 0 && <><h3>{t("settings.changelogPage.attention")}</h3><ChangeList items={v.breaking} /></>}
           {sections.map(([group, title]) => v.groups[group].length > 0 && (

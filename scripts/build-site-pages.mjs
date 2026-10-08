@@ -17,7 +17,8 @@
  *   {{alternates}}      <link rel="alternate" hreflang> for every translated language plus x-default (German)
  *   {{languageSwitch}}  links to the same page in every translated language, the current one with aria-current
  *   {{changelog}}       every version of web/public/changelog.json (scripts/changelog.py, #155), headings from
- *                       changelog.list.* of the page's language; the entries are the commit titles
+ *                       changelog.list.* of the page's language; the entries are the commit titles, above them the
+ *                       version's summary in the page's language or German (#176)
  * A template line that holds only a placeholder whose value is empty is left out.
  *
  * Languages: German (de) is the reference and goes to the root of the output (index.html, faq.html, impressum.html),
@@ -105,15 +106,23 @@ function keysOf(node, prefix) {
 
 /** The versions as HTML: headings in the page's language, "#123" linked to the issue or pull request. */
 function renderChangelog(text, contentLang) {
-  const item = (i) => `<li>${i.scope ? `<strong>${escapeText(i.scope)}:</strong> ` : ""}`
-    + `${escapeText(i.text).replace(/#(\d+)/g, `<a href="${ISSUES}$1">#$1</a>`)}</li>`;
+  const linked = (value) => escapeText(value).replace(/#(\d+)/g, `<a href="${ISSUES}$1">#$1</a>`);
+  const item = (i) => `<li>${i.scope ? `<strong>${escapeText(i.scope)}:</strong> ` : ""}${linked(i.text)}</li>`;
   const list = (items) => `<ul>${items.map(item).join("")}</ul>`;
   const part = (title, items) => (items.length ? `<h3>${title}</h3>${list(items)}` : "");
+  // the maintainer's summary (#176) in the page's language, else German (always there)
+  const summary = (texts) => {
+    const code = [contentLang, REFERENCE].find((c) => texts?.[c]);
+    if (!code) return "";
+    const paragraphs = texts[code].split(/\n\s*\n/).map((p) => `<p>${linked(p)}</p>`).join("");
+    return `<div class="summary"${code === contentLang ? "" : ` lang="${code}"`}>${paragraphs}</div>`;
+  };
   return changelog.map((v) => {
     const date = new Date(`${v.date}T12:00:00Z`).toLocaleDateString(contentLang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
     return `<section class="release" id="v${escapeText(v.version)}">`
       + `<h2>${text("changelog.list.version").replace("{version}", escapeText(v.version))}</h2>`
       + `<p class="date"><time datetime="${escapeText(v.date)}">${date}</time></p>`
+      + summary(v.summary)
       + (v.first ? `<p>${text("changelog.list.first")}</p>` : "")
       + part(text("changelog.list.attention"), v.breaking) + part(text("changelog.list.new"), v.groups.feat)
       + part(text("changelog.list.fixed"), v.groups.fix) + part(text("changelog.list.faster"), v.groups.perf)

@@ -329,6 +329,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .changelog-head .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); }
 .changelog p { margin: 0; }
+.changelog-summary { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
 .changelog h3 { margin: 8px 0 0; font-size: 15px; font-weight: 600; }
 .changes { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .changes strong { font-weight: 600; }
