@@ -22,7 +22,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 | Gerät | Was OpenAmpere kann | An echter Anlage bestätigt? |
 |---|---|---|
-| FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige bestätigt, Steuerung teilweise bestätigt |
+| FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige und Steuerung bestätigt |
 | FoxESS H3, ältere Firmware / H3 Smart / H3 Pro | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
 | SAJ H2 / HS2 | Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. | Noch nicht bestätigt |
 | Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |

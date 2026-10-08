@@ -62,7 +62,7 @@ Energy counters, each U32 with 0.01 kWh, as a pair (total, today):
 | Remote control | 46001 on/off, 46002 timeout, 46003–46004 active power (I32, W, + = discharge/export) | |
 | Import/export limit | 46501–46502 / 46616–46617 | I32, W (according to foxess only on Smart) |
 
-The export limit (46616–46617) can be set in OpenAmpere under **Mehr → Einspeisebegrenzung** (More → Export limit). It has not yet been verified on a real E3. Raising it is only possible with control enabled and with the declaration that the grid operator's written approval is on hand. The reference number of this approval is logged. Lowering it is possible at any time. The old register map has no known register for this.
+The export limit (46616–46617) can be set in OpenAmpere under **Mehr → Einspeisebegrenzung** (More → Export limit). It has been verified on a real system with the new map (#196). Raising it is only possible with control enabled and with the declaration that the grid operator's written approval is on hand. The reference number of this approval is logged. Lowering it is possible at any time. The old register map has no known register for this.
 
 ## Old map (classic H3)
 

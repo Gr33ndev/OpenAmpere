@@ -16,7 +16,7 @@
   "audience": {
     "title": "Für wen ist OpenAmpere?",
     "devicesTitle": "Unterstützte Geräte",
-    "foxess": "<strong>FoxESS H3, H3 Smart, H3 Pro:</strong> Anzeige und Steuerung. Bestätigt an einem H3 mit neuerer Firmware, die anderen Varianten noch nicht",
+    "foxess": "<strong>FoxESS H3, H3 Smart, H3 Pro:</strong> Anzeige und Steuerung. Beides bestätigt an einem H3 mit neuerer Firmware, die anderen Varianten noch nicht",
     "saj": "<strong>SAJ H2 und HS2:</strong> Anzeige, noch nicht bestätigt",
     "heater": "<strong>Heizstab von my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): stufenlos geregelt, noch nicht bestätigt",
     "relay": "Wärmepumpe oder andere Geräte über ein Shelly-Relais, noch nicht bestätigt",
