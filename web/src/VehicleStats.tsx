@@ -77,12 +77,12 @@ export function VehicleStats() {
               <div><span className="key-label">{t("report.vehicleStats.driven")}</span><strong>{num(st.km, 0)} km</strong></div>
               <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarDistance")}</span>
                 <strong>{num(st.solar_km, 0)} km</strong></div>
-              <div><span className="key-label">{t("common.consumption")}</span><strong>{num(st.consumption_kwh_100km, 1)}</strong>
+              <div><span className="key-label">{t("common.consumption")}</span><strong>{num(st.consumption_kwh_100km, 2)}</strong>
                 <span className="key-unit"> kWh/100 km</span></div>
             </div>
           ) : (
             <div className="key-row">
-              <div><span className="key-label">{t("common.charged")}</span><strong>{num(st.energy_kwh, 0)} kWh</strong></div>
+              <div><span className="key-label">{t("common.charged")}</span><strong>{num(st.energy_kwh, 2)} kWh</strong></div>
               {st.solar_pct != null && <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarShare")}</span>
                 <strong>{num(st.solar_pct, 0)} %</strong></div>}
             </div>
@@ -92,7 +92,7 @@ export function VehicleStats() {
               { cost: euro(st.cost_100km_eur), gridCost: <strong>{euro(st.grid_cost_100km_eur)}</strong> })}</p>
           )}
           <dl className="facts">
-            <dt>{t("common.charged")}</dt><dd>{t("report.vehicleStats.energySessions", { energy: num(st.energy_kwh, 1), count: st.sessions })}</dd>
+            <dt>{t("common.charged")}</dt><dd>{t("report.vehicleStats.energySessions", { energy: num(st.energy_kwh, 2), count: st.sessions })}</dd>
             {st.solar_pct != null && <><dt>{t("report.vehicleStats.ofWhichSolar")}</dt><dd>{num(st.solar_pct, 0)} %</dd></>}
             {st.cost_eur != null && <><dt>{t("report.vehicleStats.cost")}</dt><dd>{euro(st.cost_eur)}</dd></>}
           </dl>

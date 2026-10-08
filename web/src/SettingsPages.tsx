@@ -1436,7 +1436,7 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
             {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
             {form.enabled && data.plan.quarters.length > 0 && (
               <p className="hint">{data.plan.needed_wh
-                ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 1) })
+                ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 2) })
                 : t("settings.chargingPage.planned", { times: ranges(data.plan.quarters).join(", ") })}</p>
             )}
           </div>
@@ -1483,10 +1483,10 @@ export function ChargingPage({ onBack, onNavigate }: PageProps) {
               <Segmented value={form.power_w === level(0.5) ? "gentle" : form.power_w === level(0.75) ? "fast"
                 : form.power_w === level(1) ? "max" : "custom"}
                 onChange={(v) => v !== "custom" && set({ power_w: level(({ gentle: 0.5, fast: 0.75, max: 1 } as const)[v]) })}
-                options={[["gentle", t("settings.chargingPage.gentle")], ["fast", t("settings.chargingPage.fast")], ["max", t("settings.chargingPage.maximum")], ["custom", `${num(form.power_w / 1000, 1)} kW`]]} />
+                options={[["gentle", t("settings.chargingPage.gentle")], ["fast", t("settings.chargingPage.fast")], ["max", t("settings.chargingPage.maximum")], ["custom", `${num(form.power_w / 1000, 2)} kW`]]} />
             </Field>
             <p className="hint">{t("settings.chargingPage.powerLevels", {
-              gentle: num(level(0.5) / 1000, 1), fast: num(level(0.75) / 1000, 1), max: num(level(1) / 1000, 1) })}</p>
+              gentle: num(level(0.5) / 1000, 2), fast: num(level(0.75) / 1000, 2), max: num(level(1) / 1000, 2) })}</p>
             {form.power_w > base && <Notice kind="warn">{t("settings.chargingPage.powerTooHigh")}</Notice>}
             {form.power_w > 4200 && <p className="hint">{t("settings.chargingPage.section14aHint")}</p>}
             <Field label={t("settings.chargingPage.usableCapacity")} hint={t("settings.chargingPage.capacityHint")}>

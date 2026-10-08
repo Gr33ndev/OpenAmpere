@@ -60,8 +60,8 @@ export function OutagesSection() {
               <span className="meta">
                 {t("report.outagesSection.battery", { from: pct(o.soc_start), to: pct(o.soc_end) })}
                 {o.soc_min != null && o.soc_min < (o.soc_end ?? 101) ? ` ${t("report.outagesSection.lowestSoc", { soc: pct(o.soc_min) })}` : ""}
-                {o.load_kwh != null && <> · {t("report.outagesSection.house", { energy: `${num(o.load_kwh, 1)} kWh` })}
-                  {o.solar_kwh != null ? `, ${t("report.outagesSection.solarShare", { energy: `${num(Math.min(o.solar_kwh, o.load_kwh), 1)} kWh` })}` : ""}</>}
+                {o.load_kwh != null && <> · {t("report.outagesSection.house", { energy: `${num(o.load_kwh, 2)} kWh` })}
+                  {o.solar_kwh != null ? `, ${t("report.outagesSection.solarShare", { energy: `${num(Math.min(o.solar_kwh, o.load_kwh), 2)} kWh` })}` : ""}</>}
               </span>
               {o.dark_since && (o.gap_reason === "inverter_off"
                 ? <span className="meta">{t("report.outagesSection.inverterOff", { time: time(o.dark_since) })}</span>

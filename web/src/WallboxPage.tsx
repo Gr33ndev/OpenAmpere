@@ -34,7 +34,7 @@ const MODE_HINT: Record<string, string> = {
   now: t("devices.modeHint.now"),
 };
 
-const kw = (w: number) => `${num(w / 1000, 1)} kW`;
+const kw = (w: number) => `${num(w / 1000, 2)} kW`;
 const duration = (s: number | null) => {
   if (s == null || s <= 0) return null;
   const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
@@ -99,7 +99,7 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
       </Field>
       {limit !== lp.limit_soc && <Button variant="secondary" busy={busy} onClick={() => void send("limit_soc", limit)}>{t("devices.wallboxCard.applyTarget")}</Button>}
       <dl className="facts">
-        {plugged && !!lp.session_wh && <><dt>{t("devices.wallboxCard.chargedThisSession")}</dt><dd>{num(lp.session_wh / 1000, 1)} kWh
+        {plugged && !!lp.session_wh && <><dt>{t("devices.wallboxCard.chargedThisSession")}</dt><dd>{num(lp.session_wh / 1000, 2)} kWh
           {lp.session_solar_pct != null ? ` · ${t("devices.wallboxCard.solarShare", { percent: num(lp.session_solar_pct, 0) })}` : ""}</dd></>}
         {plugged && lp.range_km != null && <><dt>{t("devices.wallboxCard.range")}</dt><dd>{num(lp.range_km, 0)} km</dd></>}
         {lp.charging && duration(lp.remaining_s) && <><dt>{lp.heating ? t("devices.wallboxCard.doneAt") : t("devices.wallboxCard.targetReachedAt")}</dt>
@@ -284,7 +284,7 @@ export function EvccSessions() {
             <li key={i}>
               <span><strong>{s.created ? new Date(s.created).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", timeZone: timeZone() }) : "–"}</strong>
                 {" "}{s.vehicle ?? s.loadpoint ?? ""}</span>
-              <span>{s.energy_kwh != null ? `${num(s.energy_kwh, 1)} kWh` : "–"}{s.solar_pct != null ? ` · ${t("devices.evccSessions.solarShare", { percent: num(s.solar_pct, 0) })}` : ""}</span>
+              <span>{s.energy_kwh != null ? `${num(s.energy_kwh, 2)} kWh` : "–"}{s.solar_pct != null ? ` · ${t("devices.evccSessions.solarShare", { percent: num(s.solar_pct, 0) })}` : ""}</span>
             </li>
           ))}
         </ul>
