@@ -182,7 +182,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {retro && <div className="soc lives">{t("overview.retro.lives")}</div>}
       </Node>
       <Node x={88} y={HOUSE.y} h={h} icon={<span className="grid-with-coins"><GridIcon />
-        {retro && !stale && !snap?.off_grid && (snap?.grid_power ?? 0) < -IDLE_W && <span className="coin" aria-hidden />}</span>}
+        {retro && !stale && !snap?.off_grid && (snap?.grid_power ?? 0) < -IDLE_W && <CoinSprite />}</span>}
         name="grid" onTap={() => press("right")}>
         {kw(snap?.grid_power)}
         {grid && <div className="soc">{grid}</div>}
@@ -206,17 +206,44 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   );
 }
 
-/** SVG filter that draws the icons in coarse pixels. */
+/** SVG filter that draws the icons in coarse pixels. It is applied to the shapes inside the icons, in their
+ * 64 x 64 coordinates: on HTML elements Safari places the sample point outside the icon and draws nothing. */
 function RetroPixels() {
   return (
-    <filter id="retro-pixels" x="0" y="0" width="1" height="1">
+    <filter id="retro-pixels" filterUnits="userSpaceOnUse" x="-8" y="-8" width="80" height="80">
       <feFlood x="1" y="1" width="1" height="1" />
-      <feComposite width="3" height="3" />
+      <feComposite x="0" y="0" width="3" height="3" />
       <feTile result="grid" />
       <feComposite in="SourceGraphic" in2="grid" operator="in" />
       <feMorphology operator="dilate" radius="1" />
     </filter>
   );
+}
+
+// pixel art for the retro look: a coin and "+1", one string per row (o outline, y gold, w shine, t text, which gets
+// an outline around it)
+const COIN = [
+  "..ooo..............",
+  ".oyyyo.............",
+  "oywyyyo.........t..",
+  "oywoyyo...t....tt..",
+  "oyyoyyo..ttt....t..",
+  "oyyoyyo...t.....t..",
+  "oyyoyyo.........t..",
+  "oyyyyyo........ttt.",
+  ".oyyyo.............",
+  "..ooo..............",
+];
+const COIN_COLOURS: Record<string, string> = { o: "#7a5600", y: "#f5b301", w: "#ffe27a", t: "#f5b301" };
+const isText = (x: number, y: number) => COIN[y]?.[x] === "t";
+
+function CoinSprite() {
+  const pixels = COIN.flatMap((row, y) => [...row].map((c, x) => {
+    const outline = c === "." && [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([nx, ny]) => isText(nx, ny));
+    const fill = outline ? COIN_COLOURS.o : COIN_COLOURS[c];
+    return fill ? <rect key={`${x},${y}`} x={x} y={y} width={1} height={1} fill={fill} /> : null;
+  }));
+  return <svg className="coin" width={57} height={30} viewBox="0 0 19 10" shapeRendering="crispEdges" aria-hidden>{pixels}</svg>;
 }
 
 function SunGlyph() {
