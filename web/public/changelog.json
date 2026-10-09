@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.18.1",
+      "date": "2026-10-09",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "ui",
+            "text": "Show the easter egg correctly on safari (#201)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.18.0",
       "date": "2026-10-09",
       "first": false,
