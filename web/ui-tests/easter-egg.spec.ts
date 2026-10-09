@@ -27,3 +27,17 @@ test("a wrong key starts the code over", async ({ page }) => {
   for (const key of ["ArrowUp", "ArrowUp", "ArrowLeft", ...ARROWS.slice(2), "b", "a"]) await page.keyboard.press(key);
   await expect(page.locator(".flow")).not.toHaveClass(/retro/);
 });
+
+// the pixel filter drew nothing in Safari when it was applied to the HTML icons
+test("the icons stay visible in the retro look", async ({ page }) => {
+  await open(page, "");
+  for (const key of [...ARROWS, "b", "a"]) await page.keyboard.press(key);
+  await expect(page.locator(".flow")).toHaveClass(/retro/);
+  for (const name of ["sun", "battery", "grid"]) {
+    const icon = page.locator(`.flow-node.${name} .flow-icon`);
+    const shown = await icon.screenshot({ animations: "disabled" });
+    await icon.evaluate((el) => el.querySelectorAll("svg").forEach((svg) => { svg.style.visibility = "hidden"; }));
+    const hidden = await icon.screenshot({ animations: "disabled" });
+    expect(shown.equals(hidden), `${name} icon is drawn`).toBe(false);
+  }
+});
