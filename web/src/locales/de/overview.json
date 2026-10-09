@@ -49,6 +49,12 @@
   "pvInputsCard": {
     "title": "Solar nach Modulfeldern"
   },
+  "retro": {
+    "buttonA": "A",
+    "buttonB": "B",
+    "lives": "♥ × 30",
+    "unlocked": "30 Extraleben freigeschaltet!"
+  },
   "storageNotice": {
     "failing": "OpenAmpere kann seit {time} keine Messwerte speichern. Bis das behoben ist, fehlen sie im Verlauf und in den Auswertungen.",
     "full": "Der Speicherplatz auf dem Gerät, auf dem OpenAmpere läuft, ist voll. Bitte Platz freigeben, zum Beispiel alte Docker-Images löschen, oder die Aufbewahrungsdauer unter {place} verkürzen.",
