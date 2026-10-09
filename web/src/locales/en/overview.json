@@ -49,6 +49,12 @@
   "pvInputsCard": {
     "title": "Solar by string"
   },
+  "retro": {
+    "buttonA": "A",
+    "buttonB": "B",
+    "lives": "♥ × 30",
+    "unlocked": "30 extra lives unlocked!"
+  },
   "storageNotice": {
     "failing": "OpenAmpere has not been able to store readings since {time}. Until this is fixed, they are missing from the history and the reports.",
     "full": "The disk of the device OpenAmpere runs on is full. Please free up space, for example by deleting old Docker images, or shorten the retention period under {place}.",

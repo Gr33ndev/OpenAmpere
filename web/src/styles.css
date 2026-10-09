@@ -179,6 +179,33 @@ nav.bottom button.active::after { background: var(--accent-text); }
 @keyframes flow { to { stroke-dashoffset: -36; } }
 @media (prefers-reduced-motion: reduce) { .flow-dash { animation: none !important; } }
 .flow.stale .flow-node { opacity: 0.45; filter: grayscale(1); }
+.flow-node .flow-icon { touch-action: manipulation; user-select: none; -webkit-user-select: none; } /* tapped for the easter egg */
+
+/* easter egg: retro game look */
+.retro-defs { position: absolute; width: 0; height: 0; }
+.flow.retro { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; font-weight: 700; }
+.flow.retro::after { content: ""; position: absolute; inset: -6px; pointer-events: none; border-radius: var(--radius-m);
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.07) 0 2px, transparent 2px 4px); }
+.flow.retro .flow-icon { filter: url(#retro-pixels); }
+.flow.retro .flow-line { stroke-width: 3; stroke-dasharray: 3 6; }
+.flow.retro .flow-dash { stroke: #f5b301; stroke-width: 7; stroke-linecap: butt; stroke-dasharray: 7 29; }
+.flow.retro .flow-dash.fwd { animation: flow 1.2s steps(6) infinite; }
+.flow.retro .flow-dash.rev { animation: flow 1.2s steps(6) infinite reverse; }
+.flow.retro .house .flow-icon { animation: retro-bob 0.8s steps(1) infinite; }
+.flow.retro .lives { color: var(--coral); }
+@keyframes retro-bob { 50% { transform: translateY(-4px); } }
+.grid-with-coins { position: relative; display: flex; }
+.coin { position: absolute; top: -6px; left: 50%; width: 14px; height: 14px; margin-left: -7px; background: #f5b301;
+  border: 3px solid #b07d00; border-radius: 3px; animation: coin-up 1s steps(5) infinite; }
+@keyframes coin-up { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-28px); opacity: 0; } }
+.retro-pad { position: absolute; inset: 0 0 auto; display: flex; justify-content: space-between; pointer-events: none; }
+.retro-pad button { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #d6283c; color: #fff;
+  font: 700 16px ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 3px 0 #7d1220; cursor: pointer; touch-action: manipulation; }
+.retro-pad button:active { transform: translateY(2px); box-shadow: 0 1px 0 #7d1220; }
+.retro-banner { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 10px; white-space: nowrap;
+  background: #111; color: #f5b301; font-size: 13px; border: 3px solid #f5b301; animation: retro-blink 0.5s steps(1) 6; }
+@keyframes retro-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .flow.retro .flow-icon, .coin, .retro-banner { animation: none !important; } }
 
 /* ---- daily values ---- */
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

@@ -1,9 +1,10 @@
-import { type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Device, Snapshot } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import { kw, num, percent } from "./format";
 import { t } from "./i18n";
 import { BatteryIcon, GridIcon, HouseIcon, SolarIcon } from "./icons";
+import { chiptune, EASTER_EGG_CODE, type EasterEggKey, useEasterEgg } from "./easterEgg";
 
 const IDLE_W = 50; // below this the value shows as 0,0 kW, so no flow or direction either
 // Layout in a 100 x H coordinate system (matches the container's aspect ratio)
@@ -28,12 +29,13 @@ function Link({ x1, y1, x2, y2, power }: { x1: number; y1: number; x2: number; y
   );
 }
 
-function Node({ x, y, h, icon, children, small = false, iconRef }: {
+function Node({ x, y, h, icon, children, small = false, iconRef, name, onTap }: {
   x: number; y: number; h: number; icon: ReactNode; children: ReactNode; small?: boolean; iconRef?: Ref<HTMLDivElement>;
+  name?: string; onTap?: () => void;
 }) {
   return (
-    <div className={`flow-node ${small ? "small" : ""}`} style={{ left: `${x}%`, top: `${(y / h) * 100}%` }}>
-      <div className="flow-icon" ref={iconRef}>{icon}</div>
+    <div className={`flow-node ${small ? "small" : ""} ${name ?? ""}`} style={{ left: `${x}%`, top: `${(y / h) * 100}%` }}>
+      <div className="flow-icon" ref={iconRef} onClick={onTap}>{icon}</div>
       <div className="value">{children}</div>
     </div>
   );
@@ -83,6 +85,27 @@ function deviceX(index: number, count: number): number {
   return count === 1 ? 50 : 14 + (72 / (count - 1)) * index;
 }
 
+let retroOn = false; // survives switching pages, not a reload
+
+/** The easter egg code switches to a retro game look. The icons form a D-pad (sun up, house down, battery left,
+ * grid right); B and A appear as buttons once the arrows are entered. */
+function useRetro(): { retro: boolean; justUnlocked: boolean; progress: number; press: (key: EasterEggKey) => void } {
+  const [retro, setRetro] = useState(retroOn);
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const { progress, press } = useEasterEgg(() => {
+    retroOn = !retroOn;
+    setRetro(retroOn);
+    setJustUnlocked(retroOn);
+    chiptune(retroOn ? [523, 659, 784, 1047, 784, 1047] : [784, 659, 523, 392]);
+  });
+  useEffect(() => {
+    if (!justUnlocked) return;
+    const timer = setTimeout(() => setJustUnlocked(false), 3000);
+    return () => clearTimeout(timer);
+  }, [justUnlocked]);
+  return { retro, justUnlocked, progress, press };
+}
+
 export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = false }: {
   snap: Snapshot | null; stale?: boolean; devices?: Device[]; gridCharging?: boolean;
 }) {
@@ -93,6 +116,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const deviceIcons = useRef<(HTMLDivElement | null)[]>([]);
   const [boxes, setBoxes] = useState<{ house: Box; houseNode: Box; devices: Box[] } | null>(null);
   const deviceKeys = shown.map((d) => d.key).join(",");
+  const { retro, justUnlocked, progress, press } = useRetro();
 
   // the device lines run between the drawn corners, so they are measured from the rendered icons
   useLayoutEffect(() => {
@@ -127,7 +151,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
        ...shown.map((d) => `${d.name} ${kw(d.power_w)}`)].join(", ") + (stale ? ` (${t("overview.energyFlow.outdated")})` : "")
     : t("overview.energyFlow.noData");
   return (
-    <div ref={container} className={`flow ${stale ? "stale" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
+    <div ref={container} className={`flow ${stale ? "stale" : ""} ${retro ? "retro" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
       <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none">
         {/* PV -> house (vertical) */}
         <Link x1={50} y1={30} x2={50} y2={41} power={stale ? null : snap?.pv_power ?? null} />
@@ -144,18 +168,22 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         })}
       </svg>
 
-      <Node x={50} y={16} h={h} icon={<SolarIcon />}>{kw(snap?.pv_power)}</Node>
-      <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon}>{kw(house)}</Node>
+      {retro && <svg className="retro-defs" aria-hidden><RetroPixels /></svg>}
+      <Node x={50} y={16} h={h} icon={<SolarIcon />} name="sun" onTap={() => press("up")}>{kw(snap?.pv_power)}</Node>
+      <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
       <Node x={12} y={HOUSE.y} h={h} icon={
         <span className="battery-with-source">
           <BatteryIcon soc={snap?.battery_soc ?? null} />
           {source && <span className={`charge-source ${source}`} title={source === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>
             {source === "sun" ? <SunGlyph /> : "€"}</span>}
-        </span>}>
+        </span>} name="battery" onTap={() => press("left")}>
         {kw(snap?.battery_power)}
         <div className="soc">{percent(snap?.battery_soc)}{battery ? ` · ${battery}` : ""}</div>
+        {retro && <div className="soc lives">{t("overview.retro.lives")}</div>}
       </Node>
-      <Node x={88} y={HOUSE.y} h={h} icon={<GridIcon />}>
+      <Node x={88} y={HOUSE.y} h={h} icon={<span className="grid-with-coins"><GridIcon />
+        {retro && !stale && !snap?.off_grid && (snap?.grid_power ?? 0) < -IDLE_W && <span className="coin" aria-hidden />}</span>}
+        name="grid" onTap={() => press("right")}>
         {kw(snap?.grid_power)}
         {grid && <div className="soc">{grid}</div>}
       </Node>
@@ -167,7 +195,27 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
           {d.soc != null && <div className="soc">{num(d.soc, 0)} %{d.range_km != null ? ` · ${num(d.range_km, 0)} km` : ""}</div>}
         </Node>
       ))}
+      {progress >= EASTER_EGG_CODE.length - 2 && (
+        <div className="retro-pad">
+          <button type="button" tabIndex={-1} className="b" onClick={() => press("b")}>{t("overview.retro.buttonB")}</button>
+          <button type="button" tabIndex={-1} className="a" onClick={() => press("a")}>{t("overview.retro.buttonA")}</button>
+        </div>
+      )}
+      {justUnlocked && <div className="retro-banner">{t("overview.retro.unlocked")}</div>}
     </div>
+  );
+}
+
+/** SVG filter that draws the icons in coarse pixels. */
+function RetroPixels() {
+  return (
+    <filter id="retro-pixels" x="0" y="0" width="1" height="1">
+      <feFlood x="1" y="1" width="1" height="1" />
+      <feComposite width="3" height="3" />
+      <feTile result="grid" />
+      <feComposite in="SourceGraphic" in2="grid" operator="in" />
+      <feMorphology operator="dilate" radius="1" />
+    </filter>
   );
 }
 
