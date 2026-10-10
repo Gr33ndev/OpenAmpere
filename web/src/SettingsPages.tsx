@@ -5,6 +5,7 @@ import { DEMO } from "./demo/flag";
 import { CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, dayOf, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { decimalInput as de, parseDecimal as toNumber } from "./decimal";
 import { batterySettingName, batterySettingValue, describe, logCsv, statusLabel, type LogEntry } from "./controlLog";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
@@ -187,8 +188,6 @@ type TariffForm = { valid_from: string; kind: "fixed" | "time" | "dynamic"; pric
   vat_percent: string; feed_in_ct: string; area: "DE" | "AT"; base_fee_eur_month: string; windows: Window[] };
 type TariffData = { valid_from: string; kind: "fixed" | "time" | "dynamic"; price_ct: number; surcharge_ct: number;
   vat_percent: number; feed_in_ct: number; area: "DE" | "AT"; base_fee_eur_month: number; windows?: Window[] };
-const de = (v: number) => String(v).replace(".", ",");
-const toNumber = (v: string) => (v.trim() === "" ? Number.NaN : Number(v.replace(",", ".")));
 
 /** Own price windows, e.g. a night tariff or time-variable grid fees (§ 14a EnWG, module 3) (#24). */
 function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: Window[]) => void }) {
