@@ -139,6 +139,8 @@
     "paused": "Pausiert",
     "period": "Zeitraum {from} – {to}",
     "readingFile": "Lese Datei …",
+    "removeKeyHint": "Ohne Schlüssel kann OpenAmpere keine weiteren Daten aus der Cloud holen. Bereits übernommene Daten bleiben erhalten.",
+    "removeKeyQuestion": "API-Schlüssel entfernen?",
     "resume": "Fortsetzen",
     "saveKey": "Schlüssel speichern",
     "saveKeyFirst": "Zum Starten zuerst den API-Schlüssel speichern.",

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { deleteJson, postJson, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { timeZone } from "./format";
-import { LOCALE, t, tx } from "./i18n";
+import { lang, LOCALE, t, tx } from "./i18n";
 import { REPO_URL } from "./links";
 import { Button, copyText, Dialog, Field, LoadState, Notice, Segmented, SubPage, toast } from "./ui";
 
@@ -12,7 +12,7 @@ type PairingRequest = { id: string; name: string; code: string; created: number;
 type Tokens = { tokens: AppToken[]; pairing: PairingRequest[];
   tls: { port: number | null; fingerprint: string | null; error: string | null } };
 
-const DOCS_URL = `${REPO_URL}/blob/main/docs/homeassistant.de.md`;
+const docsUrl = () => `${REPO_URL}/blob/main/docs/homeassistant${lang() === "de" ? ".de" : ""}.md`;
 // plain links (no images or scripts from other servers in the app): they open the user's own Home Assistant
 const HACS_URL = "https://hacs.xyz/docs/use/";
 const MY_HA_REPOSITORY = "https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration";
@@ -56,7 +56,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
   return (
     <SubPage title={t("common.connectedApps")} onBack={onBack}>
       <p className="hint">{t("settings.appsPage.intro")}{" "}
-        <a href={DOCS_URL} target="_blank" rel="noopener">{t("settings.appsPage.haGuide")}</a></p>
+        <a href={docsUrl()} target="_blank" rel="noopener">{t("settings.appsPage.haGuide")}</a></p>
       {!data && <LoadState error={error} onRetry={reload} />}
       {data && !code && <ConnectionStatus data={data} />}
 

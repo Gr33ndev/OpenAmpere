@@ -306,11 +306,15 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
+  const shown = useRef<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is the trigger of reload()
   useEffect(() => {
-    setData(null);
-    setError(null);
+    if (shown.current !== path) {  // another resource: nothing old on screen; reload(): keep it until the new data is there
+      shown.current = path;
+      setData(null);
+      setError(null);
+    }
     if (!path) return;
     let active = true;
     let retry: number | undefined;

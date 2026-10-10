@@ -25,6 +25,14 @@ function shift(date: Date, period: Period, step: number): Date {
   return d;
 }
 
+/** First day of the period that contains `date`: Monday for weeks (like the server), the 1st for months. */
+function periodStart(date: Date, period: Period): Date {
+  if (period === "week") return shift(date, "day", -((date.getDay() + 6) % 7));
+  if (period === "month") return new Date(date.getFullYear(), date.getMonth(), 1);
+  if (period === "year") return new Date(date.getFullYear(), 0, 1);
+  return date;
+}
+
 function title(date: Date, period: Period): string {
   if (period === "day") return date.toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" });
   if (period === "week") {
@@ -115,7 +123,7 @@ export function Report() {
   const showPower = period === "day" && dayView === "power";
   const resolution = period === "day" ? (dayView === "15m" ? "15m" : "60m") : RESOLUTION[period];
   // the running period changes, past periods do not: only refresh what can still change
-  const running = fromIso(today) < shift(date, period, 1) && !(fromIso(today) < date);
+  const running = fromIso(today) < periodStart(shift(date, period, 1), period) && periodStart(date, period) <= fromIso(today);
   const refresh = running ? 60_000 : 0;
 
   const { data: summary } = useResource<Summary>(`/api/energy/summary?period=${period}&date=${day}`, refresh);
@@ -196,7 +204,7 @@ export function Report() {
         <button type="button" onClick={() => setDate(shift(date, period, -1))} aria-label={t("report.report.previousPeriod")}><Chevron dir="left" /></button>
         <span>{title(date, period)}</span>
         {picked ? <button type="button" onClick={() => setPicked(null)} className="today-link">{t("common.today")}</button> : null}
-        <button type="button" onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label={t("report.report.nextPeriod")}><Chevron /></button>
+        <button type="button" onClick={() => setDate(next)} disabled={periodStart(next, period) > fromIso(today)} aria-label={t("report.report.nextPeriod")}><Chevron /></button>
       </div>
 
       <KeyFigures summary={summary} />
