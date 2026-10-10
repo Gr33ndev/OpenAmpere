@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
       - name: Install (pinned)
         run: |
-          pip install -r requirements-dev.lock
+          pip install --require-hashes -r requirements-dev.lock
           pip install --no-deps -e .
       - name: Tests
         run: pytest -q
@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: "3.14"
       - name: Install
-        run: pip install -r tests_ha/requirements.txt
+        run: pip install --require-hashes -r tests_ha/requirements.lock
       - name: Tests
         run: pytest -q tests_ha
 
