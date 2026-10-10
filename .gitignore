@@ -8,6 +8,7 @@ web/test-results/
 web/playwright-report/
 src/openampere/web/
 .pytest_cache/
+.hypothesis/
 
 # lokale Werkzeug-Protokolle
 .abide/
