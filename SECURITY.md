@@ -5,7 +5,8 @@ OpenAmpere can change settings of an inverter. That is why we take security vuln
 ## Reporting a vulnerability
 
 Please do **not** report it as a public issue. Use GitHub's private reporting instead:
-**Security → Report a vulnerability** in the repository. Describe what is affected and how to reproduce it. Reports in
+**Security → Report a vulnerability** in the repository
+(<https://github.com/Gr33ndev/OpenAmpere/security/advisories/new>). Describe what is affected and how to reproduce it. Reports in
 German are welcome and are handled the same way.
 
 We will get back to you as soon as possible, usually within a week. Please give us time to fix it before you publish
