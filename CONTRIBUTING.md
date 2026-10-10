@@ -87,6 +87,11 @@ language falls back to German.
 
 ## Workflow for code contributions
 
+Looking for a first task? Issues labelled
+[`good first issue`](https://github.com/Gr33ndev/OpenAmpere/labels/good%20first%20issue) are small and self-contained,
+for example a missing test, a text that is hard to understand or a small fix. Comment on the issue and ask if anything
+is unclear.
+
 1. Open an issue or comment that you would like to take it on. For larger changes, wait for brief feedback on the
    approach.
 2. Fork the repository and create a branch (`fix/…`, `feature/…`, `docs/…`).
@@ -94,6 +99,32 @@ language falls back to German.
 4. Open a pull request using the template, with the title in [commit format](#commits-and-pr-titles), and link the
    issue (`Fixes #123`).
 5. Wait for the review and address the comments. Please do not force-push while a review is in progress.
+
+## Code review
+
+Every change goes through a pull request; only the release commit of `scripts/release.sh` (version number and
+changelog) is pushed directly to `main`. A maintainer reviews the pull request
+on GitHub, comments on the lines in question and approves it or asks for changes. Once there is a second maintainer,
+changes to drivers and control functions need a review by someone other than the author (see
+[GOVERNANCE.md](GOVERNANCE.md#becoming-a-maintainer)).
+
+The review checks:
+
+- **Purpose:** the change solves the problem from the linked issue and nothing unrelated.
+- **Safety:** anything that writes to an inverter follows [Inverters and control](#inverters-and-control): master
+  switch and test mode respected, limits checked, value read back, change logged; new registers have a source.
+- **Tests:** new logic has tests; a bug fix has a test that fails without the fix.
+- **Texts:** texts in the app go through `t()`, are complete German sentences and understandable for non-technical
+  users.
+- **Privacy:** no personal data and nothing that identifies an installation in code, tests, screenshots or the
+  description.
+- **Security:** input from the network, files and devices is checked; no secrets in logs or responses.
+- **Dependencies and licenses:** no new dependency without agreement in the issue; third-party code only with a
+  compatible license and attribution.
+- **Documentation:** user guides, `docs/` and the demo are updated in the same pull request.
+
+A pull request is accepted when all CI checks pass, every review comment is resolved and a maintainer has approved
+it. It is then squash-merged with the PR title as the commit title.
 
 ## Development environment
 

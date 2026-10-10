@@ -20,6 +20,11 @@ OpenAmpere currently has one maintainer: [@Gr33ndev](https://github.com/Gr33ndev
 - Anything that writes to an inverter is held to a higher standard: it must stay behind the control switch and the test mode, values are checked before writing and read back afterwards, and the registers must be documented or confirmed by a diagnostic report from a real device. When in doubt, a feature stays read-only.
 - Users come first: OpenAmpere was started for owners of systems from the insolvent company EKD. The app and the user guides stay German and understandable for non-technical users.
 
+## Account security
+
+Everyone who can change the repository or read private vulnerability reports must use two-factor authentication on
+GitHub with an authenticator app (TOTP), a security key or a passkey. SMS alone is not enough.
+
 ## Becoming a maintainer
 
 People who contribute regularly and carefully, for example drivers, reviews or helping others in issues, can be invited as maintainers. With a second maintainer, changes to drivers and control functions will need a review by someone other than the author.
