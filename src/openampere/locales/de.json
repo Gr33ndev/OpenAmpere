@@ -60,6 +60,7 @@
     "enterTimesFullHours": "Uhrzeiten bitte als volle Stunde 0–23 angeben.",
     "invalidSettingsChargingGrid": "Ungültige Einstellungen für das Laden aus dem Netz.",
     "logBatteryTakesNoMore": "Der Speicher nimmt bei {soc} % keine Ladung mehr an (Ladegrenze des Wechselrichters oder voll)",
+    "logChargeLimitReached": "Ladegrenze des Wechselrichters ({target} %) erreicht",
     "logCheapestQuarters": "günstigste Viertelstunden",
     "logFinished": "Laden beendet: {reason}",
     "logInWindow": "im Ladefenster",

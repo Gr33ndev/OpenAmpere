@@ -35,6 +35,7 @@ EFFICIENCY = 0.92
 VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command (checked once per session)
 NEAR_LIMIT = 5  # % below the inverter's own charge limit: no charging there is not an error (full, tapering, #218)
 RESTART_BELOW = 5  # % below the level where the battery took no more: grid charging tries again
+LIMIT_READ_S = 600  # the inverter's charge limit is read at most this often (#242)
 MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
 AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
@@ -62,7 +63,9 @@ def validate(raw: dict, rated_w: int | None, battery_max_w: int | None = None) -
                                                                   (s.target_soc, s.ready_by, s.window_start, s.window_end))
         s.power_w, s.battery_kwh = int(s.power_w), float(s.battery_kwh)
         s.max_price_ct = None if s.max_price_ct in (None, "") else float(s.max_price_ct)
-        s.enabled, s.legal_confirmed = bool(s.enabled), bool(s.legal_confirmed)
+        # only real yes/no: "false" as text must not switch grid charging on (#242)
+        if not isinstance(s.enabled, bool) or not isinstance(s.legal_confirmed, bool):
+            raise ValueError
     except (TypeError, ValueError):
         raise ValueError("Ungültige Einstellungen für das Laden aus dem Netz.") from None
     if s.mode not in ("cheapest", "window"):
@@ -92,6 +95,7 @@ class GridCharging:
         self.last_error: str | None = None
         self.verified = False  # the battery charged after the start of this session
         self.full_at_soc: float | None = None  # state of charge at which the battery took no more
+        self._limit: tuple[float, float] | None = None  # (read at, the inverter's charge limit in %)
         self._dry_logged_quarter: int | None = None
 
     # ---- settings ------------------------------------------------------------
@@ -107,6 +111,7 @@ class GridCharging:
         settings = validate(raw, device.rated_power_w if device else None, battery_max_w)
         old = self.settings
         self.runtime.storage.set_meta("grid_charging", asdict(settings))
+        self.full_at_soc, self._limit = None, None  # new settings: try again, read the charge limit again (#242)
         if old.enabled != settings.enabled:
             self.runtime.storage.log_control("grid_charging_switch", {"from": {"enabled": old.enabled},
                                                                       "to": {"enabled": settings.enabled},
@@ -123,15 +128,20 @@ class GridCharging:
             target += timedelta(days=1)
         return target.timestamp()
 
-    def plan(self, now: float, soc: float | None) -> dict:
-        """Quarter hours in which to charge, and why."""
+    def plan(self, now: float, soc: float | None, limit: float | None = None) -> dict:
+        """Quarter hours in which to charge, and why. limit: the inverter's own charge limit (max SoC) in %; the
+        inverter does not respect it while it is charged by remote control, so the plan stops there (#242)."""
         s = self.settings
         quarter = int(now // QUARTER * QUARTER)
         if soc is None:
             return {"quarters": [], "reason": "Ladestand unbekannt"}
-        if soc >= s.target_soc:
+        target = s.target_soc if limit is None else min(s.target_soc, limit)
+        if soc >= target:
+            if target < s.target_soc:
+                reason = f"Ladegrenze des Wechselrichters ({round(target)} %) erreicht"
+                return {"quarters": [], "reason": reason}
             return {"quarters": [], "reason": f"Ladeziel {s.target_soc} % erreicht"}
-        needed_wh = (s.target_soc - soc) / 100 * s.battery_kwh * 1000 / EFFICIENCY
+        needed_wh = (target - soc) / 100 * s.battery_kwh * 1000 / EFFICIENCY
         count = math.ceil(needed_wh / (s.power_w * QUARTER / 3600))
         if s.mode == "window":
             in_window = self._in_window(now, s.window_start, s.window_end)
@@ -171,7 +181,7 @@ class GridCharging:
         if not allowed:
             await self.stop("Laden aus dem Netz ist aus oder die Steuerung ist nicht freigegeben")
             return
-        plan = self.plan(now, snap.battery_soc if snap else None)
+        plan = self.plan(now, snap.battery_soc if snap else None, await self._charge_limit(now))
         quarter = int(now // QUARTER * QUARTER)
         if quarter not in plan["quarters"]:
             await self.stop(plan["reason"])
@@ -266,6 +276,12 @@ class GridCharging:
         reason = f"Der Speicher nimmt bei {soc} % keine Ladung mehr an (Ladegrenze des Wechselrichters oder voll)"
         return reason
 
+    async def _charge_limit(self, now: float) -> float:
+        """The inverter's charge limit, read again every LIMIT_READ_S (the owner may change it in the app)."""
+        if self._limit is None or now - self._limit[0] > LIMIT_READ_S:
+            self._limit = (now, await self._upper_limit())
+        return self._limit[1]
+
     async def _upper_limit(self) -> float:
         """The inverter's own charge limit (max_soc), 100 if it cannot be read."""
         try:
@@ -283,6 +299,8 @@ class GridCharging:
     def view(self, now: float | None = None) -> dict:
         now = time.time() if now is None else now
         snap = self.runtime.collector.latest
-        plan = self.plan(now, snap.battery_soc if snap else None)
+        plan = self.plan(now, snap.battery_soc if snap else None, self._limit[1] if self._limit else None)
+        if self.full_at_soc is not None and not self.active:  # paused at the charge limit: say so (#242)
+            plan = {"quarters": [], "reason": self._full_reason()}
         return {"settings": asdict(self.settings), "active": self.active, "last_error": self.last_error,
                 "plan": {**plan, "quarters": plan["quarters"][:96]}}
