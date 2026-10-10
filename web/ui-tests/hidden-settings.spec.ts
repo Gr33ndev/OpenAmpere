@@ -24,3 +24,15 @@ for (const route of ["more/notify", "more/gridmeter"]) {
     expect(await layoutProblems(page)).toEqual([]);
   });
 }
+
+test("hidden switch addresses ask for a login in the device setup", async ({ page, api }) => {
+  await loggedOut(api);
+  const { consumers } = await demoRequest<{ consumers: object[] }>("GET", "/api/consumers");
+  api.override("/api/consumers", { consumers: [...consumers, { ...consumers[0], id: "web1", name: "Pumpe", kind: "http",
+    url_on: null, url_off: null }] });
+  await open(page, "more/device-setup");
+  await page.locator(".device-row-compact", { hasText: "Pumpe" }).click();
+  await expect(page.locator(".login-to-see")).toBeVisible();
+  await expect(page.locator("input[value='null']")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Speichern" })).toBeEnabled(); // saving keeps the stored addresses
+});

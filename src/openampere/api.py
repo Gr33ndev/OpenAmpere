@@ -887,8 +887,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"devices": devices.live()}
 
     @app.get("/api/consumers")
-    def get_consumers():
-        return surplus.view()
+    def get_consumers(request: Request):
+        return surplus.view(hide_urls=not logged_in(request))
 
     @app.put("/api/consumers")
     def put_consumers(body: dict = Body(...)):

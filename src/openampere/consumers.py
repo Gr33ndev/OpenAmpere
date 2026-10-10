@@ -170,7 +170,7 @@ class SurplusControl:
         return [Consumer(**c) for c in self.runtime.storage.get_meta("consumers") or []]
 
     def save(self, raw: list) -> list[Consumer]:
-        consumers = validate(raw)
+        consumers = validate(self._with_hidden_urls(raw))
         new = {c.id: c for c in consumers}
         enabled = {c.id for c in consumers if c.enabled}
         for c_id in enabled:
@@ -240,9 +240,24 @@ class SurplusControl:
         state.retry_at = now + min(RETRY_MAX_S, RETRY_S * 2 ** (state.failures - 1))
         return state.failures == 1
 
-    def view(self) -> dict:
-        return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State())), "override": self.override(c.id)}
-                              for c in self.consumers]}
+    def view(self, *, hide_urls: bool = False) -> dict:
+        """hide_urls: without a login, the switch addresses are left out, they often hold the device's password."""
+        hidden = {"url_on": None, "url_off": None} if hide_urls else {}
+        return {"consumers": [{**asdict(c), **hidden, "state": asdict(self.states.get(c.id, State())),
+                               "override": self.override(c.id)} for c in self.consumers]}
+
+    def _with_hidden_urls(self, raw):
+        """A switch address sent as null (the app did not get it without a login) keeps its stored value."""
+        if not isinstance(raw, list):
+            return raw
+        stored = {c.id: c for c in self.consumers}
+        out = []
+        for item in raw:
+            old = stored.get(item.get("id")) if isinstance(item, dict) else None
+            if old is not None:
+                item = {**item, **{k: getattr(old, k) for k in ("url_on", "url_off") if item.get(k) is None}}
+            out.append(item)
+        return out
 
     # ---- order: who gets solar surplus first ------------------------------------
 

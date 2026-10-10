@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { type ReactNode, useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
+import { LoginToSee } from "./AuthScreens";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
 import { AmountInput, Button, Dialog, Field, LoadState, SubPage, toast } from "./ui";
@@ -10,7 +11,8 @@ import { t } from "./i18n";
 
 export type ConsumerData = {
   id?: string; name: string; kind: "mypv" | "shelly1" | "shelly2" | "http"; host: string; port: number; unit: number;
-  channel: number; url_on: string; url_off: string; power_w: number; min_power_w: number; min_on_min: number;
+  /** null without a login: the addresses often hold the device's password */
+  channel: number; url_on: string | null; url_off: string | null; power_w: number; min_power_w: number; min_on_min: number;
   min_off_min: number; battery_min_soc: number; price_limit_ct: number | null; enabled: boolean;
   state?: { on: boolean | null; power_w: number; since: number; error: string | null; temperature_c: number | null;
     target_c: number | null; status: string | null; actual_w: number | null };
@@ -40,9 +42,17 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
   const [c, setC] = useState(value);
   const [removing, setRemoving] = useState(false);
   const set = (patch: Partial<ConsumerData>) => setC((x) => ({ ...x, ...patch }));
+  // after logging in, the addresses arrive with the next load (saving null keeps the stored ones)
+  useEffect(() => {
+    if (value.url_on !== null && value.url_off !== null) {
+      setC((x) => (x.url_on === null || x.url_off === null ? { ...x, url_on: value.url_on, url_off: value.url_off } : x));
+    }
+  }, [value.url_on, value.url_off]);
   const mypv = c.kind === "mypv";
   const shelly = c.kind === "shelly1" || c.kind === "shelly2";
-  const valid = c.name.trim() && (c.kind === "http" ? c.url_on.trim() && c.url_off.trim() : c.host.trim()) && c.power_w > 0;
+  const urlsHidden = c.url_on === null || c.url_off === null;
+  const valid = c.name.trim() && (c.kind === "http" ? urlsHidden || (c.url_on?.trim() && c.url_off?.trim()) : c.host.trim())
+    && c.power_w > 0;
   return (
     <div className="card form">
       <div className="device-card-head">
@@ -50,12 +60,12 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
         <strong className="grow">{kindLabel(c)}</strong>
       </div>
       <Field label={t("common.name")}><input className="input" value={c.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} /></Field>
-      {c.kind === "http" ? (
+      {c.kind === "http" ? (urlsHidden ? <LoginToSee /> : (
         <>
-          <Field label={t("devices.editor.switchOnUrl")}><input className="input" value={c.url_on} placeholder="http://" onChange={(e) => set({ url_on: e.target.value })} /></Field>
-          <Field label={t("devices.editor.switchOffUrl")}><input className="input" value={c.url_off} placeholder="http://" onChange={(e) => set({ url_off: e.target.value })} /></Field>
+          <Field label={t("devices.editor.switchOnUrl")}><input className="input" value={c.url_on ?? ""} placeholder="http://" onChange={(e) => set({ url_on: e.target.value })} /></Field>
+          <Field label={t("devices.editor.switchOffUrl")}><input className="input" value={c.url_off ?? ""} placeholder="http://" onChange={(e) => set({ url_off: e.target.value })} /></Field>
         </>
-      ) : (
+      )) : (
         <Field label={mypv ? t("devices.editor.heaterIp") : t("devices.editor.shellyIp")}>
           <input className="input" value={c.host} inputMode="decimal" placeholder={t("devices.editor.example", { example: "192.168.178.40" })} onChange={(e) => set({ host: e.target.value })} />
         </Field>

@@ -212,3 +212,36 @@ def test_api_docs_are_switched_off(tmp_path):
         assert response.status_code in (200, 404), path
         assert "swagger" not in response.text.lower() and "redoc" not in response.text.lower(), path
         assert '"openapi"' not in response.text, path
+
+
+SWITCH = {"name": "Pumpe", "kind": "http", "power_w": 1000,
+          "url_on": "http://pump.local/cm?user=admin&password=s3cret&cmnd=Power%20On",
+          "url_off": "http://pump.local/cm?user=admin&password=s3cret&cmnd=Power%20Off"}
+
+
+def test_switch_addresses_need_login(tmp_path):
+    """Switch addresses often hold the password of the device; reads are open on the home network."""
+    _, client = app_client(tmp_path)
+    login(client)
+    saved = client.put("/api/consumers", json={"consumers": [SWITCH]}).json()["consumers"][0]
+    assert saved["url_on"] == SWITCH["url_on"]  # logged in: shown for editing
+    assert client.get("/api/consumers").json()["consumers"][0]["url_off"] == SWITCH["url_off"]
+
+    other = TestClient(client.app)  # another device in the home network, not logged in
+    response = other.get("/api/consumers")
+    assert response.status_code == 200 and "s3cret" not in response.text
+    shown = response.json()["consumers"][0]
+    assert shown["url_on"] is None and shown["url_off"] is None and shown["name"] == "Pumpe"
+
+
+def test_hidden_switch_addresses_are_kept_when_saving(tmp_path):
+    """The form loaded without login holds null; saving it after login keeps the stored addresses."""
+    _, client = app_client(tmp_path)
+    login(client)
+    c_id = client.put("/api/consumers", json={"consumers": [SWITCH]}).json()["consumers"][0]["id"]
+    renamed = {**SWITCH, "id": c_id, "name": "Wärmepumpe", "url_on": None, "url_off": None}
+    saved = client.put("/api/consumers", json={"consumers": [renamed]}).json()["consumers"][0]
+    assert saved["name"] == "Wärmepumpe"
+    assert (saved["url_on"], saved["url_off"]) == (SWITCH["url_on"], SWITCH["url_off"])
+    # a new device without addresses is still refused
+    assert client.put("/api/consumers", json={"consumers": [{**SWITCH, "url_on": None}]}).status_code == 400
