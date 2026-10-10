@@ -219,5 +219,5 @@ export function logCsv(entries: LogEntry[]): string {
     return [day(e.ts), clock(e.ts), d.text, d.by, statusLabel(d.status), d.note ?? "",
       `${e.action} ${JSON.stringify(e.details)} ${e.result}`.trim()];
   });
-  return "﻿" + [head, ...rows].map((row) => row.map(cell).join(separator)).join("\r\n") + "\r\n";
+  return `﻿${[head, ...rows].map((row) => row.map(cell).join(separator)).join("\r\n")}\r\n`;
 }

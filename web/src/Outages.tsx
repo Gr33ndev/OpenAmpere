@@ -68,7 +68,7 @@ export function OutagesSection() {
                 : batteryEmpty(o)
                 ? <span className="meta warn-text">{t("report.outagesSection.batteryEmpty", { time: time(o.dark_since) })}</span>
                 : <span className="meta">{t("report.outagesSection.noReadings", { time: time(o.dark_since) })}</span>)}
-              <button className="link" onClick={() => setRemoving(o)}>{t("report.outagesSection.notAPowerCut")}</button>
+              <button type="button" className="link" onClick={() => setRemoving(o)}>{t("report.outagesSection.notAPowerCut")}</button>
             </li>
           ))}
         </ul>

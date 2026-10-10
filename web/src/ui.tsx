@@ -21,7 +21,7 @@ export function SubPage({ title, onBack, children }: { title: string; onBack: ()
   }, []);
   return (
     <div className="page">
-      <button className="back" onClick={onBack} aria-label={t("shell.subPage.back")}><Chevron dir="left" /></button>
+      <button type="button" className="back" onClick={onBack} aria-label={t("shell.subPage.back")}><Chevron dir="left" /></button>
       <div className="page-head"><h1>{title}</h1></div>
       {children}
     </div>
@@ -30,7 +30,7 @@ export function SubPage({ title, onBack, children }: { title: string; onBack: ()
 
 export function MenuRow({ label, hint, onClick }: { label: string; hint?: string; onClick: () => void }) {
   return (
-    <button className="menu-row" onClick={onClick}>
+    <button type="button" className="menu-row" onClick={onClick}>
       <span>
         {label}
         {hint && <span className="menu-hint">{hint}</span>}
@@ -44,6 +44,7 @@ export function Field({ label, hint, locked, children }: {
   label: string; hint?: string; locked?: boolean; children: ReactNode;
 }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: the input is passed in as children, inside the label
     <label className="field">
       <span className="field-label">{label}{locked && <span className="lock">{t("common.fixedSetting")}</span>}</span>
       {children}
@@ -123,7 +124,7 @@ export function LoadState({ error, onRetry }: { error: string | null; onRetry?: 
     <Notice kind="error">
       <div>{error}</div>
       <div className="hint">{t("shell.loadState.retrying")}</div>
-      {onRetry && <button className="link" onClick={onRetry}>{t("common.tryAgainNow")}</button>}
+      {onRetry && <button type="button" className="link" onClick={onRetry}>{t("common.tryAgainNow")}</button>}
     </Notice>
   );
 }
@@ -187,7 +188,9 @@ export function Dialog({ title, children, confirm, cancel = t("common.cancel"), 
   const titleId = useId();
   useModal(ref, onCancel);
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: Escape closes the dialog (useModal), the backdrop click is an extra for pointer users
     <div className="overlay" onClick={onCancel}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: only keeps a click inside the dialog from closing it */}
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={ref} tabIndex={-1}
         onClick={(e) => e.stopPropagation()}>
         <h2 id={titleId}>{title}</h2>

@@ -35,9 +35,11 @@ writes as safety-relevant (see below).
 ```bash
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"   # backend dev setup (Python 3.11+)
 .venv/bin/pytest                                             # backend tests (about 2 minutes)
+.venv/bin/ruff check .                                       # Python code style (PEP 8 via ruff)
 .venv/bin/python -m openampere.simulator --port 5020 --speed 20
 OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERVER_PORT=8089 .venv/bin/python -m openampere
 cd web && npm ci && npm run dev                              # web app with live reload, proxies the API on 8089
+cd web && npm run lint                                       # TypeScript code style (Biome)
 cd web && npm run build                                      # tsc + build into src/openampere/web/
 cd web && npm run check:demo                                 # every API endpoint the app uses has a demo answer
 cd web && npm run check:i18n                                 # translation keys, placeholders, plurals, coverage
@@ -47,7 +49,7 @@ scripts/i18n_messages.py --missing                           # server messages w
 scripts/deps.sh                                              # after dependency changes: lockfiles + license list (uv)
 ```
 
-CI runs: `backend` (pytest + license list), `web` (build, check:demo, check:i18n), `ui` (Playwright), `docker`, `homeassistant`,
+CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo, check:i18n), `ui` (Playwright), `docker`, `homeassistant`,
 `hassfest`, `hacs`, and `check` (Conventional Commits for the PR title and every commit).
 
 ## Rules

@@ -132,6 +132,7 @@ export function Report() {
   const xFormat = period === "day" ? fmtHour : period === "year" ? fmtMonth : fmtDay;
   const next = shift(date, period, 1);
   const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the hover is reset whenever another period or view is shown
   useEffect(() => setHover(null), [period, day, dayView, resolution]);
 
   const deviceColors = useMemo(() => colorsFor(devPower?.devices ?? []), [devPower]);
@@ -146,6 +147,7 @@ export function Report() {
   };
 
   const digits = energyDigits();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deviceSeries is recreated on every render, its inputs devPower and deviceColors are listed
   const chart = useMemo(() => {
     const soc: Series = { label: t("common.stateOfCharge"), color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
     const hasSoc = rows.some((r) => r.soc != null);
@@ -191,10 +193,10 @@ export function Report() {
           onChange={setPeriod} />
       </div>
       <div className="date-nav">
-        <button onClick={() => setDate(shift(date, period, -1))} aria-label={t("report.report.previousPeriod")}><Chevron dir="left" /></button>
+        <button type="button" onClick={() => setDate(shift(date, period, -1))} aria-label={t("report.report.previousPeriod")}><Chevron dir="left" /></button>
         <span>{title(date, period)}</span>
-        {picked ? <button onClick={() => setPicked(null)} className="today-link">{t("common.today")}</button> : null}
-        <button onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label={t("report.report.nextPeriod")}><Chevron /></button>
+        {picked ? <button type="button" onClick={() => setPicked(null)} className="today-link">{t("common.today")}</button> : null}
+        <button type="button" onClick={() => setDate(next)} disabled={next > fromIso(today)} aria-label={t("report.report.nextPeriod")}><Chevron /></button>
       </div>
 
       <KeyFigures summary={summary} />
@@ -254,6 +256,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   // colour of the input itself, so it stays the same when another input is hidden
   const inputColor = (i: number) => PV_INPUT_COLORS[((data?.inputs?.[i] ?? i + 1) - 1) % 4];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: inputColor is recreated on every render and only depends on data
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
     const x = data.entries.map((e) => e.ts);
@@ -271,7 +274,7 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   return (
     <>
       <div className="section-title">{t("report.pvInputsSection.title")}</div>
-      {chart && chart.x.length ? (
+      {chart?.x.length ? (
         <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={220} />
       ) : <p className="empty">{t("report.pvInputsSection.emptyState")}</p>}
       <div className="legend">

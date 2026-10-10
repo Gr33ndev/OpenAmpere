@@ -102,7 +102,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         ) : (
           <div className="choices">
             {found.map((d) => (
-              <button key={d.host} className={`choice ${d.host === host ? "active" : ""}`}
+              <button type="button" key={d.host} className={`choice ${d.host === host ? "active" : ""}`}
                 onClick={() => { setHost(d.host); reset(); void test(d.host); }}>
                 <InverterIcon size={36} />
                 <span>
@@ -113,7 +113,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
             ))}
           </div>
         ))}
-        {found && found.some((d, i) => d.serial && found.findIndex((x) => x.serial === d.serial) !== i) && (
+        {found?.some((d, i) => d.serial && found.findIndex((x) => x.serial === d.serial) !== i) && (
           <p className="hint">{t("setup.connectionForm.sameSerialHint")}</p>
         )}
       </div>
@@ -143,7 +143,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
             </div>
           </>
         ) : (
-          <button className="link" onClick={() => setAdvanced(true)}>{t("setup.connectionForm.advanced")}</button>
+          <button type="button" className="link" onClick={() => setAdvanced(true)}>{t("setup.connectionForm.advanced")}</button>
         )}
         <Button variant="secondary" onClick={() => test()} busy={testing} disabled={!host.trim()}>{t("setup.connectionForm.testConnection")}</Button>
         {testing && <p className="hint">{t("setup.connectionForm.detectingDevice")}</p>}

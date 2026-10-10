@@ -12,7 +12,7 @@ from ..modbus import (ModbusDevice, ModbusIllegalError, ModbusReadError,  # noqa
                       ModbusTransientError, _ascii)
 from ..regs import counter_step_wh
 from .registers import (H3_LEGACY, H3_NEW, MAPS, MODEL_ADDRESS, MODEL_LENGTH, SERIAL_ADDRESS,
-                        Reg, RegisterMap, decode, encode)
+                        RegisterMap, decode)
 
 log = logging.getLogger(__name__)
 

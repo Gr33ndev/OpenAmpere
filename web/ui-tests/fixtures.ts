@@ -63,8 +63,8 @@ export function layoutProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const problems: string[] = [];
     const vw = document.documentElement.clientWidth, vh = window.innerHeight;
-    const name = (el: Element) => el.tagName.toLowerCase() + (el.className && typeof el.className === "string"
-      ? "." + el.className.trim().split(/\s+/).join(".") : "") + ` "${(el.textContent ?? "").trim().slice(0, 30)}"`;
+    const name = (el: Element) => `${el.tagName.toLowerCase() + (el.className && typeof el.className === "string"
+      ? `.${el.className.trim().split(/\s+/).join(".")}` : "")} "${(el.textContent ?? "").trim().slice(0, 30)}"`;
     const sticksOut = (el: Element) => el.getBoundingClientRect().right > vw + 1;
     // wider than the screen and not inside a scroll box or clipping box that fits on the screen
     const culprit = (el: Element) => {

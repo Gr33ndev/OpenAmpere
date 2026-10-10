@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "packaging>=23", "hypothesis>=6"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "packaging>=23", "hypothesis>=6", "ruff>=0.15"]
 
 [project.urls]
 Homepage = "https://github.com/Gr33ndev/OpenAmpere"
@@ -39,3 +39,16 @@ testpaths = ["tests"]
 
 [tool.setuptools.package-data]
 openampere = ["web/*", "web/**/*", "locales/*.json"]
+
+# Python style: PEP 8 as checked by ruff (pycodestyle and pyflakes rules), see CONTRIBUTING.md#code-rules.
+# Lines are wrapped at about 120 characters; the length is not enforced (E501), long messages and tables stay readable.
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".claude", "web"]
+# the Home Assistant integration runs on the Python of Home Assistant
+per-file-target-version = { "custom_components/**" = "py313", "tests_ha/**" = "py313" }
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]
+ignore = ["E501"]

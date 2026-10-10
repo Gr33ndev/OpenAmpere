@@ -147,8 +147,8 @@ function ImportHint() {
       <div><strong>{t("overview.importHint.title")}</strong>{" "}
         {t("overview.importHint.hint")}</div>
       <div className="actions">
-        <button className="link" onClick={() => navigate("more/data")}>{t("common.setUp")}</button>
-        <button className="link" onClick={hide}>{t("overview.importHint.hide")}</button>
+        <button type="button" className="link" onClick={() => navigate("more/data")}>{t("common.setUp")}</button>
+        <button type="button" className="link" onClick={hide}>{t("overview.importHint.hide")}</button>
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ function Tips() {
         <li>{t("overview.tips.report")}</li>
         <li>{t("overview.tips.devicesAndMore")}</li>
       </ul>
-      <button className="link" onClick={hide}>{t("overview.tips.dismiss")}</button>
+      <button type="button" className="link" onClick={hide}>{t("overview.tips.dismiss")}</button>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; to
       <div className="card menu">
         {gridCharging && <div className="device-row-compact"><span className="grow">{t("overview.devicesCard.batteryChargingFromGrid")}</span></div>}
         {devices.map((d) => (
-          <button key={d.key} className="device-row-compact" onClick={() => navigate("devices")}>
+          <button type="button" key={d.key} className="device-row-compact" onClick={() => navigate("devices")}>
             <DeviceIcon kind={d.kind} size={36} />
             <span className="grow"><strong>{d.name}</strong><span className="menu-hint">{deviceStatus(d)}
               {d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</span></span>

@@ -35,6 +35,7 @@ function Node({ x, y, h, icon, children, small = false, iconRef, name, onTap }: 
 }) {
   return (
     <div className={`flow-node ${small ? "small" : ""} ${name ?? ""}`} style={{ left: `${x}%`, top: `${(y / h) * 100}%` }}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a hidden easter egg for pointer users, no function needs it */}
       <div className="flow-icon" ref={iconRef} onClick={onTap}>{icon}</div>
       <div className="value">{children}</div>
     </div>
@@ -119,6 +120,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const { retro, justUnlocked, progress, press } = useRetro();
 
   // the device lines run between the drawn corners, so they are measured from the rendered icons
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deviceKeys stands for the shown devices, so a new array on every render does not measure again
   useLayoutEffect(() => {
     const el = container.current;
     if (!el || !shown.length) return;
@@ -152,7 +154,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
     : t("overview.energyFlow.noData");
   return (
     <div ref={container} className={`flow ${stale ? "stale" : ""} ${retro ? "retro" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
-      <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none">
+      <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none" aria-hidden="true">
         {/* PV -> house (vertical) */}
         <Link x1={50} y1={30} x2={50} y2={41} power={stale ? null : snap?.pv_power ?? null} />
         {/* battery <-> house: + = discharging towards the house */}

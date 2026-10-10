@@ -50,7 +50,9 @@ const parts = (path: string) => path.match(/\.\/locales\/([^/]+)\/([^/]+)\.json$
 const DICTIONARIES: Record<string, Record<string, Messages>> = {};
 for (const [path, file] of Object.entries(files)) {
   const [lang, area] = parts(path);
-  if (area !== "meta") (DICTIONARIES[lang] ??= {})[area] = file.default;
+  if (area === "meta") continue;
+  DICTIONARIES[lang] ??= {};
+  DICTIONARIES[lang][area] = file.default;
 }
 
 /** Languages for the switch, German first; not complete ones are marked as a preview there. */

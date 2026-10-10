@@ -73,11 +73,11 @@ export function BillingPage({ onBack }: PageProps) {
                   value={p.eur.toLocaleString(LOCALE, { useGrouping: false, maximumFractionDigits: 20 })}
                   onChange={(e) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i
                     ? { ...x, eur: Number(e.target.value.replace(",", ".")) || 0 } : x)) })} /><span>€</span></div></Field>
-                <button className="link danger-link" aria-label={t("report.billingPage.removeAdvancePayment")}
+                <button type="button" className="link danger-link" aria-label={t("report.billingPage.removeAdvancePayment")}
                   onClick={() => update(kind, { payments: form[kind].payments.filter((_, j) => j !== i) })}>{t("common.remove")}</button>
               </div>
             ))}
-            <button className="link" onClick={() => update(kind, { payments: [...form[kind].payments,
+            <button type="button" className="link" onClick={() => update(kind, { payments: [...form[kind].payments,
               { from: thisMonth(), eur: form[kind].payments[form[kind].payments.length - 1]?.eur ?? 0 }] })}>
               {form[kind].payments.length ? t("report.billingPage.addChange") : t("report.billingPage.enterAdvancePayment")}</button>
           </div>
@@ -120,7 +120,7 @@ export function BillingSection() {
       <div className="section-title">{t("common.advancePayments")}</div>
       <div className="card">
         <p>{t("report.billingSection.emptyState")}</p>
-        <button className="link" onClick={() => navigate("more/billing")}>{t("report.billingSection.enterAdvancePayments")}</button>
+        <button type="button" className="link" onClick={() => navigate("more/billing")}>{t("report.billingSection.enterAdvancePayments")}</button>
       </div>
     </>
   );
@@ -163,7 +163,7 @@ export function BillingSection() {
         <p className="hint">{metered.length ? "" : `${t("report.billingSection.meterDisclaimer")} `}
           {t("report.billingSection.yearEnds", { date: dateLabel(lastDay(years[0][1].to)) })}</p>
         {!metered.length && (
-          <button className="link" onClick={() => navigate("more/gridmeter")}>{t("report.billingSection.fetchMeterReadings")}</button>
+          <button type="button" className="link" onClick={() => navigate("more/gridmeter")}>{t("report.billingSection.fetchMeterReadings")}</button>
         )}
       </div>
     </>

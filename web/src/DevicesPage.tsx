@@ -112,7 +112,7 @@ function BatteryCard({ snap }: { snap: Snapshot | null }) {
     : power > 0 ? t("devices.batteryCard.discharging", { power: kw(power) }) : t("devices.batteryCard.charging", { power: kw(power) });
   return (
     <div className="card device-card">
-      <button className="device-card-head as-link" onClick={() => navigate("devices/battery")}>
+      <button type="button" className="device-card-head as-link" onClick={() => navigate("devices/battery")}>
         <BatteryIcon size={44} soc={snap?.battery_soc ?? null} />
         <div className="grow">
           <strong>{t("common.battery")}</strong>
@@ -124,8 +124,8 @@ function BatteryCard({ snap }: { snap: Snapshot | null }) {
         <p className="hint">{t("devices.batteryCard.backupReserve", { soc: num(settings.min_soc_on_grid, 0) })}</p>
       )}
       <div className="button-row inline">
-        <button className="link" onClick={() => navigate("devices/battery")}>{t("devices.batteryCard.batterySettings")}</button>
-        <button className="link" onClick={() => navigate("devices/charging")}>
+        <button type="button" className="link" onClick={() => navigate("devices/battery")}>{t("devices.batteryCard.batterySettings")}</button>
+        <button type="button" className="link" onClick={() => navigate("devices/charging")}>
           {t("devices.batteryCard.gridCharging", { state: charging ? (charging.active ? t("devices.batteryCard.chargingNow") : charging.settings.enabled ? t("common.onValue") : t("common.offValue")) : "…" })}
         </button>
       </div>
@@ -170,8 +170,8 @@ function SurplusOrder() {
               {item.kind === "battery" ? <BatteryIcon size={32} soc={60} /> : <DeviceIcon kind={item.kind} size={32} />}
               <strong className="grow">{item.name}</strong>
               <div className="order-buttons">
-                <button aria-label={t("devices.surplusOrder.moveUp", { name: item.name })} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
-                <button aria-label={t("devices.surplusOrder.moveDown", { name: item.name })} disabled={i === data.items.length - 1} onClick={() => move(i, 1)}>▼</button>
+                <button type="button" aria-label={t("devices.surplusOrder.moveUp", { name: item.name })} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
+                <button type="button" aria-label={t("devices.surplusOrder.moveDown", { name: item.name })} disabled={i === data.items.length - 1} onClick={() => move(i, 1)}>▼</button>
               </div>
             </div>
             {item.kind === "battery" && (
@@ -235,7 +235,7 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
         </>
       )}
       <SurplusOrder />
-      <p className="hint center">{t("devices.devicesTab.addOrSetUp")} <button className="link" onClick={() => navigate("more/connection")}>{t("common.more")} → {t("common.connection")}</button></p>
+      <p className="hint center">{t("devices.devicesTab.addOrSetUp")} <button type="button" className="link" onClick={() => navigate("more/connection")}>{t("common.more")} → {t("common.connection")}</button></p>
     </div>
   );
 }

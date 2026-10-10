@@ -10,6 +10,7 @@
     "build:demo": "npm run check:demo && tsc --noEmit && VITE_DEMO=1 vite build",
     "check:demo": "node scripts/check-demo-routes.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "lint": "biome lint",
     "test:ui": "playwright test"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "uplot": "^1.6.31"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@playwright/test": "1.63.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -102,7 +102,7 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
             width: isBar ? 0 : 2,
             dash: !isBar && s.dash ? [6, 4] : undefined,
             scale: s.scale ?? "y",
-            fill: isBar ? color : s.fill ? color + "33" : undefined,
+            fill: isBar ? color : s.fill ? `${color}33` : undefined,
             paths: isBar ? uPlot.paths.bars!({ size: s.barAlign === 0 ? [0.7, 60] : [0.46, 48], align: s.barAlign ?? 1 }) : undefined,
             points: { show: false },
             value: (_u: uPlot, v: number | null) =>

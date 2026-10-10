@@ -80,7 +80,7 @@ function SocBar({ min, reserve, max }: { min: number | null; reserve: number | n
   );
 }
 
-export function BatteryPage({ onBack, onNavigate }: PageProps) {
+export function BatteryPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
   const { data: current, error, reload } = useResource<BatteryState>("/api/battery/settings");
   const [form, setForm] = useState<BatterySettings | null>(null);
@@ -164,7 +164,7 @@ export function BatteryPage({ onBack, onNavigate }: PageProps) {
           <div className="section-title">{t("common.operatingMode")}</div>
           <div className="card choices">
             {WORK_MODES.map((m) => (
-              <button key={m.id} className={`choice ${form.work_mode === m.id ? "active" : ""}`} disabled={!editable}
+              <button type="button" key={m.id} className={`choice ${form.work_mode === m.id ? "active" : ""}`} disabled={!editable}
                 onClick={() => set({ work_mode: m.id })}>
                 <span className="radio" />
                 <span><strong>{m.label}</strong><span className="meta">{m.hint}</span></span>
@@ -202,10 +202,10 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
           <Field label={t("common.to")}><input className="input" type="time" value={w.to} onChange={(e) => set(i, { to: e.target.value })} /></Field>
           <Field label={t("common.price")}><div className="input-unit"><AmountInput value={w.price_ct} format={amountInput}
             onChange={(v) => set(i, { price_ct: v ?? 0 })} /><span>ct</span></div></Field>
-          <button className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>{t("common.remove")}</button>
+          <button type="button" className="link danger-link" onClick={() => onChange(windows.filter((_, j) => j !== i))}>{t("common.remove")}</button>
         </div>
       ))}
-      {windows.length < 6 && <button className="link" onClick={() => onChange([...windows, { from: "00:00", to: "06:00", price_ct: 20 }])}>
+      {windows.length < 6 && <button type="button" className="link" onClick={() => onChange([...windows, { from: "00:00", to: "06:00", price_ct: 20 }])}>
         {t("settings.timeWindows.addTimeWindow")}</button>}
     </div>
   );
@@ -240,6 +240,7 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
   const { settings, save, locked } = useSettings();
   const [form, setForm] = useState({ auto: eeg.auto, date: eeg.commissioning_date, kwp: "", full: eeg.full });
   const initial = { auto: eeg.auto, date: eeg.commissioning_date, kwp: eeg.installed_kwp ? de(eeg.installed_kwp) : "", full: eeg.full };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initial is derived from eeg on every render, the form is reset only when eeg changes
   useEffect(() => setForm(initial), [eeg]);
   const kwp = form.kwp.trim() === "" ? 0 : toNumber(form.kwp);
   const valid = Number.isFinite(kwp) && kwp >= 0 && kwp <= 1000;
@@ -277,7 +278,7 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
               {rate.zones.length > 1
                 ? tx("settings.eegCard.tiers", { tiers: <>{rate.zones.map((z, i) => (
                   <span key={z.from_kw}>{i > 0 && " + "}{t("settings.eegCard.tier", { kw: num(z.kw, 3), price: ct(z.ct) })}</span>))}</> })
-                : <>{t("settings.eegCard.rateUpTo10Kw", { price: ct(rate.zones[0].ct) })}</>}
+                : t("settings.eegCard.rateUpTo10Kw", { price: ct(rate.zones[0].ct) })}
               {" "}{form.full && !rate.full
                 ? t("settings.eegCard.periodWithoutFullFeedIn",
                   { from: deDate(rate.period_from), to: deDate(rate.period_to) })
@@ -304,6 +305,7 @@ export function TariffPage({ onBack }: PageProps) {
   const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: amountInput(t.price_ct), surcharge_ct: amountInput(t.surcharge_ct),
     vat_percent: de(t.vat_percent), feed_in_ct: amountInput(t.feed_in_ct), base_fee_eur_month: amountInput(t.base_fee_eur_month ?? 0),
     windows: t.windows ?? [] });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: toForm is a pure helper recreated on every render, the forms are reset only for new data
   useEffect(() => {
     if (data) setForms(data.tariffs.map(toForm));
   }, [data]);
@@ -379,7 +381,7 @@ export function TariffPage({ onBack }: PageProps) {
             <div className="input-unit"><input className="input" inputMode="decimal" value={tariff.feed_in_ct}
               onChange={(e) => update(i, { feed_in_ct: e.target.value })} /><span>ct/kWh</span></div>
           </Field>}
-          {forms.length > 1 && <button className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>{t("settings.tariffPage.removeTariff")}</button>}
+          {forms.length > 1 && <button type="button" className="link" onClick={() => setForms((f) => f.filter((_, j) => j !== i))}>{t("settings.tariffPage.removeTariff")}</button>}
         </div>
       ))}
       <Button variant="secondary" onClick={add}>{t("settings.tariffPage.addTariffChange")}</Button>
@@ -564,7 +566,7 @@ export function ControlPage({ onBack }: PageProps) {
             {entries.map((e, i) => <LogRow key={`${e.ts}-${i}`} entry={e} />)}
           </section>
         ))}
-        {!!log?.entries.length && <button className="link" onClick={reload}>{t("settings.controlPage.refresh")}</button>}
+        {!!log?.entries.length && <button type="button" className="link" onClick={reload}>{t("settings.controlPage.refresh")}</button>}
       </div>
       {!!log?.entries.length && (
         <div className="card form">
@@ -671,6 +673,7 @@ function saveFile(file: File) {
 function DownloadButton({ href, file, label }: { href?: string; file?: () => Promise<File>; label: string }) {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState<File | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a prepared file is dropped when the link changes
   useEffect(() => setReady(null), [href]);
   if (href && !SHARE_FILES) return <a className="btn secondary" href={href} {...downloadProps}>{label}</a>;
 
@@ -845,10 +848,10 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
         <a className="menu-row" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
           <span>{t("settings.aboutPage.reportBugs")}<span className="menu-hint">GitHub Issues</span></span><span aria-hidden>↗</span>
         </a>
-        <button className="menu-row" onClick={() => onNavigate?.("changelog")}>
+        <button type="button" className="menu-row" onClick={() => onNavigate?.("changelog")}>
           <span>{t("settings.changelogPage.title")}<span className="menu-hint">{t("settings.aboutPage.changelogHint")}</span></span><Chevron />
         </button>
-        <button className="menu-row" onClick={() => onNavigate?.("licenses")}>
+        <button type="button" className="menu-row" onClick={() => onNavigate?.("licenses")}>
           <span>{t("common.openSourceLicenses")}<span className="menu-hint">{t("settings.aboutPage.licensesHint")}</span></span><Chevron />
         </button>
       </div>
@@ -944,8 +947,8 @@ function CloudImportCard() {
               {keyLocked && <span className="lock">{t("common.fixedSetting")}</span>}</span>
             {!keyLocked && (
               <span className="key-actions">
-                <button className="link" onClick={() => setEditing(true)}>{t("common.change")}</button>
-                {keyInfo?.set && <button className="link" onClick={() => void saveKey("")}>{t("common.remove")}</button>}
+                <button type="button" className="link" onClick={() => setEditing(true)}>{t("common.change")}</button>
+                {keyInfo?.set && <button type="button" className="link" onClick={() => void saveKey("")}>{t("common.remove")}</button>}
               </span>
             )}
           </div>
@@ -1003,7 +1006,7 @@ function LicenseRow({ pkg }: { pkg: LicensePackage }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="license-item">
-      <button className="menu-row" onClick={() => setOpen(!open)} aria-expanded={open}>
+      <button type="button" className="menu-row" onClick={() => setOpen(!open)} aria-expanded={open}>
         <span>{pkg.name}{pkg.version && <span className="menu-hint">{t("settings.licenseRow.version", { version: pkg.version })}</span>}</span>
         <span className="license-meta">
           <span className="pill">{pkg.license || t("settings.licenseRow.seeText")}</span>
@@ -1159,7 +1162,7 @@ function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
       <div className="section-title">{t("settings.feedInRuleCard.ruleQuestion")}</div>
       <div className="card choices">
         {FEED_IN_RULES.map((r) => (
-          <button key={r.id} className={`choice ${rule === r.id ? "active" : ""}`} disabled={locked("grid.feed_in_rule")}
+          <button type="button" key={r.id} className={`choice ${rule === r.id ? "active" : ""}`} disabled={locked("grid.feed_in_rule")}
             onClick={() => void pick(r.id)}>
             <span className="radio" />
             <span><strong>{r.label}</strong><span className="meta">{r.hint}</span></span>
@@ -1181,7 +1184,7 @@ function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-export function ExportLimitPage({ onBack, onNavigate }: PageProps) {
+export function ExportLimitPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
   const { data: current, error, reload } = useResource<ExportLimit>("/api/grid/export-limit");
   const [preset, setPreset] = useState<"max" | "custom">("custom");
@@ -1416,7 +1419,7 @@ function ranges(quarters: number[]): string[] {
   return out;
 }
 
-export function ChargingPage({ onBack, onNavigate }: PageProps) {
+export function ChargingPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
   const { data, error, reload, setData } = useResource<ChargingView>("/api/charging", 30_000);
   const [form, setForm] = useState<ChargingSettings | null>(null);
