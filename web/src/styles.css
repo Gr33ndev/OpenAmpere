@@ -221,10 +221,16 @@ nav.bottom button.active::after { background: var(--accent-text); }
   --retro-frame: var(--text);
   /* the green of old handheld consoles: OpenAmpere's own colour family, not the vendor's brand colour.
      Text in it: 7.2:1 on white, 6:1 on the dark cards */
-  --retro-accent: light-dark(#306230, #9bbc0f);
+  --retro-accent: #306230;
+  --retro-on-accent: #fff;
   --accent: #8bac0f;
   --accent-text: var(--retro-accent);
   --px: 3px;
+}
+/* the dark theme, like the tokens above: the CSS function light-dark is unknown to older browsers, they drop the whole value (#244) */
+:root.retro[data-theme="dark"] { --retro-accent: #9bbc0f; --retro-on-accent: #111; }
+@media (prefers-color-scheme: dark) {
+  :root.retro:not([data-theme="light"]) { --retro-accent: #9bbc0f; --retro-on-accent: #111; }
 }
 /* biome-ignore lint/complexity/noImportantStyles: the radii are set per component, the game look squares them all in one place */
 html.retro *, html.retro *::before, html.retro *::after { border-radius: 0 !important; }
@@ -239,7 +245,7 @@ html.retro :is(.card, .tile, .dialog, nav.bottom) {
 }
 html.retro .card .card { box-shadow: none; border: 2px dashed var(--divider); }
 html.retro .btn { box-shadow: var(--px) var(--px) 0 0 var(--retro-frame); }
-html.retro .btn.primary { background: var(--retro-accent); color: light-dark(#fff, #111); }
+html.retro .btn.primary { background: var(--retro-accent); color: var(--retro-on-accent); }
 html.retro .btn:active:not(:disabled) { transform: translate(var(--px), var(--px)); box-shadow: none; }
 html.retro .input { border: 2px solid var(--retro-frame); }
 html.retro .input:focus { border-color: var(--retro-accent); }

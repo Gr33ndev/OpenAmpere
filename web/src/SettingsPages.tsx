@@ -86,14 +86,28 @@ function SocBar({ min, reserve, max }: { min: number | null; reserve: number | n
   );
 }
 
+/** After a write: the values read back from the inverter, before the button can be used again (#244). */
+async function readBack<T>(path: string, setData: (value: T) => void, reload: () => void): Promise<T | null> {
+  try {
+    const value = await getJson<T>(path);
+    setData(value);
+    return value;
+  } catch {
+    reload(); // the write went through; the page keeps trying to load
+    return null;
+  }
+}
+
+const formOf = (s: BatteryState): BatterySettings => ({ work_mode: s.work_mode, min_soc: s.min_soc, max_soc: s.max_soc,
+  min_soc_on_grid: s.min_soc_on_grid });
+
 export function BatteryPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
-  const { data: current, error, reload } = useResource<BatteryState>("/api/battery/settings");
+  const { data: current, error, reload, setData } = useResource<BatteryState>("/api/battery/settings");
   const [form, setForm] = useState<BatterySettings | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (current) setForm({ work_mode: current.work_mode, min_soc: current.min_soc, max_soc: current.max_soc,
-      min_soc_on_grid: current.min_soc_on_grid });
+    if (current) setForm(formOf(current));
   }, [current]);
 
   const control = status?.control;
@@ -111,7 +125,9 @@ export function BatteryPage({ onBack }: PageProps) {
       const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings", changes);
       toast(r.dry_run ? t("settings.batteryPage.testModeLogged") : r.result === "ok" ? t("settings.batteryPage.saved") : r.result ?? t("common.saved"));
       if (r.warning) toast(r.warning, "error");
-      reload();
+      // busy until the values read back are shown, the form in the same render (not one later in the effect)
+      const fresh = await readBack<BatteryState>("/api/battery/settings", setData, reload);
+      if (fresh) setForm(formOf(fresh));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -179,7 +195,7 @@ export function BatteryPage({ onBack }: PageProps) {
           </div>
 
           {editable && <Button onClick={save} busy={busy} disabled={!changed}>{t("settings.batteryPage.apply")}</Button>}
-          {editable && <Unsaved show={!!changed} />}
+          {editable && <Unsaved show={!!changed && !busy} />}
         </>
       )}
     </SubPage>
@@ -247,7 +263,9 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
   useOnServerChange(initial, setForm);
   const kwp = form.kwp.trim() === "" ? 0 : toNumber(form.kwp);
   const valid = Number.isFinite(kwp) && kwp >= 0 && kwp <= 1000;
-  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  // by value, not by text: "9,80" saved as "9,8" is not a change (#244)
+  const dirty = form.auto !== initial.auto || form.date !== initial.date || form.full !== initial.full
+    || kwp !== (eeg.installed_kwp || 0);
   const lock = ["tariff.feed_in_auto", "tariff.feed_in_full", "pv.commissioning_date", "pv.installed_kwp"]
     .some((k) => locked(k as SettingKey));
   const rate = eeg.rate;
@@ -310,7 +328,11 @@ export function TariffPage({ onBack }: PageProps) {
     windows: t.windows ?? [] });
   useOnServerChange(data?.tariffs, (tariffs) => setForms(tariffs.map(toForm)));
   const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
-  const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map(toForm));
+  const payload = (list: TariffForm[]) => list.map((t) => ({ ...t, price_ct: toNumber(t.price_ct) || 0,
+    surcharge_ct: toNumber(t.surcharge_ct) || 0, vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct),
+    base_fee_eur_month: toNumber(t.base_fee_eur_month) || 0 }));
+  // by value, not by text: "13,70" saved as "13,7" is not a change (#244)
+  const dirty = !!data && JSON.stringify(payload(forms)) !== JSON.stringify(payload(data.tariffs.map(toForm)));
   const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "dynamic" ? t.surcharge_ct : t.price_ct]
     .every((v) => Number.isFinite(toNumber(v))) && (t.kind !== "time" || t.windows.length > 0));
   const add = () => setForms((f) => [...f, { ...(f[f.length - 1] ?? { kind: "fixed", price_ct: "35,00", surcharge_ct: "20,00",
@@ -319,10 +341,7 @@ export function TariffPage({ onBack }: PageProps) {
   const save = async () => {
     setBusy(true);
     try {
-      const tariffs = forms.map((t) => ({ ...t, price_ct: toNumber(t.price_ct) || 0, surcharge_ct: toNumber(t.surcharge_ct) || 0,
-        vat_percent: toNumber(t.vat_percent) || 0, feed_in_ct: toNumber(t.feed_in_ct),
-        base_fee_eur_month: toNumber(t.base_fee_eur_month) || 0 }));
-      setData(await putJson<{ tariffs: TariffData[]; eeg: EegView }>("/api/tariffs", { tariffs }));
+      setData(await putJson<{ tariffs: TariffData[]; eeg: EegView }>("/api/tariffs", { tariffs: payload(forms) }));
       toast(t("common.saved"));
     } catch (e) {
       toast((e as Error).message, "error");
@@ -1194,7 +1213,7 @@ function FeedInRuleCard({ onSaved }: { onSaved: () => void }) {
 
 export function ExportLimitPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
-  const { data: current, error, reload } = useResource<ExportLimit>("/api/grid/export-limit");
+  const { data: current, error, reload, setData } = useResource<ExportLimit>("/api/grid/export-limit");
   const [preset, setPreset] = useState<"max" | "custom">("custom");
   const [custom, setCustom] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -1238,7 +1257,7 @@ export function ExportLimitPage({ onBack }: PageProps) {
       toast(r.dry_run ? t("settings.exportLimitPage.testModeLogged") : r.result === "ok" ? t("settings.exportLimitPage.changed") : r.result ?? t("common.saved"));
       setConfirmed(false);
       setReference("");
-      reload();
+      await readBack("/api/grid/export-limit", setData, reload); // busy until the value read back is shown (#244)
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {

@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import fc from "fast-check";
 import { csv } from "../src/csv";
 import { decimalInput, parseDecimal, parseWatts } from "../src/decimal";
-import { zonedTime } from "../src/zoned";
+import { nextDay, zonedTime } from "../src/zoned";
 
 test.beforeEach(() => {
   test.skip(test.info().project.name !== "desktop", "pure functions, one run is enough");
@@ -102,4 +102,19 @@ test("a wall-clock time in the plant's time zone is that time there, also around
       expect([expected, hourLater]).toContain(shown);
       if (shown === hourLater) expect(zonedTime(day, hour + 1, minute, zone)).toBe(ts);
     }));
+});
+
+test("the next day is the calendar day after, whatever the length of the day (#244)", () => {
+  const days = fc.date({ min: new Date("2020-01-01T00:00:00Z"), max: new Date("2035-12-31T00:00:00Z"), noInvalidDate: true })
+    .map((d) => d.toISOString().slice(0, 10));
+  fc.assert(fc.property(days, fc.constantFrom("Europe/Berlin", "America/New_York", "Australia/Sydney"), (day, zone) => {
+    const next = nextDay(day);
+    expect(Date.parse(`${next}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)).toBe(86_400_000);
+    // just after midnight, also on the days with 23 or 25 hours: the date shown there is that next day
+    const shown = new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(new Date(zonedTime(next, 0, 30, zone) * 1000));
+    expect(shown).toBe(next);
+  }));
+  expect(nextDay("2026-10-25")).toBe("2026-10-26");
+  expect(nextDay("2028-02-28")).toBe("2028-02-29");
+  expect(nextDay("2026-12-31")).toBe("2027-01-01");
 });
