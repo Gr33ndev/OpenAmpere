@@ -46,6 +46,27 @@ confirm() {
   case "$answer" in [jJyY]*) return 0 ;; *) return 1 ;; esac
 }
 
+# install_dir -> the folder: OPENAMPERE_DIR, an earlier installation (also in another folder) or the answer.
+# Always an absolute path: compose needs one for the helpers, and "~" is not expanded in an answer (#222).
+install_dir() {
+  local dir=${OPENAMPERE_DIR:-/opt/openampere} earlier
+  if [ -z "${OPENAMPERE_DIR:-}" ] && [ ! -f "$dir/docker-compose.yml" ]; then
+    earlier=$($DOCKER ps -a --filter label=com.docker.compose.service=openampere \
+      --format '{{index .Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null | head -n 1 || true)
+    if [ -n "$earlier" ] && [ -f "$earlier/docker-compose.yml" ]; then
+      dir=$earlier
+    else
+      dir=$(ask "Installationsordner" "$dir")
+    fi
+  fi
+  # shellcheck disable=SC2088 # compares with a literal "~" that was typed in, on purpose
+  case "$dir" in "~") dir=$HOME ;; "~/"*) dir="$HOME/${dir#\~/}" ;; esac
+  case "$dir" in
+    /*) printf '%s' "${dir%/}" ;;
+    *) fail "Bitte den Installationsordner als vollständigen Pfad angeben, zum Beispiel /opt/openampere." ;;
+  esac
+}
+
 port_in_use() { (exec 3<>"/dev/tcp/localhost/$1") 2>/dev/null; }
 
 # access from anywhere: OPENAMPERE_TAILSCALE or the question -> TAILSCALE=yes|no
@@ -92,10 +113,7 @@ main() {
   say "Docker ist bereit."
 
   # --- folder, update of an existing installation ---
-  DIR=${OPENAMPERE_DIR:-/opt/openampere}
-  if [ -z "${OPENAMPERE_DIR:-}" ] && [ ! -f "$DIR/docker-compose.yml" ]; then
-    DIR=$(ask "Installationsordner" "$DIR")
-  fi
+  DIR=$(install_dir)
   COMPOSE="$DIR/docker-compose.yml"
   if [ -f "$COMPOSE" ]; then
     grep -q "$MARKER" "$COMPOSE" ||
@@ -183,8 +201,12 @@ copy_helper() {
   if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/$1" ]; then
     $SUDO cp "$(dirname "$source")/$1" "$DIR/$1"
   else
-    curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1" >/dev/null ||
+    # first into a new file: a failed or cut download must not leave an empty helper behind (#222)
+    if ! curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1.new" >/dev/null || [ ! -s "$DIR/$1.new" ]; then
+      $SUDO rm -f "$DIR/$1.new"
       fail "$1 ließ sich nicht herunterladen. Bitte die Internetverbindung prüfen und das Script noch einmal ausführen."
+    fi
+    $SUDO mv "$DIR/$1.new" "$DIR/$1"
   fi
   $SUDO chmod 755 "$DIR/$1"
 }
@@ -263,6 +285,11 @@ start_and_report() {
   $DOCKER compose pull ||
     fail "OpenAmpere ließ sich nicht herunterladen. Bitte die Internetverbindung dieses Rechners prüfen und das Script noch einmal ausführen. Klappt es dann immer noch nicht, frag hier nach (die Meldungen oben helfen dabei): $HELP"
   $DOCKER compose up -d --remove-orphans
+  # the helpers read their script once at the start: restart them so a new updater.sh / tailscale.sh is used (#222)
+  local helpers
+  helpers=$($DOCKER compose config --services | grep -xE 'updater|tailscale' | tr '\n' ' ')
+  # shellcheck disable=SC2086 # one word per service
+  [ -z "$helpers" ] || $DOCKER compose up -d --no-deps --force-recreate $helpers
 
   local port ip
   port=$(sed -n 's/.*OPENAMPERE_SERVER_PORT: "\([0-9]*\)".*/\1/p' docker-compose.yml)
