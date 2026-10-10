@@ -291,9 +291,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"configured": True, "authenticated": True}
 
     @app.post("/api/auth/login")
-    def auth_login(body: PasswordRequest, response: Response):
+    def auth_login(body: PasswordRequest, request: Request, response: Response):
         try:
-            ok = auth.check_password(body.password)
+            ok = auth.check_password(body.password, request.client.host if request.client else None)
         except PermissionError as err:
             raise HTTPException(429, str(err)) from None
         if not ok:
@@ -312,7 +312,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/auth/password")
     def auth_change_password(body: ChangePasswordRequest, request: Request, response: Response):
         try:
-            if not auth.check_password(body.current):
+            if not auth.check_password(body.current, request.client.host if request.client else None):
                 raise HTTPException(401, "Das bisherige Passwort stimmt nicht.")
             auth.set_password(body.new)
         except PermissionError as err:

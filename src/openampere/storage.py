@@ -394,8 +394,8 @@ class Storage:
         return [{**r, "details": json.loads(r["details"]), "dry_run": bool(r["dry_run"])} for r in rows]
 
     def backup(self, target: str | Path, *, drop_settings: set[str] | frozenset = frozenset()) -> None:
-        """Consistent copy of the database while it is in use. Sessions and the given secret settings
-        (e.g. API keys) are removed from the copy."""
+        """Consistent copy of the database while it is in use. Sessions, the password hash, the app tokens and the
+        given secret settings (e.g. API keys) are removed from the copy; a restore keeps those of the installation."""
         with self._lock:
             dest = sqlite3.connect(str(target))
             with dest:
@@ -405,7 +405,7 @@ class Storage:
                 if row:
                     settings = {k: v for k, v in json.loads(row[0]).items() if k not in drop_settings}
                     dest.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
-                dest.execute("DELETE FROM meta WHERE key='sessions'")
+                dest.execute("DELETE FROM meta WHERE key IN ('sessions', 'auth', 'api_tokens')")
             dest.execute("VACUUM")  # really remove the deleted data from the file
             dest.close()
 

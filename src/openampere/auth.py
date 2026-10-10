@@ -13,6 +13,7 @@ import hmac
 import ipaddress
 import os
 import secrets
+import threading
 import time
 
 from .storage import Storage
@@ -21,7 +22,8 @@ SESSION_COOKIE = "openampere_session"
 CSRF_HEADER = "x-openampere"  # custom header: browsers cannot send it cross-site without a CORS preflight
 SESSION_TTL_S = 90 * 24 * 3600
 MIN_PASSWORD_LENGTH = 6
-MAX_FAILED_LOGINS = 5
+MAX_FAILED_LOGINS = 5  # per device and minute: one device trying passwords does not lock out the others
+MAX_FAILED_TOTAL = 30  # all devices together per minute: many addresses do not make guessing faster
 LOCKOUT_S = 60
 
 # Host names that are typical for home networks. Anything else (e.g. evil.example resolving to a LAN IP)
@@ -59,11 +61,23 @@ def host_allowed(host_header: str | None, extra: list[str]) -> bool:
     return host in {h.strip().lower() for h in extra}
 
 
+def _client_key(client: str | None) -> str:
+    """One device: its IPv4 address, or the /64 network of an IPv6 address (a device has many of those)."""
+    try:
+        address = ipaddress.ip_address(client or "")
+    except ValueError:
+        return client or "?"
+    if address.version == 6 and not address.ipv4_mapped:
+        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+    return str(address.ipv4_mapped or address) if address.version == 6 else str(address)
+
+
 class Auth:
     def __init__(self, storage: Storage) -> None:
         self.storage = storage
-        self._failed = 0
-        self._locked_until = 0.0
+        self._tries: dict[str, list[float]] = {}  # device -> times of failed (or still running) checks
+        self._guard = threading.Lock()  # logins run in parallel threads
+        self._sessions_lock = threading.Lock()
 
     # ---- password ----------------------------------------------------------
 
@@ -77,18 +91,20 @@ class Auth:
         salt = os.urandom(16)
         self.storage.set_meta("auth", {"salt": salt.hex(), "hash": _hash(password, salt)})
 
-    def check_password(self, password: str) -> bool:
-        if time.monotonic() < self._locked_until:
-            raise PermissionError("Zu viele Fehlversuche. Bitte eine Minute warten.")
+    def check_password(self, password: str, client: str | None = None) -> bool:
+        key, now = _client_key(client), time.monotonic()
+        with self._guard:
+            self._tries = {k: kept for k, v in self._tries.items() if (kept := [t for t in v if now - t < LOCKOUT_S])}
+            if (len(self._tries.get(key, ())) >= MAX_FAILED_LOGINS
+                    or sum(map(len, self._tries.values())) >= MAX_FAILED_TOTAL):
+                raise PermissionError("Zu viele Fehlversuche. Bitte eine Minute warten.")
+            # counted before the slow check: requests at the same time cannot get past the limit
+            self._tries.setdefault(key, []).append(now)
         stored = self.storage.get_meta("auth")
         ok = bool(stored) and hmac.compare_digest(_hash(password, bytes.fromhex(stored["salt"])), stored["hash"])
         if ok:
-            self._failed = 0
-        else:
-            self._failed += 1
-            if self._failed >= MAX_FAILED_LOGINS:
-                self._failed = 0
-                self._locked_until = time.monotonic() + LOCKOUT_S
+            with self._guard:
+                self._tries.pop(key, None)
         return ok
 
     def reset(self) -> None:
@@ -104,14 +120,17 @@ class Auth:
 
     def create_session(self) -> str:
         token = secrets.token_urlsafe(32)
-        sessions = self._sessions()
-        sessions[_token_id(token)] = time.time() + SESSION_TTL_S
-        self.storage.set_meta("sessions", sessions)
+        with self._sessions_lock:
+            sessions = self._sessions()
+            sessions[_token_id(token)] = time.time() + SESSION_TTL_S
+            self.storage.set_meta("sessions", sessions)
         return token
 
     def valid(self, token: str | None) -> bool:
         return bool(token) and _token_id(token) in self._sessions()
 
     def revoke(self, token: str | None, *, everywhere: bool = False) -> None:
-        sessions = {} if everywhere else {k: v for k, v in self._sessions().items() if not token or k != _token_id(token)}
-        self.storage.set_meta("sessions", sessions)
+        with self._sessions_lock:
+            sessions = {} if everywhere else {k: v for k, v in self._sessions().items()
+                                              if not token or k != _token_id(token)}
+            self.storage.set_meta("sessions", sessions)
