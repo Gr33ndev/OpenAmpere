@@ -30,7 +30,9 @@ log = logging.getLogger(__name__)
 REMOTE_TIMEOUT_S = 180  # the inverter's watchdog: without a new command it ends remote control by itself
 CHARGE_SIGN = -1  # remote power: negative = battery charges (verify on site, see diagnostics)
 EFFICIENCY = 0.92
-VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command
+VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command (checked once per session)
+NEAR_LIMIT = 5  # % below the inverter's own charge limit: no charging there is not an error (full, tapering, #218)
+RESTART_BELOW = 5  # % below the level where the battery took no more: grid charging tries again
 MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
 AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
@@ -86,6 +88,8 @@ class GridCharging:
         self.started_at: float | None = None
         self.start_soc: float | None = None
         self.last_error: str | None = None
+        self.verified = False  # the battery charged after the start of this session
+        self.full_at_soc: float | None = None  # state of charge at which the battery took no more
         self._dry_logged_quarter: int | None = None
 
     # ---- settings ------------------------------------------------------------
@@ -177,9 +181,23 @@ class GridCharging:
                 runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w}}, True,
                                             f"würde laden ({plan['reason']}) – Testmodus")
             return
-        if self.active and self.started_at and now - self.started_at > VERIFY_AFTER_S and snap is not None:
+        soc = snap.battery_soc if snap else None
+        if self.full_at_soc is not None:
+            if soc is None or soc > self.full_at_soc - RESTART_BELOW:
+                await self.stop(self._full_reason())
+                return
+            self.full_at_soc = None
+        if self.active and not self.verified and self.started_at and now - self.started_at > VERIFY_AFTER_S and snap is not None:
+            # once per session: a battery that charged and then takes less near full is fine (#218)
             # battery_power: + = discharging, - = charging
-            if snap.battery_power is None or snap.battery_power > -MIN_CHARGE_W / 2:
+            if snap.battery_power is not None and snap.battery_power <= -MIN_CHARGE_W / 2:
+                self.verified = True
+            elif soc is not None and soc >= await self._upper_limit() - NEAR_LIMIT:
+                # the inverter's own charge limit or a full battery, not a fault: paused, not switched off
+                self.full_at_soc = soc
+                await self.stop(self._full_reason())
+                return
+            else:
                 await self.stop("Der Speicher lädt trotz Befehl nicht – Laden abgebrochen. Bitte in der Diagnose "
                                  "prüfen (Fernsteuerung).", error=True)
                 self.runtime.storage.set_meta("grid_charging", {**asdict(s), "enabled": False})
@@ -195,6 +213,7 @@ class GridCharging:
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
+            self.verified = False
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
                                                                               "target_soc": s.target_soc}},
                                         False, f"Laden gestartet ({plan['reason']})")
@@ -239,6 +258,19 @@ class GridCharging:
             reason = ("Sie war vom Laden aus dem Netz noch an" if pending else "Der Wechselrichter hatte die Werte von "
                       "OpenAmpere wieder eingeschaltet, zum Beispiel nach einem Neustart")
             self._log_stop(f"Fernsteuerung nachträglich abgeschaltet: {reason}")
+
+    def _full_reason(self) -> str:
+        soc = round(self.full_at_soc or 0)
+        reason = f"Der Speicher nimmt bei {soc} % keine Ladung mehr an (Ladegrenze des Wechselrichters oder voll)"
+        return reason
+
+    async def _upper_limit(self) -> float:
+        """The inverter's own charge limit (max_soc), 100 if it cannot be read."""
+        try:
+            limit = (await self.runtime.collector.driver.read_settings()).max_soc
+        except Exception:  # noqa: BLE001 - only decides whether "not charging" is a fault
+            limit = None
+        return float(limit) if limit else 100.0
 
     def _log_stop(self, result: str) -> None:
         snap = self.runtime.collector.latest
