@@ -45,7 +45,7 @@
   },
   "devicesTab": {
     "addDevice": "Add immersion heater or device",
-    "addOrSetUp": "Add or set up devices:",
+    "addOrSetUp": "Add or set up devices: {link}",
     "connectWallbox": "Connect wallbox via evcc",
     "controlledBy": "Controlled by {link}",
     "emptyHint": "A wallbox, immersion heater or heat pump can use your solar power. Add them here.",

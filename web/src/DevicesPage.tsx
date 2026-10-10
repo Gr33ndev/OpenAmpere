@@ -235,7 +235,7 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
         </>
       )}
       <SurplusOrder />
-      <p className="hint center">{t("devices.devicesTab.addOrSetUp")} <button type="button" className="link" onClick={() => navigate("more/connection")}>{t("common.more")} → {t("common.connection")}</button></p>
+      <p className="hint center">{tx("devices.devicesTab.addOrSetUp", { link: <button type="button" className="link" onClick={() => navigate("more/connection")}>{t("common.more")} → {t("common.connection")}</button> })}</p>
     </div>
   );
 }

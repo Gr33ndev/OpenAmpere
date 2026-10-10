@@ -45,7 +45,7 @@
   },
   "devicesTab": {
     "addDevice": "Heizstab oder Gerät hinzufügen",
-    "addOrSetUp": "Geräte hinzufügen oder einrichten:",
+    "addOrSetUp": "Geräte hinzufügen oder einrichten: {link}",
     "connectWallbox": "Wallbox mit evcc verbinden",
     "controlledBy": "Gesteuert von {link}",
     "emptyHint": "Wallbox, Heizstab oder Wärmepumpe können deinen Sonnenstrom nutzen. Füge sie hier hinzu.",
