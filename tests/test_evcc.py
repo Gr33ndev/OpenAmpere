@@ -162,3 +162,20 @@ def test_site_meters_for_evcc(tmp_path, monkeypatch):
     site = client.get("/api/evcc/site", headers={"host": "openampere:8080"}).json()  # docker service name
     assert (site["grid_power"], site["pv_power"], site["battery_power"], site["battery_soc"]) == (-1200, 5000, -2000, 55)
     assert site["grid_import_kwh"] == 1000 and site["pv_kwh"] == 9000
+
+
+async def test_battery_priority_respects_the_control_switch_and_test_mode(tmp_path, evcc_server):
+    """#219: the battery priority is a write to evcc like the other commands."""
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    await runtime.update_settings({"evcc.url": evcc_server + "/"})
+    evcc = Evcc(runtime)
+    assert await evcc.set_priority_soc(60) is False  # "Nur ansehen": nothing sent, nothing logged
+    assert FakeEvcc.calls == [] and runtime.storage.control_log() == []
+    await runtime.update_settings({"control.enabled": True})
+    assert await evcc.set_priority_soc(60) is False  # test mode: only logged
+    assert FakeEvcc.calls == [] and runtime.storage.control_log()[0]["dry_run"]
+    await runtime.update_settings({"control.dry_run": False})
+    assert await evcc.set_priority_soc(60) is True
+    assert FakeEvcc.calls == [("POST", "/api/prioritysoc/60")]
+    entry = runtime.storage.control_log()[0]
+    assert entry["action"] == "evcc" and entry["result"] == "ok" and not entry["dry_run"]

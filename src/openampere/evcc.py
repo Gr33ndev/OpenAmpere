@@ -242,10 +242,19 @@ class Evcc:
         return self.runtime.tariffs.charge_cost(start, max(start, end), energy_kwh, (solar_pct or 0) / 100,
                                                 self.runtime.tz)
 
-    async def set_priority_soc(self, soc: int) -> None:
-        """evcc charges the home battery first up to this state of charge (a site setting in evcc)."""
-        if self.configured:
-            await asyncio.to_thread(self._call, "POST", f"/api/prioritysoc/{int(soc)}")
+    async def set_priority_soc(self, soc: int) -> bool:
+        """evcc charges the home battery first up to this state of charge (a site setting in evcc). Respects the
+        control switch and test mode and is logged, like the other commands (#219). Returns whether it was sent."""
+        control = self.runtime.config.control
+        if not self.configured or not control.enabled:
+            return False
+        details = {"from": {}, "to": {"action": "priority_soc", "value": int(soc)}}
+        if control.dry_run:
+            self.runtime.storage.log_control("evcc", details, True, "nicht gesendet (Testmodus)")
+            return False
+        await asyncio.to_thread(self._call, "POST", f"/api/prioritysoc/{int(soc)}")
+        self.runtime.storage.log_control("evcc", details, False, "ok")
+        return True
 
     async def sessions(self, limit: int = 50) -> list[dict]:
         if not self.configured:

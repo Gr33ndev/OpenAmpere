@@ -274,6 +274,7 @@
     "unknownValue": "unbekannt",
     "update": "Update auf Version {to} gestartet (bisher {from}).",
     "wallbox": "Wallbox",
+    "wallboxBatteryPriority": "{name}: Der Hausspeicher lädt zuerst, bis {soc}.",
     "wallboxLimit": "{name}: Ladeziel auf {soc} gestellt.",
     "wallboxMinSoc": "{name}: Mindestladung auf {soc} gestellt.",
     "wallboxMode": "{name}: Lademodus „{mode}“ gewählt.",
