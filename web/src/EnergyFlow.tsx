@@ -88,13 +88,14 @@ function deviceX(index: number, count: number): number {
 
 let retroOn = false; // survives switching pages, not a reload
 
-/** The easter egg code switches to a retro game look. The icons form a D-pad (sun up, house down, battery left,
+/** The easter egg code switches the whole app to a retro game look (class `retro` on <html>, styles.css). The icons form a D-pad (sun up, house down, battery left,
  * grid right); B and A appear as buttons once the arrows are entered. */
 function useRetro(): { retro: boolean; justUnlocked: boolean; progress: number; press: (key: EasterEggKey) => void } {
   const [retro, setRetro] = useState(retroOn);
   const [justUnlocked, setJustUnlocked] = useState(false);
   const { progress, press } = useEasterEgg(() => {
     retroOn = !retroOn;
+    document.documentElement.classList.toggle("retro", retroOn);
     setRetro(retroOn);
     setJustUnlocked(retroOn);
     chiptune(retroOn ? [523, 659, 784, 1047, 784, 1047] : [784, 659, 523, 392]);
@@ -170,7 +171,6 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         })}
       </svg>
 
-      {retro && <svg className="retro-defs" aria-hidden><RetroPixels /></svg>}
       <Node x={50} y={16} h={h} icon={<SolarIcon />} name="sun" onTap={() => press("up")}>{kw(snap?.pv_power)}</Node>
       <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
       <Node x={12} y={HOUSE.y} h={h} icon={
@@ -209,12 +209,18 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
 }
 
 /** SVG filter that draws the icons in coarse pixels. It is applied to the shapes inside the icons, in their
- * 64 x 64 coordinates: on HTML elements Safari places the sample point outside the icon and draws nothing. */
-function RetroPixels() {
+ * own coordinates: on HTML elements Safari places the sample point outside the icon and draws nothing. Rendered once
+ * by the app (RetroDefs), because a filter that is missing hides the shapes in some browsers. */
+export function RetroDefs() {
+  return <svg className="retro-defs" aria-hidden><RetroPixels id="retro-pixels" size={3} /><RetroPixels id="retro-pixels-fine" size={2} /></svg>;
+}
+
+/** `size`: edge of one pixel in icon units, 3 for the large 64 x 64 icons, 2 for the small ones in the navigation. */
+function RetroPixels({ id, size }: { id: string; size: number }) {
   return (
-    <filter id="retro-pixels" filterUnits="userSpaceOnUse" x="-8" y="-8" width="80" height="80">
+    <filter id={id} filterUnits="userSpaceOnUse" x="-8" y="-8" width="80" height="80">
       <feFlood x="1" y="1" width="1" height="1" />
-      <feComposite x="0" y="0" width="3" height="3" />
+      <feComposite x="0" y="0" width={size} height={size} />
       <feTile result="grid" />
       <feComposite in="SourceGraphic" in2="grid" operator="in" />
       <feMorphology operator="dilate" radius="1" />
