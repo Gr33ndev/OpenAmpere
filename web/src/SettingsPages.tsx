@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useResource } from "./api";
+import { getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
@@ -239,8 +239,7 @@ function EegCard({ eeg, onSaved }: { eeg: EegView; onSaved: () => void }) {
   const { settings, save, locked } = useSettings();
   const [form, setForm] = useState({ auto: eeg.auto, date: eeg.commissioning_date, kwp: "", full: eeg.full });
   const initial = { auto: eeg.auto, date: eeg.commissioning_date, kwp: eeg.installed_kwp ? de(eeg.installed_kwp) : "", full: eeg.full };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: initial is derived from eeg on every render, the form is reset only when eeg changes
-  useEffect(() => setForm(initial), [eeg]);
+  useOnServerChange(initial, setForm);
   const kwp = form.kwp.trim() === "" ? 0 : toNumber(form.kwp);
   const valid = Number.isFinite(kwp) && kwp >= 0 && kwp <= 1000;
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
@@ -304,10 +303,7 @@ export function TariffPage({ onBack }: PageProps) {
   const toForm = (t: TariffData): TariffForm => ({ ...t, price_ct: amountInput(t.price_ct), surcharge_ct: amountInput(t.surcharge_ct),
     vat_percent: de(t.vat_percent), feed_in_ct: amountInput(t.feed_in_ct), base_fee_eur_month: amountInput(t.base_fee_eur_month ?? 0),
     windows: t.windows ?? [] });
-  // biome-ignore lint/correctness/useExhaustiveDependencies: toForm is a pure helper recreated on every render, the forms are reset only for new data
-  useEffect(() => {
-    if (data) setForms(data.tariffs.map(toForm));
-  }, [data]);
+  useOnServerChange(data?.tariffs, (tariffs) => setForms(tariffs.map(toForm)));
   const update = (i: number, patch: Partial<TariffForm>) => setForms((f) => f.map((t, j) => (j === i ? { ...t, ...patch } : t)));
   const dirty = !!data && JSON.stringify(forms) !== JSON.stringify(data.tariffs.map(toForm));
   const valid = forms.length > 0 && forms.every((t) => t.valid_from && [t.feed_in_ct, t.kind === "dynamic" ? t.surcharge_ct : t.price_ct]
@@ -1424,7 +1420,7 @@ export function ChargingPage({ onBack }: PageProps) {
   const [form, setForm] = useState<ChargingSettings | null>(null);
   const [legal, setLegal] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (data) setForm(data.settings); }, [data]);
+  useOnServerChange(data?.settings, setForm);
   const rated = status?.device?.rated_power_w ?? 10_000;
   const { settings, save: saveSettings } = useSettings();
   const [batteryMax, setBatteryMax] = useState("");
@@ -1522,8 +1518,8 @@ export function ChargingPage({ onBack }: PageProps) {
             {form.power_w > base && <Notice kind="warn">{t("settings.chargingPage.powerTooHigh")}</Notice>}
             {form.power_w > 4200 && <p className="hint">{t("settings.chargingPage.section14aHint")}</p>}
             <Field label={t("settings.chargingPage.usableCapacity")} hint={t("settings.chargingPage.capacityHint")}>
-              <div className="input-unit"><input className="input" inputMode="decimal" value={String(form.battery_kwh).replace(".", ",")}
-                onChange={(e) => set({ battery_kwh: Number(e.target.value.replace(",", ".")) || 0 })} /><span>kWh</span></div>
+              <div className="input-unit"><AmountInput value={form.battery_kwh} format={de}
+                onChange={(v) => set({ battery_kwh: v ?? 0 })} /><span>kWh</span></div>
             </Field>
             <Button busy={busy} disabled={!changed} onClick={() => void save(form)}>{t("common.save")}</Button>
             <Unsaved show={!!changed} />

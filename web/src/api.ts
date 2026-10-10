@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEMO } from "./demo/flag";
 import { demoRequest, snapshot as demoSnapshot } from "./demo/server";
 import { lang, t } from "./i18n";
@@ -282,6 +282,20 @@ const REFRESH_EVENT = "openampere:refresh";
 export function refreshAll(): void {
   invalidate();
   window.dispatchEvent(new Event(REFRESH_EVENT));
+}
+
+/** Calls apply when values from the server really changed – not on every poll or reload with the same content –
+ *  so a form keeps what is being typed (#221). */
+export function useOnServerChange<T>(value: T | null | undefined, apply: (value: T) => void): void {
+  const last = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: apply is recreated on every render, only new values count
+  useEffect(() => {
+    if (value == null) return;
+    const json = JSON.stringify(value);
+    if (json === last.current) return;
+    last.current = json;
+    apply(value);
+  }, [value]);
 }
 
 /** Re-fetches a JSON resource whenever the path changes and every refreshMs; path null = nothing to load.

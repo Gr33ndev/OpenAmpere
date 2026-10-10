@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Settings } from "./api";
-import { postJson, putJson, useResource } from "./api";
+import { postJson, putJson, useOnServerChange, useResource } from "./api";
 import { t, tx } from "./i18n";
 import { LoginToSee } from "./AuthScreens";
 import { QrCode } from "./QrCode";
@@ -74,7 +74,7 @@ export function NotifyPage({ onBack }: PageProps) {
   const [suggesting, setSuggesting] = useState(false);
   const [sent, setSent] = useState(false);
   const [arrived, setArrived] = useState<boolean | null>(null);
-  useEffect(() => { if (data) setUrl(data.values["notify.ntfy_url"] ?? ""); }, [data]);
+  useOnServerChange(data ? data.values["notify.ntfy_url"] ?? "" : null, setUrl);
   const values = data?.values;
   // the topic is the only protection of the messages: shown only after login (#164)
   const urlHidden = data?.hidden?.includes("notify.ntfy_url") ?? false;

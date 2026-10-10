@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
 import { InverterIcon } from "./icons";
@@ -56,14 +56,18 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
     }
   };
 
+  // every test and every change of the address gets a number: only the answer of the latest test counts (#221)
+  const run = useRef(0);
   const test = async (target = host) => {
+    const mine = ++run.current;
     setTesting(true); setResult(null); setError(null);
     try {
-      setResult(await postJson<TestResult>("/api/setup/test", { host: target, port, unit, driver }));
+      const answer = await postJson<TestResult>("/api/setup/test", { host: target, port, unit, driver });
+      if (mine === run.current) setResult(answer);
     } catch (e) {
-      setError((e as Error).message);
+      if (mine === run.current) setError((e as Error).message);
     } finally {
-      setTesting(false);
+      if (mine === run.current) setTesting(false);
     }
   };
 
@@ -85,7 +89,11 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
     }
   };
 
-  const reset = () => setResult(null);
+  const reset = () => {
+    run.current++;
+    setResult(null);
+    setTesting(false);
+  };
 
   return (
     <>

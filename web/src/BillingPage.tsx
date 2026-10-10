@@ -4,7 +4,7 @@ import { num } from "./format";
 import { list, LOCALE, t } from "./i18n";
 import { navigate } from "./route";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LoadState, SubPage, toast, Unsaved } from "./ui";
+import { AmountInput, Button, Field, LoadState, SubPage, toast, Unsaved } from "./ui";
 
 type Kind = "import" | "export";
 type Payment = { from: string; eur: number };
@@ -69,10 +69,10 @@ export function BillingPage({ onBack }: PageProps) {
               <div className="field-row" key={i}>
                 <Field label={t("report.billingPage.fromMonth")}><input className="input" type="month" value={p.from}
                   onChange={(e) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)) })} /></Field>
-                <Field label={t("report.billingPage.perMonth")}><div className="input-unit"><input className="input" inputMode="decimal"
-                  value={p.eur.toLocaleString(LOCALE, { useGrouping: false, maximumFractionDigits: 20 })}
-                  onChange={(e) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i
-                    ? { ...x, eur: Number(e.target.value.replace(",", ".")) || 0 } : x)) })} /><span>€</span></div></Field>
+                <Field label={t("report.billingPage.perMonth")}><div className="input-unit"><AmountInput value={p.eur}
+                  format={(v) => v.toLocaleString(LOCALE, { useGrouping: false, maximumFractionDigits: 20 })}
+                  onChange={(v) => update(kind, { payments: form[kind].payments.map((x, j) => (j === i
+                    ? { ...x, eur: v ?? 0 } : x)) })} /><span>€</span></div></Field>
                 <button type="button" className="link danger-link" aria-label={t("report.billingPage.removeAdvancePayment")}
                   onClick={() => update(kind, { payments: form[kind].payments.filter((_, j) => j !== i) })}>{t("common.remove")}</button>
               </div>
