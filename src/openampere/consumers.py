@@ -57,9 +57,12 @@ class Consumer:
         return self.kind == "mypv"
 
 
+SWITCHED_ON = "consumer_switched_on"  # meta: id -> since, devices OpenAmpere really switched on
+
 @dataclass
 class State:
-    on: bool | None = None  # unknown until we switched it once
+    on: bool | None = None  # unknown until we switched it once (in test mode: what would have been switched)
+    switched_on: bool = False  # really switched on by OpenAmpere (not in test mode), remembered over a restart (#217)
     power_w: int = 0  # current setpoint (adjustable) or power while on (switched)
     since: float = 0.0
     want_on: int = 0
@@ -140,6 +143,8 @@ class SurplusControl:
         self.evcc = evcc
         self.states: dict[str, State] = {}
         self._rods: dict[str, tuple[tuple, MyPvHeatingRod]] = {}
+        self._retired: dict[str, Consumer] = {}  # disabled or removed, switched off on the next tick (#217)
+        self._restored = False
 
     # ---- settings ------------------------------------------------------------
 
@@ -149,8 +154,29 @@ class SurplusControl:
 
     def save(self, raw: list) -> list[Consumer]:
         consumers = validate(raw)
+        enabled = {c.id for c in consumers if c.enabled}
+        for old in self.consumers:
+            if old.id not in enabled:
+                self._retired[old.id] = old  # keeps the address, to switch it off once more
+        for c_id in enabled:
+            self._retired.pop(c_id, None)
         self.runtime.storage.set_meta("consumers", [asdict(c) for c in consumers])
         return consumers
+
+    def _remember(self, c_id: str, state: State) -> None:
+        """Which switched devices OpenAmpere really switched on, so it can switch them off after a restart, too."""
+        saved = {k: v for k, v in (self.runtime.storage.get_meta(SWITCHED_ON) or {}).items() if k != c_id}
+        if state.switched_on:
+            saved[c_id] = state.since
+        self.runtime.storage.set_meta(SWITCHED_ON, saved)
+
+    def _restore(self) -> None:
+        if self._restored:
+            return
+        self._restored = True
+        for c_id, since in (self.runtime.storage.get_meta(SWITCHED_ON) or {}).items():
+            state = self.states.setdefault(c_id, State())
+            state.on, state.switched_on, state.since = True, True, since
 
     def view(self) -> dict:
         return {"consumers": [{**asdict(c), "state": asdict(self.states.get(c.id, State())), "override": self.override(c.id)}
@@ -254,7 +280,10 @@ class SurplusControl:
             return
         state = self.states.setdefault(c.id, State())
         details = {"from": {"consumer": c.name, "on": state.on}, "to": {"consumer": c.name, "on": on}}
-        if self.runtime.config.control.dry_run:
+        dry = self.runtime.config.control.dry_run
+        # switching off what OpenAmpere itself switched on is the safe direction: also in test mode, like the grid
+        # charging, otherwise the device keeps running while OpenAmpere believes it is off (#217)
+        if dry and (on or not state.switched_on):
             self.runtime.storage.log_control("consumer", details, True, f"nicht geschaltet (Testmodus): {reason}")
         else:
             try:
@@ -264,9 +293,14 @@ class SurplusControl:
                 state.error = f"Nicht erreichbar: {err}"
                 self.runtime.storage.log_control("consumer", details, False, f"Fehler: {err}")
                 return
+            if dry:
+                reason = f"trotz Testmodus ausgeschaltet, OpenAmpere hatte es eingeschaltet: {reason}"
             self.runtime.storage.log_control("consumer", details, False, reason)
+            state.switched_on = on
         state.on, state.power_w = on, c.power_w if on else 0
         state.since, state.want_on, state.want_off = now, 0, 0
+        if not dry or not on:
+            self._remember(c.id, state)
 
     async def set_power(self, c: Consumer, watts: int, reason: str, now: float, *, force_log: bool = False) -> None:
         state = self.states.setdefault(c.id, State())
@@ -325,7 +359,7 @@ class SurplusControl:
     async def _safe_off(self, consumers: list[Consumer], reason: str, now: float) -> None:
         for c in consumers:
             state = self.states.get(c.id)
-            if state and state.on:
+            if state and (state.on or state.switched_on):
                 if c.adjustable:
                     await self.set_power(c, 0, reason, now)
                 else:
@@ -334,6 +368,8 @@ class SurplusControl:
     async def tick(self, now: float | None = None) -> None:
         now = time.time() if now is None else now
         runtime = self.runtime
+        self._restore()
+        await self._retire(now)
         consumers = [c for c in self.consumers if c.enabled]
         if not consumers:
             return
@@ -377,6 +413,31 @@ class SurplusControl:
             from_free = min(max(free, 0.0), used)
             free -= from_free
             charge = max(0.0, charge - (used - from_free))
+
+    async def _retire(self, now: float) -> None:
+        """Devices that were disabled or removed: switched off if OpenAmpere switched them on, then forgotten (#217)."""
+        for c_id, c in list(self._retired.items()):
+            state = self.states.get(c_id)
+            if state and c.adjustable and state.power_w:
+                await self.set_power(c, 0, "Gerät deaktiviert oder entfernt", now)
+                if state.power_w:
+                    continue  # not reachable: again on the next tick
+            elif state and (state.on or state.switched_on):
+                await self.switch(c, False, "Gerät deaktiviert oder entfernt", now)
+                if state.switched_on:
+                    continue
+            del self._retired[c_id]
+            self.states.pop(c_id, None)
+            self._remember(c_id, State())
+        # remembered before a restart: disabled meanwhile -> switched off on the next tick; removed -> there is no
+        # address left to switch it with
+        configured = {c.id: c for c in self.consumers}
+        for c_id in [k for k in self.states if not (k in configured and configured[k].enabled) and k not in self._retired]:
+            if c_id in configured:
+                self._retired[c_id] = configured[c_id]
+            else:
+                del self.states[c_id]
+                self._remember(c_id, State())
 
     async def _manual(self, c: Consumer, state: State, mode: str, now: float) -> float:
         on = mode == "boost"

@@ -77,3 +77,102 @@ def test_validation():
         validate([{"name": "", "host": PUMP}])
     c = validate([{"name": "Pumpe", "kind": "shelly1", "host": PUMP, "channel": 1}])[0]
     assert switch_url(c, False) == f"http://{PUMP}/relay/1?turn=off"
+
+
+# #217: a relay that OpenAmpere switched on must not stay on when it should be off
+PUMP_ON, PUMP_OFF = f"http://{PUMP}/relay/0?turn=on", f"http://{PUMP}/relay/0?turn=off"
+PUMP_CONFIG = {"name": "Pumpe", "kind": "shelly1", "host": PUMP, "power_w": 1000, "min_on_min": 0, "min_off_min": 0}
+
+
+async def pump_on(control, runtime, calls):
+    reading(runtime, grid=-2000)
+    await control.tick(now=1000)
+    await control.tick(now=1030)
+    assert calls == [PUMP_ON]
+
+
+@pytest.mark.parametrize("change", ["disabled", "removed"])
+async def test_a_device_switched_on_is_switched_off_when_disabled_or_removed(tmp_path, monkeypatch, change):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([PUMP_CONFIG])
+    await pump_on(control, runtime, calls)
+    control.save([{**PUMP_CONFIG, "enabled": False}] if change == "disabled" else [])
+    reading(runtime, grid=2000)
+    await control.tick(now=1060)
+    assert calls == [PUMP_ON, PUMP_OFF]
+    await control.tick(now=1090)
+    assert calls == [PUMP_ON, PUMP_OFF]  # once, then forgotten
+
+
+async def test_a_device_that_was_not_reachable_is_switched_off_on_the_next_tick(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([PUMP_CONFIG])
+    await pump_on(control, runtime, calls)
+    control.save([])
+
+    def offline(url):
+        raise OSError("timed out")
+    monkeypatch.setattr(consumers_module, "_call", offline)
+    await control.tick(now=1060)
+    monkeypatch.setattr(consumers_module, "_call", calls.append)
+    await control.tick(now=1090)
+    assert calls == [PUMP_ON, PUMP_OFF]
+
+
+async def test_test_mode_still_switches_off_what_openampere_switched_on(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([PUMP_CONFIG])
+    await pump_on(control, runtime, calls)
+    runtime.config.control.dry_run = True
+    reading(runtime, grid=2000)  # no surplus any more
+    for now in (1060, 1090, 1120):
+        await control.tick(now=now)
+    assert calls == [PUMP_ON, PUMP_OFF]
+    entry = runtime.storage.control_log()[0]
+    assert not entry["dry_run"] and "trotz Testmodus" in entry["result"]
+    # in test mode nothing is switched on, and nothing switched on only "on paper" is switched off for real
+    reading(runtime, grid=-2000)
+    for now in (1150, 1180, 1210):
+        await control.tick(now=now)
+    reading(runtime, grid=2000)
+    for now in (1240, 1270, 1300):
+        await control.tick(now=now)
+    assert calls == [PUMP_ON, PUMP_OFF]
+
+
+@pytest.mark.parametrize("situation", ["no surplus", "control off", "no readings", "switched off by hand"])
+async def test_after_a_restart_a_device_switched_on_is_still_switched_off(tmp_path, monkeypatch, situation):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([PUMP_CONFIG])
+    await pump_on(control, runtime, calls)
+
+    restarted = SurplusControl(runtime)  # same database, nothing in memory
+    reading(runtime, grid=2000)
+    if situation == "control off":
+        runtime.config.control.enabled = False
+    elif situation == "no readings":
+        runtime.collector.latest = None
+    elif situation == "switched off by hand":
+        reading(runtime, grid=-2000)  # surplus, but the owner wants it off
+        restarted.set_override(restarted.consumers[0].id, "off", now=2000)
+    for now in (2000, 2030, 2060):
+        await restarted.tick(now=now)
+    assert calls == [PUMP_ON, PUMP_OFF]
+
+
+async def test_a_device_never_switched_on_by_openampere_is_left_alone_after_a_restart(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    SurplusControl(runtime).save([PUMP_CONFIG])
+    restarted = SurplusControl(runtime)
+    runtime.config.control.enabled = False
+    await restarted.tick(now=2000)
+    assert calls == []
