@@ -66,3 +66,15 @@ export function chiptune(notes: number[]) {
     // no audio (old browser, blocked): the look changes anyway
   }
 }
+
+/** Whether the retro look is on (class "retro" on <html>), with a re-render when it changes. */
+export function useRetroLook(): boolean {
+  const [on, setOn] = useState(() => document.documentElement.classList.contains("retro"));
+  useEffect(() => {
+    const html = document.documentElement;
+    const observer = new MutationObserver(() => setOn(html.classList.contains("retro")));
+    observer.observe(html, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return on;
+}

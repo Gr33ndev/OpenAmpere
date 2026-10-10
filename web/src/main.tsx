@@ -4,6 +4,7 @@ import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
 import { PasswordSetup, useLoginPrompt } from "./AuthScreens";
 import { Dashboard } from "./Dashboard";
+import { RetroDefs } from "./EnergyFlow";
 import { NavDevices, NavHome, NavMore, NavReport } from "./icons";
 import { DevicesTab } from "./DevicesPage";
 import { More } from "./More";
@@ -124,6 +125,7 @@ function App() {
       </nav>
       {login.dialog}
       <ToastHost />
+      <RetroDefs />
     </div>
   );
 }

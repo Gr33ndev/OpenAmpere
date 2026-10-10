@@ -212,6 +212,54 @@ nav.bottom button.active::after { background: var(--accent-text); }
   .flow.retro .flow-icon, .coin, .retro-banner { animation: none !important; }
 }
 
+/* the same easter egg for the whole app: class "retro" on <html>. Headings, buttons and labels get the full game
+   look, running text keeps upper and lower case so hints and warnings stay easy to read. */
+/* :root.retro, so the tokens win over the ones of the dark theme */
+:root.retro {
+  --retro-frame: var(--text);
+  /* the green of old handheld consoles: OpenAmpere's own colour family, not the vendor's brand colour.
+     Text in it: 7.2:1 on white, 6:1 on the dark cards */
+  --retro-accent: light-dark(#306230, #9bbc0f);
+  --accent: #8bac0f;
+  --accent-text: var(--retro-accent);
+  --px: 3px;
+}
+/* biome-ignore lint/complexity/noImportantStyles: the radii are set per component, the game look squares them all in one place */
+html.retro *, html.retro *::before, html.retro *::after { border-radius: 0 !important; }
+html.retro body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: -0.02em; }
+html.retro :is(h1, h2, h3, .section-title, .card-head, .text-tabs button, .nav-label, .btn, .segmented button, .chip, .lock) {
+  text-transform: uppercase; font-weight: 700; letter-spacing: 0;
+}
+/* frames with cut corners, like the boxes of old console games */
+html.retro :is(.card, .tile, .dialog, nav.bottom) {
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--retro-frame), 0 var(--px) 0 0 var(--retro-frame),
+    calc(-1 * var(--px)) 0 0 0 var(--retro-frame), var(--px) 0 0 0 var(--retro-frame);
+}
+html.retro .card .card { box-shadow: none; border: 2px dashed var(--divider); }
+html.retro .btn { box-shadow: var(--px) var(--px) 0 0 var(--retro-frame); }
+html.retro .btn.primary { background: var(--retro-accent); color: light-dark(#fff, #111); }
+html.retro .btn:active:not(:disabled) { transform: translate(var(--px), var(--px)); box-shadow: none; }
+html.retro .input { border: 2px solid var(--retro-frame); }
+html.retro .input:focus { border-color: var(--retro-accent); }
+html.retro :is(.card-head, .menu-row + .menu-row) { border-style: dashed; }
+html.retro .switch span { transition-timing-function: steps(3); }
+html.retro .slider input::-webkit-slider-thumb { border-radius: 0; }
+html.retro .slider input::-moz-range-thumb { border-radius: 0; }
+/* the monospace font is wider: values keep their unit on the same line, long license names may wrap */
+html.retro .key-row strong { font-size: 18px; white-space: nowrap; }
+html.retro .license-meta { flex: 0 1 auto; min-width: 0; }
+html.retro .license-meta .pill { white-space: normal; text-align: right; }
+html.retro nav.bottom svg > * { filter: url(#retro-pixels-fine); }
+html.retro nav.bottom button.active::after { height: var(--px); }
+html.retro .page-head h1::before { content: "▶ "; color: var(--retro-accent); }
+html.retro .page-head h1::after { content: "_"; color: var(--retro-accent); animation: retro-blink 1s steps(1) infinite; }
+/* scan lines of an old screen, faint so the text stays sharp */
+html.retro body::after { content: ""; position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 4px); }
+@media (prefers-reduced-motion: reduce) {
+  html.retro .page-head h1::after { animation: none; }
+}
+
 /* ---- daily values ---- */
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile { background: var(--card); border-radius: var(--radius-m); padding: 14px 16px; }
