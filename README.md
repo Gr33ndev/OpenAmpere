@@ -164,7 +164,7 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33nd
 
 **The update helper checks this automatically.** Before it starts a new version (update button in the app or at night), it verifies the image with [cosign](https://docs.sigstore.dev/cosign/) against the release workflow of this repository; no account is needed. If the check fails, the new version is not started and the previous one keeps running, with a message in the app. Installations from before 0.10.1 get this helper by running the install script once more. Only for emergencies, `OPENAMPERE_VERIFY_IMAGES=nein` in the `updater` service turns the check off.
 
-`install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
+`install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. They come with a signed build provenance as well (`openampere-<version>.intoto.jsonl`); after downloading, `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere` checks that a script comes from this repository. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
 
 ### Remote access
 
