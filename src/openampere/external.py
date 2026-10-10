@@ -126,6 +126,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             if device else None,
             "pv_inputs": [{"index": i, "name": names[i] if i < len(names) and names[i] else f"Modulfeld {i + 1}"}
                           for i in range(count) if str(i + 1) not in hidden],
+            "pv_input_count": count,  # also the hidden ones: the integration sets up again when the number changes
             "devices": [{"id": d["id"], "name": d["name"], "kind": d["kind"]} for d in own_devices()],
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }

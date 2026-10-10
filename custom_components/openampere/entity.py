@@ -44,6 +44,11 @@ class OpenAmpereEntity(CoordinatorEntity[OpenAmpereCoordinator]):
         return self.data.get("live") or {}
 
     @property
+    def stale(self) -> bool:
+        """OpenAmpere has no current reading from the inverter (connection lost): the last values are old."""
+        return bool((self.data.get("status") or {}).get("stale"))
+
+    @property
     def device(self) -> dict[str, Any] | None:
         return next((d for d in self.data.get("devices") or [] if d["id"] == self._device_id), None)
 

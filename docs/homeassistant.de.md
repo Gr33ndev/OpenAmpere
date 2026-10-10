@@ -63,6 +63,8 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 
 **Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv).
 
+**Verbindung zum Wechselrichter weg:** Die Werte vom Wechselrichter sind „nicht verfügbar“, bis OpenAmpere wieder aktuelle Messwerte hat. So schalten Automationen nicht nach alten Werten. Strompreis und Steuerung bleiben verfügbar.
+
 **Energie-Dashboard:** Einstellungen → Dashboards → Energie. Netzbezug und Einspeisung bei „Stromnetz“,
 PV-Erzeugung bei „Solarmodule“, Speicher geladen/entladen bei „Batteriespeicher“.
 
