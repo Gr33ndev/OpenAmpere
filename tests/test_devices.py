@@ -101,12 +101,12 @@ def test_surplus_order(tmp_path, authed):
         {"name": "Heizstab", "kind": "shelly2", "host": "rod.local", "power_w": 2000},
         {"name": "Pumpe", "kind": "shelly1", "host": "pump.local", "power_w": 800}]})
     view = client.get("/api/surplus-order").json()
-    rod, pump = (i["key"] for i in view["items"] if i["key"].startswith("c:"))
+    rod_key, pump = (i["key"] for i in view["items"] if i["key"].startswith("c:"))
     assert view["order"][0] == "battery" and [i["name"] for i in view["items"]] == ["Speicher", "Heizstab", "Pumpe"]
 
     # pump first, then the battery up to 70 %, then the heating rod
-    saved = client.put("/api/surplus-order", json={"order": [pump, "battery", rod], "battery_soc": 70}).json()
-    assert saved["order"] == [pump, "battery", "wallbox", rod] and saved["battery_soc"] == 70
+    saved = client.put("/api/surplus-order", json={"order": [pump, "battery", rod_key], "battery_soc": 70}).json()
+    assert saved["order"] == [pump, "battery", "wallbox", rod_key] and saved["battery_soc"] == 70
     surplus = SurplusControl(runtime)
     by_name = {c.name: c for c in surplus.consumers}
     assert surplus.battery_first_soc(by_name["Pumpe"]) == 0

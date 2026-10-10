@@ -103,7 +103,7 @@ function App() {
       {status.web_build && firstBuild.current && status.web_build !== firstBuild.current && (
         <div className="update-banner" role="status">
           {t("shell.app.newVersionInstalled")}
-          <button className="link" onClick={() => window.location.reload()}>{t("shell.app.reloadNow")}</button>
+          <button type="button" className="link" onClick={() => window.location.reload()}>{t("shell.app.reloadNow")}</button>
         </div>
       )}
       <main>
@@ -115,7 +115,7 @@ function App() {
       </main>
       <nav className="bottom">
         {TABS.map((item) => (
-          <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}
+          <button type="button" key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}
             aria-current={tab === item.id ? "page" : undefined}>
             {item.icon}
             <span className="nav-label">{item.label}</span>

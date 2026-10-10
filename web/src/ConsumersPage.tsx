@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
@@ -105,7 +105,7 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
       <div className="button-row">
         <Button busy={busy} disabled={!valid} onClick={() => onSave(c)}>{t("common.save")}</Button>
         <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
-        {onRemove && <button className="link danger-link" onClick={onRemove}>{t("devices.editor.removeDevice")}</button>}
+        {onRemove && <button type="button" className="link danger-link" onClick={onRemove}>{t("devices.editor.removeDevice")}</button>}
       </div>
     </div>
   );
@@ -132,7 +132,7 @@ export function ConsumersPage({ onBack }: PageProps) {
     }
   };
 
-  let body;
+  let body: ReactNode;
   if (!list) {
     body = <LoadState error={error} onRetry={reload} />;
   } else if (editing === "choose") {
@@ -141,7 +141,7 @@ export function ConsumersPage({ onBack }: PageProps) {
         <div className="section-title">{t("devices.consumersPage.chooseKind")}</div>
         <div className="card choices">
           {CHOICES.map((ch) => (
-            <button key={ch.id} className="choice" onClick={() => setEditing(template(ch.id))}>
+            <button type="button" key={ch.id} className="choice" onClick={() => setEditing(template(ch.id))}>
               <DeviceIcon kind={ch.kind} size={36} />
               <span><strong>{ch.title}</strong><span className="meta">{ch.text}</span></span>
             </button>
@@ -162,7 +162,7 @@ export function ConsumersPage({ onBack }: PageProps) {
         {list.length ? (
           <div className="card menu">
             {list.map((c, i) => (
-              <button key={c.id ?? i} className="device-row-compact" onClick={() => setEditing(i)}>
+              <button type="button" key={c.id ?? i} className="device-row-compact" onClick={() => setEditing(i)}>
                 <DeviceIcon kind={c.kind === "mypv" ? "heating_rod" : "switch"} size={36} />
                 <span className="grow"><strong>{c.name}</strong><span className="menu-hint">{kindLabel(c)} · {c.kind === "http" ? t("devices.consumersPage.webAddresses") : c.host}</span></span>
                 <span className="link">{t("devices.consumersPage.edit")}</span>

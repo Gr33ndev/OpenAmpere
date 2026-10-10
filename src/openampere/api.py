@@ -1072,7 +1072,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         s = collector.latest
         if not s:
             raise HTTPException(503, "Noch keine Messwerte")
-        neg = (lambda v: -v if v is not None else None)
+        def neg(v):
+            return -v if v is not None else None
+
         return {"pvPower": s.pv_power, "housePower": neg(s.house_power), "gridPower": s.grid_power,
                 "batteryPower": s.battery_power, "batterySoc": s.battery_soc}
 

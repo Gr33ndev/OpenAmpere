@@ -72,9 +72,9 @@ export function UpdateBanner() {
       <span>{t("shell.updateBanner.versionAvailable", { version: latest })}
         {data.latest?.url && <> · <a className="link" href={data.latest.url} target="_blank" rel="noopener noreferrer">{t("shell.updateBanner.whatsNew")}</a></>}</span>
       {data.updater
-        ? <button className="banner-button" onClick={async () => setInstalling(await install())}>{t("shell.updateBanner.update")}</button>
-        : <button className="banner-button" onClick={() => navigate("more/about")}>{t("common.howItWorks")}</button>}
-      <button className="banner-close" aria-label={t("shell.updateBanner.remindMeLater")} onClick={() => { remember(latest); setHidden(latest); }}>×</button>
+        ? <button type="button" className="banner-button" onClick={async () => setInstalling(await install())}>{t("shell.updateBanner.update")}</button>
+        : <button type="button" className="banner-button" onClick={() => navigate("more/about")}>{t("common.howItWorks")}</button>}
+      <button type="button" className="banner-close" aria-label={t("shell.updateBanner.remindMeLater")} onClick={() => { remember(latest); setHidden(latest); }}>×</button>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function UpdatesCard() {
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
         <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
           checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
-        {data.check && <button className="link" disabled={busy} onClick={() => void check()}>{t("shell.updatesCard.checkUpdatesNow")}</button>}
+        {data.check && <button type="button" className="link" disabled={busy} onClick={() => void check()}>{t("shell.updatesCard.checkUpdatesNow")}</button>}
       </div>
     </>
   );

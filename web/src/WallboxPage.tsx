@@ -135,8 +135,8 @@ function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: 
   if (!open) {
     return (
       <div className="button-row inline">
-        <button className="link" onClick={() => setOpen(true)}>{t("devices.planForm.title")}</button>
-        {lp.plan_active && <button className="link" onClick={() => void send("plan_delete")}>{t("devices.planForm.deletePlan")}</button>}
+        <button type="button" className="link" onClick={() => setOpen(true)}>{t("devices.planForm.title")}</button>
+        {lp.plan_active && <button type="button" className="link" onClick={() => void send("plan_delete")}>{t("devices.planForm.deletePlan")}</button>}
       </div>
     );
   }
@@ -156,7 +156,7 @@ function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: 
       </div>
       <div className="button-row inline">
         <Button busy={busy} onClick={async () => { await send("plan", { soc, time: target() }); setOpen(false); }}>{t("devices.planForm.setPlan")}</Button>
-        <button className="link" onClick={() => setOpen(false)}>{t("common.cancel")}</button>
+        <button type="button" className="link" onClick={() => setOpen(false)}>{t("common.cancel")}</button>
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ function sun(hour: number, doy: number): number {
   const x = (hour - (13.3 - length / 2)) / length;
   if (x <= 0 || x >= 1) return 0;
   // winter sun is much weaker (low angle, more haze); calibrated to about 900 kWh per kWp and year
-  return Math.pow(Math.sin(Math.PI * x), 1.4) * (0.3 + 0.7 * (season + 1) / 2);
+  return Math.sin(Math.PI * x) ** 1.4 * (0.3 + 0.7 * (season + 1) / 2);
 }
 
 function load(hour: number, weekend: boolean, rnd: () => number, washer: number | null): number {
@@ -67,7 +67,7 @@ function simulateDay(start: number, soc: number): Step[] {
   const date = new Date(start * 1000);
   const rnd = random(start / 86400);
   const season = Math.sin((2 * Math.PI * (doy - 80)) / 365);
-  const clouds = (0.2 + 0.8 * Math.pow(rnd(), 0.6)) * (0.55 + 0.45 * (season + 1) / 2); // more grey days in winter
+  const clouds = (0.2 + 0.8 * rnd() ** 0.6) * (0.55 + 0.45 * (season + 1) / 2); // more grey days in winter
   const washer = rnd() < 0.45 ? 10 + rnd() * 5 : null;
   const weekend = date.getDay() === 0 || date.getDay() === 6;
   const steps: Step[] = [];

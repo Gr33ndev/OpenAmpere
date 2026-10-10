@@ -72,7 +72,9 @@ export function LoginDialog({ onDone, onCancel }: { onDone: () => void; onCancel
     }
   };
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: Escape closes the dialog (useModal), the backdrop click is an extra for pointer users
     <div className="overlay" onClick={onCancel}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: only keeps a click inside the dialog from closing it */}
       <form className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="login-title" onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => { e.preventDefault(); void login(); }}>
         <h2 id="login-title">{t("common.logIn")}</h2>

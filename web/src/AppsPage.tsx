@@ -101,7 +101,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
                   <div className="hint">{t("settings.appsPage.created", { date: when(token.created) })} · {token.last_used
                     ? t("settings.appsPage.lastUsed", { date: when(token.last_used) }) : t("settings.appsPage.neverUsed")}</div>
                 </div>
-                <button className="link danger-link" onClick={() => setRevoke(token)}>{t("common.remove")}</button>
+                <button type="button" className="link danger-link" onClick={() => setRevoke(token)}>{t("common.remove")}</button>
               </li>
             ))}
           </ul>
@@ -140,8 +140,9 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
   return (
     <div className="card form pairing">
       <h2>{t("settings.pairingCard.title", { name: request.name })}</h2>
-      <p className="pairing-code" aria-label={t("settings.pairingCard.codeLabel", { code: request.code.split("").join(" ") })}>
-        {request.code.slice(0, 3)} {request.code.slice(3)}</p>
+      <p className="pairing-code">
+        <span aria-hidden="true">{request.code.slice(0, 3)} {request.code.slice(3)}</span>
+        <span className="sr-only">{t("settings.pairingCard.codeLabel", { code: request.code.split("").join(" ") })}</span></p>
       <p className="hint">{tx("settings.pairingCard.checkCode", { code: <strong>{t("settings.pairingCard.exactCode")}</strong> })}</p>
       <Field label={t("common.permission")}><Segmented value={scope} onChange={setScope} options={SCOPES} /></Field>
       <div className="button-row">
@@ -203,7 +204,7 @@ function ConnectionStatus({ data }: { data: Tokens }) {
 export function CopyValue({ value }: { value: string }) {
   return (
     <span className="copy-value"><code>{value}</code>
-      <button className="link" onClick={async () => { if (await copyText(value)) toast(t("common.copied")); }}>{t("common.copy")}</button>
+      <button type="button" className="link" onClick={async () => { if (await copyText(value)) toast(t("common.copied")); }}>{t("common.copy")}</button>
     </span>
   );
 }

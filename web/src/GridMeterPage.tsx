@@ -101,7 +101,7 @@ export function GridMeterPage({ onBack }: PageProps) {
           <Button busy={busy} disabled={!changed || (provider !== "none" && (!username || (!password && !passwordSet)))}
             onClick={() => void submit()}>{provider === "none" ? t("common.save") : t("settings.gridMeterPage.saveAndFetch")}</Button>
           {view.configured && !changed && (
-            <button className="link" disabled={view.busy} onClick={() => void fetchNow().catch((e) => toast((e as Error).message, "error"))}>
+            <button type="button" className="link" disabled={view.busy} onClick={() => void fetchNow().catch((e) => toast((e as Error).message, "error"))}>
               {t("settings.gridMeterPage.fetchNow")}</button>
           )}
         </div>

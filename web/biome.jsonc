@@ -1,0 +1,25 @@
+{
+  // Coding style of the web app: Biome's recommended lint rules on top of TypeScript's strict mode
+  // (see CONTRIBUTING.md#code-rules). Runs in CI with `npm run lint`. Formatting is not enforced.
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true, "root": ".." },
+  "files": { "includes": ["src/**", "ui-tests/**", "scripts/**", "*.ts"] },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // used after a check the compiler cannot follow (e.g. refs that are set once the element is rendered)
+        "noNonNullAssertion": "off",
+        // the stylesheet is ordered by component, not by selector specificity
+        "noDescendingSpecificity": "off"
+      },
+      "suspicious": {
+        // lists rendered with the index are fixed (chart rows, legend entries) and never reordered
+        "noArrayIndexKey": "off"
+      }
+    }
+  }
+}

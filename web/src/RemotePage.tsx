@@ -47,7 +47,7 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
           <Notice kind="info">
             {t("settings.remotePage.notInstalled")}
             <code className="code-inline">{INSTALL}</code>
-            <button className="link" onClick={async () => { if (await copyText(INSTALL)) toast(t("settings.remotePage.commandCopied")); }}>{t("settings.remotePage.copyCommand")}</button>{" "}
+            <button type="button" className="link" onClick={async () => { if (await copyText(INSTALL)) toast(t("settings.remotePage.commandCopied")); }}>{t("settings.remotePage.copyCommand")}</button>{" "}
             {tx("settings.remotePage.installScriptHint", { link: <a href={DOCS_URL} target="_blank" rel="noopener">{t("settings.remotePage.guide")}</a> })}
           </Notice>
         </div>
@@ -76,7 +76,7 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
           <p>{t("settings.remotePage.logInHint")}</p>
           <a className="btn primary" href={data.login_url} target="_blank" rel="noopener noreferrer">{t("settings.remotePage.logIn")}</a>
           <p className="hint">{t("settings.remotePage.continuesAutomatically")}</p>
-          <button className="link" disabled={busy} onClick={() => void act("logout")}>{t("common.cancel")}</button>
+          <button type="button" className="link" disabled={busy} onClick={() => void act("logout")}>{t("common.cancel")}</button>
         </div>
       )}
 

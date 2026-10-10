@@ -108,7 +108,11 @@ Before the PR:
 ```
 
 ```bash
-cd web && npm run build
+.venv/bin/ruff check .
+```
+
+```bash
+cd web && npm run lint && npm run build
 ```
 
 UI tests ([Playwright](https://playwright.dev), `web/ui-tests/`) open every page of the built app on a desktop browser
@@ -134,6 +138,14 @@ scripts/deps.sh
 
 ## Code rules
 
+- **Style guides, checked in CI:**
+  - **Python:** [PEP 8](https://peps.python.org/pep-0008/) as checked by [ruff](https://docs.astral.sh/ruff/)
+    (pycodestyle and pyflakes rules, configured in `pyproject.toml`). Lines are wrapped at about 120 characters; the
+    length itself is not enforced, so long messages and tables stay readable.
+  - **TypeScript:** TypeScript's strict mode plus the recommended rules of [Biome](https://biomejs.dev)
+    (`web/biome.jsonc`, the few rules that are switched off are explained there). Formatting is not enforced.
+  - An exception in the code needs a comment at its place that says why (`# noqa: <rule>  (reason)` or
+    `// biome-ignore <rule>: <reason>`).
 - **Match the surrounding code:** Adapt naming, comment density and style to the code around it. Comments and
   identifiers in English; texts in the app always via `t()` with a key, German first (see
   [Translating the app](#translating-the-app)).

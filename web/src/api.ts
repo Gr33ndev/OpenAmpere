@@ -293,6 +293,7 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is the trigger of reload()
   useEffect(() => {
     setData(null);
     setError(null);
