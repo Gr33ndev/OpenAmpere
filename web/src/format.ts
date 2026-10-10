@@ -1,4 +1,5 @@
 import { LOCALE, t } from "./i18n";
+import { zonedTime } from "./zoned";
 
 /** kW and kWh: always two decimals (#161) */
 const nf2 = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -60,6 +61,9 @@ export function updatedLabel(ts: number): string {
     : new Date(ts * 1000).toLocaleDateString(LOCALE, { timeZone: zone });
   return `${day}, ${time(ts)}`;
 }
+
+/** The moment of a wall-clock time on a day (YYYY-MM-DD) in the plant's time zone, in seconds. */
+export const plantTime = (day: string, hour: number, minute: number) => zonedTime(day, hour, minute, zone);
 
 /** Today in the plant's time zone. */
 export function todayIso(): string {

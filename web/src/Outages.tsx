@@ -18,7 +18,7 @@ const day = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { day
   timeZone: timeZone() });
 const time = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
 const duration = (s: number) => {
-  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  const total = Math.round(s / 60), h = Math.floor(total / 60), m = total % 60; // never "1 h 60 min"
   return h ? t("report.duration.hoursMinutes", { h, m }) : t("report.duration.minutes", { m: Math.max(1, m) });
 };
 const pct = (v: number | null) => (v == null ? "–" : `${num(v, 0)} %`);

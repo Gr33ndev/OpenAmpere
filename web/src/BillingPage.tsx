@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
-import { num } from "./format";
+import { num, todayIso } from "./format";
 import { list, LOCALE, t } from "./i18n";
 import { navigate } from "./route";
 import type { PageProps } from "./SettingsPages";
@@ -28,7 +28,7 @@ const TEXT: Record<Kind, { title: string; hint: string }> = {
 };
 const euro = (v: number) => v.toLocaleString(LOCALE, { style: "currency", currency: "EUR" });
 const dateLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" });
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+const thisMonth = () => todayIso().slice(0, 7); // in the plant's time zone, not UTC
 
 /** Settings: the monthly prepayments and when the billing year starts, for grid power and feed-in. */
 export function BillingPage({ onBack }: PageProps) {

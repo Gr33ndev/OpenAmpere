@@ -69,6 +69,8 @@
     "myPvSetupHint": "In the immersion heater's web interface, set the control to “Modbus TCP” and the control timeout to 60 seconds. If it stops receiving commands, it then switches itself off.",
     "newerGeneration": "Plus, Pro and newer (generation 2+)",
     "removeDevice": "Remove device",
+    "removeHint": "OpenAmpere no longer controls the device afterwards. If OpenAmpere switched it on, it switches it off first.",
+    "removeQuestion": "Remove {name}?",
     "shellyGeneration": "Shelly generation",
     "shellyIp": "IP address of the Shelly",
     "switchOffUrl": "Address to switch off",

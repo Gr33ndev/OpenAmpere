@@ -69,6 +69,8 @@
     "myPvSetupHint": "Im Webinterface des Heizstabs die Ansteuerung auf „Modbus TCP“ stellen und den Zeitablauf der Ansteuerung auf 60 Sekunden. Bekommt er keine Vorgabe mehr, schaltet er sich dann von selbst ab.",
     "newerGeneration": "Plus, Pro und neuer (Generation 2+)",
     "removeDevice": "Gerät entfernen",
+    "removeHint": "OpenAmpere steuert das Gerät danach nicht mehr. Hat OpenAmpere es eingeschaltet, schaltet es das Gerät vorher aus.",
+    "removeQuestion": "{name} entfernen?",
     "shellyGeneration": "Shelly-Generation",
     "shellyIp": "IP-Adresse des Shelly",
     "switchOffUrl": "Adresse zum Ausschalten",

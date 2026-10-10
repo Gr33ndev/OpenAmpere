@@ -35,11 +35,17 @@ export function GridMeterPage({ onBack }: PageProps) {
   const passwordSet = secrets?.["meter.password"]?.set ?? false;
   const changed = !!settings && (provider !== settings["meter.provider"] || username !== settings["meter.username"] || !!password);
 
+  const [fetching, setFetching] = useState(false);
   const fetchNow = async () => {
-    const result = await postJson<GridMeterView>("/api/gridmeter/sync", {});
-    setView(result);
-    if (result.error) toast(result.error, "error");
-    else if (result.until) toast(t("settings.gridMeterPage.completeUntil", { date: dayLabel(result.until) }));
+    setFetching(true);  // one request at a time, also when tapped twice
+    try {
+      const result = await postJson<GridMeterView>("/api/gridmeter/sync", {});
+      setView(result);
+      if (result.error) toast(result.error, "error");
+      else if (result.until) toast(t("settings.gridMeterPage.completeUntil", { date: dayLabel(result.until) }));
+    } finally {
+      setFetching(false);
+    }
   };
 
   const submit = async () => {
@@ -101,7 +107,7 @@ export function GridMeterPage({ onBack }: PageProps) {
           <Button busy={busy} disabled={!changed || (provider !== "none" && (!username || (!password && !passwordSet)))}
             onClick={() => void submit()}>{provider === "none" ? t("common.save") : t("settings.gridMeterPage.saveAndFetch")}</Button>
           {view.configured && !changed && (
-            <button type="button" className="link" disabled={view.busy} onClick={() => void fetchNow().catch((e) => toast((e as Error).message, "error"))}>
+            <button type="button" className="link" disabled={view.busy || fetching} onClick={() => void fetchNow().catch((e) => toast((e as Error).message, "error"))}>
               {t("settings.gridMeterPage.fetchNow")}</button>
           )}
         </div>

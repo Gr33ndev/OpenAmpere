@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
-import { num, timeZone } from "./format";
+import { dayOf, num, plantTime, timeZone, todayIso } from "./format";
 import { lang, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
@@ -37,7 +37,7 @@ const MODE_HINT: Record<string, string> = {
 const kw = (w: number) => `${num(w / 1000, 2)} kW`;
 const duration = (s: number | null) => {
   if (s == null || s <= 0) return null;
-  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  const total = Math.round(s / 60), h = Math.floor(total / 60), m = total % 60; // never "1 h 60 min"
   return h ? `${h} h ${m} min` : `${m} min`;
 };
 const at = (s: number) => new Date(Date.now() + s * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit",
@@ -61,14 +61,17 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
   useEffect(() => { if (lp.limit_soc != null) setLimit(lp.limit_soc); }, [lp.limit_soc]);
   const unit = lp.heating ? "°C" : "%";
   const plugged = lp.connected || lp.heating; // without a car the vehicle values are stale
-  const send = async (action: string, value?: unknown) => {
+  /** true if evcc took the command, so a form can close */
+  const send = async (action: string, value?: unknown): Promise<boolean> => {
     setBusy(true);
     try {
       const view = await postJson<EvccView & { dry_run?: boolean }>(`/api/evcc/loadpoints/${lp.id}`, { action, value });
       if (view.dry_run) toast(t("devices.wallboxCard.testModeLogged"));
       onChange(view);
+      return true;
     } catch (e) {
       toast((e as Error).message, "error");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -114,7 +117,7 @@ export function WallboxCard({ lp, onChange }: { lp: EvccLoadpoint; onChange: (vi
 }
 
 /** Minimum charge of the car (an evcc vehicle setting): up to it, evcc charges right away, also from the grid. */
-function MinSoc({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (action: string, value?: unknown) => Promise<void> }) {
+function MinSoc({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (action: string, value?: unknown) => Promise<boolean> }) {
   const [value, setValue] = useState(lp.min_soc);
   useEffect(() => setValue(lp.min_soc), [lp.min_soc]);
   return (
@@ -128,7 +131,7 @@ function MinSoc({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (a
   );
 }
 
-function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (action: string, value?: unknown) => Promise<void> }) {
+function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: (action: string, value?: unknown) => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [soc, setSoc] = useState(80);
   const [time, setTime] = useState("07:00");
@@ -140,12 +143,11 @@ function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: 
       </div>
     );
   }
+  // the time is meant in the plant's time zone, like everything the app shows (also from a phone abroad)
   const target = () => {
     const [h, m] = time.split(":").map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    if (d.getTime() < Date.now() + 15 * 60_000) d.setDate(d.getDate() + 1);
-    return d.getTime() / 1000;
+    const today = plantTime(todayIso(), h, m);
+    return today * 1000 < Date.now() + 15 * 60_000 ? plantTime(dayOf(today + 86_400), h, m) : today;
   };
   return (
     <div className="plan-form">
@@ -155,7 +157,7 @@ function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: 
         <Field label={t("devices.planForm.time")}><input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
       </div>
       <div className="button-row inline">
-        <Button busy={busy} onClick={async () => { await send("plan", { soc, time: target() }); setOpen(false); }}>{t("devices.planForm.setPlan")}</Button>
+        <Button busy={busy} onClick={async () => { if (await send("plan", { soc, time: target() })) setOpen(false); }}>{t("devices.planForm.setPlan")}</Button>
         <button type="button" className="link" onClick={() => setOpen(false)}>{t("common.cancel")}</button>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { DEMO } from "./demo/flag";
 import { CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, dayOf, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
-import { decimalInput as de, parseDecimal as toNumber } from "./decimal";
+import { decimalInput, parseDecimal as toNumber, parseWatts } from "./decimal";
 import { batterySettingName, batterySettingValue, describe, logCsv, statusLabel, type LogEntry } from "./controlLog";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
@@ -22,6 +22,9 @@ const withoutPlaceholders = (changes: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== null));
 
 /** Loads settings and saves partial changes. */
+// numbers in input fields with the decimal separator of the app's language (#223)
+const de = (v: number) => decimalInput(v, (1.5).toLocaleString(LOCALE).includes(","));
+
 export function useSettings() {
   const { data, setData, error, reload } = useResource<Settings>("/api/settings");
   const save = async (changes: Partial<Settings["values"]> & Partial<Record<SecretKey, string>>) => {
@@ -858,8 +861,9 @@ export function AboutPage({ onBack, onNavigate }: PageProps) {
 // ---------------------------------------------------------------------------
 
 function duration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
+  const total = Math.round(seconds / 60); // never "1 h 60 min"
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return h ? t("settings.duration.hoursMinutes", { h, m }) : t("settings.duration.minutes", { m });
 }
 
@@ -868,6 +872,7 @@ function CloudImportCard() {
   const { data: job, reload } = useResource<CloudImportState>("/api/import/cloud", 5000);
   const [key, setKey] = useState("");
   const [editing, setEditing] = useState(false);
+  const [removingKey, setRemovingKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [upload, setUpload] = useState<string | null>(null);
   const keyInfo = secrets?.["cloud.api_key"];
@@ -943,12 +948,18 @@ function CloudImportCard() {
             {!keyLocked && (
               <span className="key-actions">
                 <button type="button" className="link" onClick={() => setEditing(true)}>{t("common.change")}</button>
-                {keyInfo?.set && <button type="button" className="link" onClick={() => void saveKey("")}>{t("common.remove")}</button>}
+                {keyInfo?.set && <button type="button" className="link" onClick={() => setRemovingKey(true)}>{t("common.remove")}</button>}
               </span>
             )}
           </div>
         )}
 
+        {removingKey && (
+          <Dialog title={t("settings.cloudImportCard.removeKeyQuestion")} confirm={t("common.remove")} danger
+            onCancel={() => setRemovingKey(false)} onConfirm={() => { setRemovingKey(false); void saveKey(""); }}>
+            <p>{t("settings.cloudImportCard.removeKeyHint")}</p>
+          </Dialog>
+        )}
         {job && job.status !== "idle" && (
           <div className="import-status">
             <div className="ratio-head">
@@ -1205,7 +1216,7 @@ export function ExportLimitPage({ onBack }: PageProps) {
     setCustom(String(current.limit_w));
   }, [current, hasPreset, cap]);
 
-  const target = preset === "max" && cap != null ? cap : Math.round(Number(custom.replace(",", ".")));
+  const target = preset === "max" && cap != null ? cap : parseWatts(custom); // "5.000" is 5000 W, not 5 W (#223)
   const valid = Number.isFinite(target) && target >= 0 && target <= (cap ?? 99_999);
   const raising = current?.limit_w == null || (valid && target > current.limit_w);
   const needsConsent = raising && legalMax == null && rule !== "none";

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useRetroLook } from "./easterEgg";
-import { ct, num } from "./format";
+import { ct, num, timeZone } from "./format";
 import { LOCALE, t } from "./i18n";
 
 const AXIS_FONT = `12px "DM Sans Variable", system-ui, sans-serif`;
@@ -103,6 +103,8 @@ export function Chart({ x, series, bars = false, xFormat, height = 220, onHover,
       width: el.clientWidth,
       height,
       cursor: { drag: { x: false, y: false } },
+      // ticks on the hours and days of the plant's time zone, like the labels (also on a phone in another zone)
+      ...(timeZone() ? { tzDate: (ts: number) => uPlot.tzDate(new Date(ts * 1000), timeZone() as string) } : {}),
       legend: { show: false },
       hooks: { setCursor: [(u) => hover.current?.(u.cursor.idx ?? null)] },
       scales: {

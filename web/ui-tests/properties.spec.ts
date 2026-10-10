@@ -3,7 +3,8 @@
 import { expect, test } from "@playwright/test";
 import fc from "fast-check";
 import { csv } from "../src/csv";
-import { decimalInput, parseDecimal } from "../src/decimal";
+import { decimalInput, parseDecimal, parseWatts } from "../src/decimal";
+import { zonedTime } from "../src/zoned";
 
 test.beforeEach(() => {
   test.skip(test.info().project.name !== "desktop", "pure functions, one run is enough");
@@ -66,4 +67,37 @@ test("input with a decimal point or a decimal comma means the same number", () =
     expect(parseDecimal(text.replace(".", ",")) === value).toBe(true);
   }));
   for (const empty of ["", " ", "\t"]) expect(parseDecimal(empty)).toBeNaN();
+});
+
+test("watts can be typed with thousands separators, like they are written in German or English", () => {
+  fc.assert(fc.property(fc.integer({ min: 0, max: 99_999 }), (watts) => {
+    expect(parseWatts(String(watts))).toBe(watts);
+    for (const separator of [".", ",", " "]) {  // #223: "5.000" was read as 5 W
+      expect(parseWatts(watts.toLocaleString("en-US").replace(/,/g, separator))).toBe(watts);
+    }
+  }));
+  expect(parseWatts("4999,6")).toBe(5000);
+});
+
+test("a number in an input field uses the decimal separator of the app's language", () => {
+  fc.assert(fc.property(fc.double({ noNaN: true, noDefaultInfinity: true }), (value) => {
+    expect(parseDecimal(decimalInput(value, false)) === value).toBe(true);
+    expect(decimalInput(value, false)).not.toContain(",");
+  }));
+});
+
+test("a wall-clock time in the plant's time zone is that time there, also around daylight saving changes", () => {
+  const days = fc.date({ min: new Date("2020-01-01T00:00:00Z"), max: new Date("2035-12-31T00:00:00Z"), noInvalidDate: true })
+    .map((d) => d.toISOString().slice(0, 10));
+  fc.assert(fc.property(days, fc.integer({ min: 0, max: 23 }), fc.integer({ min: 0, max: 59 }),
+    fc.constantFrom("Europe/Berlin", "America/New_York", "Australia/Sydney", "UTC"), (day, hour, minute, zone) => {
+      const ts = zonedTime(day, hour, minute, zone);
+      const shown = new Intl.DateTimeFormat("en-CA", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "2-digit",
+        day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(ts * 1000));
+      const expected = `${day}, ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      // a time that does not exist (the hour skipped in spring) comes out one hour later; every other one exactly
+      const hourLater = `${day}, ${String(hour + 1).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      expect([expected, hourLater]).toContain(shown);
+      if (shown === hourLater) expect(zonedTime(day, hour + 1, minute, zone)).toBe(ts);
+    }));
 });

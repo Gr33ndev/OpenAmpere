@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
-import { AmountInput, Button, Field, LoadState, SubPage, toast } from "./ui";
+import { AmountInput, Button, Dialog, Field, LoadState, SubPage, toast } from "./ui";
 import { amountInput } from "./format";
 import { t } from "./i18n";
 
@@ -36,6 +36,7 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
   value: ConsumerData; onSave: (c: ConsumerData) => void; onCancel: () => void; onRemove?: () => void; busy: boolean;
 }) {
   const [c, setC] = useState(value);
+  const [removing, setRemoving] = useState(false);
   const set = (patch: Partial<ConsumerData>) => setC((x) => ({ ...x, ...patch }));
   const mypv = c.kind === "mypv";
   const shelly = c.kind === "shelly1" || c.kind === "shelly2";
@@ -105,8 +106,14 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
       <div className="button-row">
         <Button busy={busy} disabled={!valid} onClick={() => onSave(c)}>{t("common.save")}</Button>
         <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
-        {onRemove && <button type="button" className="link danger-link" onClick={onRemove}>{t("devices.editor.removeDevice")}</button>}
+        {onRemove && <button type="button" className="link danger-link" onClick={() => setRemoving(true)}>{t("devices.editor.removeDevice")}</button>}
       </div>
+      {removing && onRemove && (
+        <Dialog title={t("devices.editor.removeQuestion", { name: value.name })} confirm={t("common.remove")} danger
+          onCancel={() => setRemoving(false)} onConfirm={() => { setRemoving(false); onRemove(); }}>
+          <p>{t("devices.editor.removeHint")}</p>
+        </Dialog>
+      )}
     </div>
   );
 }

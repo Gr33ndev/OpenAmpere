@@ -139,6 +139,8 @@
     "paused": "Paused",
     "period": "Period {from} – {to}",
     "readingFile": "Reading file …",
+    "removeKeyHint": "Without a key, OpenAmpere cannot fetch more data from the cloud. Data already imported stays.",
+    "removeKeyQuestion": "Remove the API key?",
     "resume": "Resume",
     "saveKey": "Save key",
     "saveKeyFirst": "Save the API key first to start.",
