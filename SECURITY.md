@@ -36,8 +36,8 @@ details.
   them. The app's own access password is only stored as a scrypt hash.
 - Other apps (e.g. the Home Assistant integration) connect only over HTTPS, pin the certificate of OpenAmpere and use
   a token that is shown once, stored only as a hash and limited to reading or to the released commands.
-- Updates are only started if the image was built by the release workflow of this repository (signed build
-  provenance, see [Verifying a release](README.md#verifying-a-release)).
+- Updates, from the app and by running the installer again, are only started if the image was built by the release
+  workflow of this repository (signed build provenance, see [Verifying a release](README.md#verifying-a-release)).
 
 ## What OpenAmpere does not protect
 

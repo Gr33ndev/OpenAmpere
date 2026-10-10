@@ -281,11 +281,32 @@ write_files() {
   say "Fertig: $COMPOSE"
 }
 
+# the provenance check of the update helper (cosign, signed by the release workflow), in a short-lived helper container
+verify_image() {
+  $DOCKER compose run --rm --no-deps -T -e OPENAMPERE_VERIFY_IMAGES="${OPENAMPERE_VERIFY_IMAGES:-ja}" \
+    --entrypoint sh updater "$DIR/updater.sh" verify "$1"
+}
+
 start_and_report() {
   step "OpenAmpere herunterladen und starten"
   cd "$DIR"
+  local image running before new keep
+  image=$IMAGE
+  running=$($DOCKER inspect -f '{{.Image}}' "$($DOCKER compose ps -q openampere 2>/dev/null | head -n 1)" 2>/dev/null) || running=""
+  before=$($DOCKER image inspect -f '{{.Id}}' "$image" 2>/dev/null) || before=""
   $DOCKER compose pull ||
     fail "OpenAmpere ließ sich nicht herunterladen. Bitte die Internetverbindung dieses Rechners prüfen und das Script noch einmal ausführen. Klappt es dann immer noch nicht, frag hier nach (die Meldungen oben helfen dabei): $HELP"
+  new=$($DOCKER image inspect -f '{{.Id}}' "$image" 2>/dev/null) || new=""
+  # like the update helper: an image that does not run yet is only started if its provenance is confirmed
+  if [ -z "$new" ] || { [ "$new" != "$running" ] && ! verify_image "$image"; }; then
+    keep=${running:-$before}
+    if [ -n "$keep" ] && [ "$keep" != "$new" ]; then
+      $DOCKER tag "$keep" "$image" && $DOCKER image rm "$new" >/dev/null 2>&1
+    elif [ -n "$new" ]; then
+      $DOCKER image rm "$image" >/dev/null 2>&1
+    fi
+    fail "Die heruntergeladene Version von OpenAmpere konnte nicht als echt bestätigt werden und wird nicht gestartet. Bitte später noch einmal versuchen. Klappt es dann immer noch nicht, frag hier nach: $HELP"
+  fi
   $DOCKER compose up -d --remove-orphans
   # the helpers read their script once at the start: restart them so a new updater.sh / tailscale.sh is used (#222)
   local helpers

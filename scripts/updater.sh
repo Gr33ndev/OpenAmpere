@@ -69,9 +69,16 @@ verified() {
 
 update() {
   services=$(docker compose config --services | grep -vx updater | tr '\n' ' ')
-  current=$(container)
-  image=$(docker inspect -f '{{.Config.Image}}' "$current" 2>/dev/null)
-  old=$(docker inspect -f '{{.Image}}' "$current" 2>/dev/null)
+  # OpenAmpere's image from the compose file, not from the running container: when the app is not running (crashed,
+  # stopped), the check must not be skipped. Another image (built by hand) is not checked, as before.
+  image=$(docker compose config --images 2>/dev/null | grep -m 1 -E "^$OWN_IMAGE(:|@|\$)")
+  [ -n "$image" ] || image=$(docker inspect -f '{{.Config.Image}}' "$(container)" 2>/dev/null)
+  if [ -z "$image" ]; then
+    status failed "Die Einstellungen der Installation ließen sich nicht lesen. Bitte das Installationsscript noch einmal ausführen."
+    return
+  fi
+  old=$(docker inspect -f '{{.Image}}' "$(container)" 2>/dev/null) # the version that runs now, empty if none runs
+  before=$(docker image inspect -f '{{.Id}}' "$image" 2>/dev/null)
   status pulling "Die neue Version wird heruntergeladen."
   # shellcheck disable=SC2086 # one word per service
   if ! docker compose pull --quiet $services; then
@@ -79,11 +86,21 @@ update() {
     return
   fi
   new=$(docker image inspect -f '{{.Id}}' "$image" 2>/dev/null)
-  if [ -n "$new" ] && [ "$new" != "$old" ]; then
+  if [ -z "$new" ]; then
+    status failed "Herunterladen hat nicht geklappt. Bitte die Internetverbindung prüfen."
+    return
+  fi
+  # every image that is not the one running now is checked before it is started, also when none runs
+  if [ "$new" != "$old" ]; then
     status verifying "Die Herkunft der neuen Version wird geprüft."
     if ! verified "$image"; then
-      # keep the tag on the running version, so the unverified image is not started later either (e.g. after a reboot)
-      [ -n "$old" ] && docker tag "$old" "$image" && docker image rm "$new" >/dev/null 2>&1
+      # back to the version before, so the unverified image is not started later either (e.g. after a reboot)
+      keep=${old:-$before}
+      if [ -n "$keep" ] && [ "$keep" != "$new" ]; then
+        docker tag "$keep" "$image" && docker image rm "$new" >/dev/null 2>&1
+      else
+        docker image rm "$image" >/dev/null 2>&1
+      fi
       status failed "Die neue Version konnte nicht als echt bestätigt werden und wird nicht installiert. Die bisherige Version läuft weiter."
       return
     fi
@@ -107,17 +124,26 @@ update() {
   fi
 }
 
-# cosign for the provenance check, installed once when the helper starts (again later if this fails, e.g. offline)
-case "$VERIFY" in [nN]*) ;; *) apk add --no-cache -q cosign >/dev/null 2>&1 || true ;; esac
-
-# stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s)
-trap 'exit 0' TERM INT
-while true; do
-  date +%s >"$STATE/updater-alive"
-  if [ -f "$STATE/request" ]; then
-    rm -f "$STATE/request"
-    update
+main() {
+  # "updater.sh verify IMAGE": only the provenance check, for install.sh before it starts a new image
+  if [ "${1:-}" = verify ]; then
+    verified "${2:-}"
+    exit $?
   fi
-  sleep 5 &
-  wait $!
-done
+  # cosign for the provenance check, installed once when the helper starts (again later if this fails, e.g. offline)
+  case "$VERIFY" in [nN]*) ;; *) apk add --no-cache -q cosign >/dev/null 2>&1 || true ;; esac
+
+  # stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s)
+  trap 'exit 0' TERM INT
+  while true; do
+    date +%s >"$STATE/updater-alive"
+    if [ -f "$STATE/request" ]; then
+      rm -f "$STATE/request"
+      update
+    fi
+    sleep 5 &
+    wait $!
+  done
+}
+
+main "$@"
