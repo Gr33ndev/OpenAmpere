@@ -167,10 +167,15 @@ def create_app(runtime: Runtime) -> FastAPI:
         yield
         watchdog_task.cancel()
         fast_task.cancel()
-        await surplus.stop()
-        await charging.stop("OpenAmpere wird beendet")
-        await runtime.cloud_import.stop(status="running")  # keeps running after the next start
-        await collector.stop()
+        # each step on its own, the remote control of the inverter first: an error in one must not skip the others
+        steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop,
+                 lambda: runtime.cloud_import.stop(status="running"),  # keeps running after the next start
+                 collector.stop)
+        for step in steps:
+            try:
+                await step()
+            except Exception:  # noqa: BLE001
+                log.exception("error while shutting down")
 
     # no /docs, /redoc and /openapi.json: the app does not need them and they are open on the home network (#164)
     app = FastAPI(title="OpenAmpere", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
