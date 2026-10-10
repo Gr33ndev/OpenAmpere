@@ -200,7 +200,9 @@ class Evcc:
             path, method = f"/api/loadpoints/{lp_id}/mode/{value}", "POST"
         elif action == "limit_soc":
             value = int(value)
-            if not 20 <= value <= 100 and not (lp["heating"] and 20 <= value <= 90):
+            if lp["heating"] and not 20 <= value <= 90:  # a temperature (#245)
+                raise ValueError("Die Zieltemperatur muss zwischen 20 und 90 °C liegen.")
+            if not 20 <= value <= 100:
                 raise ValueError("Das Ladeziel muss zwischen 20 und 100 % liegen.")
             path, method = f"/api/loadpoints/{lp_id}/limitsoc/{value}", "POST"
         elif action in ("plan", "plan_delete", "min_soc"):

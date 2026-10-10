@@ -10,6 +10,7 @@
     "currentPasswordIncorrect": "Das bisherige Passwort stimmt nicht.",
     "endDateBeforeStart": "Das Enddatum liegt vor dem Startdatum",
     "enterNtfyAddressFirst": "Bitte zuerst eine ntfy-Adresse eintragen.",
+    "fileNotStored": "Die Datei ließ sich nicht speichern. Bitte prüfen, ob genug freier Speicherplatz da ist.",
     "fileTooLarge4Gb": "Datei zu groß (max. 4 GB).",
     "fileTooLargeMax": "Datei zu groß (max. 500 MB).",
     "httpsPortTurnedOff": "Der HTTPS-Port ist ausgeschaltet (server.tls_port). Ohne ihn können sich andere Apps nicht sicher verbinden.",
@@ -23,6 +24,7 @@
     "noCurrentReadingsInverter": "Keine aktuellen Messwerte vom Wechselrichter",
     "noReadingsYet": "Noch keine Messwerte",
     "notEnoughSpaceBackup": "Nicht genug freier Speicherplatz für die Sicherung.",
+    "notEnoughSpaceFile": "Nicht genug freier Speicherplatz für die Datei.",
     "onlyAvailableViaHttps": "Nur über HTTPS erreichbar.",
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
@@ -185,6 +187,7 @@
     "logNotSentTestMode": "nicht gesendet (Testmodus)",
     "minimumChargeMustBetween": "Die Mindestladung muss zwischen 0 und 80 % liegen.",
     "noEvccRespondingAddress": "Unter dieser Adresse antwortet kein evcc.",
+    "targetTemperatureBetween": "Die Zieltemperatur muss zwischen 20 und 90 °C liegen.",
     "unknownChargingMode": "Unbekannter Lademodus.",
     "unknownCommand": "Unbekannter Befehl."
   },
