@@ -5,11 +5,14 @@ report contains durations, not the times of the owner's actions."""
 
 import io
 import json
+import shutil
 import zipfile
+from collections import namedtuple
 
 import pytest
 from fastapi.testclient import TestClient
 
+from openampere import api as api_module
 from openampere import billing
 from openampere.api import create_app
 from openampere.diagnostics import _Pseudonyms
@@ -77,3 +80,30 @@ def test_the_diagnostics_text_has_no_time_stamps_of_database_copies():
     text = "kept as openampere.db.before-restore-20261010-153012 and openampere.db.damaged-20261009-020000"
     cleaned = _Pseudonyms(None).text(text)
     assert "20261010" not in cleaned and "153012" not in cleaned and cleaned.count("<Zeitpunkt>") == 2
+
+
+# #245: a cloud export upload checks the free space like a backup does, left-over uploads are removed at the start
+def test_a_cloud_export_larger_than_the_free_space_is_refused(client, tmp_path, monkeypatch):
+    usage = namedtuple("usage", "total used free")
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: usage(10_000, 9_000, 1_000))
+    answer = client.post("/api/import/cloud/file", content=b"x" * 2_000)
+    assert answer.status_code == 507 and "Speicherplatz" in answer.json()["detail"]
+    assert not list(tmp_path.glob(".cloud-upload-*"))
+
+
+def test_a_cloud_export_that_cannot_be_written_gets_a_message(client, tmp_path, monkeypatch):
+    def full(*args):
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(api_module.cloud_import, "import_zip", full)
+    answer = client.post("/api/import/cloud/file", content=zip_with(day="{}"))
+    assert answer.status_code == 507 and "Speicherplatz" in answer.json()["detail"]
+    assert not list(tmp_path.glob(".cloud-upload-*"))
+
+
+def test_uploads_left_by_a_crash_are_removed_at_the_start(tmp_path, authed):
+    left = [tmp_path / ".cloud-upload-abc", tmp_path / ".restore-upload-def", tmp_path / ".restore-upload-def-wal"]
+    for path in left:
+        path.write_bytes(b"x")
+    with authed(TestClient(create_app(Runtime({}, Storage(tmp_path / "t.db"))))):
+        pass
+    assert not any(path.exists() for path in left)

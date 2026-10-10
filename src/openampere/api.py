@@ -114,6 +114,19 @@ class ScanRequest(BaseModel):
     unit: int = Field(0, ge=0, le=255)
 
 
+
+UPLOAD_PREFIXES = (".cloud-upload-", ".restore-upload-")
+
+
+def remove_stale_uploads(folder: Path) -> None:
+    """Uploads left behind by a crash or a power cut while a file arrived: no upload runs before the start (#245)."""
+    for prefix in UPLOAD_PREFIXES:
+        for path in folder.glob(f"{prefix}*"):
+            try:
+                path.unlink()
+                log.info("removed a left-over upload: %s", path.name)
+            except OSError as err:
+                log.warning("could not remove the left-over upload %s: %s", path.name, err)
 def create_app(runtime: Runtime) -> FastAPI:
     storage, collector = runtime.storage, runtime.collector
     installation_id = storage_installation_id(storage)
@@ -160,6 +173,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        remove_stale_uploads(Path(storage.path).resolve().parent)
         collector.start()
         runtime.cloud_import.resume_if_running()
         watchdog_task = asyncio.create_task(watchdog())
@@ -521,7 +535,16 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/import/cloud/file")
     async def cloud_import_file(request: Request):
         # written to a file while it arrives: a large upload must not fill the memory of a Raspberry Pi (#223)
-        fd, name = tempfile.mkstemp(prefix=".cloud-upload-", dir=Path(storage.path).resolve().parent)
+        folder = Path(storage.path).resolve().parent
+        try:
+            length = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            raise HTTPException(400, "Ungültige Anfrage.") from None
+        if length > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, "Datei zu groß (max. 500 MB).")
+        if length > shutil.disk_usage(folder).free:  # like the restore of a backup (#245)
+            raise HTTPException(507, "Nicht genug freier Speicherplatz für die Datei.")
+        fd, name = tempfile.mkstemp(prefix=".cloud-upload-", dir=folder)
         upload, size = Path(name), 0
         try:
             with open(fd, "wb") as file:
@@ -533,6 +556,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             return await asyncio.to_thread(cloud_import.import_zip, storage, upload)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
+        except OSError as err:
+            log.warning("could not store the uploaded export: %s", err)
+            raise HTTPException(507, "Die Datei ließ sich nicht speichern. Bitte prüfen, ob genug freier "
+                                     "Speicherplatz da ist.") from None
         finally:
             upload.unlink(missing_ok=True)
 

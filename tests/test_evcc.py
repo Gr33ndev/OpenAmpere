@@ -121,6 +121,10 @@ async def test_reads_state_and_sends_commands(tmp_path, evcc_server):
         await evcc.command(1, "min_soc", 95)
     with pytest.raises(EvccError, match="Fahrzeug"):
         await evcc.command(2, "min_soc", 20)  # the heat pump has no vehicle
+    with pytest.raises(ValueError, match="90 °C"):
+        await evcc.command(2, "limit_soc", 95)  # a temperature for the heat pump: at most 90 °C (#245)
+    await evcc.command(2, "limit_soc", 90)
+    assert FakeEvcc.calls[-1] == ("POST", "/api/loadpoints/2/limitsoc/90")
     assert runtime.storage.control_log()[0]["action"] == "evcc"
 
     sessions = await evcc.sessions()

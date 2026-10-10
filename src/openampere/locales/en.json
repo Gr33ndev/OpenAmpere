@@ -10,6 +10,7 @@
     "currentPasswordIncorrect": "The current password is incorrect.",
     "endDateBeforeStart": "The end date is before the start date",
     "enterNtfyAddressFirst": "Please enter an ntfy address first.",
+    "fileNotStored": "The file could not be stored. Please check that there is enough free storage space.",
     "fileTooLarge4Gb": "File too large (max. 4 GB).",
     "fileTooLargeMax": "File too large (max. 500 MB).",
     "httpsPortTurnedOff": "The HTTPS port is turned off (server.tls_port). Without it, other apps can't connect securely.",
@@ -23,6 +24,7 @@
     "noCurrentReadingsInverter": "No current readings from the inverter",
     "noReadingsYet": "No readings yet",
     "notEnoughSpaceBackup": "Not enough free storage space for the backup.",
+    "notEnoughSpaceFile": "Not enough free storage space for the file.",
     "onlyAvailableViaHttps": "Only available via HTTPS.",
     "passwordAlreadyBeenSet": "A password has already been set.",
     "powerOutageDoesnT": "This power outage doesn't exist.",
@@ -185,6 +187,7 @@
     "logNotSentTestMode": "not sent (test mode)",
     "minimumChargeMustBetween": "The minimum charge must be between 0 and 80 %.",
     "noEvccRespondingAddress": "No evcc is responding at this address.",
+    "targetTemperatureBetween": "The target temperature must be between 20 and 90 °C.",
     "unknownChargingMode": "Unknown charging mode.",
     "unknownCommand": "Unknown command."
   },
