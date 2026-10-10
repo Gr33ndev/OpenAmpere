@@ -20,6 +20,7 @@ from .entity import OpenAmpereEntity
 @dataclass(frozen=True, kw_only=True)
 class OpenAmpereBinaryDescription(BinarySensorEntityDescription):
     value: Callable[[dict[str, Any]], bool | None]
+    from_inverter: bool = False  # a reading of the inverter: unavailable while it is old (#220)
 
 
 def _status(key: str) -> Callable[[dict], bool | None]:
@@ -34,7 +35,7 @@ BINARY_SENSORS = (
     OpenAmpereBinaryDescription(key="grid_charging_active", value=_status("grid_charging"),
                                 device_class=BinarySensorDeviceClass.RUNNING),
     OpenAmpereBinaryDescription(key="alarm", value=lambda d: bool((d.get("live") or {}).get("alarms")) if d.get("live") else None,
-                                device_class=BinarySensorDeviceClass.PROBLEM),
+                                device_class=BinarySensorDeviceClass.PROBLEM, from_inverter=True),
 )
 
 
@@ -53,6 +54,10 @@ class OpenAmpereBinarySensor(OpenAmpereEntity, BinarySensorEntity):
     def __init__(self, coordinator: OpenAmpereCoordinator, description: OpenAmpereBinaryDescription) -> None:
         super().__init__(coordinator, description.key)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        return super().available and not (self.entity_description.from_inverter and self.stale)
 
     @property
     def is_on(self) -> bool | None:

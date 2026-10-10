@@ -21,6 +21,8 @@ from .entity import OpenAmpereEntity
 @dataclass(frozen=True, kw_only=True)
 class OpenAmpereSensorDescription(SensorEntityDescription):
     value: Callable[[dict[str, Any]], Any]  # from the coordinator data
+    # a reading of the inverter: unavailable while it is old, so automations do not act on frozen values (#220)
+    from_inverter: bool = True
 
 
 def _live(key: str) -> Callable[[dict], Any]:
@@ -80,9 +82,10 @@ SENSORS: tuple[OpenAmpereSensorDescription, ...] = (
     OpenAmpereSensorDescription(key="battery_charge_energy", value=_total("battery_charge"), **ENERGY),
     OpenAmpereSensorDescription(key="battery_discharge_energy", value=_total("battery_discharge"), **ENERGY),
     OpenAmpereSensorDescription(key="price", value=lambda d: d.get("price_ct"), native_unit_of_measurement="ct/kWh",
-                                suggested_display_precision=2),
+                                suggested_display_precision=2, from_inverter=False),
     OpenAmpereSensorDescription(key="control", value=_control_state, device_class=SensorDeviceClass.ENUM,
-                                options=["off", "test", "active"], entity_category=EntityCategory.DIAGNOSTIC),
+                                options=["off", "test", "active"], entity_category=EntityCategory.DIAGNOSTIC,
+                                from_inverter=False),
 )
 
 
@@ -106,6 +109,10 @@ class OpenAmpereSensor(OpenAmpereEntity, SensorEntity):
         self.entity_description = description
 
     @property
+    def available(self) -> bool:
+        return super().available and not (self.entity_description.from_inverter and self.stale)
+
+    @property
     def native_value(self) -> Any:
         return self.entity_description.value(self.data)
 
@@ -124,6 +131,10 @@ class PvInputSensor(OpenAmpereEntity, SensorEntity):
         self._index = index
         self._attr_translation_key = "pv_input_power"
         self._attr_translation_placeholders = {"name": name}
+
+    @property
+    def available(self) -> bool:
+        return super().available and not self.stale
 
     @property
     def native_value(self) -> float | None:

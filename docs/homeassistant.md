@@ -65,6 +65,8 @@ one connection, and every command from Home Assistant goes through the same chec
 
 **Every minute:** current electricity price, battery settings, control (view only / test mode / active).
 
+**Connection to the inverter lost:** the values read from the inverter become unavailable until OpenAmpere has current readings again, so automations do not act on old values. Price and control stay available.
+
 **Energy dashboard:** **Einstellungen → Dashboards → Energie** (Settings → Dashboards → Energy). Grid import and
 grid export under **Stromnetz** (Electricity grid), PV production under **Solarmodule** (Solar panels), battery
 charged/discharged under **Batteriespeicher** (Home battery storage).

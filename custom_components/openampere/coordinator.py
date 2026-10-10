@@ -28,10 +28,17 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.live_connected = False
         self._last_push = 0.0
         self._listener: asyncio.Task | None = None
+        self._reload_scheduled = False
 
     @property
     def can_control(self) -> bool:
         return self.info["token"]["scope"] == "control"
+
+    def async_update_listeners(self) -> None:
+        super().async_update_listeners()
+        if not self._reload_scheduled and self.config_entry and needs_reload(self.info, (self.data or {}).get("live")):
+            self._reload_scheduled = True
+            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -65,3 +72,14 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.live_connected = connected
             if self.data is not None:
                 self.async_update_listeners()
+
+
+def needs_reload(info: dict, live: dict | None) -> bool:
+    """Set up before OpenAmpere had its first reading (e.g. everything starting after a power cut): the device and
+    the PV inputs were unknown, so set up again once they are there (#220)."""
+    if not live:
+        return False
+    if info["device"] is None:
+        return True
+    count = info.get("pv_input_count")  # all inputs, also hidden ones; missing on older OpenAmpere versions
+    return count is not None and len(live.get("pv_inputs") or []) != count

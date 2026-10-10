@@ -112,3 +112,59 @@ async def test_diagnostics_hide_the_secrets(hass: HomeAssistant, entry, client) 
     await setup(hass, entry)
     text = str(await async_get_config_entry_diagnostics(hass, entry))
     assert "oa_secret" not in text and "192.168.178.20" not in text and "ab" * 32 not in text
+
+
+async def test_old_values_are_unavailable_while_the_inverter_is_not_connected(hass: HomeAssistant, entry, client) -> None:
+    """#220: automations must not act on frozen values when OpenAmpere lost the connection to the inverter."""
+    await setup(hass, entry)
+    coordinator = entry.runtime_data
+
+    def push(stale: bool) -> None:
+        coordinator._last_push = 0.0
+        coordinator._on_push({"type": "live", "live": coordinator.data["live"],
+                              "status": {**coordinator.data["status"], "connected": not stale, "stale": stale},
+                              "devices": coordinator.data["devices"]})
+
+    push(stale=True)
+    await hass.async_block_till_done()
+    for platform, key in (("sensor", "_pv_power"), ("sensor", "_grid_power"), ("sensor", "_grid_export_energy"),
+                          ("sensor", "_pv_input_1_power"), ("sensor", "_battery_soc"), ("binary_sensor", "_alarm")):
+        assert hass.states.get(entity_id(hass, platform, key)).state == "unavailable", key
+    # not readings of the inverter: still there
+    assert hass.states.get(entity_id(hass, "sensor", "_price")).state == "31.5"
+    assert hass.states.get(entity_id(hass, "sensor", "_control")).state == "active"
+    assert hass.states.get(entity_id(hass, "binary_sensor", "_inverter_connected")).state == "off"
+
+    push(stale=False)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id(hass, "sensor", "_pv_power")).state == "5200.0"
+
+
+async def test_set_up_before_the_first_reading_sets_up_again_once_it_is_there(hass: HomeAssistant, entry, client) -> None:
+    """#220: after a power cut Home Assistant may be up before OpenAmpere has read the inverter."""
+    from conftest import state
+    client.info.return_value = {**info(), "device": None, "pv_inputs": [], "pv_input_count": 0}
+    client.state.return_value = {**state(), "live": None}
+    await setup(hass, entry)
+    assert entity_id(hass, "sensor", "_pv_input_0_power") is None
+
+    client.info.return_value = {**info(), "pv_input_count": 2}
+    client.state.return_value = state()
+    coordinator = entry.runtime_data
+    coordinator._on_push({"type": "live", "live": state()["live"], "status": state()["status"],
+                          "devices": state()["devices"]})
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id(hass, "sensor", "_pv_input_0_power")).state == "3000.0"
+    assert entry.runtime_data.info["device"]["model"] == "H3-10.0-Smart"
+
+
+async def test_no_new_setup_when_inputs_are_hidden(hass: HomeAssistant, entry, client) -> None:
+    """Hidden PV inputs are left out of the list, but counted: no setup over and over."""
+    client.info.return_value = {**info(), "pv_inputs": [{"index": 0, "name": "Süddach"}], "pv_input_count": 2}
+    await setup(hass, entry)
+    first = entry.runtime_data
+    first._last_push = 0.0
+    first._on_push({"type": "live", "live": first.data["live"], "status": first.data["status"],
+                    "devices": first.data["devices"]})
+    await hass.async_block_till_done()
+    assert entry.runtime_data is first
