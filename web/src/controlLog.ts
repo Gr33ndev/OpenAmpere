@@ -1,3 +1,4 @@
+import { csv } from "./csv";
 import { kw, num, percent, timeZone } from "./format";
 import { LOCALE, list, t } from "./i18n";
 
@@ -209,7 +210,6 @@ export function statusLabel(s: LogStatus): string {
 /** The whole log as CSV for Excel or LibreOffice: ";" where the decimal separator is ",", with BOM for the umlauts. */
 export function logCsv(entries: LogEntry[]): string {
   const separator = (1.5).toLocaleString(LOCALE).includes(",") ? ";" : ",";
-  const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const day = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: timeZone() });
   const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: timeZone() });
   const head = [t("settings.controlLog.csvDate"), t("settings.controlLog.csvTime"), t("settings.controlLog.csvEvent"), t("settings.controlLog.csvBy"),
@@ -219,5 +219,5 @@ export function logCsv(entries: LogEntry[]): string {
     return [day(e.ts), clock(e.ts), d.text, d.by, statusLabel(d.status), d.note ?? "",
       `${e.action} ${JSON.stringify(e.details)} ${e.result}`.trim()];
   });
-  return `﻿${[head, ...rows].map((row) => row.map(cell).join(separator)).join("\r\n")}\r\n`;
+  return csv([head, ...rows], separator);
 }
