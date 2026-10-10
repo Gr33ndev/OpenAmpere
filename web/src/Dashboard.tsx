@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useState } from "react";
 import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
 import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";

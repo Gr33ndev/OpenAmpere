@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /**
  * Renders the pages of the project website in every language (#104). Called by scripts/build-site.sh.
  * Usage (from the repository root): node scripts/build-site-pages.mjs [output dir, default _site]

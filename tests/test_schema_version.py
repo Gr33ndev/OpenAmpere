@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Schema version of the database, step-by-step migrations, the copy before an upgrade and the rollback (#166)."""
 
 import sqlite3

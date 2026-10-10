@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 from openampere.drivers.base import EnergyCounters, Snapshot
 from openampere.outages import Outages
 from openampere.storage import Storage

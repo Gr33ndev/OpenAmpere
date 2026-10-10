@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { csv } from "./csv";
 import { kw, num, percent, timeZone } from "./format";
 import { LOCALE, list, t } from "./i18n";

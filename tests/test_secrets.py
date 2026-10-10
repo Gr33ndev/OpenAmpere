@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Secrets are encrypted in the database and never readable from the database file alone."""
 
 import os

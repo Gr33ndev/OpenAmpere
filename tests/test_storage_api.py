@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 from datetime import datetime
 from zoneinfo import ZoneInfo
 

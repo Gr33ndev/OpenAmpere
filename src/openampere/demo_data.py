@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Fill a database with simulated history (for development, screenshots and demos).
 
     python -m openampere.demo_data --db data/demo.db --days 60

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Access protection: one local password, session cookies, host and origin checks.
 
 Viewing data in the home network needs no login. Everything that changes something (settings,

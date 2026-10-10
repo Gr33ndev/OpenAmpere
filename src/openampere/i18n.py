@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Messages from the server in the language of the web app (#104).
 
 Error messages are written in German in the code. The catalogs in locales/<lang>.json hold them under English keys,

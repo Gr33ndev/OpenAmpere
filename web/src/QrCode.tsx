@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { correction, generate } from "lean-qr/nano";
 
 const QUIET = 4; // white border in modules, needed by most scanners

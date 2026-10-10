@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Meter readings from the grid operator (#60).
 
 The grid operator bills by its own meters, not by the inverter. Many operators show the daily values of a smart meter

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Lists the messages the server sends to the web app, as keys for src/openampere/locales/<lang>.json (#104).
 
 Reads the Python code (not running it) and collects the German texts of

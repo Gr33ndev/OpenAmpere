@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # OpenAmpere: access from anywhere with Tailscale. Runs in the tailscale container (image tailscale/tailscale)
 # that install.sh sets up when someone wants to use OpenAmpere away from home.
 #

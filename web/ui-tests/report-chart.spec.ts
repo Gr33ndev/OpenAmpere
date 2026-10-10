@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { expect, open, test } from "./fixtures";
 
 const day = (d: number) => new Date(2026, 9, d).getTime() / 1000;

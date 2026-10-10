@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """API for other apps, first of all the Home Assistant integration (#76): /api/external/v1/...
 
 Only over HTTPS and only with a token (see apitokens). The data is the same as in the web app; the commands are a

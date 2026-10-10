@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Meter values of the grid operator (#60, #67): the Netze BW client against a fake portal, the sync job and the billing.
 
 The fake portal behaves like the real one as far as users reported it: grid power and feed-in are separate

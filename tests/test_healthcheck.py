@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """`openampere healthcheck`: the command Docker's HEALTHCHECK runs inside the container (#167)."""
 
 import socket

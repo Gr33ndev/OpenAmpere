@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Entry point: python -m openampere [--config config.yaml]"""
 
 from __future__ import annotations

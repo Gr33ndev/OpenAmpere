@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Setup: pair with OpenAmpere by comparing a code, or paste a connection code.
 
 Pairing: Home Assistant reads the certificate OpenAmpere shows, commits to a random number, learns OpenAmpere's

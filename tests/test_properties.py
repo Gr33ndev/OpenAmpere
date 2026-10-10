@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Property-based tests (Hypothesis): rules that must hold for every input, not only for hand-picked examples.
 They cover the code between the inverter's raw registers and what OpenAmpere shows or writes (#203)."""
 

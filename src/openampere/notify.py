@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Push notifications through ntfy (https://ntfy.sh or an own server): free apps for iPhone and Android,
 no account needed, works without HTTPS on the OpenAmpere server. Each event is sent once, not on
 every check."""

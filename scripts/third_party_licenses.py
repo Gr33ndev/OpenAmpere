@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Generate THIRD_PARTY_LICENSES.md from the installed runtime dependencies.
 
 Covers everything OpenAmpere ships:

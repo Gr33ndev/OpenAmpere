@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useRef, useState } from "react";
 import { DEMO } from "./demo/flag";
 import { demoRequest, snapshot as demoSnapshot } from "./demo/server";

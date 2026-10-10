@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """HTTP/WebSocket API and static web app."""
 
 from __future__ import annotations

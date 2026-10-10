@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """my-PV heating rods (AC ELWA-E, AC ELWA 2, AC THOR) over Modbus TCP: continuously adjustable power.
 
 Only the power register is written. The manufacturer asks not to write any other register frequently

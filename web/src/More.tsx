@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { Fragment } from "react";
 import type { Settings, Snapshot, Status } from "./api";
 import { activeInputs, useResource, useStale } from "./api";

@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Prepares a release: sets the version, adds it to the changelog, commits both and creates a signed tag.
 #   scripts/release.sh 0.2.0
 # Then push both: git push origin main v0.2.0

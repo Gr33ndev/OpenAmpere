@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { expect, layoutProblems, open, PAGES, scrollProblems, test } from "./fixtures";
 
 // every page opens without errors and keeps the layout rules, also while scrolling down and up again

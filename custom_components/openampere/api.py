@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Client for the OpenAmpere server: /api/external/v1 over HTTPS with a pinned certificate."""
 
 from __future__ import annotations

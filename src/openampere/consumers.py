@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Surplus consumers: heating rods, heat pumps (SG-Ready contact) and other loads that run on solar surplus.
 
 Two kinds of devices:

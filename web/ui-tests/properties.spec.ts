@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /** Property-based tests (fast-check) of pure functions: rules that must hold for any input, not only for the
  *  examples in the other tests (#203). They need no browser, so they run in one project only. */
 import { expect, test } from "@playwright/test";

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";

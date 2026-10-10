@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Netze BW (Baden-Württemberg): smart-meter values from the customer portal meine.netze-bw.de.
 
 There is no documented API. The portal's web app reads its data from its own backend (a "backend for frontend" behind

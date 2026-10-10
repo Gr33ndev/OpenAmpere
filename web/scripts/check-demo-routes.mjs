@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 // Fails when the app uses an API endpoint that the in-browser demo (src/demo/server.ts) does not know.
 // The demo shares all UI code with the real app, only the data source differs, so every new endpoint
 // needs a demo answer (or must be listed as write-only / not needed in the demo).

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Writing battery settings to the inverter: guarded by the control switches, validated and logged."""
 
 from __future__ import annotations

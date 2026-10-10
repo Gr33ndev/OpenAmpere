@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Yes/no states: connection to the inverter, power cut (off-grid), grid charging, alarm, devices on."""
 
 from __future__ import annotations

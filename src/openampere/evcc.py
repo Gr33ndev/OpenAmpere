@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Connection to evcc (https://evcc.io), the open-source charge controller for wallboxes and heat pumps.
 
 OpenAmpere does not control wallboxes itself. evcc does that, and OpenAmpere:

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Own certificate for the HTTPS port (#76).
 
 OpenAmpere runs in home networks without a domain, so no public certificate authority can sign for it. It creates

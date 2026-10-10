@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Diagnostics download: without token, address and certificate."""
 
 from __future__ import annotations

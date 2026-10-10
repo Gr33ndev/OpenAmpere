@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Electricity tariffs and exchange prices.
 
 A plant can have several tariffs over time (each valid from a date): a fixed price per kWh, or a dynamic

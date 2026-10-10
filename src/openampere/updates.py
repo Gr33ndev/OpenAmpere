@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """New versions: find them on GitHub and ask the updater container to install them.
 
 The app looks up the latest release every few hours (it can be switched off). Installing needs the small updater

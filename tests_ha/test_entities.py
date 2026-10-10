@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Entities: values from OpenAmpere, push updates, commands, read-only access, diagnostics."""
 
 from __future__ import annotations

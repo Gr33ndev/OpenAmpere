@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Export all historical data of an installation from the former vendor cloud (unofficial tool).
 
 Uses only the vendor's official, read-only customer API.

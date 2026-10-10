@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Updates every generated dependency file in one go, so a commit that changes dependencies is complete and CI is green
 # right away (otherwise the "Dependency files" workflow has to commit them afterwards):
 #   - requirements.lock / requirements-dev.lock (scripts/lock.sh, arguments are passed on, e.g. --upgrade)

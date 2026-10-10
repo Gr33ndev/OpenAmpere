@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Generic Modbus register description and value decoding (shared by all drivers).
 
 32-bit values: high word at the lower address.

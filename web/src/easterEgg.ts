@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useRef, useState } from "react";
 
 /** Easter egg: a secret code switches the energy flow into a retro game look. Purely cosmetic. */

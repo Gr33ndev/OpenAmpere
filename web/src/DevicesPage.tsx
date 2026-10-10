@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useState, type ReactNode } from "react";
 import type { BatteryState, Device, DevicesView, Snapshot } from "./api";
 import { postJson, putJson, useResource } from "./api";

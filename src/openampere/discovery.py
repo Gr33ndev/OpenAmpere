@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Find and test inverters in the local network (setup wizard)."""
 
 from __future__ import annotations

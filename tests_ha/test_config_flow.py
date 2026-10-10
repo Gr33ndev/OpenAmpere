@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Setup: pairing by comparing a code, the connection code, reauthentication."""
 
 from __future__ import annotations

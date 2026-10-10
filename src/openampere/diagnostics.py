@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Read-only diagnostics for the real device ("Liste E" of the on-site checks).
 
 Everything here only reads. The result is a report that users can share (e.g. in a GitHub issue) so

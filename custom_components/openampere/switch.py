@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Switch: charge the battery from the grid when it is cheap (set up once in OpenAmpere)."""
 
 from __future__ import annotations

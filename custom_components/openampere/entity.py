@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Base entity: one device for the system, one for each heating rod or switch OpenAmpere controls."""
 
 from __future__ import annotations

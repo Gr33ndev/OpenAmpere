@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Installs or updates OpenAmpere with Docker on a Linux machine (Raspberry Pi OS, Debian, Ubuntu, Proxmox ...).
 #
 #   curl -fsSL https://gr33ndev.github.io/OpenAmpere/install.sh | bash

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useState } from "react";
 import { useResource } from "./api";
 import { num } from "./format";

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """FoxESS H3 simulator (Modbus TCP).
 
 Lets you develop and test without a real inverter:

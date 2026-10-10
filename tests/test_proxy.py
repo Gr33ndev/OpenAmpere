@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Operation behind a Modbus TCP proxy: forwarding, flaky upstream, slow answers, read-only proxies."""
 
 import asyncio

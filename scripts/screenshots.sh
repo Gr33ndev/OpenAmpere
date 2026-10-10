@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Takes the README screenshots from the demo (made-up values) with headless Chrome, iPhone size at 2x.
 # Usage (from the repository root, after `npm ci` in web/): scripts/screenshots.sh
 set -euo pipefail

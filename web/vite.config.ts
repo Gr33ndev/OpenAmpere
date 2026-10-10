@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 

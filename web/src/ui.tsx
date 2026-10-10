@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { t } from "./i18n";
 import { Chevron } from "./icons";

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Access from anywhere with Tailscale (#83).
 
 When asked for, install.sh sets up a tailscale container next to OpenAmpere. Like the updater, the app never gets

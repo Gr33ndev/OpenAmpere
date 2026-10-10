@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { test as base, expect, type Page } from "@playwright/test";
 import { demoRequest, snapshot } from "../src/demo/server";
 

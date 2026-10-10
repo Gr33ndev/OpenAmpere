@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Sending a command: OpenAmpere's German message becomes the error shown in Home Assistant."""
 
 from __future__ import annotations

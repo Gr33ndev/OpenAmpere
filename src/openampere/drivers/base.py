@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Driver-independent data model and inverter driver interface."""
 
 from __future__ import annotations

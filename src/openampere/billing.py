@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Monthly prepayments (Abschläge) compared with the energy so far.
 
 Grid power is usually paid with a monthly prepayment to the supplier, and the grid operator pays the feed-in
