@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: MIT
 """A damaged database at the start, and restoring a backup in the app (#165)."""
 
+import json
 import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
 
 from openampere.api import create_app
+from openampere.config import EDITABLE, restore_settings
 from openampere.runtime import Runtime
 from openampere.storage import RESTORE_SUFFIX, InvalidBackup, Storage, _is_damage, check_backup
 
@@ -194,3 +196,67 @@ def test_check_backup_accepts_a_backup(tmp_path):
     with pytest.raises(InvalidBackup):
         check_backup(tmp_path / "t.db.lock")
     storage.close()
+
+
+# a crafted backup must not change what the app cannot change, nor send the kept secrets somewhere else
+CRAFTED = {"tariff.feed_in_ct": 9.5, "server.allowed_hosts": ["*"], "cloud.base_url": "https://attacker.example",
+           "evcc.url": "http://attacker.example:7070", "notify.ntfy_url": "https://ntfy.sh/same-topic",
+           "inverter.port": 99999, "evcc.password": "from-backup", "unknown.key": 1}
+
+
+def craft(backup: bytes, tmp_path, settings: dict) -> bytes:
+    path = tmp_path / "crafted.db"
+    path.write_bytes(backup)
+    db = sqlite3.connect(path)
+    with db:
+        db.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
+    db.close()
+    return path.read_bytes()
+
+
+def test_restore_takes_only_checked_settings_and_keeps_secrets_where_they_go(tmp_path):
+    path = tmp_path / "openampere.db"
+    runtime, client = start(path)
+    login(client)
+    client.put("/api/settings", json={"cloud.api_key": "cloud-key-1234", "evcc.url": "http://evcc.local:7070",
+                                      "evcc.password": "evcc-pass", "notify.ntfy_url": "https://ntfy.sh/same-topic",
+                                      "notify.ntfy_token": "tk_secret"})
+    backup = craft(backup_of(client, tmp_path), tmp_path, CRAFTED)
+    runtime.restart_hook = lambda: None
+    assert client.post("/api/backup/restore", content=backup).status_code == 200
+
+    runtime, client = restart(runtime, client)
+    config = runtime.config
+    assert config.tariff.feed_in_ct == 9.5  # a setting of the app: restored
+    assert config.server.allowed_hosts == [] and config.cloud.base_url != CRAFTED["cloud.base_url"]  # not in the app
+    assert config.inverter.port == 502  # outside the limits of the app: left out
+    assert config.evcc.url == CRAFTED["evcc.url"] and config.evcc.password == ""  # another address: entered again
+    assert config.notify.ntfy_token == "tk_secret"  # the same address: kept
+    assert config.cloud.api_key == "cloud-key-1234"
+    assert set(runtime.storage.get_settings()) <= set(EDITABLE)
+    runtime.storage.close()
+
+
+def test_settings_the_app_cannot_change_are_ignored_at_the_start(tmp_path):
+    """Restored by an older version: the next start does not apply them."""
+    storage = Storage(tmp_path / "t.db")
+    storage.save_settings({"server.allowed_hosts": ["*"], "cloud.base_url": "https://attacker.example",
+                           "tariff.feed_in_ct": 9.5})
+    runtime = Runtime({}, storage)
+    assert runtime.config.server.allowed_hosts == [] and runtime.config.cloud.base_url != "https://attacker.example"
+    assert runtime.config.tariff.feed_in_ct == 9.5
+    storage.close()
+
+
+@pytest.mark.parametrize(("backup", "kept"), [
+    ({"meter.provider": "netze_bw", "meter.username": "owner"}, True),
+    ({"meter.provider": "netze_bw", "meter.username": "someone-else"}, False),
+    ({"meter.provider": "none", "meter.username": "owner"}, False),
+    ({}, False),  # the backup has no login: the password has nothing to go with
+])
+def test_a_kept_secret_goes_only_where_it_went_before(backup, kept):
+    current = {"meter.provider": "netze_bw", "meter.username": "owner", "meter.password": "enc:pw",
+               "cloud.api_key": "enc:key"}
+    restored = restore_settings(backup, current)
+    assert ("meter.password" in restored) is kept
+    assert restored["cloud.api_key"] == "enc:key"  # the cloud address cannot be changed in the app

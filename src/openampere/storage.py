@@ -409,14 +409,15 @@ class Storage:
             dest.execute("VACUUM")  # really remove the deleted data from the file
             dest.close()
 
-    def stage_restore(self, upload: str | Path, *, keep_settings: set[str] | frozenset = frozenset()) -> None:
+    def stage_restore(self, upload: str | Path, *, settings: Callable[[dict, dict], dict] | None = None) -> None:
         """Checks an uploaded backup and moves it next to the database, where it replaces it on the next start
-        (nothing has the database open then). The password, sessions, app tokens and the given secret settings
-        (not in a backup) are taken over from the running installation; raises InvalidBackup."""
+        (nothing has the database open then). The password, sessions and app tokens are taken over from the running
+        installation; settings(backup, current) gives the settings to restore (config.restore_settings). Raises
+        InvalidBackup."""
         check_backup(upload)
         with self._lock:
             keep = {key: self._get_meta(key) for key in KEEP_ON_RESTORE}
-            settings = self.get_settings()
+            current = self.get_settings()
             revision = int(self._get_meta("settings_revision") or 0)
         db = sqlite3.connect(str(upload))
         try:
@@ -427,8 +428,8 @@ class Storage:
                 if not isinstance(restored, dict):
                     raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. "
                                         "Bitte eine andere Sicherung wählen.")
-                restored = {k: v for k, v in restored.items() if k not in keep_settings}
-                restored.update({k: v for k, v in settings.items() if k in keep_settings})
+                if settings is not None:
+                    restored = settings(restored, current)
                 values = {**keep, "settings": restored, "settings_revision": revision + 1,
                           "database_damaged": None, "database_restored": None}
                 for key, value in values.items():

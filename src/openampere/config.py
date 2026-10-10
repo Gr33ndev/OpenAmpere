@@ -213,6 +213,9 @@ EDITABLE: dict[str, tuple] = {
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
+# where a secret is sent: a secret kept on restore must keep going to the same place
+SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
+                  "meter.password": ("meter.provider", "meter.username")}
 
 # Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
 # are only shown after login: the meter portal login and meter numbers, and the ntfy address (its topic is the only
@@ -314,6 +317,24 @@ def _invalid_message(key: str, rule: tuple) -> str:
         lo, hi = (f"{v:g}".replace(".", ",") for v in rule[1:3])
         return f"{label}: bitte eine Zahl zwischen {lo} und {hi} eingeben."
     return f"{label}: ungültiger Wert."
+
+
+def restore_settings(backup: dict, current: dict) -> dict:
+    """The settings of a restored backup: only what the app may change, each value checked like a change in the app.
+    A backup holds no secrets: the current ones are kept, unless the backup sends them somewhere else (another evcc
+    or ntfy address, another portal login); then they have to be entered again."""
+    restored: dict = {}
+    for key, value in (backup if isinstance(backup, dict) else {}).items():
+        if key in SECRETS or key not in EDITABLE:
+            continue
+        try:
+            restored.update(validate({key: value}))
+        except Exception:  # noqa: BLE001 - an unusable value is left out, the default applies
+            continue
+    for key in SECRETS & current.keys():
+        if all(restored.get(target) == current.get(target) for target in SECRET_TARGETS.get(key, ())):
+            restored[key] = current[key]
+    return restored
 
 
 def validate(changes: dict) -> dict:

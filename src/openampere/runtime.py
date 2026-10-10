@@ -63,8 +63,13 @@ class Runtime:
         return cls(file_values, Storage(bootstrap.storage.path))
 
     def _load_settings(self) -> dict:
-        """The saved settings with the secrets decrypted; secrets of older versions get encrypted now."""
+        """The saved settings with the secrets decrypted; secrets of older versions get encrypted now. Only settings
+        the app may change: others (e.g. from a crafted backup restored by an older version) are ignored."""
         stored = self.storage.get_settings()
+        ignored = sorted(set(stored) - set(EDITABLE))
+        if ignored:
+            log.warning("saved settings ignored, they cannot be changed in the app: %s", ", ".join(ignored))
+            stored = {k: v for k, v in stored.items() if k in EDITABLE}
         plain = {k: self.secrets.decrypt(k, v) if k in SECRETS else v for k, v in stored.items()}
         if any(k in SECRETS and v and not SecretBox.is_encrypted(v) for k, v in stored.items()):
             self._save_settings(plain)

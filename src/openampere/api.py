@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from . import discovery, cloud_import, external, health, i18n
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
-from .config import PRIVATE, SECRETS
+from .config import PRIVATE, SECRETS, restore_settings
 from .drivers import registry
 from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, ExportLimitControl, NotConnected,
                       WriteFailed)
@@ -626,7 +626,7 @@ def create_app(runtime: Runtime) -> FastAPI:
                     if size > MAX_BACKUP_BYTES:
                         raise HTTPException(413, "Datei zu groß (max. 4 GB).")
                     file.write(chunk)
-            await asyncio.to_thread(storage.stage_restore, upload, keep_settings=SECRETS)
+            await asyncio.to_thread(storage.stage_restore, upload, settings=restore_settings)
         except InvalidBackup as err:
             raise HTTPException(400, str(err)) from None
         except OSError as err:
