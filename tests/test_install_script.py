@@ -38,3 +38,50 @@ def test_every_service_limits_its_log(tmp_path, evcc, tailscale):
     assert set(services) == expected
     for name, service in services.items():
         assert service["logging"] == {"driver": "json-file", "options": {"max-size": "10m", "max-file": "3"}}, name
+
+
+def run_functions(folder: Path, code: str, env: dict | None = None) -> subprocess.CompletedProcess:
+    """Runs bash code with the installer's functions loaded (without main), not interactive."""
+    functions = folder / "functions.sh"
+    functions.write_text(SCRIPT.read_text().replace('\nmain "$@"\n', "\n"))
+    return subprocess.run(["bash", "-c", f'source "{functions}"\nSUDO=""\n{code}'], capture_output=True, text=True,
+                          env={"PATH": "/usr/bin:/bin", "HOME": str(folder / "home"), "OPENAMPERE_YES": "1", **(env or {})})
+
+
+@pytest.mark.parametrize(("given", "expected"), [("/srv/openampere/", "/srv/openampere"), ("~/openampere", "HOME/openampere"),
+                                                 ("~", "HOME")])
+def test_the_install_folder_is_an_absolute_path(tmp_path, given, expected):
+    """#222: "~" is not expanded in an answer; compose needs an absolute path for the helpers."""
+    done = run_functions(tmp_path, 'DOCKER=true\ninstall_dir', {"OPENAMPERE_DIR": given})
+    assert done.returncode == 0, done.stderr
+    assert done.stdout == expected.replace("HOME", str(tmp_path / "home"))
+
+
+def test_a_relative_install_folder_is_refused_with_a_hint(tmp_path):
+    done = run_functions(tmp_path, 'DOCKER=true\ninstall_dir', {"OPENAMPERE_DIR": "openampere"})
+    assert done.returncode != 0 and "vollständigen Pfad" in done.stderr
+
+
+def test_an_earlier_installation_in_another_folder_is_found(tmp_path):
+    """#222: a second run must update that installation, not set up a second one in /opt/openampere."""
+    earlier = tmp_path / "srv" / "oa"
+    earlier.mkdir(parents=True)
+    (earlier / "docker-compose.yml").write_text("services: {}\n")
+    done = run_functions(tmp_path, f'docker() {{ echo "{earlier}"; }}\nDOCKER=docker\ninstall_dir')
+    assert done.returncode == 0, done.stderr
+    assert done.stdout == str(earlier)
+
+
+def test_a_failed_download_keeps_the_helper_that_is_there(tmp_path):
+    """#222: an empty or cut updater.sh made the update helper crash on every start."""
+    install = tmp_path / "install"  # not next to the script copy: copy_helper downloads
+    install.mkdir()
+    (install / "updater.sh").write_text("old helper\n")
+    done = run_functions(tmp_path, f'DIR="{install}"\ncurl() {{ printf "half"; return 22; }}\ncopy_helper updater.sh')
+    assert done.returncode != 0 and "ließ sich nicht herunterladen" in done.stderr
+    assert (install / "updater.sh").read_text() == "old helper\n"
+    assert not (install / "updater.sh.new").exists()
+
+    done = run_functions(tmp_path, f'DIR="{install}"\ncurl() {{ printf "new helper\\n"; }}\ncopy_helper updater.sh')
+    assert done.returncode == 0, done.stderr
+    assert (install / "updater.sh").read_text() == "new helper\n"

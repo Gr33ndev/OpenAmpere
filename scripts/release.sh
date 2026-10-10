@@ -13,6 +13,11 @@ summary="changelog/$version.json"
 [ -z "$(git status --porcelain --untracked-files=all -- . ":(exclude)$summary")" ] \
   || { echo "Erst alle Änderungen committen (außer $summary)." >&2; exit 1; }
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "Releases nur von main." >&2; exit 1; }
+# checked before anything is changed, so a failed release leaves no release commit behind (#222)
+! git rev-parse -q --verify "refs/tags/v$version" >/dev/null || { echo "Den Tag v$version gibt es schon." >&2; exit 1; }
+git fetch -q origin main
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] \
+  || { echo "main ist nicht auf dem Stand von origin/main. Erst git pull (oder pushen)." >&2; exit 1; }
 
 # the changelog of app, website and GitHub release: the commits since the last tag (#155) and the summary (#176).
 # First, so a broken summary file stops the release before anything is changed.
@@ -26,6 +31,10 @@ git add pyproject.toml web/package.json web/package-lock.json custom_components/
   web/public/changelog.json
 [ ! -f "$summary" ] || git add "$summary"
 git commit -q -m "chore(release): $version"
-git tag -s "v$version" -m "OpenAmpere $version"
+git tag -s "v$version" -m "OpenAmpere $version" || {
+  echo "Der Release-Commit ist da, der Tag fehlt. Nach dem Beheben (z. B. Signaturschlüssel) nur den Tag nachholen:" >&2
+  echo "  git tag -s v$version -m \"OpenAmpere $version\"" >&2
+  exit 1
+}
 echo "Version $version committet und getaggt. Veröffentlichen mit:"
 echo "  git push origin main v$version"

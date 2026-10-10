@@ -21,6 +21,9 @@ chown 1000:1000 "$STATE" 2>/dev/null || true # the app (user 1000) writes the re
 # userspace networking: no extra privileges and no /dev/net/tun (NAS, Proxmox LXC); connections to the
 # tailnet address of this machine end up on its own ports, e.g. OpenAmpere on 8080
 tailscaled --tun=userspace-networking --statedir=/var/lib/tailscale --socket="$SOCKET" --no-logs-no-support &
+daemon=$!
+# stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s)
+trap 'kill "$daemon" 2>/dev/null; exit 0' TERM INT
 
 ts() { tailscale --socket="$SOCKET" "$@"; }
 
@@ -40,6 +43,8 @@ publish() {
 login_pid=""
 serve_pid=""
 while true; do
+  # tailscaled stopped: end the container, Docker starts it again (restart: unless-stopped), #222
+  kill -0 "$daemon" 2>/dev/null || { echo "tailscaled ist beendet" >&2; exit 1; }
   date +%s >"$STATE/alive"
   if [ -f "$STATE/request" ]; then
     request=$(cat "$STATE/request" 2>/dev/null)
@@ -75,5 +80,6 @@ while true; do
     esac
   fi
   publish
-  sleep 3
+  sleep 3 &
+  wait $!
 done

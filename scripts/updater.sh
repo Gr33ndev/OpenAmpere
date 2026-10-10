@@ -108,11 +108,14 @@ update() {
 # cosign for the provenance check, installed once when the helper starts (again later if this fails, e.g. offline)
 case "$VERIFY" in [nN]*) ;; *) apk add --no-cache -q cosign >/dev/null 2>&1 || true ;; esac
 
+# stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s)
+trap 'exit 0' TERM INT
 while true; do
   date +%s >"$STATE/updater-alive"
   if [ -f "$STATE/request" ]; then
     rm -f "$STATE/request"
     update
   fi
-  sleep 5
+  sleep 5 &
+  wait $!
 done
