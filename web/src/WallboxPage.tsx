@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
-import { dayOf, num, plantTime, timeZone, todayIso } from "./format";
+import { num, plantTime, timeZone, todayIso } from "./format";
+import { nextDay } from "./zoned";
 import { lang, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
@@ -148,8 +149,9 @@ function PlanForm({ lp, busy, send }: { lp: EvccLoadpoint; busy: boolean; send: 
   // the time is meant in the plant's time zone, like everything the app shows (also from a phone abroad)
   const target = () => {
     const [h, m] = time.split(":").map(Number);
-    const today = plantTime(todayIso(), h, m);
-    return today * 1000 < Date.now() + 15 * 60_000 ? plantTime(dayOf(today + 86_400), h, m) : today;
+    const day = todayIso();
+    const today = plantTime(day, h, m);
+    return today * 1000 < Date.now() + 15 * 60_000 ? plantTime(nextDay(day), h, m) : today;
   };
   return (
     <div className="plan-form">
