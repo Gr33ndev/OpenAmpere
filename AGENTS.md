@@ -70,6 +70,8 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
 - **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
   collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
   into `PAGES` in `web/ui-tests/fixtures.ts`.
+- **Every source file starts with two SPDX lines** (copyright "the OpenAmpere contributors", license MIT), see
+  [CONTRIBUTING.md](CONTRIBUTING.md#code-rules); `tests/test_source_headers.py` fails without them.
 - **No new dependencies** without agreeing in the issue (they also change the license list).
 - **No personal data** in code, tests, docs, issues, PRs, commits or screenshots: names, e-mail and postal addresses,
   locations, IP and MAC addresses, host and tailnet names, serial numbers, meter, customer and Marktstammdatenregister

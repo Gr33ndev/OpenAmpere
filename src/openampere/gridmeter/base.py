@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """What every grid-operator provider offers: its meters and their daily energy.
 
 A provider talks to one grid operator's customer portal. It is synchronous (it runs in a worker thread) and keeps its

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Sensors: power, energy (for the energy dashboard), battery, temperatures, price, devices."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { expect, layoutProblems, open, test } from "./fixtures";
 
 const CHANGELOG = {

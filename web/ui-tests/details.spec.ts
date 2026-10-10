@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { expect, open, test } from "./fixtures";
 
 // #223: smaller bugs in the web app

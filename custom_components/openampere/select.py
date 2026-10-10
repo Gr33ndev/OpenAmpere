@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Choices: work mode of the battery, mode of each heating rod or switch (automatic, off, boost)."""
 
 from __future__ import annotations

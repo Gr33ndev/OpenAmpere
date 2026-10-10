@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

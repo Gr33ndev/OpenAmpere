@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """API for other apps such as Home Assistant (#76): tokens, HTTPS only, fixed list of commands."""
 
 import base64

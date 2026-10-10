@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """SAJ H2 / HS2 driver. Read-only until verified on real hardware."""
 
 from __future__ import annotations

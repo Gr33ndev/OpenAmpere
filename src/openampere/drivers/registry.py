@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Known device drivers and automatic detection.
 
 Detection only reads identification registers and stops at the first match. Vendors use disjoint

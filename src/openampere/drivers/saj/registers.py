@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """SAJ H2 / HS2 / AS2 hybrid inverters.
 
 Register facts from community projects (sources and licenses: see NOTICE). All reads use FC03,

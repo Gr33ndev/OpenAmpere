@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Release notes for a version tag, from its entry in web/public/changelog.json (#155).
 
 The entry is written by scripts/changelog.py from the Conventional Commits since the previous tag (scripts/release.sh

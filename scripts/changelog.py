@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """The changelog of all versions, built from the Conventional Commits between the version tags (#155).
 
 One file, web/public/changelog.json, is the source for the changelog page of the app (it ships with the web app),

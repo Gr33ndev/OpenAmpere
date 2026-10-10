@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # OpenAmpere updater. Runs in its own small container (docker:cli) with access to Docker, set up by install.sh.
 #
 # It reacts to one thing only: the file data/update/request, which the app writes when someone taps

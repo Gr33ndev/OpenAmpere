@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """OpenAmpere: data and control of a home battery system, through a running OpenAmpere server.
 
 The integration never talks to the inverter itself. OpenAmpere stays its only Modbus client and checks every command

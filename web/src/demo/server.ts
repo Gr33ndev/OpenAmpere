@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /** Answers the app's API requests inside the browser for the public demo. Nothing leaves the browser,
  *  nothing is saved: every change is refused with a friendly message. */
 

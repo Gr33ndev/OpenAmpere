@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /** Decimal numbers in input fields: shown with a comma, accepted with a comma or a point.
  *  No imports, so the property tests (ui-tests/properties.spec.ts) can run them without the app. */
 export const decimalInput = (v: number, comma = true) => (comma ? String(v).replace(".", ",") : String(v));

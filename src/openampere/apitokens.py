@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Access tokens for other apps, e.g. the Home Assistant integration (#76).
 
 A token is shown once when it is created; OpenAmpere only keeps its SHA-256 hash (it has 256 random bits, so a

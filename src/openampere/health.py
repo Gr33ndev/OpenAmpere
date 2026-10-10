@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Health of the home battery: full cycles, round-trip efficiency and cell temperatures."""
 
 from __future__ import annotations

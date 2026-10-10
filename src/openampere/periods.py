@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Calendar periods (day/week/month/year) in the installation's local time zone."""
 
 from __future__ import annotations

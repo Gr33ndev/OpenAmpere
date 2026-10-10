@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Access protection: password, sessions, CSRF/origin/host checks, secrets in backups."""
 
 import sqlite3

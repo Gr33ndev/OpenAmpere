@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import type { Summary } from "./api";
 import { energyKwh, percent } from "./format";
 import { LOCALE, t, tx } from "./i18n";

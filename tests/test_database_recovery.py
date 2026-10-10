@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """A damaged database at the start, and restoring a backup in the app (#165)."""
 
 import sqlite3

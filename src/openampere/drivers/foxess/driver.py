@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """FoxESS H3 driver over Modbus TCP."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Keeps the data of one OpenAmpere server: live values by push, the rest every minute."""
 
 from __future__ import annotations

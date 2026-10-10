@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """#223: unexpected input gets a German message instead of an error 500 and is stored in one form; the diagnostics
 report contains durations, not the times of the owner's actions."""
 

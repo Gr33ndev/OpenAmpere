@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """A failing database write (e.g. disk full) shows up in /api/status instead of only in the log (#170)."""
 
 import logging

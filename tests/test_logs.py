@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Log level from the settings and the last log lines in the diagnostics report (#169)."""
 
 import logging

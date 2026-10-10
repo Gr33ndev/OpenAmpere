@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { defineConfig, devices } from "@playwright/test";
 
 /** UI tests (#137): the real app build, with the API answered by the demo simulation (ui-tests/fixtures.ts).

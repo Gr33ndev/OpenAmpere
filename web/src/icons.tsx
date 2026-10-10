@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /* Own line-art icons (no third-party artwork). Colours come from CSS variables. */
 
 type P = { size?: number };

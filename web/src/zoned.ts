@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /** The moment (seconds) of a wall-clock time on a day (YYYY-MM-DD) in a time zone (undefined: the device's).
  *  No imports, so the property tests (ui-tests/properties.spec.ts) can run it without the app. */
 export function zonedTime(day: string, hour: number, minute: number, timeZone?: string): number {

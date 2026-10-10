@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useRef, useState } from "react";
 import type { AuthStatus } from "./api";
 import { postJson, refreshAll, useResource } from "./api";

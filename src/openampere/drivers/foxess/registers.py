@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """FoxESS H3 register maps.
 
 Register facts are taken from the MIT-licensed foxess_modbus project

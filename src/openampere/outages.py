@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Power cuts: how often the inverter ran the house as an island, for how long, and how far battery and sun carried it.
 
 The collector passes every reading. While the inverter reports off-grid mode, the running outage is kept in the

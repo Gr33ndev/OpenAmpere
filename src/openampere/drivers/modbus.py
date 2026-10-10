@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Shared Modbus TCP plumbing for all drivers: one persistent, serialised connection, retries for
 temporary errors (typical behind Modbus proxies), and block reads that fall back to single registers."""
 

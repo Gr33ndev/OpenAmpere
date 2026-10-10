@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Step of the inverter's energy counters (#194): driver hint, detection from the recorded quarters, /api/status."""
 
 from datetime import datetime

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Builds the project website into _site/: landing page (site/) + demo of the web app (_site/demo/).
 # Usage (from the repository root, after `npm ci` in web/): scripts/build-site.sh
 # The pages are rendered by scripts/build-site-pages.mjs from the templates in site/pages/ and the texts in

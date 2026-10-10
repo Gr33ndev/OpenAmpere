@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 # Regenerates the Python lockfiles, all with hashes so pip installs exactly these files (--require-hashes):
 #   requirements.lock        the app (from pyproject.toml), installed in the Docker image
 #   requirements-dev.lock    the app plus the dev tools, for CI

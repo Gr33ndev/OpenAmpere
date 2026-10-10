@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Feed-in compensation under the German EEG for rooftop solar (#71).
 
 The fixed compensation depends on when the plant was commissioned and on its installed power. Power above 10 and

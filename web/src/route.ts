@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react";
 
 /** Minimal hash routing ("#/more/battery"): the browser's back button and reloading keep the current page. */

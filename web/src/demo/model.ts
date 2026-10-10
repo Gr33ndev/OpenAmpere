@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 /** Simulated energy system for the public demo: a 9.8 kWp roof (south + west), a 10 kWh battery and a
  *  household. Deterministic per day (seeded), so the history looks the same on every visit. */
 

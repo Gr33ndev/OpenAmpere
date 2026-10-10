@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { StrictMode, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuthStatus, Status } from "./api";

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """SQLite time-series storage.
 
 - samples:    raw readings every poll (kept raw_retention_days)

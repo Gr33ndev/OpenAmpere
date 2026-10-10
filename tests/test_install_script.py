@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """The docker-compose.yml that scripts/install.sh writes for an installation."""
 
 import shutil

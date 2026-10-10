@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Commit changed files to the current branch through the GitHub API (used by CI).
 
 Commits created this way are signed by GitHub and show as "Verified", unlike a plain `git push` from a

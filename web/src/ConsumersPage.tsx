@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { type ReactNode, useEffect, useState } from "react";
 import { putJson, useResource } from "./api";
 import { DeviceIcon } from "./DevicesPage";

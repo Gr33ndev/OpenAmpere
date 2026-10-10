@@ -177,6 +177,13 @@ scripts/deps.sh
     (`web/biome.jsonc`, the few rules that are switched off are explained there). Formatting is not enforced.
   - An exception in the code needs a comment at its place that says why (`# noqa: <rule>  (reason)` or
     `// biome-ignore <rule>: <reason>`).
+- **Copyright and license in every source file:** the first lines (after a `#!` line or `<!doctype html>`) are, in
+  the comment style of the language:
+  ```
+  SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+  SPDX-License-Identifier: MIT
+  ```
+  `tests/test_source_headers.py` checks this.
 - **Match the surrounding code:** Adapt naming, comment density and style to the code around it. Comments and
   identifiers in English; texts in the app always via `t()` with a key, German first (see
   [Translating the app](#translating-the-app)).

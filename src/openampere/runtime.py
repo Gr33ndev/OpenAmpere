@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Holds configuration, storage and collector; applies settings changes at runtime."""
 
 from __future__ import annotations

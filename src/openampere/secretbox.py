@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Secrets in the database (passwords, tokens, API keys) are encrypted at rest.
 
 AES-256-GCM with a random key in its own file next to the database (secret.key, readable only by the app's user).

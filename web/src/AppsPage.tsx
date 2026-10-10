@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { useState } from "react";
 import { deleteJson, postJson, useResource } from "./api";
 import { DEMO } from "./demo/flag";

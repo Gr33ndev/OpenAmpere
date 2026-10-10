@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import type { Settings } from "../src/api";
 import { demoRequest } from "../src/demo/server";
 import { expect, layoutProblems, open, test } from "./fixtures";

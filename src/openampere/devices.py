@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """All extra devices in one place: heating rods and switched loads (OpenAmpere) and charge points (evcc).
 
 Gives the app one list with live power, records each device's power and energy for the analysis, and

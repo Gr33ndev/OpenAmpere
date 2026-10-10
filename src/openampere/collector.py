@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Polls the inverter, keeps the latest snapshot, stores it and notifies subscribers."""
 
 from __future__ import annotations

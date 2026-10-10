@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 // Checks the translations in src/locales/<lang>/<area>.json (#104). German (de) is the reference.
 // - every key used in the code with t("…") or tx("…") exists in German, and every German key is used
 // - every other language only has keys that exist in German, with the same {placeholders} and plural forms

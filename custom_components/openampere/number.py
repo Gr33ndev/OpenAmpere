@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Numbers: backup reserve, charge limit, outage floor of the battery and the target of grid charging (all %)."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Charging the battery from the grid when electricity is cheap (dynamic tariff) or in a fixed time window.
 
 Safety rules:

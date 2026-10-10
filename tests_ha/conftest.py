@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
 """Tests of the Home Assistant integration. The OpenAmpere server is replaced by a fake client."""
 
 from __future__ import annotations

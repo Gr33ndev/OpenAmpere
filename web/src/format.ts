@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
 import { LOCALE, t } from "./i18n";
 import { zonedTime } from "./zoned";
 
