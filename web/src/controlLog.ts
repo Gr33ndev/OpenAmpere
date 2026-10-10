@@ -84,6 +84,7 @@ function wallboxText(name: string, action: unknown, value: unknown): string {
     case "limit_soc": return t("settings.controlLog.wallboxLimit", { name, soc: pct(value) });
     case "min_soc": return t("settings.controlLog.wallboxMinSoc", { name, soc: pct(value) });
     case "plan_delete": return t("settings.controlLog.wallboxPlanDeleted", { name });
+    case "priority_soc": return t("settings.controlLog.wallboxBatteryPriority", { name, soc: pct(value) });
     case "plan": {
       const plan = obj(value);
       const when = isNum(plan.time) ? new Date(plan.time * 1000).toLocaleString(LOCALE, {

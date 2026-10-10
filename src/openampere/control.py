@@ -200,7 +200,8 @@ class BatteryControl:
             now = await self._read()
         except Exception:  # noqa: BLE001 - not connected right now; nothing to report
             return
-        changed = {k: now.get(k) for k, v in written.items() if now.get(k) != v}
+        # a value that could not be read (None, e.g. a single timeout) is no change by another device (#219)
+        changed = {k: now.get(k) for k, v in written.items() if now.get(k) is not None and now.get(k) != v}
         if changed:
             self.external_change = {"expected": written, "found": changed}
             self.runtime.storage.log_control("battery_settings_check", {"from": written, "to": changed}, False,
@@ -302,11 +303,21 @@ class ExportLimitControl:
                 if getattr(err, "transient", False):
                     raise WriteFailed("Keine Antwort vom Wechselrichter. Bitte später erneut versuchen.") from err
                 raise WriteFailed("Der Wechselrichter hat die Änderung abgelehnt.") from err
-            after = await self.read()
-            result = "ok" if after["limit_w"] == limit_w else f"Rücklesen abweichend: {after['limit_w']} W"
+            # written: always in the control log, also when the read-back fails (#219)
+            try:
+                after = await self.read()
+            except Exception:  # noqa: BLE001 - logged below, checked again by _verify
+                after = None
+            if after is None:
+                result = "Rücklesen fehlgeschlagen"
+            else:
+                result = "ok" if after["limit_w"] == limit_w else f"Rücklesen abweichend: {after['limit_w']} W"
             storage.log_control("export_limit", details, False, result)
             self.external_change = None
             self._schedule_verify(limit_w)
+            if after is None:
+                raise WriteFailed("Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es "
+                                  "später erneut.")
             return {"dry_run": False, "written": True, "result": result, **after}
 
     def _schedule_verify(self, limit_w: int) -> None:
@@ -320,7 +331,7 @@ class ExportLimitControl:
             now = (await self.read())["limit_w"]
         except Exception:  # noqa: BLE001
             return
-        if now != limit_w:
+        if now is not None and now != limit_w:
             self.external_change = {"expected": limit_w, "found": now}
             self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},
                                                                     "to": {"export_limit_w": now}},

@@ -366,3 +366,30 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             assert runtime.storage.get_meta("remote_seen")["on_since"] is None
         finally:
             await runtime.collector.stop()
+
+
+async def test_an_unreadable_battery_value_is_no_change_by_another_device(tmp_path, monkeypatch):
+    """#219: one read timeout after a write (value None) must not report "overwritten by another device"."""
+    from openampere import control as control_module
+    from openampere.control import BatteryControl
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.1)
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            assert (await battery.write({"min_soc_on_grid": 40}))["result"] == "ok"
+            original = battery._read
+
+            async def timed_out():
+                return {**await original(), "min_soc_on_grid": None}
+            monkeypatch.setattr(battery, "_read", timed_out)
+            await asyncio.sleep(0.4)
+            assert battery.external_change is None
+            assert runtime.storage.control_log()[0]["action"] == "battery_settings"
+        finally:
+            await runtime.collector.stop()

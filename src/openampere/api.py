@@ -825,8 +825,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         result = order_view()
         if evcc.configured:
             try:
-                await evcc.set_priority_soc(surplus.evcc_priority_soc())
-                result["evcc_synced"] = True
+                result["evcc_synced"] = await evcc.set_priority_soc(surplus.evcc_priority_soc())
             except EvccError as err:
                 result["evcc_synced"], result["evcc_error"] = False, str(err)
         return result

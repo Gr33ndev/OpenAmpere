@@ -147,3 +147,53 @@ def test_export_limit_api_requires_confirmation(tmp_path, authed):
     authed(client)
     assert client.put("/api/grid/export-limit", json={"limit_w": 5000}).status_code == 403  # control disabled
     assert client.put("/api/grid/export-limit", json={"limit_w": -1}).status_code == 422
+
+
+async def test_a_written_limit_is_logged_also_when_the_read_back_fails(tmp_path, monkeypatch):
+    """#219: the control log must hold every write, also when the inverter does not answer afterwards."""
+    from openampere.control import WriteFailed
+    sim, server, port = await start()
+    async with server:
+        runtime = await connected_runtime(tmp_path, port)
+        control = ExportLimitControl(runtime)
+        try:
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
+            original, reads = control.read, []
+
+            async def read_back_fails():
+                reads.append(1)
+                if len(reads) > 1:  # the read before writing works, the one after does not
+                    raise TimeoutError("no answer")
+                return await original()
+            monkeypatch.setattr(control, "read", read_back_fails)
+            with pytest.raises(WriteFailed):
+                await control.write(4000)
+            assert sim.energy.export_limit_w == 4000
+            entry = runtime.storage.control_log()[0]
+            assert entry["action"] == "export_limit" and entry["result"] == "Rücklesen fehlgeschlagen"
+        finally:
+            if control._verify_task is not None:
+                control._verify_task.cancel()
+            await runtime.collector.stop()
+
+
+async def test_an_unreadable_limit_is_no_change_by_another_device(tmp_path, monkeypatch):
+    from openampere import control as control_module
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.1)
+    sim, server, port = await start()
+    async with server:
+        runtime = await connected_runtime(tmp_path, port)
+        control = ExportLimitControl(runtime)
+        try:
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
+            await control.write(4000)
+            original = control.read
+
+            async def unreadable():
+                return {**await original(), "limit_w": None}
+            monkeypatch.setattr(control, "read", unreadable)
+            await asyncio.sleep(0.4)
+            assert control.external_change is None
+            assert runtime.storage.control_log()[0]["action"] == "export_limit"
+        finally:
+            await runtime.collector.stop()

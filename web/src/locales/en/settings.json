@@ -274,6 +274,7 @@
     "unknownValue": "unknown",
     "update": "Update to version {to} started (previously {from}).",
     "wallbox": "Wallbox",
+    "wallboxBatteryPriority": "{name}: the home battery charges first, up to {soc}.",
     "wallboxLimit": "{name}: charge target set to {soc}.",
     "wallboxMinSoc": "{name}: minimum charge set to {soc}.",
     "wallboxMode": "{name}: charging mode “{mode}” chosen.",
