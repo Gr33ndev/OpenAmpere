@@ -1,5 +1,6 @@
 # Tests of the Home Assistant integration (custom_components/openampere), in their own environment:
 # Home Assistant needs a newer Python and pins its own test tools.
-#   uv venv .venv-ha --python 3.14 && uv pip install -p .venv-ha -r tests_ha/requirements.txt
+#   uv venv .venv-ha --python 3.14 && uv pip install -p .venv-ha -r tests_ha/requirements.lock
 #   .venv-ha/bin/pytest tests_ha
+# The pinned versions with hashes are in requirements.lock, made from this file by scripts/lock.sh.
 pytest-homeassistant-custom-component==0.13.367
