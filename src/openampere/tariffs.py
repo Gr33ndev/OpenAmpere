@@ -77,8 +77,8 @@ def validate(raw: list) -> list[Tariff]:
     tariffs = []
     for item in raw:
         try:
-            date.fromisoformat(str(item["valid_from"]))
-            tariff = Tariff(valid_from=str(item["valid_from"]), kind=str(item.get("kind", "fixed")),
+            # stored as YYYY-MM-DD: tariffs are compared as text, "20240101" would never apply (#223)
+            tariff = Tariff(valid_from=date.fromisoformat(str(item["valid_from"])).isoformat(), kind=str(item.get("kind", "fixed")),
                             price_ct=float(item.get("price_ct", 0)), surcharge_ct=float(item.get("surcharge_ct", 0)),
                             vat_percent=float(item.get("vat_percent", 19)), feed_in_ct=float(item.get("feed_in_ct", 0)),
                             area=str(item.get("area", "DE")),
@@ -94,6 +94,8 @@ def validate(raw: list) -> list[Tariff]:
             raise ValueError("Bitte mindestens ein Zeitfenster mit eigenem Preis angeben.")
         if len(tariff.windows) > 6 or not all(-100 <= w["price_ct"] <= 200 for w in tariff.windows):
             raise ValueError("Höchstens 6 Zeitfenster, Preise zwischen -100 und 200 ct/kWh.")
+        if not 0 <= tariff.vat_percent <= 100:  # also refuses "nan", which broke the tariffs page (#223)
+            raise ValueError("Die Mehrwertsteuer bitte zwischen 0 und 100 % angeben.")
         if not 0 <= tariff.base_fee_eur_month <= 200:
             raise ValueError("Den Grundpreis bitte zwischen 0 und 200 € pro Monat angeben.")
         tariffs.append(tariff)

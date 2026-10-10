@@ -331,7 +331,9 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             check = await remote()
             assert check["status"] == "warn" and "weder Laden noch Entladen" in check["summary"]
             assert "Seit mindestens 3 Stunden durchgehend an" in check["summary"]
-            assert "zuletzt am" in check["hint"] and "dauerhaft bei 0 W" in check["hint"]
+            assert "zuletzt vor weniger als einer Minute aus dem Netz geladen" in check["hint"]  # a duration, no time (#149)
+            assert " Uhr " not in check["hint"]
+            assert "dauerhaft bei 0 W" in check["hint"]
 
             # #141: a leftover of OpenAmpere's own charging (on = 1, its timeout), also long after the last command:
             # the watchdog may leave the switch on, so it is not another device, and OpenAmpere switches it off

@@ -241,6 +241,7 @@
     "enterLeastOneTime": "Please enter at least one time window with its own price.",
     "enterPricesBetween100": "Please enter prices between -100 and 200 ct/kWh.",
     "enterStandingChargeBetween": "Please enter the standing charge between 0 and 200 € per month.",
+    "enterVat0100": "Please enter the VAT between 0 and 100 %.",
     "invalidTariffCheckDates": "Invalid tariff: please check the dates and prices.",
     "invalidTariffType": "Invalid tariff type.",
     "most6TimeWindows": "At most 6 time windows, prices between -100 and 200 ct/kWh.",
