@@ -89,7 +89,7 @@ REQUIRED_TABLES = {"samples", "energy_15m", "meta"}  # every OpenAmpere database
 # sessions, and an empty or old password would let anyone in the home network take over (or lock out the owner).
 # api_tokens: tokens revoked since the backup must stay revoked. remote_command: whether OpenAmpere still has to
 # switch off the inverter's remote control right now (#141).
-KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command")
+KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "consumer_switched_on")  # last: #243
 SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26
 
 

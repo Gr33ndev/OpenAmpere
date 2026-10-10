@@ -61,7 +61,7 @@ def template(node: ast.AST) -> str | None:
 
 
 # control log: function -> position of the result or reason argument
-LOG_ARGS = {"log_control": 3, "stop": 0, "_log_stop": 0, "switch": 2, "set_power": 2, "_safe_off": 1}
+LOG_ARGS = {"log_control": 3, "stop": 0, "_log_stop": 0, "switch": 2, "set_power": 2, "_safe_off": 1, "_log": 2}
 # results that are codes, not texts: the app shows them in its own words
 LOG_CODES = {"ok", "manual", "auto"}
 
