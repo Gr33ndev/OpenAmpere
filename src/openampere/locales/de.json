@@ -241,6 +241,7 @@
     "enterLeastOneTime": "Bitte mindestens ein Zeitfenster mit eigenem Preis angeben.",
     "enterPricesBetween100": "Preise bitte zwischen -100 und 200 ct/kWh angeben.",
     "enterStandingChargeBetween": "Den Grundpreis bitte zwischen 0 und 200 € pro Monat angeben.",
+    "enterVat0100": "Die Mehrwertsteuer bitte zwischen 0 und 100 % angeben.",
     "invalidTariffCheckDates": "Ungültiger Tarif: bitte Datum und Preise prüfen.",
     "invalidTariffType": "Ungültige Tarifart.",
     "most6TimeWindows": "Höchstens 6 Zeitfenster, Preise zwischen -100 und 200 ct/kWh.",

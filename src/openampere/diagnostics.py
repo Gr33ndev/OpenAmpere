@@ -46,6 +46,8 @@ def _mask(serial: str | None) -> str | None:
 _IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 _IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
 _MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])")
+# time stamps in the names of database copies (storage.py): when the owner restored or lost data
+_STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
 _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
                    r"(?![\w-])", re.I)
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
@@ -85,6 +87,7 @@ class _Pseudonyms:
         text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
         text = _IPV4.sub(self._ip, text)
         text = _IPV6.sub(self._ip, text)
+        text = _STAMP.sub("<Zeitpunkt>", text)  # e.g. openampere.db.before-restore-20261010-153012 (#223)
         return _HOST.sub(lambda m: self._name(m.group(0), "Host"), text)
 
     def apply(self, value):
@@ -103,6 +106,11 @@ def _duration(seconds: float) -> str:
         return f"{minutes} Minuten"
     hours = minutes // 60
     return f"{hours} Stunden" if hours < 48 else f"{hours // 24} Tagen"
+
+
+def _ago(seconds: float) -> str:
+    """How long ago, instead of the time of the owner's action (#149)."""
+    return "vor weniger als einer Minute" if seconds < 60 else f"vor {_duration(seconds)}"
 
 
 class Diagnostics:
@@ -162,7 +170,7 @@ class Diagnostics:
         remote = await self._read_remote(register_map)
         if "error" in remote:
             return Check("remote", title, "info", f"nicht lesbar ({remote['error']})")
-        now, tz = time.time(), self.runtime.tz
+        now = time.time()
         timeout, power = remote["timeout_s"], remote["power_w"]
         command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
         # durations instead of times of the user's actions (#149)
@@ -179,9 +187,9 @@ class Diagnostics:
             return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}", details,
                          "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
         if ours and not command.get("released"):
-            last = datetime.fromtimestamp(command["ts"], tz).strftime("%d.%m.%Y um %H:%M")
+            ago = _ago(now - command["ts"])  # a duration, not the time of the owner's action (#149, #223)
             return Check("remote", title, "info", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what})", details,
-                         f"OpenAmpere hat die Fernsteuerung zuletzt am {last} Uhr benutzt und am Ende nicht "
+                         f"OpenAmpere hat die Fernsteuerung zuletzt {ago} benutzt und am Ende nicht "
                          "abgeschaltet, zum Beispiel wegen eines Neustarts oder einer kurz unterbrochenen Verbindung. "
                          "Es schaltet sie innerhalb einer Minute selbst ab, du musst nichts tun. Ist sie danach noch "
                          "an, melde das bitte als Fehler.")
@@ -193,8 +201,7 @@ class Diagnostics:
         else:
             since = ""
         started = self.runtime.storage.last_control("grid_charging", STARTED)
-        last = (f"am {datetime.fromtimestamp(started, tz).strftime('%d.%m.%Y um %H:%M')} Uhr aus dem Netz geladen"
-                if started else "noch nie aus dem Netz geladen")
+        last = f"{_ago(now - started)} aus dem Netz geladen" if started else "noch nie aus dem Netz geladen"
         who = (f"OpenAmpere benutzt dieselben Werte, hat zuletzt {last} und die Fernsteuerung danach abgeschaltet. "
                "Vielleicht hat der Wechselrichter die Werte nach einem Neustart wiederhergestellt: Dann schaltet "
                "OpenAmpere sie nach dem nächsten Verbindungsaufbau selbst ab. Oder ein zweites Programm steuert den "

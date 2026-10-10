@@ -21,6 +21,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from pathlib import Path
 from datetime import date, datetime, timedelta
 
 from .drivers.base import raise_if_cancelled
@@ -66,10 +67,10 @@ def soc_values(body: dict) -> list[tuple[int, float]]:
     return [(_ts(e["fromTimestamp"]), float(e["value"])) for e in timeline or [] if e.get("value") is not None]
 
 
-def import_zip(storage: Storage, data: bytes) -> dict:
-    """Reads */work/*.json and */stateOfCharge/*.json from an export ZIP."""
+def import_zip(storage: Storage, data: bytes | str | Path) -> dict:
+    """Reads */work/*.json and */stateOfCharge/*.json from an export ZIP (its bytes or a file)."""
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
+        archive = zipfile.ZipFile(io.BytesIO(data) if isinstance(data, bytes) else data)
     except zipfile.BadZipFile:
         raise ValueError("Das ist keine gültige ZIP-Datei.") from None
     total = sum(info.file_size for info in archive.infolist())
@@ -85,16 +86,21 @@ def import_zip(storage: Storage, data: bytes) -> dict:
             continue
         try:
             payload = json.loads(archive.read(name))
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, zipfile.BadZipFile):  # also a damaged entry (CRC error), #223
             continue
-        body = payload.get("body") if isinstance(payload, dict) and "body" in payload else payload
+        if not isinstance(payload, dict):
+            continue
+        body = payload.get("body") if "body" in payload else payload
         if payload.get("status", 200) != 200 or not isinstance(body, dict):
             continue
-        if folder == "work":
-            rows += work_rows(body)
-            days += 1
-        else:
-            socs += soc_values(body)
+        try:  # one day with unexpected content is skipped, not the whole import (#223)
+            if folder == "work":
+                rows += work_rows(body)
+                days += 1
+            else:
+                socs += soc_values(body)
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
     if not days:
         raise ValueError("In der ZIP-Datei wurden keine Verlaufsdaten gefunden (Ordner „work“).")
     inserted = storage.import_energy(rows, "cloud")

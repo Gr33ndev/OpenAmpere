@@ -513,13 +513,21 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.post("/api/import/cloud/file")
     async def cloud_import_file(request: Request):
-        data = await request.body()
-        if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "Datei zu groß (max. 500 MB).")
+        # written to a file while it arrives: a large upload must not fill the memory of a Raspberry Pi (#223)
+        fd, name = tempfile.mkstemp(prefix=".cloud-upload-", dir=Path(storage.path).resolve().parent)
+        upload, size = Path(name), 0
         try:
-            return await asyncio.to_thread(cloud_import.import_zip, storage, data)
+            with open(fd, "wb") as file:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > MAX_UPLOAD_BYTES:
+                        raise HTTPException(413, "Datei zu groß (max. 500 MB).")
+                    file.write(chunk)
+            return await asyncio.to_thread(cloud_import.import_zip, storage, upload)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
+        finally:
+            upload.unlink(missing_ok=True)
 
     # ---- data ------------------------------------------------------------
 
@@ -567,7 +575,10 @@ def create_app(runtime: Runtime) -> FastAPI:
         """Replaces the database with an uploaded backup and starts OpenAmpere again (#165). The current database
         is kept as a copy; password, sessions and secrets stay those of the running installation."""
         folder = Path(storage.path).resolve().parent
-        length = int(request.headers.get("content-length") or 0)
+        try:
+            length = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            raise HTTPException(400, "Ungültige Anfrage.") from None
         if length > MAX_BACKUP_BYTES:
             raise HTTPException(413, "Datei zu groß (max. 4 GB).")
         if length > shutil.disk_usage(folder).free:
@@ -655,9 +666,11 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(400, "Unbekannter Zeitraum")
         try:
             start, end = period_bounds(period, parse_anchor(period, date, tz))
+            return to_ts(start, tz), to_ts(end, tz)
+        except OverflowError:  # a date at the end of the calendar, e.g. 9999-12-31 (#223)
+            raise HTTPException(400, "Ungültiges Datum") from None
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        return to_ts(start, tz), to_ts(end, tz)
 
     @app.get("/api/energy/summary")
     def energy_summary(period: str = "day", date: str | None = None):
@@ -944,8 +957,11 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(400, "Ungültiges Datum") from None
         if last < first:
             raise HTTPException(400, "Das Enddatum liegt vor dem Startdatum")
-        t0 = to_ts(first, tz)
-        t1 = to_ts(last + datetime.timedelta(days=1), tz)
+        try:
+            t0 = to_ts(first, tz)
+            t1 = to_ts(last + datetime.timedelta(days=1), tz)
+        except OverflowError:  # a date at the end of the calendar (#223)
+            raise HTTPException(400, "Ungültiges Datum") from None
         buckets: dict[float, dict] = {}
         for row in storage.energy(t0, t1):
             key = bucket_start(row["ts"], resolution, tz)

@@ -40,8 +40,8 @@ def validate(raw: dict) -> dict:
             start_month = int(item.get("start_month", 1))
             payments = []
             for p in item.get("payments") or []:
-                month = str(p["from"])
-                datetime.strptime(month, "%Y-%m")
+                # stored as YYYY-MM: "2024-1" would sort and compare wrongly (#223)
+                month = datetime.strptime(str(p["from"]), "%Y-%m").strftime("%Y-%m")
                 payments.append({"from": month, "eur": round(float(p["eur"]), 2)})
         except (KeyError, TypeError, ValueError):
             raise ValueError("Bitte für jeden Abschlag einen Monat und einen Betrag angeben.") from None
