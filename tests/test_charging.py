@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 
 import pytest
@@ -196,5 +197,76 @@ async def test_values_brought_back_after_an_inverter_restart_are_switched_off(tm
             restore(1, 180)
             await charging.tick()
             assert sim._get_setting("remote_enable") == 1
+        finally:
+            await runtime.collector.stop()
+
+
+# #218: a normal end of charge is not a fault
+async def battery(runtime, sim, soc, power_w):
+    """Sets what the simulated inverter reports and waits until OpenAmpere has read it."""
+    sim.energy.soc, sim.energy.battery_w = soc, power_w
+    sim.update_registers()
+    for _ in range(100):
+        snap = runtime.collector.latest
+        if snap and snap.battery_soc == pytest.approx(soc, abs=0.5) and snap.battery_power == pytest.approx(power_w, abs=50):
+            return
+        await asyncio.sleep(0.1)
+    raise AssertionError(f"reading not updated: {runtime.collector.latest}")
+
+
+async def charging_session(tmp_path, max_soc=100):
+    sim, server, runtime = await connected(tmp_path)
+    sim.energy.max_soc = max_soc
+    sim._sync_settings_to_registers()
+    await runtime.update_settings({"control.dry_run": False})
+    charging = GridCharging(runtime)
+    charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0, "window_end": 0,
+                   "target_soc": 100, "power_w": 3000})
+    return sim, server, runtime, charging
+
+
+async def test_charging_that_tapers_near_full_is_not_a_fault(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 90, -3000)
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)  # charges: checked once
+            await battery(runtime, sim, 97, -80)  # the battery management tapers near full
+            await charging.tick(now=10_200)
+            await charging.tick(now=10_300)
+            assert charging.active and charging.last_error is None and charging.settings.enabled
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_the_inverters_charge_limit_pauses_grid_charging_without_switching_it_off(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path, max_soc=80)
+    async with server:
+        try:
+            await battery(runtime, sim, 78, 0)  # below the target of 100 %, but the inverter stops at 80 %
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)
+            assert not charging.active and charging.last_error is None and charging.settings.enabled
+            assert not sim.energy.remote_enabled
+            assert "keine Ladung mehr an" in runtime.storage.control_log()[0]["result"]
+            await charging.tick(now=10_130)
+            assert not charging.active  # does not start again at the same level
+            await battery(runtime, sim, 70, 400)  # the house used some of it: grid charging tries again
+            await charging.tick(now=10_160)
+            assert charging.active and sim.energy.remote_enabled
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_a_battery_that_does_not_charge_at_all_still_stops_grid_charging(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 50, 0)
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)
+            assert not charging.active and "lädt trotz Befehl nicht" in (charging.last_error or "")
+            assert not charging.settings.enabled
         finally:
             await runtime.collector.stop()
