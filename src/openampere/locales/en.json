@@ -60,6 +60,7 @@
     "enterTimesFullHours": "Please enter times as full hours 0–23.",
     "invalidSettingsChargingGrid": "Invalid settings for charging from the grid.",
     "logBatteryTakesNoMore": "The battery takes no more charge at {soc} % (the inverter's charge limit or full)",
+    "logChargeLimitReached": "Inverter charge limit ({target} %) reached",
     "logCheapestQuarters": "cheapest quarter hours",
     "logFinished": "charging finished: {reason}",
     "logInWindow": "within the charging window",

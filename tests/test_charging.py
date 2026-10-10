@@ -272,3 +272,55 @@ async def test_a_battery_that_does_not_charge_at_all_still_stops_grid_charging(t
             assert not charging.settings.enabled
         finally:
             await runtime.collector.stop()
+
+
+# #242: the inverter does not respect its charge limit while it is charged by remote control
+async def test_grid_charging_stops_at_the_inverters_charge_limit(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path, max_soc=80)
+    async with server:
+        try:
+            await battery(runtime, sim, 70, -3000)
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)  # charges: checked
+            assert charging.active and sim.energy.remote_enabled
+            await battery(runtime, sim, 80.5, -3000)  # past the limit, the inverter would go on to 100 %
+            await charging.tick(now=10_200)
+            assert not charging.active and not sim.energy.remote_enabled
+            assert charging.settings.enabled and charging.last_error is None
+            assert charging.view(now=10_200)["plan"]["reason"] == "Ladegrenze des Wechselrichters (80 %) erreicht"
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_grid_charging_does_not_start_above_the_inverters_charge_limit(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path, max_soc=80)
+    async with server:
+        try:
+            await battery(runtime, sim, 82, 0)
+            await charging.tick(now=10_000)
+            assert not charging.active and not sim.energy.remote_enabled
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_the_pause_at_the_limit_is_shown_and_ends_with_new_settings(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path, max_soc=100)
+    async with server:
+        try:
+            await battery(runtime, sim, 97, 0)  # full: takes no more
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)
+            assert charging.full_at_soc is not None
+            assert "keine Ladung mehr an" in charging.view(now=10_100)["plan"]["reason"]
+            charging.save({**charging.view()["settings"], "target_soc": 90})
+            assert charging.full_at_soc is None
+        finally:
+            await runtime.collector.stop()
+
+
+@pytest.mark.parametrize("field", ["enabled", "legal_confirmed"])
+@pytest.mark.parametrize("value", ["false", "0", 1, None])
+def test_only_real_yes_or_no_switches_grid_charging(field, value):
+    from openampere.charging import validate
+    with pytest.raises(ValueError):
+        validate({"enabled": False, "legal_confirmed": True, field: value}, 10_000)
