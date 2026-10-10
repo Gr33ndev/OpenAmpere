@@ -2,7 +2,7 @@
 
 **Deutsch:** [README.de.md](README.de.md)
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Gr33ndev/OpenAmpere/badge)](https://scorecard.dev/viewer/?uri=github.com/Gr33ndev/OpenAmpere)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Gr33ndev/OpenAmpere/badge)](https://scorecard.dev/viewer/?uri=github.com/Gr33ndev/OpenAmpere) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15361/badge)](https://www.bestpractices.dev/projects/15361)
 
 [Website & Demo](https://gr33ndev.github.io/OpenAmpere/) · [FAQ](https://gr33ndev.github.io/OpenAmpere/faq.html) · [Source code](https://github.com/Gr33ndev/OpenAmpere) · [Questions](https://github.com/Gr33ndev/OpenAmpere/discussions) · [Roadmap](https://github.com/users/Gr33ndev/projects/1) · [Report a bug](https://github.com/Gr33ndev/OpenAmpere/issues) · [License](LICENSE) · [Third-party licenses](THIRD_PARTY_LICENSES.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Governance](GOVERNANCE.md)
 
