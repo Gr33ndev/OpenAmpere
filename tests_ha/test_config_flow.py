@@ -128,3 +128,13 @@ async def test_client_pins_the_certificate() -> None:
     assert isinstance(client._ssl, aiohttp.Fingerprint) and client._ssl.fingerprint == bytes.fromhex(FINGERPRINT)
     assert client._base == "https://[fe80::1]:8443/api/external/v1"
     assert client._headers == {"Authorization": "Bearer oa_x"}
+
+
+def test_only_plain_sentences_of_the_server_are_shown():
+    """GHSA-vx3h-6qm5-fqr2: the form text is Markdown, and the server is not confirmed yet while pairing."""
+    from custom_components.openampere.config_flow import plain_detail
+    assert plain_detail("Zu viele offene Anfragen (höchstens 3). Bitte später erneut versuchen.") == \
+        "Zu viele offene Anfragen (höchstens 3). Bitte später erneut versuchen."
+    for crafted in ("[Hier klicken](https://attacker.example)", "![x](https://attacker.example/t.png)",
+                    "Bitte https://attacker.example öffnen", "<img src=x>", "**fett**", "a" * 300):
+        assert plain_detail(crafted) == "–", crafted

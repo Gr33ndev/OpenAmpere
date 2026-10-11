@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import secrets
 import time
 from collections.abc import Mapping
@@ -30,6 +31,15 @@ from .const import (API_VERSION, CONF_CODE, CONF_FINGERPRINT, CONF_MIN_INTERVAL,
                     DOMAIN)
 
 DEFAULT_PORT = 8443
+# Home Assistant shows the text of a form as Markdown, and the server is not confirmed yet while pairing: only plain
+# sentences of the server are shown, no links, images or formatting (GHSA-vx3h-6qm5-fqr2)
+PLAIN = re.compile(r"(?:[^\W_]|[ .,;:?%()„“\"'–-]){1,200}")
+
+
+def plain_detail(text: str) -> str:
+    """The server's message if it is a plain sentence, else a dash."""
+    text = " ".join(text.split())
+    return text if PLAIN.fullmatch(text) else "–"
 PAIRING_TIMEOUT_S = 600
 POLL_S = 2
 
@@ -136,7 +146,7 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
             except OpenAmpereError as err:
                 # e.g. too many open requests: OpenAmpere's own words
                 errors["base"] = "pairing_failed"
-                self._failure_detail = str(err)
+                self._failure_detail = plain_detail(str(err))
         schema = vol.Schema({vol.Required(CONF_HOST, default=self._default_host()): str,
                              vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(vol.Coerce(int), vol.Range(1, 65535))})
         return self.async_show_form(step_id="pair", data_schema=schema, errors=errors,
