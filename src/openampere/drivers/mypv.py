@@ -49,11 +49,19 @@ class HeatingRodState:
         return self.setpoint_w if self.heating else 0
 
 
+def plausible(state: HeatingRodState) -> bool:
+    """Whether the registers look like a my-PV heating rod: a status code (faults are 200 and up) and temperatures
+    of hot water. Another Modbus device at this address usually refuses the registers or answers with other values."""
+    temperatures = [t for t in (state.temperature_c, state.target_c) if t is not None]
+    return 0 < state.status < 1000 and all(-30 <= t <= 120 for t in temperatures)
+
+
 class MyPvHeatingRod:
     def __init__(self, host: str, port: int = 502, unit: int = 1, timeout: float = 3.0) -> None:
         self.host, self.port, self.unit, self.timeout = host, port, unit, timeout
         self._client: AsyncModbusTcpClient | None = None
         self._lock = asyncio.Lock()
+        self._identified = False  # a reading looked like a my-PV rod: only then is the power register written
 
     async def _connected(self) -> AsyncModbusTcpClient:
         if self._client is None:
@@ -81,6 +89,15 @@ class MyPvHeatingRod:
 
     async def set_power(self, watts: int) -> None:
         watts = max(0, min(int(watts), 65_000))
+        # never written to a broadcast address (0, every device behind a gateway) or to a device that is not a rod,
+        # e.g. the inverter when its address was entered by mistake
+        if not 1 <= self.unit <= 247:
+            raise ConnectionError("Ungültige Geräteadresse des Heizstabs. Bitte eine Adresse von 1 bis 247 angeben.")
+        if not self._identified:
+            if not plausible(await self.read()):
+                raise ConnectionError(f"Unter {self.host}:{self.port} antwortet kein Heizstab von my-PV. Bitte die "
+                                      "Adresse prüfen.")
+            self._identified = True
         async with self._lock:
             client = await self._connected()
             try:

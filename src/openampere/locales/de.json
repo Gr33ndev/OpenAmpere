@@ -111,6 +111,7 @@
     "giveEachDeviceName": "Bitte jedem Gerät einen Namen geben.",
     "invalidInputDevice": "Ungültige Angaben bei einem Gerät.",
     "invalidPortDeviceAddress": "{name}: Ungültiger Port oder Geräteadresse.",
+    "inverterAddressNotRod": "{name}: Das ist die Adresse des Wechselrichters. Bitte die IP-Adresse des Heizstabs angeben.",
     "logByHandFullPower": "von Hand: volle Leistung",
     "logByHandOff": "von Hand: aus",
     "logCheapPrice": "günstiger Strompreis",
@@ -217,7 +218,9 @@
     "immersionHeaterNotResponding": "Heizstab antwortet nicht: {err}",
     "immersionHeaterRejectsPower": "Heizstab lehnt die Leistungsvorgabe ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
     "immersionHeaterRejectsQuery": "Heizstab lehnt die Abfrage ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
-    "immersionHeaterTReached": "Heizstab unter {host}:{port} nicht erreichbar"
+    "immersionHeaterTReached": "Heizstab unter {host}:{port} nicht erreichbar",
+    "invalidUnit": "Ungültige Geräteadresse des Heizstabs. Bitte eine Adresse von 1 bis 247 angeben.",
+    "noRodAtAddress": "Unter {host}:{port} antwortet kein Heizstab von my-PV. Bitte die Adresse prüfen."
   },
   "notify": {
     "ntfyAddressMustForm": "Die ntfy-Adresse muss die Form https://server/thema haben."

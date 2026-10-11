@@ -80,6 +80,12 @@ def test_validation():
         validate([{"name": "x", "kind": "http", "url_on": "file:///etc/passwd", "url_off": "http://a/"}])
     with pytest.raises(ValueError):
         validate([{"name": "", "host": PUMP}])
+    for unit in (0, 248):  # 0 is the broadcast address: every device behind a gateway
+        with pytest.raises(ValueError, match="Geräteadresse"):
+            validate([{"name": "Heizstab", "kind": "mypv", "host": "192.168.178.30", "unit": unit}])
+    with pytest.raises(ValueError, match="Wechselrichters"):
+        validate([{"name": "Heizstab", "kind": "mypv", "host": "192.168.178.20", "port": 502}], ("192.168.178.20", 502))
+    assert validate([{"name": "Heizstab", "kind": "mypv", "host": "192.168.178.30"}], ("192.168.178.20", 502))
     c = validate([{"name": "Pumpe", "kind": "shelly1", "host": PUMP, "channel": 1}])[0]
     assert switch_url(c, False) == f"http://{PUMP}/relay/1?turn=off"
 
