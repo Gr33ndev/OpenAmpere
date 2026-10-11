@@ -145,12 +145,14 @@ class Auth:
     def known_device(self, token: str | None) -> bool:
         return bool(token) and _token_id(token) in self._devices()
 
-    def remember_device(self, token: str | None) -> str:
-        """The device cookie for a browser that just logged in: its own if it has a valid one, else a new one."""
+    def remember_device(self, previous: str | None) -> str:
+        """A new device cookie for a browser that just logged in; the one it sent (if any) is no longer valid. Never the
+        value the browser sent: a new one each time, so a copied cookie stops working with the next login."""
+        token = secrets.token_urlsafe(32)
         with self._sessions_lock:
             devices = self._devices()
-            if not token or _token_id(token) not in devices:
-                token = secrets.token_urlsafe(32)
+            if previous:
+                devices.pop(_token_id(previous), None)
             devices[_token_id(token)] = time.time() + DEVICE_TTL_S
             newest = sorted(devices.items(), key=lambda item: item[1])[-MAX_DEVICES:]
             self.storage.set_meta("known_devices", dict(newest))

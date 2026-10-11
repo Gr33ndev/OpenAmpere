@@ -102,7 +102,10 @@ def test_log_out_everywhere_and_a_new_password_forget_the_devices(tmp_path):
     auth = Auth(Storage(tmp_path / "t.db"))
     auth.set_password(PASSWORD)
     device = auth.remember_device(None)
-    assert auth.known_device(device) and auth.remember_device(device) == device
+    assert auth.known_device(device)
+    renewed = auth.remember_device(device)  # a new value on every login, the old one stops working
+    assert renewed != device and auth.known_device(renewed) and not auth.known_device(device)
+    device = renewed
     auth.forget_devices()
     assert not auth.known_device(device)
     runtime, client = app_client(tmp_path / "app")
