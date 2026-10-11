@@ -66,8 +66,16 @@ class FoxessDriver(ModbusDevice):
                 legacy_readable = bool(await self._probe(32000, 2, functions))
             return legacy_readable
 
+        confirmed = True  # a FoxESS answers here: only then are settings written
         if self._map_choice in MAPS:
             self.map = MAPS[self._map_choice]
+            # chosen by hand (e.g. behind a data logger that hides the model): readings are taken as told, but
+            # writing needs a FoxESS model string or the counter registers of that map
+            confirmed = bool(_LEGACY_MODEL.match(model) or _NEW_MODEL.match(model)) or (
+                await has_new() if self.map is H3_NEW else await has_legacy())
+            if not confirmed:
+                log.warning("register map %s chosen by hand, but the device does not answer like a FoxESS "
+                            "(model string %r): settings are not written", self.map.name, model)
         # the model string is only a hint: always confirm with the counter registers, prefer the newer map
         elif await has_new():
             self.map = H3_NEW
@@ -103,7 +111,7 @@ class FoxessDriver(ModbusDevice):
 
         self.info = DeviceInfo(manufacturer="FoxESS", model=model or "unknown", serial=serial,
                                firmware=firmware, register_map=self.map.name, driver=self.KEY, unit=self._unit,
-                               rated_power_w=rated_power_w(model), supports_control=True,
+                               rated_power_w=rated_power_w(model), supports_control=confirmed,
                                energy_step_wh=counter_step_wh(self.map.values))
         log.info("connected: %s (map %s, fc%02d)", self.info, self.map.name, self.read_function)
         return self.info
