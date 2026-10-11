@@ -39,7 +39,7 @@ class Check:
     hint: str = ""  # what it means and what to do, shown below the result
 
 
-def _mask(serial: str | None) -> str | None:
+def mask_serial(serial: str | None) -> str | None:
     if not serial:
         return serial
     return serial[:4] + "…" + serial[-2:] if len(serial) > 6 else "…"
@@ -239,7 +239,7 @@ class Diagnostics:
         device = collector.device
         info = asdict(device) if device else {}
         if not include_serial:
-            info["serial"] = _mask(info.get("serial"))
+            info["serial"] = mask_serial(info.get("serial"))
         now = time.time()
         report = self._pseudonymise({"created": now, "version": self._version(), "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
@@ -270,7 +270,7 @@ class Diagnostics:
             stored = (self.runtime.storage.get_meta("firmware") or {}).get("serial")
             for serial in {device.serial if device else None, stored}:
                 if serial:
-                    known[serial] = _mask(serial)
+                    known[serial] = mask_serial(serial)
         pseudonyms = _Pseudonyms(config.inverter.host, known)
         return {**report, "checks": pseudonyms.apply(report.get("checks", [])),
                 "log": pseudonyms.apply(report.get("log", []))}

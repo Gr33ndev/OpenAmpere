@@ -46,7 +46,7 @@ from .devices import Devices
 from .notify import Notifier
 from .remote import Remote
 from .updates import Updates
-from .diagnostics import Diagnostics, report_markdown
+from .diagnostics import Diagnostics, mask_serial, report_markdown
 
 log = logging.getLogger(__name__)
 
@@ -449,9 +449,15 @@ def create_app(runtime: Runtime) -> FastAPI:
     # ---- live ------------------------------------------------------------
 
     @app.get("/api/status")
-    def status():
+    def status(request: Request):
         latest = collector.latest
         control = runtime.config.control
+        device = dict(collector.device.__dict__) if collector.device else None
+        firmware = storage.get_meta("firmware") or {}
+        if not logged_in(request):  # the serial number identifies the installation (#164): shortened without login
+            if device:
+                device["serial"] = mask_serial(device.get("serial"))
+            firmware = {**firmware, "serial": mask_serial(firmware.get("serial"))} if firmware else firmware
         return {
             "version": VERSION,
             "configured": collector.configured,
@@ -468,9 +474,9 @@ def create_app(runtime: Runtime) -> FastAPI:
                          "rollback": storage.get_meta("database_rollback")},
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
-            "device": collector.device.__dict__ if collector.device else None,
+            "device": device,
             "energy_step_wh": collector.energy_step_wh(),
-            "firmware": {**(storage.get_meta("firmware") or {}), "history": storage.get_meta("firmware_history") or []},
+            "firmware": {**firmware, "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
             "storage": collector.storage_state(),
         }
