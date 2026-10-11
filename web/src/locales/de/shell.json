@@ -50,7 +50,7 @@
   "passwordSetup": {
     "continue": "Weiter",
     "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die meisten Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt. Zugangsdaten und die Adresse deiner Push-Nachrichten siehst du nur nach der Anmeldung.",
-    "passwordHint": "Mindestens 6 Zeichen. Bewahre es gut auf – zurücksetzen kann es nur, wer Zugriff auf den Server hat.",
+    "passwordHint": "Mindestens 8 Zeichen. Bewahre es gut auf – zurücksetzen kann es nur, wer Zugriff auf den Server hat.",
     "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
     "repeatPassword": "Passwort wiederholen",
     "setPassword": "Passwort festlegen"
@@ -71,7 +71,7 @@
     "newPassword": "Neues Passwort",
     "notLoggedIn": "Dieses Gerät ist nicht angemeldet – nur Anzeige.",
     "passwordChanged": "Passwort geändert – andere Geräte müssen sich neu anmelden",
-    "passwordHint": "Mindestens 6 Zeichen",
+    "passwordHint": "Mindestens 8 Zeichen",
     "remoteAccessHint": "Ansehen ist im Heimnetz ohne Passwort möglich. Für Zugriff von unterwegs nutze ein VPN (z. B. das deiner FRITZ!Box, WireGuard oder Tailscale) – {warning}"
   },
   "subPage": {

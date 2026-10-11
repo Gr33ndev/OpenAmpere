@@ -114,3 +114,32 @@ def test_log_out_everywhere_and_a_new_password_forget_the_devices(tmp_path):
     assert client.post("/api/auth/logout?everywhere=true").status_code == 200
     assert not runtime.storage.get_meta("known_devices")
     runtime.storage.close()
+
+
+def test_a_password_hash_of_an_older_version_still_works_and_is_stored_with_todays_setting(tmp_path):
+    """scrypt with p=5 (OWASP); a hash made with p=1 by an older version is checked as it is and replaced."""
+    import hashlib
+    import os
+    from openampere.auth import SCRYPT_P
+    storage = Storage(tmp_path / "t.db")
+    salt = os.urandom(16)
+    old = hashlib.scrypt(PASSWORD.encode(), salt=salt, n=2 ** 14, r=8, p=1, dklen=32).hex()
+    storage.set_meta("auth", {"salt": salt.hex(), "hash": old})
+    auth = Auth(storage)
+    assert not auth.check_password("wrong-password", "192.0.2.1")
+    assert storage.get_meta("auth")["hash"] == old  # a wrong password changes nothing
+    assert auth.check_password(PASSWORD, "192.0.2.1")
+    assert storage.get_meta("auth")["p"] == SCRYPT_P and storage.get_meta("auth")["hash"] != old
+    assert auth.check_password(PASSWORD, "192.0.2.1")
+    with pytest.raises(ValueError, match="8 Zeichen"):
+        auth.set_password("kurz123")
+
+
+def test_cookies_are_secure_over_https(tmp_path):
+    runtime, client = app_client(tmp_path)
+    https = TestClient(client.app, base_url="https://testserver", headers={"x-openampere": "1"})
+    response = https.post("/api/auth/setup", json={"password": PASSWORD})
+    assert all("Secure" in c for c in response.headers.get_list("set-cookie"))
+    plain = client.post("/api/auth/login", json={"password": PASSWORD}, headers={"x-openampere": "1"})
+    assert not any("Secure" in c for c in plain.headers.get_list("set-cookie"))
+    runtime.storage.close()

@@ -323,11 +323,14 @@ def create_app(runtime: Runtime) -> FastAPI:
         return auth.valid(request.cookies.get(SESSION_COOKIE))
 
     def start_session(response: Response, request: Request) -> None:
+        # Secure where the request came over HTTPS: the cookies then never travel over plain HTTP. In the home
+        # network the app is opened over HTTP, so it cannot be set there.
+        secure = request.url.scheme == "https"
         response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,
-                            samesite="strict", path="/")
+                            samesite="strict", path="/", secure=secure)
         device = auth.remember_device(request.cookies.get(DEVICE_COOKIE))
         response.set_cookie(DEVICE_COOKIE, device, max_age=DEVICE_TTL_S, httponly=True, samesite="strict",
-                            path="/api/auth")
+                            path="/api/auth", secure=secure)
 
     def check_password(request: Request, password: str) -> bool:
         return auth.check_password(password, request.client.host if request.client else None,
