@@ -1,6 +1,77 @@
 {
   "versions": [
     {
+      "version": "0.21.0",
+      "date": "2026-10-11",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "changelog",
+            "text": "Link security advisories (#278)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "site",
+            "text": "Use own buttons instead of images from my.home-assistant.io (#296)"
+          },
+          {
+            "scope": "security",
+            "text": "Tailscale option makes services that listen only on localhost reachable from the tailnet (GHSA-6r67-5vwf-5x8x)"
+          },
+          {
+            "scope": "install",
+            "text": "Run the app without capabilities and new privileges (#294)"
+          },
+          {
+            "scope": "pairing",
+            "text": "Limit pairing requests per device and show where they come from (#292)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "No time in the report header, pseudonymise meters and devices (#290)"
+          },
+          {
+            "scope": null,
+            "text": "Refuse values that are no numbers with a sentence, keep bad cloud data out (#288)"
+          },
+          {
+            "scope": "auth",
+            "text": "Stronger password hashing, 8 characters, secure cookies over HTTPS (#286)"
+          },
+          {
+            "scope": "install",
+            "text": "Pin the update helper image by digest (#284)"
+          },
+          {
+            "scope": "homeassistant",
+            "text": "Leave names, model and firmware out of the diagnostics (#282)"
+          },
+          {
+            "scope": "foxess",
+            "text": "Write settings only to a device confirmed as FoxESS (#280)"
+          },
+          {
+            "scope": "auth",
+            "text": "Issue a new device cookie on every login (#276)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Use an obviously made-up meter number in the diagnostics test (#299)"
+          },
+          {
+            "scope": "agents",
+            "text": "Note that switching off is written in test mode too (#298)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.20.0",
       "date": "2026-10-11",
       "first": false,
