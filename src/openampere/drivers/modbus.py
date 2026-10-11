@@ -29,7 +29,11 @@ class DeviceUnreachable(ConnectionError):
 
 
 class DetectionFailed(ConnectionError):
-    """Something answers, but it is not a supported device. The message is a German text for the app."""
+    """Something answers, but it is not a supported device. .message is a German text for the app."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 class ModbusReadError(Exception):
@@ -66,7 +70,7 @@ def friendly_error(err: BaseException) -> str:
             return "Das Gerät lehnt die Verbindung ab. Ist Modbus TCP aktiviert und der Port richtig?"
         return "Netzwerkfehler bei der Verbindung zum Wechselrichter."
     if isinstance(err, DetectionFailed):
-        return str(err)
+        return err.message
     return "Unerwarteter Fehler bei der Verbindung zum Wechselrichter (Details im Protokoll des Servers)."
 
 

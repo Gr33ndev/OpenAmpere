@@ -23,7 +23,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-from .drivers.modbus import ModbusIllegalError
+from .drivers.modbus import ModbusIllegalError, friendly_error
 from .runtime import Runtime
 from .storage import QUARTER
 
@@ -219,9 +219,10 @@ class GridCharging:
                                                   "timeout_s": REMOTE_TIMEOUT_S, "released": None})
         try:
             await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S)
-        except Exception as err:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            err = friendly_error(exc)  # the technical text goes to the log, not into the app
             self.last_error = f"Befehl abgelehnt: {err}"
-            log.warning("grid charging command failed: %s", err)
+            log.warning("grid charging command failed: %s", exc)
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None

@@ -116,10 +116,10 @@ class GridMeter:
             await asyncio.to_thread(self._fetch, datetime.fromtimestamp(now, self.runtime.tz).date())
             self.error, self._refused = None, None
         except ProviderAuthError as err:
-            self.error, self._refused = str(err), login
+            self.error, self._refused = err.message, login
             log.info("grid meter: %s", err)
         except ProviderError as err:
-            self.error = str(err)
+            self.error = err.message
             log.info("grid meter: %s", err)
         except Exception as err:  # noqa: BLE001 - unexpected portal answer: show it and try again later
             self.error = "Unerwartete Antwort vom Kundenportal. Bitte später nochmal versuchen."

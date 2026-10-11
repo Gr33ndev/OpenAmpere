@@ -874,7 +874,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             try:
                 result["evcc_synced"] = await evcc.set_priority_soc(surplus.evcc_priority_soc())
             except EvccError as err:
-                result["evcc_synced"], result["evcc_error"] = False, str(err)
+                result["evcc_synced"], result["evcc_error"] = False, err.message
         return result
 
     @app.post("/api/consumers/{consumer_id}/mode")
@@ -945,14 +945,14 @@ def create_app(runtime: Runtime) -> FastAPI:
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         except EvccError as err:
-            raise HTTPException(502, str(err)) from None
+            raise HTTPException(502, err.message) from None
 
     @app.get("/api/evcc/sessions")
     async def evcc_sessions(limit: int = Query(50, ge=1, le=500)):
         try:
             return {"sessions": await evcc.sessions(limit)}
         except EvccError as err:
-            raise HTTPException(502, str(err)) from None
+            raise HTTPException(502, err.message) from None
 
     @app.get("/api/evcc/site")
     def evcc_site():

@@ -62,10 +62,16 @@ export const LANGUAGES: { code: Lang; name: string; complete: boolean }[] = Obje
   .map(([path, meta]) => ({ code: parts(path)[0], name: meta.default.name, complete: meta.default.complete !== false }))
   .sort((a, b) => (a.code === REFERENCE ? -1 : b.code === REFERENCE ? 1 : a.name.localeCompare(b.name)));
 
+/** The code from the app's own list for a value from outside (address, storage), so only a known code is used in
+ *  links and markup; undefined for anything else. */
+function known(value: string | null): Lang | undefined {
+  return Object.keys(DICTIONARIES).find((code) => code === value);
+}
+
 export function storedLang(): Lang {
   try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    if (value && value in DICTIONARIES) return value;
+    const value = known(localStorage.getItem(STORAGE_KEY));
+    if (value) return value;
   } catch {
     /* private mode */
   }
@@ -74,15 +80,15 @@ export function storedLang(): Lang {
 
 // ?lang=en in the address (e.g. from the English website to the demo): choose that language for this device and
 // remove the parameter again, so a bookmark does not override a later choice
-const fromAddress = new URLSearchParams(window.location.search).get("lang");
-if (fromAddress && fromAddress in DICTIONARIES) {
+const fromAddress = known(new URLSearchParams(window.location.search).get("lang"));
+if (fromAddress) {
   try { localStorage.setItem(STORAGE_KEY, fromAddress); } catch { /* private mode: only for this visit */ }
   const url = new URL(window.location.href);
   url.searchParams.delete("lang");
   window.history.replaceState(window.history.state, "", url);
 }
 
-let current: Lang = fromAddress && fromAddress in DICTIONARIES ? fromAddress : storedLang();
+let current: Lang = fromAddress ?? storedLang();
 document.documentElement.lang = current;
 
 export function lang(): Lang {

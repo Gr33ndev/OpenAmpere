@@ -31,7 +31,11 @@ MODES = ("off", "pv", "minpv", "now")  # accepted by old and new evcc versions (
 
 
 class EvccError(Exception):
-    pass
+    """A problem with evcc; .message is the text written for the owner, shown in the app."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 def _num(value) -> float | None:
@@ -155,7 +159,7 @@ class Evcc:
         try:
             raw = await asyncio.to_thread(self._call, "GET", "/api/state")
         except EvccError as err:
-            self.error = str(err)
+            self.error = err.message
             return self.state
         if not isinstance(raw, dict) or "loadpoints" not in raw:
             self.error = "Unter dieser Adresse antwortet kein evcc."

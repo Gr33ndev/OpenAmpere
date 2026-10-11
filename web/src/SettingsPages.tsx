@@ -735,7 +735,7 @@ function CsvExportCard() {
   const [to, setTo] = useState(isoDate(new Date()));
   const [resolution, setResolution] = useState<"15m" | "60m" | "day" | "month">("day");
   const valid = !!from && !!to && from <= to;
-  const href = `/api/export/csv?from=${from}&to=${to}&resolution=${resolution}`;
+  const href = `/api/export/csv?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&resolution=${encodeURIComponent(resolution)}`;
   return (
     <div className="card form">
       <h2>{t("settings.csvExportCard.title")}</h2>
