@@ -13,8 +13,8 @@ from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import (EDITABLE, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value, read_yaml,
-                     validate)
+from .config import (AUDITED, EDITABLE, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value,
+                     read_yaml, validate)
 from .drivers import registry
 from .cloud_import import CloudImport
 from .secretbox import SecretBox
@@ -172,7 +172,7 @@ class Runtime:
         if old.log.level != new.log.level:
             logs.apply_level(new.log.level)
         control_changes = {k: (get_value(old, k), get_value(new, k))
-                           for k in ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp")
+                           for k in AUDITED
                            if get_value(old, k) != get_value(new, k)}
         if control_changes:  # switching control on/off and the declared feed-in rule belong into the audit log
             self.storage.log_control("control_switches", {"from": {k: v[0] for k, v in control_changes.items()},

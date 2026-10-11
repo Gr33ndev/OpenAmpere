@@ -214,6 +214,8 @@ EDITABLE: dict[str, tuple] = {
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 # where a secret is sent: a secret kept on restore must keep going to the same place
+# changes that belong into the control log: switching control on/off and the declared feed-in rule
+AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp")
 SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
                   "meter.password": ("meter.provider", "meter.username")}
 

@@ -197,6 +197,16 @@ def _user_version(path: Path) -> int:
         db.close()
 
 
+def _audited_changes(current: dict, restored: dict) -> dict:
+    """The changes of AUDITED settings by a restore, as the control log shows changes in the app."""
+    from .config import AUDITED, Config, get_value  # the configuration does not need the storage
+    defaults = Config()
+    values = {key: (current.get(key, get_value(defaults, key)), restored.get(key, get_value(defaults, key)))
+              for key in AUDITED}
+    changed = {key: value for key, value in values.items() if value[0] != value[1]}
+    return {"from": {k: v[0] for k, v in changed.items()}, "to": {k: v[1] for k, v in changed.items()}} if changed else {}
+
+
 def check_backup(path: str | Path) -> None:
     """Raises InvalidBackup unless the file is an intact OpenAmpere database."""
     with open(path, "rb") as file:
@@ -477,8 +487,14 @@ class Storage:
                                         "Bitte eine andere Sicherung wählen.")
                 if settings is not None:
                     restored = settings(restored, current)
+                # update_latest: what the app shows as a new version, with a link, is looked up again
                 values = {**keep, "settings": restored, "settings_revision": revision + 1,
-                          "database_damaged": None, "database_restored": None}
+                          "database_damaged": None, "database_restored": None, "update_latest": None}
+                changes = _audited_changes(current, restored)
+                if changes:  # control switched on or off by the restore belongs into the control log, too
+                    result = "Datensicherung wiederhergestellt"
+                    db.execute("INSERT INTO control_log VALUES (?,?,?,?,?)",
+                               (time.time(), "control_switches", json.dumps(changes), 0, result))
                 for key, value in values.items():
                     if value is None:
                         db.execute("DELETE FROM meta WHERE key=?", (key,))

@@ -107,7 +107,13 @@ class GridCharging:
 
     @property
     def settings(self) -> ChargingSettings:
-        return ChargingSettings(**{**asdict(ChargingSettings()), **(self.runtime.storage.get_meta("grid_charging") or {})})
+        """Checked like a change in the app also when read: the stored values may come from a restored backup."""
+        stored = self.runtime.storage.get_meta("grid_charging") or {}
+        try:
+            return validate(stored if isinstance(stored, dict) else {}, None)
+        except ValueError as err:
+            log.warning("stored grid charging settings ignored: %s", err)
+            return ChargingSettings()  # off
 
     def save(self, raw: dict, source: str | None = None) -> ChargingSettings:
         """source: who asked for it if not the web app, e.g. the name of an app's access token."""

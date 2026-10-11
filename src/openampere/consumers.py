@@ -189,9 +189,16 @@ class SurplusControl:
 
     @property
     def consumers(self) -> list[Consumer]:
+        """Checked like a change in the app also when read: the stored devices may come from a restored backup."""
         stored = self.runtime.storage.get_meta("consumers") or []
-        consumers = [Consumer(**self._opened(c)) for c in stored]
-        if any(c.get(k) and not self.runtime.secrets.is_encrypted(c[k]) for c in stored for k in self.URLS):
+        consumers = []
+        for raw in stored:
+            try:
+                consumers += validate([self._opened(raw)])
+            except (ValueError, AttributeError, TypeError) as err:
+                log.warning("stored device ignored: %s", err)
+        if any(isinstance(c, dict) and c.get(k) and not self.runtime.secrets.is_encrypted(c[k])
+               for c in stored for k in self.URLS):
             self._save_consumers(consumers)  # stored by an older version: encrypted now
         return consumers
 
