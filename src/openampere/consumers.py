@@ -171,9 +171,29 @@ class SurplusControl:
 
     # ---- settings ------------------------------------------------------------
 
+    # The switch addresses often hold the device's password: stored encrypted like the other credentials
+    # (secret.key), so a copy of the database or a backup does not reveal them (GHSA-3jrg-5v7g-9f96).
+    URLS = ("url_on", "url_off")
+
+    def _sealed(self, consumer: dict) -> dict:
+        box = self.runtime.secrets
+        return {**consumer, **{k: box.encrypt(f"consumer.{k}", consumer[k]) for k in self.URLS
+                               if consumer.get(k) and not box.is_encrypted(consumer[k])}}
+
+    def _opened(self, consumer: dict) -> dict:
+        return {**consumer, **{k: self.runtime.secrets.decrypt(f"consumer.{k}", consumer[k]) for k in self.URLS
+                               if consumer.get(k)}}
+
+    def _save_consumers(self, consumers: list[Consumer]) -> None:
+        self.runtime.storage.set_meta("consumers", [self._sealed(asdict(c)) for c in consumers])
+
     @property
     def consumers(self) -> list[Consumer]:
-        return [Consumer(**c) for c in self.runtime.storage.get_meta("consumers") or []]
+        stored = self.runtime.storage.get_meta("consumers") or []
+        consumers = [Consumer(**self._opened(c)) for c in stored]
+        if any(c.get(k) and not self.runtime.secrets.is_encrypted(c[k]) for c in stored for k in self.URLS):
+            self._save_consumers(consumers)  # stored by an older version: encrypted now
+        return consumers
 
     def save(self, raw: list) -> list[Consumer]:
         inverter = self.runtime.config.inverter
@@ -194,13 +214,13 @@ class SurplusControl:
                     moved = replace(old, id=f"{old.id}~old")
                     self.states[moved.id], self._retired[moved.id] = state, moved
                     self._remember(moved, state)
-        self.runtime.storage.set_meta("consumers", [asdict(c) for c in consumers])
+        self._save_consumers(consumers)
         return consumers
 
     def _remember(self, c: Consumer, state: State) -> None:
         """Which switched devices OpenAmpere really switched on, with the way to switch them, so it can switch them
         off after a restart, a change of the device or a restored backup, too."""
-        self._store(c.id, {"since": state.since, "consumer": asdict(c)} if state.switched_on else None)
+        self._store(c.id, {"since": state.since, "consumer": self._sealed(asdict(c))} if state.switched_on else None)
 
     def _forget(self, c_id: str) -> None:
         self.states.pop(c_id, None)
@@ -228,7 +248,7 @@ class SurplusControl:
             state.since = entry if isinstance(entry, (int, float)) else entry.get("since", 0.0)  # before #243: a number
             if isinstance(entry, dict) and entry.get("consumer"):
                 try:
-                    self._known[c_id] = Consumer(**entry["consumer"])
+                    self._known[c_id] = Consumer(**self._opened(entry["consumer"]))
                 except TypeError:
                     pass
 
@@ -296,7 +316,7 @@ class SurplusControl:
         self.runtime.storage.set_meta("surplus_order", {"order": order, "battery_soc": battery_soc})
         # keep the device list in the same order
         by_key = {f"c:{c.id}": c for c in self.consumers}
-        self.runtime.storage.set_meta("consumers", [asdict(by_key[k]) for k in order if k in by_key])
+        self._save_consumers([by_key[k] for k in order if k in by_key])
         return self.order()
 
     def battery_first_soc(self, c: Consumer) -> int:

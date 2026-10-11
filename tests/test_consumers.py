@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 import asyncio
+import os
 import sqlite3
 
 import pytest
@@ -395,3 +396,38 @@ async def test_shutdown_stops_grid_charging_even_when_another_step_fails(tmp_pat
     async with app.router.lifespan_context(app):
         pass
     assert stopped == ["OpenAmpere wird beendet"]
+
+
+# GHSA-3jrg-5v7g-9f96: switch addresses often hold the device's password; they were stored unencrypted and were in
+# every backup
+HTTP_CONFIG = {"name": "Heizstab", "kind": "http", "power_w": 1000, "min_on_min": 0, "min_off_min": 0,
+               "url_on": "http://admin:geheim-4711@heater.local/on", "url_off": "http://admin:geheim-4711@heater.local/off"}
+
+
+def database_bytes(runtime) -> bytes:
+    path = runtime.storage.path
+    return b"".join(open(f"{path}{s}", "rb").read() for s in ("", "-wal") if os.path.exists(f"{path}{s}"))
+
+
+async def test_switch_addresses_are_stored_encrypted_and_not_readable_in_a_backup(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([HTTP_CONFIG])
+    reading(runtime, grid=-2000)
+    await control.tick(now=1000)
+    await control.tick(now=1030)
+    assert calls == [HTTP_CONFIG["url_on"]]  # still switches with the real address
+    assert runtime.storage.get_meta("consumer_switched_on")  # remembered with the address, encrypted as well
+    assert b"geheim-4711" not in database_bytes(runtime)
+    runtime.storage.backup(tmp_path / "backup.db")
+    assert b"geheim-4711" not in (tmp_path / "backup.db").read_bytes()
+    assert SurplusControl(runtime).consumers[0].url_on == HTTP_CONFIG["url_on"]
+
+
+def test_switch_addresses_of_older_versions_are_encrypted_on_the_next_start(tmp_path, monkeypatch):
+    runtime = runtime_with(tmp_path, monkeypatch, [])
+    control = SurplusControl(runtime)
+    runtime.storage.set_meta("consumers", [{**HTTP_CONFIG, "id": "old1"}])
+    assert control.consumers[0].url_off == HTTP_CONFIG["url_off"]
+    assert runtime.storage.get_meta("consumers")[0]["url_off"].startswith("enc:v1:")

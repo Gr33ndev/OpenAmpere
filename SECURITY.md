@@ -30,8 +30,8 @@ details.
   password.
 - Protection against third-party websites (CSRF header, origin check) and against DNS rebinding (host check).
 - Control features are off by default and start in test mode.
-- Credentials (passwords for the grid operator portal and evcc, ntfy token, cloud API keys) are stored encrypted in the
-  database (AES-256-GCM). The key is in `data/secret.key`, readable only by the app user. The database alone does not
+- Credentials (passwords for the grid operator portal and evcc, ntfy token, cloud API keys, switch addresses of devices,
+  which often contain a password) are stored encrypted in the database (AES-256-GCM). The key is in `data/secret.key`, readable only by the app user. The database alone does not
   reveal them, and backups do not contain them at all. The app never returns them, and for passwords not even parts of
   them. The app's own access password is only stored as a scrypt hash.
 - Other apps (e.g. the Home Assistant integration) connect only over HTTPS, pin the certificate of OpenAmpere and use
