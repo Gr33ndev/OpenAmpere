@@ -149,3 +149,25 @@ async def test_collector_counts_connected_only_after_a_successful_read(tmp_path)
     assert not collector.connected and collector.last_error
     assert DeadInverter.connects == 1  # back-off (5 s) is respected, no reconnect storm
     await collector.stop()
+
+
+@pytest.mark.parametrize("sim_map, chosen, model, control", [
+    (H3_NEW, "foxess_h3_new", "UNKNOWN-MODEL", True),  # the counters of the chosen map answer
+    (H3_LEGACY, "foxess_h3_legacy", "H3-10.0-E", True),
+    (H3_LEGACY, "foxess_h3_new", "UNKNOWN-MODEL", False),  # neither model string nor counters: read only
+])
+async def test_a_register_map_chosen_by_hand_needs_a_foxess_for_writing(sim_map, chosen, model, control):
+    """With register map and function code chosen by hand, the detection read nothing at all: any Modbus device at
+    the address was taken for a FoxESS and got settings written."""
+    sim, server, port = await start_sim(sim_map, model)
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247, register_map=chosen, read_function="input", timeout=1,
+                              read_attempts=1)
+        try:
+            try:
+                info = await driver.connect()
+            except ConnectionError:
+                info = None  # measurement registers of the wrong map do not answer: no device at all
+            assert (info is not None and info.supports_control) is control
+        finally:
+            await driver.close()  # an open connection keeps the server from closing
