@@ -17,6 +17,8 @@ Safety rules:
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 import math
 import time
@@ -97,6 +99,8 @@ class GridCharging:
         self.full_at_soc: float | None = None  # state of charge at which the battery took no more
         self._limit: tuple[float, float] | None = None  # (read at, the inverter's charge limit in %)
         self._dry_logged_quarter: int | None = None
+        self._lock = asyncio.Lock()
+        self._owner: asyncio.Task | None = None
         self._refused_quarter: int | None = None  # a refused command is not tried again in the same quarter
 
     # ---- settings ------------------------------------------------------------
@@ -170,7 +174,31 @@ class GridCharging:
 
     # ---- execution -------------------------------------------------------------
 
+    @contextlib.asynccontextmanager
+    async def _exclusive(self):
+        """One tick or stop at a time (the watchdog, the app and the API for other apps call them): otherwise a tick
+        that started before grid charging was switched off could switch the remote control on again after the
+        stop. Re-entrant, so a tick can stop."""
+        task = asyncio.current_task()
+        if self._owner is task:
+            yield
+            return
+        async with self._lock:
+            self._owner = task
+            try:
+                yield
+            finally:
+                self._owner = None
+
     async def tick(self, now: float | None = None) -> None:
+        async with self._exclusive():
+            await self._tick(now)
+
+    async def stop(self, reason: str, *, error: bool = False) -> None:
+        async with self._exclusive():
+            await self._stop(reason, error=error)
+
+    async def _tick(self, now: float | None = None) -> None:
         now = time.time() if now is None else now
         runtime, s = self.runtime, self.settings
         collector = runtime.collector
@@ -241,7 +269,7 @@ class GridCharging:
                                                                               "target_soc": s.target_soc}},
                                         False, f"Laden gestartet ({plan['reason']})")
 
-    async def stop(self, reason: str, *, error: bool = False) -> None:
+    async def _stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging and switches the remote control off. Called on every tick without charging, so a switch-off
         that failed or was skipped (restart, new driver object after an IP change) is done later (#141), and
         OpenAmpere's values that come back after a new connection are switched off again (#143)."""
