@@ -15,6 +15,7 @@ import asyncio
 import ipaddress
 import re
 import time
+import urllib.parse
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -265,6 +266,20 @@ class Diagnostics:
         config = self.runtime.config
         known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
                  config.meter.username: "<Benutzername>"}
+        for meter in config.meter.meter_ids or []:
+            known[str(meter)] = "<Zählernummer>"
+        for device in self.runtime.storage.get_meta("consumers") or []:  # hosts and switch addresses of devices
+            if not isinstance(device, dict):
+                continue
+            if device.get("host"):
+                known[str(device["host"]).strip()] = "<Geräteadresse>"
+            for key in ("url_on", "url_off"):
+                url = self.runtime.secrets.decrypt(f"consumer.{key}", device.get(key) or "")
+                if url:
+                    known[url] = "<Schaltadresse>"
+                    host = urllib.parse.urlsplit(url).hostname
+                    if host:
+                        known.setdefault(host, "<Geräteadresse>")
         if not include_serial:
             device = self.runtime.collector.device
             stored = (self.runtime.storage.get_meta("firmware") or {}).get("serial")
@@ -444,7 +459,8 @@ def plural(n: int, one: str, many: str) -> str:
 def report_markdown(report: dict) -> str:
     """Plain text for copying into an issue."""
     device = report.get("device") or {}
-    lines = [f"## OpenAmpere-Diagnose ({datetime.fromtimestamp(report['created']):%d.%m.%Y %H:%M})", "",
+    # no date and time: the report goes into public issues, and the time of an owner's action is personal (#149)
+    lines = ["## OpenAmpere-Diagnose", "",
              f"- Version: {report.get('version')}",
              f"- Gerät: {device.get('manufacturer')} {device.get('model')} (Firmware {device.get('firmware')}, "
              f"Seriennr. {device.get('serial')})" if device.get("model") else "- Gerät: nicht erkannt",
