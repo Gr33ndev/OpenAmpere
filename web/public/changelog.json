@@ -145,7 +145,11 @@
           }
         ]
       },
-      "breaking": []
+      "breaking": [],
+      "summary": {
+        "de": "Diese Version schließt drei Sicherheitslücken, bitte aktualisiere bald: Die Schaltadressen eigener Geräte sind nur noch nach der Anmeldung sichtbar, neue Versionen werden vor dem Start immer auf ihre Herkunft geprüft, und beim Wiederherstellen einer Sicherung werden nur noch geprüfte Einstellungen übernommen.\n\nWichtig: Den verbesserten Update-Helfer bekommt deine Installation nur, wenn du das Installationsscript noch einmal ausführst. Deine bisherigen Antworten bleiben dabei erhalten. Den Befehl findest du in der Anleitung zur Installation.",
+        "en": "This version closes three security gaps, please update soon: the switch addresses of your own devices are only visible after logging in, new versions are always checked for their origin before they start, and restoring a backup only takes over checked settings.\n\nImportant: your installation only gets the improved update helper if you run the install script again. Your previous answers are kept. The command is in the installation guide."
+      }
     },
     {
       "version": "0.18.1",
