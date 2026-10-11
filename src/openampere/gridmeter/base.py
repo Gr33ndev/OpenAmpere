@@ -15,7 +15,12 @@ from typing import ClassVar
 
 
 class ProviderError(Exception):
-    """Temporary problem (portal unreachable, unexpected answer): try again later."""
+    """Temporary problem (portal unreachable, unexpected answer): try again later. .message is the text written for
+    the owner, shown in the app."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 class ProviderAuthError(ProviderError):

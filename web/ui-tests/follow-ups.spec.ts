@@ -84,3 +84,14 @@ test("the retro look does not need light-dark(), which older browsers do not kno
     expect(colors).toEqual(theme === "light" ? ["rgb(48, 98, 48)", "rgb(255, 255, 255)"] : ["rgb(155, 188, 15)", "rgb(17, 17, 17)"]);
   }
 });
+
+// code scanning: only a language code from the app's own list ends up in links and markup
+test("an unknown language in the address is ignored", async ({ page }) => {
+  await page.goto(`/?lang=${encodeURIComponent('"><img src=x onerror=alert(1)>')}#/`);
+  await expect(page.locator("nav.bottom")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe("de");
+  await expect(page.locator("img[src='x']")).toHaveCount(0);
+  await page.goto("/?lang=en#/");
+  await expect(page.locator("nav.bottom")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
+});

@@ -324,3 +324,20 @@ def test_only_real_yes_or_no_switches_grid_charging(field, value):
     from openampere.charging import validate
     with pytest.raises(ValueError):
         validate({"enabled": False, "legal_confirmed": True, field: value}, 10_000)
+
+
+async def test_a_refused_command_shows_a_sentence_for_the_owner_not_the_technical_error(tmp_path):
+    """The inverter's own error text goes to the log; the app gets a German sentence (code scanning)."""
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 50, 0)
+
+            async def refused(*args):
+                raise RuntimeError("Traceback: internal detail 0xdeadbeef")
+            runtime.collector.driver.set_remote_power = refused
+            await charging.tick(now=10_000)
+            error = charging.view(now=10_000)["last_error"]
+            assert error.startswith("Befehl abgelehnt: ") and "0xdeadbeef" not in error
+        finally:
+            await runtime.collector.stop()
