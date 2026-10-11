@@ -157,14 +157,15 @@ The app runs in the container as user 1000 and needs write access to `data/`. Be
 Release images are built by the [release workflow](.github/workflows/release.yml) of this repository and come with a signed build provenance attestation and an SBOM. With the [GitHub CLI](https://cli.github.com) you can check that an image really was built here:
 
 ```bash
-gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev \
+  --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml
 ```
 
-`<version>` is written without the leading `v`, e.g. `0.10.0`, or `latest`. This works for releases after 0.9.0. The SBOM (the list of packages in the image) is shown by `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+`--signer-workflow` makes sure the image was built by the release workflow, not by another workflow of the repository. `<version>` is written without the leading `v`, e.g. `0.10.0`, or `latest`. `latest` is always the highest stable version; pre-releases and versions released later for an older line do not get it. This works for releases after 0.9.0. The SBOM (the list of packages in the image) is shown by `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
 
 **The update helper checks this automatically.** Before it starts a new version (update button in the app or at night), it verifies the image with [cosign](https://docs.sigstore.dev/cosign/) against the release workflow of this repository; no account is needed. If the check fails, the new version is not started and the previous one keeps running, with a message in the app. Installations from before 0.10.1 get this helper by running the install script once more. Only for emergencies, `OPENAMPERE_VERIFY_IMAGES=nein` in the `updater` service turns the check off.
 
-`install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. They come with a signed build provenance as well (`openampere-<version>.intoto.jsonl`); after downloading, `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere` checks that a script comes from this repository. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
+`install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. They come with a signed build provenance as well (`openampere-<version>.intoto.jsonl`); after downloading, `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml` checks that a script comes from the release workflow of this repository. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
 
 ### Remote access
 

@@ -44,13 +44,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: image  # registry names must be lowercase, the owner is not
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/openampere" >> "$GITHUB_OUTPUT"
+      # :latest is what the update helper and the installer install: only the highest stable version gets it, so a
+      # tag for an older version (a backport) or a pre-release (-rc) does not reach, or downgrade, every installation
+      - id: newest
+        run: |
+          highest=$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/##' | grep -vF -- '-' | sort -V | tail -n 1)
+          echo "tag $GITHUB_REF_NAME, highest stable version $highest"
+          echo "latest=$([ "$GITHUB_REF_NAME" = "$highest" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.newest.outputs.latest == 'true' }}
       - id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -61,7 +68,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           sbom: true
           provenance: mode=max
-      # check with: gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+      # check with: gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev \
+      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ steps.image.outputs.name }}
@@ -93,7 +101,8 @@ jobs:
             if git cat-file -e "$TAG:scripts/$f" 2>/dev/null; then git show "$TAG:scripts/$f" > "assets/$f"; fi
           done
           (cd assets && sha256sum *.sh > SHA256SUMS && cat SHA256SUMS)
-      # check with: gh attestation verify install.sh --repo Gr33ndev/OpenAmpere
+      # check with: gh attestation verify install.sh --repo Gr33ndev/OpenAmpere \
+      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml
       - id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
