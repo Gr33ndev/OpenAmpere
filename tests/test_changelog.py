@@ -90,3 +90,18 @@ def test_release_notes_start_with_the_summary():
                                          "0.17.0", "v0.17.0", "v0.16.0")
     assert german_only.startswith("Nur Deutsch.\n\n### Neu") and "English" not in german_only
     assert release_notes["notes"](version("0.17.0", groups=feat), "0.17.0", "v0.17.0", "v0.16.0").startswith("### Neu")
+
+
+def test_a_fix_merged_from_a_security_advisory_is_listed_with_the_advisory():
+    """GitHub merges the fix of an advisory's private fork as "Merge commit from fork"; the message names it."""
+    titles = {"GHSA-q3c2-xqgm-w8jw": "Restoring a crafted backup can plant database triggers"}
+    groups, _ = changelog["parse"](log(
+        ("Merge commit from fork", "Restore only the data of a backup.\n\nGHSA-q3c2-xqgm-w8jw\n\nCo-authored-by: x"),
+        ("Merge commit from fork", "* fix(api): one\n\nGHSA-vrrc-53mr-hc3c\n\n* fix(api): two\n\nGHSA-gfr8-g665-933w"),
+        ("Merge commit from fork", "GHSA-vrrc-53mr-hc3c"),  # already listed
+    ), title=titles.get)
+    assert groups["fix"] == [
+        {"scope": "security", "text": "Restoring a crafted backup can plant database triggers (GHSA-q3c2-xqgm-w8jw)"},
+        {"scope": "security", "text": "Close security advisory GHSA-vrrc-53mr-hc3c"},
+        {"scope": "security", "text": "Close security advisory GHSA-gfr8-g665-933w"}]
+    assert groups["other"] == []

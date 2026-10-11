@@ -41,18 +41,40 @@ SUMMARIES = ROOT / "changelog"
 GROUPS = ("feat", "fix", "perf", "other")
 COMMIT = re.compile(r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$")
 TAG = re.compile(r"^v\d+\.\d+\.\d+$")  # stable versions only
+# A fix merged from a security advisory's private fork arrives as one commit with this title; its message names the
+# advisory. It is listed as a fix with the advisory's title (looked up with the GitHub CLI if it is there).
+ADVISORY_MERGE = "Merge commit from fork"
+GHSA = re.compile(r"GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}")
 
 
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], check=True, capture_output=True, text=True, cwd=ROOT).stdout.strip()
 
 
-def parse(log: str) -> tuple[dict[str, list[dict]], list[dict]]:
+def advisory_title(ghsa: str) -> str | None:
+    """The title of a repository security advisory, None without the GitHub CLI or access."""
+    try:
+        return subprocess.run(["gh", "api", f"repos/{{owner}}/{{repo}}/security-advisories/{ghsa}", "--jq", ".summary"],
+                              check=True, capture_output=True, text=True, cwd=ROOT, timeout=30).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def parse(log: str, title=advisory_title) -> tuple[dict[str, list[dict]], list[dict]]:
     """Groups and breaking changes of `git log --format=%s%x1f%b%x1e` output."""
     groups: dict[str, list[dict]] = {g: [] for g in GROUPS}
     breaking: list[dict] = []
+    advisories: set[str] = set()
     for entry in filter(None, (e.strip() for e in log.split("\x1e"))):
         subject, _, body = entry.partition("\x1f")
+        if subject.strip() == ADVISORY_MERGE and GHSA.search(body):
+            for ghsa in dict.fromkeys(GHSA.findall(body)):  # once per advisory, also when merged with another
+                if ghsa not in advisories:
+                    advisories.add(ghsa)
+                    text = title(ghsa)
+                    groups["fix"].append({"scope": "security",
+                                          "text": f"{text} ({ghsa})" if text else f"Close security advisory {ghsa}"})
+            continue
         m = COMMIT.match(subject.strip())
         if not m:
             groups["other"].append({"scope": None, "text": subject.strip()})
