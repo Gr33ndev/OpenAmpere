@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
+import type { AuthStatus } from "./api";
 import { useResource } from "./api";
 import { num } from "./format";
 import { LOCALE, t, tx } from "./i18n";
@@ -62,7 +63,9 @@ const PERIODS: ["30" | "365" | "all", string][] = [["30", t("report.periods.thir
 /** Driving with the sun: distance, consumption and cost per 100 km from the evcc sessions, for the analysis page. */
 export function VehicleStats() {
   const { data: view } = useResource<EvccView>("/api/evcc");
-  const { data } = useResource<{ sessions: EvccSession[] }>(view?.state ? "/api/evcc/sessions?limit=500" : null);
+  const { data: auth } = useResource<AuthStatus>("/api/auth/status");
+  // the sessions show when and how far the car was driven: only after login
+  const { data } = useResource<{ sessions: EvccSession[] }>(view?.state && auth?.authenticated ? "/api/evcc/sessions?limit=500" : null);
   const [period, setPeriod] = useState<"30" | "365" | "all">("30");
   if (!data?.sessions.length) return null;
   const stats = vehicleStats(data.sessions, period === "all" ? 0 : Date.now() - Number(period) * 86_400_000);

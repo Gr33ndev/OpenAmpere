@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react";
-import type { Settings } from "./api";
+import type { AuthStatus, Settings } from "./api";
 import { postJson, putJson, useResource } from "./api";
 import { num, plantTime, timeZone, todayIso } from "./format";
 import { nextDay } from "./zoned";
@@ -279,7 +279,9 @@ export function WallboxPage({ onBack }: PageProps) {
 /** Recent charging sessions from evcc, for the analysis page. */
 export function EvccSessions() {
   const { data: view } = useResource<EvccView>("/api/evcc");
-  const { data } = useResource<{ sessions: EvccSession[] }>(view?.state ? "/api/evcc/sessions?limit=20" : null);
+  const { data: auth } = useResource<AuthStatus>("/api/auth/status");
+  // the sessions show when and how far the car was driven: only after login
+  const { data } = useResource<{ sessions: EvccSession[] }>(view?.state && auth?.authenticated ? "/api/evcc/sessions?limit=20" : null);
   if (!data?.sessions.length) return null;
   return (
     <>

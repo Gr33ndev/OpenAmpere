@@ -127,7 +127,7 @@ SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Fram
                     "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
-                   "/api/tokens")
+                   "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -998,8 +998,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     # ---- evcc (wallbox) -----------------------------------------------------
 
     @app.get("/api/evcc")
-    async def get_evcc(refresh: bool = False):
-        if refresh:
+    async def get_evcc(request: Request, refresh: bool = False):
+        if refresh and logged_in(request):  # without login the state of the background job (no extra requests)
             await evcc.refresh()
         return evcc.view()
 
