@@ -97,6 +97,7 @@ class ChangePasswordRequest(BaseModel):
 # name) sent to other sites in the Referer header when a link is followed
 SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Frame-Options": "DENY",
                     "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
+MAX_HOST_SHOWN = 64  # the Host header comes from the client
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
                    "/api/tokens")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
@@ -229,6 +230,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     async def security(request: Request, call_next):
         host = request.headers.get("host")
         if not host_allowed(host, runtime.config.server.allowed_hosts):
+            if len(host or "") > MAX_HOST_SHOWN:
+                host = f"{host[:MAX_HOST_SHOWN]}…"
             return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
                                            "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
         path = request.url.path

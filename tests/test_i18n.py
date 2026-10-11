@@ -3,6 +3,7 @@
 """Server messages in the language of the web app (#104)."""
 
 import runpy
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -77,3 +78,27 @@ def test_control_log_endpoint_sends_translated_notes(tmp_path):
     entry = client.get("/api/control/log", headers={i18n.HEADER: "en"}).json()["entries"][0]
     assert entry["note"] == "surplus 2600 W" and entry["result"] == "Überschuss 2600 W"  # the stored text stays
     assert client.get("/api/control/log").json()["entries"][0]["note"] == "Überschuss 2600 W"
+
+
+# GHSA-vrrc-53mr-hc3c: the Host header ends up in an error message, and the patterns of the messages take polynomial
+# time in the length of the text. A crafted header of a few kilobytes blocked the server for seconds.
+SLOW = "Kein Schreibzugriff auf " + "a (Benutzer a). Bei Docker auf dem Server im OpenAmpere-Ordner ausführen: " \
+       "sudo chown -R a:" * 120
+
+
+def test_long_texts_are_not_matched_against_the_messages():
+    start = time.monotonic()
+    assert i18n.translate(f"Zugriff über „{SLOW}.example“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse "
+                          "oder trage den Namen unter server.allowed_hosts ein.", "en")
+    assert time.monotonic() - start < 0.5
+
+
+def test_a_long_host_is_shortened_in_the_error_message(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    client = TestClient(create_app(runtime))
+    response = client.get("/api/status", headers={"host": "a" * 5000 + ".example", "x-openampere-lang": "en"})
+    assert response.status_code == 421
+    assert len(response.json()["detail"]) < 300 and "a" * 64 + "…" in response.json()["detail"]
+    assert client.get("/api/status", headers={"host": "evil.example", "x-openampere-lang": "en"}).json()["detail"] \
+        .startswith("Access via “evil.example”")
+    runtime.storage.close()

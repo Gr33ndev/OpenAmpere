@@ -27,6 +27,7 @@ HEADER = "x-openampere-lang"
 REFERENCE = "de"
 LOCALES = Path(__file__).parent / "locales"
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
+MAX_MATCHED = 1000  # longer texts are no message of OpenAmpere (the longest with its values has a few hundred)
 
 
 def languages() -> set[str]:
@@ -67,6 +68,8 @@ def _patterns() -> list[tuple[re.Pattern, str, list[str]]]:
 
 def match(text: str) -> tuple[str, dict[str, str]] | None:
     """The key of a German message and the values in its placeholders, None for an unknown text."""
+    if len(text) > MAX_MATCHED:  # the patterns take polynomial time in the length (values from outside, e.g. Host)
+        return None
     for pattern, key, names in _patterns():
         found = pattern.match(text)
         if found:
