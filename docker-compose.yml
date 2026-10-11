@@ -7,6 +7,8 @@ services:
     # Die App ist dann direkt unter http://<server-ip>:8080 erreichbar, Home Assistant verbindet sich über
     # HTTPS auf Port 8443 (siehe docs/homeassistant.md).
     network_mode: host
+    cap_drop: [ALL]  # die App braucht keine besonderen Rechte
+    security_opt: ["no-new-privileges:true"]
     volumes:
       - ./data:/data
     environment:
