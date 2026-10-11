@@ -6,6 +6,8 @@ import { postJson, refreshAll, useResource } from "./api";
 import { t, tx } from "./i18n";
 import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
+const MIN_PASSWORD_LENGTH = 8; // as the server checks it (auth.py)
+
 function PasswordInput({ value, onChange, placeholder, autoComplete }: {
   value: string; onChange: (v: string) => void; placeholder?: string; autoComplete: string;
 }) {
@@ -47,7 +49,7 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
           <PasswordInput value={repeat} onChange={setRepeat} autoComplete="new-password" />
         </Field>
         {error && <Notice kind="error">{error}</Notice>}
-        <Button type="submit" busy={busy} disabled={password.length < 6 || password !== repeat}>{t("shell.passwordSetup.continue")}</Button>
+        <Button type="submit" busy={busy} disabled={password.length < MIN_PASSWORD_LENGTH || password !== repeat}>{t("shell.passwordSetup.continue")}</Button>
       </form>
     </div>
   );
@@ -160,7 +162,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
             <h2>{t("shell.securityPage.changePassword")}</h2>
             <Field label={t("shell.securityPage.currentPassword")}><PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" /></Field>
             <Field label={t("shell.securityPage.newPassword")} hint={t("shell.securityPage.passwordHint")}><PasswordInput value={next} onChange={setNext} autoComplete="new-password" /></Field>
-            <Button type="submit" busy={busy} disabled={!current || next.length < 6}>{t("shell.securityPage.changePassword")}</Button>
+            <Button type="submit" busy={busy} disabled={!current || next.length < MIN_PASSWORD_LENGTH}>{t("shell.securityPage.changePassword")}</Button>
           </form>
           <div className="card form">
             <Button variant="secondary" onClick={() => void logout(false)}>{t("shell.securityPage.logOutDevice")}</Button>

@@ -27,7 +27,7 @@ SESSION_TTL_S = 90 * 24 * 3600
 DEVICE_COOKIE = "openampere_device"
 DEVICE_TTL_S = 400 * 24 * 3600  # the longest browsers keep a cookie
 MAX_DEVICES = 50
-MIN_PASSWORD_LENGTH = 6
+MIN_PASSWORD_LENGTH = 8  # NIST SP 800-63B; shorter passwords of older versions keep working
 MAX_FAILED_LOGINS = 5  # per device and minute: one device trying passwords does not lock out the others
 MAX_FAILED_TOTAL = 30  # all devices together per minute: many addresses do not make guessing faster
 LOCKOUT_S = 60
@@ -39,8 +39,13 @@ HOME_SUFFIXES = (".local", ".lan", ".home", ".home.arpa", ".fritz.box", ".intern
                  ".localdomain", ".ts.net")
 
 
-def _hash(password: str, salt: bytes) -> str:
-    return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2 ** 14, r=8, p=1, dklen=32).hex()
+# scrypt N=2^14, r=8, p=5: one of OWASP's recommended settings, with 16 MB per check (a small device can run several
+# at once). Hashes of older versions (p=1) are checked with their own p and stored again with this one at the next login.
+SCRYPT_P = 5
+
+
+def _hash(password: str, salt: bytes, p: int = SCRYPT_P) -> str:
+    return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2 ** 14, r=8, p=p, dklen=32).hex()
 
 
 def _token_id(token: str) -> str:
@@ -110,7 +115,7 @@ class Auth:
         if len(password) < MIN_PASSWORD_LENGTH:
             raise ValueError(f"Das Passwort muss mindestens {MIN_PASSWORD_LENGTH} Zeichen haben.")
         salt = os.urandom(16)
-        return {"salt": salt.hex(), "hash": _hash(password, salt)}
+        return {"salt": salt.hex(), "hash": _hash(password, salt), "p": SCRYPT_P}
 
     def check_password(self, password: str, client: str | None = None, device: str | None = None) -> bool:
         """client: the address of the request; device: the device cookie of a browser that logged in before."""
@@ -124,10 +129,14 @@ class Auth:
             # counted before the slow check: requests at the same time cannot get past the limit
             self._tries.setdefault(key, []).append(now)
         stored = self.storage.get_meta("auth")
-        ok = bool(stored) and hmac.compare_digest(_hash(password, bytes.fromhex(stored["salt"])), stored["hash"])
+        p = stored.get("p", 1) if stored else SCRYPT_P
+        ok = bool(stored) and hmac.compare_digest(_hash(password, bytes.fromhex(stored["salt"]), p), stored["hash"])
         if ok:
             with self._guard:
                 self._tries.pop(key, None)
+            if p != SCRYPT_P:  # an older version's hash: stored again with today's setting
+                salt = os.urandom(16)
+                self.storage.set_meta("auth", {"salt": salt.hex(), "hash": _hash(password, salt), "p": SCRYPT_P})
         return ok
 
     def reset(self) -> None:
