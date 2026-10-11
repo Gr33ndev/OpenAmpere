@@ -60,7 +60,7 @@ started() {
 # verified image: exit code 0 if the image may be started. Only OpenAmpere's own image is checked.
 verified() {
   case "$VERIFY" in [nN]*) return 0 ;; esac
-  case "$1" in "$OWN_IMAGE" | "$OWN_IMAGE":*) ;; *) return 0 ;; esac
+  case "$1" in "$OWN_IMAGE" | "$OWN_IMAGE":* | "$OWN_IMAGE"@*) ;; *) return 0 ;; esac  # also pinned by digest
   command -v cosign >/dev/null || apk add --no-cache -q cosign >/dev/null 2>&1 || return 1
   ref=$(docker image inspect -f '{{range .RepoDigests}}{{println .}}{{end}}' "$1" 2>/dev/null | grep "^$OWN_IMAGE@" | head -n 1)
   [ -n "$ref" ] || return 1

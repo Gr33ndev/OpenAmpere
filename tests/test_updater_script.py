@@ -148,3 +148,12 @@ def test_the_request_comes_from_the_inbox_and_the_answer_goes_where_the_app_cann
     assert not (inbox / "request").exists()
     assert "schon auf dem neuesten Stand" in (fake / "update" / "status.json").read_text()
     assert (fake / "update" / "updater-alive").exists() and not (fake / "data").exists()
+
+
+@pytest.mark.parametrize("cosign", [0, 1])
+def test_an_own_image_pinned_by_digest_is_checked_as_well(fake, cosign):
+    setup(fake, running="", before="", pulled="", cosign=cosign)
+    pinned = "ghcr.io/gr33ndev/openampere@sha256:" + "ab" * 32
+    done = subprocess.run(["sh", str(SCRIPTS / "updater.sh"), "verify", pinned], capture_output=True, text=True, timeout=20,
+                          env=env(fake))
+    assert done.returncode == cosign, done.stderr  # before: never checked, always "verified"
