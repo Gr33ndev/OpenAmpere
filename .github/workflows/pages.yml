@@ -5,7 +5,8 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ["site/**", "web/**", "scripts/build-site.sh", "scripts/build-site-pages.mjs", ".github/workflows/pages.yml"]
+    paths: ["site/**", "web/**", "scripts/build-site.sh", "scripts/site-scripts.sh", "scripts/build-site-pages.mjs",
+            ".github/workflows/pages.yml"]
   # the install scripts on the site come from the newest release tag (see scripts/build-site.sh), so they
   # go live once a release is done. Not "release: published": a release made with GITHUB_TOKEN starts no
   # other workflows, and a tag ref would not pass the github-pages environment's branch rule.
@@ -22,16 +23,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # install.sh, updater.sh and tailscale.sh with their SHA256SUMS, in a job that runs no code of npm packages: a
+  # compromised package of the site build must not be able to change what users install as root
+  scripts:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: read  # configure-pages reads the Pages settings
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # the release tags for the install scripts
+          persist-credentials: false
+      - run: scripts/site-scripts.sh _scripts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: install-scripts
+          path: _scripts
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
@@ -39,14 +55,38 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
         working-directory: web
-      - run: scripts/build-site.sh
+      - run: SITE_SCRIPTS=skip scripts/build-site.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: _site
+          include-hidden-files: true  # .nojekyll
+          if-no-files-found: error
+          retention-days: 1
+
+  # the site with the install scripts on top: whatever the build put under these names is replaced
+  assemble:
+    needs: [scripts, build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: read  # configure-pages reads the Pages settings
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: site
+          path: _site
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: install-scripts
+          path: _site
+      - run: cat _site/SHA256SUMS
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
 
   deploy:
-    needs: build
+    needs: assemble
     runs-on: ubuntu-latest
     permissions:
       pages: write  # deploy to Pages
