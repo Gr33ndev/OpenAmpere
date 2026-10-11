@@ -102,3 +102,9 @@ def test_a_failed_download_keeps_the_helper_that_is_there(tmp_path):
     done = run_functions(tmp_path, f'DIR="{install}"\ncurl() {{ printf "new helper\\n"; }}\ncopy_helper updater.sh')
     assert done.returncode == 0, done.stderr
     assert (install / "updater.sh").read_text() == "new helper\n"
+
+
+def test_the_update_helper_image_is_pinned_by_digest(tmp_path):
+    """The helper has access to Docker: a fixed image, not whatever a moving tag points to today."""
+    image = write_compose(tmp_path, "no", "no")["services"]["updater"]["image"]
+    assert image.startswith("docker.io/library/docker:") and "@sha256:" in image

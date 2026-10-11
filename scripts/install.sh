@@ -14,7 +14,9 @@ set -euo pipefail
 IMAGE="ghcr.io/gr33ndev/openampere:latest"
 EVCC_IMAGE="evcc/evcc:latest"
 TAILSCALE_IMAGE="tailscale/tailscale:stable"
-UPDATER_IMAGE="docker:cli"
+# the update helper has access to Docker (root on this machine): a fixed image, not whatever "docker:cli" points to
+# today. Newer version: the digest of the multi-arch index, e.g. from `docker buildx imagetools inspect docker:<v>-cli`
+UPDATER_IMAGE="docker.io/library/docker:29.8.2-cli@sha256:35cfcf893c20f2931f4909151b5407aaaeab711277de7ce8b8f521f095d54c32"
 SITE="https://gr33ndev.github.io/OpenAmpere"
 APP_UID=1000  # user inside the OpenAmpere image
 MARKER="# erzeugt von install.sh"
