@@ -16,6 +16,7 @@ import secrets
 import threading
 import time
 
+from .auth import _client_key
 from .storage import Storage
 
 SCOPES = ("read", "control")
@@ -93,8 +94,11 @@ class ApiTokens:
 # ---- pairing: connect an app by comparing a code, without copying a secret -----------------------------------------
 
 PAIRING_TTL_S = 600
-MAX_PENDING = 3
-PAIRING_STARTS_PER_HOUR = 10
+# per device (address), so one device in the home network cannot block pairing for all others, and for all together
+MAX_PENDING_PER_CLIENT = 3
+MAX_PENDING = 10
+PAIRING_STARTS_PER_CLIENT_PER_HOUR = 10
+PAIRING_STARTS_PER_HOUR = 30
 
 
 def pairing_code(fingerprint: str, app_nonce: bytes, server_nonce: bytes) -> str:
@@ -115,28 +119,33 @@ class Pairing:
         self.tokens = tokens
         self.fingerprint = fingerprint  # () -> fingerprint of the own certificate
         self._requests: dict[str, dict] = {}
-        self._starts: list[float] = []
+        self._starts: list[tuple[float, str]] = []  # (time, device)
 
     def _expire(self, now: float) -> None:
         for key in [k for k, r in self._requests.items() if r["expires"] < now]:
             del self._requests[key]
 
-    def start(self, name: str, commitment: str, now: float | None = None) -> dict:
+    def start(self, name: str, commitment: str, now: float | None = None, client: str | None = None) -> dict:
+        """client: the address of the requesting device; shown to the owner with the request."""
         now = time.time() if now is None else now
+        device = _client_key(client)
         self._expire(now)
-        self._starts = [t for t in self._starts if t > now - 3600]
-        if len(self._starts) >= PAIRING_STARTS_PER_HOUR:
+        self._starts = [(t, d) for t, d in self._starts if t > now - 3600]
+        if (len(self._starts) >= PAIRING_STARTS_PER_HOUR
+                or sum(d == device for _, d in self._starts) >= PAIRING_STARTS_PER_CLIENT_PER_HOUR):
             raise PermissionError("Zu viele Kopplungsanfragen. Bitte später erneut versuchen.")
-        if len(self._requests) >= MAX_PENDING:
+        if (len(self._requests) >= MAX_PENDING
+                or sum(r["device"] == device for r in self._requests.values()) >= MAX_PENDING_PER_CLIENT):
             raise PermissionError("Es warten schon mehrere Kopplungsanfragen. Bitte zuerst in OpenAmpere bestätigen "
                                   "oder ablehnen, oder 10 Minuten warten.")
         name = " ".join(str(name or "").split())[:40] or "App"
         if len(str(commitment)) != 64:
             raise ValueError("Ungültige Anfrage.")
         bytes.fromhex(commitment)  # raises ValueError
-        self._starts.append(now)
+        self._starts.append((now, device))
         key, poll_key, nonce = secrets.token_hex(6), secrets.token_urlsafe(32), secrets.token_bytes(32)
-        self._requests[key] = {"name": name, "commitment": commitment.lower(), "poll_key": poll_key, "nonce": nonce,
+        self._requests[key] = {"name": name, "device": device, "address": client or None,
+                               "commitment": commitment.lower(), "poll_key": poll_key, "nonce": nonce,
                                "code": None, "created": now, "expires": now + PAIRING_TTL_S, "status": "pending",
                                "token": None, "scope": None}
         return {"request_id": key, "poll_key": poll_key, "nonce": nonce.hex(), "expires_in": PAIRING_TTL_S}
@@ -171,8 +180,8 @@ class Pairing:
     def pending(self) -> list[dict]:
         """For the web app: requests waiting for a decision (only those with a code)."""
         self._expire(time.time())
-        return [{"id": k, "name": r["name"], "code": r["code"], "created": r["created"], "expires": r["expires"]}
-                for k, r in self._requests.items() if r["status"] == "pending" and r["code"]]
+        return [{"id": k, "name": r["name"], "address": r["address"], "code": r["code"], "created": r["created"],
+                 "expires": r["expires"]} for k, r in self._requests.items() if r["status"] == "pending" and r["code"]]
 
     def decide(self, key: str, approve: bool, scope: str = "read") -> dict:
         self._expire(time.time())
