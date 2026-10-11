@@ -536,8 +536,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             return await battery.read()
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
-        except Exception as err:  # e.g. timeout through a proxy
-            raise HTTPException(504, f"Wechselrichter antwortet nicht: {err}") from None
+        except Exception as err:  # e.g. timeout through a proxy; the technical text goes to the log, not to the app
+            log.warning("reading from the inverter failed: %s", err)
+            raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.") from None
 
     @app.put("/api/battery/settings")
     async def put_battery_settings(changes: dict = Body(...)):
@@ -560,8 +561,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             return await export_limit.read()
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
-        except Exception as err:
-            raise HTTPException(504, f"Wechselrichter antwortet nicht: {err}") from None
+        except Exception as err:  # e.g. timeout through a proxy; the technical text goes to the log, not to the app
+            log.warning("reading from the inverter failed: %s", err)
+            raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.") from None
 
     @app.put("/api/grid/export-limit")
     async def put_export_limit(request: ExportLimitRequest):

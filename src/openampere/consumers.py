@@ -360,7 +360,11 @@ class SurplusControl:
             raise ValueError("Gerät nicht gefunden.")
         if mode not in ("auto", "off", "boost"):
             raise ValueError("Unbekannte Betriebsart.")
-        if hours is not None and not 0 < float(hours) <= 48:
+        try:
+            hours = None if hours is None else float(hours)
+        except (TypeError, ValueError):
+            hours = -1.0  # not a number: refused below
+        if hours is not None and not 0 < hours <= 48:  # also NaN and Infinity
             raise ValueError("Bitte eine Dauer bis 48 Stunden wählen.")
         overrides = self.runtime.storage.get_meta("consumer_overrides") or {}
         if mode == "auto":
