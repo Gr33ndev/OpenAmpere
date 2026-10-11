@@ -178,6 +178,7 @@
     "systemsOver100Kwp": "Anlagen über 100 kWp vermarkten ihren Strom direkt. Bitte die Vergütung von Hand eintragen."
   },
   "evcc": {
+    "answerTooLarge": "Die Antwort von evcc ist zu groß.",
     "changesTurnedOffSwitch": "Änderungen sind ausgeschaltet. Stelle oben auf „Testen“ oder „Aktiv“.",
     "chargePointDoesnT": "Diesen Ladepunkt gibt es in evcc nicht.",
     "chooseTargetBetween20": "Bitte ein Ziel zwischen 20 und 100 % und eine Zeit in der Zukunft wählen.",

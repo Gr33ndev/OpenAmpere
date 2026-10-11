@@ -30,7 +30,7 @@ def make(tmp_path, monkeypatch):
         def read(self, n):
             return b""
 
-    monkeypatch.setattr(notify_module.urllib.request, "urlopen", lambda request, timeout: Response(request))
+    monkeypatch.setattr(notify_module, "open_without_redirect", lambda request, timeout: Response(request))
     return runtime, posts
 
 

@@ -178,6 +178,7 @@
     "systemsOver100Kwp": "Systems over 100 kWp sell their power directly. Please enter the feed-in tariff manually."
   },
   "evcc": {
+    "answerTooLarge": "The answer from evcc is too large.",
     "changesTurnedOffSwitch": "Changes are turned off. Switch to „Testen“ (Test mode) or „Aktiv“ (Active) at the top.",
     "chargePointDoesnT": "This charge point doesn't exist in evcc.",
     "chooseTargetBetween20": "Please choose a target between 20 and 100 % and a time in the future.",

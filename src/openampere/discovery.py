@@ -11,6 +11,7 @@ import socket
 
 from .drivers import registry
 from .drivers.modbus import DeviceUnreachable, friendly_error
+from .outbound import in_home_network
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -90,6 +91,9 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
 
 async def test_connection(runtime: Runtime, host: str, port: int, unit: int, driver: str = "auto") -> dict:
     collector, current = runtime.collector, runtime.config.inverter
+    # an inverter is in the home network: no probing of addresses on the internet (open or closed port)
+    if not await asyncio.to_thread(in_home_network, host):
+        return {"ok": False, "error": "Bitte eine Adresse im Heimnetz angeben."}
     if (collector.connected and collector.device and (host, port) == (current.host, current.port)
             and driver in ("auto", collector.device.driver) and unit in (0, collector.device.unit)):
         return {"ok": True, "device": collector.device.__dict__}
