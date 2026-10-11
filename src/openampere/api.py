@@ -9,6 +9,7 @@ import datetime
 import hashlib
 import json
 import logging
+import os
 import secrets
 import shutil
 import tempfile
@@ -1146,8 +1147,10 @@ def create_app(runtime: Runtime) -> FastAPI:
 
         @app.get("/{path:path}", include_in_schema=False)
         def spa(path: str):
-            file = (WEB_DIST / path).resolve()
-            if path and file.is_file() and WEB_DIST.resolve() in file.parents:
+            # normalized first, then only files inside the web app's folder (no "../" out of it)
+            root = os.path.realpath(WEB_DIST)
+            file = os.path.realpath(os.path.join(root, path))
+            if path and file.startswith(root + os.sep) and os.path.isfile(file):
                 return FileResponse(file)
             return FileResponse(WEB_DIST / "index.html")
 
