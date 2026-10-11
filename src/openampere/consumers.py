@@ -91,7 +91,8 @@ def _check_url(url: str) -> str:
     return url
 
 
-def validate(raw: list) -> list[Consumer]:
+def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consumer]:
+    """inverter: its host and port; a heating rod must not be set up at that address."""
     if not isinstance(raw, list) or len(raw) > MAX_CONSUMERS:
         raise ValueError(f"Höchstens {MAX_CONSUMERS} Geräte.")
     consumers = []
@@ -120,8 +121,11 @@ def validate(raw: list) -> list[Consumer]:
             raise ValueError(f"{c.name}: Der Mindestüberschuss muss zwischen 50 W und der maximalen Leistung liegen.")
         if not 0 <= c.min_on_min <= 240 or not 0 <= c.min_off_min <= 240:
             raise ValueError(f"{c.name}: Mindestzeiten 0–240 Minuten.")
-        if not 1 <= c.port <= 65535 or not 0 <= c.unit <= 255:
+        if not 1 <= c.port <= 65535 or not 1 <= c.unit <= 247:
             raise ValueError(f"{c.name}: Ungültiger Port oder Geräteadresse.")
+        if c.kind == "mypv" and inverter and (c.host.strip().lower(), c.port) == (inverter[0].strip().lower(), inverter[1]):
+            raise ValueError(f"{c.name}: Das ist die Adresse des Wechselrichters. Bitte die IP-Adresse des Heizstabs "
+                             "angeben.")
         if c.price_limit_ct is not None and not -100 <= c.price_limit_ct <= 200:
             raise ValueError(f"{c.name}: Preisgrenze bitte zwischen -100 und 200 ct/kWh.")
         consumers.append(c)
@@ -170,7 +174,8 @@ class SurplusControl:
         return [Consumer(**c) for c in self.runtime.storage.get_meta("consumers") or []]
 
     def save(self, raw: list) -> list[Consumer]:
-        consumers = validate(self._with_hidden_urls(raw))
+        inverter = self.runtime.config.inverter
+        consumers = validate(self._with_hidden_urls(raw), (inverter.host, inverter.port) if inverter.host else None)
         new = {c.id: c for c in consumers}
         enabled = {c.id for c in consumers if c.enabled}
         for c_id in enabled:

@@ -111,6 +111,7 @@
     "giveEachDeviceName": "Please give each device a name.",
     "invalidInputDevice": "Invalid input for a device.",
     "invalidPortDeviceAddress": "{name}: Invalid port or device address.",
+    "inverterAddressNotRod": "{name}: This is the address of the inverter. Please enter the IP address of the heating rod.",
     "logByHandFullPower": "by hand: full power",
     "logByHandOff": "by hand: off",
     "logCheapPrice": "cheap electricity price",
@@ -217,7 +218,9 @@
     "immersionHeaterNotResponding": "Immersion heater not responding: {err}",
     "immersionHeaterRejectsPower": "The immersion heater rejects the power setting. Is its control mode set to “Modbus TCP”?",
     "immersionHeaterRejectsQuery": "The immersion heater rejects the query. Is its control mode set to “Modbus TCP”?",
-    "immersionHeaterTReached": "Immersion heater at {host}:{port} can't be reached"
+    "immersionHeaterTReached": "Immersion heater at {host}:{port} can't be reached",
+    "invalidUnit": "Invalid device address of the heating rod. Please enter an address from 1 to 247.",
+    "noRodAtAddress": "No my-PV heating rod answers at {host}:{port}. Please check the address."
   },
   "notify": {
     "ntfyAddressMustForm": "The ntfy address must have the form https://server/topic."

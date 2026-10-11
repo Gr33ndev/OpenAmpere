@@ -85,8 +85,12 @@ async def test_set_power_stays_in_range():
 async def test_errors_become_connection_errors():
     with pytest.raises(ConnectionError, match="lehnt die Abfrage ab"):
         await rod_with(FakeClient(error=True)).read()
-    with pytest.raises(ConnectionError, match="lehnt die Leistungsvorgabe ab"):
+    with pytest.raises(ConnectionError, match="lehnt die Abfrage ab"):  # read first: is it a heating rod?
         await rod_with(FakeClient(error=True)).set_power(1000)
+    rod = rod_with(FakeClient(error=True))
+    rod._identified = True
+    with pytest.raises(ConnectionError, match="lehnt die Leistungsvorgabe ab"):
+        await rod.set_power(1000)
     with pytest.raises(ConnectionError, match="antwortet nicht"):
         await rod_with(FakeClient(raises=True)).read()
     with pytest.raises(ConnectionError, match="antwortet nicht"):
@@ -113,3 +117,32 @@ async def test_round_trip_with_simulator():
     assert sim.writes == [2500]
     assert (result.setpoint_w, result.temperature_c, result.target_c, result.status) == (2500, 45.0, 60.0, 2)
     assert result.heating and result.power_w == 2500
+
+
+# a heating rod is only written to when it answers like one: not the inverter whose address was entered by mistake,
+# and never the broadcast address 0, which reaches every device behind a gateway
+async def test_power_is_only_written_to_a_device_that_answers_like_a_heating_rod():
+    for registers in ((0, 0, 0, 0), (0, 2000, 3000, 7), (0, 0, 0, 40000)):  # no status, 200 °C, unknown code
+        client = FakeClient(registers)
+        with pytest.raises(ConnectionError, match="kein Heizstab"):
+            await rod_with(client).set_power(1000)
+        assert client.writes == []
+    client = FakeClient(raises=True)
+    with pytest.raises(ConnectionError):
+        await rod_with(client).set_power(1000)
+    assert client.writes == []
+    client = FakeClient((0, 450, 600, 3))
+    rod = rod_with(client)
+    await rod.set_power(1000)
+    await rod.set_power(0)
+    assert client.writes == [(1000, 1000), (1000, 0)]
+
+
+@pytest.mark.parametrize("unit", [0, 248])
+async def test_no_write_to_an_invalid_device_address(unit):
+    client = FakeClient((0, 450, 600, 3))
+    rod = rod_with(client)
+    rod.unit = unit
+    with pytest.raises(ConnectionError, match="Geräteadresse"):
+        await rod.set_power(1000)
+    assert client.writes == []
