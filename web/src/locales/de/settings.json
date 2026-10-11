@@ -577,6 +577,7 @@
     "decline": "Ablehnen",
     "declined": "Anfrage abgelehnt",
     "exactCode": "genau diesen Code",
+    "from": "Anfrage von {address}. Kennst du dieses Gerät nicht, lehne ab.",
     "title": "„{name}“ möchte sich verbinden"
   },
   "priceChart": {

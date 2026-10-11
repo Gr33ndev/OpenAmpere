@@ -272,3 +272,22 @@ def test_tokens_show_whether_the_app_is_connected_live(runtime, web):
             ws.receive_json()
             assert web.get("/api/tokens").json()["tokens"][0]["live_since"] is not None
     assert web.get("/api/tokens").json()["tokens"][0]["live_since"] is None
+
+
+def test_one_device_cannot_block_pairing_for_the_others_and_the_owner_sees_the_address(runtime, web):
+    guesser = TestClient(web.app, base_url="https://testserver", client=("192.0.2.66", 50000))
+    for _ in range(3):
+        pair(guesser, name="Home Assistant")
+    assert guesser.post(f"{V1}/pair/start", json={"name": "x", "commitment": "00" * 32}).status_code == 429
+    owner_app = TestClient(web.app, base_url="https://testserver", client=("192.0.2.10", 50000))
+    pair(owner_app, name="Home Assistant")  # still possible for another device
+    addresses = sorted({p["address"] for p in web.get("/api/tokens").json()["pairing"]})
+    assert addresses == ["192.0.2.10", "192.0.2.66"]
+
+
+def test_a_made_up_device_id_does_not_count_against_the_limits(runtime, web, monkeypatch):
+    token = new_token(web, scope="control")
+    app = app_client(web, token)
+    monkeypatch.setattr(runtime.config.control, "enabled", True)
+    for _ in range(61):  # more than the limit per hour: still "not found", no entries for the ids
+        assert app.put(f"{V1}/devices/does-not-exist/mode", json={"mode": "boost"}).status_code == 400

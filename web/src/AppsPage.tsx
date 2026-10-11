@@ -10,7 +10,7 @@ import { Button, copyText, Dialog, Field, LoadState, Notice, Segmented, SubPage,
 
 type Scope = "read" | "control";
 type AppToken = { id: string; name: string; scope: Scope; created: number; last_used: number | null; live_since: number | null };
-type PairingRequest = { id: string; name: string; code: string; created: number; expires: number };
+type PairingRequest = { id: string; name: string; address: string | null; code: string; created: number; expires: number };
 type Tokens = { tokens: AppToken[]; pairing: PairingRequest[];
   tls: { port: number | null; fingerprint: string | null; error: string | null } };
 
@@ -142,6 +142,7 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
   return (
     <div className="card form pairing">
       <h2>{t("settings.pairingCard.title", { name: request.name })}</h2>
+      {request.address && <p className="hint">{t("settings.pairingCard.from", { address: request.address })}</p>}
       <p className="pairing-code">
         <span aria-hidden="true">{request.code.slice(0, 3)} {request.code.slice(3)}</span>
         <span className="sr-only">{t("settings.pairingCard.codeLabel", { code: request.code.split("").join(" ") })}</span></p>

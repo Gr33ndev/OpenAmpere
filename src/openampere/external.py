@@ -85,9 +85,10 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     # ---- pairing (no token yet; HTTPS only, see the middleware) ------------------------------------------------
 
     @app.post(f"{PREFIX}/pair/start")
-    def pair_start(body: dict = Body(...)):
+    def pair_start(request: Request, body: dict = Body(...)):
         try:
-            started = pairing.start(str(body.get("name") or ""), str(body.get("commitment") or ""))
+            started = pairing.start(str(body.get("name") or ""), str(body.get("commitment") or ""),
+                                    client=request.client.host if request.client else None)
         except PermissionError as err:
             raise HTTPException(429, str(err)) from None
         except ValueError:
@@ -222,6 +223,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     @app.put(f"{PREFIX}/devices/{{device_id}}/mode")
     async def put_device_mode(request: Request, device_id: str, body: dict = Body(...)):
         require_control()
+        if device_id not in {c.id for c in surplus.consumers}:  # no limit entries for made-up ids
+            raise HTTPException(400, "Gerät nicht gefunden.")  # as before, from set_override
         limits.check(f"device:{device_id}", OTHER_WRITES_PER_HOUR)
         try:
             # logged there with the device's name, once (#153)

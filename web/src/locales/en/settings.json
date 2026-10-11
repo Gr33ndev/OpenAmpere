@@ -577,6 +577,7 @@
     "decline": "Decline",
     "declined": "Request declined",
     "exactCode": "exactly this code",
+    "from": "Request from {address}. If you do not know this device, decline.",
     "title": "“{name}” wants to connect"
   },
   "priceChart": {
