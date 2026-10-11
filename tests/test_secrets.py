@@ -93,13 +93,13 @@ def test_the_evcc_login_cookie_goes_only_to_the_address_it_came_from(tmp_path, m
         def __exit__(self, *args):
             return False
 
-        def read(self):
+        def read(self, size=-1):
             return b"{}"
 
     def urlopen(request, timeout):
         sent.append((request.full_url, request.get_header("Cookie")))
         return Answer()
-    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("openampere.evcc.open_without_redirect", urlopen)
     monkeypatch.setattr(rt.config.evcc, "url", "http://evcc.local:7070")
     evcc._http("GET", "/api/state")
     evcc._http("GET", "/api/state")
