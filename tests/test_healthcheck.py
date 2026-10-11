@@ -111,3 +111,40 @@ def test_health_checks_stay_out_of_the_access_log(server):
         access.removeFilter(hide)
         access.setLevel(level)
     assert len(seen) == 1 and "/api/auth/status " in seen[0] and "healthcheck" not in seen[0]
+
+
+def test_the_server_does_not_trust_forwarded_headers(tmp_path):
+    """GHSA-7qj3-8hhh-r724: Tailscale in userspace mode delivers every tailnet device from 127.0.0.1, which uvicorn
+    trusts for X-Forwarded-For / X-Forwarded-Proto by default: they could choose their address and claim HTTPS."""
+    import asyncio
+    import json
+    import urllib.request
+
+    from fastapi import FastAPI, Request
+
+    echo = FastAPI()
+
+    @echo.get("/who")
+    def who(request: Request):
+        return {"client": request.client.host, "scheme": request.url.scheme}
+
+    port = free_port()
+    runtime = Runtime({"server": {"host": "127.0.0.1", "port": port, "tls_port": 0}}, Storage(tmp_path / "t.db"))
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_until_complete, args=(cli.serve(echo, runtime),), daemon=True)
+    thread.start()
+    try:
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/who", headers={
+            "X-Forwarded-For": "198.51.100.7", "X-Forwarded-Proto": "https"})
+        for _ in range(100):
+            try:
+                with urllib.request.urlopen(request, timeout=2) as response:
+                    answer = json.loads(response.read())
+                break
+            except OSError:
+                time.sleep(0.05)
+        assert answer == {"client": "127.0.0.1", "scheme": "http"}
+    finally:
+        runtime.restart_hook()
+        thread.join(10)
+        runtime.storage.close()

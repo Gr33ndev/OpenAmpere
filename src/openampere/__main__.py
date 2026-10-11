@@ -76,7 +76,10 @@ async def serve(app, runtime: Runtime) -> None:
     server = runtime.config.server
     # uvicorn logs through our handlers (level from the settings, kept for the diagnostics report); no access log:
     # a line with the client's address for every request of the browser and of Home Assistant does not help (#169)
-    quiet = dict(log_config=None, log_level=None, access_log=False)
+    # no proxy headers: Tailscale in userspace mode delivers connections of every device in the tailnet from
+    # 127.0.0.1, which uvicorn trusts by default, so any of them could choose its address (login limits) and claim
+    # HTTPS with X-Forwarded-For / X-Forwarded-Proto (GHSA-7qj3-8hhh-r724)
+    quiet = dict(log_config=None, log_level=None, access_log=False, proxy_headers=False)
     # bounded graceful shutdown: open browser connections must not keep the process alive
     main = uvicorn.Server(uvicorn.Config(app, host=server.host, port=server.port, timeout_graceful_shutdown=5, **quiet))
     logging.getLogger("uvicorn.access").addFilter(_HideHealthchecks())
