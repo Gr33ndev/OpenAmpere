@@ -647,7 +647,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(507, "Die Sicherung ließ sich nicht speichern. Bitte prüfen, ob genug freier "
                                      "Speicherplatz da ist.") from None
         finally:
-            for suffix in ("", "-wal", "-shm", "-journal"):  # the file was already moved when it was valid
+            for suffix in ("", "-wal", "-shm", "-journal"):  # its data was copied when it was valid
                 Path(f"{upload}{suffix}").unlink(missing_ok=True)
         log.warning("backup uploaded, OpenAmpere starts again to restore it")
         return {"restarting": runtime.request_restart()}

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import errno
 import glob
 import json
 import logging
@@ -150,6 +151,51 @@ def _apply_pending_restore(path: Path) -> Path | None:
     return kept
 
 
+def _create_version_1(db: sqlite3.Connection) -> None:
+    """The tables of schema version 1, also in a database from before schema versions."""
+    db.executescript(SCHEMA)
+    existing = {row[1] for row in db.execute("PRAGMA table_info(samples)")}
+    for column in SAMPLE_EXTRA_COLUMNS:
+        if column not in existing:
+            db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
+    db.execute("PRAGMA user_version=1")
+
+
+def _copy_backup(upload: Path, target: Path) -> None:
+    """Copies the rows of a checked backup into a new database with the tables of this version. Nothing else of
+    the uploaded file is taken over: no triggers, views or other table definitions, which could otherwise act in the
+    running installation (e.g. bring back a revoked session on every write)."""
+    db = sqlite3.connect(str(target))
+    try:
+        db.execute("PRAGMA journal_mode=DELETE")  # everything in the one file that is moved
+        _create_version_1(db)
+        Storage._migrate(db, 1, max(1, _user_version(upload)))  # the backup's version: the next start upgrades it
+        db.execute("PRAGMA trusted_schema=OFF")  # no functions from the backup's schema while reading it
+        db.execute("ATTACH DATABASE ? AS backup", (str(upload),))
+        tables = {row[0] for row in db.execute("SELECT name FROM backup.sqlite_master WHERE type='table' "
+                                               "AND sql LIKE 'CREATE TABLE %'")}  # no virtual tables
+        with db:
+            for (table,) in db.execute("SELECT name FROM main.sqlite_master WHERE type='table'").fetchall():
+                if table not in tables:
+                    continue
+                ours = [row[1] for row in db.execute(f"PRAGMA main.table_info({table})")]
+                theirs = {row[1] for row in db.execute(f"PRAGMA backup.table_info({table})")}
+                columns = ", ".join(f'"{c}"' for c in ours if c in theirs)  # names of this version only
+                if columns:
+                    db.execute(f"INSERT OR REPLACE INTO main.{table}({columns}) SELECT {columns} FROM backup.{table}")
+        db.execute("DETACH DATABASE backup")
+    finally:
+        db.close()
+
+
+def _user_version(path: Path) -> int:
+    db = sqlite3.connect(str(path))
+    try:
+        return db.execute("PRAGMA user_version").fetchone()[0]
+    finally:
+        db.close()
+
+
 def check_backup(path: str | Path) -> None:
     """Raises InvalidBackup unless the file is an intact OpenAmpere database."""
     with open(path, "rb") as file:
@@ -255,12 +301,7 @@ class Storage:
             if version == 0:
                 # a new database, or one from before schema versions: brought to version 1 the way all versions
                 # before did it (and still do, they ignore the version), so no copy is needed
-                db.executescript(SCHEMA)
-                existing = {row["name"] for row in db.execute("PRAGMA table_info(samples)")}
-                for column in SAMPLE_EXTRA_COLUMNS:
-                    if column not in existing:
-                        db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
-                db.execute("PRAGMA user_version=1")
+                _create_version_1(db)
                 version = 1
             if version < SCHEMA_VERSION:
                 if not new:
@@ -272,8 +313,8 @@ class Storage:
         return db
 
     @staticmethod
-    def _migrate(db: sqlite3.Connection, version: int) -> None:
-        for step in range(version, SCHEMA_VERSION):
+    def _migrate(db: sqlite3.Connection, version: int, target: int | None = None) -> None:
+        for step in range(version, SCHEMA_VERSION if target is None else target):
             log.info("updating the database from schema version %s to %s", step, step + 1)
             db.execute("BEGIN")
             try:
@@ -410,18 +451,23 @@ class Storage:
             dest.close()
 
     def stage_restore(self, upload: str | Path, *, settings: Callable[[dict, dict], dict] | None = None) -> None:
-        """Checks an uploaded backup and moves it next to the database, where it replaces it on the next start
+        """Checks an uploaded backup and copies its data next to the database, where it replaces it on the next start
         (nothing has the database open then). The password, sessions and app tokens are taken over from the running
         installation; settings(backup, current) gives the settings to restore (config.restore_settings). Raises
-        InvalidBackup."""
+        InvalidBackup, or OSError without enough free space."""
+        upload = Path(upload)
         check_backup(upload)
         with self._lock:
             keep = {key: self._get_meta(key) for key in KEEP_ON_RESTORE}
             current = self.get_settings()
             revision = int(self._get_meta("settings_revision") or 0)
-        db = sqlite3.connect(str(upload))
+        staged = upload.with_name(f"{upload.name}.copy")  # an upload's name: removed at the start if left over
+        if upload.stat().st_size > shutil.disk_usage(upload.parent).free:
+            raise OSError(errno.ENOSPC, "no space for the copy of the backup")
+        db = None
         try:
-            db.execute("PRAGMA journal_mode=DELETE")  # everything in the one file that is moved
+            _copy_backup(upload, staged)
+            db = sqlite3.connect(str(staged))
             with db:
                 row = db.execute("SELECT value FROM meta WHERE key='settings'").fetchone()
                 restored = json.loads(row[0]) if row else {}
@@ -437,14 +483,24 @@ class Storage:
                         db.execute("DELETE FROM meta WHERE key=?", (key,))
                     else:
                         db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, json.dumps(value)))
+            db.close()
+            db = None
+            os.replace(staged, f"{self.path}{RESTORE_SUFFIX}")
         except InvalidBackup:
             raise
-        except (sqlite3.DatabaseError, TypeError, ValueError) as err:  # e.g. other columns, broken JSON
+        except sqlite3.OperationalError as err:
+            if "full" in str(err):  # the disk, not the backup
+                raise OSError(errno.ENOSPC, str(err)) from err
+            raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine "
+                                "andere Sicherung wählen.") from err
+        except (sqlite3.DatabaseError, TypeError, ValueError) as err:  # e.g. NULL in a required column, broken JSON
             raise InvalidBackup("Die Sicherung ist beschädigt und kann nicht wiederhergestellt werden. Bitte eine "
                                 "andere Sicherung wählen.") from err
         finally:
-            db.close()
-        os.replace(upload, f"{self.path}{RESTORE_SUFFIX}")
+            if db is not None:
+                db.close()
+            for suffix in ("", "-journal"):
+                Path(f"{staged}{suffix}").unlink(missing_ok=True)
 
     # ---- writing ---------------------------------------------------------
 

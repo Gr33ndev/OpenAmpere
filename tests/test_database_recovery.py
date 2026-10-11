@@ -237,6 +237,93 @@ def test_restore_takes_only_checked_settings_and_keeps_secrets_where_they_go(tmp
     runtime.storage.close()
 
 
+def crafted_schema(backup: bytes, tmp_path, *statements: str) -> bytes:
+    path = tmp_path / "crafted-schema.db"
+    path.write_bytes(backup)
+    db = sqlite3.connect(path)
+    db.executescript(";\n".join(statements))
+    db.close()
+    return path.read_bytes()
+
+
+def schema_objects(path) -> set[tuple[str, str]]:
+    db = sqlite3.connect(path)
+    objects = {(row[0], row[1]) for row in db.execute("SELECT type, name FROM sqlite_master")}
+    db.close()
+    return objects
+
+
+def test_a_restored_backup_brings_no_triggers_views_or_own_tables(tmp_path):
+    """A crafted backup must not plant code in the database: a trigger that re-adds a session on every write would
+    survive "log out everywhere" and a password change."""
+    path = tmp_path / "openampere.db"
+    runtime, client = start(path)
+    login(client)
+    fill(runtime.storage, 10)
+    clean = schema_objects(path)
+    backup = crafted_schema(
+        backup_of(client, tmp_path), tmp_path,
+        "CREATE TRIGGER backdoor AFTER INSERT ON meta WHEN NEW.key = 'sessions' BEGIN "
+        "UPDATE meta SET value = json_set(value, '$.attacker', 4102444800) WHERE key = 'sessions'; END",
+        "CREATE TRIGGER hide AFTER INSERT ON control_log BEGIN DELETE FROM control_log; END",
+        "CREATE VIEW extra AS SELECT * FROM meta",
+        "CREATE TABLE photos (name TEXT)")
+    runtime.restart_hook = lambda: None
+    assert client.post("/api/backup/restore", content=backup).status_code == 200
+
+    runtime, client = restart(runtime, client)
+    assert schema_objects(path) == clean
+    assert len(runtime.storage.samples(0, 2e9)) == 10  # the data is restored
+    assert client.post("/api/auth/logout?everywhere=true").status_code == 200
+    assert "attacker" not in (runtime.storage.get_meta("sessions") or {})
+    runtime.storage.log_control("test", {}, True, "ok")
+    assert len(runtime.storage.control_log()) == 1
+    runtime.storage.close()
+
+
+def test_a_restored_backup_cannot_replace_the_password_through_its_table_definition(tmp_path):
+    """meta without a unique key would keep the backup's password next to the owner's, and the first one counts."""
+    path = tmp_path / "openampere.db"
+    runtime, client = start(path)
+    login(client)
+    backup = crafted_schema(
+        backup_of(client, tmp_path), tmp_path,
+        "ALTER TABLE meta RENAME TO old_meta",
+        "CREATE TABLE meta (key TEXT, value TEXT NOT NULL)",
+        "INSERT INTO meta SELECT * FROM old_meta",
+        "DROP TABLE old_meta",
+        f"INSERT INTO meta VALUES ('auth', '{json.dumps({'salt': '00', 'hash': 'attacker'})}')")
+    runtime.restart_hook = lambda: None
+    assert client.post("/api/backup/restore", content=backup).status_code == 200
+
+    runtime, client = restart(runtime, client)
+    anonymous = TestClient(create_app(runtime))
+    anonymous.headers["x-openampere"] = "1"
+    assert anonymous.post("/api/auth/login", json={"password": PASSWORD}).status_code == 200  # still the owner's
+    runtime.storage.close()
+
+
+def test_a_backup_from_before_schema_versions_is_still_restored(tmp_path):
+    """Only the columns both databases know are copied: older backups lack some."""
+    path = tmp_path / "openampere.db"
+    runtime, client = start(path)
+    login(client)
+    backup = crafted_schema(
+        backup_of(client, tmp_path), tmp_path,
+        "DROP TABLE samples",
+        "CREATE TABLE samples (ts REAL PRIMARY KEY, pv REAL, house REAL, grid REAL, battery REAL, soc REAL)",
+        "INSERT INTO samples VALUES (1750000000, 1, 2, 3, 4, 50)",
+        "DROP TABLE control_log",
+        "PRAGMA user_version=0")
+    runtime.restart_hook = lambda: None
+    assert client.post("/api/backup/restore", content=backup).status_code == 200
+
+    runtime, client = restart(runtime, client)
+    assert [s["pv"] for s in runtime.storage.samples(0, 2e9)] == [1]
+    assert client.get("/api/auth/status").json()["authenticated"] is True
+    runtime.storage.close()
+
+
 def test_settings_the_app_cannot_change_are_ignored_at_the_start(tmp_path):
     """Restored by an older version: the next start does not apply them."""
     storage = Storage(tmp_path / "t.db")
