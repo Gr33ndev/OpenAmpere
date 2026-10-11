@@ -4,6 +4,7 @@
 
 import sqlite3
 
+import pytest
 from fastapi.testclient import TestClient
 
 from openampere.api import create_app
@@ -129,11 +130,24 @@ def test_backup_link_works_without_the_cookie_for_a_while(tmp_path, monkeypatch)
     window = TestClient(client.app)  # no cookie, like the separate window on the iPhone
     assert window.get("/api/backup").status_code == 401
     assert window.get("/api/backup?token=guessed").status_code == 401
+    assert window.head(url).status_code != 401  # a browser may look first: that does not use the link up
     assert window.get(url).status_code == 200
+    assert window.get(url).status_code == 401  # once only (GHSA-f9rp-mp8c-m936)
+    url = client.post("/api/backup/link").json()["url"]
     import openampere.api as api_module
     later = api_module.time.time() + 601
     monkeypatch.setattr(api_module.time, "time", lambda: later)
     assert window.get(url).status_code == 401  # expired after 10 minutes
+
+
+@pytest.mark.parametrize("logout", ["/api/auth/logout", "/api/auth/logout?everywhere=true"])
+def test_a_backup_link_ends_with_the_session_that_asked_for_it(tmp_path, logout):
+    """GHSA-f9rp-mp8c-m936: whoever finds the link later (e.g. in the history of a shared device) must not get it."""
+    _, client = app_client(tmp_path)
+    login(client)
+    url = client.post("/api/backup/link").json()["url"]
+    assert client.post(logout).status_code == 200
+    assert TestClient(client.app).get(url).status_code == 401
 
 
 PRIVATE_VALUES = {"meter.provider": "netze_bw", "meter.username": "owner@example.org",

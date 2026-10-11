@@ -202,14 +202,22 @@ def create_app(runtime: Runtime) -> FastAPI:
     tokens = ApiTokens(storage)
     pairing = Pairing(tokens, lambda: runtime.tls.fingerprint)
     live_apps: dict[str, dict] = {}  # apps with an open live connection right now (#79)
-    # short-lived links for downloads that open in their own window (iPhone home-screen app, see /api/backup/link)
-    download_links: dict[str, float] = {}
+    # short-lived links for downloads that open in their own window (iPhone home-screen app, see /api/backup/link):
+    # token -> (valid until, the session that asked for it)
+    download_links: dict[str, tuple[float, str]] = {}
 
-    def download_link_ok(token: str | None) -> bool:
+    def use_download_link(token: str | None, method: str) -> bool:
+        """A link works once, and only while the session that asked for it is valid (no longer after logging out,
+        logging out everywhere or a new password, GHSA-f9rp-mp8c-m936). HEAD does not use it up."""
         now = time.time()
-        for key in [k for k, until in download_links.items() if until < now]:
+        for key in [k for k, (until, _) in download_links.items() if until < now]:
             del download_links[key]
-        return bool(token) and token in download_links
+        link = download_links.get(token or "")
+        if link is None or not auth.valid(link[1]):
+            return False
+        if method == "GET":
+            del download_links[token]
+        return True
 
     def origin_ok(origin: str | None, host: str | None) -> bool:
         """Requests from other web sites carry their own Origin; same-origin requests match the Host."""
@@ -239,7 +247,7 @@ def create_app(runtime: Runtime) -> FastAPI:
                 return JSONResponse({"detail": "Dieser Zugang darf nur lesen.", "code": "read_only"}, 403)
             request.state.token = token
             return await call_next(request)
-        if path == "/api/backup" and not writing and download_link_ok(request.query_params.get("token")):
+        if path == "/api/backup" and not writing and use_download_link(request.query_params.get("token"), request.method):
             return await call_next(request)
         if path.startswith("/api/") and (writing or path in PROTECTED_READS):
             if writing and (not origin_ok(request.headers.get("origin"), host) or request.headers.get(CSRF_HEADER) != "1"):
@@ -614,11 +622,11 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {**usage, "bytes_per_year": round(per_day * 365), "retention_days": runtime.config.storage.raw_retention_days}
 
     @app.post("/api/backup/link")
-    def backup_link():
+    def backup_link(request: Request):
         """A download link valid for 10 minutes without the login cookie: on the iPhone, downloads from the
         home-screen app must open in their own window (with a "Done" button), which does not share the cookie."""
         token = secrets.token_urlsafe(24)
-        download_links[token] = time.time() + 600
+        download_links[token] = (time.time() + 600, request.cookies.get(SESSION_COOKIE, ""))
         return {"url": f"/api/backup?token={token}", "valid_s": 600}
 
     @app.get("/api/backup")
