@@ -249,6 +249,8 @@ write_files() {
     say "    image: $IMAGE"
     say "    restart: unless-stopped"
     say "    network_mode: host  # damit die Gerätesuche das Heimnetz sieht"
+    say "    cap_drop: [ALL]  # die App braucht keine besonderen Rechte"
+    say "    security_opt: [\"no-new-privileges:true\"]"
     say "    volumes:"
     say "      - ./data:/data"
     say "      - ./update:/data/update  # Austausch mit dem Update-Helfer"

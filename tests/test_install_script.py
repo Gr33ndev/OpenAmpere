@@ -108,3 +108,8 @@ def test_the_update_helper_image_is_pinned_by_digest(tmp_path):
     """The helper has access to Docker: a fixed image, not whatever a moving tag points to today."""
     image = write_compose(tmp_path, "no", "no")["services"]["updater"]["image"]
     assert image.startswith("docker.io/library/docker:") and "@sha256:" in image
+
+
+def test_the_app_runs_without_extra_privileges(tmp_path):
+    app = write_compose(tmp_path, "no", "no")["services"]["openampere"]
+    assert app["cap_drop"] == ["ALL"] and app["security_opt"] == ["no-new-privileges:true"]
