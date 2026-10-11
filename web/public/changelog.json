@@ -1,6 +1,153 @@
 {
   "versions": [
     {
+      "version": "0.19.0",
+      "date": "2026-10-11",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "ui",
+            "text": "Extend the easter egg (#216)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "auth",
+            "text": "Lock out per device, keep revoked tokens revoked, slimmer backups (#251)"
+          },
+          {
+            "scope": "backup",
+            "text": "Restore only settings the app may change"
+          },
+          {
+            "scope": "updates",
+            "text": "Check the provenance also when the app is not running"
+          },
+          {
+            "scope": "consumers",
+            "text": "Show switch addresses only after login"
+          },
+          {
+            "scope": null,
+            "text": "Heating target cap in evcc, space check for cloud export uploads (#249)"
+          },
+          {
+            "scope": "ui",
+            "text": "Wallbox plan at the clock change, form states after saving (#248)"
+          },
+          {
+            "scope": "consumers",
+            "text": "Switch off devices in more situations (#247)"
+          },
+          {
+            "scope": "charging",
+            "text": "Stop at the inverter's charge limit (#246)"
+          },
+          {
+            "scope": "ui",
+            "text": "Smaller bugs in the report, devices and settings (#231)"
+          },
+          {
+            "scope": "api",
+            "text": "Check unexpected input, durations in the diagnostics report (#230)"
+          },
+          {
+            "scope": "install",
+            "text": "Reload helpers, safer downloads and folders, checked releases (#229)"
+          },
+          {
+            "scope": "ui",
+            "text": "Keep what was typed in forms (#228)"
+          },
+          {
+            "scope": "homeassistant",
+            "text": "Hide stale readings, set up again after the first reading (#227)"
+          },
+          {
+            "scope": "control",
+            "text": "Log and gate every write, no false external changes (#226)"
+          },
+          {
+            "scope": "charging",
+            "text": "Treat a normal end of charge as no fault (#225)"
+          },
+          {
+            "scope": "consumers",
+            "text": "Switch off devices that openampere switched on (#224)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Cover the state of my-PV heating rods (#241)"
+          },
+          {
+            "scope": null,
+            "text": "Cover the error paths of the network search (#240)"
+          },
+          {
+            "scope": null,
+            "text": "Cover the calendar periods and buckets (#239)"
+          },
+          {
+            "scope": null,
+            "text": "Add copyright and license headers to every source file (#234)"
+          },
+          {
+            "scope": null,
+            "text": "Document code review, the two-factor rule and first tasks (#235)"
+          },
+          {
+            "scope": "ui",
+            "text": "Add property-based tests with fast-check (#213)"
+          },
+          {
+            "scope": null,
+            "text": "Enforce coding standards with ruff and biome (#212)"
+          },
+          {
+            "scope": null,
+            "text": "Document roles and a roadmap for the next year (#211)"
+          },
+          {
+            "scope": "security",
+            "text": "Add an assurance case and the report handling process (#210)"
+          },
+          {
+            "scope": null,
+            "text": "Show the openssf best practices badge in the readme (#209)"
+          },
+          {
+            "scope": null,
+            "text": "Add property-based tests with hypothesis (#208)"
+          },
+          {
+            "scope": null,
+            "text": "Link the private vulnerability report form in the security policy (#204)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump the vite group in /web with 2 updates (#202)"
+          },
+          {
+            "scope": null,
+            "text": "Attach signed build provenance for the release files (#206)"
+          },
+          {
+            "scope": null,
+            "text": "Pin docker base images and python installs by hash (#207)"
+          },
+          {
+            "scope": null,
+            "text": "Add codeql analysis for python, typescript and workflows (#205)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.18.1",
       "date": "2026-10-09",
       "first": false,
