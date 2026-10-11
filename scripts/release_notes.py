@@ -12,6 +12,7 @@ Usage: scripts/release_notes.py v0.1.1   (prints Markdown)
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 
@@ -27,8 +28,14 @@ def previous_tag(tag: str) -> str | None:
         return None
 
 
+ADVISORY = re.compile(r"GHSA(?:-[0-9a-z]{4}){3}")
+ADVISORIES = "https://github.com/Gr33ndev/OpenAmpere/security/advisories/"
+
+
 def line(item: dict) -> str:
-    return f"**{item['scope']}:** {item['text']}" if item["scope"] else item["text"]
+    """One entry; a security advisory's ID links to the advisory (GitHub links #123 by itself)."""
+    text = ADVISORY.sub(lambda m: f"[{m[0]}]({ADVISORIES}{m[0]})", item["text"])
+    return f"**{item['scope']}:** {text}" if item["scope"] else text
 
 
 def notes(entry: dict, version: str, tag: str, prev: str | None) -> str:
