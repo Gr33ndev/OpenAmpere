@@ -12,15 +12,15 @@ from openampere.storage import Storage
 
 async def test_meter_numbers_and_device_addresses_are_pseudonymised(tmp_path):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
-    await runtime.update_settings({"meter.meter_ids": ["1EMH0012345678"]})
+    await runtime.update_settings({"meter.meter_ids": ["METER-TEST-0001"]})
     SurplusControl(runtime).save([
         {"name": "Pumpe", "kind": "shelly1", "host": "pumpe-keller.local"},
         {"name": "Heizstab", "kind": "http", "url_on": "http://admin:geheim@heizstab.local/on",
          "url_off": "http://admin:geheim@heizstab.local/off"}])
     text = str(Diagnostics(runtime)._pseudonymise({"checks": [], "log": [
-        "Zähler 1EMH0012345678 nicht gefunden", "pumpe-keller.local antwortet nicht",
+        "Zähler METER-TEST-0001 nicht gefunden", "pumpe-keller.local antwortet nicht",
         "Fehler bei http://admin:geheim@heizstab.local/on", "heizstab.local nicht erreichbar"]}))
-    for private in ("1EMH0012345678", "pumpe-keller", "geheim", "heizstab.local"):
+    for private in ("METER-TEST-0001", "pumpe-keller", "geheim", "heizstab.local"):
         assert private not in text, private
     runtime.storage.close()
 
