@@ -341,12 +341,12 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.post("/api/auth/setup")
     def auth_setup(body: PasswordRequest, request: Request, response: Response):
-        if auth.configured:
-            raise HTTPException(409, "Es ist bereits ein Passwort festgelegt.")
         try:
-            auth.set_password(body.password)
+            first = auth.setup(body.password)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
+        if not first:
+            raise HTTPException(409, "Es ist bereits ein Passwort festgelegt.")
         start_session(response, request)
         return {"configured": True, "authenticated": True}
 

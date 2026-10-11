@@ -84,6 +84,7 @@ class Auth:
         self._tries: dict[str, list[float]] = {}  # device -> times of failed (or still running) checks
         self._guard = threading.Lock()  # logins run in parallel threads
         self._sessions_lock = threading.Lock()
+        self._setup_lock = threading.Lock()
 
     # ---- password ----------------------------------------------------------
 
@@ -92,10 +93,24 @@ class Auth:
         return bool(self.storage.get_meta("auth"))
 
     def set_password(self, password: str) -> None:
+        self.storage.set_meta("auth", self._new_hash(password))
+
+    def setup(self, password: str) -> bool:
+        """Sets the first password; False if one is set already. Checked and set in one step: of two setups at the
+        same time only the first counts, the second does not silently replace the password the owner just set."""
+        stored = self._new_hash(password)  # the slow part outside the lock
+        with self._setup_lock:
+            if self.configured:
+                return False
+            self.storage.set_meta("auth", stored)
+            return True
+
+    @staticmethod
+    def _new_hash(password: str) -> dict:
         if len(password) < MIN_PASSWORD_LENGTH:
             raise ValueError(f"Das Passwort muss mindestens {MIN_PASSWORD_LENGTH} Zeichen haben.")
         salt = os.urandom(16)
-        self.storage.set_meta("auth", {"salt": salt.hex(), "hash": _hash(password, salt)})
+        return {"salt": salt.hex(), "hash": _hash(password, salt)}
 
     def check_password(self, password: str, client: str | None = None, device: str | None = None) -> bool:
         """client: the address of the request; device: the device cookie of a browser that logged in before."""
