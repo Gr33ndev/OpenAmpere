@@ -369,3 +369,29 @@ async def test_a_command_that_half_worked_is_switched_off_at_once(tmp_path):
             assert sim._get_setting("remote_enable") == 0 and len(runtime.storage.control_log()) == entries
         finally:
             await runtime.collector.stop()
+
+
+async def test_switching_off_during_a_tick_does_not_leave_the_remote_control_on(tmp_path):
+    """The owner switches grid charging off while a tick is writing the command: the stop must come after it."""
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 50, 0)
+            set_power = runtime.collector.driver.set_remote_power
+            writing, go_on = asyncio.Event(), asyncio.Event()
+
+            async def slow(power_w, timeout_s):
+                writing.set()
+                await go_on.wait()
+                await set_power(power_w, timeout_s)
+            runtime.collector.driver.set_remote_power = slow
+            tick = asyncio.create_task(charging.tick(now=10_000))
+            await writing.wait()
+            charging.save({**charging.view(now=10_000)["settings"], "enabled": False})
+            stop = asyncio.create_task(charging.stop("Laden aus dem Netz ist aus"))
+            await asyncio.sleep(0.2)
+            go_on.set()
+            await asyncio.gather(tick, stop)
+            assert not charging.active and sim._get_setting("remote_enable") == 0
+        finally:
+            await runtime.collector.stop()
