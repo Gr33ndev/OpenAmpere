@@ -56,3 +56,56 @@ def test_plain_secrets_of_older_versions_get_encrypted(tmp_path):
     assert storage.get_settings()["cloud.api_key"] == ""
     assert PASSWORD.encode() not in db_bytes(db)
     storage.close()
+
+
+# GHSA-pgj6-8cf2-3qxp: the app never shows a stored secret again, so whoever has a session must not get it sent to
+# their own server by changing the address it belongs to
+async def test_a_stored_secret_is_not_sent_to_a_new_address(tmp_path):
+    rt = Runtime({}, Storage(tmp_path / "t.db"))
+    await rt.update_settings({"evcc.url": "http://evcc.local:7070", "evcc.password": "evcc-pass",
+                              "notify.ntfy_url": "https://ntfy.sh/topic", "notify.ntfy_token": "tk_secret",
+                              "meter.provider": "netze_bw", "meter.username": "owner", "meter.password": PASSWORD})
+    await rt.update_settings({"tariff.feed_in_ct": 8.0})  # other settings: kept
+    assert (rt.config.evcc.password, rt.config.notify.ntfy_token) == ("evcc-pass", "tk_secret")
+
+    await rt.update_settings({"evcc.url": "http://attacker.example:7070", "notify.ntfy_url": "https://attacker.example/t",
+                              "meter.username": "someone-else"})
+    assert rt.config.evcc.password == "" and rt.config.notify.ntfy_token == "" and rt.config.meter.password == ""
+    assert {"evcc.password", "notify.ntfy_token", "meter.password"}.isdisjoint(rt.storage.get_settings())
+
+    await rt.update_settings({"evcc.url": "http://evcc2.local:7070", "evcc.password": "new-pass"})  # both at once
+    assert rt.config.evcc.password == "new-pass"
+    rt.storage.close()
+
+
+def test_the_evcc_login_cookie_goes_only_to_the_address_it_came_from(tmp_path, monkeypatch):
+    from openampere.evcc import Evcc
+    rt = Runtime({}, Storage(tmp_path / "t.db"))
+    evcc = Evcc(rt)
+    sent = []
+
+    class Answer:
+        headers = {"Set-Cookie": "auth=abc; Path=/"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b"{}"
+
+    def urlopen(request, timeout):
+        sent.append((request.full_url, request.get_header("Cookie")))
+        return Answer()
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(rt.config.evcc, "url", "http://evcc.local:7070")
+    evcc._http("GET", "/api/state")
+    evcc._http("GET", "/api/state")
+    monkeypatch.setattr(rt.config.evcc, "url", "http://attacker.example:7070")
+    Answer.headers = {}
+    evcc._http("GET", "/api/state")
+    assert sent == [("http://evcc.local:7070/api/state", None), ("http://evcc.local:7070/api/state", "auth=abc"),
+                    ("http://attacker.example:7070/api/state", None)]
+    rt.storage.close()

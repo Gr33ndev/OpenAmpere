@@ -13,7 +13,8 @@ from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import EDITABLE, PRIVATE, SECRETS, Config, build_config, get_value, read_yaml, validate
+from .config import (EDITABLE, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value, read_yaml,
+                     validate)
 from .drivers import registry
 from .cloud_import import CloudImport
 from .secretbox import SecretBox
@@ -152,7 +153,13 @@ class Runtime:
         if "timezone" in clean:
             ZoneInfo(clean["timezone"])  # raises for unknown zones
 
-        saved = {**self._load_settings(), **clean}
+        stored = self._load_settings()
+        saved = {**stored, **clean}
+        for secret, targets in SECRET_TARGETS.items():
+            # a stored secret only goes where it went before: with another address and no new secret in the same
+            # change, the owner enters it again (whoever has a session must not get it sent to their server)
+            if secret not in clean and any(saved.get(t) != stored.get(t) for t in targets):
+                saved.pop(secret, None)
         old = self.config
         new, locked = build_config(self.file_values, saved)
         make_driver(new)  # validate before persisting

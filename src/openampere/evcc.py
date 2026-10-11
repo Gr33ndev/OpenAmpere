@@ -101,6 +101,7 @@ class Evcc:
         self.error: str | None = None
         self.updated: float = 0.0
         self._cookie: str | None = None
+        self._cookie_url: str | None = None  # the address the login cookie came from: never sent elsewhere
 
     @property
     def url(self) -> str:
@@ -114,6 +115,8 @@ class Evcc:
 
     def _http(self, method: str, path: str, body: dict | None = None) -> object:
         headers = {"Accept": "application/json", "User-Agent": "OpenAmpere"}
+        if self._cookie_url != self.url:
+            self._cookie, self._cookie_url = None, self.url
         if self._cookie:
             headers["Cookie"] = self._cookie
         data = None
