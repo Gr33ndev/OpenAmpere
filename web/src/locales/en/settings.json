@@ -641,6 +641,7 @@
     "setUpStep": "Tap {button} to start.",
     "tailscaleApp": "Tailscale app",
     "tailscaleOverview": "Tailscale overview",
+    "userspaceMode": "Tailscale runs on this machine without its own network interface. Then the devices in your tailnet can also reach other services of this machine that are meant only for itself. Share the tailnet only with your own devices or limit access in the Tailscale access rules (ACLs). Running the install script again helps if the machine allows its own interface.",
     "whatIsTailscale": "What is Tailscale?"
   },
   "restoreCard": {

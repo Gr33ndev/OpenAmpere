@@ -74,6 +74,15 @@ class Remote:
             return {"state": "failed", "error": log.strip().splitlines()[-1][:300]}
         return {"state": "off"}
 
+    def mode(self) -> str | None:
+        """kernel (own network interface) or userspace, as the helper started Tailscale (GHSA-6r67-5vwf-5x8x);
+        None for a helper of an older installation, which always runs in userspace mode."""
+        try:
+            mode = (self.folder / "mode").read_text().strip()
+        except OSError:
+            return None
+        return mode if mode in ("kernel", "userspace") else None
+
     def view(self, now: float | None = None) -> dict:
         now = time.time() if now is None else now
         port = self.runtime.config.server.port
@@ -107,7 +116,7 @@ class Remote:
         address = None
         if state == "connected" and host:
             address = https["url"] if https["state"] == "on" and https.get("url") else f"http://{host}:{port}"
-        return {"available": True, "state": state, "port": port,
+        return {"available": True, "state": state, "port": port, "mode": self.mode(),
                 "login_url": login_url if state == "login" else None,
                 "address": address, "https": https,
                 "name": name or None, "ip": ipv4, "account": user.get("LoginName") or None}

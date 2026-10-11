@@ -224,6 +224,18 @@ log_limit() {
   say "        max-file: \"3\""
 }
 
+# How Tailscale runs: "kernel" (its own network interface, the default of Tailscale) where the machine has a TUN
+# device, else "userspace". In userspace mode Tailscale hands every connection from the tailnet to 127.0.0.1 of this
+# machine, so services that listen only there become reachable from the tailnet as well (GHSA-6r67-5vwf-5x8x).
+# Not when Tailscale itself already runs on the machine: its interface and firewall rules would collide.
+tailscale_mode() {
+  if [ -c "${OPENAMPERE_TUN_DEVICE:-/dev/net/tun}" ] && [ ! -e "${OPENAMPERE_SYS_NET:-/sys/class/net}/tailscale0" ]; then
+    echo kernel
+  else
+    echo userspace
+  fi
+}
+
 # docker-compose.yml and the helpers; uses DIR, COMPOSE, PORT, TLS_PORT, TZ_NAME, EVCC_CONTAINER, TAILSCALE
 write_files() {
   step "Dateien schreiben in $DIR"
@@ -270,17 +282,25 @@ write_files() {
       log_limit
     fi
     if [ "$TAILSCALE" = yes ]; then
+      local mode
+      mode=$(tailscale_mode)
       say "  tailscale:  # Zugriff von unterwegs, eingerichtet wird in der App (siehe tailscale.sh)"
       say "    image: $TAILSCALE_IMAGE"
       say "    restart: unless-stopped"
       say "    network_mode: host  # damit Tailscale die App auf diesem Rechner erreicht"
       say "    entrypoint: [\"sh\", \"/openampere/tailscale.sh\"]"
+      if [ "$mode" = kernel ]; then
+        say "    cap_add: [NET_ADMIN, NET_RAW]  # eigene Netzwerkschnittstelle für Tailscale"
+        say "    devices:"
+        say "      - /dev/net/tun:/dev/net/tun"
+      fi
       say "    volumes:"
       say "      - ./tailscale:/var/lib/tailscale"
       say "      - ./remote:/remote"
       say "      - ./tailscale.sh:/openampere/tailscale.sh:ro"
       say "    environment:"
       say "      OPENAMPERE_PORT: \"$PORT\"  # für HTTPS über Tailscale"
+      say "      OPENAMPERE_TAILSCALE_MODE: $mode"
       log_limit
     fi
     say "  updater:  # installiert Updates, wenn in der App jemand auf Aktualisieren tippt (siehe updater.sh)"
@@ -371,6 +391,11 @@ start_and_report() {
   if grep -q "^  tailscale:" docker-compose.yml; then
     say ""
     say "  Von unterwegs: in der App unter Mehr → Zugriff von unterwegs auf Einrichten tippen."
+    if grep -q "OPENAMPERE_TAILSCALE_MODE: userspace" docker-compose.yml; then
+      say "  Hinweis: Tailscale läuft hier ohne eigene Netzwerkschnittstelle. Dann erreichen Geräte in deinem"
+      say "  Tailscale-Netz auch andere Dienste dieses Rechners, die nur für ihn selbst gedacht sind. Teile das"
+      say "  Tailscale-Netz nur mit eigenen Geräten oder beschränke den Zugriff in den Tailscale-Regeln (ACLs)."
+    fi
   fi
   say ""
   say "  Neue Versionen zeigt die App oben an, ein Tipp auf Aktualisieren genügt."

@@ -641,6 +641,7 @@
     "setUpStep": "Auf {button} tippen.",
     "tailscaleApp": "Tailscale-App",
     "tailscaleOverview": "Tailscale-Übersicht",
+    "userspaceMode": "Tailscale läuft auf diesem Rechner ohne eigene Netzwerkschnittstelle. Dann erreichen die Geräte in deinem Tailscale-Netz auch andere Dienste dieses Rechners, die nur für ihn selbst gedacht sind. Teile das Tailscale-Netz nur mit eigenen Geräten oder beschränke den Zugriff in den Tailscale-Regeln (ACLs). Das Install-Script noch einmal auszuführen hilft, wenn der Rechner eine eigene Schnittstelle erlaubt.",
     "whatIsTailscale": "Was ist Tailscale?"
   },
   "restoreCard": {

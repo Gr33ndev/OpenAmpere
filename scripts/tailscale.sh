@@ -22,12 +22,34 @@ PORT=${OPENAMPERE_PORT:-8080} # where OpenAmpere listens on this machine, for HT
 
 mkdir -p "$STATE"
 
-# userspace networking: no extra privileges and no /dev/net/tun (NAS, Proxmox LXC); connections to the
-# tailnet address of this machine end up on its own ports, e.g. OpenAmpere on 8080
-tailscaled --tun=userspace-networking --statedir=/var/lib/tailscale --socket="$SOCKET" --no-logs-no-support &
-daemon=$!
-# stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s)
+# kernel (install.sh chooses it where the machine has /dev/net/tun): an own network interface, so only services that
+# listen on all addresses (OpenAmpere) are reachable from the tailnet, not those meant only for this machine.
+# userspace: no extra privileges and no /dev/net/tun (NAS, Proxmox LXC), but Tailscale hands every connection to
+# 127.0.0.1 of this machine (GHSA-6r67-5vwf-5x8x)
+case "${OPENAMPERE_TAILSCALE_MODE:-userspace}" in
+  kernel) TUN=oa-tailscale ;; # not tailscale0: the name of a Tailscale running on the machine itself
+  *) TUN=userspace-networking ;;
+esac
+start_daemon() {
+  tailscaled --tun="$1" --statedir=/var/lib/tailscale --socket="$SOCKET" --no-logs-no-support &
+  daemon=$!
+}
+daemon=""
+# stop at once when Docker stops the container (sh as the first process ignores TERM otherwise and waits 10 s),
+# also during the check below
 trap 'kill "$daemon" 2>/dev/null; exit 0' TERM INT
+start_daemon "$TUN"
+# the TUN device can exist but not be usable (rootless containers, SELinux, some LXC): tailscaled then ends at once.
+# Better without its own interface than without remote access at all; the app shows which mode runs (status file).
+if [ "$TUN" != userspace-networking ]; then
+  sleep "${OPENAMPERE_TUN_CHECK_S:-5}"
+  if ! kill -0 "$daemon" 2>/dev/null; then
+    echo "Tailscale ließ sich nicht mit eigener Netzwerkschnittstelle starten und läuft jetzt im Userspace-Modus" >&2
+    TUN=userspace-networking
+    start_daemon "$TUN"
+  fi
+fi
+case "$TUN" in userspace-networking) echo userspace ;; *) echo kernel ;; esac >"$STATE/mode"
 
 ts() { tailscale --socket="$SOCKET" "$@"; }
 

@@ -467,7 +467,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/update": () => ({ current: "Demo", available: false, updater: false, requested: false, check: false, auto: false,
     latest: null, status: null, checked: null, error: null }),
   // shows how it looks once set up; setting it up needs a real installation
-  "/api/remote": () => ({ available: true, state: "connected", port: 8080, login_url: null,
+  "/api/remote": () => ({ available: true, state: "connected", port: 8080, mode: "kernel", login_url: null,
     address: "https://openampere.tail-demo.ts.net", name: "openampere.tail-demo.ts.net", ip: "100.64.0.7",
     account: "demo@example.org", https: { state: "on", url: "https://openampere.tail-demo.ts.net" } }),
   "/api/billing": billing,

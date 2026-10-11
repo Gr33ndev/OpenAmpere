@@ -8,7 +8,7 @@ import { REPO_URL } from "./links";
 import { Button, copyText, Dialog, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
 type RemoteView = {
-  available: boolean; port: number;
+  available: boolean; port: number; mode?: "kernel" | "userspace" | null;
   state: "unavailable" | "off" | "starting" | "login" | "approval" | "connected" | "stopping" | "failed";
   login_url?: string | null; address?: string | null; name?: string | null; ip?: string | null; account?: string | null;
   https?: { state: "off" | "starting" | "enable" | "on" | "failed"; url?: string | null; enable_url?: string; error?: string };
@@ -43,6 +43,9 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
     <SubPage title={t("common.remoteAccess")} onBack={onBack}>
       <p className="hint">{t("settings.remotePage.intro")}</p>
       {!data && <LoadState error={error} onRetry={reload} />}
+      {data?.available && data.mode !== "kernel" && (
+        <Notice kind="info">{t("settings.remotePage.userspaceMode")}</Notice>
+      )}
 
       {data?.state === "unavailable" && (
         <div className="card">
