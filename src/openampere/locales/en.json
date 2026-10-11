@@ -58,6 +58,7 @@
   "charging": {
     "batterySizeMustBetween": "The battery size must be between 0.5 and 200 kWh.",
     "chargeTargetMustBetween": "The charge target must be between 20 and 100 %.",
+    "commandRefused": "Command refused: {err}",
     "confirmLegalNoticesFirst": "Please confirm the legal notices first.",
     "enterTimesFullHours": "Please enter times as full hours 0–23.",
     "invalidSettingsChargingGrid": "Invalid settings for charging from the grid.",

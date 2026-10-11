@@ -58,6 +58,7 @@
   "charging": {
     "batterySizeMustBetween": "Die Speichergröße muss zwischen 0,5 und 200 kWh liegen.",
     "chargeTargetMustBetween": "Das Ladeziel muss zwischen 20 und 100 % liegen.",
+    "commandRefused": "Befehl abgelehnt: {err}",
     "confirmLegalNoticesFirst": "Bitte zuerst die rechtlichen Hinweise bestätigen.",
     "enterTimesFullHours": "Uhrzeiten bitte als volle Stunde 0–23 angeben.",
     "invalidSettingsChargingGrid": "Ungültige Einstellungen für das Laden aus dem Netz.",
