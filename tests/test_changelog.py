@@ -105,3 +105,10 @@ def test_a_fix_merged_from_a_security_advisory_is_listed_with_the_advisory():
         {"scope": "security", "text": "Close security advisory GHSA-vrrc-53mr-hc3c"},
         {"scope": "security", "text": "Close security advisory GHSA-gfr8-g665-933w"}]
     assert groups["other"] == []
+
+
+def test_security_advisories_are_linked_in_the_release_notes():
+    item = {"scope": "security", "text": "Restoring a crafted backup takes over unchecked data (GHSA-4jmw-6h58-vc78)"}
+    assert release_notes["line"](item) == (
+        "**security:** Restoring a crafted backup takes over unchecked data "
+        "([GHSA-4jmw-6h58-vc78](https://github.com/Gr33ndev/OpenAmpere/security/advisories/GHSA-4jmw-6h58-vc78))")

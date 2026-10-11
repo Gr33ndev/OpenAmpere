@@ -47,6 +47,7 @@ const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "language
 const CHANGELOG_FILE = "web/public/changelog.json";
 const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
+const ADVISORIES = "https://github.com/Gr33ndev/OpenAmpere/security/advisories/";
 
 const errors = [];
 const warnings = [];
@@ -106,9 +107,11 @@ function keysOf(node, prefix) {
   return Object.entries(node).flatMap(([name, child]) => keysOf(child, `${prefix}.${name}`));
 }
 
-/** The versions as HTML: headings in the page's language, "#123" linked to the issue or pull request. */
+/** The versions as HTML: headings in the page's language, "#123" linked to the issue or pull request,
+ *  "GHSA-xxxx-xxxx-xxxx" to the security advisory. */
 function renderChangelog(text, contentLang) {
-  const linked = (value) => escapeText(value).replace(/#(\d+)/g, `<a href="${ISSUES}$1">#$1</a>`);
+  const linked = (value) => escapeText(value).replace(/#(\d+)/g, `<a href="${ISSUES}$1">#$1</a>`)
+    .replace(/GHSA(?:-[0-9a-z]{4}){3}/g, (id) => `<a href="${ADVISORIES}${id}">${id}</a>`);
   const item = (i) => `<li>${i.scope ? `<strong>${escapeText(i.scope)}:</strong> ` : ""}${linked(i.text)}</li>`;
   const list = (items) => `<ul>${items.map(item).join("")}</ul>`;
   const part = (title, items) => (items.length ? `<h3>${title}</h3>${list(items)}` : "");

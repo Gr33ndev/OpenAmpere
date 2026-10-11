@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
 import { getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
-import { CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
+import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, dayOf, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
 import { decimalInput, parseDecimal as toNumber, parseWatts } from "./decimal";
@@ -1066,10 +1066,13 @@ function Summary({ summary }: { summary?: Record<string, string> }) {
   );
 }
 
-/** "(#152)" in a commit title links to the pull request or issue. */
+/** "(#152)" in a commit title links to the pull request or issue, "GHSA-xxxx-xxxx-xxxx" to the security advisory. */
 function withLinks(text: string) {
-  return text.split(/(#\d+)/).map((part, i) => (/^#\d+$/.test(part)
-    ? <a key={i} href={`${ISSUES_URL}/${part.slice(1)}`} target="_blank" rel="noopener noreferrer">{part}</a> : part));
+  return text.split(/(#\d+|GHSA(?:-[0-9a-z]{4}){3})/).map((part, i) => {
+    const url = /^#\d+$/.test(part) ? `${ISSUES_URL}/${part.slice(1)}`
+      : /^GHSA(-[0-9a-z]{4}){3}$/.test(part) ? `${ADVISORIES_URL}/${part}` : null;
+    return url ? <a key={i} href={url} target="_blank" rel="noopener noreferrer">{part}</a> : part;
+  });
 }
 
 function ChangeList({ items }: { items: ChangeItem[] }) {

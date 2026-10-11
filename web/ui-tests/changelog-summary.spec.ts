@@ -6,7 +6,10 @@ const CHANGELOG = {
   versions: [
     {
       version: "9.1.0", date: "2026-10-01", first: false, breaking: [],
-      groups: { feat: [{ scope: "report", text: "Show something new" }], fix: [], perf: [], other: [] },
+      groups: {
+        feat: [{ scope: "report", text: "Show something new" }], perf: [], other: [],
+        fix: [{ scope: "security", text: "Restoring a crafted backup takes over unchecked data (GHSA-4jmw-6h58-vc78)" }],
+      },
       summary: { de: "Kurz gesagt: etwas Neues.\n\nZweiter Absatz zu #176.", en: "In short: something new." },
     },
     {
@@ -40,4 +43,11 @@ test.describe("changelog summary", () => {
     await expect(summary).toHaveText("In short: something new.");
     await expect(summary).toHaveAttribute("lang", "en");
   });
+});
+
+test("links a security advisory in the list", async ({ page }) => {
+  await page.route("**/changelog.json", (route) => route.fulfill({ json: CHANGELOG }));
+  await open(page, "more/changelog");
+  const link = page.getByRole("link", { name: "GHSA-4jmw-6h58-vc78" });
+  await expect(link).toHaveAttribute("href", "https://github.com/Gr33ndev/OpenAmpere/security/advisories/GHSA-4jmw-6h58-vc78");
 });
