@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 # OpenAmpere updater. Runs in its own small container (docker:cli) with access to Docker, set up by install.sh.
 #
-# It reacts to one thing only: the file data/update/request, which the app writes when someone taps
+# It reacts to one thing only: the file update/inbox/request, which the app writes when someone taps
 # "Aktualisieren" (or at night with automatic updates). Then it pulls the new images of this installation,
 # restarts the containers and checks that OpenAmpere keeps running and answers (health check of the image). If not, the
 # previous version comes back.
@@ -16,7 +16,10 @@
 set -u
 
 DIR=${OPENAMPERE_DIR:-/opt/openampere}
-STATE="$DIR/data/update"
+# Written only by this helper (root) and read by the app. The app writes into inbox only: it cannot place links where
+# root writes (GHSA-2j3r-6fcx-9m7v). install.sh creates both.
+STATE="$DIR/update"
+INBOX="$STATE/inbox"
 APP=openampere
 CHECK_AFTER_S=${OPENAMPERE_CHECK_AFTER_S:-60} # how long the new version must run without crashing
 HEALTH_WAIT_S=${OPENAMPERE_HEALTH_WAIT_S:-240} # extra wait while the health check is starting (start period 180 s in the Dockerfile)
@@ -25,7 +28,6 @@ OWN_IMAGE=ghcr.io/gr33ndev/openampere
 SIGNER='^https://github.com/Gr33ndev/OpenAmpere/\.github/workflows/release\.yml@refs/tags/v'
 
 mkdir -p "$STATE"
-chown 1000:1000 "$STATE" 2>/dev/null || true # the app (user 1000) writes the request here
 cd "$DIR" || exit 1
 
 status() { # state message
@@ -137,8 +139,8 @@ main() {
   trap 'exit 0' TERM INT
   while true; do
     date +%s >"$STATE/updater-alive"
-    if [ -f "$STATE/request" ]; then
-      rm -f "$STATE/request"
+    if [ -f "$INBOX/request" ]; then
+      rm -f "$INBOX/request"
       update
     fi
     sleep 5 &

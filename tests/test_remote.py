@@ -148,3 +148,11 @@ def test_https_error_is_shown(runtime):
     (remote.folder / "serve.log").write_text("error: certificate could not be issued\n")
     helper(remote, ts=1200)
     assert remote.view(now=1200)["https"] == {"state": "failed", "error": "error: certificate could not be issued"}
+
+
+def test_the_request_goes_into_the_inbox_of_newer_installations(runtime):
+    remote = Remote(runtime)
+    helper(remote, {"BackendState": "NeedsLogin", "AuthURL": ""})
+    (remote.folder / "inbox").mkdir()
+    remote.request("login")
+    assert (remote.folder / "inbox" / "request").read_text() == "login" and not (remote.folder / "request").exists()

@@ -76,7 +76,7 @@ def run_update(folder: Path) -> tuple[str, str]:
     functions.write_text((SCRIPTS / "updater.sh").read_text().replace('\nmain "$@"\n', "\n"))
     done = subprocess.run(["sh", "-c", f'. "{functions}"\nupdate'], capture_output=True, text=True, timeout=20, env=env(folder))
     assert done.returncode == 0, done.stderr
-    return (folder / "fake" / "log").read_text(), (folder / "data" / "update" / "status.json").read_text()
+    return (folder / "fake" / "log").read_text(), (folder / "update" / "status.json").read_text()
 
 
 def test_an_unconfirmed_image_is_not_started_when_the_app_is_not_running(fake):
@@ -133,3 +133,18 @@ def test_the_installer_starts_only_a_confirmed_image(fake, verify, started):
     if not started:
         assert done.returncode == 1 and "nicht als echt bestätigt" in done.stderr
         assert f"tag sha256:old {IMAGE}" in log
+
+
+def test_the_request_comes_from_the_inbox_and_the_answer_goes_where_the_app_cannot_write(fake):
+    """GHSA-2j3r-6fcx-9m7v: the updater runs as root; the app must not be able to place links where it writes."""
+    setup(fake, running="sha256:old", before="sha256:old", pulled="sha256:old")
+    inbox = fake / "update" / "inbox"
+    inbox.mkdir(parents=True)
+    (inbox / "request").write_text("{}")
+    functions = fake / "updater-functions.sh"
+    functions.write_text((SCRIPTS / "updater.sh").read_text().replace("sleep 5 &", "exit 0 #"))
+    done = subprocess.run(["sh", str(functions)], capture_output=True, text=True, timeout=20, env=env(fake))
+    assert done.returncode == 0, done.stderr
+    assert not (inbox / "request").exists()
+    assert "schon auf dem neuesten Stand" in (fake / "update" / "status.json").read_text()
+    assert (fake / "update" / "updater-alive").exists() and not (fake / "data").exists()

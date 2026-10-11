@@ -42,6 +42,21 @@ def test_every_service_limits_its_log(tmp_path, evcc, tailscale):
         assert service["logging"] == {"driver": "json-file", "options": {"max-size": "10m", "max-file": "3"}}, name
 
 
+@pytest.mark.parametrize("tailscale", ["no", "yes"])
+def test_the_helpers_write_only_outside_the_data_folder(tmp_path, tailscale):
+    """GHSA-2j3r-6fcx-9m7v: the helpers run as root, the app owns data/ and could place links there. They exchange
+    files with the app in folders of their own; the app writes into their inbox only."""
+    services = write_compose(tmp_path, "no", tailscale)["services"]
+    helpers = [name for name in services if name in ("updater", "tailscale")]
+    for name in helpers:
+        for volume in services[name]["volumes"]:
+            assert not volume.split(":")[0].startswith(("./data", f"{tmp_path}/data")), (name, volume)
+    app = services["openampere"]["volumes"]
+    assert "./update:/data/update" in app and ("./remote:/data/remote" in app) is (tailscale == "yes")
+    assert (tmp_path / "update" / "inbox").is_dir()
+    assert (tmp_path / "remote" / "inbox").is_dir() is (tailscale == "yes")
+
+
 def run_functions(folder: Path, code: str, env: dict | None = None) -> subprocess.CompletedProcess:
     """Runs bash code with the installer's functions loaded (without main), not interactive."""
     functions = folder / "functions.sh"

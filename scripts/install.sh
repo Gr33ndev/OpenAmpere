@@ -227,6 +227,17 @@ write_files() {
   step "Dateien schreiben in $DIR"
   $SUDO mkdir -p "$DIR/data"
   $SUDO chown "$APP_UID:$APP_UID" "$DIR/data"
+  # The helpers run as root and write only into folders of their own, outside data and not writable by the app, so
+  # links the app could place there cannot make them write elsewhere. The app asks them through inbox, which only
+  # it writes and the helpers only read (GHSA-2j3r-6fcx-9m7v).
+  local helper
+  for helper in update remote; do
+    [ "$helper" = update ] || [ "$TAILSCALE" = yes ] || continue
+    $SUDO mkdir -p "$DIR/$helper/inbox"
+    $SUDO chmod 755 "$DIR/$helper"
+    $SUDO chown root:root "$DIR/$helper"
+    $SUDO chown "$APP_UID:$APP_UID" "$DIR/$helper/inbox"
+  done
   {
     say "$MARKER am $(date +%F). Aktualisieren: in der App oder das Script erneut ausführen."
     [ "$TAILSCALE" = yes ] || say "$NO_TAILSCALE. Ändern: Script erneut mit OPENAMPERE_TAILSCALE=ja ausführen."
@@ -237,6 +248,8 @@ write_files() {
     say "    network_mode: host  # damit die Gerätesuche das Heimnetz sieht"
     say "    volumes:"
     say "      - ./data:/data"
+    say "      - ./update:/data/update  # Austausch mit dem Update-Helfer"
+    [ "$TAILSCALE" = yes ] && say "      - ./remote:/data/remote  # Austausch mit Tailscale"
     say "    environment:"
     say "      TZ: $TZ_NAME"
     [ "$PORT" = 8080 ] || say "      OPENAMPERE_SERVER_PORT: \"$PORT\""
@@ -259,7 +272,7 @@ write_files() {
       say "    entrypoint: [\"sh\", \"/openampere/tailscale.sh\"]"
       say "    volumes:"
       say "      - ./tailscale:/var/lib/tailscale"
-      say "      - ./data/remote:/remote"
+      say "      - ./remote:/remote"
       say "      - ./tailscale.sh:/openampere/tailscale.sh:ro"
       say "    environment:"
       say "      OPENAMPERE_PORT: \"$PORT\"  # für HTTPS über Tailscale"

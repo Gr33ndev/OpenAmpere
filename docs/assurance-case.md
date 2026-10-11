@@ -47,7 +47,7 @@ does not make this worse and cannot prevent it.
    other app ─ HTTPS ─▶ [2] external API ┤   OpenAmpere container (non-root)
                                          ├── [3] Modbus TCP ──▶ inverter, heater
                                          ├── [4] data/ (database, secret.key, TLS key)
-                                         └── [5] data/update/request ──▶ updater container (Docker access)
+                                         └── [5] update/inbox/request ──▶ updater container (Docker access)
  release pipeline (GitHub Actions) ── [6] signed image ──▶ updater
 ```
 

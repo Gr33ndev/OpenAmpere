@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from .runtime import Runtime
+from .updates import request_file
 
 HELPER_ALIVE_S = 60  # the helper writes a sign of life every few seconds
 STARTING_S = 60  # after "Einrichten", how long to wait for the login link before showing an error
@@ -119,8 +120,9 @@ class Remote:
             raise RuntimeError("Tailscale ist nicht eingerichtet. Bitte einmal das Install-Script erneut ausführen "
                                "und die Frage nach dem Zugriff von unterwegs mit Ja beantworten.")
         before = self.view(now)["state"]
-        self.folder.mkdir(parents=True, exist_ok=True)
-        (self.folder / "request").write_text(ACTIONS[action])
+        request = request_file(self.folder)
+        request.parent.mkdir(parents=True, exist_ok=True)
+        request.write_text(ACTIONS[action])
         if action in ("login", "logout"):
             self.login_requested = now if action == "login" else 0.0
             self.logout_requested = now if action == "logout" else 0.0

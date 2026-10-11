@@ -99,3 +99,14 @@ def test_endpoint(runtime):
     assert client.post("/api/update", json={"action": "nonsense"}).status_code == 400
     assert client.post("/api/update", json={"action": "check"}).json()["latest"]["version"] == "0.3.0"
     assert client.post("/api/update", json={"action": "install"}).status_code == 409  # no updater container
+
+
+async def test_the_request_goes_into_the_inbox_of_newer_installations(runtime):
+    """GHSA-2j3r-6fcx-9m7v: installations set up since then give the app an inbox; the updater's folder is root's."""
+    upd = Updates(runtime, "0.2.0")
+    await upd.check()
+    alive(upd)
+    (upd.folder / "inbox").mkdir()
+    upd.request()
+    assert (upd.folder / "inbox" / "request").exists() and not (upd.folder / "request").exists()
+    assert upd.view()["requested"]

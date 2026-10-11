@@ -4,7 +4,7 @@
 # OpenAmpere: access from anywhere with Tailscale. Runs in the tailscale container (image tailscale/tailscale)
 # that install.sh sets up when someone wants to use OpenAmpere away from home.
 #
-# Like the updater it reacts to one thing only: the file data/remote/request, which the app writes when someone
+# Like the updater it reacts to one thing only: the file remote/inbox/request, which the app writes when someone
 # taps "Einrichten" (login), "Trennen" (logout) or switches HTTPS on or off (https-on, https-off: `tailscale serve`
 # with a certificate for openampere.<tailnet>.ts.net, #116). It writes the state of Tailscale back next to it
 # (status.json and serve.json, the output of `tailscale status --json` and `tailscale serve status --json`, plus the
@@ -12,13 +12,15 @@
 # Until someone logs in, Tailscale stays logged out.
 set -u
 
+# written only by this helper (root) and read by the app; the app writes into inbox only, so it cannot place links
+# where root writes (GHSA-2j3r-6fcx-9m7v). install.sh creates both.
 STATE=${OPENAMPERE_REMOTE_DIR:-/remote}
+INBOX="$STATE/inbox"
 SOCKET=/tmp/tailscaled.sock
 NAME=${OPENAMPERE_REMOTE_NAME:-openampere} # name of this machine in the tailnet: openampere.<tailnet>.ts.net
 PORT=${OPENAMPERE_PORT:-8080} # where OpenAmpere listens on this machine, for HTTPS via tailscale serve
 
 mkdir -p "$STATE"
-chown 1000:1000 "$STATE" 2>/dev/null || true # the app (user 1000) writes the request here
 
 # userspace networking: no extra privileges and no /dev/net/tun (NAS, Proxmox LXC); connections to the
 # tailnet address of this machine end up on its own ports, e.g. OpenAmpere on 8080
@@ -48,9 +50,9 @@ while true; do
   # tailscaled stopped: end the container, Docker starts it again (restart: unless-stopped), #222
   kill -0 "$daemon" 2>/dev/null || { echo "tailscaled ist beendet" >&2; exit 1; }
   date +%s >"$STATE/alive"
-  if [ -f "$STATE/request" ]; then
-    request=$(cat "$STATE/request" 2>/dev/null)
-    rm -f "$STATE/request"
+  if [ -f "$INBOX/request" ]; then
+    request=$(head -c 20 "$INBOX/request" 2>/dev/null)
+    rm -f "$INBOX/request"
     case "$request" in
       login | logout)
         [ -n "$login_pid" ] && kill "$login_pid" 2>/dev/null

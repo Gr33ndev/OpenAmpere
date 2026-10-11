@@ -42,6 +42,14 @@ def fetch_latest() -> dict:
             "notes": data.get("body") or "", "published": data.get("published_at")}
 
 
+
+def request_file(folder: Path) -> Path:
+    """Where the app asks a helper: its inbox (installations since GHSA-2j3r-6fcx-9m7v, where the helper's own folder
+    is not writable by the app), else the helper's folder (installations set up before)."""
+    inbox = folder / "inbox"
+    return inbox / "request" if inbox.is_dir() else folder / "request"
+
+
 class Updates:
     def __init__(self, runtime: Runtime, current: str) -> None:
         self.runtime = runtime
@@ -53,6 +61,10 @@ class Updates:
     @property
     def folder(self) -> Path:
         return Path(self.runtime.config.storage.path).resolve().parent / "update"
+
+    @property
+    def request_file(self) -> Path:
+        return request_file(self.folder)
 
     @property
     def available(self) -> bool:
@@ -75,7 +87,7 @@ class Updates:
     def view(self) -> dict:
         cfg = self.runtime.config.updates
         return {"current": self.current, "latest": self.latest, "available": self.available,
-                "updater": self.updater_ready(), "requested": (self.folder / "request").exists(),
+                "updater": self.updater_ready(), "requested": self.request_file.exists(),
                 "status": self.status(), "check": cfg.check, "auto": cfg.auto,
                 "checked": self.checked or None, "error": self.error}
 
@@ -96,9 +108,9 @@ class Updates:
         now = time.time() if now is None else now
         if not self.updater_ready(now):
             raise RuntimeError("Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.")
-        self.folder.mkdir(parents=True, exist_ok=True)
-        (self.folder / "request").write_text(json.dumps({"ts": now, "from": self.current,
-                                                          "to": (self.latest or {}).get("version"), "reason": reason}))
+        self.request_file.parent.mkdir(parents=True, exist_ok=True)
+        self.request_file.write_text(json.dumps({"ts": now, "from": self.current,
+                                                 "to": (self.latest or {}).get("version"), "reason": reason}))
         self.runtime.storage.log_control("update", {"from": {"version": self.current},
                                                     "to": {"version": (self.latest or {}).get("version")}, "by": reason},
                                          False, "ok")
