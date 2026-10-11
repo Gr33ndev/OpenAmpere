@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import secrets
 import time
 import urllib.parse
@@ -32,6 +33,7 @@ ADJUST_MARGIN_W = 100  # adjustable devices: leave a little export so the grid n
 ADJUST_STEP_W = 50
 CONFIRM_TICKS = 2  # a condition must hold this many checks in a row (clouds!)
 MAX_CONSUMERS = 8
+HOST = re.compile(r"[A-Za-z0-9.-]{1,253}|\[[0-9A-Fa-f:.]{2,45}\]")  # host name, IPv4 or [IPv6]
 KINDS = ("mypv", "shelly2", "shelly1", "http")
 
 
@@ -113,7 +115,7 @@ def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consume
             raise ValueError("Unbekannte Schaltart.")
         if c.kind == "http":
             _check_url(c.url_on), _check_url(c.url_off)
-        elif not c.host.strip():
+        elif not HOST.fullmatch(c.host.strip()):  # a name or an address only: it becomes part of the switch URL
             raise ValueError(f"{c.name}: Bitte die IP-Adresse des Geräts angeben.")
         if not 50 <= c.power_w <= 30_000 or not 0 <= c.battery_min_soc <= 100:
             raise ValueError(f"{c.name}: Leistung 50–30000 W, Speicher-Vorrang 0–100 %.")

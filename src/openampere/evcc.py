@@ -22,11 +22,13 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
+from .outbound import open_without_redirect
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
 
 POLL_S = 10.0
+MAX_ANSWER_BYTES = 16 * 1024 * 1024  # years of charging sessions are a few MB
 MODES = ("off", "pv", "minpv", "now")  # accepted by old and new evcc versions (pv/minpv are aliases of smart)
 
 
@@ -119,11 +121,14 @@ class Evcc:
             data = json.dumps(body).encode()
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(self.url + path, data=data, headers=headers, method=method)
-        with urllib.request.urlopen(request, timeout=8) as response:  # noqa: S310 - user-configured LAN URL
+        # the password and the login cookie go to this address only, and a huge answer must not fill the memory
+        with open_without_redirect(request, timeout=8) as response:
             cookie = response.headers.get("Set-Cookie")
             if cookie and cookie.startswith("auth="):
                 self._cookie = cookie.split(";", 1)[0]
-            raw = response.read()
+            raw = response.read(MAX_ANSWER_BYTES + 1)
+        if len(raw) > MAX_ANSWER_BYTES:
+            raise EvccError("Die Antwort von evcc ist zu groß.")
         return json.loads(raw) if raw.strip() else None
 
     def _call(self, method: str, path: str, body: dict | None = None) -> object:

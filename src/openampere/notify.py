@@ -15,6 +15,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 from .collector import LOW_DISK_BYTES
+from .outbound import open_without_redirect
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def send(url: str, token: str, title: str, message: str, tags: str = "") -> None
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(f"{parts.scheme}://{parts.netloc}/", data=json.dumps(payload).encode(),
                                      headers=headers, method="POST")
-    with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - user-configured URL
+    with open_without_redirect(request, timeout=10) as response:  # the token goes to this server only
         response.read(256)
 
 
