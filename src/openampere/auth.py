@@ -21,6 +21,12 @@ from .storage import Storage
 SESSION_COOKIE = "openampere_session"
 CSRF_HEADER = "x-openampere"  # custom header: browsers cannot send it cross-site without a CORS preflight
 SESSION_TTL_S = 90 * 24 * 3600
+# A browser that logged in once gets a device cookie: its failed logins are counted on their own and not in the
+# limit for all devices, so nobody in the home network can lock the owner out by trying passwords from many
+# addresses (OWASP "device cookies"). Forgotten with "log out everywhere" and a new password.
+DEVICE_COOKIE = "openampere_device"
+DEVICE_TTL_S = 400 * 24 * 3600  # the longest browsers keep a cookie
+MAX_DEVICES = 50
 MIN_PASSWORD_LENGTH = 6
 MAX_FAILED_LOGINS = 5  # per device and minute: one device trying passwords does not lock out the others
 MAX_FAILED_TOTAL = 30  # all devices together per minute: many addresses do not make guessing faster
@@ -91,12 +97,14 @@ class Auth:
         salt = os.urandom(16)
         self.storage.set_meta("auth", {"salt": salt.hex(), "hash": _hash(password, salt)})
 
-    def check_password(self, password: str, client: str | None = None) -> bool:
-        key, now = _client_key(client), time.monotonic()
+    def check_password(self, password: str, client: str | None = None, device: str | None = None) -> bool:
+        """client: the address of the request; device: the device cookie of a browser that logged in before."""
+        known = self.known_device(device)
+        key, now = f"device:{_token_id(device)}" if known else _client_key(client), time.monotonic()
         with self._guard:
             self._tries = {k: kept for k, v in self._tries.items() if (kept := [t for t in v if now - t < LOCKOUT_S])}
-            if (len(self._tries.get(key, ())) >= MAX_FAILED_LOGINS
-                    or sum(map(len, self._tries.values())) >= MAX_FAILED_TOTAL):
+            unknown = sum(len(v) for k, v in self._tries.items() if not k.startswith("device:"))
+            if len(self._tries.get(key, ())) >= MAX_FAILED_LOGINS or (not known and unknown >= MAX_FAILED_TOTAL):
                 raise PermissionError("Zu viele Fehlversuche. Bitte eine Minute warten.")
             # counted before the slow check: requests at the same time cannot get past the limit
             self._tries.setdefault(key, []).append(now)
@@ -111,6 +119,31 @@ class Auth:
         """Forget the password and all sessions (command line `openampere reset-password`)."""
         self.storage.set_meta("auth", None)
         self.storage.set_meta("sessions", {})
+        self.forget_devices()
+
+    # ---- devices that logged in before ---------------------------------------------
+
+    def _devices(self) -> dict:
+        now = time.time()
+        return {k: v for k, v in (self.storage.get_meta("known_devices") or {}).items() if v > now}
+
+    def known_device(self, token: str | None) -> bool:
+        return bool(token) and _token_id(token) in self._devices()
+
+    def remember_device(self, token: str | None) -> str:
+        """The device cookie for a browser that just logged in: its own if it has a valid one, else a new one."""
+        with self._sessions_lock:
+            devices = self._devices()
+            if not token or _token_id(token) not in devices:
+                token = secrets.token_urlsafe(32)
+            devices[_token_id(token)] = time.time() + DEVICE_TTL_S
+            newest = sorted(devices.items(), key=lambda item: item[1])[-MAX_DEVICES:]
+            self.storage.set_meta("known_devices", dict(newest))
+        return token
+
+    def forget_devices(self) -> None:
+        with self._sessions_lock:
+            self.storage.set_meta("known_devices", {})
 
     # ---- sessions -----------------------------------------------------------
 

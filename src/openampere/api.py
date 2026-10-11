@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 
 from . import discovery, cloud_import, external, health, i18n
 from .apitokens import ApiTokens, Pairing, connection_code
-from .auth import CSRF_HEADER, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
+from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import PRIVATE, SECRETS, restore_settings
 from .drivers import registry
 from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, ExportLimitControl, NotConnected,
@@ -282,9 +282,16 @@ def create_app(runtime: Runtime) -> FastAPI:
     def logged_in(request: Request) -> bool:
         return auth.valid(request.cookies.get(SESSION_COOKIE))
 
-    def start_session(response: Response) -> None:
+    def start_session(response: Response, request: Request) -> None:
         response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,
                             samesite="strict", path="/")
+        device = auth.remember_device(request.cookies.get(DEVICE_COOKIE))
+        response.set_cookie(DEVICE_COOKIE, device, max_age=DEVICE_TTL_S, httponly=True, samesite="strict",
+                            path="/api/auth")
+
+    def check_password(request: Request, password: str) -> bool:
+        return auth.check_password(password, request.client.host if request.client else None,
+                                   request.cookies.get(DEVICE_COOKIE))
 
     # ---- access protection ---------------------------------------------------
 
@@ -293,39 +300,43 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"configured": auth.configured, "authenticated": logged_in(request)}
 
     @app.post("/api/auth/setup")
-    def auth_setup(body: PasswordRequest, response: Response):
+    def auth_setup(body: PasswordRequest, request: Request, response: Response):
         if auth.configured:
             raise HTTPException(409, "Es ist bereits ein Passwort festgelegt.")
         try:
             auth.set_password(body.password)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        start_session(response)
+        start_session(response, request)
         return {"configured": True, "authenticated": True}
 
     @app.post("/api/auth/login")
     def auth_login(body: PasswordRequest, request: Request, response: Response):
         try:
-            ok = auth.check_password(body.password, request.client.host if request.client else None)
+            ok = check_password(request, body.password)
         except PermissionError as err:
             raise HTTPException(429, str(err)) from None
         if not ok:
             raise HTTPException(401, "Falsches Passwort.")
-        start_session(response)
+        start_session(response, request)
         return {"configured": True, "authenticated": True}
 
     @app.post("/api/auth/logout")
     def auth_logout(request: Request, response: Response, everywhere: bool = False):
         token = request.cookies.get(SESSION_COOKIE)
         # logging out every device is only allowed for a logged-in device
-        auth.revoke(token, everywhere=everywhere and auth.valid(token))
+        if everywhere and auth.valid(token):
+            auth.revoke(token, everywhere=True)
+            auth.forget_devices()
+        else:
+            auth.revoke(token)
         response.delete_cookie(SESSION_COOKIE, path="/")
         return {"authenticated": False}
 
     @app.post("/api/auth/password")
     def auth_change_password(body: ChangePasswordRequest, request: Request, response: Response):
         try:
-            if not auth.check_password(body.current, request.client.host if request.client else None):
+            if not check_password(request, body.current):
                 raise HTTPException(401, "Das bisherige Passwort stimmt nicht.")
             auth.set_password(body.new)
         except PermissionError as err:
@@ -333,7 +344,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         auth.revoke(None, everywhere=True)  # other devices must log in again
-        start_session(response)
+        auth.forget_devices()
+        start_session(response, request)
         return {"authenticated": True}
 
     # ---- access tokens for other apps (#76) --------------------------------------

@@ -75,3 +75,39 @@ def test_a_revoked_app_token_stays_revoked_while_it_is_checked(tmp_path):
     revoking[0].join()
     storage.get_meta = read
     assert tokens.check(token) is None
+
+
+# GHSA-cp8v-wgf4-r8cj: the limit for all devices (and the shared IPv6 network of a home) let anyone in the home
+# network lock the owner out. A browser that logged in before keeps a limit of its own.
+def test_a_browser_that_logged_in_before_is_not_locked_out_by_others(tmp_path):
+    runtime, client = app_client(tmp_path)
+    owner = TestClient(client.app, client=("2001:db8::10", 50000), headers={"x-openampere": "1"})
+    assert owner.post("/api/auth/setup", json={"password": PASSWORD}).status_code == 200
+    owner.post("/api/auth/logout")
+    for i in range(2 * MAX_FAILED_TOTAL):  # many addresses, also in the owner's IPv6 network
+        address = f"192.0.2.{i}" if i % 2 else f"2001:db8::{i + 100:x}"
+        guesser = TestClient(client.app, client=(address, 50000), headers={"x-openampere": "1"})
+        guesser.post("/api/auth/login", json={"password": f"x{i}"})
+    stranger = TestClient(client.app, client=("192.0.2.250", 50000), headers={"x-openampere": "1"})
+    assert stranger.post("/api/auth/login", json={"password": PASSWORD}).status_code == 429  # still slowed down
+    assert owner.post("/api/auth/login", json={"password": PASSWORD}).status_code == 200
+
+    # the device's own limit still holds, and "log out everywhere" forgets the devices
+    codes = [owner.post("/api/auth/login", json={"password": f"x{i}"}).status_code for i in range(MAX_FAILED_LOGINS + 1)]
+    assert codes[-1] == 429
+    runtime.storage.close()
+
+
+def test_log_out_everywhere_and_a_new_password_forget_the_devices(tmp_path):
+    auth = Auth(Storage(tmp_path / "t.db"))
+    auth.set_password(PASSWORD)
+    device = auth.remember_device(None)
+    assert auth.known_device(device) and auth.remember_device(device) == device
+    auth.forget_devices()
+    assert not auth.known_device(device)
+    runtime, client = app_client(tmp_path / "app")
+    login(client)
+    assert runtime.storage.get_meta("known_devices")
+    assert client.post("/api/auth/logout?everywhere=true").status_code == 200
+    assert not runtime.storage.get_meta("known_devices")
+    runtime.storage.close()

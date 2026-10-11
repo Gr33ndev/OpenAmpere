@@ -106,6 +106,7 @@ def test_reset_password_command(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["openampere", "reset-password"])
     cli.main()  # works while the app (runtime) still holds the database
     assert client.get("/api/auth/status").json() == {"configured": False, "authenticated": False}
+    assert not runtime.storage.get_meta("known_devices")  # GHSA-cp8v-wgf4-r8cj: devices are forgotten as well
 
 
 
