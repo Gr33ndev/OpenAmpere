@@ -114,6 +114,8 @@ async def test_diagnostics_hide_the_secrets(hass: HomeAssistant, entry, client) 
     await setup(hass, entry)
     text = str(await async_get_config_entry_diagnostics(hass, entry))
     assert "oa_secret" not in text and "192.168.178.20" not in text and "ab" * 32 not in text
+    for private in ("Süddach", "Heizstab", "H3-10.0-Smart", "1.40"):  # names, exact model and firmware
+        assert private not in text, private
 
 
 async def test_old_values_are_unavailable_while_the_inverter_is_not_connected(hass: HomeAssistant, entry, client) -> None:
