@@ -262,3 +262,12 @@ def test_the_web_app_serves_only_its_own_files(tmp_path, monkeypatch):
         response = client.get(path)
         assert "not for the browser" not in response.text, path
     assert "<title>app</title>" in client.get("/devices").text
+
+
+def test_every_answer_carries_the_security_headers(tmp_path):
+    from openampere.api import SECURITY_HEADERS
+    _, client = app_client(tmp_path)
+    for response in (client.get("/api/status"), client.get("/api/status", headers={"host": "evil.example"}),
+                     client.post("/api/settings", json={})):
+        for name, value in SECURITY_HEADERS.items():
+            assert response.headers.get(name) == value, (response.request.url, name)

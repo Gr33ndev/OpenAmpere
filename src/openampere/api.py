@@ -93,6 +93,10 @@ class ChangePasswordRequest(BaseModel):
 
 # reading these needs a login as well (secrets, grid-operator references, meter numbers, the Tailscale login link,
 # the diagnostics report that can hold the full serial number); /api/settings hides its private values instead (#164)
+# no framing by other sites (clickjacking), no guessing of content types, and no address of the app (LAN IP or tailnet
+# name) sent to other sites in the Referer header when a link is followed
+SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Frame-Options": "DENY",
+                    "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
                    "/api/tokens")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
@@ -266,6 +270,14 @@ def create_app(runtime: Runtime) -> FastAPI:
             data["detail"] = i18n.translate(data["detail"], lang)
             return JSONResponse(data, status_code=response.status_code, headers=headers)
         return Response(body, status_code=response.status_code, headers=headers, media_type="application/json")
+
+    # added last, so it covers every answer, also the errors of the checks above
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        return response
 
     def logged_in(request: Request) -> bool:
         return auth.valid(request.cookies.get(SESSION_COOKIE))
