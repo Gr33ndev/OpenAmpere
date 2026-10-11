@@ -238,6 +238,7 @@ write_files() {
     $SUDO chown root:root "$DIR/$helper"
     $SUDO chown "$APP_UID:$APP_UID" "$DIR/$helper/inbox"
   done
+  $SUDO chmod 700 "$DIR/data"  # database and keys only for the app (GHSA-p5pf-45jm-94c3)
   {
     say "$MARKER am $(date +%F). Aktualisieren: in der App oder das Script erneut ausführen."
     [ "$TAILSCALE" = yes ] || say "$NO_TAILSCALE. Ändern: Script erneut mit OPENAMPERE_TAILSCALE=ja ausführen."

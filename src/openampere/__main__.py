@@ -140,6 +140,7 @@ def main() -> None:
         print("Passwort zurückgesetzt. Beim nächsten Öffnen der App kann ein neues festgelegt werden.")
         return
     logs.setup()
+    os.umask(0o077)  # the database, its copies and other files only for the app user (GHSA-p5pf-45jm-94c3)
     check_data_dir(args.config)
     from .api import create_app
     from .runtime import Runtime

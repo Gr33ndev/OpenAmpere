@@ -135,6 +135,20 @@ def _move_with_side_files(source: Path, target: Path) -> None:
             os.replace(f"{source}{suffix}", f"{target}{suffix}")
 
 
+def _only_for_owner(path: Path) -> None:
+    """The database, its side files and copies readable only by the app user (also files of older versions, which
+    were created readable for everyone): they hold the password hash, history and meter numbers."""
+    if not hasattr(os, "getuid"):  # Windows: no such permissions
+        return
+    for name in glob.glob(f"{glob.escape(str(path))}*"):
+        try:
+            info = os.stat(name)
+            if os.path.isfile(name) and info.st_uid == os.getuid() and info.st_mode & 0o077:
+                os.chmod(name, 0o600)
+        except OSError:  # e.g. removed in the meantime, or a file system without permissions
+            pass
+
+
 def _stamp() -> str:
     return time.strftime("%Y%m%d-%H%M%S")
 
@@ -282,6 +296,8 @@ class Storage:
             _move_with_side_files(path, damaged)
             self._db = self._open(check=False)
             self.set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
+        if not memory:
+            _only_for_owner(path)
         if kept is not None:
             self.set_meta("database_restored", {"ts": time.time(), "kept": str(kept.resolve())})
         if rolled_back is not None:
