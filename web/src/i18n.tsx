@@ -101,8 +101,9 @@ const plurals = new Intl.PluralRules(LOCALE);
 
 /** Saves the language for this device and reloads, so every page renders in it. */
 export function setLang(value: Lang): void {
-  try { localStorage.setItem(STORAGE_KEY, value); } catch { /* private mode: only for this visit */ }
-  current = value;
+  const code = known(value) ?? REFERENCE; // only a code from the own list (the value comes from a select field)
+  try { localStorage.setItem(STORAGE_KEY, code); } catch { /* private mode: only for this visit */ }
+  current = code;
   window.location.reload();
 }
 

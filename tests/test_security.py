@@ -245,3 +245,20 @@ def test_hidden_switch_addresses_are_kept_when_saving(tmp_path):
     assert (saved["url_on"], saved["url_off"]) == (SWITCH["url_on"], SWITCH["url_off"])
     # a new device without addresses is still refused
     assert client.put("/api/consumers", json={"consumers": [{**SWITCH, "url_on": None}]}).status_code == 400
+
+
+def test_the_web_app_serves_only_its_own_files(tmp_path, monkeypatch):
+    """Paths with "../" (also encoded) never leave the web app's folder; unknown paths get the app (code scanning)."""
+    from openampere import api as api_module
+    web = tmp_path / "web"
+    (web / "assets").mkdir(parents=True)
+    (web / "index.html").write_text("<!doctype html><title>app</title>")
+    (web / "manifest.webmanifest").write_text("{}")
+    (tmp_path / "secret.txt").write_text("not for the browser")
+    monkeypatch.setattr(api_module, "WEB_DIST", web)
+    _, client = app_client(tmp_path / "data")
+    assert client.get("/manifest.webmanifest").text == "{}"
+    for path in ("/../secret.txt", "/%2e%2e/secret.txt", "/..%2fsecret.txt", "/assets/../../secret.txt"):
+        response = client.get(path)
+        assert "not for the browser" not in response.text, path
+    assert "<title>app</title>" in client.get("/devices").text
