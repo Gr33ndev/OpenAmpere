@@ -29,6 +29,7 @@
     "passwordAlreadyBeenSet": "A password has already been set.",
     "powerOutageDoesnT": "This power outage doesn't exist.",
     "requestExpiredRestartPairing": "The request has expired. Please restart the pairing in the app.",
+    "requestTooLarge": "The request is too large.",
     "setPasswordFirst": "Please set a password first.",
     "settingsWereChangedAnother": "The settings were changed on another device in the meantime. Please reload the page and make the change again.",
     "thereNoNewerVersion": "There is no newer version.",

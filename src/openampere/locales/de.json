@@ -29,6 +29,7 @@
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
     "requestExpiredRestartPairing": "Die Anfrage ist abgelaufen. Bitte die Kopplung in der App neu starten.",
+    "requestTooLarge": "Die Anfrage ist zu groß.",
     "setPasswordFirst": "Bitte zuerst ein Passwort festlegen.",
     "settingsWereChangedAnother": "Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert. Bitte die Seite neu laden und die Änderung wiederholen.",
     "thereNoNewerVersion": "Es gibt keine neuere Version.",

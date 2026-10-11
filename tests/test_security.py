@@ -286,3 +286,18 @@ def test_every_answer_carries_the_security_headers(tmp_path):
                      client.post("/api/settings", json={})):
         for name, value in SECURITY_HEADERS.items():
             assert response.headers.get(name) == value, (response.request.url, name)
+
+
+# GHSA-gfr8-g665-933w: requests possible without login read the whole body into memory
+@pytest.mark.parametrize("chunked", [False, True])
+def test_large_bodies_are_refused_before_they_fill_the_memory(tmp_path, chunked):
+    from openampere.api import MAX_BODY_BYTES
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    client = TestClient(create_app(runtime))
+    client.headers["x-openampere"] = "1"
+    body = b'{"password": "' + b"a" * (MAX_BODY_BYTES + 1) + b'"}'
+    content = (part for part in (body[:1000], body[1000:])) if chunked else body
+    response = client.post("/api/auth/login", content=content, headers={"content-type": "application/json"})
+    assert response.status_code == 413
+    assert client.post("/api/auth/login", json={"password": "wrong-one"}).status_code == 401  # normal sizes work
+    runtime.storage.close()

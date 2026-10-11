@@ -59,6 +59,34 @@ WEB_DIST = Path(__file__).parent / "web"
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 # a backup holds every detail reading (about 0.4 GB per year at the default interval); written to disk, not memory
 MAX_BACKUP_BYTES = 4 * 1024 * 1024 * 1024
+# every other request body is read into memory (JSON of settings, devices and the like, a few kB): also the ones
+# possible without login, so a client in the home network must not be able to fill the memory with one
+MAX_BODY_BYTES = 1024 * 1024
+STREAMED_UPLOADS = ("/api/import/cloud/file", "/api/backup/restore")  # written to disk, with their own limits
+
+
+class BodyLimit:
+    """Refuses request bodies over MAX_BODY_BYTES while they arrive, also without a Content-Length header."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http" or scope["path"] in STREAMED_UPLOADS:
+            await self.app(scope, receive, send)
+            return
+        declared = dict(scope["headers"]).get(b"content-length", b"0")
+        received = 0
+
+        async def limited():
+            nonlocal received
+            message = await receive()
+            received += len(message.get("body", b""))
+            if received > MAX_BODY_BYTES or not declared.isdigit() or int(declared) > MAX_BODY_BYTES:
+                raise HTTPException(413, "Die Anfrage ist zu groß.")
+            return message
+
+        await self.app(scope, limited, send)
 
 
 def ratios(flows: dict) -> dict:
@@ -199,6 +227,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     # no /docs, /redoc and /openapi.json: the app does not need them and they are open on the home network (#164)
     app = FastAPI(title="OpenAmpere", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    app.add_middleware(BodyLimit)
     auth = Auth(storage)
     tokens = ApiTokens(storage)
     pairing = Pairing(tokens, lambda: runtime.tls.fingerprint)
