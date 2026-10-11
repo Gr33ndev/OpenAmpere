@@ -94,6 +94,11 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
 - Continuous control (e.g. grid charging) only via the inverter's remote control with a watchdog timeout, never via
   permanently stored registers. Release only what OpenAmpere started (`_remote_owned`; after a restart the
   `remote_command` meta plus its own register values, #141).
+- Switching off is the safe direction and is written even with the master switch off or in test mode: releasing the
+  remote control, 0 W to a heating rod and "off" to a relay OpenAmpere switched on (#217, #243). Within 10 minutes
+  after a new connection, a remote command with enable 1 and OpenAmpere's timeout (180 s) counts as OpenAmpere's own
+  (the inverter brings back its values after a restart, #143), so another controller using exactly these values would
+  be switched off as well. Keep both when changing the release logic.
 - New registers need a source: manufacturer docs, a project with a compatible license (credit in `NOTICE` and
   `docs/registers.md`) or a diagnostics report from a real device.
 - Legal topics (export limit, § 14a EnWG, EEG) are settled in the issue before code. Label such issues `safety`.
