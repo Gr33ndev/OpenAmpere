@@ -13,6 +13,7 @@ import base64
 import hashlib
 import json
 import secrets
+import threading
 import time
 
 from .storage import Storage
@@ -37,6 +38,9 @@ def connection_code(host: str, port: int, fingerprint: str, token: str) -> str:
 class ApiTokens:
     def __init__(self, storage: Storage) -> None:
         self.storage = storage
+        # the check runs in the server's event loop, create and revoke in worker threads: without the lock a check
+        # could write back the list it read before a revoke, and the revoked token would be valid again
+        self._lock = threading.Lock()
 
     def _all(self) -> dict:
         return self.storage.get_meta("api_tokens") or {}
@@ -51,35 +55,38 @@ class ApiTokens:
             raise ValueError("Bitte einen Namen angeben, z. B. „Home Assistant“.")
         if scope not in SCOPES:
             raise ValueError("Unbekannte Berechtigung.")
-        tokens = self._all()
-        if len(tokens) >= MAX_TOKENS:
-            raise ValueError(f"Höchstens {MAX_TOKENS} Zugänge. Bitte zuerst einen nicht mehr genutzten entfernen.")
-        token = PREFIX + secrets.token_urlsafe(32)
-        key = secrets.token_hex(4)
-        tokens[key] = {"name": name, "scope": scope, "hash": _hash(token), "created": time.time(), "last_used": None}
-        self.storage.set_meta("api_tokens", tokens)
+        with self._lock:
+            tokens = self._all()
+            if len(tokens) >= MAX_TOKENS:
+                raise ValueError(f"Höchstens {MAX_TOKENS} Zugänge. Bitte zuerst einen nicht mehr genutzten entfernen.")
+            token = PREFIX + secrets.token_urlsafe(32)
+            key = secrets.token_hex(4)
+            tokens[key] = {"name": name, "scope": scope, "hash": _hash(token), "created": time.time(), "last_used": None}
+            self.storage.set_meta("api_tokens", tokens)
         return token, next(t for t in self.list() if t["id"] == key)
 
     def revoke(self, key: str) -> None:
-        tokens = self._all()
-        if key not in tokens:
-            raise KeyError(key)
-        del tokens[key]
-        self.storage.set_meta("api_tokens", tokens)
+        with self._lock:
+            tokens = self._all()
+            if key not in tokens:
+                raise KeyError(key)
+            del tokens[key]
+            self.storage.set_meta("api_tokens", tokens)
 
     def check(self, token: str | None) -> dict | None:
         """The token's entry ({"id", "name", "scope"}) if it is valid, otherwise None."""
         if not token or not token.startswith(PREFIX):
             return None
         digest = _hash(token)
-        tokens = self._all()
-        for key, entry in tokens.items():
-            if secrets.compare_digest(entry["hash"], digest):
-                now = time.time()
-                if not entry.get("last_used") or now - entry["last_used"] > LAST_USED_EVERY_S:
-                    entry["last_used"] = now
-                    self.storage.set_meta("api_tokens", tokens)
-                return {"id": key, "name": entry["name"], "scope": entry["scope"]}
+        with self._lock:
+            tokens = self._all()
+            for key, entry in tokens.items():
+                if secrets.compare_digest(entry["hash"], digest):
+                    now = time.time()
+                    if not entry.get("last_used") or now - entry["last_used"] > LAST_USED_EVERY_S:
+                        entry["last_used"] = now
+                        self.storage.set_meta("api_tokens", tokens)
+                    return {"id": key, "name": entry["name"], "scope": entry["scope"]}
         return None
 
 

@@ -62,7 +62,8 @@ does not make this worse and cannot prevent it.
    [Writing to the inverter](#writing-to-the-inverter). Continuous control uses the inverter's remote control with a
    watchdog, so it ends by itself if OpenAmpere stops.
 4. **Data folder:** credentials are encrypted with AES-256-GCM; the key lives in a separate file. Backups contain no
-   credentials, and a restored backup keeps the current password, sessions, tokens and secrets.
+   credentials, no password hash and no app tokens, and a restored backup keeps the current password, sessions,
+   tokens and secrets.
 5. **App → updater:** the app cannot reach Docker. It can only write a request file; the updater decides what to pull
    and verifies the image before starting it, and rolls back if the new version does not become healthy.
 6. **Release pipeline → users:** images and release files carry Sigstore-signed build provenance from the release

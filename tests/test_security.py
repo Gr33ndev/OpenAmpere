@@ -73,7 +73,7 @@ def test_backup_contains_no_secrets_or_sessions(tmp_path):
     assert b"super-secret-key-1234" not in backup.content
     db = sqlite3.connect(path)
     keys = {row[0] for row in db.execute("SELECT key FROM meta")}
-    assert "sessions" not in keys
+    assert not keys & {"sessions", "auth", "api_tokens"}  # no password hash and no app tokens either
 
 
 def test_control_switches_are_audited(tmp_path):
