@@ -82,7 +82,9 @@
     "pairTitle": "Koppeln",
     "pairText": "In Home Assistant die Integration OpenAmpere hinzufügen und die Adresse von OpenAmpere eingeben. Beide zeigen denselben 6-stelligen Code. Du vergleichst ihn in OpenAmpere unter Mehr → Verbundene Apps und erlaubst die Verbindung, nur lesen oder auch steuern.",
     "note": "Die Verbindung ist verschlüsselt, jede App bekommt einen eigenen Zugang, den du jederzeit entfernen kannst. Hauptschalter, Testmodus und Einspeisebegrenzung bleiben in OpenAmpere.",
-    "guideLink": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.de.md\">Anleitung und Details</a>"
+    "guideLink": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.de.md\">Anleitung und Details</a>",
+    "hacsButton": "In Home Assistant öffnen (HACS)",
+    "pairButton": "Integration in Home Assistant einrichten"
   },
   "security": {
     "title": "Sicherheit",
