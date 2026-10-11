@@ -341,3 +341,31 @@ async def test_a_refused_command_shows_a_sentence_for_the_owner_not_the_technica
             assert error.startswith("Befehl abgelehnt: ") and "0xdeadbeef" not in error
         finally:
             await runtime.collector.stop()
+
+
+async def test_a_command_that_half_worked_is_switched_off_at_once(tmp_path):
+    """The remote control was switched on, but the power was refused (e.g. a gateway that rejects writing several
+    registers): the inverter must not stay under remote control with whatever power is set in it."""
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 50, 0)
+            driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
+            write = driver._write
+
+            async def refuse_power(reg, value):
+                if reg is driver.map.settings["remote_power"]:
+                    raise RuntimeError("illegal function")
+                await write(reg, value)
+            driver._write = refuse_power
+            await charging.tick(now=10_000)
+            assert sim._get_setting("remote_enable") == 0 and not charging.active
+            assert charging.view(now=10_000)["last_error"].startswith("Befehl abgelehnt: ")
+            results = [e["result"] for e in runtime.storage.control_log() if e["action"] == "grid_charging"]
+            assert any(r.startswith("Befehl abgelehnt") for r in results)
+
+            entries = len(runtime.storage.control_log())
+            await charging.tick(now=10_030)  # not again in the same quarter
+            assert sim._get_setting("remote_enable") == 0 and len(runtime.storage.control_log()) == entries
+        finally:
+            await runtime.collector.stop()

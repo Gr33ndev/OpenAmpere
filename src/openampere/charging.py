@@ -97,6 +97,7 @@ class GridCharging:
         self.full_at_soc: float | None = None  # state of charge at which the battery took no more
         self._limit: tuple[float, float] | None = None  # (read at, the inverter's charge limit in %)
         self._dry_logged_quarter: int | None = None
+        self._refused_quarter: int | None = None  # a refused command is not tried again in the same quarter
 
     # ---- settings ------------------------------------------------------------
 
@@ -186,6 +187,9 @@ class GridCharging:
         if quarter not in plan["quarters"]:
             await self.stop(plan["reason"])
             return
+        if self._refused_quarter == quarter:  # refused once this quarter: only switch off what may still be on
+            await self.stop(self.last_error or "")
+            return
         if control.dry_run:
             await self.stop("Testmodus ist an")  # also switched on during charging
             if self._dry_logged_quarter != quarter:
@@ -221,8 +225,14 @@ class GridCharging:
             await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S)
         except Exception as exc:  # noqa: BLE001
             err = friendly_error(exc)  # the technical text goes to the log, not into the app
-            self.last_error = f"Befehl abgelehnt: {err}"
             log.warning("grid charging command failed: %s", exc)
+            # a command that half worked (e.g. remote control switched on, the power refused) must not stay on with
+            # whatever power is set in the inverter: switched off at once, logged, and not repeated this quarter
+            self._refused_quarter = quarter
+            if not self.active:
+                runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w}}, False,
+                                            f"Befehl abgelehnt: {err}")
+            await self.stop(f"Befehl abgelehnt: {err}", error=True)
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
