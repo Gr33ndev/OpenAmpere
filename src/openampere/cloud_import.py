@@ -18,6 +18,7 @@ import asyncio
 import io
 import json
 import logging
+import math
 import time
 import urllib.error
 import urllib.parse
@@ -57,16 +58,27 @@ def work_rows(body: dict) -> list[dict]:
     rows: dict[int, dict] = {}
     for field, flow in WORK_FIELDS.items():
         for entry in (body.get(field) or {}).get("timeline") or []:
-            if entry.get("value") is None:
+            value = _number(entry.get("value"))
+            if value is None or value < 0:  # energy is never negative; NaN or Infinity would break the reports
                 continue
             row = rows.setdefault(_ts(entry["fromTimestamp"]), {"ts": _ts(entry["fromTimestamp"])})
-            row[flow] = float(entry["value"])
+            row[flow] = value
     return [r for r in rows.values() if len(r) > 1]
+
+
+def _number(value) -> float | None:
+    """A finite number from the export, None for anything else (null, text, NaN, Infinity)."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def soc_values(body: dict) -> list[tuple[int, float]]:
     timeline = body.get("timeline") if isinstance(body, dict) else None
-    return [(_ts(e["fromTimestamp"]), float(e["value"])) for e in timeline or [] if e.get("value") is not None]
+    values = [(_ts(e["fromTimestamp"]), _number(e.get("value"))) for e in timeline or []]
+    return [(ts, soc) for ts, soc in values if soc is not None and 0 <= soc <= 100]
 
 
 def import_zip(storage: Storage, data: bytes | str | Path) -> dict:

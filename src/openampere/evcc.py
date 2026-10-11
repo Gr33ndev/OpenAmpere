@@ -32,6 +32,14 @@ MAX_ANSWER_BYTES = 16 * 1024 * 1024  # years of charging sessions are a few MB
 MODES = ("off", "pv", "minpv", "now")  # accepted by old and new evcc versions (pv/minpv are aliases of smart)
 
 
+def _whole(value) -> int:
+    """A whole number from the app or an API client; ValueError (shown as 400) for anything else."""
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError("Bitte eine ganze Zahl angeben.") from None
+
+
 class EvccError(Exception):
     """A problem with evcc; .message is the text written for the owner, shown in the app."""
 
@@ -211,7 +219,7 @@ class Evcc:
                 raise ValueError("Unbekannter Lademodus.")
             path, method = f"/api/loadpoints/{lp_id}/mode/{value}", "POST"
         elif action == "limit_soc":
-            value = int(value)
+            value = _whole(value)
             if lp["heating"] and not 20 <= value <= 90:  # a temperature (#245)
                 raise ValueError("Die Zieltemperatur muss zwischen 20 und 90 °C liegen.")
             if not 20 <= value <= 100:
@@ -223,14 +231,17 @@ class Evcc:
                 raise EvccError("Dafür muss in evcc ein Fahrzeug erkannt sein.")
             vehicle = urllib.parse.quote(vehicle, safe="")
             if action == "min_soc":
-                value = int(value)
+                value = _whole(value)
                 if not 0 <= value <= 80:
                     raise ValueError("Die Mindestladung muss zwischen 0 und 80 % liegen.")
                 path, method = f"/api/vehicles/{vehicle}/minsoc/{value}", "POST"
             elif action == "plan_delete":
                 path, method = f"/api/vehicles/{vehicle}/plan/soc", "DELETE"
             else:
-                soc, when = int(value["soc"]), float(value["time"])
+                try:
+                    soc, when = _whole(value["soc"]), float(value["time"])
+                except (TypeError, KeyError, OverflowError):
+                    raise ValueError("Bitte ein Ziel zwischen 20 und 100 % und eine Zeit in der Zukunft wählen.") from None
                 if not 20 <= soc <= 100 or when < time.time():
                     raise ValueError("Bitte ein Ziel zwischen 20 und 100 % und eine Zeit in der Zukunft wählen.")
                 stamp = datetime.fromtimestamp(when, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

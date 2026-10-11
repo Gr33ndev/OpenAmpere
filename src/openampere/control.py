@@ -129,7 +129,10 @@ class BatteryControl:
                 raise ValueError("Unbekannter Betriebsmodus") from None
         for key in SOC_FIELDS:
             if key in changes:
-                changes[key] = int(changes[key])
+                try:
+                    changes[key] = int(changes[key])
+                except (TypeError, ValueError, OverflowError):  # e.g. a text, null or Infinity in the JSON
+                    raise ValueError("Die Speicher-Grenzen bitte als ganze Prozentwerte angeben.") from None
 
         async with control_lock(self.runtime):
             driver = self._driver()

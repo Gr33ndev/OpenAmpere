@@ -68,7 +68,7 @@ def validate(raw: dict, rated_w: int | None, battery_max_w: int | None = None) -
         # only real yes/no: "false" as text must not switch grid charging on (#242)
         if not isinstance(s.enabled, bool) or not isinstance(s.legal_confirmed, bool):
             raise ValueError
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # OverflowError: Infinity in the JSON
         raise ValueError("Ungültige Einstellungen für das Laden aus dem Netz.") from None
     if s.mode not in ("cheapest", "window"):
         raise ValueError("Unbekannte Lade-Art.")

@@ -15,7 +15,7 @@
     "fileTooLargeMax": "Datei zu groß (max. 500 MB).",
     "httpsPortTurnedOff": "Der HTTPS-Port ist ausgeschaltet (server.tls_port). Ohne ihn können sich andere Apps nicht sicher verbinden.",
     "invalidDate": "Ungültiges Datum",
-    "inverterNotResponding": "Wechselrichter antwortet nicht: {err}",
+    "inverterNotAnswering": "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.",
     "inverterNotRespondingTry": "Der Wechselrichter antwortet nicht. Bitte später erneut versuchen.",
     "log": "Bitte anmelden.",
     "logNoPowerCut": "kein Stromausfall",
@@ -157,6 +157,7 @@
     "noResponseInverterCheck": "Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es später erneut.",
     "noResponseInverterTry": "Keine Antwort vom Wechselrichter. Bitte später erneut versuchen.",
     "raiseRemoveExportLimit": "Zum Erhöhen oder Aufheben der Einspeisebegrenzung musst du bestätigen, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt, und Datum/Zeichen dieser Bestätigung angeben.",
+    "socWholePercent": "Die Speicher-Grenzen bitte als ganze Prozentwerte angeben.",
     "underConfiguredRuleKwp": "Nach der eingestellten Regel ({rule} von {installed_kwp} kWp) sind höchstens {legal_max} W erlaubt. Gilt die Regel nicht mehr (z. B. weil ein intelligentes Messsystem mit Steuerbox eingebaut wurde), ändere zuerst die Regel.",
     "unknownSetting": "Unbekannte Einstellung: {unknown}",
     "unknownWorkMode": "Unbekannter Betriebsmodus",
@@ -193,7 +194,8 @@
     "noEvccRespondingAddress": "Unter dieser Adresse antwortet kein evcc.",
     "targetTemperatureBetween": "Die Zieltemperatur muss zwischen 20 und 90 °C liegen.",
     "unknownChargingMode": "Unbekannter Lademodus.",
-    "unknownCommand": "Unbekannter Befehl."
+    "unknownCommand": "Unbekannter Befehl.",
+    "wholeNumber": "Bitte eine ganze Zahl angeben."
   },
   "external": {
     "allowedEnabledTargetSoc": "Erlaubt sind enabled und target_soc.",

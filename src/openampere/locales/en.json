@@ -15,7 +15,7 @@
     "fileTooLargeMax": "File too large (max. 500 MB).",
     "httpsPortTurnedOff": "The HTTPS port is turned off (server.tls_port). Without it, other apps can't connect securely.",
     "invalidDate": "Invalid date",
-    "inverterNotResponding": "Inverter not responding: {err}",
+    "inverterNotAnswering": "The inverter does not answer. Please try again in a moment.",
     "inverterNotRespondingTry": "The inverter is not responding. Please try again later.",
     "log": "Please log in.",
     "logNoPowerCut": "not a power cut",
@@ -157,6 +157,7 @@
     "noResponseInverterCheck": "No response from the inverter. Please check the values and try again later.",
     "noResponseInverterTry": "No response from the inverter. Please try again later.",
     "raiseRemoveExportLimit": "To raise or remove the export limit, you must confirm that you have your grid operator's written approval, and enter the date/reference of that approval.",
+    "socWholePercent": "Please give the battery limits as whole percentages.",
     "underConfiguredRuleKwp": "Under the configured rule ({rule} of {installed_kwp} kWp), at most {legal_max} W are allowed. If the rule no longer applies (e.g. because a smart meter with a control box was installed), change the rule first.",
     "unknownSetting": "Unknown setting: {unknown}",
     "unknownWorkMode": "Unknown work mode",
@@ -193,7 +194,8 @@
     "noEvccRespondingAddress": "No evcc is responding at this address.",
     "targetTemperatureBetween": "The target temperature must be between 20 and 90 °C.",
     "unknownChargingMode": "Unknown charging mode.",
-    "unknownCommand": "Unknown command."
+    "unknownCommand": "Unknown command.",
+    "wholeNumber": "Please enter a whole number."
   },
   "external": {
     "allowedEnabledTargetSoc": "Allowed are enabled and target_soc.",
