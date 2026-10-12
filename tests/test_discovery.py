@@ -138,6 +138,7 @@ async def test_an_inverter_that_closes_every_connection_at_once_is_busy(monkeypa
     # other programs first, then the IQ box, and why a connected box is a problem anyway
     assert BUSY_MESSAGE.index("anderes Programm") < BUSY_MESSAGE.index("IQ-Box")
     assert "Die bisherige Smartbox setzt Einstellungen zurück" in BUSY_MESSAGE
+    assert "Home Assistant mit einer eigenen Modbus-Einbindung" in BUSY_MESSAGE  # the cause in #311
 
 
 async def test_a_device_that_keeps_the_connection_open_is_not_busy(monkeypatch):

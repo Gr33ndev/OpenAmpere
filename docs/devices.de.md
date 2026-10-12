@@ -37,7 +37,7 @@ Mehr zur FoxESS-H3-Familie:
   OpenAmpere ebenfalls selbst, weil die Quellen sich da widersprechen.
 - Liegt die Erkennung falsch, kannst du Registerkarte und Leseverfahren unter **Mehr → Verbindung → Für Experten**
   selbst wählen.
-- **Sehr wenige Modbus-TCP-Verbindungen gleichzeitig**, bei manchen Anlagen offenbar nur eine (#311): Belegen andere
+- **Sehr wenige Modbus-TCP-Verbindungen gleichzeitig** (#311): Belegen andere
   Programme oder die bisherige IQ-Box alle, nimmt der Wechselrichter die Verbindung von OpenAmpere an und schließt
   sie sofort. OpenAmpere meldet das als „gerade belegt“. Abhilfe steht in der [README](../README.de.md) unter „Der Wechselrichter lässt gerade keine weitere
   Verbindung zu“.

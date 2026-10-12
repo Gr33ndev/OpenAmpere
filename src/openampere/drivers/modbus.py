@@ -30,8 +30,8 @@ class DeviceUnreachable(ConnectionError):
 
 class InverterBusy(DeviceUnreachable):
     """The device accepts the TCP connection and closes it right away, before any request: all its connection
-    slots are taken. A FoxESS H3 allows very few Modbus TCP connections, often held by the old IQ box or another
-    program that reads the inverter (#311)."""
+    slots are taken. A FoxESS H3 allows very few Modbus TCP connections, often held by another program that reads the
+    inverter (e.g. a Modbus setup in Home Assistant) or the old IQ box (#311)."""
 
 
 class DetectionFailed(ConnectionError):
@@ -62,8 +62,9 @@ PERMANENT_EXCEPTION_CODES = {1, 2, 3}
 
 
 BUSY_MESSAGE = ("Der Wechselrichter lässt gerade keine weitere Verbindung zu, er erlaubt nur sehr wenige. Prüfe "
-                "zuerst, ob noch ein anderes Programm den Wechselrichter abfragt, zum Beispiel ein Dashboard, ein "
-                "eigenes Script oder eine zweite OpenAmpere-Installation, und beende es. Ist noch die bisherige "
+                "zuerst, ob noch ein anderes Programm den Wechselrichter abfragt, zum Beispiel Home Assistant mit "
+                "einer eigenen Modbus-Einbindung, ein Dashboard, ein eigenes Script oder eine zweite "
+                "OpenAmpere-Installation, und beende es oder entferne dort die Verbindung zum Wechselrichter. Ist noch die bisherige "
                 "IQ-Box verbunden und wird sie nicht mehr gebraucht, trenne sie danach vom Netzwerk (LAN-Kabel ziehen "
                 "oder Box ausschalten). Dann verbindet sich OpenAmpere von selbst. Eine verbundene IQ-Box überschreibt "
                 "außerdem Einstellungen, die du in OpenAmpere änderst (Anleitung: „Die bisherige Smartbox setzt "

@@ -35,7 +35,7 @@ More about the FoxESS H3 family:
   also detected automatically, because the sources disagree.
 - If detection gets it wrong, you can choose the register map and the read method yourself under
   **Mehr → Verbindung → Für Experten** (More → Connection → For experts).
-- **Very few Modbus TCP connections at a time**, apparently only one on some systems (#311): when other programs or
+- **Very few Modbus TCP connections at a time** (#311): when other programs or
   the previous IQ box take all of them, the inverter accepts OpenAmpere's connection and closes it right away. OpenAmpere reports this as "gerade belegt" (currently busy). The
   fix is in the [README](../README.md) under "Der Wechselrichter lässt gerade keine weitere Verbindung zu".
 - **Settings written by OpenAmpere can be reset** by a previous smartbox that fetches its targets from the cloud.
