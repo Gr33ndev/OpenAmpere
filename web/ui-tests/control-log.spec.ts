@@ -22,6 +22,7 @@ const ENTRIES = [
     result: "von einem anderen Gerät überschrieben" },
   { action: "consumer", details: { from: { consumer: "Heizstab", on: false }, to: { consumer: "Heizstab", on: true } }, dry_run: true,
     result: "nicht geschaltet (Testmodus): Überschuss 2600 W", note: "Überschuss 2600 W" },
+  // written by 0.23.1 (#315), still in the logs after the rollback (#320)
   { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 20 }, to: { min_soc_on_grid: 61 } }, dry_run: false, result: "ok" },
   { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 20 } }, dry_run: false, result: "ok" },
   { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 35 }, kept: true }, dry_run: false,

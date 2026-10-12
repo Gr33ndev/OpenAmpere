@@ -75,8 +75,7 @@
     "lowReserveWarranty": "Viele Hersteller setzen für die Garantie eine Reserve von mindestens 10 % voraus. Ein tieferer Wert kann die Garantie gefährden. Prüfe die Garantiebedingungen deines Speichers.",
     "lowReserveOutage": "Bei einem Stromausfall steht weniger Energie für den Notstrom bereit.",
     "lowReserveAdvice": "Empfohlen sind mindestens 10 %. Stell die Reserve nur kurz tiefer, zum Beispiel wenn morgen viel Sonne erwartet wird, und danach wieder auf 10 % oder mehr.",
-    "lowReserveConfirm": "Trotzdem auf {soc} setzen",
-    "reserveRaised": "Die Notstrom-Reserve ist gerade für das Laden aus dem Netz vorübergehend auf {raised} angehoben. Danach stellt OpenAmpere sie wieder auf {original}. Änderst du sie jetzt, bleibt dein neuer Wert."
+    "lowReserveConfirm": "Trotzdem auf {soc} setzen"
   },
   "changelogPage": {
     "attention": "Achtung",
@@ -117,13 +116,11 @@
     "registrationHint": "OpenAmpere lädt nur und entlädt nie ins Netz. Kläre die Anmeldung mit deinem Netzbetreiber oder Steuerberater, bevor du die Funktion nutzt.",
     "remoteControlHint": "OpenAmpere nutzt dafür die Fernsteuerung des Wechselrichters mit Zeitbegrenzung: Stoppt OpenAmpere, kehrt der Wechselrichter nach 3 Minuten von selbst in den Normalbetrieb zurück. Für „Günstigste Zeit“ brauchst du einen dynamischen oder zeitvariablen Stromtarif.",
     "section14aHint": "Über 4,2 kW Ladeleistung aus dem Netz kann der Speicher unter § 14a EnWG (steuerbare Verbraucher) fallen. Kläre das mit deinem Netzbetreiber.",
-    "targetHint": "Ladestand, bei dem das Laden aus dem Netz endet. Manche Wechselrichter laden aus dem Netz nur bis zur Notstrom-Reserve. Erkennt OpenAmpere das, hebt es die Reserve während des Ladens vorübergehend an und stellt sie danach zurück.",
+    "targetHint": "Ladestand, bei dem das Laden aus dem Netz endet.",
     "title": "Laden aus dem Netz",
     "turnOn": "Einschalten",
     "turnOnTitle": "Laden aus dem Netz einschalten?",
-    "usableCapacity": "Nutzbare Speichergröße",
-    "reserveRaised": "Der Wechselrichter lädt aus dem Netz nur bis zur Notstrom-Reserve. Für das Laden hat OpenAmpere sie deshalb vorübergehend von {original} auf {raised} angehoben und stellt sie danach wieder zurück.",
-    "stopsAtReserve": "Dein Wechselrichter lädt aus dem Netz nur bis zur Notstrom-Reserve. OpenAmpere hebt sie deshalb während des Ladens vorübergehend auf „Laden bis“ an und stellt sie danach wieder zurück."
+    "usableCapacity": "Nutzbare Speichergröße"
   },
   "cloudImportCard": {
     "apiKey": "API-Schlüssel",

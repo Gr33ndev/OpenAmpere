@@ -121,7 +121,7 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
       return t("settings.controlLog.exportLimitOverwritten", { from: watts(from.export_limit_w), to: watts(to.export_limit_w) });
     case "grid_charging_switch":
       return to.enabled ? t("settings.controlLog.gridChargingOn") : t("settings.controlLog.gridChargingOff");
-    case "grid_charging_reserve": { // raised for grid charging and set back afterwards (#315)
+    case "grid_charging_reserve": { // 0.23.1 raised the reserve for grid charging and set it back (#315, #320)
       const values = { from: pct(from.min_soc_on_grid), to: pct(to.min_soc_on_grid) };
       if (details.kept) return t("settings.controlLog.reserveKept", values);
       return isNum(from.min_soc_on_grid) && isNum(to.min_soc_on_grid) && to.min_soc_on_grid > from.min_soc_on_grid

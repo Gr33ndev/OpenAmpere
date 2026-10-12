@@ -43,11 +43,10 @@ MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
 AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
 STARTED = "Laden gestartet"  # start of the result logged when charging starts, see tick()
-# meta: the backup reserve OpenAmpere raised for grid charging and the owner's value, set back when charging ends (#315)
+# meta of 0.23.1, which raised the backup reserve for grid charging (#315, rolled back in #320): a reserve still raised
+# is set back, and what it had learned is removed
 RAISED_RESERVE = "grid_charging_reserve"
-# meta: this inverter charges from the grid only up to its backup reserve; learned once, then raised in every session
 STOPS_AT_RESERVE = "grid_charging_stops_at_reserve"
-RESERVE_NEAR = 2  # % around the reserve that still count as "at the reserve" (rounding, #315)
 
 
 @dataclass
@@ -108,10 +107,7 @@ class GridCharging:
         self._lock = asyncio.Lock()
         self._owner: asyncio.Task | None = None
         self._refused_quarter: int | None = None  # a refused command is not tried again in the same quarter
-        self._restore_failed = False  # setting the raised reserve back failed: logged once, tried on every tick
-        self._stalled_since: float | None = None  # charging, but no power into the battery since then (#315)
-        self._reserve_checked: int | None = None  # the target the reserve was last checked for in this session
-        self._probing = False  # the reserve was raised to test whether it is what stops charging (#315)
+        self._restore_failed = False  # setting a reserve raised by 0.23.1 back failed: logged once, tried on every tick
 
     # ---- settings ------------------------------------------------------------
 
@@ -168,7 +164,7 @@ class GridCharging:
             in_window = self._in_window(now, s.window_start, s.window_end)
             quarters = [quarter] if in_window else []
             reason = "im Ladefenster" if in_window else f"Ladefenster {s.window_start}–{s.window_end} Uhr"
-            return {"quarters": quarters, "reason": reason, "needed_wh": round(needed_wh), "target": target}
+            return {"quarters": quarters, "reason": reason, "needed_wh": round(needed_wh)}
         deadline = self._deadline(now, s.ready_by)
         tariff = self.runtime.tariffs.at(datetime.fromtimestamp(now, self.runtime.tz).date().isoformat())
         if tariff.kind == "fixed":
@@ -181,7 +177,7 @@ class GridCharging:
             return {"quarters": [], "reason": "Keine Preise bis zum Zielzeitpunkt bekannt" if not prices
                     else "Kein Zeitraum unter deinem Höchstpreis"}
         chosen = sorted(ts for _, ts in sorted(candidates)[:count])
-        return {"quarters": chosen, "reason": "günstigste Viertelstunden", "needed_wh": round(needed_wh), "target": target,
+        return {"quarters": chosen, "reason": "günstigste Viertelstunden", "needed_wh": round(needed_wh),
                 "prices": {ts: round(p, 2) for p, ts in candidates if ts in chosen}}
 
     def _in_window(self, now: float, start: int, end: int) -> bool:
@@ -252,39 +248,16 @@ class GridCharging:
             # battery_power: + = discharging, - = charging
             if snap.battery_power is not None and snap.battery_power <= -MIN_CHARGE_W / 2:
                 self.verified = True
-                if self._probing:  # raising the reserve made it charge: remembered for this inverter (#315)
-                    self._probing = False
-                    runtime.storage.set_meta(STOPS_AT_RESERVE, {"since": now})
             elif soc is not None and soc >= await self._upper_limit() - NEAR_LIMIT:
                 # the inverter's own charge limit or a full battery, not a fault: paused, not switched off
                 self.full_at_soc = soc
                 await self.stop(self._full_reason())
                 return
-            elif soc is not None and await self._probe_reserve(soc, plan["target"], now):
-                self.started_at = now  # checked again: charging now means the reserve was the reason
             else:
                 await self.stop("Der Speicher lädt trotz Befehl nicht – Laden abgebrochen. Bitte in der Diagnose "
                                  "prüfen (Fernsteuerung).", error=True)
                 self.runtime.storage.set_meta("grid_charging", {**asdict(s), "enabled": False})
                 return
-        elif self.active and self.verified and snap is not None and soc is not None:
-            # later in the session: no more power into the battery right at the reserve (#315)
-            if snap.battery_power is None or snap.battery_power <= -MIN_CHARGE_W / 2:
-                self._stalled_since = None
-            elif self._stalled_since is None:
-                self._stalled_since = now
-            elif now - self._stalled_since >= VERIFY_AFTER_S:
-                self._stalled_since = None
-                # only right at the reserve: a battery that takes less for another reason (e.g. a cold battery) must
-                # not end in a charging error
-                if await self._probe_reserve(soc, plan["target"], now, at_reserve_only=True):
-                    self.verified, self.started_at = False, now  # checked again like at the start
-        if runtime.storage.get_meta(STOPS_AT_RESERVE):
-            # learned for this inverter: the reserve is raised from the start of every session and for a higher target
-            wanted = math.ceil(plan["target"])
-            if not self.active or self._reserve_checked is None or wanted > self._reserve_checked:
-                self._reserve_checked = wanted
-                await self._raise_reserve(plan["target"], now)
         # remembered before writing: a command that half worked must be switched off as well
         runtime.storage.set_meta(REMOTE_COMMAND, {"ts": now, "power_w": CHARGE_SIGN * s.power_w,
                                                   "timeout_s": REMOTE_TIMEOUT_S, "released": None})
@@ -309,8 +282,7 @@ class GridCharging:
                                         False, f"Laden gestartet ({plan['reason']})")
 
     async def _stop(self, reason: str, *, error: bool = False) -> None:
-        """Ends charging: switches the remote control off, then sets a reserve raised for charging back (#315)."""
-        self._stalled_since, self._reserve_checked, self._probing = None, None, False
+        """Ends charging: switches the remote control off, then sets a reserve raised by 0.23.1 back (#320)."""
         await self._release(reason, error=error)
         await self._restore_reserve()
 
@@ -355,72 +327,15 @@ class GridCharging:
                       "OpenAmpere wieder eingeschaltet, zum Beispiel nach einem Neustart")
             self._log_stop(f"Fernsteuerung nachträglich abgeschaltet: {reason}")
 
-    async def _probe_reserve(self, soc: float, target: float, now: float, at_reserve_only: bool = False) -> bool:
-        """The battery takes no charge although commanded. If it stands at or above the backup reserve (at the start
-        of a session) or right at it (later, at_reserve_only) and below the target, the inverter may charge from the
-        grid only up to its reserve (#315): the reserve is raised to find out. Remembered for this installation only if the battery then charges (see the check in _tick); otherwise
-        the check ends charging as before and the reserve is set back. False if the reserve cannot be the reason."""
-        if self.runtime.storage.get_meta(RAISED_RESERVE) or self.runtime.collector.driver is None:
-            return False  # already raised: the reserve is not what stops it
-        try:
-            reserve = (await self.runtime.collector.driver.read_settings()).min_soc_on_grid
-        except Exception:  # noqa: BLE001
-            return False
-        if reserve is None or reserve >= target or soc < reserve - RESERVE_NEAR:
-            return False
-        if at_reserve_only and soc > reserve + RESERVE_NEAR:
-            return False
-        log.info("no charge into the battery at %s %% with a backup reserve of %s %%: raising it to find out", soc,
-                 reserve)
-        self._probing, self._reserve_checked = True, math.ceil(target)
-        await self._raise_reserve(target, now)
-        return self.runtime.storage.get_meta(RAISED_RESERVE) is not None
-
-    async def _raise_reserve(self, target: float, now: float) -> None:
-        """For an inverter that charges from the grid only up to its backup reserve (#315): raised to the target for
-        this session, never above the charge limit, and set back by _stop. Remembered before writing, so it is set back
-        after a restart as well. A failed raise does not stop charging, it then ends at the reserve as before."""
-        runtime, driver = self.runtime, self.runtime.collector.driver
-        if driver is None:
-            return
-        before = runtime.storage.get_meta(RAISED_RESERVE)
-        async with control_lock(runtime):
-            try:
-                current = await driver.read_settings()
-            except Exception as err:  # noqa: BLE001 - charging goes on, up to the reserve
-                log.warning("could not read the backup reserve before grid charging: %s", err)
-                return
-            reserve, top = current.min_soc_on_grid, current.max_soc
-            if reserve is None or top is None:
-                return
-            wanted = min(math.ceil(target), top - 1)  # the reserve must stay below the charge limit
-            if before and (reserve != before["raised"] or wanted <= reserve):
-                # changed by the owner while charging (their value counts, see _restore_reserve), or high enough:
-                # remembered for this target, so it is not read again on every tick
-                runtime.storage.set_meta(RAISED_RESERVE, {**before, "target": math.ceil(target)})
-                return
-            if wanted <= reserve:
-                return
-            # the owner's value, also when the target is raised again during a session
-            original = before["original"] if before else reserve
-            runtime.storage.set_meta(RAISED_RESERVE, {"original": original, "raised": wanted,
-                                                      "target": math.ceil(target), "ts": now})
-            try:
-                await driver.write_soc_limits(min_soc_on_grid=wanted)
-            except Exception as err:  # noqa: BLE001 - logged; set back (if it got through) when charging ends
-                log.warning("could not raise the backup reserve for grid charging: %s", err)
-                result = f"Fehler: {friendly_error(err)}"
-            else:
-                result = await self._read_back_reserve(wanted)
-        runtime.storage.log_control("grid_charging_reserve", {"from": {"min_soc_on_grid": reserve},
-                                                              "to": {"min_soc_on_grid": wanted}}, False, result)
-
     async def _restore_reserve(self) -> None:
-        """Sets the reserve back to the owner's value once charging has ended (#315), also with the master switch off
-        or in test mode (the safe direction, like releasing the remote control). Only if it still has the value
-        OpenAmpere wrote: a reserve the owner or another device changed in the meantime stays. Tried again on the
-        next tick if the inverter does not answer."""
+        """0.23.1 raised the backup reserve for grid charging (#315, rolled back in #320). A reserve it left raised is
+        set back to the owner's value on the next tick, also with the master switch off or in test mode (the safe
+        direction, like releasing the remote control), and only if it still has the value OpenAmpere wrote: a reserve
+        the owner or another device changed in the meantime stays. Tried again on the next tick if the inverter does
+        not answer."""
         runtime, collector = self.runtime, self.runtime.collector
+        if runtime.storage.get_meta(STOPS_AT_RESERVE):
+            runtime.storage.delete_meta(STOPS_AT_RESERVE)
         raised = runtime.storage.get_meta(RAISED_RESERVE)
         if not raised or collector.driver is None or not collector.connected:
             return
@@ -488,9 +403,5 @@ class GridCharging:
         plan = self.plan(now, snap.battery_soc if snap else None, self._limit[1] if self._limit else None)
         if self.full_at_soc is not None and not self.active:  # paused at the charge limit: say so (#242)
             plan = {"quarters": [], "reason": self._full_reason()}
-        raised = self.runtime.storage.get_meta(RAISED_RESERVE)
         return {"settings": asdict(self.settings), "active": self.active, "last_error": self.last_error,
-                "plan": {**plan, "quarters": plan["quarters"][:96]},
-                # the backup reserve raised for charging and the owner's value it is set back to (#315)
-                "reserve_raised": {"original": raised["original"], "raised": raised["raised"]} if raised else None,
-                "stops_at_reserve": bool(self.runtime.storage.get_meta(STOPS_AT_RESERVE))}
+                "plan": {**plan, "quarters": plan["quarters"][:96]}}

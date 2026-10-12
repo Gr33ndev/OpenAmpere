@@ -356,7 +356,7 @@ function charging() {
   return {
     settings: { enabled: false, mode: "cheapest", target_soc: 80, ready_by: 6, window_start: 22, window_end: 6,
       max_price_ct: null, power_w: 3000, battery_kwh: BATTERY_WH / 1000, legal_confirmed: false },
-    active: false, last_error: null, plan: { quarters: [], reason: "Laden aus dem Netz ist aus" }, reserve_raised: null, stops_at_reserve: false,
+    active: false, last_error: null, plan: { quarters: [], reason: "Laden aus dem Netz ist aus" },
   };
 }
 
