@@ -18,8 +18,9 @@ const demoHtml: Plugin = {
 
 export default defineConfig({
   plugins: demo ? [react(), demoHtml] : [react()],
-  // the demo lives in a sub folder of the GitHub Pages site, so all paths must be relative
-  base: demo ? "./" : "/",
+  // relative paths: the demo lives in a sub folder of the GitHub Pages site, the Home Assistant app under the
+  // ingress address (#300)
+  base: "./",
   build: { outDir: demo ? "../_site/demo" : "../src/openampere/web", emptyOutDir: true },
   server: {
     proxy: {
