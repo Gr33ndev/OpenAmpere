@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.23.1",
+      "date": "2026-10-12",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "charging",
+            "text": "Charge past the backup reserve on inverters that stop there (#316)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.23.0",
       "date": "2026-10-12",
       "first": false,

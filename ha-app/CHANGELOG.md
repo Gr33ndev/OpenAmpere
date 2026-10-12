@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.23.1 (2026-10-12)
+
+### Behoben
+
+- **charging:** Charge past the backup reserve on inverters that stop there (#316)
+
 ## 0.23.0 (2026-10-12)
 
 ### Neu
@@ -198,13 +204,3 @@ New: a damaged database no longer stops the app, and you can now restore a backu
 ### Neu
 
 - **ui:** Show kWh and kW with two decimals everywhere (#162)
-
-## 0.15.0 (2026-10-07)
-
-### Neu
-
-- **changelog:** Show every change without folding (#160)
-
-### Weitere Änderungen
-
-- Run the ui tests in the playwright container image (#158)
