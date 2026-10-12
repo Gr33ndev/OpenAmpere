@@ -14,7 +14,7 @@
   },
   "privacy": {
     "title": "Privacy",
-    "intro": "This site sets no cookies and uses no analytics or tracking tools. Fonts and images are hosted on this site itself. The exception are the two buttons in the Home Assistant section, see below.",
+    "intro": "This site sets no cookies and uses no analytics or tracking tools. Fonts and images are hosted on this site itself.",
     "controllerTitle": "Controller",
     "controllerText": "The controller responsible for processing personal data on this site is the operator named in the imprint above. Contact: the email address above. The operator stores no data about visitors to this site and has no access to GitHub's logs.",
     "hostingTitle": "Hosting on GitHub Pages",

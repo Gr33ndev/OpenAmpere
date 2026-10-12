@@ -172,6 +172,16 @@ footer p { margin: 0 auto 8px; max-width: 60em; }
 /* Home Assistant (#76): the official badges, loaded from my.home-assistant.io like in the README */
 .notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px;
   padding: 14px 16px; }
+div.notice { margin: 0 0 20px; }
+ul.ways { padding-left: 20px; margin: 0 0 24px; }
+ul.ways li { margin-bottom: 8px; }
+h3.way { font-size: 22px; margin: 32px 0 12px; scroll-margin-top: 80px; }
+h4.sub { font-size: 19px; margin: 32px 0 10px; scroll-margin-top: 80px; }
+/* the buttons of My Home Assistant, as Home Assistant users know them */
+.ha-badge { display: inline-block; border-radius: 24px; line-height: 0; }
+.ha-badge img { height: 40px; width: auto; max-width: 100%; }
+.ha-badge:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+div.notice > :last-child { margin-bottom: 0; }
 
 /* FAQ */
 .faq-page { max-width: 820px; }

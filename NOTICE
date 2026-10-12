@@ -20,6 +20,12 @@ user shared in issue #67. OpenAmpere is not affiliated with Netze BW.
 
 my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
 
+The Home Assistant buttons on the website (site/badges/*.svg) are the badges of My Home Assistant
+(https://github.com/home-assistant/my.home-assistant.io, public/badges, commit 0beba65), Copyright Home Assistant
+and contributors, Apache License 2.0 (copy in site/badges/LICENSE.md, also published next to them). They are served
+by the website itself, unchanged, so a visit sends nothing to my.home-assistant.io. The Home Assistant name and logo in
+them belong to their owners; the buttons are used as intended, to link to My Home Assistant.
+
 OpenAmpere is an unofficial, independent community project. All product names, company names and
 trademarks mentioned in this project belong to their respective owners and are used only to describe
 compatibility. Background and legal notes: see README.md ("Background & legal notes").

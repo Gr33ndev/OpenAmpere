@@ -26,6 +26,7 @@ writes as safety-relevant (see below).
 | `web/src/locales/<lang>/` | App texts: `<area>.json` per area plus `meta.json`; `web/src/i18n.tsx` has `t()`/`tx()` |
 | `site/` | Project website: `pages/*.html` templates, `locales/<lang>/`, built by `scripts/build-site.sh` |
 | `custom_components/openampere/` | Home Assistant integration (HACS); tests in `tests_ha/` |
+| `ha-app/`, `repository.yaml` | Home Assistant app (#300): config for the Supervisor, start script of the image stage `ha-app`, `DOCS.md` (the English guide shown in Home Assistant; German: `docs/homeassistant-app.de.md`) |
 | `scripts/` | `install.sh` (end-user installer), `updater.sh` / `tailscale.sh` (helper containers), `release.sh`, `deps.sh`, `i18n_messages.py`, … |
 | `tests/` | pytest suite for the backend |
 | `docs/` | `architecture.md`, `registers.md`, `devices.md`, `writing-a-driver.md`; German user guides are `*.de.md` |
@@ -86,6 +87,40 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
 - **Legal/trademarks:** no code, graphics or texts from the Ampere.IQ app. Name companies and products only
   descriptively. Keep the "no affiliation" and "not legal advice" notes intact when editing README or website.
 
+## Three ways to run OpenAmpere
+
+Every change reaches owners in three ways, all built from the same release (#300). Think of all three:
+
+1. **Standalone with Docker** (`install.sh`): the default image, update and Tailscale helper containers.
+2. **Home Assistant app** (`ha-app/`, image stage `ha-app`): the same code in "app mode" (`ha_app.active()`,
+   `SUPERVISOR_TOKEN`). Opened in the Home Assistant sidebar (ingress) and by IP on another port; no helper containers,
+   updates come from Home Assistant.
+3. **Home Assistant integration** (`custom_components/openampere/`): installed through HACS for way 1, brought along
+   and installed by the app for way 2 (same version). It is only a client: it works only while an OpenAmpere server
+   runs (way 1 or 2) and talks to its external API, never to the inverter. Nothing the integration offers may bypass
+   the checks of the server.
+
+- **Web app:** only paths relative to the page (`appUrl()`, no `"/…"` in `fetch`, `href` or `src`); the app runs under
+  the ingress address `/api/hassio_ingress/<token>/`. `window.location` is the address of Home Assistant there; use
+  `status.home_assistant` for the direct address. `web/ui-tests/ingress.spec.ts` covers this.
+- **Backend:** a feature that needs a helper container, the host or Docker does not exist in the app; say so in the
+  app (as updates and remote access do). Through the sidebar only **admins of Home Assistant** count as logged in
+  (`ha_admin`): `panel_admin` only hides the sidebar entry, the Supervisor forwards every user. Never trust a
+  forwarded header for the sidebar itself. New files in the data folder end up in Home Assistant backups.
+- **Root in the app:** only `ha-app/start.sh` (and `openampere ha-integration` from it) runs as root; it must not read
+  or write anything in `/data` or follow paths from the config, which belong to the app user. Everything else runs
+  through `setpriv` as the app user, in the AppArmor profile "server" without the config folder of Home Assistant.
+- **Integration and discovery:** a discovery must never change the certificate of an existing entry (that would send
+  its token elsewhere); a new certificate means pairing again.
+- **Home Assistant:** new values or controls the integration should offer go into `custom_components/` with tests in
+  `tests_ha/`; the integration talks to the external API only. Both ways get the change with the next release.
+- **App config:** new rights, ports, capabilities or file access go into `ha-app/config.yaml` and, if needed,
+  `ha-app/apparmor.txt` (the profile limits capabilities and network types). `tests/test_ha_app_config.py` checks the
+  config against the code.
+- **Docs:** the installation is described per way (README, README.de, website): way 1 with "Connect Home Assistant"
+  (HACS), way 2 with "Sensors and control in Home Assistant" (no HACS). The app guide is `ha-app/DOCS.md` (English,
+  shown in Home Assistant) and `docs/homeassistant-app.de.md`.
+
 ## Writing to the inverter (safety)
 
 - Writes only through the control features: master switch (`control.enabled`) and test mode (`control.dry_run`)
@@ -120,9 +155,11 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
   workflow or the repository breaks updates.
 - **The Website workflow cancels older runs** (`concurrency: pages`); a "cancelled" run on `main` is normal.
 - **Release:** maintainers only, from a clean `main`: `scripts/release.sh X.Y.Z` then
-  `git push origin main vX.Y.Z`. The commit titles since the last tag become the version's entry in
-  `web/public/changelog.json` (`feat` → "Neu", `fix` → "Behoben"): the changelog in the app, on the website and the
-  GitHub release notes. Good commit titles are what owners read. An optional summary for owners goes into
+  `git push origin vX.Y.Z`, wait for the "Release" workflow, then `git push origin main` (Home Assistant offers the
+  app version in `ha-app/config.yaml` as soon as `main` has it, before that the image must exist). The commit titles since the last tag become the version's entry in
+  `web/public/changelog.json` (`feat` → "Neu", `fix` → "Behoben"): the changelog in the app, on the website, the
+  GitHub release notes and `ha-app/CHANGELOG.md` (shown by Home Assistant with an update of the app; written by
+  `scripts/changelog.py` together with the JSON file, never by hand). Good commit titles are what owners read. An optional summary for owners goes into
   `changelog/X.Y.Z.json` (`{"de": "…", "en": "…"}`, German required) before running `release.sh`; it is shown
   above the list. It is the maintainer's text: don't write one unless asked.
 - **Agent worktrees** (e.g. `.claude/worktrees/`) must never be committed; `release.sh` refuses an unclean tree.
