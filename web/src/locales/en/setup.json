@@ -25,7 +25,9 @@
     "takesFewSeconds": "This takes a few seconds …",
     "testConnection": "Test connection",
     "testFirst": "Please test the connection first.",
-    "unknownModbusDevice": "Unknown Modbus device"
+    "unknownModbusDevice": "Unknown Modbus device",
+    "busyInverter": "Inverter, currently busy",
+    "busyHint": "“Currently busy”: the device does not allow another connection; an inverter allows only very few. Usually the old IQ box is still connected, or another program that reads the inverter, for example a dashboard, a script of your own or a second OpenAmpere installation. Stop such programs. If you no longer need the IQ box, disconnect it from the network (unplug its LAN cable or switch it off). Then search again."
   },
   "setup": {
     "apiKeyHint": "For this you need the personal API key from the Ampere.IQ app. OpenAmpere is an independent project with no ties to EKD.",

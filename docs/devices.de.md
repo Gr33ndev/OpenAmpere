@@ -37,6 +37,10 @@ Mehr zur FoxESS-H3-Familie:
   OpenAmpere ebenfalls selbst, weil die Quellen sich da widersprechen.
 - Liegt die Erkennung falsch, kannst du Registerkarte und Leseverfahren unter **Mehr → Verbindung → Für Experten**
   selbst wählen.
+- **Sehr wenige Modbus-TCP-Verbindungen gleichzeitig**, bei manchen Anlagen offenbar nur eine (#311): Belegen die
+  bisherige IQ-Box oder andere Programme alle, nimmt der Wechselrichter die Verbindung von OpenAmpere an und schließt
+  sie sofort. OpenAmpere meldet das als „gerade belegt“. Abhilfe steht in der [README](../README.de.md) unter „Der Wechselrichter lässt gerade keine weitere
+  Verbindung zu“.
 - **Die bisherige Smartbox kann Einstellungen zurücksetzen,** weil sie ihre Sollwerte aus der Cloud holt. In #25 hat
   ein Nutzer der Smartbox den Internetzugang gesperrt; danach blieben seine Änderungen an der Notstrom-Reserve und das
   preisbasierte Laden aus dem Netz bestehen. Mehr dazu im Abschnitt „Die bisherige Smartbox setzt Einstellungen

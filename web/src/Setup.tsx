@@ -13,7 +13,7 @@ type Device = { manufacturer: string; model: string; serial: string | null; firm
 type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
   sample?: { pv_power: number | null; battery_soc: number | null } | null };
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
-  serial?: string | null };
+  serial?: string | null; busy?: boolean };
 type DriverOption = { key: string; label: string };
 
 /** Find / enter the inverter address, detect the device type, test and save.
@@ -116,13 +116,15 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
                 onClick={() => { setHost(d.host); reset(); void test(d.host); }}>
                 <InverterIcon size={36} />
                 <span>
-                  <strong>{d.model ? `${d.manufacturer ?? ""} ${d.model}`.trim() : t("setup.connectionForm.unknownModbusDevice")}</strong>
+                  <strong>{d.model ? `${d.manufacturer ?? ""} ${d.model}`.trim()
+                    : d.busy ? t("setup.connectionForm.busyInverter") : t("setup.connectionForm.unknownModbusDevice")}</strong>
                   <span className="meta">{d.host}{d.serial ? ` · ${t("setup.connectionForm.serialEnd", { end: d.serial.slice(-4) })}` : ""}</span>
                 </span>
               </button>
             ))}
           </div>
         ))}
+        {found?.some((d) => d.busy) && <p className="hint">{t("setup.connectionForm.busyHint")}</p>}
         {found?.some((d, i) => d.serial && found.findIndex((x) => x.serial === d.serial) !== i) && (
           <p className="hint">{t("setup.connectionForm.sameSerialHint")}</p>
         )}
