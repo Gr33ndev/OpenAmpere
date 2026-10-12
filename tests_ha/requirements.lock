@@ -2736,9 +2736,9 @@ pyopenssl==26.2.0 \
     # via
     #   acme
     #   homeassistant
-pyrfc3339==2.1.0 \
-    --hash=sha256:560f3f972e339f579513fe1396974352fd575ef27caff160a38b312252fcddf3 \
-    --hash=sha256:c569a9714faf115cdb20b51e830e798c1f4de8dabb07f6ff25d221b5d09d8d7f
+pyrfc3339==2.1.1 \
+    --hash=sha256:4973172cb8b29c14caca7f76e6a52890d9e59ec2722dd5eb29b7fdd9fda2232f \
+    --hash=sha256:b144d63819bd4c1ebf9cb57e12f4cba567fcf23d6e8f2f829ba9c7810ea4b951
     # via acme
 pyric==0.1.6.3 \
     --hash=sha256:b539b01cafebd2406c00097f94525ea0f8ecd1dd92f7731f43eac0ef16c2ccc9
