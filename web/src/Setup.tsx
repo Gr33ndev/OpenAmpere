@@ -5,13 +5,19 @@ import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
 import { InverterIcon } from "./icons";
 import { Button, Field, Notice } from "./ui";
+import { REPO_URL } from "./links";
 import { navigate } from "./route";
-import { t, tx } from "./i18n";
+import { lang, t, tx } from "./i18n";
 
 type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
 type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
   sample?: { pv_power: number | null; battery_soc: number | null } | null };
+/** README section on the old smartbox that overwrites settings (#25), linked from the "busy" hint (#311). */
+const SMARTBOX_GUIDE = () => (lang() === "de"
+  ? `${REPO_URL}/blob/main/README.de.md#die-bisherige-smartbox-setzt-einstellungen-zur%C3%BCck`
+  : `${REPO_URL}/blob/main/README.md#the-previous-smartbox-resets-settings`);
+
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
   serial?: string | null; busy?: boolean };
 type DriverOption = { key: string; label: string };
@@ -124,7 +130,10 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
             ))}
           </div>
         ))}
-        {found?.some((d) => d.busy) && <p className="hint">{t("setup.connectionForm.busyHint")}</p>}
+        {found?.some((d) => d.busy) && (
+          <p className="hint">{tx("setup.connectionForm.busyHint", {
+            guide: <a href={SMARTBOX_GUIDE()} target="_blank" rel="noopener">{t("setup.connectionForm.busyGuide")}</a> })}</p>
+        )}
         {found?.some((d, i) => d.serial && found.findIndex((x) => x.serial === d.serial) !== i) && (
           <p className="hint">{t("setup.connectionForm.sameSerialHint")}</p>
         )}

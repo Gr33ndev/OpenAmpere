@@ -355,11 +355,14 @@ If a Modbus proxy sits in between, the device address set in the proxy applies.
 
 ### "Der Wechselrichter lässt gerade keine weitere Verbindung zu" (the inverter does not allow another connection)
 
-A FoxESS H3 (also sold as "Ampere.StoragePro E3") allows only very few Modbus TCP connections at a time, apparently only one on some systems. When all are taken, it accepts OpenAmpere's connection and closes it right away. Usually they are taken by the previous IQ box or by another program that reads the inverter: a dashboard with its own collector (such as Grafana), a script of your own, a smart home system or a second OpenAmpere installation. The network search then shows the device as "Wechselrichter, gerade belegt" (inverter, currently busy); the connection test and **Mehr → Verbindung** (More → Connection) show this message.
+A FoxESS H3 (also sold as "Ampere.StoragePro E3") allows only very few Modbus TCP connections at a time, apparently only one on some systems. When all are taken, it accepts OpenAmpere's connection and closes it right away. Usually they are taken by another program that reads the inverter (a dashboard with its own collector such as Grafana, a script of your own, a smart home system or a second OpenAmpere installation) or by the previous IQ box. The network search then shows the device as "Wechselrichter, gerade belegt" (inverter, currently busy); the connection test and **Mehr → Verbindung** (More → Connection) show this message.
 
-Fix:
-- **Stop other programs** that read the inverter. Such programs can also get the values through OpenAmpere, for example through the [connection to Home Assistant](#connect-home-assistant) or evcc, without a connection of their own to the inverter.
-- **Disconnect the IQ box from the network** if you no longer need it: unplug the box's LAN cable or switch the box off, not the inverter. First make sure the box is not needed for anything else, such as control by the grid operator. OpenAmpere then connects by itself. The inverter keeps working with its stored settings. Afterwards, check in OpenAmpere under **Mehr → Meine Anlage → Einspeisebegrenzung** (More → My system → Export limit) that the value shown is right. As a side effect, the box no longer overwrites settings (see [above](#the-previous-smartbox-resets-settings)).
+Go in this order:
+
+1. **First stop other programs** that read the inverter. Such programs can also get the values through OpenAmpere, for example through the [connection to Home Assistant](#connect-home-assistant) or evcc, without a connection of their own to the inverter.
+2. **Then disconnect the IQ box from the network** if you no longer need it: unplug the box's LAN cable or switch the box off, not the inverter. First make sure the box is not needed for anything else, such as control by the grid operator. OpenAmpere then connects by itself. The inverter keeps working with its stored settings. Afterwards, check in OpenAmpere under **Mehr → Meine Anlage → Einspeisebegrenzung** (More → My system → Export limit) that the value shown is right. As long as the IQ box is connected, it also overwrites settings you change in OpenAmpere (see [The previous Smartbox resets settings](#the-previous-smartbox-resets-settings)).
+
+Other options:
 - **Pro Abfrage** (per poll, see the next section) only helps if the other device or program releases its connection now and then. The IQ box does not.
 - **Modbus proxy**, for advanced users only: a proxy holds one connection to the inverter, and all others connect to the proxy (see [Running behind a Modbus proxy](#running-behind-a-modbus-proxy)). The IQ box may set itself back to the inverter's address, though; then the slot is taken again.
 

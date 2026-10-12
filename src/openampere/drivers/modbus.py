@@ -61,11 +61,13 @@ class ModbusTransientError(ModbusReadError):
 PERMANENT_EXCEPTION_CODES = {1, 2, 3}
 
 
-BUSY_MESSAGE = ("Der Wechselrichter lässt gerade keine weitere Verbindung zu, er erlaubt nur sehr wenige. Meist ist "
-                "noch die bisherige IQ-Box verbunden oder ein anderes Programm, das den Wechselrichter abfragt, zum "
-                "Beispiel ein Dashboard, ein eigenes Script oder eine zweite OpenAmpere-Installation. Beende solche "
-                "Programme. Wird die IQ-Box nicht mehr gebraucht, trenne sie vom Netzwerk (LAN-Kabel ziehen oder Box "
-                "ausschalten). Danach verbindet sich OpenAmpere von selbst.")
+BUSY_MESSAGE = ("Der Wechselrichter lässt gerade keine weitere Verbindung zu, er erlaubt nur sehr wenige. Prüfe "
+                "zuerst, ob noch ein anderes Programm den Wechselrichter abfragt, zum Beispiel ein Dashboard, ein "
+                "eigenes Script oder eine zweite OpenAmpere-Installation, und beende es. Ist noch die bisherige "
+                "IQ-Box verbunden und wird sie nicht mehr gebraucht, trenne sie danach vom Netzwerk (LAN-Kabel ziehen "
+                "oder Box ausschalten). Dann verbindet sich OpenAmpere von selbst. Eine verbundene IQ-Box überschreibt "
+                "außerdem Einstellungen, die du in OpenAmpere änderst (Anleitung: „Die bisherige Smartbox setzt "
+                "Einstellungen zurück“).")
 
 
 def friendly_error(err: BaseException) -> str:

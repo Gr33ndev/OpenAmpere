@@ -135,7 +135,9 @@ async def test_an_inverter_that_closes_every_connection_at_once_is_busy(monkeypa
     finally:
         server.close()
     assert modbus.friendly_error(err.value) == BUSY_MESSAGE
-    assert "IQ-Box" in BUSY_MESSAGE and "anderes Programm" in BUSY_MESSAGE  # either can take the slots
+    # other programs first, then the IQ box, and why a connected box is a problem anyway
+    assert BUSY_MESSAGE.index("anderes Programm") < BUSY_MESSAGE.index("IQ-Box")
+    assert "Die bisherige Smartbox setzt Einstellungen zurück" in BUSY_MESSAGE
 
 
 async def test_a_device_that_keeps_the_connection_open_is_not_busy(monkeypatch):

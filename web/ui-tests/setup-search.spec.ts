@@ -17,7 +17,8 @@ test("the network search says when an inverter is busy and what to do", async ({
   await expect(page.getByText("Wechselrichter, gerade belegt", { exact: true })).toBeVisible();
   await expect(page.getByText("Unbekanntes Modbus-Gerät", { exact: true })).toBeVisible(); // the other one
   const hint = page.getByText("„Gerade belegt“", { exact: false });
-  await expect(hint).toContainText("IQ-Box"); // the old box or another program can take the connections
-  await expect(hint).toContainText("ein anderes Programm, das den Wechselrichter abfragt");
+  // first other programs, then the IQ box, with the guide on a box that overwrites settings
+  await expect(hint).toContainText(/zuerst, ob noch ein anderes Programm.*IQ-Box/);
+  await expect(hint.getByRole("link", { name: "mehr dazu in der Anleitung" })).toHaveAttribute("href", /#die-bisherige-smartbox/);
   expect(await layoutProblems(page)).toEqual([]);
 });
