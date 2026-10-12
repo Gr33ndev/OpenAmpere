@@ -24,7 +24,8 @@ devices your installer can do it.
 
 In the sidebar you need no password: Home Assistant has already checked who you are. Only **administrators of Home
 Assistant** may change settings and control the inverter there; other users of Home Assistant can only view. The
-sidebar entry is only shown to administrators.
+sidebar entry is only shown to administrators. The control log (More → Control and log) shows which user of Home
+Assistant changed something.
 
 ## Access by IP address
 

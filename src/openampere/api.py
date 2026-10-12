@@ -340,6 +340,18 @@ def create_app(runtime: Runtime) -> FastAPI:
         """An admin of Home Assistant through its sidebar (set by the security check)."""
         return getattr(request.state, "ha_admin", False)
 
+    def actor(request: Request) -> str | None:
+        """Who changed something, for the control log: an admin of Home Assistant through its sidebar, with the name
+        from the list of users of Home Assistant, not from a header (#305). None in the web app itself."""
+        if not ha_admin(request):
+            return None
+        return f"{admins.name(request.headers.get(ha_app.USER_HEADER)) or '?'} (Home Assistant)"
+
+    def by(request: Request) -> dict:
+        """The "source" of a control log entry, if any."""
+        source = actor(request)
+        return {"source": source} if source else {}
+
     def logged_in(request: Request) -> bool:
         return ha_admin(request) or auth.valid(request.cookies.get(SESSION_COOKIE))
 
@@ -437,7 +449,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         return tokens_view()
 
     @app.post("/api/tokens/pairing/{request_id}")
-    def decide_pairing(request_id: str, body: dict = Body(...)):
+    def decide_pairing(request_id: str, request: Request, body: dict = Body(...)):
         approve, scope = bool(body.get("approve")), str(body.get("scope") or "read")
         if scope not in ("read", "control"):
             raise HTTPException(400, "Unbekannte Berechtigung.")
@@ -448,8 +460,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         if approve:
-            storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"], "via": "Kopplung"},
-                                False, "ok")
+            storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"], "via": "Kopplung",
+                                                  **by(request)}, False, "ok")
         return tokens_view()
 
     @app.post("/api/tokens")
@@ -462,19 +474,20 @@ def create_app(runtime: Runtime) -> FastAPI:
             token, entry = tokens.create(body.name, body.scope)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"]}, False, "ok")
+        storage.log_control("token_created", {"name": entry["name"], "scope": entry["scope"], **by(request)}, False,
+                            "ok")
         # the address the browser uses is usually the one Home Assistant can reach, too
         code = connection_code(request.url.hostname or "", port, runtime.tls.fingerprint, token)
         return {"token": entry, "code": code, **tokens_view()}
 
     @app.delete("/api/tokens/{token_id}")
-    def delete_token(token_id: str):
+    def delete_token(token_id: str, request: Request):
         try:
             name = next(t["name"] for t in tokens.list() if t["id"] == token_id)
             tokens.revoke(token_id)
         except (StopIteration, KeyError):
             raise HTTPException(404, "Zugang nicht gefunden.") from None
-        storage.log_control("token_revoked", {"name": name}, False, "ok")
+        storage.log_control("token_revoked", {"name": name, **by(request)}, False, "ok")
         return tokens_view()
 
     external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
@@ -523,7 +536,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         return runtime.settings_view(authenticated=logged_in(request))
 
     @app.put("/api/settings")
-    async def put_settings(changes: dict = Body(...)):
+    async def put_settings(request: Request, changes: dict = Body(...)):
         expected = changes.pop("_revision", None)
         # null is the placeholder of a value hidden without login (#164): never store it over the real value
         changes = {k: v for k, v in changes.items() if not (k in PRIVATE and v is None)}
@@ -531,7 +544,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(409, "Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert. "
                                      "Bitte die Seite neu laden und die Änderung wiederholen.")
         try:
-            return await runtime.update_settings(changes)
+            return await runtime.update_settings(changes, source=actor(request))
         except PermissionError as err:
             raise HTTPException(409, str(err)) from None
         except (ValueError, KeyError) as err:
@@ -573,9 +586,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.") from None
 
     @app.put("/api/battery/settings")
-    async def put_battery_settings(changes: dict = Body(...)):
+    async def put_battery_settings(request: Request, changes: dict = Body(...)):
         try:
-            return await battery.write(changes)
+            return await battery.write(changes, source=actor(request))
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
         except NotConnected as err:
@@ -598,10 +611,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.") from None
 
     @app.put("/api/grid/export-limit")
-    async def put_export_limit(request: ExportLimitRequest):
+    async def put_export_limit(request: ExportLimitRequest, http: Request):
         try:
             return await export_limit.write(request.limit_w, confirmed=request.grid_operator_confirmed,
-                                            reference=request.confirmation_reference)
+                                            reference=request.confirmation_reference, source=actor(http))
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
         except ConfirmationRequired as err:
@@ -679,13 +692,13 @@ def create_app(runtime: Runtime) -> FastAPI:
         return collector.outages.view()
 
     @app.delete("/api/outages/{start}")
-    def remove_outage(start: float):
+    def remove_outage(start: float, request: Request):
         """"Das war kein Stromausfall": remove an entry from the history (#95)."""
         if not collector.outages.remove(start):
             raise HTTPException(404, "Diesen Stromausfall gibt es nicht.")
         when = datetime.datetime.fromtimestamp(start, runtime.tz).strftime("%d.%m.%Y %H:%M")
-        storage.log_control("outage_removed", {"from": {"outage": when}, "to": {"outage": "entfernt"}}, False,
-                            "kein Stromausfall")
+        storage.log_control("outage_removed", {"from": {"outage": when}, "to": {"outage": "entfernt"},
+                                               **by(request)}, False, "kein Stromausfall")
         return collector.outages.view()
 
     @app.get("/api/storage")
@@ -921,9 +934,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         return charging.view()
 
     @app.put("/api/charging")
-    async def put_charging(body: dict = Body(...)):
+    async def put_charging(request: Request, body: dict = Body(...)):
         try:
-            charging.save(body)
+            charging.save(body, source=actor(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await charging.tick()
@@ -986,9 +999,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         return result
 
     @app.post("/api/consumers/{consumer_id}/mode")
-    async def consumer_mode(consumer_id: str, body: dict = Body(...)):
+    async def consumer_mode(consumer_id: str, request: Request, body: dict = Body(...)):
         try:
-            surplus.set_override(consumer_id, str(body.get("mode")), body.get("hours"))
+            surplus.set_override(consumer_id, str(body.get("mode")), body.get("hours"), source=actor(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await surplus.tick()
@@ -1007,14 +1020,14 @@ def create_app(runtime: Runtime) -> FastAPI:
         return surplus.view()
 
     @app.post("/api/consumers/{consumer_id}/switch")
-    async def switch_consumer(consumer_id: str, on: bool):
+    async def switch_consumer(consumer_id: str, on: bool, request: Request):
         """Manual switch, e.g. to test the connection to a Shelly."""
         consumer = next((c for c in surplus.consumers if c.id == consumer_id), None)
         if consumer is None:
             raise HTTPException(404, "Verbraucher nicht gefunden")
         if not runtime.config.control.enabled:
             raise HTTPException(403, "Steuerung ist deaktiviert")
-        await surplus.switch(consumer, on, "von Hand geschaltet", time.time())
+        await surplus.switch(consumer, on, "von Hand geschaltet", time.time(), source=actor(request))
         return surplus.view()
 
     @app.post("/api/notify/test")

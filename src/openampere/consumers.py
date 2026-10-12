@@ -388,13 +388,15 @@ class SurplusControl:
 
     # ---- actions ---------------------------------------------------------------
 
-    async def switch(self, c: Consumer, on: bool, reason: str, now: float) -> None:
-        """Switched devices: on/off. Adjustable devices: full power or off (manual test)."""
+    async def switch(self, c: Consumer, on: bool, reason: str, now: float, source: str | None = None) -> None:
+        """Switched devices: on/off. Adjustable devices: full power or off (manual test). source: who switched by
+        hand if not the web app, for the control log (#305)."""
         if c.adjustable:
-            await self.set_power(c, c.power_w if on else 0, reason, now, force_log=True)
+            await self.set_power(c, c.power_w if on else 0, reason, now, force_log=True, source=source)
             return
         state = self.states.setdefault(c.id, State())
-        details = {"from": {"consumer": c.name, "on": state.on}, "to": {"consumer": c.name, "on": on}}
+        details = {"from": {"consumer": c.name, "on": state.on}, "to": {"consumer": c.name, "on": on},
+                   **({"source": source} if source else {})}
         dry = self.runtime.config.control.dry_run
         # switching off what OpenAmpere itself switched on is the safe direction: also in test mode, like the grid
         # charging, otherwise the device keeps running while OpenAmpere believes it is off (#217)
@@ -422,11 +424,13 @@ class SurplusControl:
         state.on, state.power_w = on, c.power_w if on else 0
         state.since, state.want_on, state.want_off = now, 0, 0
 
-    async def set_power(self, c: Consumer, watts: int, reason: str, now: float, *, force_log: bool = False) -> None:
+    async def set_power(self, c: Consumer, watts: int, reason: str, now: float, *, force_log: bool = False,
+                        source: str | None = None) -> None:
         state = self.states.setdefault(c.id, State())
         watts = max(0, min(int(watts), c.power_w))
         starting, stopping = watts > 0 and not state.on, watts == 0 and bool(state.on)
-        details = {"from": {"consumer": c.name, "power_w": state.power_w}, "to": {"consumer": c.name, "power_w": watts}}
+        details = {"from": {"consumer": c.name, "power_w": state.power_w}, "to": {"consumer": c.name, "power_w": watts},
+                   **({"source": source} if source else {})}
         dry = self.runtime.config.control.dry_run
         # 0 W to a heater OpenAmpere really set to power is the safe direction, also in test mode (#243)
         if dry and not (watts == 0 and state.written_w > 0):

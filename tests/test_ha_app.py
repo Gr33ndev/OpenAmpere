@@ -24,8 +24,8 @@ WRITE = {"x-openampere": "1"}
 
 # the users of Home Assistant as config/auth/list lists them
 USERS = [
-    {"id": "owner", "is_owner": True, "is_active": True, "group_ids": ["system-users"]},
-    {"id": "admin", "is_owner": False, "is_active": True, "group_ids": ["system-admin"]},
+    {"id": "owner", "username": "owner", "is_owner": True, "is_active": True, "group_ids": ["system-users"]},
+    {"id": "admin", "name": "Admin", "is_owner": False, "is_active": True, "group_ids": ["system-admin"]},
     {"id": "family", "is_owner": False, "is_active": True, "group_ids": ["system-users"]},
     {"id": "old-admin", "is_owner": False, "is_active": False, "group_ids": ["system-admin"]},
 ]
@@ -295,6 +295,35 @@ def test_users_of_home_assistant_who_are_not_admins_can_only_view(tmp_path, app_
     assert family.post("/api/auth/setup", json={"password": "geklaut123"}).status_code == 403
     family.post("/api/auth/logout?everywhere=true")
     assert direct.put("/api/settings", json={"tariff.feed_in_ct": 8}).status_code == 200  # still logged in
+
+
+def test_the_control_log_names_the_user_of_home_assistant(tmp_path, app_mode):
+    """A change through the sidebar says which user of Home Assistant made it, with the name from the list of users
+    of Home Assistant (#305); a change by direct access is the web app as before."""
+    _, sidebar, direct = clients(tmp_path)
+    assert sidebar.post("/api/auth/setup", json={"password": PASSWORD}).status_code == 200
+    login(direct)
+    assert sidebar.put("/api/settings", json={"control.dry_run": False}).status_code == 200
+    assert direct.put("/api/settings", json={"control.dry_run": True}).status_code == 200
+    entries = sidebar.get("/api/control/log").json()["entries"]
+    assert [e["details"].get("source") for e in entries if e["action"] == "control_switches"] == [
+        None, "Admin (Home Assistant)"]
+
+
+def test_the_name_of_a_user_comes_from_the_list_of_home_assistant():
+    async def users():
+        return USERS
+    admins = ha_app.Admins(users)
+    assert asyncio.run(admins.is_admin("owner", now=0.0))
+    assert admins.name("owner") == "owner"  # no display name: the user name
+    assert admins.name("admin") == "Admin"
+    assert admins.name("someone") == "" and admins.name(None) == ""
+
+    async def broken():
+        raise OSError("no answer")
+    admins.fetch = broken
+    assert not asyncio.run(admins.is_admin("owner", now=1000.0))
+    assert admins.name("admin") == ""
 
 
 def test_without_a_user_from_the_supervisor_nobody_is_admin(tmp_path, app_mode):

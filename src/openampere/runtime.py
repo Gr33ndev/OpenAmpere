@@ -145,7 +145,8 @@ class Runtime:
         """Counts saved changes, so a second device editing an outdated form is noticed."""
         return int(self.storage.get_meta("settings_revision") or 0)
 
-    async def update_settings(self, changes: dict) -> dict:
+    async def update_settings(self, changes: dict, source: str | None = None) -> dict:
+        """source: who changed them if not the web app, for the control log (#305)."""
         clean = validate(changes)
         blocked = set(clean) & self.locked
         if blocked:
@@ -176,7 +177,8 @@ class Runtime:
                            if get_value(old, k) != get_value(new, k)}
         if control_changes:  # switching control on/off and the declared feed-in rule belong into the audit log
             self.storage.log_control("control_switches", {"from": {k: v[0] for k, v in control_changes.items()},
-                                                          "to": {k: v[1] for k, v in control_changes.items()}},
+                                                          "to": {k: v[1] for k, v in control_changes.items()},
+                                                          **({"source": source} if source else {})},
                                      False, "ok")
         if get_value(old, "cloud.api_key") != get_value(new, "cloud.api_key"):
             await self.cloud_import.stop()

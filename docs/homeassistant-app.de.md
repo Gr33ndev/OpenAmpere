@@ -25,7 +25,8 @@ sonst kann es dein Installationsbetrieb erledigen.
 
 In der Seitenleiste brauchst du kein Passwort: Home Assistant hat schon geprüft, wer du bist. Einstellungen ändern und
 den Wechselrichter steuern dürfen dort nur **Administratoren von Home Assistant**; andere Benutzer von Home Assistant
-können nur ansehen. Den Eintrag in der Seitenleiste sehen nur Administratoren.
+können nur ansehen. Den Eintrag in der Seitenleiste sehen nur Administratoren. Im Protokoll (Mehr → Steuerung und
+Protokoll) steht, welcher Benutzer von Home Assistant etwas geändert hat.
 
 ## Zugriff über die IP-Adresse
 

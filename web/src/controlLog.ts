@@ -173,7 +173,9 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
 }
 
 function by(e: LogEntry, details: Values): string {
-  if (typeof details.source === "string" && details.source) { // "Home Assistant (Zugang für Apps)", made by the server
+  // made by the server: "Home Assistant (Zugang für Apps)", or "Name (Home Assistant)" for an admin of Home Assistant
+  // through its sidebar (#305), shown as it is
+  if (typeof details.source === "string" && details.source) {
     const app = /^(.*) \(Zugang für Apps\)$/.exec(details.source)?.[1];
     return app ? t("settings.controlLog.byAppAccess", { name: app }) : details.source;
   }
