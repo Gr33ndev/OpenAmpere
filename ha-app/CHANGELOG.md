@@ -4,6 +4,20 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.24.0 (2026-10-12)
+
+### Neu
+
+- **evcc:** Explain the sponsor token and warn before it runs out (#319)
+
+### Behoben
+
+- **charging:** Explain in the log why grid charging ended and what changed (#323)
+
+### Weitere Änderungen
+
+- **charging:** Stop raising the backup reserve for grid charging (#321)
+
 ## 0.23.1 (2026-10-12)
 
 ### Behoben
@@ -198,9 +212,3 @@ New: a damaged database no longer stops the app, and you can now restore a backu
 - Show which devices are confirmed on a real system (#185)
 - Add backup, move, uninstall and troubleshooting guides (#182)
 - **site:** Say the update check is on by default and call the report auswertung (#179)
-
-## 0.16.0 (2026-10-08)
-
-### Neu
-
-- **ui:** Show kWh and kW with two decimals everywhere (#162)

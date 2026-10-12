@@ -1,6 +1,33 @@
 {
   "versions": [
     {
+      "version": "0.24.0",
+      "date": "2026-10-12",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "evcc",
+            "text": "Explain the sponsor token and warn before it runs out (#319)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "charging",
+            "text": "Explain in the log why grid charging ended and what changed (#323)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "charging",
+            "text": "Stop raising the backup reserve for grid charging (#321)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.23.1",
       "date": "2026-10-12",
       "first": false,
