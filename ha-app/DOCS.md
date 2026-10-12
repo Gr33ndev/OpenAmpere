@@ -13,8 +13,8 @@ The app is new and marked as **experimental**. If something does not work, pleas
 
 ## Installation
 
-1. **Add the repository** [with one click](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere), or by hand: in Home Assistant open **Settings → Apps**, then the
-   app store, **⋮ → Repositories**, and add `https://github.com/Gr33ndev/OpenAmpere`.
+1. **Add the repository** [with one click](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere), or by hand: in Home Assistant open **Settings → Apps → Install
+   app**, then **⋮ → Repositories**, enter `https://github.com/Gr33ndev/OpenAmpere` and click **Add**.
 2. **Install** the app **OpenAmpere**, turn on **Show in sidebar** and **start** it.
 3. **Open OpenAmpere** in the sidebar. The setup wizard searches for the inverter in your home network, or you enter
    its IP address.

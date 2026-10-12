@@ -14,8 +14,9 @@ Die App ist neu und als **experimentell** gekennzeichnet. Wenn etwas nicht klapp
 
 ## Installation
 
-1. **Repository hinzufügen**, [mit einem Klick](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere) oder von Hand: In Home Assistant **Einstellungen → Apps**
-   öffnen, dann den App-Store, dort **⋮ → Repositories** und `https://github.com/Gr33ndev/OpenAmpere` hinzufügen.
+1. **Repository hinzufügen**, [mit einem Klick](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere) oder von Hand: In Home Assistant **Einstellungen → Apps → App
+   installieren** öffnen, dann **⋮ → Repositorys**, `https://github.com/Gr33ndev/OpenAmpere` eintragen und
+   **Hinzufügen**.
 2. Die App **OpenAmpere** **installieren**, **In der Seitenleiste anzeigen** einschalten und die App **starten**.
 3. **OpenAmpere** in der Seitenleiste **öffnen**. Der Einrichtungsassistent sucht den Wechselrichter in deinem
    Heimnetz, oder du gibst seine IP-Adresse ein.

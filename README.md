@@ -210,7 +210,8 @@ For Home Assistant OS (also Home Assistant Supervised). Home Assistant Container
 [![Open your Home Assistant instance and show the add app repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere)
 
 1. **Add the repository:** the button opens the dialog in your Home Assistant with the address filled in. By hand:
-   **Settings → Apps**, the app store, **⋮ → Repositories**, `https://github.com/Gr33ndev/OpenAmpere`.
+   **Settings → Apps → Install app → ⋮ → Repositories**, enter `https://github.com/Gr33ndev/OpenAmpere`,
+   **Add**.
 2. **Install** the app **OpenAmpere**, turn on **Show in sidebar** and **start** it.
 3. **Set up:** open OpenAmpere in the sidebar. The setup wizard searches for the inverter, or you enter its IP address.
    You need no password in the sidebar; one for direct access by IP address (e.g. for evcc) is set under
