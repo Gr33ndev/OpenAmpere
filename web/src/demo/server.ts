@@ -513,7 +513,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 /** Endpoints that only change something: the demo refuses them with DEMO_WRITE_MESSAGE. */
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
-  "/api/database/damaged", "/api/database/rollback", "/api/evcc/loadpoints/",
+  "/api/database/damaged", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
+  "/api/diagnostics/search", "/api/evcc/loadpoints/",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];

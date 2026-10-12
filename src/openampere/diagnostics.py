@@ -23,6 +23,7 @@ from datetime import datetime
 from . import logs
 from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
+from .probe import Probe, section_markdown
 from .runtime import Runtime
 
 EXTRA_CONNECTIONS = 3
@@ -121,6 +122,7 @@ class Diagnostics:
         self.runtime = runtime
         self.running = False
         self._watched = 0.0
+        self.probe = Probe(runtime)  # reading any device (#324); its last results go into the report
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -245,7 +247,8 @@ class Diagnostics:
         report = self._pseudonymise({"created": now, "version": self._version(), "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
-                                     "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now)},
+                                     "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
+                                     "probe": self.probe.section(include_text=include_serial)},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -288,7 +291,7 @@ class Diagnostics:
                     known[serial] = mask_serial(serial)
         pseudonyms = _Pseudonyms(config.inverter.host, known)
         return {**report, "checks": pseudonyms.apply(report.get("checks", [])),
-                "log": pseudonyms.apply(report.get("log", []))}
+                "log": pseudonyms.apply(report.get("log", [])), "probe": pseudonyms.apply(report.get("probe"))}
 
     @staticmethod
     def _version() -> str:
@@ -475,6 +478,8 @@ def report_markdown(report: dict) -> str:
     import json
     lines.append(json.dumps(report["checks"], ensure_ascii=False, indent=1))
     lines += ["```", "", "</details>"]
+    if report.get("probe"):  # reading any device (#324)
+        lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]
     log = report.get("log") or []
     if log:  # times relative to the report (-HH:MM:SS)
         lines += ["", f"<details><summary>Protokoll (letzte {len(log)} Zeilen)</summary>", "", "```text",

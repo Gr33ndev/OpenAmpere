@@ -10,6 +10,7 @@ import { SecurityPage } from "./AuthScreens";
 import { AppsPage } from "./AppsPage";
 import { RemotePage } from "./RemotePage";
 import { NotifyPage } from "./NotifyPage";
+import { DeviceReaderPage } from "./DeviceReaderPage";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { MenuRow, Notice, SubPage } from "./ui";
 import { t } from "./i18n";
@@ -135,6 +136,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     case "installation": return <InstallationPage snap={snap} onBack={back} onNavigate={setPage} />;
     case "notify": return <NotifyPage {...nav} />;
     case "diagnostics": return <DiagnosticsPage {...nav} />;
+    case "device-reader": return <DeviceReaderPage onBack={() => goBack("more/diagnostics")} onNavigate={setPage} />;
     case "tariff": return <TariffPage {...nav} />;
     case "billing": return <BillingPage {...nav} />;
     case "gridmeter": return <GridMeterPage onBack={() => goBack("more/connection")} />;

@@ -242,6 +242,15 @@
   "notify": {
     "ntfyAddressMustForm": "The ntfy address must have the form https://server/topic."
   },
+  "probe": {
+    "addressInHomeNetwork": "Please enter an address in your home network.",
+    "alreadyRunning": "A query is already running. Please wait a moment.",
+    "connectionClosed": "The device closed the connection right away. Probably all connections are taken, for example by evcc or another program.",
+    "inverterOwnConnection": "On the inverter, OpenAmpere reads only over its existing connection, with the device address {own_unit}.",
+    "noConnection": "No connection to {host}:{port}. Is the address correct, and is the port right?",
+    "onlyReadFunctions": "Only the function codes 3 and 4 (read) are possible.",
+    "tooManyRegisters": "Please read at most {MAX_REGISTERS} registers between 0 and 65535."
+  },
   "registry": {
     "noSupportedDeviceFound": "No supported device found. Is the address correct and Modbus TCP enabled?"
   },
