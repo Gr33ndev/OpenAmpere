@@ -83,9 +83,11 @@ for (const route of PAGES) {
   });
 }
 
-/** Colour changes along one row of the chart canvas: a bar with pixel gaps has many more than a solid bar. */
+/** Colour changes along one row of the chart canvas: a bar with pixel gaps has many more than a solid bar. The
+ * previous week always has seven bars; the current one has only one on a Monday. */
 async function colourChanges(page: import("@playwright/test").Page): Promise<number> {
   await page.getByRole("button", { name: "Woche", exact: true }).click();
+  await page.getByRole("button", { name: "Zeitraum zurück" }).click();
   const canvas = page.locator(".chart canvas").first();
   await expect(canvas).toBeVisible();
   await page.waitForTimeout(300);
