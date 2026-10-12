@@ -23,6 +23,16 @@
     "title": "The database was damaged",
     "whatHappened": "OpenAmpere could no longer read its database at the start ({date}), for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing."
   },
+  "homeAssistant": {
+    "adminsOnly": "You are not an admin in Home Assistant. You can view everything; only admins of Home Assistant may change settings and set the password.",
+    "forgotPassword": "Forgot the password? In Home Assistant, open OpenAmpere in the sidebar and set a new one under More → Access protection.",
+    "hostPlaceholder": "IP-of-Home-Assistant",
+    "passwordForDirectAccess": "You only need the password when you open OpenAmpere directly at {address}, for example on your phone without Home Assistant. Without a password, this access is locked.",
+    "passwordForDirectAccessOff": "You only need the password for direct access by IP address. It is turned off at the moment. You can turn it on in Home Assistant under Settings → Apps → OpenAmpere → Network.",
+    "passwordSet": "Password set",
+    "setPasswordInSidebar": "To open OpenAmpere by its IP address, it needs a password. Set it in Home Assistant: open OpenAmpere in the sidebar, then More → Access protection. After that you can log in here.",
+    "signedIn": "You are signed in through Home Assistant and can change settings."
+  },
   "installing": {
     "close": "Close",
     "preparingUpdate": "Preparing the update.",
@@ -95,6 +105,7 @@
     "autoInstall": "Install updates automatically at night",
     "autoInstallHint": "Between 2 and 5 a.m. If a new version does not start, the previous one comes back.",
     "checkUpdatesNow": "Check for updates now",
+    "homeAssistantHint": "You install updates in Home Assistant: Settings → Apps → OpenAmpere. There you can also turn on automatic updates.",
     "installed": "Installed",
     "latestVersion": "Latest version",
     "manualUpdateHint": "Installed manually? Then in the OpenAmpere folder:",

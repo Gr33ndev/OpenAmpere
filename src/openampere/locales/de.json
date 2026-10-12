@@ -26,7 +26,9 @@
     "notEnoughSpaceBackup": "Nicht genug freier Speicherplatz für die Sicherung.",
     "notEnoughSpaceFile": "Nicht genug freier Speicherplatz für die Datei.",
     "onlyAvailableViaHttps": "Nur über HTTPS erreichbar.",
+    "onlyHomeAssistantAdmins": "Nur Administratoren von Home Assistant dürfen in OpenAmpere etwas ändern.",
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
+    "passwordSetByHomeAssistantAdmin": "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der Seitenleiste öffnen, dann Mehr → Zugriffsschutz.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
     "requestExpiredRestartPairing": "Die Anfrage ist abgelaufen. Bitte die Kopplung in der App neu starten.",
     "requestTooLarge": "Die Anfrage ist zu groß.",
@@ -219,6 +221,11 @@
     "netzeBwUnexpectedAnswer": "Netze BW, {step}: unerwartete Antwort.",
     "netzeBwWonT": "Netze BW gibt die {step} trotz Anmeldung nicht frei (Fehler {status}). OpenAmpere versucht es später nochmal."
   },
+  "haApp": {
+    "integrationFromHacs": "Die Integration OpenAmpere ist schon installiert, zum Beispiel über HACS. Die App hält sie deshalb nicht selbst aktuell. Entferne sie in HACS und starte die App neu, dann übernimmt das die App.",
+    "integrationInstalled": "Die Integration OpenAmpere ist installiert. Bitte Home Assistant einmal neu starten (Einstellungen → System → Neu starten). Danach steht unter Einstellungen → Geräte & Dienste „Entdeckt: OpenAmpere“.",
+    "integrationUpdated": "Die Integration OpenAmpere ist jetzt auf Version {version}. Bitte Home Assistant einmal neu starten, damit sie aktiv wird."
+  },
   "mypv": {
     "immersionHeaterNotResponding": "Heizstab antwortet nicht: {err}",
     "immersionHeaterRejectsPower": "Heizstab lehnt die Leistungsvorgabe ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
@@ -263,6 +270,7 @@
     "twoTariffsStartSame": "Zwei Tarife beginnen am selben Tag."
   },
   "updates": {
-    "updateHelperIsnT": "Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen."
+    "updateHelperIsnT": "Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.",
+    "updatesComeViaHomeAssistant": "Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere."
   }
 }

@@ -18,6 +18,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from . import ha_app
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -86,10 +87,13 @@ class Updates:
 
     def view(self) -> dict:
         cfg = self.runtime.config.updates
-        return {"current": self.current, "latest": self.latest, "available": self.available,
+        view = {"current": self.current, "latest": self.latest, "available": self.available,
                 "updater": self.updater_ready(), "requested": self.request_file.exists(),
                 "status": self.status(), "check": cfg.check, "auto": cfg.auto,
                 "checked": self.checked or None, "error": self.error}
+        if ha_app.active():
+            view["home_assistant"] = True  # updates come through Home Assistant
+        return view
 
     async def check(self, force: bool = False, now: float | None = None) -> None:
         now = time.time() if now is None else now
@@ -106,6 +110,8 @@ class Updates:
 
     def request(self, reason: str = "manual", now: float | None = None) -> None:
         now = time.time() if now is None else now
+        if ha_app.active():
+            raise RuntimeError("Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.")
         if not self.updater_ready(now):
             raise RuntimeError("Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.")
         self.request_file.parent.mkdir(parents=True, exist_ok=True)

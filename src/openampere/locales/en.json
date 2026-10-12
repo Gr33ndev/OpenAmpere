@@ -26,7 +26,9 @@
     "notEnoughSpaceBackup": "Not enough free storage space for the backup.",
     "notEnoughSpaceFile": "Not enough free storage space for the file.",
     "onlyAvailableViaHttps": "Only available via HTTPS.",
+    "onlyHomeAssistantAdmins": "Only admins of Home Assistant may change anything in OpenAmpere.",
     "passwordAlreadyBeenSet": "A password has already been set.",
+    "passwordSetByHomeAssistantAdmin": "An admin of Home Assistant sets the password: open OpenAmpere in the sidebar, then More → Access protection.",
     "powerOutageDoesnT": "This power outage doesn't exist.",
     "requestExpiredRestartPairing": "The request has expired. Please restart the pairing in the app.",
     "requestTooLarge": "The request is too large.",
@@ -219,6 +221,11 @@
     "netzeBwUnexpectedAnswer": "Netze BW, {step}: unexpected answer.",
     "netzeBwWonT": "Netze BW won't release the {step} despite the login (error {status}). OpenAmpere will try again later."
   },
+  "haApp": {
+    "integrationFromHacs": "The OpenAmpere integration is already installed, for example through HACS. So the app does not keep it up to date itself. Remove it in HACS and restart the app; then the app takes care of it.",
+    "integrationInstalled": "The OpenAmpere integration is installed. Please restart Home Assistant once (Settings → System → Restart). Then Settings → Devices & services shows “Discovered: OpenAmpere”.",
+    "integrationUpdated": "The OpenAmpere integration is now at version {version}. Please restart Home Assistant once so that it takes effect."
+  },
   "mypv": {
     "immersionHeaterNotResponding": "Immersion heater not responding: {err}",
     "immersionHeaterRejectsPower": "The immersion heater rejects the power setting. Is its control mode set to “Modbus TCP”?",
@@ -263,6 +270,7 @@
     "twoTariffsStartSame": "Two tariffs start on the same day."
   },
   "updates": {
-    "updateHelperIsnT": "The update helper isn't running. Please run the install script once more."
+    "updateHelperIsnT": "The update helper isn't running. Please run the install script once more.",
+    "updatesComeViaHomeAssistant": "Updates come through Home Assistant: Settings → Apps → OpenAmpere."
   }
 }

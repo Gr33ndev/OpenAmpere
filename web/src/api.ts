@@ -57,6 +57,9 @@ export type Status = {
   /** step of the inverter's energy counters in Wh (#194): 100 = 0.1 kWh; missing on servers before this field */
   energy_step_wh?: number;
   control: { enabled: boolean; dry_run: boolean };
+  /** only in the Home Assistant app (#300): ports on the host for direct access (null: turned off) and the address,
+   *  if the Supervisor knows the IP of the host */
+  home_assistant?: { direct_url: string | null; web_port?: number | null; https_port?: number | null } | null;
   // whether readings get stored (#170); missing on servers before this field
   storage?: { failing_since: number | null; error: "full" | "read_only" | "other" | null; free_bytes: number | null;
     low_space: boolean };
@@ -352,7 +355,15 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
   return { data, error, reload: () => setNonce((n) => n + 1), setData };
 }
 
-export type AuthStatus = { configured: boolean; authenticated: boolean };
+/** Home Assistant app (#300): the address for direct access by IP, with a placeholder for the IP if the Supervisor
+ *  does not know it; null if the owner turned direct access off. */
+export function directAddress(app: NonNullable<Status["home_assistant"]>): string | null {
+  if (app.direct_url) return app.direct_url;
+  return app.web_port ? `http://${t("shell.homeAssistant.hostPlaceholder")}:${app.web_port}` : null;
+}
+
+/** home_assistant: only in the Home Assistant app (#300), "ingress" when opened in its sidebar */
+export type AuthStatus = { configured: boolean; authenticated: boolean; home_assistant?: "ingress" | "direct" };
 
 /** POST with a raw body (file upload) – same headers as JSON requests. */
 export async function postFile<T>(path: string, file: Blob, type = "application/zip"): Promise<T> {

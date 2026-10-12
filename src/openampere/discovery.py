@@ -9,6 +9,7 @@ import ipaddress
 import logging
 import socket
 
+from . import ha_app
 from .drivers import registry
 from .drivers.modbus import DeviceUnreachable, friendly_error
 from .outbound import in_home_network
@@ -19,6 +20,12 @@ log = logging.getLogger(__name__)
 
 def local_prefixes() -> list[str]:
     """Best guess of the local /24 networks, e.g. ["192.168.178"]. Ignores Docker's default bridge."""
+    if ha_app.active():
+        try:
+            return ha_app.home_prefixes(ha_app.supervisor("/network/info"))
+        except (OSError, ValueError) as err:
+            log.warning("could not read the home network from the Supervisor: %s", err)
+            return []
     addresses = set()
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:

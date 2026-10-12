@@ -16,6 +16,7 @@ import re
 import time
 from pathlib import Path
 
+from . import ha_app
 from .runtime import Runtime
 from .updates import request_file
 
@@ -87,7 +88,10 @@ class Remote:
         now = time.time() if now is None else now
         port = self.runtime.config.server.port
         if not self.helper_ready(now):
-            return {"available": False, "state": "unavailable", "port": port}
+            view = {"available": False, "state": "unavailable", "port": port}
+            if ha_app.active():  # no Tailscale helper in the Home Assistant app: remote access through Home Assistant
+                view["home_assistant"] = True
+            return view
         status = self.status()
         backend = status.get("BackendState")
         me = status.get("Self") or {}

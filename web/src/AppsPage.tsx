@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
+import type { Status } from "./api";
 import { deleteJson, postJson, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { timeZone } from "./format";
@@ -26,6 +27,9 @@ const when = (ts: number) => new Date(ts * 1000).toLocaleString(LOCALE, { dateSt
 export function AppsPage({ onBack }: { onBack: () => void }) {
   // refreshed every few seconds: a pairing request from Home Assistant should show up right away
   const { data, error, reload, setData } = useResource<Tokens>("/api/tokens", 3000);
+  const { data: status } = useResource<Status>("/api/status");
+  // the Home Assistant app (#300): other devices reach HTTPS on the port of the host, not the one in the container
+  const httpsPort = status?.home_assistant ? status.home_assistant.https_port : data?.tls.port;
   const [name, setName] = useState("Home Assistant");
   const [scope, setScope] = useState<Scope>("read");
   const [busy, setBusy] = useState(false);
@@ -111,7 +115,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
       )}
 
       {data?.tls.fingerprint && (
-        <p className="hint">{t("settings.appsPage.httpsFingerprint", { port: data.tls.port ?? "–" })} <code className="fingerprint">
+        <p className="hint">{t("settings.appsPage.httpsFingerprint", { port: httpsPort ?? "–" })} <code className="fingerprint">
           {data.tls.fingerprint.match(/.{1,2}/g)?.join(":")}</code></p>
       )}
 
@@ -158,6 +162,8 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
 
 /** Is Home Assistant (or another app) connected right now? If not: what to check, or how to set it up (#79). */
 function ConnectionStatus({ data }: { data: Tokens }) {
+  const { data: status } = useResource<Status>("/api/status");
+  const app = !!status?.home_assistant; // the Home Assistant app (#300): Home Assistant finds OpenAmpere by itself
   const live = data.tokens.filter((token) => token.live_since);
   if (live.length) {
     return (
@@ -176,7 +182,7 @@ function ConnectionStatus({ data }: { data: Tokens }) {
         <Notice kind="warn">{last ? t("settings.connectionStatus.notConnectedSince", { date: when(last) }) : t("settings.connectionStatus.notConnected")}</Notice>
         <ul className="plain-list">
           <li>{t("settings.connectionStatus.checkRunning")}</li>
-          <li>{tx("settings.connectionStatus.checkAddress", { host: <strong>{host}</strong>, port: <strong>{port ?? "–"}</strong> })}</li>
+          {!app && <li>{tx("settings.connectionStatus.checkAddress", { host: <strong>{host}</strong>, port: <strong>{port ?? "–"}</strong> })}</li>}
           <li>{t("settings.connectionStatus.reconnectHint")}</li>
         </ul>
       </div>
@@ -190,16 +196,18 @@ function ConnectionStatus({ data }: { data: Tokens }) {
         <li>{tx("settings.connectionStatus.installHacsStep", { link: <a href={HACS_URL} target="_blank" rel="noopener">HACS</a> })}</li>
         <li>{t("settings.connectionStatus.installIntegrationStep")}{" "}
           <a href={MY_HA_REPOSITORY} target="_blank" rel="noopener">{t("settings.connectionStatus.openHomeAssistant")}</a></li>
-        <li>{tx("settings.connectionStatus.addIntegrationStep",
-          { link: <a href={MY_HA_SETUP} target="_blank" rel="noopener">{t("settings.connectionStatus.setUpIntegration")}</a> })}
-          <dl className="facts">
-            <dt>{t("common.address")}</dt><dd><CopyValue value={host} /></dd>
-            <dt>{t("settings.connectionStatus.httpsPort")}</dt><dd>{port ? <CopyValue value={String(port)} /> : t("settings.connectionStatus.turnedOff")}</dd>
-          </dl>
-        </li>
+        {app ? <li>{t("settings.connectionStatus.discoveredStep")}</li> : (
+          <li>{tx("settings.connectionStatus.addIntegrationStep",
+            { link: <a href={MY_HA_SETUP} target="_blank" rel="noopener">{t("settings.connectionStatus.setUpIntegration")}</a> })}
+            <dl className="facts">
+              <dt>{t("common.address")}</dt><dd><CopyValue value={host} /></dd>
+              <dt>{t("settings.connectionStatus.httpsPort")}</dt><dd>{port ? <CopyValue value={String(port)} /> : t("settings.connectionStatus.turnedOff")}</dd>
+            </dl>
+          </li>
+        )}
         <li>{t("settings.connectionStatus.allowStep")}</li>
       </ol>
-      <p className="hint">{t("settings.connectionStatus.manualHint")}</p>
+      {!app && <p className="hint">{t("settings.connectionStatus.manualHint")}</p>}
     </div>
   );
 }
