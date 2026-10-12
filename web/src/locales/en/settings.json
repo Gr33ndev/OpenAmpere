@@ -75,8 +75,7 @@
     "lowReserveWarranty": "Many manufacturers require a reserve of at least 10 % for the warranty. A lower value can put the warranty at risk. Check the warranty terms of your battery.",
     "lowReserveOutage": "In a power outage, less energy is left for backup power.",
     "lowReserveAdvice": "At least 10 % is recommended. Set the reserve lower only for a short time, for example when a lot of sun is expected tomorrow, and then back to 10 % or more.",
-    "lowReserveConfirm": "Set it to {soc} anyway",
-    "reserveRaised": "The backup power reserve is raised to {raised} for charging from the grid right now. Afterwards OpenAmpere sets it back to {original}. If you change it now, your new value stays."
+    "lowReserveConfirm": "Set it to {soc} anyway"
   },
   "changelogPage": {
     "attention": "Attention",
@@ -117,13 +116,11 @@
     "registrationHint": "OpenAmpere only charges and never discharges into the grid. Clarify the registration with your grid operator or tax advisor before you use this feature.",
     "remoteControlHint": "For this, OpenAmpere uses the inverter's remote control with a time limit: if OpenAmpere stops, the inverter returns to normal operation by itself after 3 minutes. For “Cheapest time” you need a dynamic or time-of-use electricity tariff.",
     "section14aHint": "Above 4.2 kW of charging power from the grid, the battery may fall under § 14a EnWG (controllable consumers). Check this with your grid operator.",
-    "targetHint": "State of charge at which charging from the grid ends. Some inverters charge from the grid only up to the backup power reserve. If OpenAmpere finds that out, it raises the reserve while charging and sets it back afterwards.",
+    "targetHint": "State of charge at which charging from the grid stops.",
     "title": "Charging from the grid",
     "turnOn": "Turn on",
     "turnOnTitle": "Turn on charging from the grid?",
-    "usableCapacity": "Usable battery capacity",
-    "reserveRaised": "The inverter charges from the grid only up to the backup power reserve. So OpenAmpere has raised it from {original} to {raised} for charging and sets it back afterwards.",
-    "stopsAtReserve": "Your inverter charges from the grid only up to the backup power reserve. So OpenAmpere raises it to “Charge up to” while charging and sets it back afterwards."
+    "usableCapacity": "Usable battery capacity"
   },
   "cloudImportCard": {
     "apiKey": "API key",

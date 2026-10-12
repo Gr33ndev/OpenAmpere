@@ -51,10 +51,6 @@ Mehr zur FoxESS-H3-Familie:
   10 % erscheint. Solange sie unter 10 % steht, zeigt die App eine Warnung. An einer echten Anlage (FoxESS H3) hat der
   Wechselrichter einen Wert unter 10 % angenommen und behalten. Andere Apps (Home Assistant) bleiben bei mindestens
   10 %.
-- **Laden aus dem Netz nur bis zur Notstrom-Reserve** (#315): An einer echten Anlage hat der Wechselrichter per
-  Fernsteuerung aus dem Netz nur bis zur Reserve geladen. OpenAmpere erkennt das (der Speicher nimmt an der Reserve
-  trotz Befehl keine Ladung mehr an), hebt die Reserve für die Dauer des Ladens auf „Laden bis“ an und stellt sie danach
-  zurück. Ob das jede Firmware so macht, ist offen; ohne dieses Verhalten fasst OpenAmpere die Reserve nicht an.
 - **Stromausfall-Erkennung:** OpenAmpere nutzt Bit 0 von Register 39065. In #89 war das Bit in einer einzelnen
   Messung gesetzt, während die Anlage ins Netz einspeiste. Seitdem braucht OpenAmpere zwei Messungen hintereinander
   und ignoriert das Bit, solange der Netzzähler Bezug oder Einspeisung misst. In #93 wurde ein absichtlich

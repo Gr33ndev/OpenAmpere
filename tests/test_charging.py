@@ -12,11 +12,6 @@ from openampere.storage import QUARTER, Storage
 from test_settings_control import start_sim, wait_connected
 
 
-def charging_log(runtime) -> list[dict]:
-    """Entries of grid charging itself, newest first (the reserve raised for it has its own, #315)."""
-    return [e for e in runtime.storage.control_log() if e["action"] == "grid_charging"]
-
-
 async def connected(tmp_path):
     sim, server, port = await start_sim()
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
@@ -139,9 +134,9 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             charging.save({**charging.view()["settings"], "enabled": False})
             await charging.tick()
             assert sim._get_setting("remote_enable") == 0 and not sim.energy.remote_enabled
-            assert charging_log(runtime)[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
+            assert runtime.storage.control_log()[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
             await charging.tick()  # nothing left to do: no further entries
-            assert charging_log(runtime)[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
+            assert runtime.storage.control_log()[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
 
             # the smartbox took over (on = 5, 30 s): never switched off by OpenAmpere
             runtime.storage.set_meta("remote_command", {**runtime.storage.get_meta("remote_command"), "released": None})
@@ -256,7 +251,7 @@ async def test_the_inverters_charge_limit_pauses_grid_charging_without_switching
             await charging.tick(now=10_100)
             assert not charging.active and charging.last_error is None and charging.settings.enabled
             assert not sim.energy.remote_enabled
-            assert "keine Ladung mehr an" in charging_log(runtime)[0]["result"]
+            assert "keine Ladung mehr an" in runtime.storage.control_log()[0]["result"]
             await charging.tick(now=10_130)
             assert not charging.active  # does not start again at the same level
             await battery(runtime, sim, 70, 400)  # the house used some of it: grid charging tries again
@@ -272,11 +267,9 @@ async def test_a_battery_that_does_not_charge_at_all_still_stops_grid_charging(t
         try:
             await battery(runtime, sim, 50, 0)
             await charging.tick(now=10_000)
-            await charging.tick(now=10_100)  # above the reserve: first raised to find out whether that is it (#315)
-            await charging.tick(now=10_200)
+            await charging.tick(now=10_100)
             assert not charging.active and "lädt trotz Befehl nicht" in (charging.last_error or "")
             assert not charging.settings.enabled
-            assert sim._get_setting("min_soc_on_grid") == 10  # set back
         finally:
             await runtime.collector.stop()
 
@@ -404,216 +397,61 @@ async def test_switching_off_during_a_tick_does_not_leave_the_remote_control_on(
             await runtime.collector.stop()
 
 
-# #315: a FoxESS H3 charges from the grid only up to its backup reserve
-async def reserve_session(tmp_path, reserve=20, target=61, max_soc=100, learned=True):
-    """learned: OpenAmpere already found out that this inverter charges from the grid only up to its reserve."""
+# #320: 0.23.1 raised the backup reserve for grid charging (#315); a reserve it left raised is set back
+async def raised_by_0_23_1(tmp_path, raised=61, original=20, current=61):
     sim, server, runtime = await connected(tmp_path)
-    sim.energy.min_soc_on_grid, sim.energy.max_soc = reserve, max_soc
-    sim._sync_settings_to_registers()
-    await runtime.update_settings({"control.dry_run": False})
-    if learned:
-        runtime.storage.set_meta("grid_charging_stops_at_reserve", {"since": 1})
-    charging = GridCharging(runtime)
-    charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0, "window_end": 0,
-                   "target_soc": target, "power_w": 3000})
-    return sim, server, runtime, charging
+    sim._put("min_soc_on_grid", current, sim.map.settings)
+    sim.on_write(sim.map.settings["min_soc_on_grid"].address)
+    runtime.storage.set_meta("grid_charging_reserve", {"original": original, "raised": raised, "target": 61, "ts": 1})
+    runtime.storage.set_meta("grid_charging_stops_at_reserve", {"since": 1})
+    await runtime.update_settings({"control.enabled": False})  # set back also with the master switch off
+    return sim, server, runtime, GridCharging(runtime)
 
 
-def reserve_log(runtime) -> list[tuple]:
-    return [(e["details"]["from"]["min_soc_on_grid"], e["details"]["to"]["min_soc_on_grid"], e["result"])
-            for e in reversed(runtime.storage.control_log()) if e["action"] == "grid_charging_reserve"]
-
-
-async def test_grid_charging_raises_the_reserve_to_the_target_and_sets_it_back(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path)
+async def test_a_reserve_raised_by_0_23_1_is_set_back(tmp_path):
+    sim, server, runtime, charging = await raised_by_0_23_1(tmp_path)
     async with server:
         try:
-            await battery(runtime, sim, 25, 0)
             await charging.tick(now=10_000)
-            assert charging.active and sim.energy.remote_enabled
-            assert sim._get_setting("min_soc_on_grid") == 61  # raised before the first command
-            assert runtime.storage.get_meta("grid_charging_reserve")["original"] == 20
-            assert charging.view(now=10_000)["reserve_raised"] == {"original": 20, "raised": 61}
-
-            charging.save({**charging.view()["settings"], "enabled": False})
-            await charging.tick(now=10_100)
-            assert not charging.active and not sim.energy.remote_enabled
-            assert sim._get_setting("min_soc_on_grid") == 20  # the owner's value again
-            assert runtime.storage.get_meta("grid_charging_reserve") is None
-            assert reserve_log(runtime) == [(20, 61, "ok"), (61, 20, "ok")]
-            await charging.tick(now=10_200)  # nothing left to do
-            assert len(reserve_log(runtime)) == 2
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_the_raised_reserve_is_set_back_after_a_restart_even_with_control_switched_off(tmp_path):
-    """Remembered before writing; setting back is the safe direction, like releasing the remote control."""
-    sim, server, runtime, charging = await reserve_session(tmp_path)
-    async with server:
-        try:
-            await battery(runtime, sim, 25, 0)
-            await charging.tick(now=10_000)
-            assert sim._get_setting("min_soc_on_grid") == 61
-            await runtime.update_settings({"control.enabled": False})
-            restarted = GridCharging(runtime)  # the in-memory state is gone
-            await restarted.tick(now=10_100)
             assert sim._get_setting("min_soc_on_grid") == 20
             assert runtime.storage.get_meta("grid_charging_reserve") is None
+            assert runtime.storage.get_meta("grid_charging_stops_at_reserve") is None
+            entry = runtime.storage.control_log()[0]
+            assert entry["action"] == "grid_charging_reserve" and entry["result"] == "ok"
+            assert entry["details"] == {"from": {"min_soc_on_grid": 61}, "to": {"min_soc_on_grid": 20}}
+            await charging.tick(now=10_100)  # nothing left to do
+            assert len([e for e in runtime.storage.control_log() if e["action"] == "grid_charging_reserve"]) == 1
         finally:
             await runtime.collector.stop()
 
 
-async def test_a_reserve_the_owner_changed_while_charging_stays(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path)
+async def test_a_reserve_changed_since_0_23_1_raised_it_stays(tmp_path):
+    sim, server, runtime, charging = await raised_by_0_23_1(tmp_path, current=35)
     async with server:
         try:
-            await battery(runtime, sim, 25, 0)
             await charging.tick(now=10_000)
-            sim._put("min_soc_on_grid", 35, sim.map.settings)  # changed in the app or by another device
-            sim.on_write(sim.map.settings["min_soc_on_grid"].address)
-            charging.save({**charging.view()["settings"], "enabled": False})
-            await charging.tick(now=10_100)
             assert sim._get_setting("min_soc_on_grid") == 35
             entry = runtime.storage.control_log()[0]
-            assert entry["action"] == "grid_charging_reserve" and entry["details"]["kept"] is True
-            assert entry["details"]["to"] == {"min_soc_on_grid": 35} and "nicht zurückgestellt" in entry["result"]
+            assert entry["details"]["kept"] is True and "nicht zurückgestellt" in entry["result"]
+            assert runtime.storage.get_meta("grid_charging_reserve") is None
         finally:
             await runtime.collector.stop()
 
 
-async def test_the_reserve_stays_below_the_charge_limit_and_is_left_alone_when_high_enough(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path, target=100, max_soc=90)
+async def test_grid_charging_does_not_touch_the_reserve_any_more(tmp_path):
+    """The raising of 0.23.1 is rolled back (#320): a battery that takes no charge at 50 % ends as before #315."""
+    sim, server, runtime = await connected(tmp_path)
     async with server:
         try:
-            await battery(runtime, sim, 25, 0)
-            await charging.tick(now=10_000)
-            assert sim._get_setting("min_soc_on_grid") == 89  # the reserve must stay below the charge limit
-        finally:
-            await runtime.collector.stop()
-
-    (tmp_path / "high").mkdir()
-    sim, server, runtime, charging = await reserve_session(tmp_path / "high", reserve=70, target=61)
-    async with server:
-        try:
-            await battery(runtime, sim, 25, 0)
-            await charging.tick(now=10_000)
-            assert charging.active and sim._get_setting("min_soc_on_grid") == 70  # already high enough
-            assert runtime.storage.get_meta("grid_charging_reserve") is None and reserve_log(runtime) == []
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_a_higher_target_during_charging_raises_the_reserve_further(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path)
-    async with server:
-        try:
-            await battery(runtime, sim, 25, 0)
-            await charging.tick(now=10_000)
-            charging.save({**charging.view()["settings"], "target_soc": 80})
-            await charging.tick(now=10_030)
-            assert charging.active and sim._get_setting("min_soc_on_grid") == 80
-            assert runtime.storage.get_meta("grid_charging_reserve")["original"] == 20  # still the owner's value
-            charging.save({**charging.view()["settings"], "enabled": False})
-            await charging.tick(now=10_060)
-            assert sim._get_setting("min_soc_on_grid") == 20
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_an_inverter_that_charges_past_the_reserve_is_left_alone(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path, learned=False)
-    async with server:
-        try:
-            await battery(runtime, sim, 15, -3000)
-            await charging.tick(now=10_000)
-            await charging.tick(now=10_100)  # charges: checked
-            await battery(runtime, sim, 30, -3000)  # past the reserve of 20 %
-            await charging.tick(now=10_200)
-            await charging.tick(now=10_300)
-            assert charging.active and sim._get_setting("min_soc_on_grid") == 20
-            assert runtime.storage.get_meta("grid_charging_stops_at_reserve") is None and reserve_log(runtime) == []
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_a_stop_at_the_reserve_at_the_start_is_found_and_remembered(tmp_path):
-    """Above the reserve the inverter does not charge from the grid at all: this used to end grid charging with an
-    error and switch it off."""
-    sim, server, runtime, charging = await reserve_session(tmp_path, learned=False)
-    async with server:
-        try:
-            await battery(runtime, sim, 25, 0)
-            await charging.tick(now=10_000)
-            assert charging.active and sim._get_setting("min_soc_on_grid") == 20  # not touched before it is needed
-            await charging.tick(now=10_100)  # no charge at 25 % with a reserve of 20 %: raised to find out
-            assert charging.active and charging.settings.enabled and charging.last_error is None
-            assert sim._get_setting("min_soc_on_grid") == 61
-            assert runtime.storage.get_meta("grid_charging_stops_at_reserve") is None  # not sure yet
-            await battery(runtime, sim, 26, -3000)
-            await charging.tick(now=10_200)
-            assert runtime.storage.get_meta("grid_charging_stops_at_reserve")  # it charges now: remembered
-            assert charging.view(now=10_200)["stops_at_reserve"] is True
-
-            charging.save({**charging.view()["settings"], "enabled": False})
-            await charging.tick(now=10_300)
-            assert sim._get_setting("min_soc_on_grid") == 20
-            charging.save({**charging.view()["settings"], "enabled": True})
-            await charging.tick(now=10_400)  # the next session raises it right away
-            assert sim._get_setting("min_soc_on_grid") == 61
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_a_stop_at_the_reserve_later_in_the_session_is_found(tmp_path):
-    sim, server, runtime, charging = await reserve_session(tmp_path, learned=False)
-    async with server:
-        try:
-            await battery(runtime, sim, 15, -3000)
-            await charging.tick(now=10_000)
-            await charging.tick(now=10_100)  # charges: checked
-            await battery(runtime, sim, 20, 0)  # stands at the reserve
-            await charging.tick(now=10_200)
-            assert sim._get_setting("min_soc_on_grid") == 20  # a short dip is no reason yet
-            await charging.tick(now=10_300)
-            assert charging.active and sim._get_setting("min_soc_on_grid") == 61
-            await battery(runtime, sim, 21, -3000)
-            await charging.tick(now=10_400)
-            assert runtime.storage.get_meta("grid_charging_stops_at_reserve")
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_a_battery_that_does_not_charge_even_with_a_raised_reserve_still_stops(tmp_path):
-    """Raising the reserve did not help: not remembered, set back, and grid charging ends as before."""
-    sim, server, runtime, charging = await reserve_session(tmp_path, learned=False)
-    async with server:
-        try:
-            await battery(runtime, sim, 25, 0)
+            await runtime.update_settings({"control.dry_run": False})
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await battery(runtime, sim, 50, 0)
             await charging.tick(now=10_000)
             await charging.tick(now=10_100)
-            assert sim._get_setting("min_soc_on_grid") == 61
-            await charging.tick(now=10_200)  # still nothing
             assert not charging.active and "lädt trotz Befehl nicht" in (charging.last_error or "")
-            assert sim._get_setting("min_soc_on_grid") == 20
-            assert runtime.storage.get_meta("grid_charging_stops_at_reserve") is None
-        finally:
-            await runtime.collector.stop()
-
-
-async def test_a_battery_that_takes_less_far_above_the_reserve_is_no_reason_to_raise_it(tmp_path):
-    """Later in a session only a stop right at the reserve counts: e.g. a cold battery must not end in an error."""
-    sim, server, runtime, charging = await reserve_session(tmp_path, learned=False)
-    async with server:
-        try:
-            await battery(runtime, sim, 15, -3000)
-            await charging.tick(now=10_000)
-            await charging.tick(now=10_100)  # charges: checked
-            await battery(runtime, sim, 40, 0)  # takes nothing for a while, far above the reserve of 20 %
-            await charging.tick(now=10_200)
-            await charging.tick(now=10_300)
-            await charging.tick(now=10_400)
-            assert charging.active and charging.last_error is None
-            assert sim._get_setting("min_soc_on_grid") == 20 and reserve_log(runtime) == []
+            assert sim._get_setting("min_soc_on_grid") == 10
+            assert not [e for e in runtime.storage.control_log() if e["action"] == "grid_charging_reserve"]
         finally:
             await runtime.collector.stop()
