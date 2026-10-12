@@ -19,7 +19,7 @@ from dataclasses import asdict
 from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 
 from .apitokens import ApiTokens, Pairing
-from .control import SOC_FIELDS, BatteryControl, ControlDisabled, NotConnected, WriteFailed
+from .control import SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
 
 API_VERSION = 1
@@ -194,6 +194,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             result = await battery.write(changes, source=source(request))
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
+        except ConfirmationRequired:  # the warning can only be confirmed in OpenAmpere itself (#313)
+            raise HTTPException(428, "Eine Notstrom-Reserve unter 10 % lässt sich nur in OpenAmpere selbst einstellen, "
+                                     "nach einer Warnung.") from None
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
         except WriteFailed as err:

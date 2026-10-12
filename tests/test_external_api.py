@@ -124,6 +124,21 @@ def test_commands_need_a_control_token_and_the_control_switch(runtime, web, monk
     assert runtime.storage.control_log()[0]["details"]["source"] == "Home Assistant (Zugang für Apps)"
 
 
+def test_other_apps_cannot_set_a_reserve_below_10(runtime, web, monkeypatch):
+    """The warning for a backup reserve below 10 % can only be confirmed in OpenAmpere itself (#313)."""
+    async def fake_write(self, changes, source=None, confirm_low_reserve=False):
+        assert not confirm_low_reserve
+        raise control.ConfirmationRequired("Notstrom-Reserve unter 10 % bestätigen")
+
+    monkeypatch.setattr(control.BatteryControl, "write", fake_write)
+    web.put("/api/settings", json={"control.enabled": True})
+    client = app_client(web, new_token(web))
+    response = client.put(f"{V1}/battery", json={"min_soc_on_grid": 5, "confirm_low_reserve": True})
+    assert response.status_code == 400  # not a setting other apps may send
+    response = client.put(f"{V1}/battery", json={"min_soc_on_grid": 5})
+    assert response.status_code == 428 and "nur in OpenAmpere selbst" in response.json()["detail"]
+
+
 def test_battery_settings_are_written_at_most_six_times_an_hour(runtime, web, monkeypatch):
     async def fake_write(self, changes, source=None):
         return {"dry_run": True, "written": changes}

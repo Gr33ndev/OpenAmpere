@@ -6,7 +6,8 @@
     "chargingNow": "lädt gerade",
     "discharging": "entlädt {power}",
     "gridCharging": "Laden aus dem Netz: {state}",
-    "idle": "ruht"
+    "idle": "ruht",
+    "lowReserveWarning": "Die Notstrom-Reserve steht auf {soc} %, also unter 10 %. Das ist nicht gut für den Speicher und kann die Garantie gefährden. Stell sie bald wieder auf mindestens 10 %."
   },
   "choices": {
     "httpHint": "Für andere Geräte, die sich über eine Adresse zum Ein- und eine zum Ausschalten steuern lassen.",

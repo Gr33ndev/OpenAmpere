@@ -75,9 +75,15 @@ async def test_write_settings_and_remote_control(register_map, model):
 
         await driver.write_soc_limits(min_soc=0)  # the outage floor may be 0 % (#69)
         assert (await driver.read_settings()).min_soc == 0
-        with pytest.raises(ValueError):
-            await driver.write_soc_limits(min_soc_on_grid=5)
-        await driver.close()
+        # the reserve too; that it needs the owner's confirmation is checked in control.py (#313)
+        await driver.write_soc_limits(min_soc_on_grid=5)
+        assert (await driver.read_settings()).min_soc_on_grid == 5
+        try:
+            for bad in ({"min_soc_on_grid": -1}, {"min_soc_on_grid": 101}, {"max_soc": 5}):
+                with pytest.raises(ValueError):
+                    await driver.write_soc_limits(**bad)
+        finally:
+            await driver.close()
 
 
 async def test_inverter_temperature_in_tenths_of_a_degree():

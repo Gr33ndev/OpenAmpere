@@ -6,7 +6,8 @@
     "chargingNow": "charging now",
     "discharging": "discharging {power}",
     "gridCharging": "Grid charging: {state}",
-    "idle": "idle"
+    "idle": "idle",
+    "lowReserveWarning": "The backup power reserve is set to {soc} %, which is below 10 %. That is not good for the battery and can put the warranty at risk. Set it back to at least 10 % soon."
   },
   "choices": {
     "httpHint": "For other devices that can be controlled with one address to switch on and one to switch off.",

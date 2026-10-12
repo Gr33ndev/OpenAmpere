@@ -163,7 +163,8 @@
     "underConfiguredRuleKwp": "Nach der eingestellten Regel ({rule} von {installed_kwp} kWp) sind höchstens {legal_max} W erlaubt. Gilt die Regel nicht mehr (z. B. weil ein intelligentes Messsystem mit Steuerbox eingebaut wurde), ändere zuerst die Regel.",
     "unknownSetting": "Unbekannte Einstellung: {unknown}",
     "unknownWorkMode": "Unbekannter Betriebsmodus",
-    "valueMustBetween0": "Wert muss zwischen 0 und {maximum} W liegen"
+    "valueMustBetween0": "Wert muss zwischen 0 und {maximum} W liegen",
+    "lowReserveConfirm": "Eine Notstrom-Reserve unter 10 % bitte ausdrücklich bestätigen: Der Speicher wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die Garantie gefährden."
   },
   "diagnostics": {
     "diagnosisAlreadyRunning": "Die Diagnose läuft bereits."
@@ -205,7 +206,8 @@
     "controlTurnedOffOpenampere": "Die Steuerung ist in OpenAmpere ausgeschaltet (Mehr → Steuerung und Protokoll).",
     "requestNotFoundExpired": "Anfrage nicht gefunden oder abgelaufen.",
     "setUpChargingGrid": "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten (Geräte → Speicher → Laden aus dem Netz).",
-    "tooManyChangesShort": "Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). Bitte in {wait} min erneut versuchen."
+    "tooManyChangesShort": "Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). Bitte in {wait} min erneut versuchen.",
+    "lowReserveOnlyInApp": "Eine Notstrom-Reserve unter 10 % lässt sich nur in OpenAmpere selbst einstellen, nach einer Warnung."
   },
   "gridmeter": {
     "enterEmailPasswordCustomer": "Bitte E-Mail und Passwort für das Kundenportal eintragen.",

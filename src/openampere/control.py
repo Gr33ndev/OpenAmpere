@@ -28,6 +28,8 @@ class WriteFailed(Exception):
 FIELDS = ("work_mode", "min_soc", "max_soc", "min_soc_on_grid")
 SOC_FIELDS = ("min_soc", "max_soc", "min_soc_on_grid")
 SOC_MIN = {"min_soc": 0, "max_soc": 10, "min_soc_on_grid": 10}  # lowest value per limit in %
+# a backup reserve below SOC_MIN only with an explicit confirmation, every time (#313); the inverter accepts it
+LOW_RESERVE_MIN = 0
 VERIFY_AFTER_S = 45.0  # re-read written values after this time to detect a second master overwriting them
 
 log = logging.getLogger(__name__)
@@ -67,14 +69,15 @@ async def _remote_active(driver) -> bool:
         return False
 
 
-def check_limits(values: dict) -> None:
+def check_limits(values: dict, low_reserve: bool = False) -> None:
     """FoxESS rules: 0 <= min_soc <= min_soc_on_grid < max_soc <= 100, reserve and upper limit at least 10.
-    During an outage the battery may be emptied completely (#69)."""
+    During an outage the battery may be emptied completely (#69). low_reserve: a reserve below 10 % is allowed
+    (confirmed by the owner, or already set on the inverter, #313)."""
     names = {"min_soc": "Die Untergrenze im Notstrombetrieb", "max_soc": "Die Ladegrenze",
              "min_soc_on_grid": "Die Notstrom-Reserve"}
     for key in SOC_FIELDS:
         value = values.get(key)
-        low = SOC_MIN[key]
+        low = LOW_RESERVE_MIN if key == "min_soc_on_grid" and low_reserve else SOC_MIN[key]
         if value is not None and not low <= value <= 100:
             raise ValueError(f"{names[key]} muss zwischen {low} und 100 % liegen")
     lo, reserve, hi = values.get("min_soc"), values.get("min_soc_on_grid"), values.get("max_soc")
@@ -108,8 +111,9 @@ class BatteryControl:
         data["external_change"] = self.external_change
         return data
 
-    async def write(self, changes: dict, source: str | None = None) -> dict:
-        """source: who asked for it if not the web app, e.g. the name of an app's access token (#76)."""
+    async def write(self, changes: dict, source: str | None = None, confirm_low_reserve: bool = False) -> dict:
+        """source: who asked for it if not the web app, e.g. the name of an app's access token (#76).
+        confirm_low_reserve: the owner confirmed a backup reserve below 10 % for this change (#313)."""
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
@@ -142,13 +146,23 @@ class BatteryControl:
                 # without all three values the cross checks below cannot be made
                 raise ValueError("Die aktuellen Speicher-Grenzen konnten nicht vollständig gelesen werden. "
                                  "Bitte später erneut versuchen.")
-            check_limits(merged)
+            reserve = changes.get("min_soc_on_grid")
+            # a reserve below 10 % needs a confirmation every time it is set; one that is already on the inverter
+            # does not block other changes
+            lowering = (reserve is not None and LOW_RESERVE_MIN <= reserve < SOC_MIN["min_soc_on_grid"]
+                        and reserve != current.get("min_soc_on_grid"))
+            if lowering and not confirm_low_reserve:
+                raise ConfirmationRequired("Eine Notstrom-Reserve unter 10 % bitte ausdrücklich bestätigen: Der Speicher "
+                                           "wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die "
+                                           "Garantie gefährden.")
+            check_limits(merged, low_reserve=lowering or merged.get("min_soc_on_grid") == current.get("min_soc_on_grid"))
             diff = {k: v for k, v in changes.items() if current.get(k) != v}
             if not diff:
                 return {"dry_run": control.dry_run, "written": {}, "settings": current}
 
             storage = self.runtime.storage
-            details = {"from": {k: current.get(k) for k in diff}, "to": diff, **({"source": source} if source else {})}
+            details = {"from": {k: current.get(k) for k in diff}, "to": diff, **({"source": source} if source else {}),
+                       **({"low_reserve_confirmed": True} if lowering else {})}
             if control.dry_run:
                 storage.log_control("battery_settings", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": diff, "settings": current}
@@ -215,7 +229,8 @@ class BatteryControl:
 
 
 class ConfirmationRequired(Exception):
-    """Raising the feed-in limit needs the grid operator's written confirmation."""
+    """A change that needs an explicit confirmation: raising the feed-in limit (the grid operator's written
+    confirmation) or a backup reserve below 10 % (#313)."""
 
 
 RULE_SHARE = {"limit_60": 0.6, "limit_70": 0.7}
