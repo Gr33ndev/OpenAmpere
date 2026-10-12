@@ -163,7 +163,8 @@
     "underConfiguredRuleKwp": "Under the configured rule ({rule} of {installed_kwp} kWp), at most {legal_max} W are allowed. If the rule no longer applies (e.g. because a smart meter with a control box was installed), change the rule first.",
     "unknownSetting": "Unknown setting: {unknown}",
     "unknownWorkMode": "Unknown work mode",
-    "valueMustBetween0": "Value must be between 0 and {maximum} W"
+    "valueMustBetween0": "Value must be between 0 and {maximum} W",
+    "lowReserveConfirm": "Please confirm a backup power reserve below 10 % explicitly: the battery is then discharged deeper, which can shorten its life and put the warranty at risk."
   },
   "diagnostics": {
     "diagnosisAlreadyRunning": "The diagnosis is already running."
@@ -205,7 +206,8 @@
     "controlTurnedOffOpenampere": "Control is turned off in OpenAmpere: „Mehr → Steuerung und Protokoll“ (More → Control and log).",
     "requestNotFoundExpired": "Request not found or expired.",
     "setUpChargingGrid": "Please set up charging from the grid in OpenAmpere once first: „Geräte → Speicher → Laden aus dem Netz“ (Devices → Battery → Charging from the grid).",
-    "tooManyChangesShort": "Too many changes in a short time (at most {per_hour} per hour). Please try again in {wait} min."
+    "tooManyChangesShort": "Too many changes in a short time (at most {per_hour} per hour). Please try again in {wait} min.",
+    "lowReserveOnlyInApp": "A backup power reserve below 10 % can only be set in OpenAmpere itself, after a warning."
   },
   "gridmeter": {
     "enterEmailPasswordCustomer": "Please enter the email and password for the customer portal.",

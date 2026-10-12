@@ -587,10 +587,13 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.put("/api/battery/settings")
     async def put_battery_settings(request: Request, changes: dict = Body(...)):
+        confirm = changes.pop("confirm_low_reserve", False) is True  # the warning in the app was confirmed (#313)
         try:
-            return await battery.write(changes, source=actor(request))
+            return await battery.write(changes, source=actor(request), confirm_low_reserve=confirm)
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
+        except ConfirmationRequired as err:
+            raise HTTPException(428, str(err)) from None
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
         except WriteFailed as err:

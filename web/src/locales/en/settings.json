@@ -67,7 +67,15 @@
     "smartboxHint": "A previous Smartbox regularly fetches its settings from the cloud. If you block its internet access in your router, your changes will stay.",
     "testModeLogged": "Test mode: the change was only logged",
     "title": "Battery & backup power",
-    "unreadValues": "Some values could not be read just now ({values}). They are shown as “?”; the limits can only be changed once all values have been read."
+    "unreadValues": "Some values could not be read just now ({values}). They are shown as “?”; the limits can only be changed once all values have been read.",
+    "lowReserveWarning": "The backup power reserve is set to {soc}, which is below 10 %. That is not good for the battery: it is discharged deeper, which can shorten its life and put the warranty at risk. Set it back to at least 10 % soon.",
+    "lowReserveTitle": "Backup power reserve below 10 %?",
+    "lowReserveIntro": "You are setting the backup power reserve to {soc}. The battery is then discharged down to {soc} in normal operation as well.",
+    "lowReserveLife": "That is not good for the battery: frequent deep discharging can shorten its life.",
+    "lowReserveWarranty": "Many manufacturers require a reserve of at least 10 % for the warranty. A lower value can put the warranty at risk. Check the warranty terms of your battery.",
+    "lowReserveOutage": "In a power outage, less energy is left for backup power.",
+    "lowReserveAdvice": "At least 10 % is recommended. Set the reserve lower only for a short time, for example when a lot of sun is expected tomorrow, and then back to 10 % or more.",
+    "lowReserveConfirm": "Set it to {soc} anyway"
   },
   "changelogPage": {
     "attention": "Attention",

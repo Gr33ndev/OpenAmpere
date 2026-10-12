@@ -28,13 +28,20 @@ def _settings(data: dict) -> dict:
     return data.get("battery_settings") or {}
 
 
+def _value(data: dict, key: str, default: int) -> int:
+    """A limit of the battery, the default only when it is unknown (0 % is a real value, #69, #313)."""
+    value = _settings(data).get(key)
+    return default if value is None else value
+
+
 SOC_NUMBERS = (
-    # backup reserve: between the outage floor and below the charge limit, at least 10 %
-    SocDescription(key="min_soc_on_grid", bounds=lambda d: (max(10, _settings(d).get("min_soc") or 10),
-                                                           min(99, (_settings(d).get("max_soc") or 100) - 1))),
-    SocDescription(key="max_soc", bounds=lambda d: (max(20, (_settings(d).get("min_soc_on_grid") or 10) + 1), 100)),
+    # backup reserve: between the outage floor and below the charge limit, at least 10 %; below 10 % only in
+    # OpenAmpere itself, after a warning (#313)
+    SocDescription(key="min_soc_on_grid", bounds=lambda d: (max(10, _value(d, "min_soc", 10)),
+                                                           min(99, _value(d, "max_soc", 100) - 1))),
+    SocDescription(key="max_soc", bounds=lambda d: (max(20, _value(d, "min_soc_on_grid", 10) + 1), 100)),
     # outage floor: down to 0 % (#69), at most the backup reserve
-    SocDescription(key="min_soc", bounds=lambda d: (0, _settings(d).get("min_soc_on_grid") or 100)),
+    SocDescription(key="min_soc", bounds=lambda d: (0, _value(d, "min_soc_on_grid", 100))),
 )
 
 

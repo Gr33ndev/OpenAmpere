@@ -128,6 +128,69 @@ def test_soc_limits():
             check_limits(values)
 
 
+def test_a_low_reserve_is_only_allowed_when_asked_for():
+    """A backup reserve below 10 % only after a confirmation (#313), never below 0 % or under the outage floor."""
+    from openampere.control import check_limits
+    check_limits({"min_soc": 0, "min_soc_on_grid": 5, "max_soc": 100}, low_reserve=True)
+    check_limits({"min_soc": 0, "min_soc_on_grid": 0, "max_soc": 100}, low_reserve=True)
+    for values, message in (({"min_soc_on_grid": -1}, "zwischen 0 und 100"),
+                            ({"min_soc": 8, "min_soc_on_grid": 5}, "nicht unter der Untergrenze")):
+        with pytest.raises(ValueError, match=message):
+            check_limits(values, low_reserve=True)
+
+
+async def test_a_backup_reserve_below_10_needs_a_confirmation_every_time(tmp_path):
+    from openampere.control import BatteryControl, ConfirmationRequired
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            await battery.write({"min_soc": 0})
+            with pytest.raises(ConfirmationRequired, match="unter 10 % bitte ausdrücklich bestätigen"):
+                await battery.write({"min_soc_on_grid": 5})
+            assert sim.energy.min_soc_on_grid == 10  # nothing written
+
+            assert (await battery.write({"min_soc_on_grid": 5}, confirm_low_reserve=True))["result"] == "ok"
+            assert sim.energy.min_soc_on_grid == 5
+            entry = runtime.storage.control_log()[0]
+            assert entry["details"]["low_reserve_confirmed"] is True and entry["details"]["to"] == {"min_soc_on_grid": 5}
+
+            # a low reserve that is already set does not block other changes
+            assert (await battery.write({"max_soc": 90}))["result"] == "ok"
+            assert "low_reserve_confirmed" not in runtime.storage.control_log()[0]["details"]
+            # each new value below 10 % is asked for again, back to 10 % and above without asking
+            with pytest.raises(ConfirmationRequired):
+                await battery.write({"min_soc_on_grid": 7})
+            assert (await battery.write({"min_soc_on_grid": 15}))["result"] == "ok" and sim.energy.min_soc_on_grid == 15
+        finally:
+            await runtime.collector.stop()
+
+
+def test_the_app_api_passes_the_confirmation_of_a_low_reserve(tmp_path, authed, monkeypatch):
+    from openampere import control
+    calls = []
+
+    async def fake_write(self, changes, source=None, confirm_low_reserve=False):
+        calls.append((changes, confirm_low_reserve))
+        if changes.get("min_soc_on_grid", 10) < 10 and not confirm_low_reserve:
+            raise control.ConfirmationRequired("Notstrom-Reserve unter 10 % bestätigen")
+        return {"dry_run": False, "written": changes}
+
+    monkeypatch.setattr(control.BatteryControl, "write", fake_write)
+    client = TestClient(create_app(Runtime({}, Storage(tmp_path / "t.db"))))
+    authed(client)
+    response = client.put("/api/battery/settings", json={"min_soc_on_grid": 5})
+    assert response.status_code == 428 and response.json()["detail"] == "Notstrom-Reserve unter 10 % bestätigen"
+    assert client.put("/api/battery/settings", json={"min_soc_on_grid": 5, "confirm_low_reserve": True}).status_code == 200
+    assert client.put("/api/battery/settings", json={"min_soc_on_grid": 5, "confirm_low_reserve": "ja"}).status_code == 428
+    assert calls == [({"min_soc_on_grid": 5}, False), ({"min_soc_on_grid": 5}, True), ({"min_soc_on_grid": 5}, False)]
+
+
 def test_write_order_keeps_every_step_valid():
     from openampere.control import write_order
     current = {"min_soc": 10, "min_soc_on_grid": 20, "max_soc": 30}

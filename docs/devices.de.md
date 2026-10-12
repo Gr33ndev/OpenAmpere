@@ -47,6 +47,10 @@ Mehr zur FoxESS-H3-Familie:
   zurück“ der [README](../README.de.md).
 - **Die Untergrenze im Notstrombetrieb darf 0 % sein** (#69). Ob jedes Gerät und jede Firmware 0 % annimmt, ist noch
   nicht bestätigt.
+- **Die Notstrom-Reserve darf unter 10 % liegen, aber nur nach einer Warnung** (#313), die bei jedem Setzen unter
+  10 % erscheint. Solange sie unter 10 % steht, zeigt die App eine Warnung. An einer echten Anlage (FoxESS H3) hat der
+  Wechselrichter einen Wert unter 10 % angenommen und behalten. Andere Apps (Home Assistant) bleiben bei mindestens
+  10 %.
 - **Stromausfall-Erkennung:** OpenAmpere nutzt Bit 0 von Register 39065. In #89 war das Bit in einer einzelnen
   Messung gesetzt, während die Anlage ins Netz einspeiste. Seitdem braucht OpenAmpere zwei Messungen hintereinander
   und ignoriert das Bit, solange der Netzzähler Bezug oder Einspeisung misst. In #93 wurde ein absichtlich

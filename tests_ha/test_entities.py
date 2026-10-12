@@ -58,6 +58,17 @@ async def test_push_updates_live_values(hass: HomeAssistant, entry, client) -> N
     assert coordinator.data["battery_settings"]["min_soc_on_grid"] == 24  # kept from the last full update
 
 
+def test_soc_bounds_with_a_reserve_below_10() -> None:
+    """A reserve of 0 % set in OpenAmpere (#313) is a value, not "unknown"; Home Assistant itself stays at 10 %."""
+    from custom_components.openampere.number import SOC_NUMBERS
+    bounds = {d.key: d.bounds for d in SOC_NUMBERS}
+    data = {"battery_settings": {"min_soc": 0, "max_soc": 100, "min_soc_on_grid": 0}}
+    assert bounds["min_soc"](data) == (0, 0)
+    assert bounds["min_soc_on_grid"](data) == (10, 99)
+    assert bounds["max_soc"](data) == (20, 100)
+    assert bounds["min_soc"]({}) == (0, 100)  # not read yet
+
+
 async def test_commands(hass: HomeAssistant, entry, client) -> None:
     await setup(hass, entry)
     work_mode = entity_id(hass, "select", "_work_mode")

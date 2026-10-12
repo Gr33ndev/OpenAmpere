@@ -164,7 +164,8 @@ class FoxessDriver(ModbusDevice):
         for name, value in (("min_soc", min_soc), ("max_soc", max_soc), ("min_soc_on_grid", min_soc_on_grid)):
             if value is None:
                 continue
-            low = 0 if name == "min_soc" else 10  # the outage floor may be 0 % (#69)
+            # the outage floor may be 0 % (#69), the reserve too, but only after the owner confirmed it (control.py, #313)
+            low = 10 if name == "max_soc" else 0
             if not low <= value <= 100:
                 raise ValueError(f"{name} must be between {low} and 100 %")
             await self._write(self.map.settings[name], value)

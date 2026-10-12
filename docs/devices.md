@@ -43,6 +43,9 @@ More about the FoxESS H3 family:
   internet access. See "The previous Smartbox resets settings" in the [README](../README.md).
 - **The lower limit in backup mode may be 0 %** (#69). Whether every device and firmware accepts 0 % is not yet
   confirmed.
+- **The backup power reserve may be below 10 %, but only after a warning** (#313) that appears every time it is set
+  below 10 %. While it is below 10 %, the app shows a warning. At a real system (FoxESS H3) the inverter accepted and
+  kept a value below 10 %. Other apps (Home Assistant) stay at 10 % or more.
 - **Off-grid detection** uses bit 0 of register 39065. In #89 a single reading had the bit set while the system was
   feeding into the grid, so OpenAmpere now needs two readings in a row and ignores the bit while the grid meter shows
   import or export. In #93 an inverter that was switched off on purpose had been counted as a power outage.

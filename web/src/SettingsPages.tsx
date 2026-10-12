@@ -6,7 +6,7 @@ import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT
 import { DEMO } from "./demo/flag";
 import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
-import { amountInput, ct, dayOf, isoDate, kw, num, timeZone, todayIso, updatedLabel } from "./format";
+import { amountInput, ct, dayOf, isoDate, kw, num, percent, timeZone, todayIso, updatedLabel } from "./format";
 import { decimalInput, parseDecimal as toNumber, parseWatts } from "./decimal";
 import { batterySettingName, batterySettingValue, describe, logCsv, statusLabel, type LogEntry } from "./controlLog";
 import { Chart } from "./Chart";
@@ -98,6 +98,9 @@ async function readBack<T>(path: string, setData: (value: T) => void, reload: ()
   }
 }
 
+/** Below this backup reserve the app warns: allowed only after a confirmation, every time (#313). */
+export const LOW_RESERVE = 10;
+
 const formOf = (s: BatteryState): BatterySettings => ({ work_mode: s.work_mode, min_soc: s.min_soc, max_soc: s.max_soc,
   min_soc_on_grid: s.min_soc_on_grid });
 
@@ -106,6 +109,7 @@ export function BatteryPage({ onBack }: PageProps) {
   const { data: current, error, reload, setData } = useResource<BatteryState>("/api/battery/settings");
   const [form, setForm] = useState<BatterySettings | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmLow, setConfirmLow] = useState(false); // the warning before a reserve below 10 % (#313)
   useEffect(() => {
     if (current) setForm(formOf(current));
   }, [current]);
@@ -117,12 +121,19 @@ export function BatteryPage({ onBack }: PageProps) {
   const socEditable = editable && !!current && !current.unreadable.some((k) => k !== "work_mode");
   const set = (patch: Partial<BatterySettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
-  const save = async () => {
+  const lowReserve = form?.min_soc_on_grid != null && form.min_soc_on_grid < LOW_RESERVE;
+  const save = async (confirmed = false) => {
     if (!form || !current) return;
-    const changes = Object.fromEntries(FIELDS.filter((k) => form[k] !== current[k]).map((k) => [k, form[k]]));
+    const changes: Record<string, unknown> = Object.fromEntries(FIELDS.filter((k) => form[k] !== current[k]).map((k) => [k, form[k]]));
+    // every new reserve below 10 % is asked for, the server checks it as well (#313)
+    if ("min_soc_on_grid" in changes && lowReserve && !confirmed) {
+      setConfirmLow(true);
+      return;
+    }
     setBusy(true);
     try {
-      const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings", changes);
+      const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings",
+        confirmed ? { ...changes, confirm_low_reserve: true } : changes);
       toast(r.dry_run ? t("settings.batteryPage.testModeLogged") : r.result === "ok" ? t("settings.batteryPage.saved") : r.result ?? t("common.saved"));
       if (r.warning) toast(r.warning, "error");
       // busy until the values read back are shown, the form in the same render (not one later in the effect)
@@ -166,8 +177,9 @@ export function BatteryPage({ onBack }: PageProps) {
           <div className="card form">
             <p className="hint">{t("settings.batteryPage.backupReserveHint")}</p>
             <SocSlider value={form.min_soc_on_grid} disabled={!socEditable}
-              min={Math.max(10, form.min_soc ?? 10)} max={Math.min(99, (form.max_soc ?? 100) - 1)}
+              min={form.min_soc ?? 0} max={Math.min(99, (form.max_soc ?? 100) - 1)}
               onChange={(v) => set({ min_soc_on_grid: v })} />
+            {lowReserve && <Notice kind="warn">{t("settings.batteryPage.lowReserveWarning", { soc: percent(form.min_soc_on_grid) })}</Notice>}
           </div>
 
           <div className="section-title">{t("settings.batteryPage.chargeLimits")}</div>
@@ -194,8 +206,21 @@ export function BatteryPage({ onBack }: PageProps) {
             ))}
           </div>
 
-          {editable && <Button onClick={save} busy={busy} disabled={!changed}>{t("settings.batteryPage.apply")}</Button>}
+          {editable && <Button onClick={() => void save()} busy={busy} disabled={!changed}>{t("settings.batteryPage.apply")}</Button>}
           {editable && <Unsaved show={!!changed && !busy} />}
+          {confirmLow && form.min_soc_on_grid != null && (
+            <Dialog title={t("settings.batteryPage.lowReserveTitle")} danger
+              confirm={t("settings.batteryPage.lowReserveConfirm", { soc: percent(form.min_soc_on_grid) })}
+              onCancel={() => setConfirmLow(false)} onConfirm={() => { setConfirmLow(false); void save(true); }}>
+              <p>{t("settings.batteryPage.lowReserveIntro", { soc: percent(form.min_soc_on_grid) })}</p>
+              <ul>
+                <li>{t("settings.batteryPage.lowReserveLife")}</li>
+                <li>{t("settings.batteryPage.lowReserveWarranty")}</li>
+                <li>{t("settings.batteryPage.lowReserveOutage")}</li>
+              </ul>
+              <p>{t("settings.batteryPage.lowReserveAdvice")}</p>
+            </Dialog>
+          )}
         </>
       )}
     </SubPage>

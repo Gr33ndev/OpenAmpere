@@ -67,7 +67,15 @@
     "smartboxHint": "Eine bisherige Smartbox holt sich ihre Einstellungen regelmäßig aus der Cloud. Sperrst du ihr im Router den Internetzugang, bleiben deine Änderungen bestehen.",
     "testModeLogged": "Testmodus: Änderung wurde nur protokolliert",
     "title": "Speicher & Notstrom",
-    "unreadValues": "Einige Werte konnten gerade nicht gelesen werden ({values}). Sie werden mit „?“ angezeigt; Änderungen an den Grenzen sind erst möglich, wenn alle Werte gelesen wurden."
+    "unreadValues": "Einige Werte konnten gerade nicht gelesen werden ({values}). Sie werden mit „?“ angezeigt; Änderungen an den Grenzen sind erst möglich, wenn alle Werte gelesen wurden.",
+    "lowReserveWarning": "Die Notstrom-Reserve steht auf {soc}, also unter 10 %. Das ist nicht gut für den Speicher: Er wird tiefer entladen, das kann seine Lebensdauer verkürzen und die Garantie gefährden. Stell sie bald wieder auf mindestens 10 %.",
+    "lowReserveTitle": "Notstrom-Reserve unter 10 %?",
+    "lowReserveIntro": "Du stellst die Notstrom-Reserve auf {soc}. Der Speicher wird dann auch im normalen Betrieb bis {soc} entladen.",
+    "lowReserveLife": "Das ist nicht gut für den Speicher: Häufiges tiefes Entladen kann seine Lebensdauer verkürzen.",
+    "lowReserveWarranty": "Viele Hersteller setzen für die Garantie eine Reserve von mindestens 10 % voraus. Ein tieferer Wert kann die Garantie gefährden. Prüfe die Garantiebedingungen deines Speichers.",
+    "lowReserveOutage": "Bei einem Stromausfall steht weniger Energie für den Notstrom bereit.",
+    "lowReserveAdvice": "Empfohlen sind mindestens 10 %. Stell die Reserve nur kurz tiefer, zum Beispiel wenn morgen viel Sonne erwartet wird, und danach wieder auf 10 % oder mehr.",
+    "lowReserveConfirm": "Trotzdem auf {soc} setzen"
   },
   "changelogPage": {
     "attention": "Achtung",

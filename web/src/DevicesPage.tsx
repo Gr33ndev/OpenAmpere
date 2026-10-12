@@ -7,7 +7,7 @@ import { ControlModeBar } from "./ControlMode";
 import { kw, kwh, num, timeZone } from "./format";
 import { LOCALE, t, tx } from "./i18n";
 import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icons";
-import { BatteryPage, ChargingPage, type ChargingView } from "./SettingsPages";
+import { BatteryPage, ChargingPage, LOW_RESERVE, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
 import { Button, Notice, Segmented, Slider, toast } from "./ui";
 import { EVCC_URL, WallboxCard, type EvccView } from "./WallboxPage";
@@ -124,6 +124,9 @@ function BatteryCard({ snap }: { snap: Snapshot | null }) {
       </button>
       {settings?.min_soc_on_grid != null && (
         <p className="hint">{t("devices.batteryCard.backupReserve", { soc: num(settings.min_soc_on_grid, 0) })}</p>
+      )}
+      {settings?.min_soc_on_grid != null && settings.min_soc_on_grid < LOW_RESERVE && (
+        <Notice kind="warn">{t("devices.batteryCard.lowReserveWarning", { soc: num(settings.min_soc_on_grid, 0) })}</Notice>
       )}
       <div className="button-row inline">
         <button type="button" className="link" onClick={() => navigate("devices/battery")}>{t("devices.batteryCard.batterySettings")}</button>
