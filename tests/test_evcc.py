@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from openampere.api import create_app
 from openampere.drivers.base import EnergyCounters, Snapshot
-from openampere.evcc import Evcc, normalize_mode, wants_surplus
+from openampere.evcc import Evcc, normalize_mode, normalize_sponsor, wants_surplus
 from openampere.runtime import Runtime
 from openampere.storage import Storage
 
@@ -29,6 +29,7 @@ STATE = {
 class FakeEvcc(BaseHTTPRequestHandler):
     calls: list = []
     password: str | None = None
+    state: dict = STATE
 
     def log_message(self, *args):
         pass
@@ -47,7 +48,7 @@ class FakeEvcc(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/state":
-            self._send(200, STATE)
+            self._send(200, self.state)
         elif self.path == "/api/sessions":
             self._send(200, [{"created": "2026-10-01T18:00:00+02:00", "finished": "2026-10-01T21:00:00+02:00",
                               "loadpoint": "Carport", "vehicle": "e-Golf", "chargedEnergy": 21.5,
@@ -73,7 +74,7 @@ class FakeEvcc(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def evcc_server():
-    FakeEvcc.calls, FakeEvcc.password = [], None
+    FakeEvcc.calls, FakeEvcc.password, FakeEvcc.state = [], None, STATE
     server = ThreadingHTTPServer(("127.0.0.1", 0), FakeEvcc)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -185,3 +186,34 @@ async def test_battery_priority_respects_the_control_switch_and_test_mode(tmp_pa
     assert FakeEvcc.calls == [("POST", "/api/prioritysoc/60")]
     entry = runtime.storage.control_log()[0]
     assert entry["action"] == "evcc" and entry["result"] == "ok" and not entry["dry_run"]
+
+
+def test_sponsor_token_of_new_and_old_evcc():
+    trial = {"status": {"name": "trial", "expiresAt": "2026-10-17T00:00:00Z", "expiresSoon": True}}
+    assert normalize_sponsor(trial) == {"active": True, "trial": True, "expires_at": "2026-10-17T00:00:00Z",
+                                        "expires_soon": True}
+    none = {"status": {"name": "", "expiresAt": "0001-01-01T00:00:00Z"}}  # no token: Go's zero time
+    assert normalize_sponsor(none) == {"active": False, "trial": False, "expires_at": None, "expires_soon": False}
+    assert normalize_sponsor("trial")["trial"]  # old evcc: the name only
+    assert normalize_sponsor(None) is None and normalize_sponsor({"status": 3}) is None
+
+
+async def test_missing_sponsor_token_is_explained(tmp_path, evcc_server):
+    """evcc does not start a wallbox without a valid sponsor token; say so instead of "no evcc here" (#317)."""
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    await runtime.update_settings({"evcc.url": evcc_server})
+    evcc = Evcc(runtime)
+    FakeEvcc.state = {"version": "0.300.0", "fatal": [
+        {"class": "charger", "device": "wallbox", "error": "sponsorship required, see https://docs.evcc.io/docs/sponsorship"}]}
+    await evcc.refresh()
+    assert "Sponsortoken" in evcc.view()["error"]
+    FakeEvcc.state = {**STATE, "fatal": [{"class": "sponsorship", "error": "token is expired"}],
+                      "sponsor": {"status": {"name": ""}}}
+    state = await evcc.refresh()
+    assert "Sponsortoken" in evcc.view()["error"] and len(state["loadpoints"]) == 2
+    FakeEvcc.state = {**STATE, "fatal": [{"class": "meter", "error": "connection refused"}]}
+    await evcc.refresh()
+    assert "Weboberfläche von evcc" in evcc.view()["error"]
+    FakeEvcc.state = {**STATE, "sponsor": {"status": {"name": "trial", "expiresAt": "2026-10-17T00:00:00Z"}}}
+    state = await evcc.refresh()
+    assert evcc.view()["error"] is None and state["sponsor"]["trial"]

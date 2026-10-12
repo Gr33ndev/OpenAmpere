@@ -91,6 +91,36 @@ def normalize_loadpoint(index: int, lp: dict, vehicles: dict | None = None) -> d
     }
 
 
+def normalize_sponsor(raw: object) -> dict | None:
+    """evcc's sponsor token (#317): many wallboxes need one, the public test token ("trial") runs out after days.
+
+    New evcc: {"status": {"name", "expiresAt", "expiresSoon"}}, old evcc: the name only. None if evcc does not say.
+    """
+    if isinstance(raw, str):
+        return {"active": bool(raw), "trial": raw == "trial", "expires_at": None, "expires_soon": False}
+    status = raw.get("status") if isinstance(raw, dict) else None
+    if not isinstance(status, dict):
+        return None
+    name = status.get("name") if isinstance(status.get("name"), str) else ""
+    expires = status.get("expiresAt") if isinstance(status.get("expiresAt"), str) else None
+    if not name or (expires or "").startswith("0001-"):  # Go's zero time: no token, no date
+        expires = None
+    return {"active": bool(name), "trial": name == "trial", "expires_at": expires,
+            "expires_soon": bool(status.get("expiresSoon"))}
+
+
+def check_fatal(raw: dict) -> None:
+    """EvccError if evcc could not start its devices; a missing or expired sponsor token gets its own text (#317)."""
+    fatal = raw.get("fatal")
+    if not fatal:
+        return
+    if "sponsor" in json.dumps(fatal).lower():  # "sponsorship required", class "sponsorship" (token expired)
+        raise EvccError("evcc startet die Wallbox nicht, weil ein gültiges Sponsortoken fehlt. evcc verlangt es für "
+                        "viele Wallboxen, und das Testtoken gilt nur wenige Tage. Trage in evcc unter Konfiguration → "
+                        "Sponsoring ein gültiges Token ein und starte evcc neu.")
+    raise EvccError("evcc meldet einen Fehler in seiner Einrichtung. Was genau fehlt, zeigt die Weboberfläche von evcc.")
+
+
 def wants_surplus(lp: dict) -> bool:
     """A car that is plugged in, in solar mode and not yet full is waiting for (more) surplus."""
     if lp["heating"] or not lp["connected"] or lp["mode"] not in ("pv", "minpv"):
@@ -177,15 +207,21 @@ class Evcc:
         except EvccError as err:
             self.error = err.message
             return self.state
+        fatal = None
+        try:
+            if isinstance(raw, dict):
+                check_fatal(raw)
+        except EvccError as err:
+            fatal = err.message
         if not isinstance(raw, dict) or "loadpoints" not in raw:
-            self.error = "Unter dieser Adresse antwortet kein evcc."
+            self.error = fatal or "Unter dieser Adresse antwortet kein evcc."
             return self.state
         vehicles = raw.get("vehicles") if isinstance(raw.get("vehicles"), dict) else {}
         loadpoints = [normalize_loadpoint(i + 1, lp, vehicles) for i, lp in enumerate(raw.get("loadpoints") or [])
                       if isinstance(lp, dict)]
         self.state = {"version": raw.get("version"), "site_title": raw.get("siteTitle"), "loadpoints": loadpoints,
-                      "grid_configured": bool(raw.get("gridConfigured"))}
-        self.error, self.updated = None, time.time()
+                      "grid_configured": bool(raw.get("gridConfigured")), "sponsor": normalize_sponsor(raw.get("sponsor"))}
+        self.error, self.updated = fatal, time.time()
         return self.state
 
     def fresh(self) -> dict | None:

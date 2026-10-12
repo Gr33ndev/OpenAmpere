@@ -126,6 +126,13 @@
     "time": "Uhrzeit",
     "title": "Bis zu einer Uhrzeit laden"
   },
+  "sponsor": {
+    "expiresOn": "Das Sponsortoken von evcc läuft am {date} ab. Hol dir auf {link} ein neues und trage es in evcc unter Konfiguration → Sponsoring ein.",
+    "expiresSoon": "Das Sponsortoken von evcc läuft bald ab. Hol dir auf {link} ein neues und trage es in evcc unter Konfiguration → Sponsoring ein.",
+    "sponsorship": "Sponsoring von evcc",
+    "trial": "evcc läuft mit dem Testtoken, das nur wenige Tage gilt. Braucht deine Wallbox ein Sponsortoken, lädt sie danach nicht mehr über evcc. Mehr dazu: {link}.",
+    "trialUntil": "evcc läuft mit dem Testtoken, das nur bis {date} gilt. Braucht deine Wallbox ein Sponsortoken, lädt sie danach nicht mehr über evcc. Mehr dazu: {link}."
+  },
   "status": {
     "charging": "lädt mit {power}",
     "heating": "heizt mit {power}",
@@ -170,6 +177,7 @@
       "one": "{count} Ladepunkt",
       "other": "{count} Ladepunkte"
     },
+    "chargerList": "Wallbox-Liste von evcc",
     "configurationCopied": "Konfiguration kopiert",
     "connectStep": "evcc mit OpenAmpere verbinden",
     "connected": "Verbunden mit evcc {version}",
@@ -191,6 +199,7 @@
     "saveAndConnect": "Speichern und verbinden",
     "savedKeep": "Gespeichert. Leer lassen, um es zu behalten.",
     "showConfiguration": "Konfiguration ansehen",
+    "sponsorHint": "Für viele Wallboxen verlangt evcc ein Sponsortoken, das Geld kostet. Ob deine Wallbox dazugehört, zeigt die {link}: „sponsor free“ heißt ohne Token. Das Testtoken von evcc gilt nur wenige Tage.",
     "title": "Wallbox einrichten"
   },
   "workModeLabel": {

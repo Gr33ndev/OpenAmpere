@@ -10,7 +10,7 @@ import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icon
 import { BatteryPage, ChargingPage, LOW_RESERVE, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
 import { Button, Notice, Segmented, Slider, toast } from "./ui";
-import { EVCC_URL, WallboxCard, type EvccView } from "./WallboxPage";
+import { EVCC_URL, SponsorNotice, WallboxCard, type EvccView } from "./WallboxPage";
 
 const COLORS: Record<Device["kind"], string[]> = {
   wallbox: ["var(--wallbox)", "var(--wallbox-2)"],
@@ -233,6 +233,7 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
         </>
       )}
       {evcc?.configured && evcc.error && <Notice kind="error">{evcc.error}</Notice>}
+      <SponsorNotice sponsor={evcc?.state?.sponsor} />
       {!!own.length && (
         <>
           <div className="section-title">{t("devices.devicesTab.otherDevicesTitle")}</div>

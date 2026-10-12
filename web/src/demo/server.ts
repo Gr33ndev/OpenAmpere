@@ -371,7 +371,9 @@ function consumers() {
 
 function evcc() {
   return { configured: true, url: "http://evcc.local:7070", error: null, updated: now(), priority: "wallbox_first",
-    state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()] } };
+    state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()],
+      // a paid sponsor token far from expiring: no warning in the demo (#317)
+      sponsor: { active: true, trial: false, expires_at: new Date(now() * 1000 + 300 * 86_400_000).toISOString(), expires_soon: false } } };
 }
 
 /** Charging sessions of the last months, taken from the simulation. The odometer follows from the energy, as if
