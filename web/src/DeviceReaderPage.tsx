@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useState } from "react";
 import { postJson } from "./api";
+import { DeviceSearch, type FoundDevice } from "./DeviceSearch";
 import { t } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, Field, LearnMore, Notice, Segmented, SubPage, toast } from "./ui";
@@ -13,8 +14,6 @@ type Block = { start: number; count: number; ok: boolean; words: (number | null)
   text?: { address: number; text: string }[] };
 type ReadView = { host: string; port: number; unit: number; function: number; shared_connection: boolean; blocks: Block[] };
 type Identified = { host: string; open_ports: number[]; title: string | null; mac_vendor: string | null; mac_available: boolean };
-type Found = { service: string; name: string; host: string; port: number | null };
-type Search = { available: boolean; devices: Found[] };
 
 const MAX_REGISTERS = 600;
 const BLOCK = 60;
@@ -78,12 +77,11 @@ export function DeviceReaderPage({ onBack, onNavigate }: PageProps) {
   const [fn, setFn] = useState<"3" | "4">("3");
   const [start, setStart] = useState("");
   const [count, setCount] = useState("10");
-  const [busy, setBusy] = useState<"" | "search" | "identify" | "read">("");
-  const [found, setFound] = useState<Search | null>(null);
+  const [busy, setBusy] = useState<"" | "identify" | "read">("");
   const [identified, setIdentified] = useState<Identified | null>(null);
   const [result, setResult] = useState<ReadView | null>(null);
 
-  const call = async <T,>(what: "search" | "identify" | "read", path: string, body: unknown, done: (r: T) => void) => {
+  const call = async <T,>(what: "identify" | "read", path: string, body: unknown, done: (r: T) => void) => {
     setBusy(what);
     try {
       done(await postJson<T>(path, body));
@@ -104,7 +102,7 @@ export function DeviceReaderPage({ onBack, onNavigate }: PageProps) {
       { host: host.trim(), port: p, unit: u, function: Number(fn), start: s, count: Math.min(c, MAX_REGISTERS) },
       (r) => setResult(r.read));
   };
-  const use = (d: Found) => {
+  const use = (d: FoundDevice) => {
     setHost(d.host);
     if (d.port) setPort(String(d.port));
   };
@@ -120,21 +118,7 @@ export function DeviceReaderPage({ onBack, onNavigate }: PageProps) {
       <div className="section-title">{t("settings.deviceReader.findTitle")}</div>
       <div className="card form">
         <p className="hint flush">{t("settings.deviceReader.searchHint")}</p>
-        <Button variant="secondary" busy={busy === "search"} disabled={!!busy}
-          onClick={() => void call<Search>("search", "/api/diagnostics/search", {}, setFound)}>
-          {t("settings.deviceReader.searchButton")}</Button>
-        {found && !found.available && <Notice kind="info">{t("settings.deviceReader.searchUnavailable")}</Notice>}
-        {found?.available && !found.devices.length && <p className="hint flush">{t("settings.deviceReader.nothingFound")}</p>}
-        {!!found?.devices.length && (
-          <ul className="plain-list found-list">
-            {found.devices.map((d) => (
-              <li key={`${d.host}-${d.name}`}>
-                <span><strong>{d.name}</strong> <span className="meta">{d.host}{d.port ? `:${d.port}` : ""}</span></span>
-                <button type="button" className="link" onClick={() => use(d)}>{t("settings.deviceReader.use")}</button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <DeviceSearch label={t("settings.deviceReader.searchButton")} onUse={use} />
         <Field label={t("settings.deviceReader.address")} hint={t("settings.deviceReader.addressHint", { example: "192.168.178.50" })}>
           <input className="input" value={host} inputMode="decimal" autoComplete="off" onChange={(e) => setHost(e.target.value)} />
         </Field>

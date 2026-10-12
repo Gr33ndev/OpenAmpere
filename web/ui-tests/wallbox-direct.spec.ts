@@ -28,6 +28,17 @@ test("the direct check shows what the wallbox answers and leads to the report", 
   await expect(page.locator(".page-head h1")).toHaveText("Diagnose");
 });
 
+test("a wallbox found in the home network is taken over like in the device reader", async ({ page, api }) => {
+  api.override("/api/diagnostics/search", { available: true, devices: [
+    { service: "_modbus._tcp", name: "EVC-SIMULATED01", host: "192.168.178.61", port: 1502 }] });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "Wallbox im Heimnetz suchen" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.getByLabel("Adresse der Wallbox")).toHaveValue("192.168.178.61");
+  await expect(page.getByLabel("Port")).toHaveValue("1502");
+});
+
 test("an unreachable wallbox names the ports that were tried", async ({ page, api }) => {
   api.override("/api/wallbox/check", { ...READABLE, port: null, outcome: "unreachable", tried_ports: [502, 1502], findings: {} });
   await open(page, "more/wallbox");

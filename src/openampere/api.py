@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, external, ha_app, health, i18n, probe
+from . import discovery, cloud_import, external, ha_app, health, i18n, privacy, probe
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import PRIVATE, SECRETS, restore_settings
@@ -47,7 +47,7 @@ from .notify import Notifier
 from .remote import Remote
 from .updates import Updates
 from .wallbox import WALLBOXES
-from .diagnostics import Diagnostics, mask_serial, report_markdown
+from .diagnostics import Diagnostics, report_markdown
 
 log = logging.getLogger(__name__)
 
@@ -528,8 +528,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         firmware = storage.get_meta("firmware") or {}
         if not logged_in(request):  # the serial number identifies the installation (#164): shortened without login
             if device:
-                device["serial"] = mask_serial(device.get("serial"))
-            firmware = {**firmware, "serial": mask_serial(firmware.get("serial"))} if firmware else firmware
+                device["serial"] = privacy.shorten(device.get("serial"))
+            firmware = {**firmware, "serial": privacy.shorten(firmware.get("serial"))} if firmware else firmware
         return {
             "version": VERSION,
             "configured": collector.configured,

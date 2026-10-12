@@ -364,7 +364,6 @@
     "macVendor": "Hersteller-Kennung der Netzwerkkarte",
     "none": "keine",
     "notInApp": "in der Home-Assistant-App nicht verfügbar",
-    "nothingFound": "Kein Gerät gefunden, das sich mit Modbus TCP meldet. Gib die Adresse des Geräts unten ein, du findest sie zum Beispiel in der Geräteliste deines Routers.",
     "oneClient": "Manche Geräte erlauben nur eine Modbus-Verbindung. Liest gerade evcc oder ein anderes Programm dasselbe Gerät, kann die Abfrage abgelehnt werden oder das andere Programm kurz stören.",
     "openPorts": "Offene Ports",
     "pageTitle": "Titel der Webseite",
@@ -377,7 +376,6 @@
     "result": "Ergebnis",
     "searchButton": "Im Heimnetz suchen",
     "searchHint": "Sucht Geräte, die sich im Heimnetz mit Modbus TCP melden, zum Beispiel FoxESS-Wallboxen als „EVC-…“. Viele Geräte melden sich nicht; dann gib die Adresse unten ein.",
-    "searchUnavailable": "Die Suche im Heimnetz geht in der Home-Assistant-App nicht. Gib die Adresse des Geräts unten ein.",
     "sharedConnection": "Gelesen über die bestehende Verbindung zum Wechselrichter, mit der Geräteadresse {unit}.",
     "start": "Startadresse",
     "startHint": "Dezimal oder hexadezimal mit 0x, z. B. 4096 oder 0x1000",
@@ -385,8 +383,7 @@
     "toDiagnostics": "Zur Diagnose",
     "unit": "Geräteadresse (Unit-ID)",
     "unitHint": "Oft 1, bei FoxESS-Wechselrichtern 247.",
-    "unknown": "nicht bekannt",
-    "use": "Übernehmen"
+    "unknown": "nicht bekannt"
   },
   "diagnosticsPage": {
     "advancedTitle": "Für Fortgeschrittene",

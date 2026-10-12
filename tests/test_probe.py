@@ -18,7 +18,8 @@ from openampere.api import create_app
 from openampere.diagnostics import Diagnostics, report_markdown
 from openampere.drivers.foxess.registers import H3_NEW, MODEL_ADDRESS
 from openampere.drivers.modbus import ModbusIllegalError
-from openampere.probe import Probe, ProbeError, parse_mdns, text_runs
+from openampere.privacy import text_runs
+from openampere.probe import Probe, ProbeError, parse_mdns
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedInverter
 from openampere.storage import Storage
@@ -54,10 +55,7 @@ def recording(sim) -> list[int]:
     return functions
 
 
-def test_readable_text_in_registers():
-    words = [0x4142, 0x4344, 0x4546, 0x4700, 0x0001, 0x3132]  # "ABCDEFG", then numbers
-    assert text_runs(words) == [(0, 4, "ABCDEFG")]
-    assert text_runs([0x4142, 0x0000, 0x4344]) == []  # too short to be a name or a serial number
+def test_blocks_of():
     assert probe.blocks_of(100, 130) == [(100, 60), (160, 60), (220, 10)]
 
 

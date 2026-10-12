@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass, field
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from . import ha_app
+from . import ha_app, privacy
 from .drivers.modbus import ModbusReadError
 from .outbound import in_home_network, open_without_redirect
 from .runtime import Runtime
@@ -43,7 +43,6 @@ PORTS = (502, 1502, 80, 443, 8080)  # checked to identify a device: Modbus TCP (
 WEB_PORTS = ((80, "http"), (8080, "http"), (443, "https"))
 ARP = "/proc/net/arp"
 TITLE_BYTES = 64 * 1024
-TEXT_MIN = 6  # readable text of at least this many characters is shortened in reports (serial numbers, names)
 MDNS = ("224.0.0.251", 5353)
 MDNS_SERVICES = ("_modbus._tcp.local",)
 SEARCH_S = 2.0
@@ -89,23 +88,6 @@ class ReadResult:
 
 def blocks_of(start: int, count: int) -> list[tuple[int, int]]:
     return [(a, min(MAX_BLOCK, start + count - a)) for a in range(start, start + count, MAX_BLOCK)]
-
-
-def text_runs(words: list[int]) -> list[tuple[int, int, str]]:
-    """Readable ASCII in register values (two characters per register, high byte first): (first index, index after
-    the last, text) of every run of at least TEXT_MIN characters, e.g. a model name or a serial number."""
-    data = b"".join(struct.pack(">H", w & 0xFFFF) for w in words)
-    runs = []
-    for match in re.finditer(rb"[\x20-\x7e]{%d,}" % TEXT_MIN, data):
-        text = match.group(0).decode("ascii").strip()
-        if len(text) >= TEXT_MIN:
-            runs.append((match.start() // 2, (match.end() + 1) // 2, text))
-    return runs
-
-
-def shorten(text: str) -> str:
-    """Like the serial number in the report: the first four and the last two characters."""
-    return text[:4] + "…" + text[-2:] if len(text) > 6 else "…"
 
 
 def _valid_host(host: str) -> str:
@@ -288,28 +270,14 @@ class Probe:
         section: dict = {}
         if self.last_read:
             read = asdict(self.last_read)
-            read["blocks"] = [_masked(b, include_text) for b in read["blocks"]]
+            read["blocks"] = [privacy.masked_block(b, include_text) for b in read["blocks"]]
             section["read"] = read
         if self.last_identify:
             section["identify"] = self.last_identify
         if self.last_search:
             section["search"] = {**self.last_search, "devices": [
-                {**d, "name": d["name"] if include_text else shorten(d["name"])} for d in self.last_search["devices"]]}
+                {**d, "name": d["name"] if include_text else privacy.shorten(d["name"])} for d in self.last_search["devices"]]}
         return section
-
-
-def _masked(block: dict, include_text: bool) -> dict:
-    words = block.get("words")
-    if not words:
-        return block
-    runs = text_runs(words)
-    words = list(words)
-    texts = []
-    for first, after, text in runs:
-        texts.append({"address": block["start"] + first, "text": text if include_text else shorten(text)})
-        if not include_text:
-            words[first:after] = [None] * (after - first)
-    return {**block, "words": words, "text": texts}
 
 
 async def _port_open(host: str, port: int, timeout: float = 1.5) -> bool:
@@ -475,23 +443,30 @@ def section_markdown(section: dict) -> list[str]:
         how = " über die Verbindung zum Wechselrichter" if read.get("shared_connection") else ""
         lines.append(f"- Register von {read['host']}:{read['port']}, Geräteadresse {read['unit']}, "
                      f"Funktionscode {read['function']}{how}:")
-        for block in read["blocks"]:
-            where = f"{block['start']}+{block['count']} (0x{block['start']:04X})"
-            if block["ok"]:
-                state = f"gelesen ({block['ms']} ms)"
-            elif block["error"] == "rejected":
-                state = f"abgelehnt (Modbus-Ausnahme {block['exception']})"
-            else:
-                state = "keine Antwort" + (f" (Modbus-Ausnahme {block['exception']})" if block["exception"] else "")
-            lines.append(f"  - {where}: {state}")
-        lines += ["", "<details><summary>Registerwerte</summary>", "", "```json",
-                  json.dumps([{k: b.get(k) for k in ("start", "words", "text")} for b in read["blocks"] if b["ok"]],
-                             ensure_ascii=False), "```", "", "</details>"]
+        lines += blocks_markdown(read["blocks"], "Registerwerte")
+    return lines
+
+
+def blocks_markdown(blocks: list[dict], summary: str) -> list[str]:
+    """Blocks of register values for the report (already masked): what each block answered, then the values."""
+    lines = []
+    for block in blocks:
+        if block["ok"]:
+            state = f"gelesen ({block['ms']} ms)"
+        elif block["error"] == "rejected":
+            state = f"abgelehnt (Modbus-Ausnahme {block['exception']})"
+        else:
+            state = "keine Antwort" + (f" (Modbus-Ausnahme {block['exception']})" if block["exception"] else "")
+        lines.append(f"  - {block['start']}+{block['count']} (0x{block['start']:04X}): {state}")
+    readable = [{k: b.get(k) for k in ("start", "words", "text")} for b in blocks if b["ok"]]
+    if readable:
+        lines += ["", f"<details><summary>{summary}</summary>", "", "```json",
+                  json.dumps(readable, ensure_ascii=False), "```", "", "</details>"]
     return lines
 
 
 def read_view(result: ReadResult) -> dict:
     """For the owner's own screen: all values and the readable text in full (shortened only in the report)."""
     view = asdict(result)
-    view["blocks"] = [_masked(b, include_text=True) for b in view["blocks"]]
+    view["blocks"] = [privacy.masked_block(b, include_text=True) for b in view["blocks"]]
     return view

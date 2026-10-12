@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from openampere import api as api_module
 from openampere import billing
 from openampere.api import create_app
-from openampere.diagnostics import _Pseudonyms
+from openampere.privacy import Pseudonyms
 from openampere.runtime import Runtime
 from openampere.storage import Storage
 from openampere.tariffs import validate as validate_tariffs
@@ -78,7 +78,7 @@ def test_a_malformed_content_length_is_refused(client):
 
 def test_the_diagnostics_text_has_no_time_stamps_of_database_copies():
     text = "kept as openampere.db.before-restore-20261010-153012 and openampere.db.damaged-20261009-020000"
-    cleaned = _Pseudonyms(None).text(text)
+    cleaned = Pseudonyms(None).text(text)
     assert "20261010" not in cleaned and "153012" not in cleaned and cleaned.count("<Zeitpunkt>") == 2
 
 

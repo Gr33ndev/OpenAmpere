@@ -17,6 +17,8 @@ class Wallbox:
     ranges: tuple[tuple[int, int], ...] = ()  # (start, count), read over one connection
     # values that never go into the report, only what they mean (e.g. an RFID card number, exact energy counters)
     private: frozenset[int] = frozenset()
+    # addresses with harmless readable text (e.g. the model code) that is not shortened in the report
+    public_text: frozenset[int] = frozenset()
 
     @classmethod
     def interpret(cls, values: dict[int, int]) -> dict:

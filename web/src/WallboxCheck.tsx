@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useState } from "react";
 import { postJson, useResource } from "./api";
+import { DeviceSearch } from "./DeviceSearch";
 import { num } from "./format";
 import { t } from "./i18n";
 import { navigate } from "./route";
@@ -16,7 +17,6 @@ type Findings = { model?: string | null; firmware?: string | null; status?: stri
   validity_s?: number | null; phase_switching?: boolean | null };
 export type WallboxCheckResult = { model: string; label: string; host: string; port: number | null; unit: number;
   outcome: Outcome; tried_ports: number[]; findings: Findings };
-type Found = { name: string; host: string; port: number | null };
 
 const OUTCOME: Record<Exclude<Outcome, "unreachable">, string> = {
   readable: t("devices.wallboxDirect.outcomeReadable"),
@@ -69,20 +69,9 @@ export function DirectWallbox() {
   const [unit, setUnit] = useState("1");
   const [appMode, setAppMode] = useState("unknown");
   const [wired, setWired] = useState("unknown");
-  const [busy, setBusy] = useState<"" | "search" | "check">("");
-  const [found, setFound] = useState<{ available: boolean; devices: Found[] } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<WallboxCheckResult | null>(null);
 
-  const search = async () => {
-    setBusy("search");
-    try {
-      setFound(await postJson("/api/diagnostics/search", {}));
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setBusy("");
-    }
-  };
   const check = async () => {
     const p = port.trim() ? Number(port) : null;
     const u = Number(unit);
@@ -90,14 +79,14 @@ export function DirectWallbox() {
       toast(t("devices.wallboxDirect.invalidNumbers"), "error");
       return;
     }
-    setBusy("check");
+    setBusy(true);
     try {
       setResult(await postJson<WallboxCheckResult>("/api/wallbox/check",
         { model: chosen, host: host.trim(), port: p, unit: u, app_mode: appMode, wired }));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
-      setBusy("");
+      setBusy(false);
     }
   };
 
@@ -120,21 +109,8 @@ export function DirectWallbox() {
           </>
         ) : (
           <>
-            <Button variant="secondary" busy={busy === "search"} disabled={!!busy} onClick={() => void search()}>
-              {t("devices.wallboxDirect.search")}</Button>
-            {found && !found.available && <Notice kind="info">{t("devices.wallboxDirect.searchUnavailable")}</Notice>}
-            {found?.available && !found.devices.length && <p className="hint flush">{t("devices.wallboxDirect.nothingFound")}</p>}
-            {!!found?.devices.length && (
-              <ul className="plain-list found-list">
-                {found.devices.map((d) => (
-                  <li key={`${d.host}-${d.name}`}>
-                    <span><strong>{d.name}</strong> <span className="meta">{d.host}{d.port ? `:${d.port}` : ""}</span></span>
-                    <button type="button" className="link" onClick={() => { setHost(d.host); if (d.port) setPort(String(d.port)); }}>
-                      {t("devices.wallboxDirect.use")}</button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <DeviceSearch label={t("devices.wallboxDirect.search")}
+              onUse={(d) => { setHost(d.host); if (d.port) setPort(String(d.port)); }} />
             <Field label={t("devices.wallboxDirect.address")} hint={t("devices.wallboxDirect.addressHint", { example: "192.168.178.60" })}>
               <input className="input" value={host} inputMode="decimal" autoComplete="off" onChange={(e) => setHost(e.target.value)} />
             </Field>
@@ -164,7 +140,7 @@ export function DirectWallbox() {
             </Field>
             {wired === "yes" && <Notice kind="warn">{t("devices.wallboxDirect.wiredHint")}</Notice>}
             <p className="hint flush">{t("devices.wallboxDirect.nothingChanges")}</p>
-            <Button busy={busy === "check"} disabled={!!busy || !host.trim()} onClick={() => void check()}>
+            <Button busy={busy} disabled={busy || !host.trim()} onClick={() => void check()}>
               {t("devices.wallboxDirect.check")}</Button>
           </>
         )}

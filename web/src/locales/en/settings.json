@@ -364,7 +364,6 @@
     "macVendor": "Vendor code of the network card",
     "none": "none",
     "notInApp": "not available in the Home Assistant app",
-    "nothingFound": "No device found that announces Modbus TCP. Enter the device's address below; you can find it, for example, in your router's device list.",
     "oneClient": "Some devices allow only one Modbus connection. If evcc or another program is reading the same device, the query may be refused or briefly disturb the other program.",
     "openPorts": "Open ports",
     "pageTitle": "Title of the web page",
@@ -377,7 +376,6 @@
     "result": "Result",
     "searchButton": "Search the home network",
     "searchHint": "Looks for devices that announce Modbus TCP in your home network, for example FoxESS wallboxes as \"EVC-…\". Many devices do not announce themselves; then enter the address below.",
-    "searchUnavailable": "Searching the home network does not work in the Home Assistant app. Enter the device's address below.",
     "sharedConnection": "Read over the existing connection to the inverter, with the device address {unit}.",
     "start": "Start address",
     "startHint": "Decimal, or hexadecimal with 0x, e.g. 4096 or 0x1000",
@@ -385,8 +383,7 @@
     "toDiagnostics": "To diagnostics",
     "unit": "Device address (unit ID)",
     "unitHint": "Often 1, 247 for FoxESS inverters.",
-    "unknown": "not known",
-    "use": "Use"
+    "unknown": "not known"
   },
   "diagnosticsPage": {
     "advancedTitle": "Advanced",

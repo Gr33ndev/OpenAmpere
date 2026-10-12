@@ -11,10 +11,10 @@ test.
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 
-from ..probe import Probe, ProbeBusy, ProbeError, ProbeUnreachable
+from ..privacy import masked_block
+from ..probe import Probe, ProbeBusy, ProbeError, ProbeUnreachable, blocks_markdown
 from .base import Wallbox
 from .foxess import FoxEssCharger
 
@@ -28,7 +28,7 @@ __all__ = ["APP_MODES", "WALLBOXES", "WIRED", "Wallbox", "WallboxCheck", "check_
 class WallboxCheck:
     def __init__(self, probe: Probe) -> None:
         self.probe = probe
-        self.last: dict | None = None
+        self._last: dict | None = None  # with all values; masked in section()
 
     async def run(self, key: str, host: str, port: int | None, unit: int | None, app_mode: str = "unknown",
                   wired: str = "unknown") -> dict:
@@ -58,15 +58,17 @@ class WallboxCheck:
                                  else "rejected" if first.error == "rejected" else "no_answer")
             values = {b.start + i: w for b in read.blocks if b.ok for i, w in enumerate(b.words or [])}
             result["findings"] = wallbox.interpret(values) if values else {}
-            result["blocks"] = [_without_private(asdict(b), wallbox.private) for b in read.blocks]
-        self.last = result
-        return result
+            result["blocks"] = [asdict(b) for b in read.blocks]
+        self._last = result
+        return self.section(include_text=True)  # the owner's own screen: private values are still left out
 
-
-def _without_private(block: dict, private: frozenset[int]) -> dict:
-    if block.get("words"):
-        block["words"] = [None if block["start"] + i in private else w for i, w in enumerate(block["words"])]
-    return block
+    def section(self, include_text: bool = False) -> dict | None:
+        """The last check for the diagnostics report, masked by the rules of privacy.py like every report."""
+        if self._last is None:
+            return None
+        wallbox = WALLBOXES[self._last["model"]]
+        return {**self._last, "blocks": [masked_block(b, include_text, wallbox.private, wallbox.public_text)
+                                         for b in self._last["blocks"]]}
 
 
 OUTCOME = {
@@ -90,12 +92,4 @@ def check_markdown(check: dict) -> list[str]:
     findings = {k: v for k, v in check["findings"].items() if v is not None}
     if findings:
         lines.append("- Erkannt: " + ", ".join(f"{k} {v}" for k, v in findings.items()))
-    for block in check["blocks"]:
-        state = ("gelesen" if block["ok"] else f"{block['error']}"
-                 + (f" (Modbus-Ausnahme {block['exception']})" if block["exception"] else ""))
-        lines.append(f"  - {block['start']}+{block['count']} (0x{block['start']:04X}): {state}")
-    if check["blocks"]:
-        lines += ["", "<details><summary>Registerwerte der Wallbox</summary>", "", "```json",
-                  json.dumps([{"start": b["start"], "words": b["words"]} for b in check["blocks"] if b["ok"]]),
-                  "```", "", "</details>"]
-    return lines
+    return lines + blocks_markdown(check["blocks"], "Registerwerte der Wallbox")

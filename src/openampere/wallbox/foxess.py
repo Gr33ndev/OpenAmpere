@@ -17,6 +17,7 @@ STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
 LIFETIME_ENERGY = 0x1016  # u32, 0.1 kWh
 RFID = 0x101C  # u32: the card that started the session
+MODEL = 0x101E  # ASCII, 4 registers
 
 
 class FoxEssCharger(Wallbox):
@@ -29,6 +30,7 @@ class FoxEssCharger(Wallbox):
     # configuration and, separately, the part single-phase models may not have
     ranges = ((0x1000, 0x22), (0x3000, 7), (0x3007, 5))
     private = frozenset({*range(LIFETIME_ENERGY, LIFETIME_ENERGY + 4), RFID, RFID + 1})
+    public_text = frozenset(range(MODEL, MODEL + 4))
 
     @classmethod
     def interpret(cls, values: dict[int, int]) -> dict:
@@ -37,7 +39,7 @@ class FoxEssCharger(Wallbox):
         rfid = u32(values, RFID)
         phase_switching = values.get(0x300A)
         return {
-            "model": text(values, 0x101E, 4),
+            "model": text(values, MODEL, 4),
             "firmware": f"{firmware >> 8}.{firmware & 0xFF}" if firmware is not None else None,
             "status": STATUS.get(values[0x1003], f"unknown ({values[0x1003]})") if 0x1003 in values else None,
             "plug_connected": bool(values[0x1005]) if 0x1005 in values else None,
