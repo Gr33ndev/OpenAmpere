@@ -7,6 +7,26 @@ project for solar charging (MIT license, [GitHub](https://github.com/evcc-io/evc
 wallboxes and vehicles, charging plans, dynamic tariffs and charging sessions with billing. We do not rebuild that,
 we use it. Thanks to the evcc community!
 
+## Costs: the evcc sponsor token
+
+evcc is free software, but for many commercial wallboxes evcc requires a **sponsor token**. This is how the evcc
+project is funded: a yearly or one-time contribution, current prices on the
+[evcc sponsorship page](https://docs.evcc.io/en/sponsorship). Open-hardware wallboxes, wallboxes of manufacturers that
+support evcc, smart plugs and plugins work without a token.
+
+- **Does my wallbox need one?** The [evcc wallbox list](https://docs.evcc.io/en/chargers) marks every wallbox with
+  "sponsoring" (token needed) or "sponsor free" (no token). The filter "sponsor free" shows only those without.
+- **Test token:** evcc publishes a free test token on its sponsorship page. It is meant for trying evcc out and is
+  valid for only about ten days. After that evcc no longer starts a wallbox that needs a token. A new test token is
+  published regularly, but copying one every few days is not meant as a permanent solution.
+- **Paid token:** also has an expiry date inside; you get a new one on [sponsor.evcc.io](https://sponsor.evcc.io), and
+  evcc warns 30 days ahead.
+- **In OpenAmpere:** under **Geräte** (Devices) and **Mehr → Verbindung → Wallbox** OpenAmpere warns while evcc runs
+  with the test token or the token expires soon, and says so when evcc does not start the wallbox because a valid
+  token is missing.
+
+We recommend supporting evcc. OpenAmpere uses only the open interface of evcc and has no influence on its terms.
+
 ## How the two work together
 
 ```

@@ -43,7 +43,7 @@
     "heatingTitle": "Heizstab und Wärmepumpe",
     "heatingText": "Ein Heizstab von my-PV nimmt genau so viel Strom, wie gerade übrig ist. Wärmepumpe oder andere Geräte schaltet die App über ein Shelly-Relais.",
     "wallboxTitle": "Wallbox mit evcc",
-    "wallboxText": "Das Auto mit Sonnenstrom laden. Die Wallbox steuert <a href=\"https://evcc.io\">evcc</a>, bedienen kannst du sie direkt in OpenAmpere.",
+    "wallboxText": "Das Auto mit Sonnenstrom laden. Die Wallbox steuert <a href=\"https://evcc.io\">evcc</a>, bedienen kannst du sie direkt in OpenAmpere. Für viele Wallboxen verlangt evcc ein Sponsortoken, das Geld kostet (<a href=\"https://docs.evcc.io/de/chargers\">Liste</a>).",
     "homeAssistantTitle": "Home Assistant",
     "homeAssistantText": "Alle Werte live in Home Assistant, auch im Energie-Dashboard, und auf Wunsch den Speicher von dort steuern. <a href=\"#installation\">Mehr dazu</a>",
     "notificationsTitle": "Hinweise, Diagnose, Export",

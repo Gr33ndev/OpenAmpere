@@ -17,10 +17,12 @@ export type EvccLoadpoint = {
   remaining_s: number | null; plan_active: boolean; plan_time: string | null; plan_soc: number | null;
   min_soc: number; vehicle_capacity_kwh: number | null;
 };
+/** evcc's sponsor token (#317); null for evcc versions that do not say. */
+export type EvccSponsor = { active: boolean; trial: boolean; expires_at: string | null; expires_soon: boolean };
 export type EvccView = {
   configured: boolean; url: string | null; error: string | null; updated: number | null;
   priority: "wallbox_first" | "devices_first";
-  state: { version: string | null; site_title: string | null; loadpoints: EvccLoadpoint[] } | null;
+  state: { version: string | null; site_title: string | null; loadpoints: EvccLoadpoint[]; sponsor?: EvccSponsor | null } | null;
 };
 export type EvccSession = { created: string | null; finished: string | null; loadpoint: string | null; vehicle: string | null;
   energy_kwh: number | null; duration_s: number | null; solar_pct: number | null; price: number | null;
@@ -28,6 +30,7 @@ export type EvccSession = { created: string | null; finished: string | null; loa
   cost_eur: number | null; grid_cost_eur: number | null };
 
 export const EVCC_URL = "https://evcc.io";
+const evccDocs = (page: string) => `https://docs.evcc.io/${lang() === "de" ? "de" : "en"}/${page}`;
 const MODES: [NonNullable<EvccLoadpoint["mode"]>, string][] = [["off", t("common.off")], ["pv", t("devices.modes.solar")], ["minpv", t("devices.modes.minSolar")],
   ["now", t("devices.modes.fast")]];
 const MODE_HINT: Record<string, string> = {
@@ -195,6 +198,19 @@ site:
     battery: [openampere_battery]`;
 }
 
+/** Warns before evcc stops the wallbox: the test token runs out after days, a paid one once a year (#317). */
+export function SponsorNotice({ sponsor }: { sponsor?: EvccSponsor | null }) {
+  if (!sponsor?.active || !(sponsor.trial || sponsor.expires_soon)) return null;
+  const date = sponsor.expires_at ? new Date(sponsor.expires_at).toLocaleDateString(LOCALE, { day: "numeric",
+    month: "long", timeZone: timeZone() }) : null;
+  if (sponsor.trial) {
+    const link = <a href={evccDocs("sponsorship")} target="_blank" rel="noreferrer">{t("devices.sponsor.sponsorship")}</a>;
+    return <Notice kind="warn">{date ? tx("devices.sponsor.trialUntil", { date, link }) : tx("devices.sponsor.trial", { link })}</Notice>;
+  }
+  const link = <a href="https://sponsor.evcc.io" target="_blank" rel="noreferrer">sponsor.evcc.io</a>;
+  return <Notice kind="warn">{date ? tx("devices.sponsor.expiresOn", { date, link }) : tx("devices.sponsor.expiresSoon", { link })}</Notice>;
+}
+
 export function WallboxPage({ onBack }: PageProps) {
   const { data: settings, reload: reloadSettings } = useResource<Settings>("/api/settings");
   const { data: view, error, reload } = useResource<EvccView>("/api/evcc?refresh=true", 10_000);
@@ -238,12 +254,15 @@ export function WallboxPage({ onBack }: PageProps) {
       {view?.state && <Notice kind="ok">{t("devices.wallboxPage.connected", { version: view.state.version ?? "" })} ·{" "}
         {t("devices.wallboxPage.chargePoints", { count: cars.length })}</Notice>}
       {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
+      <SponsorNotice sponsor={view?.state?.sponsor} />
 
       <ol className="steps-list">
         <li>
           <strong>{t("devices.wallboxPage.installStep")}</strong>
           <p className="hint">{tx("devices.wallboxPage.installHint",
             { link: <a href="https://docs.evcc.io" target="_blank" rel="noreferrer">{t("devices.wallboxPage.evccDocs")}</a> })}</p>
+          <p className="hint">{tx("devices.wallboxPage.sponsorHint",
+            { link: <a href={evccDocs("chargers")} target="_blank" rel="noreferrer">{t("devices.wallboxPage.chargerList")}</a> })}</p>
         </li>
         <li>
           <strong>{t("devices.wallboxPage.meterStep")}</strong>
