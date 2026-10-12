@@ -74,6 +74,7 @@
     "manualNote": "Installation von Hand und Zugriff von unterwegs stehen im <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#installation\">README auf GitHub</a>.",
     "appText": "Für Home Assistant OS, zum Beispiel auf einem Home Assistant Green oder einem Raspberry Pi. Einen eigenen Rechner brauchst du nicht. Die App ist neu und noch als experimentell gekennzeichnet.",
     "appButton": "Repository in Home Assistant hinzufügen",
+    "appManual": "Ohne Button: In Home Assistant <strong>Einstellungen → Apps → App installieren → ⋮ → Repositorys</strong> öffnen, <code>https://github.com/Gr33ndev/OpenAmpere</code> eintragen und <strong>Hinzufügen</strong>.",
     "appGuide": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant-app.de.md\">Anleitung für die App</a>, auch zum Umzug einer bestehenden Installation.",
     "twoWays": "OpenAmpere läuft auf einem von zwei Wegen. Entscheide dich für einen, denn es darf nur ein OpenAmpere mit dem Wechselrichter sprechen:",
     "way1Short": "<a href=\"#standalone\"><strong>Weg 1: eigenständig</strong></a> auf einem Linux-Rechner mit Docker, zum Beispiel einem Raspberry Pi, NAS oder Proxmox-Server. Nutzt du Home Assistant, verbindest du es bei Bedarf über die Integration (HACS).",

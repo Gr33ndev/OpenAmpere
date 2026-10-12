@@ -74,6 +74,7 @@
     "manualNote": "Manual installation and remote access are described in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#installation\">README on GitHub</a>.",
     "appText": "For Home Assistant OS, for example on a Home Assistant Green or a Raspberry Pi. You need no extra computer. The app is new and still marked as experimental.",
     "appButton": "Add the repository in Home Assistant",
+    "appManual": "Without the button: in Home Assistant open <strong>Settings → Apps → Install app → ⋮ → Repositories</strong>, enter <code>https://github.com/Gr33ndev/OpenAmpere</code> and click <strong>Add</strong>.",
     "appGuide": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/ha-app/DOCS.md\">Guide for the app</a>, also for moving an existing installation.",
     "twoWays": "OpenAmpere runs in one of two ways. Choose one of them, because only one OpenAmpere may talk to the inverter:",
     "way1Short": "<a href=\"#standalone\"><strong>Way 1: standalone</strong></a> on a Linux computer with Docker, for example a Raspberry Pi, NAS or Proxmox server. If you use Home Assistant, you can connect it through the integration (HACS) when you like.",
