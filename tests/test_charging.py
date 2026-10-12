@@ -120,6 +120,8 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             await charging.tick()
             assert not charging.active and sim._get_setting("remote_enable") == 1
             assert runtime.storage.control_log()[0]["result"].startswith("Beenden fehlgeschlagen")
+            # why charging ended is in the entry as well (#322)
+            assert "Grund für das Ende: Laden aus dem Netz ist aus" in runtime.storage.control_log()[0]["result"]
             driver._write = write
             await charging.tick()
             assert sim._get_setting("remote_enable") == 0
@@ -453,5 +455,36 @@ async def test_grid_charging_does_not_touch_the_reserve_any_more(tmp_path):
             assert not charging.active and "lädt trotz Befehl nicht" in (charging.last_error or "")
             assert sim._get_setting("min_soc_on_grid") == 10
             assert not [e for e in runtime.storage.control_log() if e["action"] == "grid_charging_reserve"]
+        finally:
+            await runtime.collector.stop()
+
+
+# #322: the control log explains what happened around grid charging
+async def test_changes_of_grid_charging_are_logged_with_the_state_of_charge(tmp_path):
+    sim, server, runtime = await connected(tmp_path)
+    async with server:
+        try:
+            await runtime.update_settings({"control.dry_run": False})
+            await battery(runtime, sim, 30, 0)
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 45, "power_w": 3000})
+            switch = next(e for e in runtime.storage.control_log() if e["action"] == "grid_charging_switch")
+            assert switch["details"]["soc"] == 30
+            await charging.tick(now=10_000)
+            started = next(e for e in runtime.storage.control_log()
+                           if e["action"] == "grid_charging" and e["result"].startswith("Laden gestartet"))
+            assert started["details"]["soc"] == 30 and started["details"]["to"]["target_soc"] == 45
+
+            # "Laden bis" changed during the session: logged, so "Ladeziel 35 % erreicht" is explained
+            await battery(runtime, sim, 33, -3000)
+            charging.save({**charging.view()["settings"], "target_soc": 35}, source="Home Assistant (Zugang für Apps)")
+            entry = runtime.storage.control_log()[0]
+            assert entry["action"] == "grid_charging_settings"
+            assert entry["details"] == {"from": {"target_soc": 45}, "to": {"target_soc": 35}, "soc": 33,
+                                        "source": "Home Assistant (Zugang für Apps)"}
+            count = len(runtime.storage.control_log())
+            charging.save({**charging.view()["settings"]})  # nothing changed: nothing logged
+            assert len(runtime.storage.control_log()) == count
         finally:
             await runtime.collector.stop()

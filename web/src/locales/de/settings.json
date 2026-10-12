@@ -294,7 +294,20 @@
     "wallboxPlanDeleted": "{name}: Ladeplan gelöscht.",
     "reserveRaised": "Notstrom-Reserve für das Laden aus dem Netz vorübergehend von {from} auf {to} angehoben.",
     "reserveRestored": "Notstrom-Reserve nach dem Laden aus dem Netz wieder auf {to} gestellt (vorübergehend {from}).",
-    "reserveKept": "Notstrom-Reserve nach dem Laden aus dem Netz nicht zurückgestellt: Sie wurde inzwischen auf {to} geändert, dieser Wert bleibt."
+    "reserveKept": "Notstrom-Reserve nach dem Laden aus dem Netz nicht zurückgestellt: Sie wurde inzwischen auf {to} geändert, dieser Wert bleibt.",
+    "gridChargingChanged": "Laden aus dem Netz geändert: {changes}.",
+    "settingChange": "{name} von {from} auf {to}",
+    "chargingMode": "Lade-Art",
+    "windowStart": "Ladefenster ab",
+    "windowEnd": "Ladefenster bis",
+    "chargingPower": "Ladeleistung",
+    "batterySize": "Speichergröße",
+    "hourValue": "{hour} Uhr",
+    "noMaxPrice": "keiner",
+    "legalConfirmed": "rechtliche Hinweise bestätigt",
+    "legalWithdrawn": "Bestätigung der rechtlichen Hinweise zurückgenommen",
+    "socAtTime": "(Ladestand {soc})",
+    "maxPrice": "Höchstpreis"
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

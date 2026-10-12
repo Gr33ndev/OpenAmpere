@@ -219,7 +219,6 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             new = charging.save({**asdict(old), **body}, source=source(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        runtime.storage.log_control("grid_charging", {"source": source(request), "to": body}, runtime.config.control.dry_run, "ok")
         await charging.tick()
         return {"enabled": new.enabled, "target_soc": new.target_soc, "active": charging.active}
 

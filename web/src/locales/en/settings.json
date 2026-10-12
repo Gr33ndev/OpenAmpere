@@ -294,7 +294,20 @@
     "wallboxPlanDeleted": "{name}: charging plan deleted.",
     "reserveRaised": "Backup power reserve raised from {from} to {to} for charging from the grid.",
     "reserveRestored": "Backup power reserve set back to {to} after charging from the grid (temporarily {from}).",
-    "reserveKept": "Backup power reserve not set back after charging from the grid: it was changed to {to} in the meantime, and that value stays."
+    "reserveKept": "Backup power reserve not set back after charging from the grid: it was changed to {to} in the meantime, and that value stays.",
+    "gridChargingChanged": "Charging from the grid changed: {changes}.",
+    "settingChange": "{name} from {from} to {to}",
+    "chargingMode": "Charging type",
+    "windowStart": "Charging window from",
+    "windowEnd": "Charging window until",
+    "chargingPower": "Charging power",
+    "batterySize": "Battery size",
+    "hourValue": "{hour}:00",
+    "noMaxPrice": "none",
+    "legalConfirmed": "legal notes confirmed",
+    "legalWithdrawn": "confirmation of the legal notes withdrawn",
+    "socAtTime": "(state of charge {soc})",
+    "maxPrice": "Maximum price"
   },
   "controlPage": {
     "emptyState": "No changes yet.",
