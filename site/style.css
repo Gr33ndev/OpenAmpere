@@ -146,6 +146,7 @@ nav .lang-switch a[aria-current] { background: var(--text); color: var(--bg); }
 pre { margin: 8px 0 0; padding: 14px 16px; border-radius: 14px; background: var(--code-bg); color: var(--code-text);
   overflow-x: auto; font-size: 14px; line-height: 1.5; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+p code { overflow-wrap: anywhere; } /* a long address in a sentence must not leave a narrow box */
 
 /* legal + footer */
 .legal p { color: var(--label); max-width: 52em; }
