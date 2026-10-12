@@ -86,7 +86,8 @@
     "logTargetReached": "charge target of {target_soc} % reached",
     "logTestMode": "test mode is on",
     "logWouldCharge": "would charge ({reason}) – test mode",
-    "unknownChargingType": "Unknown charging type."
+    "unknownChargingType": "Unknown charging type.",
+    "reserveNotSetBack": "not set back: the backup power reserve was changed to {current} % in the meantime"
   },
   "cli": {
     "noDatabaseFound": "No database found at {path}.",

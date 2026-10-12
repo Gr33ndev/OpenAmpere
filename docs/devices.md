@@ -46,6 +46,10 @@ More about the FoxESS H3 family:
 - **The backup power reserve may be below 10 %, but only after a warning** (#313) that appears every time it is set
   below 10 %. While it is below 10 %, the app shows a warning. At a real system (FoxESS H3) the inverter accepted and
   kept a value below 10 %. Other apps (Home Assistant) stay at 10 % or more.
+- **Grid charging only up to the backup reserve** (#315): at a real system the inverter charged from the grid by remote
+  control only up to its reserve. OpenAmpere finds that out (the battery takes no more charge at the reserve although
+  commanded), raises the reserve to the charge target for the time of charging and sets it back afterwards. Whether
+  every firmware does this is open; without this behaviour OpenAmpere leaves the reserve alone.
 - **Off-grid detection** uses bit 0 of register 39065. In #89 a single reading had the bit set while the system was
   feeding into the grid, so OpenAmpere now needs two readings in a row and ignores the bit while the grid meter shows
   import or export. In #93 an inverter that was switched off on purpose had been counted as a power outage.

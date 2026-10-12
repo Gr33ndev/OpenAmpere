@@ -22,6 +22,10 @@ const ENTRIES = [
     result: "von einem anderen Gerät überschrieben" },
   { action: "consumer", details: { from: { consumer: "Heizstab", on: false }, to: { consumer: "Heizstab", on: true } }, dry_run: true,
     result: "nicht geschaltet (Testmodus): Überschuss 2600 W", note: "Überschuss 2600 W" },
+  { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 20 }, to: { min_soc_on_grid: 61 } }, dry_run: false, result: "ok" },
+  { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 20 } }, dry_run: false, result: "ok" },
+  { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 35 }, kept: true }, dry_run: false,
+    result: "nicht zurückgestellt: die Notstrom-Reserve wurde inzwischen auf 35 % geändert" },
   { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort", note: "Fehler: keine Antwort" },
 ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
 
@@ -42,6 +46,9 @@ test("control log entries read as sentences and can be exported", async ({ page,
     "Einspeisebegrenzung von 4.000 W auf 600 W geändert.",
     "Ein anderes Gerät hat die Speicher-Einstellung geändert: Notstrom-Reserve jetzt 15 % statt 20 %.",
     "Heizstab eingeschaltet.",
+    "Notstrom-Reserve für das Laden aus dem Netz vorübergehend von 20 % auf 61 % angehoben.",
+    "Notstrom-Reserve nach dem Laden aus dem Netz wieder auf 20 % gestellt (vorübergehend 61 %).",
+    "Notstrom-Reserve nach dem Laden aus dem Netz nicht zurückgestellt: Sie wurde inzwischen auf 35 % geändert, dieser Wert bleibt.",
     "Sonstige Änderung (something_new).",
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();

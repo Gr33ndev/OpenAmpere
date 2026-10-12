@@ -86,7 +86,8 @@
     "logTargetReached": "Ladeziel {target_soc} % erreicht",
     "logTestMode": "Testmodus ist an",
     "logWouldCharge": "würde laden ({reason}) – Testmodus",
-    "unknownChargingType": "Unbekannte Lade-Art."
+    "unknownChargingType": "Unbekannte Lade-Art.",
+    "reserveNotSetBack": "nicht zurückgestellt: die Notstrom-Reserve wurde inzwischen auf {current} % geändert"
   },
   "cli": {
     "noDatabaseFound": "Keine Datenbank unter {path} gefunden.",
