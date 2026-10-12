@@ -399,11 +399,21 @@ def parse_mdns(data: bytes) -> list[tuple[str, int, object]]:
     return records
 
 
+def _local_address() -> str:
+    """The address of the network card the home network is reached over (no packet is sent)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe_socket:
+        probe_socket.connect(MDNS)
+        return probe_socket.getsockname()[0]
+
+
 def browse(services: tuple[str, ...], seconds: float) -> list[dict]:
     found: dict[str, dict] = {}
+    local = _local_address()
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        # only the home network's card: the query goes out there, and only answers to that address are received
+        sock.bind((local, 0))
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(local))
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-        sock.bind(("", 0))
         for service in services:
             sock.sendto(mdns_query(service), MDNS)
         deadline = time.monotonic() + seconds

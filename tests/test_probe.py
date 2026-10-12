@@ -179,7 +179,7 @@ def test_parse_mdns_answer():
 
 
 def test_browse_collects_the_announced_devices(monkeypatch):
-    sent = []
+    sent, bound = [], []
 
     class Socket:
         def __init__(self, *args):
@@ -191,11 +191,17 @@ def test_browse_collects_the_announced_devices(monkeypatch):
         def __exit__(self, *args):
             pass
 
+        def connect(self, address):  # only to learn the local address, nothing is sent
+            pass
+
+        def getsockname(self):
+            return ("192.168.1.10", 40000)
+
         def setsockopt(self, *args):
             pass
 
         def bind(self, address):
-            pass
+            bound.append(address)
 
         def settimeout(self, seconds):
             pass
@@ -212,6 +218,7 @@ def test_browse_collects_the_announced_devices(monkeypatch):
     devices = probe.browse(probe.MDNS_SERVICES, 1.0)
     assert devices == [{"service": "_modbus._tcp", "name": "EVC-SIMULATED01", "host": "192.168.1.77", "port": 502}]
     assert sent == [(probe.mdns_query("_modbus._tcp.local"), probe.MDNS)]
+    assert bound == [("192.168.1.10", 0)]  # the home network's card, not all interfaces
 
 
 async def test_no_search_in_the_home_assistant_app(runtime, monkeypatch):
