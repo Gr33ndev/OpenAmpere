@@ -4,6 +4,18 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.23.0 (2026-10-12)
+
+### Neu
+
+- **battery:** Allow a backup power reserve below 10 % after a warning (#314)
+- **connection:** Say when the inverter's connections are all taken (#312)
+
+### Weitere Änderungen
+
+- **site:** Steps to add the app repository by hand for way 2 (#310)
+- Complete steps to add the app repository, with its maintainer (#308)
+
 ## 0.22.0 (2026-10-12)
 
 ### Neu
@@ -196,10 +208,3 @@ New: a damaged database no longer stops the app, and you can now restore a backu
 ### Weitere Änderungen
 
 - Run the ui tests in the playwright container image (#158)
-
-## 0.14.0 (2026-10-07)
-
-### Neu
-
-- Show a changelog in the app and on the website (#156)
-- **control:** Show the control log as sentences and export it as csv (#154)

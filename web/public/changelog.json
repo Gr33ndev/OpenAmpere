@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "0.23.0",
+      "date": "2026-10-12",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "battery",
+            "text": "Allow a backup power reserve below 10 % after a warning (#314)"
+          },
+          {
+            "scope": "connection",
+            "text": "Say when the inverter's connections are all taken (#312)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": "site",
+            "text": "Steps to add the app repository by hand for way 2 (#310)"
+          },
+          {
+            "scope": null,
+            "text": "Complete steps to add the app repository, with its maintainer (#308)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.22.0",
       "date": "2026-10-12",
       "first": false,
