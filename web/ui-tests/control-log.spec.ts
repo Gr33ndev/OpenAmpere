@@ -27,6 +27,9 @@ const ENTRIES = [
   { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 20 } }, dry_run: false, result: "ok" },
   { action: "grid_charging_reserve", details: { from: { min_soc_on_grid: 61 }, to: { min_soc_on_grid: 35 }, kept: true }, dry_run: false,
     result: "nicht zurückgestellt: die Notstrom-Reserve wurde inzwischen auf 35 % geändert" },
+  // #322: changes of the grid charging settings, with the state of charge at the time
+  { action: "grid_charging_settings", details: { from: { target_soc: 45, mode: "cheapest", max_price_ct: null },
+    to: { target_soc: 35, mode: "window", max_price_ct: 25.5 }, soc: 30 }, dry_run: false, result: "ok" },
   { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort", note: "Fehler: keine Antwort" },
 ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
 
@@ -50,6 +53,7 @@ test("control log entries read as sentences and can be exported", async ({ page,
     "Notstrom-Reserve für das Laden aus dem Netz vorübergehend von 20 % auf 61 % angehoben.",
     "Notstrom-Reserve nach dem Laden aus dem Netz wieder auf 20 % gestellt (vorübergehend 61 %).",
     "Notstrom-Reserve nach dem Laden aus dem Netz nicht zurückgestellt: Sie wurde inzwischen auf 35 % geändert, dieser Wert bleibt.",
+    "Laden aus dem Netz geändert: Laden bis von 45 % auf 35 %, Lade-Art von Günstigste Zeit auf Festes Zeitfenster und Höchstpreis von keiner auf 25,50 ct/kWh. (Ladestand 30 %)",
     "Sonstige Änderung (something_new).",
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();

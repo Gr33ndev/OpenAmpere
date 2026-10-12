@@ -30,6 +30,9 @@ SOC_FIELDS = ("min_soc", "max_soc", "min_soc_on_grid")
 SOC_MIN = {"min_soc": 0, "max_soc": 10, "min_soc_on_grid": 10}  # lowest value per limit in %
 # a backup reserve below SOC_MIN only with an explicit confirmation, every time (#313); the inverter accepts it
 LOW_RESERVE_MIN = 0
+# the read back is repeated after these seconds before it reports a mismatch: while the inverter is controlled remotely
+# it takes a new value a few seconds later (#322)
+READ_BACK_WAITS_S = (1, 2, 3)
 VERIFY_AFTER_S = 45.0  # re-read written values after this time to detect a second master overwriting them
 
 log = logging.getLogger(__name__)
@@ -161,8 +164,10 @@ class BatteryControl:
                 return {"dry_run": control.dry_run, "written": {}, "settings": current}
 
             storage = self.runtime.storage
+            snap = self.runtime.collector.latest  # the state of charge at the time, for the log (#322)
             details = {"from": {k: current.get(k) for k in diff}, "to": diff, **({"source": source} if source else {}),
-                       **({"low_reserve_confirmed": True} if lowering else {})}
+                       **({"low_reserve_confirmed": True} if lowering else {}),
+                       **({"soc": round(snap.battery_soc)} if snap and snap.battery_soc is not None else {})}
             if control.dry_run:
                 storage.log_control("battery_settings", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": diff, "settings": current}
@@ -183,10 +188,7 @@ class BatteryControl:
                 error = err
             finally:
                 # always record what the inverter actually holds now, also after a partial write
-                try:
-                    after = await self._read()
-                except Exception:  # noqa: BLE001
-                    after = None
+                after = await self._read_back(diff if error is None else {})  # after an error: no waiting
                 if after is None:
                     result = "Rücklesen fehlgeschlagen"
                 else:
@@ -206,6 +208,23 @@ class BatteryControl:
             self._schedule_verify(diff)
             return {"dry_run": False, "written": diff, "settings": after or current, "result": result,
                     "warning": warning}
+
+    async def _read_back(self, written: dict) -> dict | None:
+        """The values after writing. A value the inverter takes a few seconds later (while it is controlled remotely)
+        is read again before it counts as a mismatch (#322)."""
+        try:
+            after = await self._read()
+        except Exception:  # noqa: BLE001
+            after = None
+        for wait_s in READ_BACK_WAITS_S:
+            if after is not None and all(after.get(k) == v for k, v in written.items()):
+                break
+            await asyncio.sleep(wait_s)
+            try:
+                after = await self._read()
+            except Exception:  # noqa: BLE001
+                continue
+        return after
 
     def _schedule_verify(self, written: dict) -> None:
         if self._verify_task is not None:

@@ -191,6 +191,37 @@ def test_the_app_api_passes_the_confirmation_of_a_low_reserve(tmp_path, authed, 
     assert calls == [({"min_soc_on_grid": 5}, False), ({"min_soc_on_grid": 5}, True), ({"min_soc_on_grid": 5}, False)]
 
 
+async def test_a_value_the_inverter_takes_a_few_seconds_later_is_no_mismatch(tmp_path, monkeypatch):
+    """While controlled remotely, the inverter takes a new reserve a few seconds later (#322): read again."""
+    from openampere import control as control_module
+    from openampere.control import BatteryControl
+    monkeypatch.setattr(control_module, "READ_BACK_WAITS_S", (0, 0, 0))
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            reads = []
+            original = battery._read
+
+            async def late():
+                state = await original()
+                reads.append(state["min_soc_on_grid"])
+                if len(reads) == 2:  # the read back right after writing still shows the old value
+                    state = {**state, "min_soc_on_grid": 10}
+                return state
+            monkeypatch.setattr(battery, "_read", late)
+            assert (await battery.write({"min_soc_on_grid": 30}))["result"] == "ok"
+            entry = runtime.storage.control_log()[0]
+            assert entry["result"] == "ok" and isinstance(entry["details"]["soc"], int)  # with the state of charge
+        finally:
+            await runtime.collector.stop()
+
+
 def test_write_order_keeps_every_step_valid():
     from openampere.control import write_order
     current = {"min_soc": 10, "min_soc_on_grid": 20, "max_soc": 30}

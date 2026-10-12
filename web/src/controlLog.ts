@@ -43,6 +43,29 @@ function feedInRule(v: unknown): string {
   }
 }
 
+const chargingMode = (v: unknown) => (v === "cheapest" ? t("settings.chargingPage.cheapestTime")
+  : v === "window" ? t("settings.chargingPage.fixedTimeWindow") : str(v) || unknown());
+const hour = (v: unknown) => (isNum(v) ? t("settings.controlLog.hourValue", { hour: v }) : unknown());
+const price = (v: unknown) => (isNum(v) ? `${num(v, 2)} ct/kWh` : v == null ? t("settings.controlLog.noMaxPrice") : unknown());
+
+/** One changed grid charging setting, e.g. "Laden bis von 45 % auf 35 %" (#322). */
+function chargingChange(key: string, from: unknown, to: unknown): string {
+  const change = (name: string, show: (v: unknown) => string) => t("settings.controlLog.settingChange",
+    { name, from: show(from), to: show(to) });
+  switch (key) {
+    case "target_soc": return change(t("settings.chargingPage.chargeUntil"), pct);
+    case "mode": return change(t("settings.controlLog.chargingMode"), chargingMode);
+    case "ready_by": return change(t("settings.chargingPage.readyBy"), hour);
+    case "window_start": return change(t("settings.controlLog.windowStart"), hour);
+    case "window_end": return change(t("settings.controlLog.windowEnd"), hour);
+    case "max_price_ct": return change(t("settings.controlLog.maxPrice"), price);
+    case "power_w": return change(t("settings.controlLog.chargingPower"), (v) => (isNum(v) ? kw(v) : unknown()));
+    case "battery_kwh": return change(t("settings.controlLog.batterySize"), (v) => (isNum(v) ? `${num(v, 1)} kWh` : unknown()));
+    case "legal_confirmed": return to ? t("settings.controlLog.legalConfirmed") : t("settings.controlLog.legalWithdrawn");
+    default: return key;
+  }
+}
+
 /** Name of a battery setting, e.g. "Notstrom-Reserve" for min_soc_on_grid. */
 export function batterySettingName(key: string): string {
   return ({
@@ -121,6 +144,8 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
       return t("settings.controlLog.exportLimitOverwritten", { from: watts(from.export_limit_w), to: watts(to.export_limit_w) });
     case "grid_charging_switch":
       return to.enabled ? t("settings.controlLog.gridChargingOn") : t("settings.controlLog.gridChargingOff");
+    case "grid_charging_settings": // every change of the grid charging settings (#322)
+      return t("settings.controlLog.gridChargingChanged", { changes: list(Object.keys(to).map((key) => chargingChange(key, from[key], to[key]))) || unknown() });
     case "grid_charging_reserve": { // 0.23.1 raised the reserve for grid charging and set it back (#315, #320)
       const values = { from: pct(from.min_soc_on_grid), to: pct(to.min_soc_on_grid) };
       if (details.kept) return t("settings.controlLog.reserveKept", values);
@@ -206,8 +231,10 @@ export function describe(e: LogEntry): DescribedEntry {
   const entry = { ...e, action: str(e.action), result: str(e.result) };
   const details = obj(entry.details);
   try {
-    return { text: sentence(entry, details, obj(details.from), obj(details.to)), by: by(entry, details), status: status(entry),
-      note: e.note ?? null };
+    // the state of charge at the time, logged for changes around charging (#322)
+    const soc = isNum(details.soc) ? ` ${t("settings.controlLog.socAtTime", { soc: pct(details.soc) })}` : "";
+    return { text: sentence(entry, details, obj(details.from), obj(details.to)) + soc, by: by(entry, details),
+      status: status(entry), note: e.note ?? null };
   } catch {
     return { text: t("settings.controlLog.unknown", { action: entry.action }), by: "", status: status(entry), note: e.note ?? null };
   }

@@ -129,11 +129,24 @@ class GridCharging:
         old = self.settings
         self.runtime.storage.set_meta("grid_charging", asdict(settings))
         self.full_at_soc, self._limit = None, None  # new settings: try again, read the charge limit again (#242)
+        extra = {**({"source": source} if source else {}), **self._soc_now()}
         if old.enabled != settings.enabled:
             self.runtime.storage.log_control("grid_charging_switch", {"from": {"enabled": old.enabled},
-                                                                      "to": {"enabled": settings.enabled},
-                                                                      **({"source": source} if source else {})}, False, "ok")
+                                                                      "to": {"enabled": settings.enabled}, **extra},
+                                             False, "ok")
+        # every other change too (e.g. "Laden bis" during a session), so the log explains why charging ended (#322)
+        changed = {k for k, v in asdict(settings).items() if k != "enabled" and getattr(old, k) != v}
+        if changed:
+            self.runtime.storage.log_control("grid_charging_settings", {
+                "from": {k: getattr(old, k) for k in sorted(changed)},
+                "to": {k: getattr(settings, k) for k in sorted(changed)}, **extra}, False, "ok")
         return settings
+
+    def _soc_now(self) -> dict:
+        """The state of charge at the time, for the control log: it makes the entries easier to follow (#322)."""
+        snap = self.runtime.collector.latest
+        soc = snap.battery_soc if snap else None
+        return {"soc": round(soc)} if soc is not None else {}
 
     # ---- planning ------------------------------------------------------------
 
@@ -278,7 +291,8 @@ class GridCharging:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
             self.verified = False
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
-                                                                              "target_soc": s.target_soc}},
+                                                                              "target_soc": s.target_soc},
+                                                          **self._soc_now()},
                                         False, f"Laden gestartet ({plan['reason']})")
 
     async def _stop(self, reason: str, *, error: bool = False) -> None:
@@ -310,8 +324,9 @@ class GridCharging:
             switched_off, failed = False, err
         except Exception as err:  # noqa: BLE001 - tried again on the next tick
             log.warning("could not switch off the remote control: %s", err)
-            if was_active:
-                self._log_stop(f"Beenden fehlgeschlagen ({err}); OpenAmpere versucht es gleich noch einmal")
+            if was_active:  # with the reason why charging ended, so the log tells what happened (#322)
+                self._log_stop(f"Beenden fehlgeschlagen ({err}); OpenAmpere versucht es gleich noch einmal. "
+                               f"Grund für das Ende: {reason}")
             return
         else:
             failed = None
@@ -319,7 +334,8 @@ class GridCharging:
             storage.set_meta(REMOTE_COMMAND, {**command, "released": time.time()})
         if failed is not None:
             if was_active or pending:
-                self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten")
+                self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten. "
+                               f"Grund für das Ende: {reason}")
         elif was_active:
             self._log_stop(f"Laden beendet: {reason}")
         elif switched_off:
