@@ -24,7 +24,8 @@ def test_the_supervisor_finds_only_the_app():
     apps = [f for f in files if re.fullmatch(r"config\.(json|ya?ml)", PurePosixPath(f).name)
             and not any(part.startswith(".") or part == "rootfs" for part in PurePosixPath(f).parts)]
     assert apps == ["ha-app/config.yaml"]
-    assert (ROOT / "repository.yaml").is_file()
+    repository = yaml.safe_load((ROOT / "repository.yaml").read_text())
+    assert repository["maintainer"] == "Gr33ndev"  # otherwise Home Assistant shows "unknown" (#307)
 
 
 def test_version_is_the_one_of_the_release():

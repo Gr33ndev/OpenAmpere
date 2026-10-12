@@ -3,3 +3,4 @@
 # Makes this repository an app repository for Home Assistant (#300); the app is in ha-app/.
 name: OpenAmpere
 url: https://github.com/Gr33ndev/OpenAmpere
+maintainer: Gr33ndev

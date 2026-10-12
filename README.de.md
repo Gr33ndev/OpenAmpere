@@ -208,7 +208,8 @@ Für Home Assistant OS (auch Home Assistant Supervised). Home Assistant Containe
 [![Open your Home Assistant instance and show the add app repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere)
 
 1. **Repository hinzufügen:** Der Button öffnet den Dialog in deinem Home Assistant mit der Adresse schon eingetragen.
-   Von Hand: **Einstellungen → Apps**, der App-Store, **⋮ → Repositories**, `https://github.com/Gr33ndev/OpenAmpere`.
+   Von Hand: **Einstellungen → Apps → App installieren → ⋮ → Repositorys**,
+   `https://github.com/Gr33ndev/OpenAmpere` eintragen, **Hinzufügen**.
 2. Die App **OpenAmpere** **installieren**, **In der Seitenleiste anzeigen** einschalten und **starten**.
 3. **Einrichten:** OpenAmpere in der Seitenleiste öffnen. Der Einrichtungsassistent sucht den Wechselrichter, oder du
    gibst seine IP-Adresse ein. In der Seitenleiste brauchst du kein Passwort; eines für den direkten Zugriff über die
