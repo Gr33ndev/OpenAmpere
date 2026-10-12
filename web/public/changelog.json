@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "0.22.0",
+      "date": "2026-10-12",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": null,
+            "text": "The control log names the user of Home Assistant (#306)"
+          },
+          {
+            "scope": null,
+            "text": "OpenAmpere as a Home Assistant app for Home Assistant OS (#304)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#301)"
+          },
+          {
+            "scope": "ui",
+            "text": "Check the retro charts with a full week (#303)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.21.0",
       "date": "2026-10-11",
       "first": false,

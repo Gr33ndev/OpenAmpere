@@ -4,6 +4,18 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.22.0 (2026-10-12)
+
+### Neu
+
+- The control log names the user of Home Assistant (#306)
+- OpenAmpere as a Home Assistant app for Home Assistant OS (#304)
+
+### Weitere Änderungen
+
+- **deps:** Update Python dependencies (#301)
+- **ui:** Check the retro charts with a full week (#303)
+
 ## 0.21.0 (2026-10-11)
 
 ### Neu
@@ -191,9 +203,3 @@ New: a damaged database no longer stops the app, and you can now restore a backu
 
 - Show a changelog in the app and on the website (#156)
 - **control:** Show the control log as sentences and export it as csv (#154)
-
-## 0.13.3 (2026-10-07)
-
-### Behoben
-
-- **report:** Show complete bars and one label per bucket in energy charts (#152)
