@@ -33,6 +33,7 @@ log = logging.getLogger("openampere.simulator")
 ILLEGAL_FUNCTION = 1
 ILLEGAL_ADDRESS = 2
 GATEWAY_TARGET_FAILED = 11  # what a Modbus proxy/gateway answers when the inverter does not respond
+SERVER_DEVICE_BUSY = 6
 
 
 @dataclass
@@ -440,6 +441,40 @@ class SimulatedHeatingRod(SimulatedInverter):
         return bytes([function | 0x80, ILLEGAL_FUNCTION])
 
 
+class SimulatedFoxCharger(SimulatedInverter):
+    """FoxESS AC EV Charger for the read-only wallbox check (#325), with the register addresses OpenAmpere assumes
+    (wallbox/foxess.py, not yet confirmed on a device). `busy`: like a charger outside the app's "Modbus TCP" mode
+    that refuses reads; `single_phase`: without the phase-switching registers 0x3008–0x300B."""
+
+    def __init__(self, *, unit: int = 1, busy: bool = False, single_phase: bool = False,
+                 model: str = "A022KP1", serial: str = "SIMULATEDCHARGER") -> None:
+        self.unit, self.busy = unit, busy
+        self.max_connections, self.connections, self.latency_s = 1, 0, 0.0
+        self.map, self.model, self.serial = None, model, serial
+        self.functions: list[int] = []  # every function code received: the check must only read
+        self.regs = {0x1000: unit, 0x1001: 0x0110, 0x1002: 0, 0x1003: 0, 0x1004: 1, 0x1005: 0, 0x1006: 700,
+                     0x1007: 700, 0x1008: 2301, 0x1009: 2302, 0x100A: 2303, 0x100B: 0, 0x100C: 0, 0x100D: 0,
+                     0x100E: 0, 0x100F: 0, 0x1010: 0, 0x1011: 220, 0x1012: 42, 0x1013: 320, 0x1014: 60, 0x1015: 0,
+                     0x1016: 0, 0x1017: 12345, 0x1018: 0, 0x1019: 0, 0x101A: 0, 0x101B: 0, 0x101C: 0x1234,
+                     0x101D: 0x5678, 0x3000: 1, 0x3001: 320, 0x3002: 220, 0x3003: 0xFFFF, 0x3004: 0xFFFF, 0x3005: 60,
+                     0x3006: 60}
+        if not single_phase:
+            self.regs.update({0x3007: 0, 0x3008: 0, 0x3009: 0, 0x300A: 1, 0x300B: 12})
+        self._write_string(0x101E, model, 4)
+        self._write_string(0x1022, serial, 16)
+
+    def handle(self, pdu: bytes) -> bytes:
+        self.functions.append(pdu[0])
+        if pdu[0] in (3, 4) and self.busy:
+            return bytes([pdu[0] | 0x80, SERVER_DEVICE_BUSY])
+        if pdu[0] == 3:
+            address, count = struct.unpack(">HH", pdu[1:5])
+            if not 1 <= count <= 125 or any(a not in self.regs for a in range(address, address + count)):
+                return bytes([3 | 0x80, ILLEGAL_ADDRESS])
+            return struct.pack(">BB", 3, count * 2) + struct.pack(f">{count}H", *(self.regs[a] for a in range(address, address + count)))
+        return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
+
+
 async def run(host: str, port: int, speed: float, sim: SimulatedInverter, tick_s: float = 1.0) -> None:
     server = await asyncio.start_server(sim.serve_client, host, port)
     log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else "saj_h2",
@@ -457,8 +492,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv"], default="foxess",
-                        help="device family to emulate (mypv = my-PV heating rod)")
+    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv", "foxess-charger"], default="foxess",
+                        help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox)")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
     parser.add_argument("--model", default=None, help="model string at register 30000")
@@ -474,7 +509,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor == "mypv":
+    if args.vendor in ("mypv", "foxess-charger"):
         pass
     elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
@@ -485,6 +520,18 @@ def main() -> None:
         sim = SimulatedInverter(register_map, model, args.serial, strict_function=args.strict_function,
                                 max_connections=args.max_connections, fault_rate=args.fault_rate,
                                 latency_s=args.latency, read_only=args.read_only, unit=args.unit or 247)
+    if args.vendor == "foxess-charger":
+        async def run_charger() -> None:
+            charger = SimulatedFoxCharger(unit=args.unit or 1)
+            server = await asyncio.start_server(charger.serve_client, args.host, args.port)
+            log.info("simulating a FoxESS AC EV Charger (read-only) on %s:%d", args.host, args.port)
+            async with server:
+                await server.serve_forever()
+        try:
+            asyncio.run(run_charger())
+        except KeyboardInterrupt:
+            pass
+        return
     if args.vendor == "mypv":
         async def run_rod() -> None:
             rod = SimulatedHeatingRod(unit=args.unit or 1)

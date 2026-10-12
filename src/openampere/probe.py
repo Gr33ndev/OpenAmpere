@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass, field
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from . import ha_app
+from . import ha_app, privacy
 from .drivers.modbus import ModbusReadError
 from .outbound import in_home_network, open_without_redirect
 from .runtime import Runtime
@@ -43,7 +43,6 @@ PORTS = (502, 1502, 80, 443, 8080)  # checked to identify a device: Modbus TCP (
 WEB_PORTS = ((80, "http"), (8080, "http"), (443, "https"))
 ARP = "/proc/net/arp"
 TITLE_BYTES = 64 * 1024
-TEXT_MIN = 6  # readable text of at least this many characters is shortened in reports (serial numbers, names)
 MDNS = ("224.0.0.251", 5353)
 MDNS_SERVICES = ("_modbus._tcp.local",)
 SEARCH_S = 2.0
@@ -56,6 +55,14 @@ class ProbeError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+class ProbeUnreachable(ProbeError):
+    """Nothing accepts a connection at host:port (another port may work)."""
+
+
+class ProbeBusy(ProbeError):
+    """The device closed the connection right away: all its connections are taken."""
 
 
 @dataclass
@@ -81,23 +88,6 @@ class ReadResult:
 
 def blocks_of(start: int, count: int) -> list[tuple[int, int]]:
     return [(a, min(MAX_BLOCK, start + count - a)) for a in range(start, start + count, MAX_BLOCK)]
-
-
-def text_runs(words: list[int]) -> list[tuple[int, int, str]]:
-    """Readable ASCII in register values (two characters per register, high byte first): (first index, index after
-    the last, text) of every run of at least TEXT_MIN characters, e.g. a model name or a serial number."""
-    data = b"".join(struct.pack(">H", w & 0xFFFF) for w in words)
-    runs = []
-    for match in re.finditer(rb"[\x20-\x7e]{%d,}" % TEXT_MIN, data):
-        text = match.group(0).decode("ascii").strip()
-        if len(text) >= TEXT_MIN:
-            runs.append((match.start() // 2, (match.end() + 1) // 2, text))
-    return runs
-
-
-def shorten(text: str) -> str:
-    """Like the serial number in the report: the first four and the last two characters."""
-    return text[:4] + "…" + text[-2:] if len(text) > 6 else "…"
 
 
 def _valid_host(host: str) -> str:
@@ -140,14 +130,21 @@ class Probe:
     # ---- reading registers ------------------------------------------------------
 
     async def read(self, host: str, port: int, unit: int, function: int, start: int, count: int) -> ReadResult:
-        if function not in (3, 4):
-            raise ProbeError("Nur die Funktionscodes 3 und 4 (lesen) sind möglich.")
-        if not 1 <= count <= MAX_REGISTERS or not 0 <= start or start + count > 0x10000:
-            raise ProbeError(f"Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.")
-        host = await _check_home(host)
-        result = await self._exclusive(lambda: self._read(host, port, unit, function, start, count))
+        result = await self.read_ranges(host, port, unit, function, [(start, count)])
         self.last_read = result
         return result
+
+    async def read_ranges(self, host: str, port: int, unit: int, function: int,
+                          ranges: list[tuple[int, int]]) -> ReadResult:
+        """Several ranges over one connection (e.g. the blocks of a known wallbox, #325), within the same limits."""
+        if function not in (3, 4):
+            raise ProbeError("Nur die Funktionscodes 3 und 4 (lesen) sind möglich.")
+        if (sum(count for _, count in ranges) > MAX_REGISTERS
+                or any(count < 1 or start < 0 or start + count > 0x10000 for start, count in ranges)):
+            raise ProbeError(f"Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.")
+        host = await _check_home(host)
+        blocks = [block for start, count in ranges for block in blocks_of(start, count)]
+        return await self._exclusive(lambda: self._read(host, port, unit, function, blocks))
 
     async def _inverter_driver(self, host: str, port: int):
         """OpenAmpere's driver if host:port is the connected inverter: it allows only a few connections, so the
@@ -161,7 +158,7 @@ class Probe:
         driver = collector.driver
         return getattr(driver, "_driver", None) or driver  # AutoDriver wraps the detected driver
 
-    async def _read(self, host: str, port: int, unit: int, function: int, start: int, count: int) -> ReadResult:
+    async def _read(self, host: str, port: int, unit: int, function: int, blocks: list[tuple[int, int]]) -> ReadResult:
         result = ReadResult(host, port, unit, function)
         driver = await self._inverter_driver(host, port)
         if driver is not None:
@@ -170,18 +167,18 @@ class Probe:
                 raise ProbeError(f"Am Wechselrichter liest OpenAmpere nur über die bestehende Verbindung, mit der "
                                  f"Geräteadresse {own_unit}.")
             result.unit, result.shared_connection = own_unit, True
-            for address, n in blocks_of(start, count):
+            for address, n in blocks:
                 result.blocks.append(await self._read_shared(driver, address, n, function))
             return result
         client = AsyncModbusTcpClient(host, port=port, timeout=TIMEOUT_S, retries=0, reconnect_delay=0)
         try:
             if not await client.connect():
-                raise ProbeError(f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?")
+                raise ProbeUnreachable(f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?")
             await asyncio.sleep(CONNECT_SETTLE_S)
             if not client.connected:
-                raise ProbeError("Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle "
+                raise ProbeBusy("Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle "
                                  "Verbindungen belegt, zum Beispiel durch evcc oder ein anderes Programm.")
-            for i, (address, n) in enumerate(blocks_of(start, count)):
+            for i, (address, n) in enumerate(blocks):
                 if i:
                     await asyncio.sleep(REQUEST_GAP_S)
                 result.blocks.append(await self._read_block(client, unit, address, n, function))
@@ -273,28 +270,14 @@ class Probe:
         section: dict = {}
         if self.last_read:
             read = asdict(self.last_read)
-            read["blocks"] = [_masked(b, include_text) for b in read["blocks"]]
+            read["blocks"] = [privacy.masked_block(b, include_text) for b in read["blocks"]]
             section["read"] = read
         if self.last_identify:
             section["identify"] = self.last_identify
         if self.last_search:
             section["search"] = {**self.last_search, "devices": [
-                {**d, "name": d["name"] if include_text else shorten(d["name"])} for d in self.last_search["devices"]]}
+                {**d, "name": d["name"] if include_text else privacy.shorten(d["name"])} for d in self.last_search["devices"]]}
         return section
-
-
-def _masked(block: dict, include_text: bool) -> dict:
-    words = block.get("words")
-    if not words:
-        return block
-    runs = text_runs(words)
-    words = list(words)
-    texts = []
-    for first, after, text in runs:
-        texts.append({"address": block["start"] + first, "text": text if include_text else shorten(text)})
-        if not include_text:
-            words[first:after] = [None] * (after - first)
-    return {**block, "words": words, "text": texts}
 
 
 async def _port_open(host: str, port: int, timeout: float = 1.5) -> bool:
@@ -460,23 +443,30 @@ def section_markdown(section: dict) -> list[str]:
         how = " über die Verbindung zum Wechselrichter" if read.get("shared_connection") else ""
         lines.append(f"- Register von {read['host']}:{read['port']}, Geräteadresse {read['unit']}, "
                      f"Funktionscode {read['function']}{how}:")
-        for block in read["blocks"]:
-            where = f"{block['start']}+{block['count']} (0x{block['start']:04X})"
-            if block["ok"]:
-                state = f"gelesen ({block['ms']} ms)"
-            elif block["error"] == "rejected":
-                state = f"abgelehnt (Modbus-Ausnahme {block['exception']})"
-            else:
-                state = "keine Antwort" + (f" (Modbus-Ausnahme {block['exception']})" if block["exception"] else "")
-            lines.append(f"  - {where}: {state}")
-        lines += ["", "<details><summary>Registerwerte</summary>", "", "```json",
-                  json.dumps([{k: b.get(k) for k in ("start", "words", "text")} for b in read["blocks"] if b["ok"]],
-                             ensure_ascii=False), "```", "", "</details>"]
+        lines += blocks_markdown(read["blocks"], "Registerwerte")
+    return lines
+
+
+def blocks_markdown(blocks: list[dict], summary: str) -> list[str]:
+    """Blocks of register values for the report (already masked): what each block answered, then the values."""
+    lines = []
+    for block in blocks:
+        if block["ok"]:
+            state = f"gelesen ({block['ms']} ms)"
+        elif block["error"] == "rejected":
+            state = f"abgelehnt (Modbus-Ausnahme {block['exception']})"
+        else:
+            state = "keine Antwort" + (f" (Modbus-Ausnahme {block['exception']})" if block["exception"] else "")
+        lines.append(f"  - {block['start']}+{block['count']} (0x{block['start']:04X}): {state}")
+    readable = [{k: b.get(k) for k in ("start", "words", "text")} for b in blocks if b["ok"]]
+    if readable:
+        lines += ["", f"<details><summary>{summary}</summary>", "", "```json",
+                  json.dumps(readable, ensure_ascii=False), "```", "", "</details>"]
     return lines
 
 
 def read_view(result: ReadResult) -> dict:
     """For the owner's own screen: all values and the readable text in full (shortened only in the report)."""
     view = asdict(result)
-    view["blocks"] = [_masked(b, include_text=True) for b in view["blocks"]]
+    view["blocks"] = [privacy.masked_block(b, include_text=True) for b in view["blocks"]]
     return view

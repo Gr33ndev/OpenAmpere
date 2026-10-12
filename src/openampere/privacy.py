@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
+"""Everything that leaves OpenAmpere for a report goes through here (#149, #324, #325).
+
+Owners share the diagnostics report, the device query and the wallbox check in public issues. The rules for what is
+shortened, replaced or left out live in this one place, so every export follows the same rules and a new one cannot
+forget one:
+
+- serial numbers and other readable device text: the first four and the last two characters (`shorten`);
+- addresses, host names, e-mail and MAC addresses, user names in file paths and the addresses of the configured
+  services and devices: the same value always by the same pseudonym (`for_report`);
+- times of the owner's actions: as a duration, never the clock time (`ago`);
+- register values: values at private addresses (card numbers, exact counters) removed, readable text shortened
+  unless the owner includes it (`masked_block`).
+"""
+
+from __future__ import annotations
+
+import ipaddress
+import re
+import struct
+import urllib.parse
+from collections import Counter
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .runtime import Runtime
+
+TEXT_MIN = 6  # readable text of at least this many characters is shortened (serial numbers, names)
+
+_IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
+_IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
+_MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])")
+# time stamps in the names of database copies (storage.py): when the owner restored or lost data
+_STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
+_HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
+                   r"(?![\w-])", re.I)
+_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
+
+
+def shorten(text: str | None) -> str | None:
+    """A serial number or other readable device text: the first four and the last two characters."""
+    if not text:
+        return text
+    return text[:4] + "…" + text[-2:] if len(text) > 6 else "…"
+
+
+class Pseudonyms:
+    """Replaces addresses and local host names in report texts, the same value always by the same pseudonym (#149):
+    the report stays readable ("the same address twice") without telling anyone the user's network."""
+
+    def __init__(self, inverter_host: str | None, known: dict[str, str] | None = None) -> None:
+        """`known`: further values with their replacement, e.g. the serial number or the ntfy address."""
+        self.known = {k.strip().lower(): v for k, v in (known or {}).items() if k and k.strip()}
+        if inverter_host:
+            self.known[inverter_host.lower()] = "<Wechselrichter>"
+        self.counts: Counter = Counter()
+
+    def _name(self, value: str, kind: str) -> str:
+        key = value.lower()
+        if key not in self.known:
+            self.counts[kind] += 1
+            self.known[key] = f"<{kind}-{self.counts[kind]}>"
+        return self.known[key]
+
+    def _ip(self, match: re.Match, kind: str = "IP") -> str:
+        try:
+            ipaddress.ip_address(match.group(0))
+        except ValueError:  # e.g. a time like 12:34:56 or a version number
+            return match.group(0)
+        return self._name(match.group(0), kind)
+
+    def text(self, text: str) -> str:
+        for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
+            text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
+        text = _EMAIL.sub(lambda m: self._name(m.group(0), "E-Mail"), text)
+        text = _HOME.sub(r"\1/<Benutzer>", text)
+        text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
+        text = _IPV4.sub(self._ip, text)
+        text = _IPV6.sub(self._ip, text)
+        text = _STAMP.sub("<Zeitpunkt>", text)  # e.g. openampere.db.before-restore-20261010-153012 (#223)
+        return _HOST.sub(lambda m: self._name(m.group(0), "Host"), text)
+
+    def apply(self, value):
+        if isinstance(value, str):
+            return self.text(value)
+        if isinstance(value, list):
+            return [self.apply(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.apply(v) for k, v in value.items()}
+        return value
+
+
+def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
+    """Pseudonyms that also know the installation's own private values: the addresses of the inverter, ntfy, evcc and
+    the surplus devices, the meter user name and numbers and, unless the owner includes it, the serial number."""
+    config = runtime.config
+    known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
+             config.meter.username: "<Benutzername>"}
+    for meter in config.meter.meter_ids or []:
+        known[str(meter)] = "<Zählernummer>"
+    for device in runtime.storage.get_meta("consumers") or []:  # hosts and switch addresses of devices
+        if not isinstance(device, dict):
+            continue
+        if device.get("host"):
+            known[str(device["host"]).strip()] = "<Geräteadresse>"
+        for key in ("url_on", "url_off"):
+            url = runtime.secrets.decrypt(f"consumer.{key}", device.get(key) or "")
+            if url:
+                known[url] = "<Schaltadresse>"
+                host = urllib.parse.urlsplit(url).hostname
+                if host:
+                    known.setdefault(host, "<Geräteadresse>")
+    if not include_serial:
+        device = runtime.collector.device
+        stored = (runtime.storage.get_meta("firmware") or {}).get("serial")
+        for serial in {device.serial if device else None, stored}:
+            if serial:
+                known[serial] = shorten(serial)
+    return Pseudonyms(config.inverter.host, known)
+
+
+def duration(seconds: float) -> str:
+    minutes = int(seconds // 60)
+    if minutes < 120:
+        return f"{minutes} Minuten"
+    hours = minutes // 60
+    return f"{hours} Stunden" if hours < 48 else f"{hours // 24} Tagen"
+
+
+def ago(seconds: float) -> str:
+    """How long ago, instead of the time of the owner's action (#149)."""
+    return "vor weniger als einer Minute" if seconds < 60 else f"vor {duration(seconds)}"
+
+
+def text_runs(words: list[int]) -> list[tuple[int, int, str]]:
+    """Readable ASCII in register values (two characters per register, high byte first): (first index, index after
+    the last, text) of every run of at least TEXT_MIN characters, e.g. a model name or a serial number."""
+    data = b"".join(struct.pack(">H", w & 0xFFFF) for w in words)
+    runs = []
+    for match in re.finditer(rb"[\x20-\x7e]{%d,}" % TEXT_MIN, data):
+        text = match.group(0).decode("ascii").strip()
+        if len(text) >= TEXT_MIN:
+            runs.append((match.start() // 2, (match.end() + 1) // 2, text))
+    return runs
+
+
+def masked_block(block: dict, include_text: bool, private: frozenset[int] = frozenset(),
+                 public_text: frozenset[int] = frozenset()) -> dict:
+    """A block of register values ({"start", "words", …}) for the report or the owner's screen: values at `private`
+    addresses (e.g. an RFID card number, exact energy counters) are always removed; readable text is shortened
+    unless the owner includes it or it lies within `public_text` (addresses known to hold harmless text such as a
+    model code)."""
+    words = block.get("words")
+    if not words:
+        return block
+    words = [None if block["start"] + i in private else w for i, w in enumerate(words)]
+    texts = []
+    for first, after, text in text_runs([w or 0 for w in words]):
+        address = block["start"] + first
+        keep = include_text or all(a in public_text for a in range(address, block["start"] + after))
+        texts.append({"address": address, "text": text if keep else shorten(text)})
+        if not keep:
+            words[first:after] = [None] * (after - first)
+    return {**block, "words": words, "text": texts}

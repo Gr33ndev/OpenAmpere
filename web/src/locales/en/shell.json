@@ -23,6 +23,11 @@
     "title": "The database was damaged",
     "whatHappened": "OpenAmpere could no longer read its database at the start ({date}), for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing."
   },
+  "deviceSearch": {
+    "nothingFound": "No device found that announces Modbus TCP in your home network. Many devices do not announce themselves: then enter the address below; you can find it, for example, in your router's device list.",
+    "unavailable": "Searching the home network does not work in the Home Assistant app. Enter the device's address below.",
+    "use": "Use"
+  },
   "homeAssistant": {
     "adminsOnly": "You are not an admin in Home Assistant. You can view everything; only admins of Home Assistant may change settings and set the password.",
     "forgotPassword": "Forgot the password? In Home Assistant, open OpenAmpere in the sidebar and set a new one under More → Access protection.",

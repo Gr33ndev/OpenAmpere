@@ -12,19 +12,17 @@ so owners do not have to read and black out the console output themselves (#169)
 from __future__ import annotations
 
 import asyncio
-import ipaddress
-import re
 import time
-import urllib.parse
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from . import logs
+from . import logs, privacy
 from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .probe import Probe, section_markdown
 from .runtime import Runtime
+from .wallbox import WallboxCheck, check_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
@@ -41,88 +39,13 @@ class Check:
     hint: str = ""  # what it means and what to do, shown below the result
 
 
-def mask_serial(serial: str | None) -> str | None:
-    if not serial:
-        return serial
-    return serial[:4] + "…" + serial[-2:] if len(serial) > 6 else "…"
-
-
-_IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
-_IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
-_MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])")
-# time stamps in the names of database copies (storage.py): when the owner restored or lost data
-_STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
-_HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
-                   r"(?![\w-])", re.I)
-_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-_HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
-
-
-class _Pseudonyms:
-    """Replaces addresses and local host names in report texts, the same value always by the same pseudonym (#149):
-    the report stays readable ("the same address twice") without telling anyone the user's network."""
-
-    def __init__(self, inverter_host: str | None, known: dict[str, str] | None = None) -> None:
-        """`known`: further values with their replacement, e.g. the serial number or the ntfy address."""
-        self.known = {k.strip().lower(): v for k, v in (known or {}).items() if k and k.strip()}
-        if inverter_host:
-            self.known[inverter_host.lower()] = "<Wechselrichter>"
-        self.counts: Counter = Counter()
-
-    def _name(self, value: str, kind: str) -> str:
-        key = value.lower()
-        if key not in self.known:
-            self.counts[kind] += 1
-            self.known[key] = f"<{kind}-{self.counts[kind]}>"
-        return self.known[key]
-
-    def _ip(self, match: re.Match, kind: str = "IP") -> str:
-        try:
-            ipaddress.ip_address(match.group(0))
-        except ValueError:  # e.g. a time like 12:34:56 or a version number
-            return match.group(0)
-        return self._name(match.group(0), kind)
-
-    def text(self, text: str) -> str:
-        for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
-            text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
-        text = _EMAIL.sub(lambda m: self._name(m.group(0), "E-Mail"), text)
-        text = _HOME.sub(r"\1/<Benutzer>", text)
-        text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
-        text = _IPV4.sub(self._ip, text)
-        text = _IPV6.sub(self._ip, text)
-        text = _STAMP.sub("<Zeitpunkt>", text)  # e.g. openampere.db.before-restore-20261010-153012 (#223)
-        return _HOST.sub(lambda m: self._name(m.group(0), "Host"), text)
-
-    def apply(self, value):
-        if isinstance(value, str):
-            return self.text(value)
-        if isinstance(value, list):
-            return [self.apply(v) for v in value]
-        if isinstance(value, dict):
-            return {k: self.apply(v) for k, v in value.items()}
-        return value
-
-
-def _duration(seconds: float) -> str:
-    minutes = int(seconds // 60)
-    if minutes < 120:
-        return f"{minutes} Minuten"
-    hours = minutes // 60
-    return f"{hours} Stunden" if hours < 48 else f"{hours // 24} Tagen"
-
-
-def _ago(seconds: float) -> str:
-    """How long ago, instead of the time of the owner's action (#149)."""
-    return "vor weniger als einer Minute" if seconds < 60 else f"vor {_duration(seconds)}"
-
-
 class Diagnostics:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self.running = False
         self._watched = 0.0
         self.probe = Probe(runtime)  # reading any device (#324); its last results go into the report
+        self.wallbox = WallboxCheck(self.probe)  # the read-only wallbox check of the setup (#325), likewise
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -192,7 +115,7 @@ class Diagnostics:
             return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}", details,
                          "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
         if ours and not command.get("released"):
-            ago = _ago(now - command["ts"])  # a duration, not the time of the owner's action (#149, #223)
+            ago = privacy.ago(now - command["ts"])  # a duration, not the time of the owner's action (#149, #223)
             return Check("remote", title, "info", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what})", details,
                          f"OpenAmpere hat die Fernsteuerung zuletzt {ago} benutzt und am Ende nicht "
                          "abgeschaltet, zum Beispiel wegen eines Neustarts oder einer kurz unterbrochenen Verbindung. "
@@ -202,11 +125,11 @@ class Diagnostics:
         if seen.get("on_since") and now - seen.get("checked", 0) <= 2 * WATCH_S:
             duration = seen["checked"] - seen["on_since"]
             details["on_for_min"] = round(duration / 60)
-            since = f" Seit mindestens {_duration(duration)} durchgehend an." if duration >= WATCH_S else ""
+            since = f" Seit mindestens {privacy.duration(duration)} durchgehend an." if duration >= WATCH_S else ""
         else:
             since = ""
         started = self.runtime.storage.last_control("grid_charging", STARTED)
-        last = f"{_ago(now - started)} aus dem Netz geladen" if started else "noch nie aus dem Netz geladen"
+        last = f"{privacy.ago(now - started)} aus dem Netz geladen" if started else "noch nie aus dem Netz geladen"
         who = (f"OpenAmpere benutzt dieselben Werte, hat zuletzt {last} und die Fernsteuerung danach abgeschaltet. "
                "Vielleicht hat der Wechselrichter die Werte nach einem Neustart wiederhergestellt: Dann schaltet "
                "OpenAmpere sie nach dem nächsten Verbindungsaufbau selbst ab. Oder ein zweites Programm steuert den "
@@ -242,13 +165,14 @@ class Diagnostics:
         device = collector.device
         info = asdict(device) if device else {}
         if not include_serial:
-            info["serial"] = mask_serial(info.get("serial"))
+            info["serial"] = privacy.shorten(info.get("serial"))
         now = time.time()
         report = self._pseudonymise({"created": now, "version": self._version(), "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
-                                     "probe": self.probe.section(include_text=include_serial)},
+                                     "probe": self.probe.section(include_text=include_serial),
+                                     "wallbox": self.wallbox.section(include_text=include_serial)},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -265,33 +189,10 @@ class Diagnostics:
 
     def _pseudonymise(self, report: dict, include_serial: bool = False) -> dict:
         """The checks and the log can quote connection errors with the inverter's address, the log also the serial
-        number and the addresses of other services; the report is shared publicly."""
-        config = self.runtime.config
-        known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
-                 config.meter.username: "<Benutzername>"}
-        for meter in config.meter.meter_ids or []:
-            known[str(meter)] = "<Zählernummer>"
-        for device in self.runtime.storage.get_meta("consumers") or []:  # hosts and switch addresses of devices
-            if not isinstance(device, dict):
-                continue
-            if device.get("host"):
-                known[str(device["host"]).strip()] = "<Geräteadresse>"
-            for key in ("url_on", "url_off"):
-                url = self.runtime.secrets.decrypt(f"consumer.{key}", device.get(key) or "")
-                if url:
-                    known[url] = "<Schaltadresse>"
-                    host = urllib.parse.urlsplit(url).hostname
-                    if host:
-                        known.setdefault(host, "<Geräteadresse>")
-        if not include_serial:
-            device = self.runtime.collector.device
-            stored = (self.runtime.storage.get_meta("firmware") or {}).get("serial")
-            for serial in {device.serial if device else None, stored}:
-                if serial:
-                    known[serial] = mask_serial(serial)
-        pseudonyms = _Pseudonyms(config.inverter.host, known)
-        return {**report, "checks": pseudonyms.apply(report.get("checks", [])),
-                "log": pseudonyms.apply(report.get("log", [])), "probe": pseudonyms.apply(report.get("probe"))}
+        number and the addresses of other services; the report is shared publicly. One set of pseudonyms for all
+        parts, so the same address has the same name everywhere in the report."""
+        pseudonyms = privacy.for_report(self.runtime, include_serial)
+        return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox")}}
 
     @staticmethod
     def _version() -> str:
@@ -480,6 +381,8 @@ def report_markdown(report: dict) -> str:
     lines += ["```", "", "</details>"]
     if report.get("probe"):  # reading any device (#324)
         lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]
+    if report.get("wallbox"):  # the wallbox check of the setup (#325)
+        lines += ["", "### Wallbox-Prüfung", "", *check_markdown(report["wallbox"])]
     log = report.get("log") or []
     if log:  # times relative to the report (-HH:MM:SS)
         lines += ["", f"<details><summary>Protokoll (letzte {len(log)} Zeilen)</summary>", "", "```text",

@@ -81,6 +81,9 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
   roof orientation, exact model and firmware of a user's device, real energy figures, dates and times of a user's
   actions or outages. Many plants can be found in the public Marktstammdatenregister by size and date. Use round
   example values ("about 10 kWp", "a FoxESS H3", "at night").
+- **Everything OpenAmpere exports for a report** (diagnostics report, device query, wallbox check, …) is masked
+  through `src/openampere/privacy.py`: serial numbers shortened, addresses and host names pseudonymised, times as
+  durations, private register values removed. Use it for a new export; never write a second masking.
 - **Reports, logs and screenshots from users** (diagnostics, control log, app screenshots) contain such data, e.g.
   the IP address in connection errors, the shortened serial number, model, firmware and timestamps. Quote only what
   the issue needs (usually register values) and check the text before posting.

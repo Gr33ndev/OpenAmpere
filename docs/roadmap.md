@@ -28,4 +28,5 @@ changes (see [GOVERNANCE.md](../GOVERNANCE.md)).
   system.
 - **No code, graphics or texts from the previous manufacturer app.**
 - **No general home automation platform:** wallboxes, smart homes and dashboards are connected through evcc and Home
-  Assistant instead.
+  Assistant instead. Exception under discussion (#318): a few known wallboxes directly, so far only a read-only check
+  in the setup (#325).

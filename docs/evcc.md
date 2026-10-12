@@ -27,6 +27,15 @@ support evcc, smart plugs and plugins work without a token.
 
 We recommend supporting evcc. OpenAmpere uses only the open interface of evcc and has no influence on its terms.
 
+## Without evcc (preview)
+
+For a few wallboxes OpenAmpere is preparing a direct way, starting with the FoxESS AC EV Charger (#318). Under
+**Mehr → Verbindung → Wallbox**, choose **direkt (Vorschau)** (directly, preview): OpenAmpere checks the wallbox
+read-only, in the mode it is in, and shows what it answers. Nothing is changed on the wallbox, and OpenAmpere cannot
+control it this way yet. The result goes into the diagnostics report (**Mehr → Diagnose**); sharing it helps to
+confirm the registers on real devices. For other wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads
+any registers.
+
 ## How the two work together
 
 ```

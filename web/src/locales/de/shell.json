@@ -23,6 +23,11 @@
     "title": "Die Datenbank war beschädigt",
     "whatHappened": "OpenAmpere konnte seine Datenbank beim Start ({date}) nicht mehr lesen, zum Beispiel nach einem Stromausfall. Damit die App weiterläuft, hat OpenAmpere mit einer leeren Datenbank neu begonnen: Messwerte und Einstellungen von vorher fehlen."
   },
+  "deviceSearch": {
+    "nothingFound": "Kein Gerät gefunden, das sich im Heimnetz mit Modbus TCP meldet. Viele Geräte melden sich nicht: Gib die Adresse dann unten ein, du findest sie zum Beispiel in der Geräteliste deines Routers.",
+    "unavailable": "Die Suche im Heimnetz geht in der Home-Assistant-App nicht. Gib die Adresse des Geräts unten ein.",
+    "use": "Übernehmen"
+  },
   "homeAssistant": {
     "adminsOnly": "Du bist in Home Assistant kein Administrator. Ansehen kannst du alles, Einstellungen ändern und das Passwort festlegen dürfen nur Administratoren von Home Assistant.",
     "forgotPassword": "Passwort vergessen? In Home Assistant OpenAmpere in der Seitenleiste öffnen und unter Mehr → Zugriffsschutz ein neues festlegen.",
