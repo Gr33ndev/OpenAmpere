@@ -46,6 +46,7 @@ from .devices import Devices
 from .notify import Notifier
 from .remote import Remote
 from .updates import Updates
+from .wallbox import WALLBOXES
 from .diagnostics import Diagnostics, mask_serial, report_markdown
 
 log = logging.getLogger(__name__)
@@ -163,6 +164,16 @@ class ProbeReadRequest(BaseModel):
 
 class ProbeHostRequest(BaseModel):
     host: str = Field(min_length=1, max_length=253)
+
+
+class WallboxCheckRequest(BaseModel):
+    """The read-only wallbox check of the setup (#325) and what the owner says about the wallbox."""
+    model: str = Field(min_length=1, max_length=40)
+    host: str = Field(min_length=1, max_length=253)
+    port: int | None = Field(None, ge=1, le=65535)  # None: the wallbox's usual ports
+    unit: int | None = Field(None, ge=1, le=255)
+    app_mode: str = Field("unknown", pattern="^(default|modbus_tcp|ocpp|unknown)$")
+    wired: str = Field("unknown", pattern="^(yes|no|unknown)$")
 
 
 
@@ -1096,6 +1107,20 @@ def create_app(runtime: Runtime) -> FastAPI:
         except OSError as err:  # no network for multicast
             log.warning("mDNS search failed: %s", err)
             return {"available": False, "devices": []}
+
+    # ---- wallbox without evcc (#318), so far only a read-only check (#325) -------
+
+    @app.get("/api/wallbox/models")
+    def wallbox_models():
+        return {"models": [{"key": w.key, "label": w.label} for w in WALLBOXES.values()]}
+
+    @app.post("/api/wallbox/check")
+    async def wallbox_check(request: WallboxCheckRequest):
+        try:
+            return await diagnostics.wallbox.run(request.model, request.host, request.port, request.unit,
+                                                 request.app_mode, request.wired)
+        except probe.ProbeError as err:
+            raise HTTPException(400, err.message) from None
 
     # ---- evcc (wallbox) -----------------------------------------------------
 

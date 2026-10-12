@@ -8,6 +8,7 @@ import { nextDay } from "./zoned";
 import { lang, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
+import { DirectWallbox } from "./WallboxCheck";
 
 export type EvccLoadpoint = {
   id: number; title: string; heating: boolean; mode: "off" | "pv" | "minpv" | "now" | null; connected: boolean;
@@ -246,9 +247,18 @@ export function WallboxPage({ onBack }: PageProps) {
     }
   };
   const cars = view?.state?.loadpoints ?? [];
+  // evcc or, as a preview, OpenAmpere itself (#318, #325)
+  const [way, setWay] = useState<"evcc" | "direct">("evcc");
 
   return (
     <SubPage title={t("devices.wallboxPage.title")} onBack={onBack}>
+      {/* a fieldset, not a label: a label around the buttons would name the first one after all of them */}
+      <fieldset className="field field-group">
+        <legend className="field-label">{t("devices.wallboxDirect.way")}</legend>
+        <Segmented value={way} onChange={setWay}
+          options={[["evcc", t("devices.wallboxDirect.wayEvcc")], ["direct", t("devices.wallboxDirect.wayDirect")]]} />
+      </fieldset>
+      {way === "direct" ? <DirectWallbox /> : <>
       <p className="hint">{tx("devices.wallboxPage.intro", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
       {!view && <LoadState error={error} onRetry={reload} />}
       {view?.state && <Notice kind="ok">{t("devices.wallboxPage.connected", { version: view.state.version ?? "" })} ·{" "}
@@ -297,6 +307,7 @@ export function WallboxPage({ onBack }: PageProps) {
 
       <p className="hint">{t("devices.wallboxPage.priorityHint")}</p>
       <p className="hint">{t("devices.wallboxPage.evccCredit")}</p>
+      </>}
     </SubPage>
   );
 }

@@ -25,6 +25,7 @@ from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .probe import Probe, section_markdown
 from .runtime import Runtime
+from .wallbox import WallboxCheck, check_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
@@ -123,6 +124,7 @@ class Diagnostics:
         self.running = False
         self._watched = 0.0
         self.probe = Probe(runtime)  # reading any device (#324); its last results go into the report
+        self.wallbox = WallboxCheck(self.probe)  # the read-only wallbox check of the setup (#325), likewise
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -248,7 +250,8 @@ class Diagnostics:
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
-                                     "probe": self.probe.section(include_text=include_serial)},
+                                     "probe": self.probe.section(include_text=include_serial),
+                                     "wallbox": self.wallbox.last},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -291,7 +294,8 @@ class Diagnostics:
                     known[serial] = mask_serial(serial)
         pseudonyms = _Pseudonyms(config.inverter.host, known)
         return {**report, "checks": pseudonyms.apply(report.get("checks", [])),
-                "log": pseudonyms.apply(report.get("log", [])), "probe": pseudonyms.apply(report.get("probe"))}
+                "log": pseudonyms.apply(report.get("log", [])), "probe": pseudonyms.apply(report.get("probe")),
+                "wallbox": pseudonyms.apply(report.get("wallbox"))}
 
     @staticmethod
     def _version() -> str:
@@ -480,6 +484,8 @@ def report_markdown(report: dict) -> str:
     lines += ["```", "", "</details>"]
     if report.get("probe"):  # reading any device (#324)
         lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]
+    if report.get("wallbox"):  # the wallbox check of the setup (#325)
+        lines += ["", "### Wallbox-Prüfung", "", *check_markdown(report["wallbox"])]
     log = report.get("log") or []
     if log:  # times relative to the report (-HH:MM:SS)
         lines += ["", f"<details><summary>Protokoll (letzte {len(log)} Zeilen)</summary>", "", "```text",

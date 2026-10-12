@@ -161,9 +161,11 @@ export function DeviceReaderPage({ onBack, onNavigate }: PageProps) {
         <Field label={t("settings.deviceReader.unit")} hint={t("settings.deviceReader.unitHint")}>
           <input className="input" value={unit} inputMode="numeric" onChange={(e) => setUnit(e.target.value)} />
         </Field>
-        <Field label={t("settings.deviceReader.function")} hint={t("settings.deviceReader.functionHint")}>
+        <fieldset className="field field-group">
+          <legend className="field-label">{t("settings.deviceReader.function")}</legend>
           <Segmented value={fn} onChange={setFn} options={[["3", t("settings.deviceReader.fc3")], ["4", t("settings.deviceReader.fc4")]]} />
-        </Field>
+          <span className="field-hint">{t("settings.deviceReader.functionHint")}</span>
+        </fieldset>
         <Field label={t("settings.deviceReader.start")} hint={t("settings.deviceReader.startHint")}>
           <input className="input" value={start} autoComplete="off" placeholder="0x1000" onChange={(e) => setStart(e.target.value)} />
         </Field>

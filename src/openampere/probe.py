@@ -58,6 +58,14 @@ class ProbeError(Exception):
         self.message = message
 
 
+class ProbeUnreachable(ProbeError):
+    """Nothing accepts a connection at host:port (another port may work)."""
+
+
+class ProbeBusy(ProbeError):
+    """The device closed the connection right away: all its connections are taken."""
+
+
 @dataclass
 class Block:
     start: int
@@ -140,14 +148,21 @@ class Probe:
     # ---- reading registers ------------------------------------------------------
 
     async def read(self, host: str, port: int, unit: int, function: int, start: int, count: int) -> ReadResult:
-        if function not in (3, 4):
-            raise ProbeError("Nur die Funktionscodes 3 und 4 (lesen) sind möglich.")
-        if not 1 <= count <= MAX_REGISTERS or not 0 <= start or start + count > 0x10000:
-            raise ProbeError(f"Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.")
-        host = await _check_home(host)
-        result = await self._exclusive(lambda: self._read(host, port, unit, function, start, count))
+        result = await self.read_ranges(host, port, unit, function, [(start, count)])
         self.last_read = result
         return result
+
+    async def read_ranges(self, host: str, port: int, unit: int, function: int,
+                          ranges: list[tuple[int, int]]) -> ReadResult:
+        """Several ranges over one connection (e.g. the blocks of a known wallbox, #325), within the same limits."""
+        if function not in (3, 4):
+            raise ProbeError("Nur die Funktionscodes 3 und 4 (lesen) sind möglich.")
+        if (sum(count for _, count in ranges) > MAX_REGISTERS
+                or any(count < 1 or start < 0 or start + count > 0x10000 for start, count in ranges)):
+            raise ProbeError(f"Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.")
+        host = await _check_home(host)
+        blocks = [block for start, count in ranges for block in blocks_of(start, count)]
+        return await self._exclusive(lambda: self._read(host, port, unit, function, blocks))
 
     async def _inverter_driver(self, host: str, port: int):
         """OpenAmpere's driver if host:port is the connected inverter: it allows only a few connections, so the
@@ -161,7 +176,7 @@ class Probe:
         driver = collector.driver
         return getattr(driver, "_driver", None) or driver  # AutoDriver wraps the detected driver
 
-    async def _read(self, host: str, port: int, unit: int, function: int, start: int, count: int) -> ReadResult:
+    async def _read(self, host: str, port: int, unit: int, function: int, blocks: list[tuple[int, int]]) -> ReadResult:
         result = ReadResult(host, port, unit, function)
         driver = await self._inverter_driver(host, port)
         if driver is not None:
@@ -170,18 +185,18 @@ class Probe:
                 raise ProbeError(f"Am Wechselrichter liest OpenAmpere nur über die bestehende Verbindung, mit der "
                                  f"Geräteadresse {own_unit}.")
             result.unit, result.shared_connection = own_unit, True
-            for address, n in blocks_of(start, count):
+            for address, n in blocks:
                 result.blocks.append(await self._read_shared(driver, address, n, function))
             return result
         client = AsyncModbusTcpClient(host, port=port, timeout=TIMEOUT_S, retries=0, reconnect_delay=0)
         try:
             if not await client.connect():
-                raise ProbeError(f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?")
+                raise ProbeUnreachable(f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?")
             await asyncio.sleep(CONNECT_SETTLE_S)
             if not client.connected:
-                raise ProbeError("Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle "
+                raise ProbeBusy("Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle "
                                  "Verbindungen belegt, zum Beispiel durch evcc oder ein anderes Programm.")
-            for i, (address, n) in enumerate(blocks_of(start, count)):
+            for i, (address, n) in enumerate(blocks):
                 if i:
                     await asyncio.sleep(REQUEST_GAP_S)
                 result.blocks.append(await self._read_block(client, unit, address, n, function))

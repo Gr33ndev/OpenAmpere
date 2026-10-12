@@ -749,3 +749,5 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .reader-text { margin-top: 8px; font-size: 14px; }
 .reader-text dd { overflow-wrap: anywhere; }
 .found-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.field-group { border: 0; margin: 0; padding: 0; min-width: 0; }
+.field-group > legend { padding: 0; }

@@ -286,5 +286,8 @@
   "updates": {
     "updateHelperIsnT": "The update helper isn't running. Please run the install script once more.",
     "updatesComeViaHomeAssistant": "Updates come through Home Assistant: Settings → Apps → OpenAmpere."
+  },
+  "wallbox": {
+    "unknownWallbox": "OpenAmpere does not know this wallbox yet."
   }
 }

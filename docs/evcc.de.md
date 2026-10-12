@@ -29,6 +29,15 @@ die evcc unterstützen, Schaltsteckdosen und Plugins funktionieren ohne Token.
 Wir empfehlen, evcc zu unterstützen. OpenAmpere nutzt nur die offene Schnittstelle von evcc und hat keinen Einfluss
 auf dessen Bedingungen.
 
+## Ohne evcc (Vorschau)
+
+Für einige Wallboxen bereitet OpenAmpere einen direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Unter
+**Mehr → Verbindung → Wallbox** wählst du **direkt (Vorschau)**: OpenAmpere prüft die Wallbox nur lesend, in der
+Steuerungsart, in der sie gerade steht, und zeigt, was sie antwortet. An der Wallbox wird nichts geändert, und steuern
+kann OpenAmpere sie so noch nicht. Das Ergebnis kommt in den Diagnosebericht (**Mehr → Diagnose**); wenn du ihn teilst,
+hilft das, die Register an echten Geräten zu bestätigen. Für andere Wallboxen liest **Mehr → Diagnose → Gerät
+auslesen** beliebige Register.
+
 ## Wie die beiden zusammenarbeiten
 
 ```

@@ -500,6 +500,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/consumers": consumers,
   "/api/diagnostics": diagnostics,
   "/api/evcc": evcc,
+  "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger" }] }),
   "/api/devices": devices,
   "/api/surplus-order": () => ({ order: ["battery", "wallbox", "c:demo1"], battery_soc: 50, items: [
     { key: "battery", name: "Speicher", kind: "battery" }, { key: "wallbox", name: "Carport", kind: "wallbox" },
@@ -514,7 +515,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
   "/api/database/damaged", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
-  "/api/diagnostics/search", "/api/evcc/loadpoints/",
+  "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];

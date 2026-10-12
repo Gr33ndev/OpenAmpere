@@ -141,3 +141,33 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   - AppMode 0x3647
   - SoC limits 0x3644–0x3646
   - export limit 0x365A in per mille of rated power
+
+## FoxESS AC EV Charger (wallbox, read-only check)
+
+Used only by the read-only wallbox check of the setup (#325, `src/openampere/wallbox/foxess.py`); OpenAmpere writes
+nothing to the wallbox. **Not yet confirmed on a real device:** the check exists to confirm these addresses (#318).
+
+- **Sources (facts only, nothing copied):** the FoxESS EV Charger Modbus TCP protocol V1.6, which FoxESS support gives
+  to owners (not public, "all rights reserved"; whether FoxESS should be asked for permission is open in #318), and
+  owner reports in public evcc discussions. evcc's own FoxESS driver is not MIT licensed and is not used.
+- **Connection:** Modbus TCP over LAN or WLAN, port 502 according to the protocol (1502 also seen), unit id 1 by
+  default. All registers are holding registers (FC03). In the FoxESS app's default mode Modbus TCP is said to be
+  read-only; outside the "Modbus TCP" mode some firmware answers every read with exception 6 ("server device busy").
+- **Read by the check:** 0x1000–0x1021 (identity, status, measurements, capabilities), 0x3000–0x3006 (configuration)
+  and 0x3007–0x300B separately (missing on single-phase models). The serial number at 0x1022–0x1031 is not read.
+
+  | Value | Register | Scaling |
+  |---|---|---|
+  | Firmware | 0x1001 | high byte major, low byte minor |
+  | Status | 0x1003 | 0 idle, 1 connected, 2 starting, 3 charging, 4 paused, 5 finished, 6 fault, 8 locked, 9 switching phases (9 seen on devices, not in the document) |
+  | Plug connected | 0x1005 | 0/1 |
+  | Voltage L1–L3 / current L1–L3 | 0x1008–0x100A / 0x100B–0x100D | ×0.1 V / ×0.1 A |
+  | Power | 0x100E | ×0.1 kW |
+  | Max / min power, max / min current | 0x1011 / 0x1012 / 0x1013 / 0x1014 | ×0.1 kW / ×0.1 A |
+  | Energy counters | 0x1016–0x1019 | U32 ×0.1 kWh; only "plausible" goes into the report |
+  | RFID card | 0x101C–0x101D | U32; only "set / not set" goes into the report |
+  | Model code | 0x101E–0x1021 | ASCII |
+  | Work mode | 0x3000 | 0 start through the app or a card, 1 when plugged in, 2 locked |
+  | Validity of the controller's setpoint | 0x3005 | s |
+  | Fallback current | 0x3006 | ×0.1 A: the wallbox charges at this current when a Modbus controller stops writing |
+  | Automatic 1/3-phase switching, minimum interval | 0x300A, 0x300B | 0/1, minutes |
