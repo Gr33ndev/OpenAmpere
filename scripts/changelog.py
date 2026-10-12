@@ -4,7 +4,8 @@
 """The changelog of all versions, built from the Conventional Commits between the version tags (#155).
 
 One file, web/public/changelog.json, is the source for the changelog page of the app (it ships with the web app),
-the changelog page of the website and the release notes on GitHub (scripts/release_notes.py):
+the changelog page of the website, the release notes on GitHub (scripts/release_notes.py) and ha-app/CHANGELOG.md,
+which Home Assistant shows when it offers an update of the app (#300; written together with the JSON file):
 
     {"versions": [{"version": "0.13.3", "date": "2026-10-07", "first": false,
                    "groups": {"feat": [{"scope": "report", "text": "Show complete bars …"}], "fix": [], "perf": [],
@@ -24,6 +25,7 @@ paragraph. A summary already in the file is kept when the version is built again
 Usage:
   scripts/changelog.py add 0.14.0   add the version with the commits since the last tag (scripts/release.sh does this)
   scripts/changelog.py rebuild      build the whole file again from the version tags
+  scripts/changelog.py app          write ha-app/CHANGELOG.md again from web/public/changelog.json
 """
 
 from __future__ import annotations
@@ -38,6 +40,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FILE = ROOT / "web" / "public" / "changelog.json"
 SUMMARIES = ROOT / "changelog"
+APP_FILE = ROOT / "ha-app" / "CHANGELOG.md"
+APP_VERSIONS = 10  # Home Assistant shows the whole file in the update dialog
+SECTIONS = [("feat", "Neu"), ("fix", "Behoben"), ("perf", "Schneller"), ("other", "Weitere Änderungen")]
 GROUPS = ("feat", "fix", "perf", "other")
 COMMIT = re.compile(r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$")
 TAG = re.compile(r"^v\d+\.\d+\.\d+$")  # stable versions only
@@ -134,8 +139,33 @@ def load() -> list[dict]:
     return json.loads(FILE.read_text(encoding="utf-8"))["versions"] if FILE.exists() else []
 
 
+def item(entry: dict) -> str:
+    return f"**{entry['scope']}:** {entry['text']}" if entry["scope"] else entry["text"]
+
+
+def app_changelog(versions: list[dict]) -> str:
+    """ha-app/CHANGELOG.md: the latest versions as in the release notes, newest first."""
+    out = ["# Changelog", "",
+           "<!-- written by scripts/changelog.py from web/public/changelog.json, do not edit -->", "",
+           "All versions: https://github.com/Gr33ndev/OpenAmpere/releases", ""]
+    for version in versions[:APP_VERSIONS]:
+        out += [f"## {version['version']} ({version['date']})" if version["date"] else f"## {version['version']}", ""]
+        summary = version.get("summary") or {}
+        if summary.get("de"):
+            out += [summary["de"], ""]
+        if summary.get("en"):
+            out += [f"**English:** {summary['en']}", ""]
+        if version.get("breaking"):
+            out += ["### Achtung", "", *(f"- {item(b)}" for b in version["breaking"]), ""]
+        for group, title in SECTIONS:
+            if version["groups"].get(group):
+                out += [f"### {title}", "", *(f"- {item(e)}" for e in version["groups"][group]), ""]
+    return "\n".join(out).rstrip() + "\n"
+
+
 def save(versions: list[dict]) -> None:
     FILE.write_text(json.dumps({"versions": versions}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    APP_FILE.write_text(app_changelog(versions), encoding="utf-8")
 
 
 def rebuild() -> list[dict]:
@@ -160,6 +190,8 @@ def main() -> None:
         match sys.argv[1:]:
             case ["rebuild"]:
                 save(rebuild())
+            case ["app"]:
+                save(load())
             case ["add", version]:
                 save(add(version.removeprefix("v")))
             case _:
