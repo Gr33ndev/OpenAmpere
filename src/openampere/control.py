@@ -255,7 +255,8 @@ class ExportLimitControl:
         limit = await self._driver().read_export_limit()
         return {**asdict(limit), **self._rule(), "external_change": self.external_change}
 
-    async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "") -> dict:
+    async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "", source: str | None = None) -> dict:
+        """source: who asked for it if not the web app, e.g. an admin of Home Assistant through its sidebar (#305)."""
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
@@ -295,7 +296,8 @@ class ExportLimitControl:
             storage = self.runtime.storage
             details = {"from": {"export_limit_w": old}, "to": {"export_limit_w": limit_w},
                        "rule": rule["rule"], "installed_kwp": rule["installed_kwp"],
-                       "grid_operator_confirmation": reference if needs_consent else None}
+                       "grid_operator_confirmation": reference if needs_consent else None,
+                       **({"source": source} if source else {})}
             if control.dry_run:
                 storage.log_control("export_limit", details, True, "nicht ausgeführt (Testmodus)")
                 return {"dry_run": True, "written": False, **current}

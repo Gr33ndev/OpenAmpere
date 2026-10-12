@@ -16,7 +16,8 @@ const ENTRIES = [
     dry_run: false, result: "ok" },
   { action: "device_mode", details: { source: "Home Assistant (Zugang für Apps)", device: "heizstab", to: { mode: "boost", hours: 2 } },
     dry_run: false, result: "ok" },
-  { action: "export_limit", details: { from: { export_limit_w: 4000 }, to: { export_limit_w: 600 } }, dry_run: false, result: "ok" },
+  { action: "export_limit", details: { from: { export_limit_w: 4000 }, to: { export_limit_w: 600 }, source: "Admin (Home Assistant)" },
+    dry_run: false, result: "ok" },
   { action: "battery_settings_check", details: { from: { min_soc_on_grid: 20 }, to: { min_soc_on_grid: 15 } }, dry_run: false,
     result: "von einem anderen Gerät überschrieben" },
   { action: "consumer", details: { from: { consumer: "Heizstab", on: false }, to: { consumer: "Heizstab", on: true } }, dry_run: true,
@@ -46,6 +47,7 @@ test("control log entries read as sentences and can be exported", async ({ page,
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();
   await expect(page.getByText("Testmodus – nichts geändert", { exact: false })).toBeVisible();
   await expect(page.getByText("Home Assistant (Zugang für Apps)", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Admin (Home Assistant)", { exact: false })).toBeVisible(); // through its sidebar (#305)
   // the reason from the server, without repeating what the sentence says
   await expect(page.getByText("Überschuss 2600 W", { exact: true })).toBeVisible();
   await expect(page.getByText("Fehler: keine Antwort", { exact: true })).toBeVisible();

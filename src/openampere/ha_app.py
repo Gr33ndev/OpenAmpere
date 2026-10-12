@@ -90,6 +90,7 @@ class Admins:
     def __init__(self, fetch=None) -> None:
         self.fetch = fetch  # None: home_assistant_users
         self.admins: set[str] = set()
+        self.names: dict[str, str] = {}
         self.checked: float | None = None
         self.lock = asyncio.Lock()
 
@@ -109,11 +110,17 @@ class Admins:
                     try:
                         users = await (self.fetch or home_assistant_users)()
                         self.admins = {user["id"] for user in users if is_admin_user(user)}
+                        self.names = {user["id"]: str(user.get("name") or user.get("username") or "")
+                                      for user in users}
                     except (OSError, ValueError, asyncio.TimeoutError, WebSocketException) as err:
                         log.warning("could not read the users of Home Assistant: %s", err)
-                        self.admins = set()
+                        self.admins, self.names = set(), {}
                     self.checked = now
         return user_id in self.admins
+
+    def name(self, user_id: str | None) -> str:
+        """The name of a user of Home Assistant from the last list, for the control log (#305)."""
+        return self.names.get(user_id or "", "")
 
 
 def supervisor(path: str, body: dict | None = None, timeout: float = 10.0) -> dict:
