@@ -121,6 +121,12 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
       return t("settings.controlLog.exportLimitOverwritten", { from: watts(from.export_limit_w), to: watts(to.export_limit_w) });
     case "grid_charging_switch":
       return to.enabled ? t("settings.controlLog.gridChargingOn") : t("settings.controlLog.gridChargingOff");
+    case "grid_charging_reserve": { // raised for grid charging and set back afterwards (#315)
+      const values = { from: pct(from.min_soc_on_grid), to: pct(to.min_soc_on_grid) };
+      if (details.kept) return t("settings.controlLog.reserveKept", values);
+      return isNum(from.min_soc_on_grid) && isNum(to.min_soc_on_grid) && to.min_soc_on_grid > from.min_soc_on_grid
+        ? t("settings.controlLog.reserveRaised", values) : t("settings.controlLog.reserveRestored", values);
+    }
     case "grid_charging": {
       if (details.source != null) { // changed by an app through the app API
         const changes = [
@@ -181,7 +187,7 @@ function by(e: LogEntry, details: Values): string {
   }
   switch (e.action) {
     case "update": return (details.by ?? e.result) === "auto" ? t("settings.controlLog.byNight") : t("settings.controlLog.byApp");
-    case "grid_charging": return t("settings.controlLog.byAuto");
+    case "grid_charging": case "grid_charging_reserve": return t("settings.controlLog.byAuto");
     case "consumer": return e.result.includes("von Hand") ? t("settings.controlLog.byApp") : t("settings.controlLog.byAuto");
     case "battery_settings_check": case "export_limit_check": return t("settings.controlLog.byOtherDevice");
     default: return t("settings.controlLog.byApp");

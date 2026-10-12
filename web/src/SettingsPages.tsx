@@ -106,6 +106,7 @@ const formOf = (s: BatteryState): BatterySettings => ({ work_mode: s.work_mode, 
 
 export function BatteryPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
+  const { data: charging } = useResource<ChargingView>("/api/charging", 30_000);
   const { data: current, error, reload, setData } = useResource<BatteryState>("/api/battery/settings");
   const [form, setForm] = useState<BatterySettings | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,6 +173,10 @@ export function BatteryPage({ onBack }: PageProps) {
       {form && (
         <>
           <SocBar min={form.min_soc} reserve={form.min_soc_on_grid} max={form.max_soc} />
+          {charging?.reserve_raised && (
+            <Notice kind="info">{t("settings.batteryPage.reserveRaised", { raised: percent(charging.reserve_raised.raised),
+              original: percent(charging.reserve_raised.original) })}</Notice>
+          )}
 
           <div className="section-title">{t("settings.batteryPage.backupReserve")}</div>
           <div className="card form">
@@ -1455,7 +1460,11 @@ type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_
   window_start: number; window_end: number; max_price_ct: number | null; power_w: number; battery_kwh: number;
   legal_confirmed: boolean };
 export type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
-  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> } };
+  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> };
+  /** the backup reserve raised for grid charging and the owner's value it is set back to (#315) */
+  reserve_raised?: { original: number; raised: number } | null;
+  /** learned: this inverter charges from the grid only up to its backup reserve (#315) */
+  stops_at_reserve?: boolean };
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -1522,6 +1531,10 @@ export function ChargingPage({ onBack }: PageProps) {
               hint={data.active ? t("settings.chargingPage.chargingNow") : data.plan.reason}
               onChange={(v) => (v && !form.legal_confirmed ? setLegal(true) : void save({ ...form, enabled: v }))} />
             {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
+            {data.reserve_raised ? (
+              <p className="hint">{t("settings.chargingPage.reserveRaised", { raised: percent(data.reserve_raised.raised),
+                original: percent(data.reserve_raised.original) })}</p>
+            ) : data.stops_at_reserve && <p className="hint">{t("settings.chargingPage.stopsAtReserve")}</p>}
             {form.enabled && data.plan.quarters.length > 0 && (
               <p className="hint">{data.plan.needed_wh
                 ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 2) })
