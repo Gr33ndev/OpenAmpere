@@ -28,6 +28,12 @@ class DeviceUnreachable(ConnectionError):
     """Nothing accepts TCP connections at host:port."""
 
 
+class InverterBusy(DeviceUnreachable):
+    """The device accepts the TCP connection and closes it right away, before any request: all its connection
+    slots are taken. A FoxESS H3 allows very few Modbus TCP connections, often held by another program that reads the
+    inverter (e.g. a Modbus setup in Home Assistant) or the old IQ box (#311)."""
+
+
 class DetectionFailed(ConnectionError):
     """Something answers, but it is not a supported device. .message is a German text for the app."""
 
@@ -55,8 +61,20 @@ class ModbusTransientError(ModbusReadError):
 PERMANENT_EXCEPTION_CODES = {1, 2, 3}
 
 
+BUSY_MESSAGE = ("Der Wechselrichter lässt gerade keine weitere Verbindung zu, er erlaubt nur sehr wenige. Prüfe "
+                "zuerst, ob noch ein anderes Programm den Wechselrichter abfragt, zum Beispiel Home Assistant mit "
+                "einer eigenen Modbus-Einbindung, ein Dashboard, ein eigenes Script oder eine zweite "
+                "OpenAmpere-Installation, und beende es oder entferne dort die Verbindung zum Wechselrichter. Ist noch die bisherige "
+                "IQ-Box verbunden und wird sie nicht mehr gebraucht, trenne sie danach vom Netzwerk (LAN-Kabel ziehen "
+                "oder Box ausschalten). Dann verbindet sich OpenAmpere von selbst. Eine verbundene IQ-Box überschreibt "
+                "außerdem Einstellungen, die du in OpenAmpere änderst (Anleitung: „Die bisherige Smartbox setzt "
+                "Einstellungen zurück“).")
+
+
 def friendly_error(err: BaseException) -> str:
     """German plain-language text for errors shown in the app (the technical text goes to the log)."""
+    if isinstance(err, InverterBusy):
+        return BUSY_MESSAGE
     if isinstance(err, DeviceUnreachable):
         return "Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die Adresse und ist Modbus TCP aktiviert?"
     if isinstance(err, ModbusIllegalError):
@@ -127,6 +145,10 @@ class ModbusDevice:
                 self._client = None
                 raise DeviceUnreachable(f"cannot connect to inverter at {self._host}:{self._port}")
             await asyncio.sleep(CONNECT_SETTLE_S)
+            if not self._client.connected:  # closed by the device while settling, before any request (#311)
+                self._client.close()
+                self._client = None
+                raise InverterBusy(f"{self._host}:{self._port} closed the connection right after connecting")
         return self._client
 
     async def _read(self, address: int, count: int, function: int) -> list[int]:

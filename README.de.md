@@ -352,6 +352,19 @@ Das Gerät ist erreichbar, antwortet aber nicht wie erwartet. Meist stimmt die G
 
 Hängt ein Modbus-Proxy dazwischen, gilt die Geräteadresse, die im Proxy eingestellt ist.
 
+### „Der Wechselrichter lässt gerade keine weitere Verbindung zu“
+
+Ein FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft) erlaubt nur sehr wenige Modbus-TCP-Verbindungen gleichzeitig. Sind alle belegt, nimmt er die Verbindung von OpenAmpere an und schließt sie sofort wieder. Belegt werden sie meist von einem anderen Programm, das den Wechselrichter abfragt (Home Assistant oder einem anderen Smart-Home-System mit einer eigenen Modbus-Einbindung, einem Dashboard mit eigenem Datensammler wie Grafana, einem eigenen Script oder einer zweiten OpenAmpere-Installation), oder von der bisherigen IQ-Box. Die Netzwerksuche zeigt das Gerät dann als „Wechselrichter, gerade belegt“, der Verbindungstest und **Mehr → Verbindung** zeigen diese Meldung.
+
+Geh in dieser Reihenfolge vor:
+
+1. **Zuerst andere Programme beenden**, die den Wechselrichter abfragen, oder dort die Verbindung zum Wechselrichter entfernen. Denk auch an Einbindungen, die du kaum noch nutzt, etwa eine alte Modbus-Konfiguration in Home Assistant. Solche Programme können auch über OpenAmpere an die Werte kommen, zum Beispiel über die [Verbindung zu Home Assistant](#home-assistant-verbinden) oder evcc, ohne eine eigene Verbindung zum Wechselrichter.
+2. **Dann die IQ-Box vom Netzwerk trennen**, wenn sie nicht mehr gebraucht wird: LAN-Kabel der Box ziehen oder die Box ausschalten, nicht den Wechselrichter. Vorher klären, ob die Box für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber. Danach verbindet sich OpenAmpere von selbst. Der Wechselrichter arbeitet mit seinen gespeicherten Einstellungen weiter. Prüfe danach in OpenAmpere unter **Mehr → Meine Anlage → Einspeisebegrenzung**, ob der angezeigte Wert stimmt. Solange die IQ-Box verbunden ist, überschreibt sie außerdem Einstellungen, die du in OpenAmpere änderst (siehe [Die bisherige Smartbox setzt Einstellungen zurück](#die-bisherige-smartbox-setzt-einstellungen-zurück)).
+
+Weitere Möglichkeiten:
+- **Pro Abfrage** (siehe nächster Abschnitt) hilft nur, wenn das andere Gerät oder Programm seine Verbindung zwischendurch freigibt. Die IQ-Box tut das nicht.
+- **Modbus-Proxy**, nur für Fortgeschrittene: Ein Proxy hält eine Verbindung zum Wechselrichter, alle anderen verbinden sich mit dem Proxy (siehe [Betrieb hinter einem Modbus-Proxy](#betrieb-hinter-einem-modbus-proxy)). Die IQ-Box kann sich aber von selbst wieder auf die Adresse des Wechselrichters zurückstellen; dann ist der Platz wieder belegt.
+
 ### Ein anderer Energiemanager nutzt die Verbindung
 
 Der Wechselrichter erlaubt nur wenige gleichzeitige Modbus-Verbindungen. Hängt noch ein anderer Energiemanager am Wechselrichter, zum Beispiel die bisherige Smartbox, sind eventuell alle belegt. Dann bricht die Verbindung von OpenAmpere oder vom anderen Gerät immer wieder ab. Abhilfe: In der App unter **Mehr → Verbindung → Erweitert** bei **Verbindung** die Einstellung **Pro Abfrage** wählen und speichern. OpenAmpere verbindet sich dann für jede Abfrage neu und gibt den Zugang danach wieder frei. Mehr dazu unter [Betrieb hinter einem Modbus-Proxy](#betrieb-hinter-einem-modbus-proxy).

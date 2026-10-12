@@ -2,14 +2,17 @@
 # SPDX-License-Identifier: MIT
 """Error paths of the network search in the setup wizard, without a real network (#237)."""
 
+import asyncio
 import socket
+import struct
 from types import SimpleNamespace
 
 import pytest
 
 from openampere import discovery
 from openampere.drivers import registry
-from openampere.drivers.modbus import DeviceUnreachable
+from openampere.drivers import modbus
+from openampere.drivers.modbus import BUSY_MESSAGE, DeviceUnreachable, InverterBusy
 from openampere.runtime import Runtime
 from openampere.storage import Storage
 
@@ -80,8 +83,8 @@ async def test_scan_lists_hosts_that_do_not_answer_as_inverter(monkeypatch, runt
         raise ConnectionError("no Modbus answer")
     monkeypatch.setattr(registry, "detect", detect)
     found = await discovery.scan(runtime, "10.0.0")
-    assert found == [{"host": "10.0.0.5", "port": 502, "model": None, "manufacturer": None, "driver": None,
-                      "unit": None, "serial": None}]
+    assert found == [{"host": "10.0.0.5", "port": 502, "busy": False, "model": None, "manufacturer": None,
+                      "driver": None, "unit": None, "serial": None}]
 
 
 async def test_scan_reuses_the_connected_device(monkeypatch, runtime):
@@ -108,6 +111,64 @@ async def test_test_connection_errors(monkeypatch, runtime):
     monkeypatch.setattr(registry, "detect_driver", timeout)
     result = await discovery.test_connection(runtime, "10.0.0.5", 502, 0)
     assert not result["ok"] and result["error"]
+
+
+async def closing_server(reset: bool):
+    """A Modbus TCP port whose only connection is taken: it accepts and closes at once, before any request
+    (with FIN, or with RST like "Connection reset by peer"), as a FoxESS H3 does while the IQ box is connected."""
+    async def handler(reader, writer):
+        if reset:
+            writer.get_extra_info("socket").setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+            writer.transport.abort()
+        else:
+            writer.close()
+    return await asyncio.start_server(handler, "127.0.0.1", 0)
+
+
+@pytest.mark.parametrize("reset", [False, True])
+async def test_an_inverter_that_closes_every_connection_at_once_is_busy(monkeypatch, reset):
+    monkeypatch.setattr(modbus, "CONNECT_SETTLE_S", 0.3)
+    server = await closing_server(reset)
+    try:
+        with pytest.raises(InverterBusy) as err:
+            await registry.detect("127.0.0.1", server.sockets[0].getsockname()[1])
+    finally:
+        server.close()
+    assert modbus.friendly_error(err.value) == BUSY_MESSAGE
+    # other programs first, then the IQ box, and why a connected box is a problem anyway
+    assert BUSY_MESSAGE.index("anderes Programm") < BUSY_MESSAGE.index("IQ-Box")
+    assert "Die bisherige Smartbox setzt Einstellungen zurück" in BUSY_MESSAGE
+    assert "Home Assistant mit einer eigenen Modbus-Einbindung" in BUSY_MESSAGE  # the cause in #311
+
+
+async def test_a_device_that_keeps_the_connection_open_is_not_busy(monkeypatch):
+    """A normal Modbus server keeps the connection open and waits for a request: not "busy"."""
+    monkeypatch.setattr(modbus, "CONNECT_SETTLE_S", 0.3)
+
+    async def handler(reader, writer):
+        await reader.read()  # until the client closes
+        writer.close()
+    server = await asyncio.start_server(handler, "127.0.0.1", 0)
+    device = modbus.ModbusDevice("127.0.0.1", server.sockets[0].getsockname()[1], 1)
+    try:
+        client = await device._ensure_connected()
+        assert client.connected
+    finally:
+        await device.close()
+        server.close()
+
+
+async def test_scan_and_test_connection_say_when_the_inverter_is_busy(monkeypatch, runtime):
+    open_ports(monkeypatch, "10.0.0.5")
+
+    async def busy(*args, **kwargs):
+        raise InverterBusy("closed right after connecting")
+    monkeypatch.setattr(registry, "detect", busy)
+    monkeypatch.setattr(registry, "detect_driver", busy)
+    found = await discovery.scan(runtime, "10.0.0")
+    assert [(f["host"], f["busy"], f["model"]) for f in found] == [("10.0.0.5", True, None)]
+    result = await discovery.test_connection(runtime, "10.0.0.5", 502, 0)
+    assert result == {"ok": False, "error": BUSY_MESSAGE, "busy": True}
 
 
 async def test_test_connection_without_first_reading(monkeypatch, runtime):

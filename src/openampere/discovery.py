@@ -11,7 +11,7 @@ import socket
 
 from . import ha_app
 from .drivers import registry
-from .drivers.modbus import DeviceUnreachable, friendly_error
+from .drivers.modbus import DeviceUnreachable, InverterBusy, friendly_error
 from .outbound import in_home_network
 from .runtime import Runtime
 
@@ -81,14 +81,17 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
     collector, current = runtime.collector, runtime.config.inverter
     results = []
     for host in found:
+        busy = False
         if collector.connected and collector.device and host == current.host and port == current.port:
             device = collector.device  # already connected: do not open a second connection
         else:
             try:
                 device = await registry.detect(host, port, unit)
+            except InverterBusy:  # an inverter whose only connection is taken, e.g. by the old IQ box (#311)
+                device, busy = None, True
             except ConnectionError:
                 device = None
-        results.append({"host": host, "port": port, "model": device.model if device else None,
+        results.append({"host": host, "port": port, "busy": busy, "model": device.model if device else None,
                         "manufacturer": device.manufacturer if device else None,
                         "driver": device.driver if device else None, "unit": device.unit if device else None,
                         # the same inverter answers twice when a Modbus proxy or data logger forwards it
@@ -108,6 +111,8 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
     try:
         info, device = await registry.detect_driver(host, port, unit, timeout=timeout,
                                                     only=None if driver == "auto" else driver)
+    except InverterBusy as err:
+        return {"ok": False, "error": friendly_error(err), "busy": True}
     except DeviceUnreachable:
         return {"ok": False, "error": f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse und ist Modbus TCP aktiviert?"}
     except (ConnectionError, OSError, asyncio.TimeoutError) as err:
