@@ -12,6 +12,7 @@ import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
 from custom_components.openampere.api import Connection, OpenAmpereClient, pairing_code, parse_code
 from custom_components.openampere.const import DOMAIN
@@ -107,6 +108,85 @@ async def test_pairing(hass: HomeAssistant) -> None:
 async def test_pairing_rejected(hass: HomeAssistant) -> None:
     result = await pair_until_progress(hass, [{"status": "rejected"}])
     assert result["type"] is FlowResultType.ABORT and result["reason"] == "pairing_rejected"
+
+
+APP_HOST = "abcd1234-openampere"  # the app's container in the internal network of Home Assistant
+
+
+async def discover(hass: HomeAssistant, fingerprint: str = FINGERPRINT):
+    """The Supervisor passes on what the OpenAmpere app announced (#300)."""
+    info = HassioServiceInfo(config={"host": APP_HOST, "port": 8443, "fingerprint": fingerprint,
+                                     "installation_id": INSTALLATION},
+                             name="OpenAmpere", slug="abcd1234_openampere", uuid="u1")
+    return await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_HASSIO}, data=info)
+
+
+async def test_the_app_is_discovered_and_paired_without_an_address(hass: HomeAssistant) -> None:
+    result = await discover(hass)
+    assert result["type"] is FlowResultType.FORM and result["step_id"] == "hassio_confirm"
+    flow = hass.config_entries.flow.async_get(result["flow_id"])
+    assert flow["context"]["title_placeholders"] == {"name": "OpenAmpere"}  # not the domain on the card
+    started = {"request_id": "r1", "poll_key": "pk", "nonce": "11" * 32, "expires_in": 600, "api_version": 1,
+               "installation_id": INSTALLATION, "version": "0.7.0"}
+    with patch(f"{FLOW}.fetch_fingerprint", AsyncMock(return_value=FINGERPRINT)) as fetch, \
+            patch(f"{API}.pair_start", AsyncMock(return_value=started)), \
+            patch(f"{API}.pair_reveal", AsyncMock(return_value={"status": "pending"})), \
+            patch(f"{API}.pair_status", AsyncMock(return_value={"status": "approved", "token": "oa_app", "scope": "control"})), \
+            patch(f"{FLOW}.POLL_S", 0), \
+            patch("custom_components.openampere.async_setup_entry", AsyncMock(return_value=True)):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        assert result["type"] is FlowResultType.SHOW_PROGRESS
+        assert fetch.call_args.args == (APP_HOST, 8443)
+        await hass.async_block_till_done()
+        result = await hass.config_entries.flow.async_configure(result["flow_id"])
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {"host": APP_HOST, "port": 8443, "fingerprint": FINGERPRINT, "token": "oa_app",
+                              "app_slug": "abcd1234_openampere"}  # to notice when the app is uninstalled
+
+
+async def test_the_app_must_show_the_certificate_it_announced(hass: HomeAssistant) -> None:
+    result = await discover(hass, fingerprint="cd" * 32)
+    with patch(f"{FLOW}.fetch_fingerprint", AsyncMock(return_value=FINGERPRINT)), \
+            patch(f"{API}.pair_start", AsyncMock()) as pair_start:
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.FORM and result["errors"] == {"base": "certificate_mismatch"}
+    pair_start.assert_not_called()
+
+
+async def test_a_known_openampere_with_the_same_certificate_gets_the_new_address(hass: HomeAssistant, entry,
+                                                                                client) -> None:
+    entry.add_to_hass(hass)
+    with patch("custom_components.openampere.async_setup_entry", AsyncMock(return_value=True)):
+        result = await discover(hass, fingerprint=FINGERPRINT)
+    assert result["type"] is FlowResultType.ABORT and result["reason"] == "already_configured"
+    assert entry.data["host"] == APP_HOST and entry.data["token"] == "oa_secret"
+
+
+async def test_another_certificate_is_never_taken_over_without_pairing(hass: HomeAssistant, entry, client) -> None:
+    """Any app can announce itself as "openampere" with a known installation id. Taking over its address and
+    certificate would send the token of the entry there. So: pairing with the code, then a new token (#300)."""
+    entry.add_to_hass(hass)
+    result = await discover(hass, fingerprint="cd" * 32)
+    assert result["type"] is FlowResultType.FORM and result["step_id"] == "hassio_confirm"
+    assert entry.data["host"] == "192.168.178.20" and entry.data["fingerprint"] == FINGERPRINT  # unchanged
+
+    # moved from Docker to the app with a backup: same installation, new certificate; the owner allows the pairing
+    started = {"request_id": "r1", "poll_key": "pk", "nonce": "11" * 32, "expires_in": 600, "api_version": 1,
+               "installation_id": INSTALLATION, "version": "0.7.0"}
+    with patch(f"{FLOW}.fetch_fingerprint", AsyncMock(return_value="cd" * 32)), \
+            patch(f"{API}.pair_start", AsyncMock(return_value=started)), \
+            patch(f"{API}.pair_reveal", AsyncMock(return_value={"status": "pending"})), \
+            patch(f"{API}.pair_status", AsyncMock(return_value={"status": "approved", "token": "oa_app", "scope": "read"})), \
+            patch(f"{FLOW}.POLL_S", 0), \
+            patch("custom_components.openampere.async_setup_entry", AsyncMock(return_value=True)):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        assert result["type"] is FlowResultType.SHOW_PROGRESS
+        await hass.async_block_till_done()
+        result = await hass.config_entries.flow.async_configure(result["flow_id"])
+    assert result["type"] is FlowResultType.ABORT and result["reason"] == "app_connected"
+    assert entry.data == {"host": APP_HOST, "port": 8443, "fingerprint": "cd" * 32, "token": "oa_app",
+                          "app_slug": "abcd1234_openampere"}
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1  # the same entry: entities and history stay
 
 
 async def test_reauth_with_a_new_code(hass: HomeAssistant, entry, client) -> None:

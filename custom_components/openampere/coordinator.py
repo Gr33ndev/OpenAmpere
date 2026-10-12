@@ -16,7 +16,10 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CannotConnect, CertificateMismatch, InvalidAuth, OpenAmpereClient, OpenAmpereError
+from .app import async_check_app
 from .const import CONF_MIN_INTERVAL, DEFAULT_MIN_INTERVAL_S, DOMAIN, STATE_INTERVAL_S
+
+APP_CHECK_S = 300  # while OpenAmpere does not answer: is the Home Assistant app still installed? (#300)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +34,7 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_push = 0.0
         self._listener: asyncio.Task | None = None
         self._reload_scheduled = False
+        self._app_checked = 0.0
 
     @property
     def can_control(self) -> bool:
@@ -49,6 +53,10 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # revoked token or a different server/certificate: ask for a new connection code
             raise ConfigEntryAuthFailed(str(err)) from err
         except (CannotConnect, OpenAmpereError) as err:
+            if self.config_entry and time.monotonic() - self._app_checked > APP_CHECK_S:
+                self._app_checked = time.monotonic()
+                self.config_entry.async_create_background_task(
+                    self.hass, async_check_app(self.hass, self.config_entry), f"{DOMAIN} app check")
             raise UpdateFailed(str(err)) from err
         return {**(self.data or {}), **state}
 
