@@ -43,7 +43,9 @@ class DetectionFailed(ConnectionError):
 
 
 class ModbusReadError(Exception):
-    """Any failed Modbus request."""
+    """Any failed Modbus request. .code is the Modbus exception code of the device's answer, if there was one."""
+
+    code: int | None = None
 
 
 class ModbusIllegalError(ModbusReadError):
@@ -95,8 +97,11 @@ def friendly_error(err: BaseException) -> str:
 def _error_from_response(response, what: str) -> ModbusReadError:
     code = getattr(response, "exception_code", None)
     if code in PERMANENT_EXCEPTION_CODES:
-        return ModbusIllegalError(f"{what}: Modbus exception {code}")
-    return ModbusTransientError(f"{what}: {response}")
+        err: ModbusReadError = ModbusIllegalError(f"{what}: Modbus exception {code}")
+    else:
+        err = ModbusTransientError(f"{what}: {response}")
+    err.code = code if isinstance(code, int) else None
+    return err
 
 
 def ascii_text(words: list[int]) -> str:

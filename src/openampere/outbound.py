@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import ssl
 import urllib.request
 
 
@@ -21,8 +22,12 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _opener = urllib.request.build_opener(_NoRedirect)
 
 
-def open_without_redirect(request: urllib.request.Request, timeout: float):
-    return _opener.open(request, timeout=timeout)
+def open_without_redirect(request: urllib.request.Request, timeout: float, context: ssl.SSLContext | None = None):
+    """`context`: for HTTPS with other certificate checks, e.g. a device's self-signed certificate (#324)."""
+    if context is None:
+        return _opener.open(request, timeout=timeout)
+    opener = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=context))
+    return opener.open(request, timeout=timeout)
 
 
 def in_home_network(host: str) -> bool:

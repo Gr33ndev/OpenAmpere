@@ -54,7 +54,7 @@ export { expect };
 export const PAGES = [
   "", "devices", "devices/battery", "devices/charging", "report", "more",
   ...["installation", "pv", "export-limit", "connection", "device-setup", "wallbox", "gridmeter", "control", "notify",
-    "tariff", "billing", "remote", "apps", "security", "appearance", "data", "diagnostics", "about", "changelog", "licenses"]
+    "tariff", "billing", "remote", "apps", "security", "appearance", "data", "diagnostics", "device-reader", "about", "changelog", "licenses"]
     .map((page) => `more/${page}`),
 ];
 

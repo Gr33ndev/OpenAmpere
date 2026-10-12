@@ -242,6 +242,15 @@
   "notify": {
     "ntfyAddressMustForm": "Die ntfy-Adresse muss die Form https://server/thema haben."
   },
+  "probe": {
+    "addressInHomeNetwork": "Bitte eine Adresse im Heimnetz angeben.",
+    "alreadyRunning": "Es läuft schon eine Abfrage. Bitte kurz warten.",
+    "connectionClosed": "Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle Verbindungen belegt, zum Beispiel durch evcc oder ein anderes Programm.",
+    "inverterOwnConnection": "Am Wechselrichter liest OpenAmpere nur über die bestehende Verbindung, mit der Geräteadresse {own_unit}.",
+    "noConnection": "Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?",
+    "onlyReadFunctions": "Nur die Funktionscodes 3 und 4 (lesen) sind möglich.",
+    "tooManyRegisters": "Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen."
+  },
   "registry": {
     "noSupportedDeviceFound": "Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?"
   },

@@ -366,9 +366,14 @@ issue form. `diagnostics.py` only reads; the serial number is masked unless the 
   (optional blocks, block vs. single reads, temperature scaling, export limit, remote control); the connection limit
   (optional); observed daily counter resets; disconnects per hour and counter glitches.
 
-The diagnostics need a connected device, so for a vendor without any driver the first evidence comes from
-documentation or a licensed project; the report then confirms or corrects the draft read-only driver. Turning it
-into code:
+The diagnostics need a connected device. For a device without any driver, **Mehr → Diagnose → Gerät auslesen**
+(`probe.py`, #324) reads any Modbus TCP device in the home network: registers with FC03 or FC04 (at most 600 per run,
+in blocks of 60 with pauses), the Modbus exception code per block, devices that announce `_modbus._tcp` over mDNS,
+open ports, the title of a web page and the vendor part of the MAC address. It never writes, and it reads the
+connected inverter only over the existing connection. The last result goes into the next report as `probe`:
+addresses pseudonymised, readable text in register values (serial numbers, names) shortened unless the user includes
+it. So the first evidence can come from the device itself; documentation or a licensed project tell where to look.
+Turning a report into code:
 
 1. **Identification:** model and firmware go into the device type table or the map choice, the unit id into
    `DEFAULT_UNITS`.

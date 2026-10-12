@@ -8,7 +8,7 @@ import { t } from "./i18n";
 import { ISSUES_URL } from "./links";
 import type { PageProps } from "./SettingsPages";
 import { useSettings } from "./SettingsPages";
-import { Button, Checkbox, copyText, Field, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
+import { Button, Checkbox, copyText, Field, LearnMore, LoadState, MenuRow, Notice, SubPage, toast } from "./ui";
 
 type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string; hint?: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
@@ -23,7 +23,7 @@ const LOG_LEVELS: [LogLevel, string][] = [
 
 const STATUS_LABEL: Record<Check["status"], string> = { ok: "OK", warn: t("settings.statusLabel.check"), error: t("settings.statusLabel.error"), info: "Info", skipped: "–" };
 
-export function DiagnosticsPage({ onBack }: PageProps) {
+export function DiagnosticsPage({ onBack, onNavigate }: PageProps) {
   const { data, error, reload, setData } = useResource<DiagnosticsData>("/api/diagnostics");
   const { settings, locked, save } = useSettings();
   const [connectionTest, setConnectionTest] = useState(false);
@@ -111,6 +111,16 @@ export function DiagnosticsPage({ onBack }: PageProps) {
       </div>
       {data?.report?.checks.some((c) => c.status === "warn") && (
         <Notice kind="warn">{t("settings.diagnosticsPage.checkHint")}</Notice>
+      )}
+
+      {onNavigate && (
+        <>
+          <div className="section-title">{t("settings.diagnosticsPage.advancedTitle")}</div>
+          <div className="card menu">
+            <MenuRow label={t("settings.diagnosticsPage.deviceReader")} hint={t("settings.diagnosticsPage.deviceReaderHint")}
+              onClick={() => onNavigate("device-reader")} />
+          </div>
+        </>
       )}
 
       {settings && (

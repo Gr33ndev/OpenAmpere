@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, external, ha_app, health, i18n
+from . import discovery, cloud_import, external, ha_app, health, i18n, probe
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import PRIVATE, SECRETS, restore_settings
@@ -149,6 +149,20 @@ class ScanRequest(BaseModel):
     prefix: str
     port: int = Field(502, ge=1, le=65535)
     unit: int = Field(0, ge=0, le=255)
+
+
+class ProbeReadRequest(BaseModel):
+    """Reading any device in the home network (#324): only function codes 3 and 4, a few hundred registers."""
+    host: str = Field(min_length=1, max_length=253)
+    port: int = Field(502, ge=1, le=65535)
+    unit: int = Field(1, ge=0, le=255)
+    function: int = Field(3, ge=3, le=4)
+    start: int = Field(ge=0, le=65535)
+    count: int = Field(ge=1, le=probe.MAX_REGISTERS)
+
+
+class ProbeHostRequest(BaseModel):
+    host: str = Field(min_length=1, max_length=253)
 
 
 
@@ -1053,6 +1067,35 @@ def create_app(runtime: Runtime) -> FastAPI:
         except RuntimeError as err:
             raise HTTPException(409, str(err)) from None
         return {"running": False, "report": report, "markdown": report_markdown(report)}
+
+    # ---- reading any device (#324) -------------------------------------------
+    # POST only: every request needs the login (or an admin of Home Assistant), none goes through the API for apps
+
+    @app.post("/api/diagnostics/read")
+    async def probe_read(request: ProbeReadRequest):
+        try:
+            result = await diagnostics.probe.read(request.host, request.port, request.unit, request.function,
+                                                  request.start, request.count)
+        except probe.ProbeError as err:
+            raise HTTPException(400, err.message) from None
+        return {"read": probe.read_view(result)}
+
+    @app.post("/api/diagnostics/identify")
+    async def probe_identify(request: ProbeHostRequest):
+        try:
+            return await diagnostics.probe.identify(request.host)
+        except probe.ProbeError as err:
+            raise HTTPException(400, err.message) from None
+
+    @app.post("/api/diagnostics/search")
+    async def probe_search():
+        try:
+            return await diagnostics.probe.search()
+        except probe.ProbeError as err:
+            raise HTTPException(409, err.message) from None
+        except OSError as err:  # no network for multicast
+            log.warning("mDNS search failed: %s", err)
+            return {"available": False, "devices": []}
 
     # ---- evcc (wallbox) -----------------------------------------------------
 

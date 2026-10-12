@@ -739,3 +739,13 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
 .notify-help { margin: 10px 0; }
 .notify-advanced { display: flex; flex-direction: column; gap: 16px; }
 .card.notify-advanced-card { padding-top: 8px; padding-bottom: 8px; }
+
+/* reading any device (#324) */
+.table-scroll { overflow-x: auto; margin-top: 8px; }
+.register-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.register-table th { text-align: right; font-weight: 500; color: var(--label); padding: 4px 6px; font-family: inherit; }
+.register-table td { text-align: right; padding: 3px 6px; border-top: 1px solid var(--divider); }
+.reader-text { margin-top: 8px; font-size: 14px; }
+.reader-text dd { overflow-wrap: anywhere; }
+.found-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
