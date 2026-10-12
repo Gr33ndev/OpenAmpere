@@ -143,3 +143,32 @@ jobs:
           docker logs openampere
           docker inspect -f '{{json .State.Health}}' openampere
           exit 1
+      # the Home Assistant app (#300): its own stage of the Dockerfile
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ha-app
+          push: false
+          load: true
+          tags: openampere-ha-app:ci
+      - name: Home Assistant app starts as the Supervisor starts it and makes its backup copy
+        run: |
+          # like the Supervisor: /data created by root, the container started as root
+          docker volume create ha-data
+          docker volume create ha-config
+          docker run -d --name ha-app -e SUPERVISOR_TOKEN=ci -v ha-data:/data -v ha-config:/homeassistant \
+            openampere-ha-app:ci
+          for _ in $(seq 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' ha-app)
+            if [ "$status" = healthy ] || [ "$status" = unhealthy ]; then break; fi
+            sleep 5
+          done
+          docker logs ha-app
+          [ "$status" = healthy ]
+          [ "$(docker exec ha-app stat -c %u /data/openampere.db)" = 1000 ]  # OpenAmpere runs as the app user
+          # the integration of this version in the config folder of Home Assistant: no HACS needed
+          docker exec ha-app test -f /homeassistant/custom_components/openampere/.installed-by-openampere-app
+          docker exec ha-app ha-app-start ha-backup-copy
+          docker exec ha-app test -s /data/ha-backup.db
+          docker exec ha-app ha-app-start ha-backup-done
+          ! docker exec ha-app test -e /data/ha-backup.db

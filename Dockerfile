@@ -10,7 +10,7 @@ COPY web/ ./
 RUN npx tsc --noEmit && npx vite build --outDir /web/dist
 
 # --- backend ---
-FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS app
 LABEL org.opencontainers.image.source="https://github.com/Gr33ndev/OpenAmpere" \
       org.opencontainers.image.description="Lokale App für Solaranlagen mit Batteriespeicher (FoxESS H3, SAJ H2)" \
       org.opencontainers.image.licenses="MIT"
@@ -36,3 +36,23 @@ EXPOSE 8080 8443
 # Generous start period: the first start on a Raspberry Pi (database migrations) can take a while.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 CMD ["openampere", "healthcheck"]
 CMD ["openampere"]
+
+# --- Home Assistant app (#300), published as its own image (openampere-ha-app) ---
+# The Supervisor creates /data as root and starts the container as root. ha-app-start hands /data to the app user and
+# runs OpenAmpere as that user. The image of the Docker installation below stays without root (#294).
+FROM app AS ha-app
+ARG VERSION=dev
+LABEL io.hass.type="app" io.hass.version="$VERSION"
+USER root
+COPY --chmod=0755 ha-app/start.sh /usr/local/bin/ha-app-start
+# the integration of the same version, copied into Home Assistant at the start: app users need no HACS
+COPY custom_components/openampere /usr/share/openampere/integration
+ENTRYPOINT ["ha-app-start"]
+CMD []
+# the health check as the app user as well, like everything but the start (and in AppArmor's "server" profile)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 CMD ["setpriv", "--reuid=openampere", \
+  "--regid=openampere", "--init-groups", "--inh-caps=-all", "--bounding-set=-all", "--no-new-privs", \
+  "openampere", "healthcheck"]
+
+# --- Docker installation: the default image (last stage) ---
+FROM app

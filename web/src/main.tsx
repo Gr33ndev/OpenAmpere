@@ -4,7 +4,7 @@ import { StrictMode, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
-import { PasswordSetup, useLoginPrompt } from "./AuthScreens";
+import { DirectAccessLocked, PasswordSetup, useLoginPrompt } from "./AuthScreens";
 import { Dashboard } from "./Dashboard";
 import { RetroDefs } from "./EnergyFlow";
 import { NavDevices, NavHome, NavMore, NavReport } from "./icons";
@@ -73,10 +73,14 @@ function App() {
       </div>
     );
   }
-  if (auth && !auth.configured) {
+  // in the sidebar of Home Assistant the password is optional: it is only needed for direct access (#300)
+  if (auth && !auth.configured && auth.home_assistant !== "ingress") {
     return (
       <div className="app">
-        <main><DatabaseNotice status={status} auth={auth} /><PasswordSetup onDone={reloadAuth} /></main>
+        <main>
+          <DatabaseNotice status={status} auth={auth} />
+          {auth.home_assistant === "direct" ? <DirectAccessLocked onRetry={reloadAuth} /> : <PasswordSetup onDone={reloadAuth} />}
+        </main>
         <ToastHost />
       </div>
     );

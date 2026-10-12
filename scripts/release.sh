@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: MIT
 # Prepares a release: sets the version, adds it to the changelog, commits both and creates a signed tag.
 #   scripts/release.sh 0.2.0
-# Then push both: git push origin main v0.2.0
-# The "Release" workflow builds the Docker image and creates the GitHub release with notes.
+# Then push the tag, wait for the "Release" workflow and only then push main (see the end of this script).
+# The "Release" workflow builds the Docker images and creates the GitHub release with notes.
 # An optional summary for owners goes into changelog/0.2.0.json before ({"de": "…", "en": "…"}, #176). It need not
 # be committed: it becomes part of the release commit.
 set -eu
@@ -29,8 +29,10 @@ sed -i.bak "s/^version = \".*\"/version = \"$version\"/" pyproject.toml && rm py
 # the Home Assistant integration has the same version: HACS installs it from the same release (#76)
 sed -i.bak "s/\"version\": \".*\"/\"version\": \"$version\"/" custom_components/openampere/manifest.json \
   && rm custom_components/openampere/manifest.json.bak
+# the Home Assistant app installs the image with this tag (#300)
+sed -i.bak "s/^version: \".*\"/version: \"$version\"/" ha-app/config.yaml && rm ha-app/config.yaml.bak
 git add pyproject.toml web/package.json web/package-lock.json custom_components/openampere/manifest.json \
-  web/public/changelog.json
+  ha-app/config.yaml ha-app/CHANGELOG.md web/public/changelog.json
 [ ! -f "$summary" ] || git add "$summary"
 git commit -q -m "chore(release): $version"
 git tag -s "v$version" -m "OpenAmpere $version" || {
@@ -38,5 +40,8 @@ git tag -s "v$version" -m "OpenAmpere $version" || {
   echo "  git tag -s v$version -m \"OpenAmpere $version\"" >&2
   exit 1
 }
-echo "Version $version committet und getaggt. Veröffentlichen mit:"
-echo "  git push origin main v$version"
+# Home Assistant offers the new version as soon as main has it, so main follows the published images (#300)
+echo "Version $version committet und getaggt. Veröffentlichen in dieser Reihenfolge:"
+echo "  1. git push origin v$version"
+echo "  2. Warten, bis der Workflow \"Release\" für v$version grün ist (gh run watch oder GitHub → Actions)."
+echo "  3. git push origin main"

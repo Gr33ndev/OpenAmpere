@@ -45,7 +45,7 @@
     "wallboxTitle": "Wallbox mit evcc",
     "wallboxText": "Das Auto mit Sonnenstrom laden. Die Wallbox steuert <a href=\"https://evcc.io\">evcc</a>, bedienen kannst du sie direkt in OpenAmpere.",
     "homeAssistantTitle": "Home Assistant",
-    "homeAssistantText": "Alle Werte live in Home Assistant, auch im Energie-Dashboard, und auf Wunsch den Speicher von dort steuern. <a href=\"#home-assistant\">Mehr dazu</a>",
+    "homeAssistantText": "Alle Werte live in Home Assistant, auch im Energie-Dashboard, und auf Wunsch den Speicher von dort steuern. <a href=\"#installation\">Mehr dazu</a>",
     "notificationsTitle": "Hinweise, Diagnose, Export",
     "notificationsText": "Nachricht aufs Handy über ntfy, wenn etwas nicht stimmt. Eine Diagnose prüft, ob die App dein Gerät richtig liest. Alle Werte gibt es als CSV-Datei."
   },
@@ -71,12 +71,19 @@
     "runNote": "Das Script installiert bei Bedarf Docker und fragt, ob du eine Wallbox hast. Dann richtet es <a href=\"https://evcc.io\">evcc</a> gleich mit ein. Willst du OpenAmpere auch von unterwegs nutzen, richtet es Tailscale mit ein. Neue Versionen zeigt die App an und installiert sie auf Knopfdruck, auf Wunsch auch nachts von selbst.",
     "browserTitle": "Im Browser einrichten",
     "browserText": "Die Adresse öffnen, die das Script am Ende anzeigt, und ein Passwort festlegen. Der Assistent sucht dann den Wechselrichter. Einen Heizstab fügst du unter Mehr → Verbindung hinzu, die Wallbox verbindest du dort Schritt für Schritt mit evcc. Auf dem iPhone kannst du die Seite zum Home-Bildschirm hinzufügen.",
-    "manualNote": "Installation von Hand und Zugriff von unterwegs stehen im <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#installation\">README auf GitHub</a>."
+    "manualNote": "Installation von Hand und Zugriff von unterwegs stehen im <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#installation\">README auf GitHub</a>.",
+    "appText": "Für Home Assistant OS, zum Beispiel auf einem Home Assistant Green oder einem Raspberry Pi. Einen eigenen Rechner brauchst du nicht. Die App ist neu und noch als experimentell gekennzeichnet.",
+    "appButton": "Repository in Home Assistant hinzufügen",
+    "appGuide": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant-app.de.md\">Anleitung für die App</a>, auch zum Umzug einer bestehenden Installation.",
+    "twoWays": "OpenAmpere läuft auf einem von zwei Wegen. Entscheide dich für einen, denn es darf nur ein OpenAmpere mit dem Wechselrichter sprechen:",
+    "way1Short": "<a href=\"#standalone\"><strong>Weg 1: eigenständig</strong></a> auf einem Linux-Rechner mit Docker, zum Beispiel einem Raspberry Pi, NAS oder Proxmox-Server. Nutzt du Home Assistant, verbindest du es bei Bedarf über die Integration (HACS).",
+    "way2Short": "<a href=\"#home-assistant-app\"><strong>Weg 2: als Home-Assistant-App</strong></a>, wenn bei dir Home Assistant OS läuft. OpenAmpere läuft dann in Home Assistant und öffnet sich in der Seitenleiste.",
+    "way1Title": "Weg 1: eigenständig mit Docker",
+    "way2Title": "Weg 2: als Home-Assistant-App",
+    "appSteps": "Der Button öffnet in deinem Home Assistant den Dialog zum Hinzufügen des Repositorys. Danach die App OpenAmpere installieren, „In der Seitenleiste anzeigen“ einschalten und starten. In der Seitenleiste sucht der Assistent den Wechselrichter."
   },
   "homeAssistant": {
-    "title": "Home Assistant",
-    "intro": "Mit der Integration <strong>OpenAmpere</strong> siehst du Leistung, Energie und Ladestand live in Home Assistant, passend fürs Energie-Dashboard. Wenn du es erlaubst, steuerst du von dort Speicher, Laden aus dem Netz und Heizstab, etwa in Automationen.",
-    "notice": "<strong>Zuerst OpenAmpere installieren</strong> (siehe <a href=\"#installation\">Installation</a>). Die Integration verbindet sich nur mit dem laufenden OpenAmpere und ersetzt es nicht. Nur OpenAmpere spricht mit dem Wechselrichter, Home Assistant spricht mit OpenAmpere.",
+    "intro": "Optional. Mit der Integration <strong>OpenAmpere</strong> siehst du Leistung, Energie und Ladestand live in Home Assistant, passend fürs Energie-Dashboard. Wenn du es erlaubst, steuerst du von dort Speicher, Laden aus dem Netz und Heizstab, etwa in Automationen. Die Integration verbindet sich mit dem laufenden OpenAmpere, nur OpenAmpere spricht mit dem Wechselrichter.",
     "hacsTitle": "Über HACS installieren",
     "hacsText": "Der Button öffnet das Repository in deinem Home Assistant (dafür muss <a href=\"https://hacs.xyz\">HACS</a> installiert sein). Dort herunterladen und Home Assistant neu starten.",
     "pairTitle": "Koppeln",
@@ -84,7 +91,10 @@
     "note": "Die Verbindung ist verschlüsselt, jede App bekommt einen eigenen Zugang, den du jederzeit entfernen kannst. Hauptschalter, Testmodus und Einspeisebegrenzung bleiben in OpenAmpere.",
     "guideLink": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/homeassistant.de.md\">Anleitung und Details</a>",
     "hacsButton": "In Home Assistant öffnen (HACS)",
-    "pairButton": "Integration in Home Assistant einrichten"
+    "pairButton": "Integration in Home Assistant einrichten",
+    "appTitle": "Sensoren und Steuerung in Home Assistant",
+    "appText": "Die App bringt die Integration OpenAmpere in ihrer Version mit und installiert sie selbst, HACS brauchst du nicht. Damit siehst du Leistung, Energie und Ladestand live in Home Assistant, auch im Energie-Dashboard, und steuerst auf Wunsch Speicher, Laden aus dem Netz und Heizstab. Nach dem ersten Start der App bittet Home Assistant um einen Neustart. Danach steht unter Einstellungen → Geräte & Dienste „Entdeckt: OpenAmpere“: bestätigen, dann zeigen beide denselben 6-stelligen Code. Du vergleichst ihn in OpenAmpere unter Mehr → Verbundene Apps und erlaubst die Verbindung, nur lesen oder auch steuern.",
+    "standaloneTitle": "Home Assistant verbinden (optional)"
   },
   "security": {
     "title": "Sicherheit",
@@ -105,6 +115,7 @@
     "ampereIq": "Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD. OpenAmpere ist als lokale Alternative von Betroffenen entstanden. Die als „Ampere.StoragePro E3“ verkauften Speicher basieren auf der FoxESS-H3-Serie, ältere „Ampere.StoragePro“ auf SAJ H2 und HS2.",
     "noAffiliation": "<strong>Keine Verbindung zu EKD oder den Herstellern:</strong> OpenAmpere ist ein unabhängiges, inoffizielles Projekt. Es hat nichts mit der Energiekonzepte Deutschland GmbH, ihrer Insolvenzverwaltung, FoxESS, SAJ oder Kiwigrid zu tun und wurde von ihnen weder beauftragt noch autorisiert.",
     "trademarks": "<strong>Marken:</strong> „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ und alle anderen genannten Produkt- und Firmennamen gehören ihren Inhabern. Sie stehen hier nur, um zu beschreiben, mit welchen Geräten OpenAmpere funktioniert. Der Projektname bezieht sich auf die physikalische Einheit Ampere. OpenAmpere enthält keinen Code, keine Grafiken und keine Texte der Ampere.IQ-App.",
-    "ownRisk": "<strong>Nutzung auf eigene Verantwortung:</strong> OpenAmpere ist kostenlos und ohne Gewähr. Es ersetzt keinen Elektrofachbetrieb. Wer Einstellungen am Wechselrichter ändert, ist selbst dafür verantwortlich, dass die Netzanschlussbedingungen eingehalten werden. Die Hinweise sind keine Rechtsberatung."
+    "ownRisk": "<strong>Nutzung auf eigene Verantwortung:</strong> OpenAmpere ist kostenlos und ohne Gewähr. Es ersetzt keinen Elektrofachbetrieb. Wer Einstellungen am Wechselrichter ändert, ist selbst dafür verantwortlich, dass die Netzanschlussbedingungen eingehalten werden. Die Hinweise sind keine Rechtsberatung.",
+    "noAffiliationHomeAssistant": "<strong>Keine Verbindung zu Home Assistant:</strong> OpenAmpere, seine Home-Assistant-Integration und seine Home-Assistant-App haben nichts mit Home Assistant, der Open Home Foundation oder Nabu Casa zu tun. Sie nutzen nur die öffentlichen Schnittstellen von Home Assistant."
   }
 }

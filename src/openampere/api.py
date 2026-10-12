@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, external, health, i18n
+from . import discovery, cloud_import, external, ha_app, health, i18n
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import PRIVATE, SECRETS, restore_settings
@@ -115,7 +115,7 @@ class PasswordRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    current: str = Field(min_length=1, max_length=200)
+    current: str = Field("", max_length=200)  # not needed through the Home Assistant sidebar
     new: str = Field(min_length=1, max_length=200)
 
 
@@ -125,6 +125,9 @@ class ChangePasswordRequest(BaseModel):
 # name) sent to other sites in the Referer header when a link is followed
 SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Frame-Options": "DENY",
                     "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
+# the Home Assistant sidebar shows the app in a frame of its own origin (#300); other sites still cannot frame it
+INGRESS_HEADERS = {"Content-Security-Policy": "frame-ancestors 'self'", "X-Content-Type-Options": "nosniff",
+                   "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
                    "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
@@ -178,6 +181,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     diagnostics = Diagnostics(runtime)
     updates = Updates(runtime, VERSION)
     remote = Remote(runtime)
+    home_assistant = ha_app.HomeAssistant()
+    admins = ha_app.Admins()
 
     async def watchdog() -> None:
         """Background jobs: find the inverter after an IP change, exchange prices, grid charging."""
@@ -185,7 +190,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             await asyncio.sleep(30)
             for job in (lambda: rediscovery.check(time.time()), runtime.tariffs.refresh_prices, charging.tick,
                         notifier.check, updates.tick, gridmeter.tick,
-                        diagnostics.watch_remote):
+                        diagnostics.watch_remote, home_assistant.refresh):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -210,6 +215,10 @@ def create_app(runtime: Runtime) -> FastAPI:
         remove_stale_uploads(Path(storage.path).resolve().parent)
         collector.start()
         runtime.cloud_import.resume_if_running()
+        await home_assistant.refresh()
+        if ha_app.active() and runtime.config.server.tls_port:  # the integration connects over HTTPS
+            await home_assistant.announce(installation_id, runtime.config.server.tls_port, runtime.tls.fingerprint)
+        await home_assistant.notify_integration(Path(storage.path).resolve().parent)
         watchdog_task = asyncio.create_task(watchdog())
         fast_task = asyncio.create_task(fast_loop())
         yield
@@ -258,7 +267,11 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.middleware("http")
     async def security(request: Request, call_next):
         host = request.headers.get("host")
-        if not host_allowed(host, runtime.config.server.allowed_hosts):
+        # through the Home Assistant sidebar: Home Assistant checked the login, the Host is the one of its address.
+        # Only admins of Home Assistant count as logged in there: the Supervisor forwards every user (#300).
+        ingress = ha_app.via_ingress(request)
+        request.state.ha_admin = ingress and await admins.is_admin(request.headers.get(ha_app.USER_HEADER))
+        if not ingress and not host_allowed(host, runtime.config.server.allowed_hosts):
             if len(host or "") > MAX_HOST_SHOWN:
                 host = f"{host[:MAX_HOST_SHOWN]}…"
             return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
@@ -284,7 +297,11 @@ def create_app(runtime: Runtime) -> FastAPI:
         if path.startswith("/api/") and (writing or path in PROTECTED_READS):
             if writing and (not origin_ok(request.headers.get("origin"), host) or request.headers.get(CSRF_HEADER) != "1"):
                 return JSONResponse({"detail": "Anfrage abgelehnt (fremde Herkunft)."}, 403)
-            if path not in PUBLIC_WRITES:
+            if ingress and path not in PUBLIC_WRITES:
+                if not request.state.ha_admin:
+                    return JSONResponse({"detail": "Nur Administratoren von Home Assistant dürfen in OpenAmpere etwas "
+                                                   "ändern.", "code": "home_assistant_admin"}, 403)
+            elif path not in PUBLIC_WRITES:
                 if not auth.configured:
                     return JSONResponse({"detail": "Bitte zuerst ein Passwort festlegen.", "code": "setup_required"}, 401)
                 if not auth.valid(request.cookies.get(SESSION_COOKIE)):
@@ -315,14 +332,20 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
-        for name, value in SECURITY_HEADERS.items():
+        for name, value in (INGRESS_HEADERS if ha_app.via_ingress(request) else SECURITY_HEADERS).items():
             response.headers.setdefault(name, value)
         return response
 
+    def ha_admin(request: Request) -> bool:
+        """An admin of Home Assistant through its sidebar (set by the security check)."""
+        return getattr(request.state, "ha_admin", False)
+
     def logged_in(request: Request) -> bool:
-        return auth.valid(request.cookies.get(SESSION_COOKIE))
+        return ha_admin(request) or auth.valid(request.cookies.get(SESSION_COOKIE))
 
     def start_session(response: Response, request: Request) -> None:
+        if ha_app.via_ingress(request):
+            return  # no cookies: they would belong to the address of Home Assistant
         # Secure where the request came over HTTPS: the cookies then never travel over plain HTTP. In the home
         # network the app is opened over HTTP, so it cannot be set there.
         secure = request.url.scheme == "https"
@@ -340,10 +363,17 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.get("/api/auth/status")
     def auth_status(request: Request):
-        return {"configured": auth.configured, "authenticated": logged_in(request)}
+        status = {"configured": auth.configured, "authenticated": logged_in(request)}
+        if ha_app.active():
+            status["home_assistant"] = "ingress" if ha_app.via_ingress(request) else "direct"
+        return status
 
     @app.post("/api/auth/setup")
     def auth_setup(body: PasswordRequest, request: Request, response: Response):
+        if ha_app.active() and not ha_admin(request):
+            # otherwise anybody in the home network (or any user of Home Assistant) could set it before its owner
+            raise HTTPException(403, "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der "
+                                     "Seitenleiste öffnen, dann Mehr → Zugriffsschutz.")
         try:
             first = auth.setup(body.password)
         except ValueError as err:
@@ -367,8 +397,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/auth/logout")
     def auth_logout(request: Request, response: Response, everywhere: bool = False):
         token = request.cookies.get(SESSION_COOKIE)
-        # logging out every device is only allowed for a logged-in device
-        if everywhere and auth.valid(token):
+        # logging out every device is only allowed for a logged-in device (or through the Home Assistant sidebar)
+        if everywhere and (auth.valid(token) or ha_admin(request)):
             auth.revoke(token, everywhere=True)
             auth.forget_devices()
         else:
@@ -379,7 +409,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/auth/password")
     def auth_change_password(body: ChangePasswordRequest, request: Request, response: Response):
         try:
-            if not check_password(request, body.current):
+            # through the Home Assistant sidebar an admin of Home Assistant asks: also when the password is forgotten
+            if not ha_admin(request) and not check_password(request, body.current):
                 raise HTTPException(401, "Das bisherige Passwort stimmt nicht.")
             auth.set_password(body.new)
         except PermissionError as err:
@@ -481,6 +512,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "energy_step_wh": collector.energy_step_wh(),
             "firmware": {**firmware, "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
+            "home_assistant": home_assistant.view(),  # only for the Home Assistant app (#300)
             "storage": collector.storage_state(),
         }
 

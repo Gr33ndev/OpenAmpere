@@ -112,3 +112,14 @@ def test_security_advisories_are_linked_in_the_release_notes():
     assert release_notes["line"](item) == (
         "**security:** Restoring a crafted backup takes over unchecked data "
         "([GHSA-4jmw-6h58-vc78](https://github.com/Gr33ndev/OpenAmpere/security/advisories/GHSA-4jmw-6h58-vc78))")
+
+
+def test_the_changelog_of_the_home_assistant_app_is_built_from_the_same_file():
+    """ha-app/CHANGELOG.md is what Home Assistant shows with an update of the app (#300); scripts/changelog.py writes
+    it together with web/public/changelog.json, so a release changes both."""
+    versions = json.loads((ROOT / "web" / "public" / "changelog.json").read_text(encoding="utf-8"))["versions"]
+    assert (ROOT / "ha-app" / "CHANGELOG.md").read_text(encoding="utf-8") == changelog["app_changelog"](versions)
+    text = changelog["app_changelog"]([version("9.9.9", summary={"de": "Kurz gesagt.", "en": "In short."},
+                                               groups={"feat": [{"scope": "app", "text": "New"}], "fix": [],
+                                                       "perf": [], "other": []})])
+    assert "## 9.9.9 (2026-10-01)\n\nKurz gesagt.\n\n**English:** In short.\n\n### Neu\n\n- **app:** New" in text

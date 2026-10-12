@@ -276,11 +276,19 @@ scripts/release.sh 0.2.0
 ```
 
 ```bash
-git push origin main v0.2.0
+git push origin v0.2.0
 ```
 
-The script sets the version in `pyproject.toml` and `web/package.json`, adds the version to the changelog, commits
-it and creates a signed tag. The "Release" workflow then builds the Docker image and creates the GitHub release. The
+Wait until the "Release" workflow for the tag has finished successfully, then:
+
+```bash
+git push origin main
+```
+
+The script sets the version in `pyproject.toml`, `web/package.json`, the Home Assistant integration and the Home
+Assistant app (`ha-app/config.yaml`), adds the version to the changelog, commits it and creates a signed tag. The
+"Release" workflow then builds the Docker images and creates the GitHub release. `main` comes last because Home
+Assistant offers the new app version as soon as `main` has it: the image must exist by then. The
 changelog (`web/public/changelog.json`, built by `scripts/changelog.py`) is generated from the commit messages since
 the last tag and shown in the app (Mehr → Über OpenAmpere → Changelog), on the website and as the release notes, so
 good commit titles pay off: `feat` ends up under "Neu" (New), `fix` under "Behoben" (Fixed).

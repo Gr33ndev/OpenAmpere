@@ -103,6 +103,13 @@
 
     <section class="wrap" id="installation">
       <h2>{{index.install.title}}</h2>
+      <p>{{index.install.twoWays}}</p>
+      <ul class="ways">
+        <li>{{index.install.way1Short}}</li>
+        <li>{{index.install.way2Short}}</li>
+      </ul>
+
+      <h3 class="way" id="standalone">{{index.install.way1Title}}</h3>
       <ol class="steps">
         <li>
           <h3>{{index.install.prepareTitle}}</h3>
@@ -123,26 +130,35 @@
         </li>
       </ol>
       <p class="small">{{index.install.manualNote}}</p>
-    </section>
 
-    <section class="wrap" id="home-assistant">
-      <h2>{{index.homeAssistant.title}}</h2>
+      <h4 class="sub" id="home-assistant">{{index.homeAssistant.standaloneTitle}}</h4>
       <p>{{index.homeAssistant.intro}}</p>
-      <p class="notice">{{index.homeAssistant.notice}}</p>
       <ol class="steps">
         <li>
           <h3>{{index.homeAssistant.hacsTitle}}</h3>
           <p>{{index.homeAssistant.hacsText}}</p>
-          <p><a class="btn secondary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&amp;repository=OpenAmpere&amp;category=integration">{{index.homeAssistant.hacsButton}}</a></p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&amp;repository=OpenAmpere&amp;category=integration"><img src="{{root}}badges/hacs_repository.svg" alt="{{index.homeAssistant.hacsButton}}" height="40"></a></p>
         </li>
         <li>
           <h3>{{index.homeAssistant.pairTitle}}</h3>
           <p>{{index.homeAssistant.pairText}}</p>
-          <p><a class="btn secondary" href="https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere">{{index.homeAssistant.pairButton}}</a></p>
+          <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere"><img src="{{root}}badges/config_flow_start.svg" alt="{{index.homeAssistant.pairButton}}" height="40"></a></p>
         </li>
       </ol>
       <p class="small">{{index.homeAssistant.note}}
         {{index.homeAssistant.guideLink}}</p>
+
+      <h3 class="way" id="home-assistant-app">{{index.install.way2Title}}</h3>
+      <div class="notice">
+        <p>{{index.install.appText}}</p>
+        <p><a class="ha-badge" href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere"><img src="{{root}}badges/supervisor_add_addon_repository.svg" alt="{{index.install.appButton}}" height="40"></a></p>
+        <p>{{index.install.appSteps}}</p>
+        <p class="small">{{index.install.appGuide}}</p>
+      </div>
+
+      <h4 class="sub">{{index.homeAssistant.appTitle}}</h4>
+      <p>{{index.homeAssistant.appText}}</p>
+      <p class="small">{{index.homeAssistant.note}}</p>
     </section>
 
     <section class="wrap" id="sicherheit">
@@ -173,6 +189,7 @@
       <p>{{index.background.insolvency}}</p>
       <p>{{index.background.ampereIq}}</p>
       <p>{{index.background.noAffiliation}}</p>
+      <p>{{index.background.noAffiliationHomeAssistant}}</p>
       <p>{{index.background.trademarks}}</p>
       <p>{{index.background.ownRisk}}</p>
     </section>

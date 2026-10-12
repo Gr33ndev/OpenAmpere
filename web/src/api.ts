@@ -57,6 +57,9 @@ export type Status = {
   /** step of the inverter's energy counters in Wh (#194): 100 = 0.1 kWh; missing on servers before this field */
   energy_step_wh?: number;
   control: { enabled: boolean; dry_run: boolean };
+  /** only in the Home Assistant app (#300): ports on the host for direct access (null: turned off) and the address,
+   *  if the Supervisor knows the IP of the host */
+  home_assistant?: { direct_url: string | null; web_port?: number | null; https_port?: number | null } | null;
   // whether readings get stored (#170); missing on servers before this field
   storage?: { failing_since: number | null; error: "full" | "read_only" | "other" | null; free_bytes: number | null;
     low_space: boolean };
@@ -188,6 +191,10 @@ export const OFFLINE_MESSAGE = t("shell.offlineMessage.noConnection");
 /** Asks the server for error messages in the language of the app (#104); German needs no header. */
 const LANGUAGE_HEADER: Record<string, string> = lang() === "de" ? {} : { "X-OpenAmpere-Lang": lang() };
 
+/** Server paths ("/api/…") relative to the page, so the app also works under a path prefix such as the
+ *  ingress address of the Home Assistant app (#300). The page is always served from a folder ending in "/". */
+export const appUrl = (path: string) => (path.startsWith("/") ? `.${path}` : path);
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   if (DEMO && path.startsWith("/api/")) return demoRequest<T>(method, path);
   let response: Response;
@@ -195,7 +202,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET") headers["X-OpenAmpere"] = "1"; // required by the server for every change (CSRF protection)
   try {
-    response = await fetch(path, {
+    response = await fetch(appUrl(path), {
       method,
       headers,
       credentials: "same-origin",
@@ -257,8 +264,9 @@ export function useLive(): { snap: Snapshot | null; online: boolean } {
     let closed = false;
 
     const connect = () => {
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(`${proto}://${location.host}/api/live/ws`);
+      const url = new URL(appUrl("/api/live/ws"), location.href);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      ws = new WebSocket(url);
       ws.onopen = () => setOnline(true);
       ws.onmessage = (event) => setSnap(JSON.parse(event.data));
       ws.onclose = () => {
@@ -347,12 +355,20 @@ export function useResource<T>(path: string | null, refreshMs = 0): {
   return { data, error, reload: () => setNonce((n) => n + 1), setData };
 }
 
-export type AuthStatus = { configured: boolean; authenticated: boolean };
+/** Home Assistant app (#300): the address for direct access by IP, with a placeholder for the IP if the Supervisor
+ *  does not know it; null if the owner turned direct access off. */
+export function directAddress(app: NonNullable<Status["home_assistant"]>): string | null {
+  if (app.direct_url) return app.direct_url;
+  return app.web_port ? `http://${t("shell.homeAssistant.hostPlaceholder")}:${app.web_port}` : null;
+}
+
+/** home_assistant: only in the Home Assistant app (#300), "ingress" when opened in its sidebar */
+export type AuthStatus = { configured: boolean; authenticated: boolean; home_assistant?: "ingress" | "direct" };
 
 /** POST with a raw body (file upload) – same headers as JSON requests. */
 export async function postFile<T>(path: string, file: Blob, type = "application/zip"): Promise<T> {
   if (DEMO) return demoRequest<T>("POST", path);
-  const response = await fetch(path, { method: "POST", body: file, credentials: "same-origin",
+  const response = await fetch(appUrl(path), { method: "POST", body: file, credentials: "same-origin",
     headers: { ...LANGUAGE_HEADER, "X-OpenAmpere": "1", "Content-Type": type } }).catch(() => {
     throw new Error(OFFLINE_MESSAGE);
   });

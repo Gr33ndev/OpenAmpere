@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
+# Makes this repository an app repository for Home Assistant (#300); the app is in ha-app/.
+name: OpenAmpere
+url: https://github.com/Gr33ndev/OpenAmpere

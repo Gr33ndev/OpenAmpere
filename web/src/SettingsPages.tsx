@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useOnServerChange, useResource } from "./api";
+import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
@@ -694,7 +694,7 @@ function DownloadButton({ href, file, label }: { href?: string; file?: () => Pro
   const [ready, setReady] = useState<File | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a prepared file is dropped when the link changes
   useEffect(() => setReady(null), [href]);
-  if (href && !SHARE_FILES) return <a className="btn secondary" href={href} {...downloadProps}>{label}</a>;
+  if (href && !SHARE_FILES) return <a className="btn secondary" href={appUrl(href)} {...downloadProps}>{label}</a>;
 
   const share = (file: File) => navigator.share({ files: [file] }).then(() => setReady(null), (err: Error) => {
     if (err.name === "NotAllowedError") setReady(file); // loading took too long for iOS: one more tap opens the sheet
@@ -704,7 +704,7 @@ function DownloadButton({ href, file, label }: { href?: string; file?: () => Pro
     }
   });
   const fetchFile = async (url: string) => {
-    const response = await fetch(url, { credentials: "same-origin" });
+    const response = await fetch(appUrl(url), { credentials: "same-origin" });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new Error(typeof data.detail === "string" ? data.detail : t("settings.downloadButton.error", { status: response.status }));
@@ -763,7 +763,7 @@ function BackupLink() {
     return () => window.clearInterval(timer);
   }, []);
   if (!url) return <Button variant="secondary" disabled>{t("common.downloadBackup")}</Button>;
-  return <a className="btn secondary" href={url} {...downloadProps}>{t("common.downloadBackup")}</a>;
+  return <a className="btn secondary" href={appUrl(url)} {...downloadProps}>{t("common.downloadBackup")}</a>;
 }
 
 type StorageUsage = { db_bytes: number | null; free_bytes: number | null; samples: number; first_sample: number | null;

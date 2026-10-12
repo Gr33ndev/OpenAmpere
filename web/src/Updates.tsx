@@ -9,6 +9,8 @@ import { Button, Notice, SwitchRow, toast } from "./ui";
 
 export type UpdateView = {
   current: string; available: boolean; updater: boolean; requested: boolean; check: boolean; auto: boolean;
+  /** the Home Assistant app (#300): updates come through Home Assistant */
+  home_assistant?: boolean;
   latest: { version: string; url: string | null; notes: string; published: string | null } | null;
   status: { ts: number; state: "pulling" | "verifying" | "restarting" | "done" | "failed"; message: string } | null;
   checked: number | null; error: string | null;
@@ -119,6 +121,8 @@ export function UpdatesCard() {
         {data.status?.state === "failed" && Date.now() / 1000 - data.status.ts < 86_400 && <Notice kind="error">{data.status.message}</Notice>}
         {data.available && latest && (data.updater ? (
           <Button busy={busy} onClick={async () => setInstalling(await install())}>{t("shell.updatesCard.updateTo", { version: latest })}</Button>
+        ) : data.home_assistant ? (
+          <Notice kind="info">{t("shell.updatesCard.homeAssistantHint")}</Notice>
         ) : (
           <Notice kind="info">
             {t("shell.updatesCard.updateHelperHint")}
@@ -129,8 +133,10 @@ export function UpdatesCard() {
         {!data.available && latest && <p className="hint">{t("shell.updatesCard.upToDate")}</p>}
         <SwitchRow label={t("shell.updatesCard.autoCheck")} hint={t("shell.updatesCard.autoCheckHint")}
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
-        <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
-          checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
+        {!data.home_assistant && (
+          <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
+            checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
+        )}
         {data.check && <button type="button" className="link" disabled={busy} onClick={() => void check()}>{t("shell.updatesCard.checkUpdatesNow")}</button>}
       </div>
     </>

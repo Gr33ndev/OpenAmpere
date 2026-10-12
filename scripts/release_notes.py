@@ -18,7 +18,7 @@ import sys
 
 import changelog
 
-SECTIONS = [("feat", "Neu"), ("fix", "Behoben"), ("perf", "Schneller"), ("other", "Weitere Änderungen")]
+SECTIONS = changelog.SECTIONS
 
 
 def previous_tag(tag: str) -> str | None:

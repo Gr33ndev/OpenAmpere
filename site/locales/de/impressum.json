@@ -14,7 +14,7 @@
   },
   "privacy": {
     "title": "Datenschutz",
-    "intro": "Diese Seite setzt keine Cookies und nutzt keine Analyse- oder Tracking-Werkzeuge. Schrift und Bilder liegen auf dieser Seite selbst. Ausnahme sind die beiden Buttons im Abschnitt Home Assistant, siehe unten.",
+    "intro": "Diese Seite setzt keine Cookies und nutzt keine Analyse- oder Tracking-Werkzeuge. Schrift und Bilder liegen auf dieser Seite selbst.",
     "controllerTitle": "Verantwortlicher",
     "controllerText": "Verantwortlich für die Verarbeitung personenbezogener Daten auf dieser Seite ist der oben im Impressum genannte Betreiber. Kontakt: die oben genannte E-Mail-Adresse. Der Betreiber selbst speichert keine Daten über die Besucherinnen und Besucher dieser Seite und hat keinen Zugriff auf die Protokolle von GitHub.",
     "hostingTitle": "Hosting über GitHub Pages",

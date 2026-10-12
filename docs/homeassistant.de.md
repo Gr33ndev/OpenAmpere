@@ -23,7 +23,13 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 
 1. **OpenAmpere installieren und einrichten**, siehe [README](../README.de.md#installation). Der Wechselrichter muss in
    OpenAmpere verbunden sein.
-2. **Integration über HACS installieren.** Mit dem Button öffnet sich das Repository direkt in deinem Home Assistant:
+
+   **Mit der [Home-Assistant-App](homeassistant-app.de.md) (Weg 2) fallen Schritt 2 und 3 weg:** Die App installiert
+   die Integration selbst, HACS brauchst du nicht. Wenn Home Assistant darum bittet, einmal neu starten. Danach steht
+   unter **Einstellungen → Geräte & Dienste** **Entdeckt: OpenAmpere**; bestätigen und koppeln wie in Schritt 4, ohne
+   eine Adresse einzugeben.
+2. **Eigenständig (Weg 1): Integration über HACS installieren.** Mit dem Button öffnet sich das Repository direkt in
+   deinem Home Assistant:
 
    [![In HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
 

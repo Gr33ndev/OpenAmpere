@@ -117,9 +117,13 @@ async def serve(app, runtime: Runtime) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="OpenAmpere – local energy system app")
-    parser.add_argument("command", nargs="?", choices=["serve", "reset-password", "healthcheck"],
+    parser.add_argument("command", nargs="?",
+                        choices=["serve", "reset-password", "healthcheck", "ha-backup-copy", "ha-backup-done",
+                                 "ha-integration"],
                         default="serve", help="reset-password: forget the access password (set a new one in the web "
-                        "app); healthcheck: exit code 0 if the running server answers")
+                        "app); healthcheck: exit code 0 if the running server answers; ha-backup-copy / "
+                        "ha-backup-done: before and after a backup of the Home Assistant app; ha-integration: "
+                        "install its Home Assistant integration (at the start of the app, as root)")
     parser.add_argument("--config", help="path to config.yaml (default: $OPENAMPERE_CONFIG or ./config.yaml)")
     args = parser.parse_args()
     if args.command == "healthcheck":
@@ -139,9 +143,36 @@ def main() -> None:
         db.close()
         print("Passwort zurückgesetzt. Beim nächsten Öffnen der App kann ein neues festgelegt werden.")
         return
+    if args.command == "ha-integration":
+        # runs as root (ha-app-start): reads nothing of the app user, writes only the integration; the result goes to
+        # standard output, from there into the environment of OpenAmpere
+        import json
+
+        from . import ha_app
+
+        print(json.dumps(ha_app.install_integration(ha_app.INTEGRATION_SOURCE, ha_app.HA_CONFIG)))
+        return
+    if args.command in ("ha-backup-copy", "ha-backup-done"):
+        from . import ha_app
+        from .config import build_config, read_yaml
+
+        os.umask(0o077)  # like the database: only for the app user
+        path = Path(build_config(read_yaml(args.config))[0].storage.path)
+        if args.command == "ha-backup-copy":
+            ha_app.write_backup_copy(path)
+        else:
+            ha_app.remove_backup_copy(path)
+        return
     logs.setup()
     os.umask(0o077)  # the database, its copies and other files only for the app user (GHSA-p5pf-45jm-94c3)
     check_data_dir(args.config)
+    from . import ha_app
+
+    if ha_app.active():
+        from .config import build_config, read_yaml
+
+        if ha_app.adopt_backup_copy(Path(build_config(read_yaml(args.config))[0].storage.path)):
+            logging.info("database taken from the restored Home Assistant backup")
     from .api import create_app
     from .runtime import Runtime
     from .storage import DatabaseInUse, SchemaError

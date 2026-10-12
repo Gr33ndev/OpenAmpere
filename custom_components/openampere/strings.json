@@ -1,5 +1,6 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
       "user": {
         "title": "OpenAmpere",
@@ -40,6 +41,10 @@
           "code": "Create it in OpenAmpere under Mehr → Verbundene Apps (More → Connected apps).",
           "host": "Only if Home Assistant reaches OpenAmpere under a different address than your browser, e.g. the Raspberry Pi's IP address."
         }
+      },
+      "hassio_confirm": {
+        "title": "OpenAmpere app found",
+        "description": "The OpenAmpere app of this Home Assistant is running. Next, Home Assistant and OpenAmpere show the same 6-digit code. Confirm it in OpenAmpere: open it in the sidebar, then More → Connected apps."
       }
     },
     "error": {
@@ -56,7 +61,8 @@
       "reauth_successful": "Connection renewed.",
       "wrong_server": "The code belongs to a different OpenAmpere.",
       "pairing_rejected": "The pairing was rejected in OpenAmpere.",
-      "pairing_expired": "The request expired (10 minutes). Please start again."
+      "pairing_expired": "The request expired (10 minutes). Please start again.",
+      "app_connected": "OpenAmpere is connected again, now as the Home Assistant app. Entities and their history stay."
     },
     "progress": {
       "wait_for_approval": "Open OpenAmpere → Mehr → Verbundene Apps. There is a request from “Home Assistant”.\n\n**Code: {code}**\n\nOnly allow the connection if OpenAmpere shows exactly this code. If it shows a different one, reject it."
@@ -202,6 +208,19 @@
     "switch": {
       "grid_charging": {
         "name": "Grid charging"
+      }
+    }
+  },
+  "issues": {
+    "app_removed": {
+      "title": "The OpenAmpere app was removed",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove the OpenAmpere integration?",
+            "description": "The OpenAmpere app is no longer installed, so “{title}” has nothing to connect to. Remove the integration with its devices and entities? Their history stays in Home Assistant. If you install the app again, Home Assistant finds it again."
+          }
+        }
       }
     }
   }

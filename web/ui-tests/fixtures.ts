@@ -5,6 +5,9 @@ import { demoRequest, snapshot } from "../src/demo/server";
 
 /** Every test gets the real app with the API answered by the demo simulation, and fails on any console error
  *  (also a 404 for an endpoint the demo does not know). `api.override` changes one answer, e.g. an update. */
+/** Address under which Home Assistant shows the app in its sidebar (ingress, #300); see ingress.spec.ts. */
+export const INGRESS = "/api/hassio_ingress/ui-test/";
+
 /** Answers for endpoints the demo leaves out on purpose (DEMO_NOT_NEEDED) but the real app reads. */
 const NOT_IN_DEMO: Record<string, unknown> = {
   "/api/setup/networks": { prefixes: ["192.168.178"] },
@@ -25,11 +28,12 @@ export const test = base.extend<{ api: { override(path: string, body: unknown): 
     const overrides = new Map<string, unknown>();
     await page.route("**/api/**", async (route) => {
       const url = new URL(route.request().url());
-      if (overrides.has(url.pathname)) return route.fulfill({ json: overrides.get(url.pathname) });
-      if (url.pathname in NOT_IN_DEMO) return route.fulfill({ json: NOT_IN_DEMO[url.pathname] });
+      const path = url.pathname.startsWith(INGRESS) ? url.pathname.slice(INGRESS.length - 1) : url.pathname;
+      if (overrides.has(path)) return route.fulfill({ json: overrides.get(path) });
+      if (path in NOT_IN_DEMO) return route.fulfill({ json: NOT_IN_DEMO[path] });
       if (route.request().method() !== "GET") return route.fulfill({ json: {} });
       try {
-        return await route.fulfill({ json: await demoRequest("GET", url.pathname + url.search) });
+        return await route.fulfill({ json: await demoRequest("GET", path + url.search) });
       } catch (error) {
         return route.fulfill({ status: 404, json: { detail: String(error) } });
       }

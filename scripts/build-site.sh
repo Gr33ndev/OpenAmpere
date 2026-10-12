@@ -17,6 +17,8 @@ rm -rf _site
 node scripts/build-site-pages.mjs _site
 cp site/style.css _site/
 cp web/public/icon.svg _site/
+# the buttons of My Home Assistant, served from here: a visit sends nothing to my.home-assistant.io (#295)
+mkdir -p _site/badges && cp site/badges/*.svg site/badges/LICENSE.md _site/badges/
 [ "${SITE_SCRIPTS:-}" = skip ] || scripts/site-scripts.sh _site
 mkdir -p _site/fonts
 fonts=web/node_modules/@fontsource-variable/dm-sans

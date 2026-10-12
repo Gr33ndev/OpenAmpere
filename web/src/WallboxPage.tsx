@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react";
-import type { AuthStatus, Settings } from "./api";
-import { postJson, putJson, useResource } from "./api";
+import type { AuthStatus, Settings, Status } from "./api";
+import { directAddress, postJson, putJson, useResource } from "./api";
 import { num, plantTime, timeZone, todayIso } from "./format";
 import { nextDay } from "./zoned";
 import { lang, LOCALE, t, tx } from "./i18n";
@@ -202,7 +202,10 @@ export function WallboxPage({ onBack }: PageProps) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (settings) setUrl(settings.values["evcc.url"]); }, [settings]);
-  const origin = window.location.origin;
+  const { data: status } = useResource<Status>("/api/status");
+  // the Home Assistant app (#300): evcc needs the direct address, not the one of the Home Assistant sidebar
+  const app = status?.home_assistant;
+  const origin = app ? (directAddress(app) ?? "") : window.location.origin;
 
   const save = async (changes: Record<string, unknown>) => {
     setBusy(true);
@@ -245,11 +248,14 @@ export function WallboxPage({ onBack }: PageProps) {
         <li>
           <strong>{t("devices.wallboxPage.meterStep")}</strong>
           <p className="hint">{t("devices.wallboxPage.meterHint")}</p>
-          <Button variant="secondary" onClick={() => void copy()}>{t("devices.wallboxPage.copyConfiguration")}</Button>
-          <details className="advanced" open={showYaml} onToggle={(e) => setShowYaml(e.currentTarget.open)}>
-            <summary>{t("devices.wallboxPage.showConfiguration")}</summary>
-            <pre className="code-block">{siteYaml(origin)}</pre>
-          </details>
+          {app && !app.direct_url && app.web_port && <p className="hint">{t("devices.wallboxPage.replaceHostPlaceholder", { placeholder: t("shell.homeAssistant.hostPlaceholder") })}</p>}
+          {app && !origin ? <Notice kind="info">{t("devices.wallboxPage.directAccessOff")}</Notice> : <>
+            <Button variant="secondary" onClick={() => void copy()}>{t("devices.wallboxPage.copyConfiguration")}</Button>
+            <details className="advanced" open={showYaml} onToggle={(e) => setShowYaml(e.currentTarget.open)}>
+              <summary>{t("devices.wallboxPage.showConfiguration")}</summary>
+              <pre className="code-block">{siteYaml(origin)}</pre>
+            </details>
+          </>}
         </li>
         <li>
           <strong>{t("devices.wallboxPage.connectStep")}</strong>

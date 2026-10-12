@@ -23,6 +23,16 @@
     "title": "Die Datenbank war beschädigt",
     "whatHappened": "OpenAmpere konnte seine Datenbank beim Start ({date}) nicht mehr lesen, zum Beispiel nach einem Stromausfall. Damit die App weiterläuft, hat OpenAmpere mit einer leeren Datenbank neu begonnen: Messwerte und Einstellungen von vorher fehlen."
   },
+  "homeAssistant": {
+    "adminsOnly": "Du bist in Home Assistant kein Administrator. Ansehen kannst du alles, Einstellungen ändern und das Passwort festlegen dürfen nur Administratoren von Home Assistant.",
+    "forgotPassword": "Passwort vergessen? In Home Assistant OpenAmpere in der Seitenleiste öffnen und unter Mehr → Zugriffsschutz ein neues festlegen.",
+    "hostPlaceholder": "IP-von-Home-Assistant",
+    "passwordForDirectAccess": "Das Passwort brauchst du nur, wenn du OpenAmpere direkt über {address} öffnest, zum Beispiel auf dem Handy ohne Home Assistant. Ohne Passwort ist dieser Zugang gesperrt.",
+    "passwordForDirectAccessOff": "Das Passwort brauchst du nur für den direkten Zugriff über die IP-Adresse. Der ist gerade ausgeschaltet. Einschalten kannst du ihn in Home Assistant unter Einstellungen → Apps → OpenAmpere → Netzwerk.",
+    "passwordSet": "Passwort festgelegt",
+    "setPasswordInSidebar": "Für den Zugriff über die IP-Adresse braucht OpenAmpere ein Passwort. Lege es in Home Assistant fest: OpenAmpere in der Seitenleiste öffnen, dann Mehr → Zugriffsschutz. Danach kannst du dich hier anmelden.",
+    "signedIn": "Du bist über Home Assistant angemeldet und darfst Einstellungen ändern."
+  },
   "installing": {
     "close": "Schließen",
     "preparingUpdate": "Das Update wird vorbereitet.",
@@ -95,6 +105,7 @@
     "autoInstall": "Updates nachts automatisch installieren",
     "autoInstallHint": "Zwischen 2 und 5 Uhr. Startet eine neue Version nicht, kommt die bisherige zurück.",
     "checkUpdatesNow": "Jetzt nach Updates suchen",
+    "homeAssistantHint": "Updates installierst du in Home Assistant: Einstellungen → Apps → OpenAmpere. Dort kannst du auch automatische Updates einschalten.",
     "installed": "Installiert",
     "latestVersion": "Neueste Version",
     "manualUpdateHint": "Installiert von Hand? Dann im OpenAmpere-Ordner:",

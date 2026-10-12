@@ -12,10 +12,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import CannotConnect, CertificateMismatch, Connection, InvalidAuth, OpenAmpereClient, OpenAmpereError
-from .const import API_VERSION, CONF_FINGERPRINT, CONF_TOKEN
+from .app import async_check_app, issue_id
+from .const import API_VERSION, CONF_FINGERPRINT, CONF_TOKEN, DOMAIN
 from .coordinator import OpenAmpereCoordinator
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
@@ -35,7 +37,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry) -
     except (InvalidAuth, CertificateMismatch) as err:
         raise ConfigEntryAuthFailed(str(err)) from err
     except (CannotConnect, OpenAmpereError) as err:
+        await async_check_app(hass, entry)  # the Home Assistant app may have been uninstalled (#300)
         raise ConfigEntryNotReady(str(err)) from err
+    await async_check_app(hass, entry)  # e.g. installed again: no repair any more
     if info.get("api_version") != API_VERSION:
         raise ConfigEntryNotReady("OpenAmpere und die Integration passen nicht zusammen. Bitte beide aktualisieren.")
     coordinator = OpenAmpereCoordinator(hass, entry, client, info)
@@ -48,3 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry) -
 
 async def async_unload_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry) -> None:
+    ir.async_delete_issue(hass, DOMAIN, issue_id(entry.entry_id))

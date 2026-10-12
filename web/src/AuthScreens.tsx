@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useEffect, useRef, useState } from "react";
-import type { AuthStatus } from "./api";
-import { postJson, refreshAll, useResource } from "./api";
+import type { AuthStatus, Status } from "./api";
+import { directAddress, postJson, refreshAll, useResource } from "./api";
 import { t, tx } from "./i18n";
 import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
@@ -52,6 +52,86 @@ export function PasswordSetup({ onDone }: { onDone: () => void }) {
         <Button type="submit" busy={busy} disabled={password.length < MIN_PASSWORD_LENGTH || password !== repeat}>{t("shell.passwordSetup.continue")}</Button>
       </form>
     </div>
+  );
+}
+
+/** Home Assistant app, opened by its IP address before a password exists (#300): the password is set in the
+ *  sidebar of Home Assistant, so that nobody else in the home network can choose it first. */
+export function DirectAccessLocked({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="page setup">
+      <div className="page-head"><h1>{t("shell.passwordSetup.setPassword")}</h1></div>
+      <div className="card form">
+        <p className="flush">{t("shell.homeAssistant.setPasswordInSidebar")}</p>
+        <Button variant="secondary" onClick={onRetry}>{t("common.tryAgainNow")}</Button>
+      </div>
+    </div>
+  );
+}
+
+/** Access protection in the Home Assistant sidebar: Home Assistant already checked the login, the password is only
+ *  for direct access by IP address (evcc, phones). It can be set again without the old one (#300). */
+function SidebarSecurity({ auth, onChange }: { auth: AuthStatus; onChange: () => void }) {
+  const { data: status } = useResource<Status>("/api/status");
+  const [password, setPassword] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const mismatch = repeat.length > 0 && password !== repeat;
+  const address = status?.home_assistant ? directAddress(status.home_assistant) : null;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      if (auth.configured) await postJson("/api/auth/password", { new: password });
+      else await postJson("/api/auth/setup", { password });
+      toast(auth.configured ? t("shell.securityPage.passwordChanged") : t("shell.homeAssistant.passwordSet"));
+      setPassword(""); setRepeat("");
+      onChange();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const logoutAll = async () => {
+    await postJson("/api/auth/logout?everywhere=true", {}).catch(() => undefined);
+    toast(t("shell.securityPage.allDevicesLoggedOut"));
+  };
+
+  // only admins of Home Assistant may change anything through the sidebar (#300)
+  if (!auth.authenticated) return <Notice kind="info">{t("shell.homeAssistant.adminsOnly")}</Notice>;
+  return (
+    <>
+      <Notice kind="ok">{t("shell.homeAssistant.signedIn")}</Notice>
+      <p className="hint">
+        {address ? tx("shell.homeAssistant.passwordForDirectAccess", { address: <code>{address}</code> })
+          : t("shell.homeAssistant.passwordForDirectAccessOff")}
+      </p>
+      <form className="card form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+        <h2>{auth.configured ? t("shell.securityPage.changePassword") : t("shell.passwordSetup.setPassword")}</h2>
+        <Field label={t("shell.securityPage.newPassword")} hint={t("shell.securityPage.passwordHint")}>
+          <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" />
+        </Field>
+        <Field label={t("shell.passwordSetup.repeatPassword")} hint={mismatch ? t("shell.passwordSetup.passwordsDoNotMatch") : undefined}>
+          <PasswordInput value={repeat} onChange={setRepeat} autoComplete="new-password" />
+        </Field>
+        <Button type="submit" busy={busy} disabled={password.length < MIN_PASSWORD_LENGTH || password !== repeat}>
+          {auth.configured ? t("shell.securityPage.changePassword") : t("shell.passwordSetup.setPassword")}
+        </Button>
+      </form>
+      {auth.configured && (
+        <div className="card form">
+          <Button variant="secondary" onClick={() => setConfirmAll(true)}>{t("shell.securityPage.logOutAllDevices")}</Button>
+        </div>
+      )}
+      {confirmAll && (
+        <Dialog title={t("shell.securityPage.logOutAllQuestion")} confirm={t("shell.securityPage.logOut")} onCancel={() => setConfirmAll(false)}
+          onConfirm={() => { setConfirmAll(false); void logoutAll(); }}>
+          <p>{t("shell.securityPage.logOutAllHint")}</p>
+        </Dialog>
+      )}
+    </>
   );
 }
 
@@ -146,6 +226,9 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
     refreshAll(); // hides the private values again (#164)
   };
 
+  if (status?.home_assistant === "ingress") {
+    return <SubPage title={t("common.accessProtection")} onBack={onBack}><SidebarSecurity auth={status} onChange={reload} /></SubPage>;
+  }
   return (
     <SubPage title={t("common.accessProtection")} onBack={onBack}>
       <Notice kind={status?.authenticated ? "ok" : "info"}>
@@ -170,7 +253,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
           </div>
         </>
       )}
-      <p className="hint">{tx("shell.securityPage.forgotPassword", {
+      <p className="hint">{status?.home_assistant ? t("shell.homeAssistant.forgotPassword") : tx("shell.securityPage.forgotPassword", {
         command: <code>cd /opt/openampere && sudo docker compose exec openampere openampere reset-password</code> })}</p>
       {confirmAll && (
         <Dialog title={t("shell.securityPage.logOutAllQuestion")} confirm={t("shell.securityPage.logOut")} onCancel={() => setConfirmAll(false)}

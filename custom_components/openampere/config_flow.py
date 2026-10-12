@@ -20,13 +20,16 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlow, ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.config_entries import (SOURCE_HASSIO, SOURCE_REAUTH, ConfigFlow, ConfigFlowResult,
+                                          OptionsFlowWithReload)
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
 from .api import (CannotConnect, CertificateMismatch, Connection, InvalidAuth, OpenAmpereClient, OpenAmpereError,
                   fetch_fingerprint, pairing_code, parse_code)
+from .app import CONF_APP_SLUG
 from .const import (API_VERSION, CONF_CODE, CONF_FINGERPRINT, CONF_MIN_INTERVAL, CONF_TOKEN, DEFAULT_MIN_INTERVAL_S,
                     DOMAIN)
 
@@ -58,6 +61,8 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
         self._task: asyncio.Task | None = None
         self._failure = "pairing_rejected"
         self._failure_detail = ""
+        self._discovered: Connection | None = None  # the Home Assistant app, as the Supervisor announced it
+        self._app_slug: str | None = None
 
     # ---- start -----------------------------------------------------------------------------------------------
 
@@ -71,7 +76,36 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
         """Access removed in OpenAmpere or a new certificate: pair again or paste a new code."""
         return self.async_show_menu(step_id="reauth_confirm", menu_options=["pair", "code"])
 
+    async def async_step_hassio(self, discovery_info: HassioServiceInfo) -> ConfigFlowResult:
+        """The OpenAmpere app of this Home Assistant announced itself (#300): its address in the internal network,
+        the HTTPS port and the certificate come from the Supervisor. Pairing works as usual, without typing an
+        address.
+
+        A known OpenAmpere only gets the new address while its certificate stays the same. Any app can announce
+        itself as "openampere" with a known installation id: taking over another certificate would send the token
+        to it. With a new certificate (e.g. moved from Docker to the app with a backup) it is paired again."""
+        config = discovery_info.config
+        self._discovered = Connection(str(config["host"]), int(config["port"]), str(config["fingerprint"]), "")
+        self._app_slug = discovery_info.slug  # to notice when the app is uninstalled (app.py)
+        await self.async_set_unique_id(str(config["installation_id"]))
+        self.context["title_placeholders"] = {"name": "OpenAmpere"}  # the card under "Discovered"
+        entry = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, self.unique_id)
+        if entry is not None and entry.data.get(CONF_FINGERPRINT) == self._discovered.fingerprint:
+            self._abort_if_unique_id_configured(updates={CONF_HOST: self._discovered.host,
+                                                         CONF_PORT: self._discovered.port,
+                                                         CONF_APP_SLUG: self._app_slug})
+        return await self.async_step_hassio_confirm()
+
+    async def async_step_hassio_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is None:
+            self._set_confirm_only()
+            return self.async_show_form(step_id="hassio_confirm")
+        assert self._discovered is not None
+        return await self.async_step_pair({CONF_HOST: self._discovered.host, CONF_PORT: self._discovered.port})
+
     def _default_host(self) -> str:
+        if self._discovered:
+            return self._discovered.host
         return self._get_reauth_entry().data[CONF_HOST] if self.source == SOURCE_REAUTH else ""
 
     async def _finish(self, installation_id: str, data: dict[str, Any]) -> ConfigFlowResult:
@@ -79,13 +113,19 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
         if self.source == SOURCE_REAUTH:
             self._abort_if_unique_id_mismatch(reason="wrong_server")
             return self.async_update_reload_and_abort(self._get_reauth_entry(), data=data)
+        entry = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, installation_id)
+        if self.source == SOURCE_HASSIO and entry is not None:
+            # paired again with the app (code compared): the entry keeps its entities, now with the app
+            return self.async_update_reload_and_abort(entry, data=data, reason="app_connected")
         self._abort_if_unique_id_configured(updates=data)
         return self.async_create_entry(title="OpenAmpere", data=data)
 
-    @staticmethod
-    def _data(connection: Connection) -> dict[str, Any]:
-        return {CONF_HOST: connection.host, CONF_PORT: connection.port, CONF_FINGERPRINT: connection.fingerprint,
+    def _data(self, connection: Connection) -> dict[str, Any]:
+        data = {CONF_HOST: connection.host, CONF_PORT: connection.port, CONF_FINGERPRINT: connection.fingerprint,
                 CONF_TOKEN: connection.token}
+        if self._app_slug:
+            data[CONF_APP_SLUG] = self._app_slug
+        return data
 
     # ---- connection code -------------------------------------------------------------------------------------
 
@@ -125,6 +165,9 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
             host, port = user_input[CONF_HOST].strip(), int(user_input[CONF_PORT])
             try:
                 fingerprint = await fetch_fingerprint(host, port)
+                if self._discovered and (host, port) == (self._discovered.host, self._discovered.port) \
+                        and fingerprint != self._discovered.fingerprint:
+                    raise CertificateMismatch("not the certificate the app announced")
                 connection = Connection(host, port, fingerprint, "")
                 client = OpenAmpereClient(async_get_clientsession(self.hass), connection)
                 nonce = secrets.token_bytes(32)
@@ -135,20 +178,23 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
                     await self.async_set_unique_id(started["installation_id"])
                     if self.source == SOURCE_REAUTH:
                         self._abort_if_unique_id_mismatch(reason="wrong_server")
-                    else:
+                    elif self.source != SOURCE_HASSIO:  # the app may pair a known OpenAmpere again (see above)
                         self._abort_if_unique_id_configured()
                     await client.pair_reveal(started["request_id"], started["poll_key"], nonce.hex())
                     self._connection, self._pairing = connection, started
                     self._code = pairing_code(fingerprint, nonce, bytes.fromhex(started["nonce"]))
                     return await self.async_step_wait()
+            except CertificateMismatch:
+                errors["base"] = "certificate_mismatch"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except OpenAmpereError as err:
                 # e.g. too many open requests: OpenAmpere's own words
                 errors["base"] = "pairing_failed"
                 self._failure_detail = plain_detail(str(err))
+        port = self._discovered.port if self._discovered else DEFAULT_PORT
         schema = vol.Schema({vol.Required(CONF_HOST, default=self._default_host()): str,
-                             vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(vol.Coerce(int), vol.Range(1, 65535))})
+                             vol.Required(CONF_PORT, default=port): vol.All(vol.Coerce(int), vol.Range(1, 65535))})
         return self.async_show_form(step_id="pair", data_schema=schema, errors=errors,
                                     description_placeholders={"detail": self._failure_detail})
 

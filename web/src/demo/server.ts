@@ -516,9 +516,10 @@ export const DEMO_WRITE_ONLY = [
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];
 
-/** Endpoints the demo never reaches: setup (the demo is already set up) and downloads (hidden in the demo). */
+/** Endpoints the demo never reaches: setup (the demo is already set up), downloads (hidden in the demo), the live
+ *  WebSocket (the demo takes live data from its simulation) and what evcc reads. */
 export const DEMO_NOT_NEEDED = ["/api/backup", "/api/backup/link", "/api/export/csv", "/api/setup/drivers", "/api/setup/networks",
-  "/api/evcc/site"]; // the last one is read by evcc, not by the app
+  "/api/live/ws", "/api/evcc/site"];
 
 /** Every endpoint the app reads needs an answer here. `npm run check:demo` (CI) fails otherwise. */
 export const DEMO_ROUTES = Object.keys(ROUTES);

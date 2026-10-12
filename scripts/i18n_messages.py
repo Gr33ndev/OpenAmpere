@@ -101,7 +101,7 @@ def messages() -> dict[str, str]:
                     add(node.args[LOG_ARGS[name]], path, log=True)
             elif isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target, value = node.targets[0], node.value
-                if isinstance(target, ast.Name) and target.id in ("reason", "result"):
+                if isinstance(target, ast.Name) and target.id in ("reason", "result", "notice"):  # notice: in HA
                     add(value, path, log=True)
                 elif isinstance(target, ast.Tuple) and isinstance(value, ast.Tuple):
                     for t, v in zip(target.elts, value.elts):

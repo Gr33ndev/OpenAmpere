@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
+network:
+  8080/tcp: Direkter Zugriff über die IP-Adresse, z. B. für evcc oder dein Handy (für die Seitenleiste nicht nötig)
+  8443/tcp: HTTPS für Apps auf anderen Geräten (für die Home-Assistant-Integration nicht nötig)

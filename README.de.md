@@ -30,7 +30,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 | Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
 | Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
 | Wallbox | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). | Noch nicht bestätigt |
-| Home Assistant | Eigene Integration über HACS: Daten live und Steuerung, siehe [Home Assistant](#home-assistant). | – |
+| Home Assistant | Eigene Integration: Daten live und Steuerung. Kommt mit der Home-Assistant-App, sonst über HACS, siehe [Installation](#installation). | – |
 
 **Noch nicht bestätigt** heißt: Die Unterstützung beruht auf Unterlagen der Hersteller oder der Community und ist mit Tests und dem Simulator geprüft, aber noch niemand hat sie von einer echten Anlage gemeldet. Gut möglich, dass alles klappt. Hast du so ein Gerät, hilf mit einem **Gerätebericht**: Starte in der App unter **Mehr → Diagnose** die Diagnose (sie liest nur und ändert nichts), tippe auf **Bericht kopieren** und füge den Bericht in das [Formular für Geräteberichte](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml) ein. Entferne vorher IP-Adressen, Passwörter und API-Schlüssel. Jeder Bericht hilft, eine Zeile auf „bestätigt“ zu bringen.
 
@@ -74,25 +74,24 @@ Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je M
 - **Wallbox mit evcc:** Wallboxen steuert das eigenständige Open-Source-Projekt [evcc](https://evcc.io). OpenAmpere liefert evcc die Messwerte von Netz, Solar und Speicher, sodass evcc keine eigene Verbindung zum Wechselrichter braucht, und zeigt die Ladepunkte in der App: Lademodus, Ladeziel, Mindestladung, Ladeplan, Uhrzeit bis zum Ziel und Ladevorgänge. Ist das Auto selbst in evcc eingerichtet, kommen Ladestand und Reichweite dazu, und die Auswertung zeigt gefahrene Kilometer, Kilometer mit Sonnenstrom, Verbrauch pro 100 km und Kosten pro 100 km im Vergleich zu Netzstrom. Ob Wallbox oder Heizstab zuerst Überschuss bekommt, ist einstellbar. Einrichtung: [docs/evcc.de.md](docs/evcc.de.md). Danke an die evcc-Community!
 - Siehe auch [docs/architecture.md](docs/architecture.md) (englisch).
 
-## Home Assistant
-
-Die Integration **OpenAmpere** bringt Leistung, Energie (passend fürs Energie-Dashboard), Ladestand und Zustand live
-nach Home Assistant, auf Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab.
-
-> **Erst OpenAmpere installieren** (siehe [Installation](#installation)), dann die Integration. Sie verbindet sich nur
-> mit dem laufenden OpenAmpere und ersetzt es nicht. Nur OpenAmpere spricht mit dem Wechselrichter.
-
-[![HACS Custom](https://img.shields.io/badge/HACS-custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc)](https://hacs.xyz)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere)
-
-Danach in Home Assistant die Integration OpenAmpere hinzufügen und **koppeln**: Adresse von OpenAmpere eingeben, den
-6-stelligen Code mit dem unter **Mehr → Verbundene Apps** vergleichen und dort erlauben. Die Verbindung ist
-verschlüsselt, jede App bekommt einen eigenen, widerrufbaren Zugang. Gesteuert werden kann nur, was in OpenAmpere
-freigegeben ist. Anleitung und Details: [docs/homeassistant.de.md](docs/homeassistant.de.md).
-
 ## Installation
+
+OpenAmpere läuft auf einem von zwei Wegen. Entscheide dich für einen: Es darf nur ein OpenAmpere mit dem
+Wechselrichter sprechen.
+
+1. **[Eigenständig](#weg-1-eigenständig)** auf einem Linux-Rechner mit Docker, z. B. einem Raspberry Pi, NAS oder
+   Proxmox-Server. Nutzt du Home Assistant, kannst du es bei Bedarf über die Integration OpenAmpere (HACS) verbinden.
+2. **[Als Home-Assistant-App](#weg-2-home-assistant-app)**, wenn bei dir Home Assistant OS läuft (z. B. auf einem Home
+   Assistant Green oder einem Raspberry Pi). OpenAmpere läuft dann in Home Assistant und öffnet sich in der Seitenleiste.
+
+| | Weg 1: eigenständig | Weg 2: Home-Assistant-App |
+|---|---|---|
+| Läuft auf | einem eigenen Linux-Rechner mit Docker | Home Assistant OS |
+| Öffnen | im Browser, auch als App auf dem Handy | in der Seitenleiste von Home Assistant und im Browser über die IP-Adresse |
+| Home Assistant | optional: die Integration über HACS installieren | die App bringt die Integration mit: kein HACS |
+| Updates | in OpenAmpere, per Knopfdruck oder nachts | über Home Assistant |
+
+### Weg 1: eigenständig
 
 **Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
 
@@ -138,7 +137,27 @@ Liegt OpenAmpere in einem anderen Ordner (bei der Installation von Hand im Ordne
 
 Probleme beim Einrichten? Siehe [Fehlerbehebung](#fehlerbehebung). Wie du Daten sicherst, auf einen neuen Rechner umziehst oder OpenAmpere wieder entfernst, steht unter [Sichern und Wiederherstellen](#sichern-und-wiederherstellen), [Umziehen auf einen neuen Rechner](#umziehen-auf-einen-neuen-rechner) und [Deinstallieren](#deinstallieren).
 
-### Installation von Hand
+#### Home Assistant verbinden
+
+Optional. Die Integration OpenAmpere bringt Leistung, Energie (passend fürs Energie-Dashboard), Ladestand und Zustand
+live nach Home Assistant, auf Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab. Sie verbindet
+sich mit dem laufenden OpenAmpere; nur OpenAmpere spricht mit dem Wechselrichter.
+
+1. Die Integration über [HACS](https://hacs.xyz) installieren: Der erste Button öffnet das Repository in deinem Home
+   Assistant. Dort herunterladen und Home Assistant neu starten.
+2. Mit dem zweiten Button die Integration hinzufügen und die Adresse von OpenAmpere eingeben.
+3. **Koppeln:** Home Assistant und OpenAmpere zeigen denselben 6-stelligen Code. Vergleiche ihn unter **Mehr →
+   Verbundene Apps** und erlaube die Verbindung dort, nur lesen oder auch steuern.
+
+[![HACS Custom](https://img.shields.io/badge/HACS-custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc)](https://hacs.xyz)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openampere)
+
+Die Verbindung ist verschlüsselt, jede App bekommt einen eigenen, widerrufbaren Zugang. Gesteuert werden kann nur, was
+in OpenAmpere freigegeben ist. Details: [docs/homeassistant.de.md](docs/homeassistant.de.md).
+
+#### Installation von Hand
 
 Wer selbst bauen oder mitentwickeln will, nimmt das Repository statt des Scripts:
 
@@ -150,7 +169,7 @@ docker compose up -d --build
 
 Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.de.md](docs/evcc.de.md).
 
-### Release prüfen
+#### Release prüfen
 
 Die Release-Images baut der [Release-Workflow](.github/workflows/release.yml) dieses Repositorys, mit signiertem Herkunftsnachweis (Build Provenance) und SBOM. Mit der [GitHub CLI](https://cli.github.com) lässt sich prüfen, ob ein Image wirklich hier gebaut wurde:
 
@@ -164,7 +183,7 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33nd
 
 `install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Auch sie haben einen signierten Herkunftsnachweis (`openampere-<version>.intoto.jsonl`); nach dem Herunterladen prüft `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere`, ob ein Script aus diesem Repository stammt. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
 
-### Zugriff von unterwegs
+#### Zugriff von unterwegs
 
 OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sichersten über ein **VPN**.
 
@@ -181,6 +200,39 @@ OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sicherste
 Eigene Hostnamen (z. B. ein Reverse-Proxy im Heimnetz) müssen unter `server.allowed_hosts` eingetragen werden; IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag.
 
 Für eine automatisierte Installation lassen sich alle Werte zusätzlich per `data/config.yaml` (siehe `config.example.yaml`) oder per Umgebungsvariable `OPENAMPERE_…` vorgeben. Umgebungsvariablen haben Vorrang und erscheinen in der App als „fest eingestellt“.
+
+### Weg 2: Home-Assistant-App
+
+Für Home Assistant OS (auch Home Assistant Supervised). Home Assistant Container hat keine Apps: Dort Weg 1 nehmen.
+
+[![Open your Home Assistant instance and show the add app repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGr33ndev%2FOpenAmpere)
+
+1. **Repository hinzufügen:** Der Button öffnet den Dialog in deinem Home Assistant mit der Adresse schon eingetragen.
+   Von Hand: **Einstellungen → Apps**, der App-Store, **⋮ → Repositories**, `https://github.com/Gr33ndev/OpenAmpere`.
+2. Die App **OpenAmpere** **installieren**, **In der Seitenleiste anzeigen** einschalten und **starten**.
+3. **Einrichten:** OpenAmpere in der Seitenleiste öffnen. Der Einrichtungsassistent sucht den Wechselrichter, oder du
+   gibst seine IP-Adresse ein. In der Seitenleiste brauchst du kein Passwort; eines für den direkten Zugriff über die
+   IP-Adresse (z. B. für evcc) legst du unter **Mehr → Zugriffsschutz** fest.
+
+Läuft OpenAmpere bei dir schon mit Docker? Dort zuerst eine Sicherung herunterladen und die Installation stoppen, dann
+die Sicherung in der App einspielen: [Umzug von Docker](docs/homeassistant-app.de.md#umzug-von-docker). Die vollständige
+Anleitung für die App steht in [docs/homeassistant-app.de.md](docs/homeassistant-app.de.md).
+
+#### Sensoren und Steuerung in Home Assistant
+
+Die App bringt die Integration OpenAmpere in ihrer Version mit und installiert sie selbst: **HACS brauchst du nicht**.
+Sie bringt Leistung, Energie (passend fürs Energie-Dashboard), Ladestand und Zustand live nach Home Assistant, auf
+Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab.
+
+1. Nach dem ersten Start der App zeigt Home Assistant einen Hinweis: **Home Assistant einmal neu starten**.
+2. Danach steht unter **Einstellungen → Geräte & Dienste** **Entdeckt: OpenAmpere**. Bestätigen; eine Adresse musst du
+   nicht eingeben.
+3. **Koppeln:** Home Assistant und OpenAmpere zeigen denselben 6-stelligen Code. Vergleiche ihn unter **Mehr →
+   Verbundene Apps** und erlaube die Verbindung dort, nur lesen oder auch steuern.
+
+Updates der App aktualisieren auch die Integration. Steuer-Entitäten sind verfügbar, solange in OpenAmpere die
+Steuerung eingeschaltet ist. Hattest du die Integration vorher über HACS? Dann in HACS entfernen und die App neu
+starten; ab dann hält die App sie aktuell.
 
 ### Betrieb hinter einem Modbus-Proxy
 
@@ -403,6 +455,8 @@ Die Register zum Schreiben stammen aus der Dokumentation der Community und sind 
 **Warum es mit EKD-Anlagen funktioniert:** OpenAmpere spricht direkt mit den verbauten Wechselrichtern. Die von EKD als „Ampere.StoragePro E3“ vertriebenen Speicher basieren auf der FoxESS-H3-Serie, die älteren „Ampere.StoragePro“ auf SAJ H2/HS2. OpenAmpere funktioniert genauso mit diesen Geräten aus anderen Quellen.
 
 **Keine Verbindung zu EKD oder den Herstellern:** OpenAmpere ist ein unabhängiges, inoffizielles Community-Projekt. Es steht in keinerlei Verbindung zur Energiekonzepte Deutschland GmbH, zu deren Insolvenzverwaltung, zu FoxESS, SAJ oder Kiwigrid. Es wurde von ihnen weder beauftragt noch autorisiert oder unterstützt.
+
+**Keine Verbindung zu Home Assistant:** OpenAmpere, seine Home-Assistant-Integration und seine Home-Assistant-App haben nichts mit Home Assistant, der Open Home Foundation oder Nabu Casa zu tun. Sie nutzen nur die öffentlichen Schnittstellen von Home Assistant.
 
 **Marken:** „AMPERE“, „Ampere.IQ“, „Ampere.StoragePro“ sowie alle weiteren genannten Produkt- und Firmennamen sind Marken oder Bezeichnungen ihrer jeweiligen Inhaber. Alle Rechte daran liegen selbstverständlich bei diesen. Sie werden hier ausschließlich genannt, um zu beschreiben, mit welchen Geräten OpenAmpere zusammenarbeitet. Der Projektname bezieht sich auf die physikalische Einheit Ampere.
 
