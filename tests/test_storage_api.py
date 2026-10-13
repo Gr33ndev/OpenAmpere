@@ -34,6 +34,50 @@ def test_counter_deltas_become_quarter_rows(tmp_path):
     assert rows[0]["ts"] == base and rows[0]["pv"] == 260 and rows[0]["load"] == 130
 
 
+def counters(pv, load, grid_import, grid_export, charge, discharge) -> EnergyCounters:
+    return EnergyCounters(pv=pv, load=load, grid_import=grid_import, grid_export=grid_export, battery_charge=charge,
+                          battery_discharge=discharge)
+
+
+def test_consumption_is_the_balance_not_the_load_counter(tmp_path):
+    """The inverter's load counter can count much more than the house used (#346)."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(Snapshot(timestamp=base, totals=counters(10_000, 50_000, 2_000, 3_000, 4_000, 5_000)))
+    # +1000 PV, +100 grid, +500 from the battery, -200 to the grid, -600 into the battery: 800 Wh in the house,
+    # while the load counter says 1500 Wh
+    storage.add_snapshot(Snapshot(timestamp=base + 900, totals=counters(11_000, 51_500, 2_100, 3_200, 4_600, 5_500)))
+    row = storage.energy(base, base + 900)[0]
+    assert (row["pv"], row["load"]) == (1000, 800)
+    running = Snapshot(timestamp=base + 1000, totals=counters(11_100, 52_000, 2_100, 3_200, 4_650, 5_500))
+    assert storage.running_quarter(running)["load"] == 50
+
+
+def test_negative_quarter_is_carried_into_the_next(tmp_path):
+    """0.1 kWh counters tick at different moments: a quarter can come out negative, the next pays it back."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i, (pv, charge) in enumerate([(10_000, 4_000), (10_000, 4_100), (10_200, 4_100), (10_300, 4_100)]):
+        storage.add_snapshot(Snapshot(timestamp=base + i * 900, totals=counters(pv, 0, 0, 0, charge, 0)))
+    loads = [r["load"] for r in storage.energy(base, base + 3600)]
+    assert loads == [0, 100, 100]  # -100, then 200 - 100, then 100: sum 200 like the balance
+    assert storage.running_quarter(Snapshot(timestamp=base + 3000, totals=counters(10_300, 0, 0, 0, 4_100, 0))) \
+        is not None
+
+
+def test_quarter_state_of_an_older_version_continues(tmp_path):
+    """The saved quarter state of a version before #346 contains the load counter and no carry."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.set_meta("quarter_state", {"ts": int(base), "totals": {"pv": 1000, "load": 99_999, "grid_import": 0,
+                                                               "grid_export": 600, "battery_charge": 0,
+                                                               "battery_discharge": 0}})
+    storage.close()
+    storage = Storage(tmp_path / "t.db")
+    storage.add_snapshot(snap(base + 900, 1100, 450))
+    assert [(r["pv"], r["load"]) for r in storage.energy(base, base + 900)] == [(100, 50)]
+
+
 def test_counter_reset_only_rebases(tmp_path):
     storage = Storage(tmp_path / "t.db")
     base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
@@ -99,12 +143,8 @@ def test_import_never_overwrites_local(tmp_path):
 
 def test_ratios():
     r = ratios({"load": 1000, "grid_import": 250, "pv": 2000, "grid_export": 1500})
-    assert r == {"autarky": 0.75, "self_consumption": 0.25, "conversion_loss_wh": 0.0}
-    assert ratios({}) == {"autarky": None, "self_consumption": None, "conversion_loss_wh": 0.0}
-    # the inverter counts solar on the DC side and the house on the AC side: the difference are its losses (#15)
-    day = {"pv": 24_200, "grid_import": 1_000, "battery_discharge": 4_800, "load": 11_300, "grid_export": 5_300,
-           "battery_charge": 11_600}
-    assert ratios(day)["conversion_loss_wh"] == 1_800
+    assert r == {"autarky": 0.75, "self_consumption": 0.25}
+    assert ratios({}) == {"autarky": None, "self_consumption": None}
 
 
 def test_first_day_money_follows_the_daily_counters(tmp_path):
@@ -116,13 +156,13 @@ def test_first_day_money_follows_the_daily_counters(tmp_path):
     storage.add_snapshot(snap(base, 1000, 400, today=today))
     storage.add_snapshot(snap(base + 600, 1100, 450, today=today))
     runtime = Runtime({}, storage)
-    runtime.collector.latest = snap(base + 700, 1110, 455, today=today)
+    runtime.collector.latest = snap(base + 700, 1110, 455, today=today).sanitize()
     client = TestClient(create_app(runtime))
     summary = client.get("/api/energy/summary", params={"period": "day", "date": "2026-10-03"}).json()
-    assert summary["energy_wh"]["load"] == 11_300 and summary["recorded_since"] is not None
-    # default tariff: 35 ct for self-used power (11.3 - 1.0 kWh), 8 ct for 5.3 kWh feed-in
-    assert summary["money"]["savings_eur"] == round(10.3 * 0.35 + 5.3 * 0.08, 2)
-    assert summary["conversion_loss_wh"] == 1_800
+    # consumption is the balance of the daily counters (24.2 + 1.0 + 4.8 - 5.3 - 11.6), not their load counter (#346)
+    assert summary["energy_wh"]["load"] == 13_100 and summary["recorded_since"] is not None
+    # default tariff: 35 ct for self-used power (13.1 - 1.0 kWh), 8 ct for 5.3 kWh feed-in
+    assert summary["money"]["savings_eur"] == round(12.1 * 0.35 + 5.3 * 0.08, 2)
 
 
 def test_periods():
@@ -293,6 +333,13 @@ def test_wrong_clock_is_not_stored(tmp_path):
     assert storage._clock_warned
     storage.add_snapshot(snap(base + 10, 1000, 400))
     assert not storage._clock_warned
+
+
+def test_sanitize_derives_consumption_from_the_balance():
+    snap_ = Snapshot(timestamp=0, totals=counters(10_000, 50_000, 2_000, 3_000, 4_000, 5_000),
+                     today=EnergyCounters(pv=1_000, load=900)).sanitize()
+    assert snap_.totals.consumption == 10_000 and snap_.totals.load == 50_000  # the load counter stays as read
+    assert snap_.today.consumption is None  # a counter is missing
 
 
 def test_sanitize_drops_sentinels_and_impossible_values():

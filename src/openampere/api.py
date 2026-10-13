@@ -97,12 +97,7 @@ def ratios(flows: dict) -> dict:
     grid_import, grid_export = flows.get("grid_import") or 0, flows.get("grid_export") or 0
     autarky = max(0.0, min(1.0, 1 - grid_import / load)) if load > 0 else None
     self_consumption = max(0.0, min(1.0, 1 - grid_export / pv)) if pv > 0 else None
-    # what goes in (solar on the DC side, grid, battery) minus what goes out (export, battery, house): mainly the
-    # conversion losses of the inverter, a few per cent of the solar energy (#15)
-    sources = pv + grid_import + (flows.get("battery_discharge") or 0)
-    sinks = load + grid_export + (flows.get("battery_charge") or 0)
-    return {"autarky": autarky, "self_consumption": self_consumption,
-            "conversion_loss_wh": sources - sinks if sources > sinks else 0.0}
+    return {"autarky": autarky, "self_consumption": self_consumption}
 
 
 class Target(BaseModel):
@@ -898,7 +893,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             if period == "day" and first > start + 900:
                 # first day: recording started during the day; the inverter's daily counters are complete
                 recorded_since = first
-                today = latest.today.__dict__
+                today = {**latest.today.__dict__, "load": latest.today.consumption}  # not the load counter (#346)
                 if all(today.get(f) is not None for f in FLOWS) and today["pv"] >= flows["pv"]:
                     flows = {f: today[f] for f in FLOWS}
                     money_rows = [{"ts": start, **flows}]  # the money must follow the same values (#15)

@@ -56,7 +56,7 @@ How to add support for another device: [Writing a driver](writing-a-driver.md).
 ## Data model
 
 - **samples:** Raw values of every poll (power values, state of charge, power per PV input, temperatures). How long they are kept is configurable.
-- **energy_15m:** Energy per quarter hour from the inverter's counters. Kept permanently. `source` indicates the origin, `local` or `cloud`.
+- **energy_15m:** Energy per quarter hour from the inverter's counters; the consumption is their balance (PV + grid import + battery discharge − feed-in − battery charge), not the inverter's load counter (#346). Kept permanently. `source` indicates the origin, `local` or `cloud`.
 - **pv_input_15m:** Energy per PV input (string) and quarter hour, summed up from the power.
 - **meta / control_log:** Settings, import progress, log of all control commands.
 

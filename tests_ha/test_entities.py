@@ -38,6 +38,9 @@ async def test_sensors(hass: HomeAssistant, entry, client) -> None:
     energy = hass.states.get(entity_id(hass, "sensor", "_grid_export_energy"))
     assert energy.attributes["unit_of_measurement"] == "kWh" and energy.attributes["state_class"] == "total_increasing"
     assert float(energy.state) == pytest.approx(456.789)
+    # consumption from the balance of the other counters (#346); the inverter's load counter only on request
+    assert float(hass.states.get(entity_id(hass, "sensor", "_consumption_energy")).state) == pytest.approx(1112.345)
+    assert er.async_get(hass).async_get(entity_id(hass, "sensor", "_load_energy")).disabled_by is not None
     assert hass.states.get(entity_id(hass, "sensor", "_pv_input_1_power")).state == "2200.0"
     assert hass.states.get(entity_id(hass, "sensor", "_price")).state == "31.5"
     assert hass.states.get(entity_id(hass, "sensor", "_control")).state == "active"

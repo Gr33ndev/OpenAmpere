@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Protocol
@@ -46,11 +47,26 @@ class EnergyCounters:
     """Monotonic lifetime counters in Wh. None if the device does not provide them."""
 
     pv: float | None = None
-    load: float | None = None
+    load: float | None = None  # the inverter's own load counter: it can count much more than the house used (#346)
     grid_import: float | None = None
     grid_export: float | None = None
     battery_charge: float | None = None
     battery_discharge: float | None = None
+    consumption: float | None = None  # from the balance of the other counters (Snapshot.sanitize), what the app shows
+
+
+# in and out of the house: what came from the roof, the grid and the battery minus what went to the grid and the battery
+BALANCE = {"pv": 1, "grid_import": 1, "battery_discharge": 1, "grid_export": -1, "battery_charge": -1}
+
+
+def energy_balance(flows: Mapping[str, float | None]) -> float | None:
+    """What the house consumed, conversion losses included, from the other energy flows; None if one is missing.
+    The inverter's load counter can count much more than that (#346), the balance cannot be wrong while the others
+    are right."""
+    values = [flows.get(f) for f in BALANCE]
+    if any(v is None for v in values):
+        return None
+    return sum(sign * v for sign, v in zip(BALANCE.values(), values))
 
 
 @dataclass
@@ -116,6 +132,9 @@ class Snapshot:
             setattr(self, name, ok(getattr(self, name), -MAX_PLAUSIBLE_W, MAX_PLAUSIBLE_W))
         for pv in self.pv_inputs:
             pv.power = ok(pv.power, 0, MAX_PLAUSIBLE_W)
+        for counters in (self.totals, self.today):
+            balance = energy_balance(asdict(counters))
+            counters.consumption = None if balance is None else max(0.0, balance)
         return self
 
 

@@ -78,7 +78,12 @@ SENSORS: tuple[OpenAmpereSensorDescription, ...] = (
     OpenAmpereSensorDescription(key="inverter_temperature", value=_temperature("inverter"),
                                 entity_category=EntityCategory.DIAGNOSTIC, **TEMPERATURE),
     OpenAmpereSensorDescription(key="pv_energy", value=_total("pv"), **ENERGY),
-    OpenAmpereSensorDescription(key="load_energy", value=_total("load"), **ENERGY),
+    # from the balance of the other counters, like the app (#346)
+    OpenAmpereSensorDescription(key="consumption_energy", value=_total("consumption"), **ENERGY),
+    # the inverter's own load counter, which can count much more than the house used: kept for existing history
+    # (a sensor that drops to the balance would count as a meter reset and add the whole value once)
+    OpenAmpereSensorDescription(key="load_energy", value=_total("load"), entity_registry_enabled_default=False,
+                                entity_category=EntityCategory.DIAGNOSTIC, **ENERGY),
     OpenAmpereSensorDescription(key="grid_import_energy", value=_total("grid_import"), **ENERGY),
     OpenAmpereSensorDescription(key="grid_export_energy", value=_total("grid_export"), **ENERGY),
     OpenAmpereSensorDescription(key="battery_charge_energy", value=_total("battery_charge"), **ENERGY),

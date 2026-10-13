@@ -41,7 +41,7 @@ def state(control_enabled: bool = True) -> dict:
                  "temperatures": {"inverter": 41.0},
                  "pv_inputs": [{"power": 3000.0, "voltage": 400.0, "current": 7.5}, {"power": 2200.0, "voltage": 380.0, "current": 5.8}],
                  "totals": {"pv": 1234567.0, "load": 2345678.0, "grid_import": 345678.0, "grid_export": 456789.0,
-                            "battery_charge": 56789.0, "battery_discharge": 45678.0}},
+                            "battery_charge": 56789.0, "battery_discharge": 45678.0, "consumption": 1112345.0}},
         "status": {"connected": True, "stale": False, "last_update": 1.0, "off_grid": False, "grid_charging": False,
                    "control": {"enabled": control_enabled, "dry_run": False}},
         "devices": [{"id": "rod1", "name": "Heizstab", "kind": "heating_rod", "enabled": True, "power_w": 1500.0,

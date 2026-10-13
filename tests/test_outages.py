@@ -7,7 +7,8 @@ from openampere.storage import Storage
 
 def reading(ts, off_grid, soc, pv=10_000, load=50_000, charge=20_000, discharge=18_000):
     return Snapshot(timestamp=ts, off_grid=off_grid, battery_soc=soc,
-                    totals=EnergyCounters(pv=pv, load=load, battery_charge=charge, battery_discharge=discharge))
+                    totals=EnergyCounters(pv=pv, load=load, grid_import=0, grid_export=0, battery_charge=charge,
+                                          battery_discharge=discharge)).sanitize()
 
 
 def test_power_cut_is_recorded_with_energy_and_lowest_charge(tmp_path):
@@ -24,7 +25,8 @@ def test_power_cut_is_recorded_with_energy_and_lowest_charge(tmp_path):
     assert Outages(storage).current["start"] == 2000  # survives a restart
     done = outages.observe(reading(3600, False, 59, pv=10_600, load=52_100, discharge=19_600))
     assert done["duration_s"] == 1600 and (done["soc_start"], done["soc_end"], done["soc_min"]) == (70, 59, 58)
-    assert (done["load_kwh"], done["solar_kwh"], done["battery_kwh"]) == (2.1, 0.6, 1.6)
+    # consumption: 0.6 kWh from the roof + 1.6 kWh from the battery, not the 2.1 kWh of the load counter (#346)
+    assert (done["load_kwh"], done["solar_kwh"], done["battery_kwh"]) == (2.2, 0.6, 1.6)
     assert done["dark_since"] is None
     view = outages.view()
     assert view["count"] == 1 and view["total_s"] == 1600 and view["current"] is None

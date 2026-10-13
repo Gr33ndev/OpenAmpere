@@ -21,11 +21,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from .drivers.base import Snapshot
+from .drivers.base import Snapshot, energy_balance
 
 log = logging.getLogger(__name__)
 
 FLOWS = ("pv", "load", "grid_import", "grid_export", "battery_charge", "battery_discharge")
+# the counters the quarter hours come from; "load" is their balance, not the inverter's load counter (#346)
+COUNTERS = tuple(f for f in FLOWS if f != "load")
+MAX_CARRY_WH = 1000  # deficit of the balance carried into the next quarters, see _consumption
 QUARTER = 900
 MAX_PV_INPUTS = 4
 # columns added after the first release, before schema versions; created on start-up if missing
@@ -70,12 +73,35 @@ CREATE TABLE IF NOT EXISTS control_log (
 );
 """
 
+
+def _consumption(flows: dict, carry: float) -> tuple[float, float]:
+    """Consumption of a quarter hour from the balance of the other flows (#346) and the deficit to carry on.
+    Counters with 0.1 kWh steps do not tick at the same moment, so a single quarter can come out negative: the
+    deficit is taken from the next quarters, no quarter is negative and the sum stays the balance."""
+    balance = energy_balance(flows) + carry
+    return max(0.0, balance), max(-MAX_CARRY_WH, min(0.0, balance))
+
+
+def _consumption_from_balance(db: sqlite3.Connection) -> None:
+    """Version 1 -> 2: the consumption of the quarter hours OpenAmpere recorded came from the inverter's load counter,
+    which can count much more than the house used (#346). Imported history (cloud) already is the balance."""
+    carry, updates = 0.0, []
+    for ts, *values in db.execute(f"SELECT ts, {', '.join(COUNTERS)} FROM energy_15m WHERE source = 'local' "
+                                  "ORDER BY ts").fetchall():
+        flows = dict(zip(COUNTERS, values))
+        if energy_balance(flows) is None:
+            continue
+        load, carry = _consumption(flows, carry)
+        updates.append((load, ts))
+    db.executemany("UPDATE energy_15m SET load = ? WHERE ts = ?", updates)
+
+
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
 # database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database.
-MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
-SCHEMA_VERSION = 1
+MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance}
+SCHEMA_VERSION = 2
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
 NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
 COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
@@ -638,21 +664,23 @@ class Storage:
         - a counter that goes backwards (counter reset) only re-bases
         - an implausibly large difference (garbage reading) only re-bases
         - after an outage the difference is spread evenly over the missing quarters (up to MAX_GAP_S)
+        The consumption is the balance of the other counters, not the inverter's load counter (#346).
         """
-        totals = {f: getattr(snap.totals, f) for f in FLOWS}
+        totals = {f: getattr(snap.totals, f) for f in COUNTERS}
         if any(v is None for v in totals.values()):
             return
         state = self._quarter
-        if state is not None and any(totals[f] == 0 and state["totals"][f] > 100 for f in FLOWS):
+        if state is not None and any(totals[f] == 0 and state["totals"][f] > 100 for f in COUNTERS):
             log.warning("ignoring reading with a counter that dropped to 0")
             self._note_glitch(snap.timestamp, "Zähler kurz auf 0")
             return
         quarter = int(snap.timestamp // QUARTER * QUARTER)
+        carry = 0.0  # re-basing drops the deficit of the balance with the energy it belonged to
         if state is None or quarter < state["ts"]:
-            self._quarter = {"ts": quarter, "totals": totals}
+            self._quarter = {"ts": quarter, "totals": totals, "carry": carry}
         elif quarter > state["ts"]:
             span = quarter - state["ts"]
-            delta = {f: totals[f] - state["totals"][f] for f in FLOWS}
+            delta = {f: totals[f] - state["totals"][f] for f in COUNTERS}
             limit_wh = MAX_POWER_W * span / 3600 * 1.5
             if any(v < 0 for v in delta.values()):
                 log.warning("energy counter went backwards (reset?) - re-basing")
@@ -663,13 +691,14 @@ class Storage:
             elif span > MAX_GAP_S:
                 log.warning("gap of %.1f h is too long to fill - re-basing", span / 3600)
             else:
+                delta["load"], carry = _consumption(delta, state.get("carry", 0.0))
                 quarters = span // QUARTER  # spread the energy evenly over the quarters without readings
                 rows = [(state["ts"] + i * QUARTER, *(delta[f] / quarters for f in FLOWS),
                          snap.battery_soc if i == quarters - 1 else None) for i in range(quarters)]
                 self._db.executemany(
                     f"INSERT OR REPLACE INTO energy_15m(ts, {', '.join(FLOWS)}, soc, source) "
                     f"VALUES (?, {', '.join('?' * len(FLOWS))}, ?, 'local')", rows)
-            self._quarter = {"ts": quarter, "totals": totals}
+            self._quarter = {"ts": quarter, "totals": totals, "carry": carry}
         else:
             return
         self._set_meta("quarter_state", self._quarter)
@@ -680,12 +709,13 @@ class Storage:
             state = self._quarter
         if snap is None or state is None:
             return None
-        totals = {f: getattr(snap.totals, f) for f in FLOWS}
+        totals = {f: getattr(snap.totals, f) for f in COUNTERS}
         if any(v is None for v in totals.values()) or snap.timestamp - state["ts"] > 2 * QUARTER:
             return None
-        delta = {f: totals[f] - state["totals"][f] for f in FLOWS}
+        delta = {f: totals[f] - state["totals"][f] for f in COUNTERS}
         if any(v < 0 or v > MAX_POWER_W * QUARTER / 3600 * 1.5 for v in delta.values()):
             return None
+        delta["load"], _ = _consumption(delta, state.get("carry", 0.0))
         return {"ts": state["ts"], **delta, "soc": snap.battery_soc}
 
     def days_with_energy(self, start: float, end: float) -> int:

@@ -90,6 +90,7 @@ export function snapshot() {
   const pv = pv1 + pv2;
   const battery = s.battery;
   const lifetime = cachedTotals();
+  const today = energyOf(stepsOf(dayStart(new Date())));
   return {
     timestamp: now(),
     pv_power: pv,
@@ -108,8 +109,8 @@ export function snapshot() {
     inverter_state: 2,
     off_grid: false,
     alarms: [0, 0, 0],
-    totals: lifetime,
-    today: energyOf(stepsOf(dayStart(new Date()))),
+    totals: { ...lifetime, consumption: lifetime.load },
+    today: { ...today, consumption: today.load },
   };
 }
 
