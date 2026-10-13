@@ -37,7 +37,7 @@ def state(control_enabled: bool = True) -> dict:
         "type": "state",
         "live": {"timestamp": 1.0, "pv_power": 5200.0, "house_power": 800.0, "grid_power": -3400.0,
                  "battery_power": -1000.0, "battery_soc": 63.0, "battery_soh": 98.0, "battery_voltage": 410.2,
-                 "battery_current": -2.4, "battery_temperature": 24.5, "off_grid": False, "alarms": [],
+                 "battery_current": -2.4, "battery_temperature": 24.5, "off_grid": False, "alarms": [0, 0, 0],
                  "temperatures": {"inverter": 41.0},
                  "pv_inputs": [{"power": 3000.0, "voltage": 400.0, "current": 7.5}, {"power": 2200.0, "voltage": 380.0, "current": 5.8}],
                  "totals": {"pv": 1234567.0, "load": 2345678.0, "grid_import": 345678.0, "grid_export": 456789.0,
