@@ -97,18 +97,27 @@ class Auth:
     def configured(self) -> bool:
         return bool(self.storage.get_meta("auth"))
 
-    def set_password(self, password: str) -> None:
-        self.storage.set_meta("auth", self._new_hash(password))
+    def set_password(self, password: str, replacing: str | None = None) -> str | None:
+        """Sets a new password and returns the salt of its entry (new each time; sessions are bound to it). replacing:
+        the salt from verify_password; then only while that entry is still stored (None if it was changed or reset
+        meanwhile, also from the command line)."""
+        stored = self._new_hash(password)
+        if replacing is None:
+            self.storage.set_meta("auth", stored)
+        elif not self.storage.replace_meta("auth", stored, "salt", replacing):
+            return None
+        return stored["salt"]
 
-    def setup(self, password: str) -> bool:
-        """Sets the first password; False if one is set already. Checked and set in one step: of two setups at the
-        same time only the first counts, the second does not silently replace the password the owner just set."""
+    def setup(self, password: str) -> str | None:
+        """Sets the first password and returns the salt of its entry; None if one is set already. Checked and set in one
+        step: of two setups at the same time only the first counts, the second does not silently replace the password
+        the owner just set."""
         stored = self._new_hash(password)  # the slow part outside the lock
         with self._setup_lock:
             if self.configured:
-                return False
+                return None
             self.storage.set_meta("auth", stored)
-            return True
+            return stored["salt"]
 
     @staticmethod
     def _new_hash(password: str) -> dict:
@@ -118,7 +127,11 @@ class Auth:
         return {"salt": salt.hex(), "hash": _hash(password, salt), "p": SCRYPT_P}
 
     def check_password(self, password: str, client: str | None = None, device: str | None = None) -> bool:
-        """client: the address of the request; device: the device cookie of a browser that logged in before."""
+        return self.verify_password(password, client, device) is not None
+
+    def verify_password(self, password: str, client: str | None = None, device: str | None = None) -> str | None:
+        """The salt of the stored entry the password matched (for create_session and set_password), None if wrong.
+        client: the address of the request; device: the device cookie of a browser that logged in before."""
         known = self.known_device(device)
         key, now = f"device:{_token_id(device)}" if known else _client_key(client), time.monotonic()
         with self._guard:
@@ -134,10 +147,12 @@ class Auth:
         if ok:
             with self._guard:
                 self._tries.pop(key, None)
-            if p != SCRYPT_P:  # an older version's hash: stored again with today's setting
-                salt = os.urandom(16)
-                self.storage.set_meta("auth", {"salt": salt.hex(), "hash": _hash(password, salt), "p": SCRYPT_P})
-        return ok
+            if p != SCRYPT_P:  # an older version's hash: stored again with today's setting and the same salt, only
+                # while it is still the entry just checked (never over a password changed or reset meanwhile)
+                salt = bytes.fromhex(stored["salt"])
+                self.storage.replace_meta("auth", {"salt": stored["salt"], "hash": _hash(password, salt), "p": SCRYPT_P},
+                                          "salt", stored["salt"])
+        return stored["salt"] if ok else None
 
     def reset(self) -> None:
         """Forget the password and all sessions (command line `openampere reset-password`)."""
@@ -174,19 +189,27 @@ class Auth:
     # ---- sessions -----------------------------------------------------------
 
     def _sessions(self) -> dict:
+        """token id -> {"until": expiry, "salt": salt of the password entry the session belongs to}. Sessions of older
+        versions (only an expiry) belong to no password and end: each device logs in once more."""
         now = time.time()
-        return {k: v for k, v in (self.storage.get_meta("sessions") or {}).items() if v > now}
+        return {k: v for k, v in (self.storage.get_meta("sessions") or {}).items()
+                if isinstance(v, dict) and v.get("until", 0) > now}
 
-    def create_session(self) -> str:
+    def create_session(self, salt: str) -> str:
+        """salt: of the password entry the login was checked against (verify_password, setup, set_password). The
+        session is valid only while that entry is stored: a login checked just before a new password or a reset (also
+        from the command line, in another process) gets no session that works, whatever finishes first."""
         token = secrets.token_urlsafe(32)
         with self._sessions_lock:
             sessions = self._sessions()
-            sessions[_token_id(token)] = time.time() + SESSION_TTL_S
+            sessions[_token_id(token)] = {"until": time.time() + SESSION_TTL_S, "salt": salt}
             self.storage.set_meta("sessions", sessions)
         return token
 
     def valid(self, token: str | None) -> bool:
-        return bool(token) and _token_id(token) in self._sessions()
+        session = self._sessions().get(_token_id(token)) if token else None
+        stored = self.storage.get_meta("auth") if session else None
+        return bool(stored) and session["salt"] == stored.get("salt")
 
     def revoke(self, token: str | None, *, everywhere: bool = False) -> None:
         with self._sessions_lock:

@@ -53,7 +53,8 @@ does not make this worse and cannot prevent it.
 
 1. **Browser → web app:** every request passes the host check (only IP addresses and home network names, against DNS
    rebinding). Every change, and every read of secrets or identifying values, needs a session cookie (`HttpOnly`,
-   `SameSite=Strict`), a matching `Origin` and the custom CSRF header. Reading live values is open in the home network
+   `SameSite=Strict`), a matching `Origin` and the custom CSRF header. A session belongs to the password entry the login
+   was checked against and ends with a new password or `reset-password`. Reading live values is open in the home network
    by design.
 2. **Other apps → external API:** HTTPS only, the app pins the certificate fingerprint from the connection code, tokens
    have 256 random bits, are stored as SHA-256 hashes, can be revoked and are limited to `read` or `control`. Pairing

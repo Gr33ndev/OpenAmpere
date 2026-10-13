@@ -422,6 +422,13 @@ class Storage:
         with self._lock, self._db:
             self._set_meta(key, value)
 
+    def replace_meta(self, key: str, value, field: str, expected) -> bool:
+        """Replaces an entry only while its field still has the expected value. One statement, so nothing written in
+        between (also by another process, e.g. `openampere reset-password`) is overwritten."""
+        with self._lock, self._db:
+            return self._db.execute("UPDATE meta SET value=? WHERE key=? AND json_extract(value, ?)=?",
+                                    (json.dumps(value), key, f"$.{field}", expected)).rowcount == 1
+
     def delete_meta(self, key: str) -> None:
         with self._lock, self._db:
             self._db.execute("DELETE FROM meta WHERE key=?", (key,))

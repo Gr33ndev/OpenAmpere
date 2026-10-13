@@ -380,20 +380,21 @@ def create_app(runtime: Runtime) -> FastAPI:
     def logged_in(request: Request) -> bool:
         return ha_admin(request) or auth.valid(request.cookies.get(SESSION_COOKIE))
 
-    def start_session(response: Response, request: Request) -> None:
+    def start_session(response: Response, request: Request, salt: str) -> None:
+        """salt: of the password entry the login was checked against (the session ends with it)."""
         if ha_app.via_ingress(request):
             return  # no cookies: they would belong to the address of Home Assistant
         # Secure where the request came over HTTPS: the cookies then never travel over plain HTTP. In the home
         # network the app is opened over HTTP, so it cannot be set there.
         secure = request.url.scheme == "https"
-        response.set_cookie(SESSION_COOKIE, auth.create_session(), max_age=SESSION_TTL_S, httponly=True,
+        response.set_cookie(SESSION_COOKIE, auth.create_session(salt), max_age=SESSION_TTL_S, httponly=True,
                             samesite="strict", path="/", secure=secure)
         device = auth.remember_device(request.cookies.get(DEVICE_COOKIE))
         response.set_cookie(DEVICE_COOKIE, device, max_age=DEVICE_TTL_S, httponly=True, samesite="strict",
                             path="/api/auth", secure=secure)
 
-    def check_password(request: Request, password: str) -> bool:
-        return auth.check_password(password, request.client.host if request.client else None,
+    def verify_password(request: Request, password: str) -> str | None:
+        return auth.verify_password(password, request.client.host if request.client else None,
                                    request.cookies.get(DEVICE_COOKIE))
 
     # ---- access protection ---------------------------------------------------
@@ -412,23 +413,23 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(403, "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der "
                                      "Seitenleiste öffnen, dann Mehr → Zugriffsschutz.")
         try:
-            first = auth.setup(body.password)
+            salt = auth.setup(body.password)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
-        if not first:
+        if not salt:
             raise HTTPException(409, "Es ist bereits ein Passwort festgelegt.")
-        start_session(response, request)
+        start_session(response, request, salt)
         return {"configured": True, "authenticated": True}
 
     @app.post("/api/auth/login")
     def auth_login(body: PasswordRequest, request: Request, response: Response):
         try:
-            ok = check_password(request, body.password)
+            salt = verify_password(request, body.password)
         except PermissionError as err:
             raise HTTPException(429, str(err)) from None
-        if not ok:
+        if not salt:
             raise HTTPException(401, "Falsches Passwort.")
-        start_session(response, request)
+        start_session(response, request, salt)
         return {"configured": True, "authenticated": True}
 
     @app.post("/api/auth/logout")
@@ -447,16 +448,19 @@ def create_app(runtime: Runtime) -> FastAPI:
     def auth_change_password(body: ChangePasswordRequest, request: Request, response: Response):
         try:
             # through the Home Assistant sidebar an admin of Home Assistant asks: also when the password is forgotten
-            if not ha_admin(request) and not check_password(request, body.current):
+            admin = ha_admin(request)
+            current = None if admin else verify_password(request, body.current)
+            # replaces only the entry the current password was checked against, not one changed or reset meanwhile
+            salt = auth.set_password(body.new, replacing=current) if admin or current else None
+            if not salt:
                 raise HTTPException(401, "Das bisherige Passwort stimmt nicht.")
-            auth.set_password(body.new)
         except PermissionError as err:
             raise HTTPException(429, str(err)) from None
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         auth.revoke(None, everywhere=True)  # other devices must log in again
         auth.forget_devices()
-        start_session(response, request)
+        start_session(response, request, salt)
         return {"authenticated": True}
 
     # ---- access tokens for other apps (#76) --------------------------------------
