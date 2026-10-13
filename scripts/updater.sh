@@ -12,6 +12,8 @@
 # Before a new OpenAmpere image is started, its build provenance is verified with cosign (#115): the image must have
 # been built by the release workflow of github.com/Gr33ndev/OpenAmpere (signed attestation, Sigstore transparency log).
 # No account is needed. If the check fails, the new image is not started and the previous version keeps running.
+# The signature must be for the stable version in the image's label, and that version must not be older than the one
+# running or the one the app asked for: nobody can bring back an older release with known flaws (GHSA-8893-x8jf-64v6).
 # OPENAMPERE_VERIFY_IMAGES=nein turns the check off (only for emergencies).
 set -u
 
@@ -25,7 +27,8 @@ CHECK_AFTER_S=${OPENAMPERE_CHECK_AFTER_S:-60} # how long the new version must ru
 HEALTH_WAIT_S=${OPENAMPERE_HEALTH_WAIT_S:-240} # extra wait while the health check is starting (start period 180 s in the Dockerfile)
 VERIFY=${OPENAMPERE_VERIFY_IMAGES:-ja}
 OWN_IMAGE=ghcr.io/gr33ndev/openampere
-SIGNER='^https://github.com/Gr33ndev/OpenAmpere/\.github/workflows/release\.yml@refs/tags/v'
+SIGNER=https://github.com/Gr33ndev/OpenAmpere/.github/workflows/release.yml@refs/tags/v # + the version in the label
+WANTED="" # the version the app asks for
 
 mkdir -p "$STATE"
 cd "$DIR" || exit 1
@@ -57,15 +60,41 @@ started() {
   done
 }
 
-# verified image: exit code 0 if the image may be started. Only OpenAmpere's own image is checked.
+# label IMAGE NAME: a label of a local image, empty if there is none
+label() { [ -n "$1" ] && docker image inspect -f "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null; }
+
+# stable VERSION: exit code 0 for a release like 0.26.4, not for a pre-release (0.27.0-rc.1) or anything else
+stable() {
+  case "$1" in "" | *[!0-9.]*) return 1 ;; esac
+  printf '%s\n' "$1" | grep -Eqx '[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}'
+}
+
+# older A B: exit code 0 if the stable version A is lower than B
+older() {
+  a=$1 b=$2
+  for _ in 1 2 3; do
+    [ "${a%%.*}" -eq "${b%%.*}" ] || { [ "${a%%.*}" -lt "${b%%.*}" ]; return; }
+    a=${a#*.} b=${b#*.}
+  done
+  return 1
+}
+
+# verified IMAGE [RUNNING] [WANTED]: exit code 0 if the image may be started. Only OpenAmpere's own image is checked:
+# a stable version, not the image of the Home Assistant app (same workflow), not older than the image RUNNING (an image
+# id) or the version WANTED, and signed by the release workflow run of exactly this version.
 verified() {
   case "$VERIFY" in [nN]*) return 0 ;; esac
   case "$1" in "$OWN_IMAGE" | "$OWN_IMAGE":* | "$OWN_IMAGE"@*) ;; *) return 0 ;; esac  # also pinned by digest
+  version=$(label "$1" org.opencontainers.image.version)
+  if ! stable "$version" || [ -n "$(label "$1" io.hass.type)" ]; then return 1; fi
+  for floor in "$(label "${2:-}" org.opencontainers.image.version)" "${3:-}"; do
+    if stable "$floor" && older "$version" "$floor"; then return 1; fi
+  done
   command -v cosign >/dev/null || apk add --no-cache -q cosign >/dev/null 2>&1 || return 1
   ref=$(docker image inspect -f '{{range .RepoDigests}}{{println .}}{{end}}' "$1" 2>/dev/null | grep "^$OWN_IMAGE@" | head -n 1)
   [ -n "$ref" ] || return 1
   cosign verify-attestation --new-bundle-format --type slsaprovenance1 \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp "$SIGNER" \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$SIGNER$version" \
     "$ref" >/dev/null 2>&1
 }
 
@@ -95,7 +124,7 @@ update() {
   # every image that is not the one running now is checked before it is started, also when none runs
   if [ "$new" != "$old" ]; then
     status verifying "Die Herkunft der neuen Version wird geprüft."
-    if ! verified "$image"; then
+    if ! verified "$image" "${old:-$before}" "$WANTED"; then
       # back to the version before, so the unverified image is not started later either (e.g. after a reboot)
       keep=${old:-$before}
       if [ -n "$keep" ] && [ "$keep" != "$new" ]; then
@@ -127,9 +156,9 @@ update() {
 }
 
 main() {
-  # "updater.sh verify IMAGE": only the provenance check, for install.sh before it starts a new image
+  # "updater.sh verify IMAGE [RUNNING]": only the provenance check, for install.sh before it starts a new image
   if [ "${1:-}" = verify ]; then
-    verified "${2:-}"
+    verified "${2:-}" "${3:-}"
     exit $?
   fi
   # cosign for the provenance check, installed once when the helper starts (again later if this fails, e.g. offline)
@@ -140,6 +169,8 @@ main() {
   while true; do
     date +%s >"$STATE/updater-alive"
     if [ -f "$INBOX/request" ]; then
+      # "to" from the app's request, only a plain version (the app writes the file: no link, a few bytes only)
+      WANTED=$([ -L "$INBOX/request" ] || head -c 512 "$INBOX/request" | sed -n 's/.*"to": *"\([0-9.]*\)".*/\1/p' | head -n 1)
       rm -f "$INBOX/request"
       update
     fi

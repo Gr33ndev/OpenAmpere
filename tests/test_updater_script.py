@@ -27,7 +27,12 @@ case "$1 $2" in
   "compose up") echo c0ffee >"$FAKE/container"; exit 0 ;;
   "compose run") exit "$(cat "$FAKE/verify")" ;;
   "image inspect")
-    case "$*" in *RepoDigests*) echo "ghcr.io/gr33ndev/openampere@sha256:feed" ;; *) read_file tag || exit 1 ;; esac
+    case "$*" in
+      *RepoDigests*) echo "ghcr.io/gr33ndev/openampere@sha256:feed" ;;
+      *image.version*) echo 0.26.4 ;; # every image the same release (versions: test_ghsa_updater_version.py)
+      *Labels*) ;;
+      *) read_file tag || exit 1 ;;
+    esac
     exit 0 ;;
   "image rm" | "image prune") exit 0 ;;
   "tag "*) echo "$2" >"$FAKE/tag"; exit 0 ;;

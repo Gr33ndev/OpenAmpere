@@ -319,10 +319,11 @@ write_files() {
   say "Fertig: $COMPOSE"
 }
 
-# the provenance check of the update helper (cosign, signed by the release workflow), in a short-lived helper container
+# the provenance check of the update helper (cosign, signed by the release workflow), in a short-lived helper container;
+# verify_image IMAGE [RUNNING]: not older than the image RUNNING now (GHSA-8893-x8jf-64v6)
 verify_image() {
   $DOCKER compose run --rm --no-deps -T -e OPENAMPERE_VERIFY_IMAGES="${OPENAMPERE_VERIFY_IMAGES:-ja}" \
-    --entrypoint sh updater "$DIR/updater.sh" verify "$1"
+    --entrypoint sh updater "$DIR/updater.sh" verify "$1" "${2:-}"
 }
 
 start_and_report() {
@@ -336,7 +337,7 @@ start_and_report() {
     fail "OpenAmpere ließ sich nicht herunterladen. Bitte die Internetverbindung dieses Rechners prüfen und das Script noch einmal ausführen. Klappt es dann immer noch nicht, frag hier nach (die Meldungen oben helfen dabei): $HELP"
   new=$($DOCKER image inspect -f '{{.Id}}' "$image" 2>/dev/null) || new=""
   # like the update helper: an image that does not run yet is only started if its provenance is confirmed
-  if [ -z "$new" ] || { [ "$new" != "$running" ] && ! verify_image "$image"; }; then
+  if [ -z "$new" ] || { [ "$new" != "$running" ] && ! verify_image "$image" "${running:-$before}"; }; then
     keep=${running:-$before}
     if [ -n "$keep" ] && [ "$keep" != "$new" ]; then
       $DOCKER tag "$keep" "$image" && $DOCKER image rm "$new" >/dev/null 2>&1
