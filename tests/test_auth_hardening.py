@@ -110,9 +110,11 @@ def test_log_out_everywhere_and_a_new_password_forget_the_devices(tmp_path):
     assert not auth.known_device(device)
     runtime, client = app_client(tmp_path / "app")
     login(client)
-    assert runtime.storage.get_meta("known_devices")
+    before = runtime.storage.get_meta("known_devices")
+    assert before
     assert client.post("/api/auth/logout?everywhere=true").status_code == 200
-    assert not runtime.storage.get_meta("known_devices")
+    after = runtime.storage.get_meta("known_devices")  # only the device that logged out everywhere gets a new one
+    assert len(after) == 1 and not set(after) & set(before)
     runtime.storage.close()
 
 

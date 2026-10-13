@@ -15,6 +15,7 @@ import asyncio
 import logging
 import time
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import asdict
 
 from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -57,21 +58,54 @@ class RateLimit:
                                                  and not isinstance(t, bool) and now - 3600 < t <= now))
 
     def check(self, key: str, per_hour: int, now: float | None = None) -> None:
+        self.take([key], per_hour, now)
+
+    def take(self, keys: list[str], per_hour: int, now: float | None = None) -> list[tuple[str, float]]:
+        """Counts one write for each key, for all of them or (with the error for the first that is used up) none."""
         now = time.time() if now is None else now
-        writes = self._writes.setdefault(key, deque())
-        while writes and writes[0] <= now - 3600:
-            writes.popleft()
-        if len(writes) >= per_hour:
-            wait = int(writes[0] + 3600 - now) // 60 + 1
-            raise HTTPException(429, f"Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). "
-                                     f"Bitte in {wait} min erneut versuchen.")
-        writes.append(now)
-        if self._storage is not None and key.startswith(KEPT):
-            kept = {k: [t for t in v if t > now - 3600] for k, v in self._writes.items() if k.startswith(KEPT)}
-            try:
-                self._storage.set_meta(KEPT_META, {k: v for k, v in kept.items() if v})
-            except Exception as err:  # noqa: BLE001 - e.g. disk full: still limited in memory
-                log.debug("could not store the writes of battery settings: %s", err)
+        for key in keys:
+            writes = self._writes.setdefault(key, deque())
+            while writes and writes[0] <= now - 3600:
+                writes.popleft()
+            if len(writes) >= per_hour:
+                wait = int(writes[0] + 3600 - now) // 60 + 1
+                raise HTTPException(429, f"Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). "
+                                         f"Bitte in {wait} min erneut versuchen.")
+        for key in keys:
+            self._writes[key].append(now)
+        self._keep(keys, now)
+        return [(key, now) for key in keys]
+
+    def give_back(self, taken: list[tuple[str, float]]) -> None:
+        for key, at in taken:
+            writes = self._writes.get(key)
+            if writes and at in writes:
+                writes.remove(at)
+        self._keep([key for key, _ in taken], time.time())
+
+    def _keep(self, keys: list[str], now: float) -> None:
+        """The writes of battery settings beyond a restart (#351)."""
+        if self._storage is None or not any(key.startswith(KEPT) for key in keys):
+            return
+        kept = {k: [t for t in v if t > now - 3600] for k, v in self._writes.items() if k.startswith(KEPT)}
+        try:
+            self._storage.set_meta(KEPT_META, {k: v for k, v in kept.items() if v})
+        except Exception as err:  # noqa: BLE001 - e.g. disk full: still limited in memory
+            log.debug("could not store the writes of battery settings: %s", err)
+
+    @contextmanager
+    def counted(self, keys: list[str], per_hour: int):
+        """Counted before the write (requests at the same time cannot get past the limit), and given back when the
+        request is refused before anything was written: a wrong value does not use up the writes of the hour. Once the
+        inverter was asked (WriteFailed), the write stays counted."""
+        taken = self.take(keys, per_hour)
+        try:
+            yield
+        except WriteFailed:
+            raise
+        except Exception:
+            self.give_back(taken)
+            raise
 
 
 def bearer(value: str | None) -> str | None:
@@ -175,7 +209,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     @app.websocket(f"{PREFIX}/ws")
     async def live_ws(ws: WebSocket):
         # the HTTP middleware does not see WebSockets: the same checks here
-        token = tokens.check(bearer(ws.headers.get("authorization"))) if ws.url.scheme == "wss" else None
+        secret = bearer(ws.headers.get("authorization"))
+        token = tokens.check(secret) if ws.url.scheme == "wss" else None
         if token is None:
             await ws.close(code=1008)
             return
@@ -185,10 +220,13 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         entry["connections"] += 1
 
         async def push():
-            await ws.send_json(live_message())
             while True:
-                await queue.get()
+                # a token revoked meanwhile gets nothing more: the connection ends, a new one is refused
+                if tokens.check(secret) is None:
+                    await ws.close(code=1008)
+                    return
                 await ws.send_json(live_message())
+                await queue.get()
 
         async def watch_close():
             while True:
@@ -214,10 +252,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         unknown = set(changes) - {"work_mode", *SOC_FIELDS}
         if unknown or not changes:
             raise HTTPException(400, "Erlaubt sind work_mode, min_soc, max_soc und min_soc_on_grid.")
-        for key in changes:
-            limits.check(f"battery:{key}", BATTERY_WRITES_PER_HOUR)
         try:
-            result = await battery.write(changes, source=source(request))
+            with limits.counted([f"battery:{key}" for key in changes], BATTERY_WRITES_PER_HOUR):
+                result = await battery.write(changes, source=source(request))
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
         except ConfirmationRequired:  # the warning can only be confirmed in OpenAmpere itself (#313)
@@ -236,13 +273,13 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         require_control()
         if not body or set(body) - {"enabled", "target_soc"}:
             raise HTTPException(400, "Erlaubt sind enabled und target_soc.")
-        limits.check("grid_charging", OTHER_WRITES_PER_HOUR)
         old = charging.settings
         if body.get("enabled") and not old.legal_confirmed:
             raise HTTPException(400, "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten "
                                      "(Geräte → Speicher → Laden aus dem Netz).")
         try:
-            new = charging.save({**asdict(old), **body}, source=source(request))
+            with limits.counted(["grid_charging"], OTHER_WRITES_PER_HOUR):
+                new = charging.save({**asdict(old), **body}, source=source(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await charging.tick()
@@ -253,10 +290,10 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         require_control()
         if device_id not in {c.id for c in surplus.consumers}:  # no limit entries for made-up ids
             raise HTTPException(400, "Gerät nicht gefunden.")  # as before, from set_override
-        limits.check(f"device:{device_id}", OTHER_WRITES_PER_HOUR)
         try:
-            # logged there with the device's name, once (#153)
-            surplus.set_override(device_id, str(body.get("mode")), body.get("hours"), source=source(request))
+            with limits.counted([f"device:{device_id}"], OTHER_WRITES_PER_HOUR):
+                # logged there with the device's name, once (#153)
+                surplus.set_override(device_id, str(body.get("mode")), body.get("hours"), source=source(request))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await surplus.tick()

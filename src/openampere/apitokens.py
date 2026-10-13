@@ -94,7 +94,10 @@ class ApiTokens:
 # ---- pairing: connect an app by comparing a code, without copying a secret -----------------------------------------
 
 PAIRING_TTL_S = 600
-# per device (address), so one device in the home network cannot block pairing for all others, and for all together
+# the app reveals its number right after the start; until then the owner does not see the request (it has no code)
+REVEAL_TTL_S = 60
+# per device (address), so one device in the home network cannot block pairing for all others, and for all together;
+# for all together only the requests the owner sees (with a code) and can reject
 MAX_PENDING_PER_CLIENT = 3
 MAX_PENDING = 10
 PAIRING_STARTS_PER_CLIENT_PER_HOUR = 10
@@ -122,7 +125,8 @@ class Pairing:
         self._starts: list[tuple[float, str]] = []  # (time, device)
 
     def _expire(self, now: float) -> None:
-        for key in [k for k, r in self._requests.items() if r["expires"] < now]:
+        for key in [k for k, r in self._requests.items()
+                    if r["expires"] < now or (r["code"] is None and r["created"] + REVEAL_TTL_S < now)]:
             del self._requests[key]
 
     def start(self, name: str, commitment: str, now: float | None = None, client: str | None = None) -> dict:
@@ -134,7 +138,7 @@ class Pairing:
         if (len(self._starts) >= PAIRING_STARTS_PER_HOUR
                 or sum(d == device for _, d in self._starts) >= PAIRING_STARTS_PER_CLIENT_PER_HOUR):
             raise PermissionError("Zu viele Kopplungsanfragen. Bitte später erneut versuchen.")
-        if (len(self._requests) >= MAX_PENDING
+        if (sum(r["code"] is not None and r["status"] == "pending" for r in self._requests.values()) >= MAX_PENDING
                 or sum(r["device"] == device for r in self._requests.values()) >= MAX_PENDING_PER_CLIENT):
             raise PermissionError("Es warten schon mehrere Kopplungsanfragen. Bitte zuerst in OpenAmpere bestätigen "
                                   "oder ablehnen, oder 10 Minuten warten.")
