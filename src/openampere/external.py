@@ -140,33 +140,12 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }
 
-    battery_settings: dict | None = None
-    settings_task: asyncio.Task | None = None
-
-    async def read_battery_settings() -> None:
-        nonlocal battery_settings
-        try:
-            settings = await battery.read()
-            battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS)}
-        except Exception:  # noqa: BLE001 - not connected or no answer: the rest is still useful
-            battery_settings = None
-
-    async def current_battery_settings() -> dict | None:
-        """One reading at a time; a slow one keeps running for the next query instead of being cancelled."""
-        nonlocal settings_task
-        if settings_task is None or settings_task.done():
-            settings_task = asyncio.create_task(read_battery_settings())
-        try:
-            await asyncio.wait_for(asyncio.shield(settings_task), SETTINGS_WAIT_S)
-        except TimeoutError:
-            pass
-        return battery_settings
-
     @app.get(f"{PREFIX}/state")
     async def state():
-        settings = await current_battery_settings()
+        settings = await battery.latest(SETTINGS_WAIT_S)
+        battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS)} if settings else None
         grid = charging.settings
-        return {**live_message(), "type": "state", "battery_settings": settings,
+        return {**live_message(), "type": "state", "battery_settings": battery_settings,
                 "grid_charging": {"enabled": grid.enabled, "target_soc": grid.target_soc, "active": charging.active},
                 "price_ct": runtime.tariffs.price_at(time.time(), runtime.tz)}
 

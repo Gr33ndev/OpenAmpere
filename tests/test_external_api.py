@@ -192,6 +192,39 @@ def test_state_does_not_wait_for_a_slow_battery_reading(runtime, web, monkeypatc
     assert readings["started"] == 2 and readings["most_at_once"] == 1
 
 
+def test_state_shows_a_change_right_away_also_while_a_reading_is_slow(runtime, web, monkeypatch):
+    """#342: after a change, /state must not answer with the settings from before it, neither the remembered ones nor
+    those of a reading that started before the change."""
+    inverter = {"work_mode": "self_use", "min_soc": 10, "max_soc": 100, "min_soc_on_grid": 20}
+    read_at_start = []
+
+    async def slow_read(self):
+        values = dict(inverter)
+        read_at_start.append(values)
+        await asyncio.sleep(0.5)
+        return values
+
+    async def fake_write(self, changes, source, confirm_low_reserve):
+        inverter.update(changes)
+        return {"dry_run": False, "written": changes, "settings": dict(inverter)}
+
+    monkeypatch.setattr(control.BatteryControl, "read", slow_read)
+    monkeypatch.setattr(control.BatteryControl, "_write", fake_write)
+    monkeypatch.setattr(external, "SETTINGS_WAIT_S", 0.05)
+    web.put("/api/settings", json={"control.enabled": True})
+    token = new_token(web, "control")
+    with TestClient(web.app, base_url="https://testserver", headers={"Authorization": f"Bearer {token}"}) as client:
+        assert client.get(f"{V1}/state").json()["battery_settings"] is None  # a reading of 20 % runs
+        assert client.put(f"{V1}/battery", json={"min_soc_on_grid": 30}).status_code == 200
+        assert client.get(f"{V1}/state").json()["battery_settings"]["min_soc_on_grid"] == 30
+        time.sleep(0.6)  # the reading from before the change is done
+        assert read_at_start[0]["min_soc_on_grid"] == 20
+        assert client.get(f"{V1}/state").json()["battery_settings"]["min_soc_on_grid"] == 30
+        # a change in the OpenAmpere app as well
+        assert web.put("/api/battery/settings", json={"work_mode": "backup"}).status_code == 200
+        assert client.get(f"{V1}/state").json()["battery_settings"]["work_mode"] == "backup"
+
+
 def test_other_apps_see_readings_as_old_only_after_a_minute(runtime, web):
     """#336: behind a slow Modbus proxy readings came 20 s and more apart; OpenAmpere's own control still treats them
     as old after 30 s, Home Assistant only after 60 s."""

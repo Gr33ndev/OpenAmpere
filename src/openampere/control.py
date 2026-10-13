@@ -95,6 +95,9 @@ class BatteryControl:
         self.runtime = runtime
         self.external_change: dict | None = None  # values another device wrote back after our change
         self._verify_task: asyncio.Task | None = None
+        self.known: dict | None = None  # the last settings read or read back after a change, for other apps (#336)
+        self._known_task: asyncio.Task | None = None
+        self._changes = 0  # a reading that started before a change is out of date (#342)
 
     def _driver(self):
         collector = self.runtime.collector
@@ -114,9 +117,38 @@ class BatteryControl:
         data["external_change"] = self.external_change
         return data
 
+    async def latest(self, wait_s: float) -> dict | None:
+        """The settings, waiting at most wait_s for a new reading, otherwise the last known ones: behind a slow Modbus
+        proxy a reading can take longer than an app waits for its answer (#336). One reading at a time; a slow one
+        keeps running for the next call instead of being cancelled."""
+        if self._known_task is None or self._known_task.done():
+            self._known_task = asyncio.create_task(self._read_known())
+        try:
+            await asyncio.wait_for(asyncio.shield(self._known_task), wait_s)
+        except TimeoutError:
+            pass
+        return self.known
+
+    async def _read_known(self) -> None:
+        changes = self._changes
+        try:
+            settings = await self.read()
+        except Exception:  # noqa: BLE001 - not connected or no answer
+            settings = None
+        if self._changes == changes:
+            self.known = settings
+
     async def write(self, changes: dict, source: str | None = None, confirm_low_reserve: bool = False) -> dict:
         """source: who asked for it if not the web app, e.g. the name of an app's access token (#76).
         confirm_low_reserve: the owner confirmed a backup reserve below 10 % for this change (#313)."""
+        try:
+            result = await self._write(changes, source, confirm_low_reserve)
+        finally:
+            self._changes += 1
+        self.known = result["settings"]  # what the inverter holds now, also for a change from the app (#342)
+        return result
+
+    async def _write(self, changes: dict, source: str | None, confirm_low_reserve: bool) -> dict:
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
