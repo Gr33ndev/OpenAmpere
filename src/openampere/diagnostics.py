@@ -410,7 +410,8 @@ def report_markdown(report: dict) -> str:
         lines.append(f"- **{c['title']}** [{c['status']}]: {c['summary']}")
     lines += ["", "<details><summary>Details</summary>", "", "```json"]
     import json
-    lines.append(json.dumps(report["checks"], ensure_ascii=False, indent=1))
+    # a text in the checks (e.g. a device name) must not close the block early
+    lines.append(json.dumps(report["checks"], ensure_ascii=False, indent=1).replace("```", "` ` `"))
     lines += ["```", "", "</details>"]
     if report.get("probe"):  # reading any device (#324)
         lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]

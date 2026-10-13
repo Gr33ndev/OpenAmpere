@@ -3,7 +3,7 @@
 import { demoRequest } from "../src/demo/server";
 import { expect, layoutProblems, open, test } from "./fixtures";
 
-const FILE = "/data/openampere.db.damaged-20260101-120000";
+const FILE = "openampere.db.damaged-20260101-120000";
 
 // #165: after a damaged database the owner sees what happened, where the old file is and can restore a backup
 test("damaged database notice explains what happened and offers a restore", async ({ page, api }) => {
@@ -21,7 +21,7 @@ test("damaged database notice explains what happened and offers a restore", asyn
 test("rollback notice explains which database is used", async ({ page, api }) => {
   const status = await demoRequest<Record<string, unknown>>("GET", "/api/status");
   api.override("/api/status", { ...status, database: { damaged: null, restored: null,
-    rollback: { ts: Date.now() / 1000 - 60, version: 2, kept: "/data/openampere.db.newer-2-20260101-120000" } } });
+    rollback: { ts: Date.now() / 1000 - 60, version: 2, kept: "openampere.db.newer-2-20260101-120000" } } });
   await open(page, "");
   const notice = page.locator(".top-notice");
   await expect(notice).toContainText("von vor dem Update");

@@ -753,7 +753,7 @@
     "confirmTitle": "Sicherung wiederherstellen?",
     "dontClose": "Bitte diese Seite nicht schließen.",
     "hint": "Ersetzt alle Messwerte und Einstellungen durch die aus einer Datensicherung. Die bisherige Datenbank bleibt als Kopie erhalten. Dein Passwort und die eingetragenen Zugangsdaten (z. B. API-Schlüssel) bleiben, wie sie jetzt sind, denn sie stehen nicht in der Sicherung.",
-    "lastRestore": "Zuletzt wiederhergestellt: {date}. Die Datenbank von davor liegt als Kopie hier: {file} Wenn alles stimmt, kannst du sie löschen, um Speicherplatz zu sparen.",
+    "lastRestore": "Zuletzt wiederhergestellt: {date}. Die Datenbank von davor liegt als Kopie im Datenordner von OpenAmpere: {file} Wenn alles stimmt, kannst du sie löschen, um Speicherplatz zu sparen.",
     "logInToRestore": "Anmelden zum Wiederherstellen",
     "restartManually": "Die Sicherung ist geprüft und wird beim nächsten Start übernommen. Bitte OpenAmpere jetzt neu starten.",
     "restarting": "OpenAmpere startet mit der Sicherung neu. Die App lädt sich danach von selbst neu.",

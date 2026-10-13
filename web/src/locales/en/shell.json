@@ -13,15 +13,17 @@
     "pleaseWait": "Please wait …"
   },
   "databaseNotice": {
-    "fileKept": "The damaged file was not deleted, it is here: {file}",
+    "fileKept": "The damaged file was not deleted, it is in OpenAmpere's data folder: {file}",
     "hide": "Hide notice",
     "restoreHint": "Do you have a backup? Then restore it here or under More → Data & backup. Without a backup, please set up OpenAmpere again.",
-    "rollbackFileKept": "The database of the newer version was not deleted, it is here: {file}",
+    "rollbackFileKept": "The database of the newer version was not deleted, it is in OpenAmpere's data folder: {file}",
     "rollbackTitle": "OpenAmpere uses the database from before the update",
     "rollbackWhat": "At the start ({date}) the database was newer than this version of OpenAmpere, for example because an update was rolled back. To keep everything running, OpenAmpere uses the copy that was made before the update. Readings and changes since the update are therefore missing.",
+    "rollbackWhatNoDate": "At the start the database was newer than this version of OpenAmpere, for example because an update was rolled back. To keep everything running, OpenAmpere uses the copy that was made before the update. Readings and changes since the update are therefore missing.",
     "setPasswordNow": "Set a new password right away, so nobody else in your home network can change the settings. Afterwards you can restore a backup.",
     "title": "The database was damaged",
-    "whatHappened": "OpenAmpere could no longer read its database at the start ({date}), for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing."
+    "whatHappened": "OpenAmpere could no longer read its database at the start ({date}), for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing.",
+    "whatHappenedNoDate": "OpenAmpere could no longer read its database at the start, for example after a power cut. To keep the app running, OpenAmpere started over with an empty database: earlier readings and settings are missing."
   },
   "deviceSearch": {
     "nothingFound": "No device found that announces Modbus TCP in your home network. Many devices do not announce themselves: then enter the address below; you can find it, for example, in your router's device list.",

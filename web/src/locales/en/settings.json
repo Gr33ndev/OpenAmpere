@@ -753,7 +753,7 @@
     "confirmTitle": "Restore backup?",
     "dontClose": "Please do not close this page.",
     "hint": "Replaces all readings and settings with those from a backup. The current database is kept as a copy. Your password and the stored credentials (e.g. API keys) stay as they are now, because they are not in the backup.",
-    "lastRestore": "Last restored: {date}. The database from before is kept as a copy here: {file} If everything is right, you can delete it to save space.",
+    "lastRestore": "Last restored: {date}. The database from before is kept as a copy in OpenAmpere's data folder: {file} If everything is right, you can delete it to save space.",
     "logInToRestore": "Log in to restore",
     "restartManually": "The backup has been checked and will be used at the next start. Please restart OpenAmpere now.",
     "restarting": "OpenAmpere is restarting with the backup. The app reloads by itself afterwards.",

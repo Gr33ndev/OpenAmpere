@@ -57,10 +57,10 @@ def test_a_damaged_database_is_kept_aside_and_the_app_starts_empty(tmp_path):
     broken = path.read_bytes()
 
     runtime, client = start(path)  # failed with sqlite3.DatabaseError before
-    status = client.get("/api/status").json()
-    damaged = status["database"]["damaged"]
-    assert damaged and damaged["file"].startswith(str((tmp_path / "openampere.db.damaged-").resolve()))
-    assert (tmp_path / damaged["file"].rsplit("/", 1)[-1]).read_bytes() == broken  # kept as it was
+    assert client.get("/api/status").json()["database"]["damaged"] is True  # no file name or time without login
+    damaged = runtime.storage.get_meta("database_damaged")
+    assert damaged and damaged["file"].startswith("openampere.db.damaged-")
+    assert (tmp_path / damaged["file"]).read_bytes() == broken  # kept as it was
     assert runtime.storage.samples(0, 2e9) == []
     assert client.get("/api/auth/status").json()["configured"] is False  # had none: set one as on a new installation
 
