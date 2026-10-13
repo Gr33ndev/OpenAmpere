@@ -4,6 +4,20 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.26.0 (2026-10-13)
+
+### Behoben
+
+- **security:** evcc password and ntfy token from config.yaml or the environment are sent to a changed address (GHSA-8mjv-f2x6-2v3h)
+- **security:** A damaged database resets a protected installation to setup without a password (GHSA-4pjj-g988-r5vc)
+- **security:** A slowly answering switched device delays switching off the other devices (GHSA-wxgh-j9mh-32j6)
+- **security:** A login with the old password can stay valid after the password is changed (GHSA-fqfx-94pj-6jhh)
+- **security:** Error text of a failed switch command shows the device password without login (GHSA-7whx-cq9r-q56g)
+- **security:** Credentials in the ntfy address appear in the diagnostics report (GHSA-9fpp-m6jp-5vw4)
+- **security:** Cloud export tool writes files outside its folder when the cloud sends a crafted installation id (GHSA-8qjf-v7mq-g2r5)
+- **security:** Importing a crafted ZIP file can use far more memory than the limits allow (GHSA-963v-6j22-r7x5)
+- **security:** Power curve of the PV inputs loads the readings of a whole year without login (GHSA-p7r4-hj2r-hg5h)
+
 ## 0.25.1 (2026-10-13)
 
 ### Behoben
@@ -180,9 +194,3 @@ Important: your installation only gets the improved update helper if you run the
 - Attach signed build provenance for the release files (#206)
 - Pin docker base images and python installs by hash (#207)
 - Add codeql analysis for python, typescript and workflows (#205)
-
-## 0.18.1 (2026-10-09)
-
-### Behoben
-
-- **ui:** Show the easter egg correctly on safari (#201)
