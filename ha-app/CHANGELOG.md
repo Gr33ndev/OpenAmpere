@@ -4,6 +4,17 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.26.1 (2026-10-13)
+
+### Behoben
+
+- **diagnostics:** Leave raw modbus frames out of the report log (#341)
+- **homeassistant:** Keep the entities when the inverter answers slowly (#340)
+
+### Weitere Änderungen
+
+- **saj:** Record the battery limits confirmed on a device (#337)
+
 ## 0.26.0 (2026-10-13)
 
 ### Behoben
@@ -142,55 +153,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 - **release:** Tag only the highest stable version as latest (#266)
 - **deps:** Run dependency code without write access (#260)
 - **changelog:** Add a summary for 0.19.0 (#253)
-
-## 0.19.0 (2026-10-11)
-
-Diese Version schließt drei Sicherheitslücken, bitte aktualisiere bald: Die Schaltadressen eigener Geräte sind nur noch nach der Anmeldung sichtbar, neue Versionen werden vor dem Start immer auf ihre Herkunft geprüft, und beim Wiederherstellen einer Sicherung werden nur noch geprüfte Einstellungen übernommen.
-
-Wichtig: Den verbesserten Update-Helfer bekommt deine Installation nur, wenn du das Installationsscript noch einmal ausführst. Deine bisherigen Antworten bleiben dabei erhalten. Den Befehl findest du in der Anleitung zur Installation.
-
-**English:** This version closes three security gaps, please update soon: the switch addresses of your own devices are only visible after logging in, new versions are always checked for their origin before they start, and restoring a backup only takes over checked settings.
-
-Important: your installation only gets the improved update helper if you run the install script again. Your previous answers are kept. The command is in the installation guide.
-
-### Neu
-
-- **ui:** Extend the easter egg (#216)
-
-### Behoben
-
-- **auth:** Lock out per device, keep revoked tokens revoked, slimmer backups (#251)
-- **backup:** Restore only settings the app may change
-- **updates:** Check the provenance also when the app is not running
-- **consumers:** Show switch addresses only after login
-- Heating target cap in evcc, space check for cloud export uploads (#249)
-- **ui:** Wallbox plan at the clock change, form states after saving (#248)
-- **consumers:** Switch off devices in more situations (#247)
-- **charging:** Stop at the inverter's charge limit (#246)
-- **ui:** Smaller bugs in the report, devices and settings (#231)
-- **api:** Check unexpected input, durations in the diagnostics report (#230)
-- **install:** Reload helpers, safer downloads and folders, checked releases (#229)
-- **ui:** Keep what was typed in forms (#228)
-- **homeassistant:** Hide stale readings, set up again after the first reading (#227)
-- **control:** Log and gate every write, no false external changes (#226)
-- **charging:** Treat a normal end of charge as no fault (#225)
-- **consumers:** Switch off devices that openampere switched on (#224)
-
-### Weitere Änderungen
-
-- Cover the state of my-PV heating rods (#241)
-- Cover the error paths of the network search (#240)
-- Cover the calendar periods and buckets (#239)
-- Add copyright and license headers to every source file (#234)
-- Document code review, the two-factor rule and first tasks (#235)
-- **ui:** Add property-based tests with fast-check (#213)
-- Enforce coding standards with ruff and biome (#212)
-- Document roles and a roadmap for the next year (#211)
-- **security:** Add an assurance case and the report handling process (#210)
-- Show the openssf best practices badge in the readme (#209)
-- Add property-based tests with hypothesis (#208)
-- Link the private vulnerability report form in the security policy (#204)
-- **deps-web:** Bump the vite group in /web with 2 updates (#202)
-- Attach signed build provenance for the release files (#206)
-- Pin docker base images and python installs by hash (#207)
-- Add codeql analysis for python, typescript and workflows (#205)

@@ -1,6 +1,32 @@
 {
   "versions": [
     {
+      "version": "0.26.1",
+      "date": "2026-10-13",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "diagnostics",
+            "text": "Leave raw modbus frames out of the report log (#341)"
+          },
+          {
+            "scope": "homeassistant",
+            "text": "Keep the entities when the inverter answers slowly (#340)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "saj",
+            "text": "Record the battery limits confirmed on a device (#337)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.26.0",
       "date": "2026-10-13",
       "first": false,
