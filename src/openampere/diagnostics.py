@@ -289,6 +289,9 @@ class Diagnostics:
 
             checks.append(await self._remote_control(register_map))
 
+        if getattr(driver, "KEY", None) == "saj":
+            checks.append(await self._saj_limits())
+
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
             checks.append(await self._connection_test())
@@ -297,6 +300,32 @@ class Diagnostics:
                                 "Nicht ausgeführt (kann andere Geräte kurz stören)."))
 
         return checks + self._history_checks()
+
+    async def _saj_limits(self) -> Check:
+        """All SAJ battery limits side by side: the settings (on grid, off grid, charge limit, work mode, reserve in
+        backup mode) and the read-back registers, to confirm which register holds which limit (#334)."""
+        from .drivers.saj.registers import BACKUP_SOC_ADDRESS, DEPTH_ADDRESS, READ_FUNCTION
+        depths = await self._try(DEPTH_ADDRESS, 4, READ_FUNCTION)
+        backup = await self._try(BACKUP_SOC_ADDRESS, 1, READ_FUNCTION)
+        read_back = await self._try(0x4029, 4, READ_FUNCTION)
+        parts = []
+        if depths["ok"]:
+            on_grid, off_grid, charge, mode = depths["words"]
+            parts.append(f"Netzbetrieb {on_grid} %, Notstrombetrieb {off_grid} %, Ladegrenze {charge} %, "
+                         f"Betriebsart {mode} (0x3644–0x3647)")
+        else:
+            parts.append(f"0x3644–0x3647 {depths['error']}")
+        parts.append(f"Reserve im Backup-Modus {backup['words'][0]} % (0x3651)" if backup["ok"]
+                     else f"0x3651 {backup['error']}")
+        if read_back["ok"]:
+            charge, low, dod, reserve = read_back["words"]
+            parts.append(f"Rücklese-Register 0x4029 {charge} %, 0x402A {low} %, 0x402B {dod} %, 0x402C {reserve} %")
+        else:
+            parts.append(f"0x4029–0x402C {read_back['error']}")
+        return Check("saj_limits", "Speicher-Grenzen (SAJ)", "info", "; ".join(parts),
+                     {"0x3644": depths.get("words"), "0x3651": backup.get("words"), "0x4029": read_back.get("words")},
+                     hint="Vergleiche die Werte mit der Hersteller-App: Notstrom-Reserve im Netzbetrieb und "
+                          "Entladegrenze im Notstrombetrieb. Weichen sie ab, schreib uns die Werte aus der App dazu.")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

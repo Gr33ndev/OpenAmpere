@@ -46,8 +46,8 @@ VALUES = {
     "ambient_temperature": Reg(0x4011, Kind.I16, 0.1),
     "app_mode": Reg(0x4022),
     "max_soc": Reg(0x4029),
-    "min_soc": Reg(0x402A),
-    "reserve_soc": Reg(0x402C),
+    "min_soc_on_grid": Reg(0x402A),  # "BatDisSocDowLimit", set SoC_L; SAJ's H1 protocol: grid-connected (#334)
+    "reserve_soc": Reg(0x402C),  # "BatResSoc", reserved SoC: which setting it mirrors is unknown (#334)
     "battery_voltage": Reg(0x4069, Kind.U16, 0.1),
     "battery_current": Reg(0x406A, Kind.I16, 0.01),
     "battery_temperature": Reg(0x406E, Kind.I16, 0.1),
@@ -89,6 +89,13 @@ VALUES = {
     "battery_soh": Reg(0xA00D, Kind.U16, 0.01),
     "battery1_temperature": Reg(0xA010, Kind.I16, 0.1),
 }
+
+# settings (community, not in a public SAJ protocol): on-grid discharge depth (lowest SoC in normal operation,
+# i.e. the backup reserve, in % SoC, confirmed on devices), then the off-grid depth (lowest SoC during a power
+# outage, name only). Read only for the battery settings, not with every poll.
+DEPTH_ADDRESS = 0x3644
+APP_MODE_ADDRESS = 0x3647  # work mode setting (0 self-use, 2 backup)
+BACKUP_SOC_ADDRESS = 0x3651  # reserve in backup mode, used by evcc (#334: shown in the diagnostics report only)
 
 RUNNING_MODES = {0: "Init", 1: "Wait", 2: "Run", 3: "Off-grid", 4: "On-grid storage", 5: "Fault",
                  6: "Update", 7: "Test", 8: "Self-check", 9: "Reset"}
