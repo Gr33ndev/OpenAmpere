@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.26.3",
+      "date": "2026-10-13",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "homeassistant",
+            "text": "Show live values when home assistant is opened by a remote address (#345)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.26.2",
       "date": "2026-10-13",
       "first": false,

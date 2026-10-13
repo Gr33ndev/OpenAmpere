@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.26.3 (2026-10-13)
+
+### Behoben
+
+- **homeassistant:** Show live values when home assistant is opened by a remote address (#345)
+
 ## 0.26.2 (2026-10-13)
 
 ### Behoben
@@ -97,28 +103,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - **deps:** Update Python dependencies (#301)
 - **ui:** Check the retro charts with a full week (#303)
-
-## 0.21.0 (2026-10-11)
-
-### Neu
-
-- **changelog:** Link security advisories (#278)
-
-### Behoben
-
-- **site:** Use own buttons instead of images from my.home-assistant.io (#296)
-- **security:** Tailscale option makes services that listen only on localhost reachable from the tailnet (GHSA-6r67-5vwf-5x8x)
-- **install:** Run the app without capabilities and new privileges (#294)
-- **pairing:** Limit pairing requests per device and show where they come from (#292)
-- **diagnostics:** No time in the report header, pseudonymise meters and devices (#290)
-- Refuse values that are no numbers with a sentence, keep bad cloud data out (#288)
-- **auth:** Stronger password hashing, 8 characters, secure cookies over HTTPS (#286)
-- **install:** Pin the update helper image by digest (#284)
-- **homeassistant:** Leave names, model and firmware out of the diagnostics (#282)
-- **foxess:** Write settings only to a device confirmed as FoxESS (#280)
-- **auth:** Issue a new device cookie on every login (#276)
-
-### Weitere Änderungen
-
-- Use an obviously made-up meter number in the diagnostics test (#299)
-- **agents:** Note that switching off is written in test mode too (#298)
