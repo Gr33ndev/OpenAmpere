@@ -145,8 +145,15 @@ OpenAmpere's `docker-compose.yml` already contains evcc as a commented-out secon
       - ./evcc:/root/.evcc
 ```
 
-Uncomment the lines, then run `docker compose up -d`. evcc stores its settings in the `evcc/` folder and is
-reachable at `http://<server-ip>:7070`. Both containers use the host network, so evcc reaches OpenAmpere at
+First create the `evcc/` folder so that only root can read it, because evcc also stores passwords there:
+
+```bash
+sudo mkdir -p evcc && sudo chown root:root evcc && sudo chmod 700 evcc
+```
+
+Then uncomment the lines and run `docker compose up -d`. evcc stores its settings in the `evcc/` folder and is
+reachable at `http://<server-ip>:7070`. Set a password for evcc there right away: until then, anyone in the home
+network can set it and change evcc. Both containers use the host network, so evcc reaches OpenAmpere at
 `http://localhost:8080` and OpenAmpere reaches evcc at `http://localhost:7070`. If you prefer to configure evcc with
 a file, also mount `./evcc.yaml:/etc/evcc.yaml`, see the
 [evcc Docker guide](https://docs.evcc.io/en/installation/docker).

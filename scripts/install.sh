@@ -184,35 +184,54 @@ main() {
   [ -n "$TZ_NAME" ] || TZ_NAME="Europe/Berlin"
 
   write_files
-  if [ ! -f "$DIR/data/config.yaml" ]; then
-    {
-      say "# Startwerte, alles lässt sich danach in der App ändern."
-      say "timezone: $TZ_NAME"
-      if [ -n "$EVCC_URL" ]; then
-        say "evcc:"
-        say "  url: $EVCC_URL"
-      fi
-    } | $SUDO tee "$DIR/data/config.yaml" >/dev/null
-    $SUDO chown "$APP_UID:$APP_UID" "$DIR/data/config.yaml"
-  fi
-
+  write_config
   start_and_report
 }
 
-# copy_helper name: a helper script next to this script when run from the repository, otherwise from the website
-copy_helper() {
-  local source=${BASH_SOURCE[0]:-}
-  if [ -n "$source" ] && [ -f "$source" ] && [ -f "$(dirname "$source")/$1" ]; then
-    $SUDO cp "$(dirname "$source")/$1" "$DIR/$1"
-  else
-    # first into a new file: a failed or cut download must not leave an empty helper behind (#222)
-    if ! curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1.new" >/dev/null || [ ! -s "$DIR/$1.new" ]; then
-      $SUDO rm -f "$DIR/$1.new"
-      fail "$1 ließ sich nicht herunterladen. Bitte die Internetverbindung prüfen und das Script noch einmal ausführen."
+# data/config.yaml with the first answers, unless there is one; uses DIR, TZ_NAME, EVCC_URL.
+# data/ belongs to the app: a link placed there must not make root write elsewhere. install replaces the file instead
+# of writing through it and sets owner and mode in one step.
+write_config() {
+  local config="$DIR/data/config.yaml"
+  [ ! -L "$config" ] ||
+    fail "$config ist ein Verweis auf eine andere Datei. Bitte den Verweis löschen und das Script noch einmal ausführen."
+  [ ! -f "$config" ] || return 0
+  {
+    say "# Startwerte, alles lässt sich danach in der App ändern."
+    say "timezone: $TZ_NAME"
+    if [ -n "$EVCC_URL" ]; then
+      say "evcc:"
+      say "  url: $EVCC_URL"
     fi
-    $SUDO mv "$DIR/$1.new" "$DIR/$1"
+  } | $SUDO install -m 600 -o "$APP_UID" -g "$APP_UID" /dev/stdin "$config"
+}
+
+# copy_helper name: a helper script next to this script when run from the repository, otherwise from the website.
+# Started from a checked download of a release (next to its SHA256SUMS), the helper must belong to that release.
+copy_helper() {
+  local source=${BASH_SOURCE[0]:-} here=""
+  [ -n "$source" ] && [ -f "$source" ] && here=$(dirname "$source")
+  # first into a new file: a failed or cut download must not leave an empty helper behind (#222)
+  if [ -n "$here" ] && [ -f "$here/$1" ]; then
+    $SUDO cp "$here/$1" "$DIR/$1.new"
+  elif ! curl -fsSL "$SITE/$1" | $SUDO tee "$DIR/$1.new" >/dev/null || [ ! -s "$DIR/$1.new" ]; then
+    $SUDO rm -f "$DIR/$1.new"
+    fail "$1 ließ sich nicht herunterladen. Bitte die Internetverbindung prüfen und das Script noch einmal ausführen."
   fi
+  if [ -n "$here" ] && [ -f "$here/SHA256SUMS" ] && ! listed_in "$here/SHA256SUMS" "$1" "$DIR/$1.new"; then
+    $SUDO rm -f "$DIR/$1.new"
+    fail "$1 passt nicht zu SHA256SUMS neben install.sh. Bitte $1 aus demselben Release wie install.sh herunterladen, neben install.sh legen und das Script noch einmal ausführen."
+  fi
+  $SUDO mv "$DIR/$1.new" "$DIR/$1"
   $SUDO chmod 755 "$DIR/$1"
+}
+
+# listed_in SUMS NAME FILE: exit code 0 if FILE has the checksum that SUMS (output of sha256sum) gives for NAME
+listed_in() {
+  local expected actual
+  expected=$(awk -v name="$2" '$2 == name || $2 == "*" name { print $1; exit }' "$1")
+  actual=$(sha256sum <"$3" | awk '{ print $1 }')
+  [ -n "$expected" ] && [ "$expected" = "$actual" ]
 }
 
 # Docker keeps the messages of a container without limit by default, which fills SD cards over time
@@ -253,6 +272,12 @@ write_files() {
     $SUDO chown "$APP_UID:$APP_UID" "$DIR/$helper/inbox"
   done
   $SUDO chmod 700 "$DIR/data"  # database and keys only for the app (GHSA-p5pf-45jm-94c3)
+  if [ "$EVCC_CONTAINER" = yes ]; then
+    # evcc runs as root and keeps its database with the passwords of wallbox and vehicle there: only for root
+    $SUDO mkdir -p "$DIR/evcc"
+    $SUDO chown root:root "$DIR/evcc"
+    $SUDO chmod 700 "$DIR/evcc"
+  fi
   {
     say "$MARKER am $(date +%F). Aktualisieren: in der App oder das Script erneut ausführen."
     [ "$TAILSCALE" = yes ] || say "$NO_TAILSCALE. Ändern: Script erneut mit OPENAMPERE_TAILSCALE=ja ausführen."
@@ -386,8 +411,10 @@ start_and_report() {
   if grep -q "^  evcc:" docker-compose.yml; then
     say ""
     say "  evcc für die Wallbox:  ${BOLD}http://$ip:7070${RESET}"
-    say "  Dort Wallbox und Fahrzeug einrichten. Die Zähler von OpenAmpere übernimmst du"
-    say "  aus der App unter Mehr → Verbindung → Wallbox."
+    say "  Dort gleich als Erstes ein Passwort für evcc festlegen. Bis dahin kann jeder im"
+    say "  Heimnetz das Passwort selbst festlegen und evcc verändern. Danach Wallbox und"
+    say "  Fahrzeug einrichten. Die Zähler von OpenAmpere übernimmst du aus der App unter"
+    say "  Mehr → Verbindung → Wallbox."
   fi
   if grep -q "^  tailscale:" docker-compose.yml; then
     say ""

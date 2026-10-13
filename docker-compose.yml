@@ -18,8 +18,11 @@ services:
       # OPENAMPERE_INVERTER_HOST: "192.168.178.50"
 
   # Optional, nur mit Wallbox: evcc steuert die Wallbox (https://evcc.io, siehe docs/evcc.md).
-  # Zum Einschalten die Zeilen unten einkommentieren und `docker compose up -d` ausführen.
-  # evcc ist dann unter http://<server-ip>:7070 erreichbar, Wallbox und Fahrzeug richtet man dort ein.
+  # Zum Einschalten zuerst den Ordner für evcc anlegen, nur für root lesbar (evcc speichert dort auch Passwörter):
+  #   sudo mkdir -p evcc && sudo chown root:root evcc && sudo chmod 700 evcc
+  # Dann die Zeilen unten einkommentieren und `docker compose up -d` ausführen.
+  # evcc ist dann unter http://<server-ip>:7070 erreichbar. Dort zuerst ein Passwort festlegen, dann Wallbox und
+  # Fahrzeug einrichten.
   # evcc:
   #   image: evcc/evcc:latest
   #   restart: unless-stopped
