@@ -29,6 +29,7 @@
     "onlyHomeAssistantAdmins": "Nur Administratoren von Home Assistant dürfen in OpenAmpere etwas ändern.",
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
     "passwordSetByHomeAssistantAdmin": "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der Seitenleiste öffnen, dann Mehr → Zugriffsschutz.",
+    "powerCurveOnlyForOneDay": "Den Verlauf der Leistung gibt es nur für einen Tag.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",
     "requestExpiredRestartPairing": "Die Anfrage ist abgelaufen. Bitte die Kopplung in der App neu starten.",
     "requestTooLarge": "Die Anfrage ist zu groß.",

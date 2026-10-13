@@ -1279,6 +1279,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     def pv_inputs_timeline(period: str = "day", date: str | None = None, mode: str = Query("energy", pattern="^(energy|power)$"),
                            resolution: str = Query("60m", pattern="^(15m|60m|day|month)$")):
         """Per PV input (module array): energy per bucket, or for a day also the power curve."""
+        if mode == "power" and period != "day":  # the curve reads every raw reading: one day only, like the other curves
+            raise HTTPException(400, "Den Verlauf der Leistung gibt es nur für einen Tag.")
         start, end = bounds(period, date)
         names = runtime.config.pv.input_names
         if mode == "power":
