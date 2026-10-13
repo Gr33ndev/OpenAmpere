@@ -58,6 +58,22 @@ async def test_push_updates_live_values(hass: HomeAssistant, entry, client) -> N
     assert coordinator.data["battery_settings"]["min_soc_on_grid"] == 24  # kept from the last full update
 
 
+
+async def test_alarm_only_for_fault_codes_other_than_0(hass: HomeAssistant, entry, client) -> None:
+    """#330: the inverter reports every fault word, all of them 0 without a fault."""
+    await setup(hass, entry)
+    alarm = entity_id(hass, "binary_sensor", "_alarm")
+    assert hass.states.get(alarm).state == "off"
+    assert hass.states.get(alarm).attributes["codes"] == [0, 0, 0]
+
+    coordinator = entry.runtime_data
+    coordinator._last_push = 0.0
+    coordinator._on_push({"type": "live", "live": {**coordinator.data["live"], "alarms": [0, 0x40, 0]},
+                          "status": coordinator.data["status"], "devices": coordinator.data["devices"]})
+    await hass.async_block_till_done()
+    assert hass.states.get(alarm).state == "on"
+    assert hass.states.get(alarm).attributes["codes"] == [0, 0x40, 0]
+
 def test_soc_bounds_with_a_reserve_below_10() -> None:
     """A reserve of 0 % set in OpenAmpere (#313) is a value, not "unknown"; Home Assistant itself stays at 10 %."""
     from custom_components.openampere.number import SOC_NUMBERS

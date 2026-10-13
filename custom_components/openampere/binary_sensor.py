@@ -36,7 +36,8 @@ BINARY_SENSORS = (
     OpenAmpereBinaryDescription(key="off_grid", value=_status("off_grid")),
     OpenAmpereBinaryDescription(key="grid_charging_active", value=_status("grid_charging"),
                                 device_class=BinarySensorDeviceClass.RUNNING),
-    OpenAmpereBinaryDescription(key="alarm", value=lambda d: bool((d.get("live") or {}).get("alarms")) if d.get("live") else None,
+    # the inverter reports every fault word, 0 means no fault (#330)
+    OpenAmpereBinaryDescription(key="alarm", value=lambda d: any(d["live"].get("alarms") or []) if d.get("live") else None,
                                 device_class=BinarySensorDeviceClass.PROBLEM, from_inverter=True),
 )
 
