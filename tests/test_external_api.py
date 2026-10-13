@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: MIT
 """API for other apps such as Home Assistant (#76): tokens, HTTPS only, fixed list of commands."""
 
+import asyncio
 import base64
 import json
 import os
 import stat
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 from openampere import control, external
 from openampere.api import create_app
 from openampere.apitokens import CODE_PREFIX, MAX_TOKENS, ApiTokens
+from openampere.drivers.base import Snapshot
 from openampere.runtime import Runtime
 from openampere.storage import Storage
 from openampere.tls import ensure_certificate, fingerprint
@@ -160,6 +163,48 @@ def test_rate_limit_window():
     with pytest.raises(Exception, match="in 60 min"):
         limit.check("a", 3, now=1003)
     limit.check("a", 3, now=1000 + 3600.5)  # the first write left the window
+
+
+def test_state_does_not_wait_for_a_slow_battery_reading(runtime, web, monkeypatch):
+    """#336: behind a slow Modbus proxy a reading took longer than Home Assistant waits for /state (20 s), and every
+    entity became unavailable for a minute."""
+    readings = {"started": 0, "running": 0, "most_at_once": 0}
+
+    async def slow_read(self):
+        readings["started"] += 1
+        readings["running"] += 1
+        readings["most_at_once"] = max(readings["most_at_once"], readings["running"])
+        await asyncio.sleep(0.5)
+        readings["running"] -= 1
+        return {"work_mode": "self_use", "min_soc": 10, "max_soc": 100, "min_soc_on_grid": 20 + readings["started"]}
+
+    monkeypatch.setattr(control.BatteryControl, "read", slow_read)
+    monkeypatch.setattr(external, "SETTINGS_WAIT_S", 0.05)
+    token = new_token(web, "read")
+    with TestClient(web.app, base_url="https://testserver", headers={"Authorization": f"Bearer {token}"}) as client:
+        started = time.monotonic()
+        assert client.get(f"{V1}/state").json()["battery_settings"] is None  # nothing read yet
+        assert client.get(f"{V1}/state").json()["battery_settings"] is None  # still the same reading
+        assert time.monotonic() - started < 0.4
+        time.sleep(0.6)
+        # the finished reading, while the next one runs
+        assert client.get(f"{V1}/state").json()["battery_settings"]["min_soc_on_grid"] == 21
+    assert readings["started"] == 2 and readings["most_at_once"] == 1
+
+
+def test_other_apps_see_readings_as_old_only_after_a_minute(runtime, web):
+    """#336: behind a slow Modbus proxy readings came 20 s and more apart; OpenAmpere's own control still treats them
+    as old after 30 s, Home Assistant only after 60 s."""
+    collector = runtime.collector
+    collector.connected, collector.interval = True, 10
+    client = app_client(web, new_token(web, "read"))
+    collector.latest = Snapshot(timestamp=time.time() - 45)
+    assert collector.stale and client.get(f"{V1}/state").json()["status"]["stale"] is False
+    collector.latest = Snapshot(timestamp=time.time() - 65)
+    assert client.get(f"{V1}/state").json()["status"]["stale"] is True
+    collector.latest = Snapshot(timestamp=time.time())
+    collector.connected = False  # no grace without a connection
+    assert client.get(f"{V1}/state").json()["status"]["stale"] is True
 
 
 def test_live_websocket_needs_https_and_a_token(runtime, web):
