@@ -40,12 +40,14 @@ body:
       options:
         - Setup, connection / Einrichtung, Verbindung
         - Overview, live values / Übersicht, Live-Werte
-        - Devices (battery, wallbox, heating rod) / Geräte (Speicher, Wallbox, Heizstab)
+        - Devices (battery, wallbox, heating rod, relays) / Geräte (Speicher, Wallbox, Heizstab, Relais)
         - Reports / Auswertung
-        - Battery & control / Speicher & Steuerung
+        - Control and log, battery settings / Steuerung und Protokoll, Speicher-Einstellungen
         - Feed-in limitation / Einspeisebegrenzung
         - Tariffs, advance payments, grid charging / Tarife, Abschläge, Laden aus dem Netz
         - Notifications / Benachrichtigungen
+        - Home Assistant, evcc, other connected apps / Home Assistant, evcc, andere verbundene Apps
+        - Remote access (Tailscale) / Zugriff von unterwegs (Tailscale)
         - Diagnostics / Diagnose
         - Data, export, backup, cloud import / Daten, Export, Sicherung, Cloud-Import
         - Installation & updates / Installation & Updates
