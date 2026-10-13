@@ -89,6 +89,10 @@
     "passwordHint": "At least 8 characters",
     "remoteAccessHint": "Viewing works without a password in your home network. For remote access use a VPN (e.g. the one in your FRITZ!Box, WireGuard or Tailscale) – {warning}"
   },
+  "setupLocked": {
+    "text": "The database was damaged, and OpenAmpere could not take over your previous password. So that nobody else in your home network can set a password and control your system, this is locked here.",
+    "nextStep": "What to do: run {command} in a terminal on the server, then choose “Try again now” here. After that you can set a new password. If OpenAmpere is in a different folder, replace /opt/openampere with that folder."
+  },
   "subPage": {
     "back": "Back"
   },

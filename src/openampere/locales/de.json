@@ -28,6 +28,7 @@
     "onlyAvailableViaHttps": "Nur über HTTPS erreichbar.",
     "onlyHomeAssistantAdmins": "Nur Administratoren von Home Assistant dürfen in OpenAmpere etwas ändern.",
     "passwordAlreadyBeenSet": "Es ist bereits ein Passwort festgelegt.",
+    "passwordLostWithDamagedDatabase": "Die Datenbank war beschädigt, und das bisherige Passwort ließ sich nicht übernehmen. Damit niemand sonst im Heimnetz ein Passwort festlegen kann, bitte zuerst auf dem Server im Terminal „openampere reset-password“ ausführen (wie bei einem vergessenen Passwort). Danach hier ein neues Passwort festlegen.",
     "passwordSetByHomeAssistantAdmin": "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der Seitenleiste öffnen, dann Mehr → Zugriffsschutz.",
     "powerCurveOnlyForOneDay": "Den Verlauf der Leistung gibt es nur für einen Tag.",
     "powerOutageDoesnT": "Diesen Stromausfall gibt es nicht.",

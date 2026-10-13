@@ -16,7 +16,7 @@ import secrets
 import threading
 import time
 
-from .storage import Storage
+from .storage import SETUP_LOCKED, Storage
 
 SESSION_COOKIE = "openampere_session"
 CSRF_HEADER = "x-openampere"  # custom header: browsers cannot send it cross-site without a CORS preflight
@@ -97,6 +97,12 @@ class Auth:
     def configured(self) -> bool:
         return bool(self.storage.get_meta("auth"))
 
+    @property
+    def locked(self) -> bool:
+        """A damaged database had a password that could not be taken over: no first-password setup in the web app
+        until `openampere reset-password` on the server (only an admin of Home Assistant may still set one)."""
+        return not self.configured and bool(self.storage.get_meta(SETUP_LOCKED))
+
     def set_password(self, password: str, replacing: str | None = None) -> str | None:
         """Sets a new password and returns the salt of its entry (new each time; sessions are bound to it). replacing:
         the salt from verify_password; then only while that entry is still stored (None if it was changed or reset
@@ -117,6 +123,7 @@ class Auth:
             if self.configured:
                 return None
             self.storage.set_meta("auth", stored)
+            self.storage.delete_meta(SETUP_LOCKED)
             return stored["salt"]
 
     @staticmethod
@@ -157,6 +164,7 @@ class Auth:
     def reset(self) -> None:
         """Forget the password and all sessions (command line `openampere reset-password`)."""
         self.storage.set_meta("auth", None)
+        self.storage.delete_meta(SETUP_LOCKED)
         self.storage.set_meta("sessions", {})
         self.forget_devices()
 

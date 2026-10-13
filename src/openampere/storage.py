@@ -86,12 +86,15 @@ DAMAGED_SUFFIX = ".damaged-"  # a damaged database is kept under this name plus 
 RESTORE_SUFFIX = ".restore"  # a checked backup that replaces the database on the next start
 KEPT_SUFFIX = ".before-restore-"  # the database a restored backup replaced, plus the time
 REQUIRED_TABLES = {"samples", "energy_15m", "meta"}  # every OpenAmpere database has them since the first release
+# Set when a damaged database had a password that could not be taken over: the first-password setup stays closed
+# until `openampere reset-password` on the server, otherwise anybody in the home network could choose one first.
+SETUP_LOCKED = "setup_locked"
 # Access and device state stay those of the running installation when a backup is restored: backups contain no
 # sessions, and an empty or old password would let anyone in the home network take over (or lock out the owner).
 # api_tokens: tokens revoked since the backup must stay revoked. remote_command: whether OpenAmpere still has to
 # switch off the inverter's remote control right now (#141).
 KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "consumer_switched_on",  # last: #243
-                   "known_devices")
+                   "known_devices", SETUP_LOCKED)
 SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26
 
 
@@ -126,6 +129,31 @@ def _is_damage(err: sqlite3.DatabaseError) -> bool:
         return code & 0xFF in (SQLITE_CORRUPT, SQLITE_NOTADB)
     text = str(err).lower()
     return "malformed" in text or "not a database" in text
+
+
+def _salvage_meta(path: Path) -> tuple[dict, bool]:
+    """Reads the access and device state (KEEP_ON_RESTORE) row by row from a damaged database, read-only: a power cut
+    usually damages the pages of the readings, not the few rows of meta. Returns the values that could be read and
+    whether the file certainly had no password (then there is nothing to protect)."""
+    values, no_password = {}, False
+    try:
+        db = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+    except (sqlite3.Error, OSError):
+        return values, False
+    try:
+        for key in KEEP_ON_RESTORE:
+            try:
+                row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+                value = None if row is None else json.loads(row[0])
+            except (sqlite3.Error, ValueError, TypeError):
+                continue
+            if value is None:
+                no_password = no_password or key == "auth"
+            elif key != "auth" or isinstance(value, dict) and {"salt", "hash"} <= value.keys():
+                values[key] = value  # a password OpenAmpere cannot check counts as lost, not as absent
+    finally:
+        db.close()
+    return values, no_password
 
 
 def _move_with_side_files(source: Path, target: Path) -> None:
@@ -295,7 +323,15 @@ class Storage:
                       err, damaged.name)
             _move_with_side_files(path, damaged)
             self._db = self._open(check=False)
-            self.set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
+            # the password, sessions and device state are taken over if they can be read; a password that is lost
+            # must not open the first-password setup to anybody in the home network
+            values, no_password = _salvage_meta(damaged)
+            if "auth" not in values and not no_password:
+                values[SETUP_LOCKED] = {"ts": time.time()}
+            with self._db:
+                for key, value in values.items():
+                    self._set_meta(key, value)
+                self._set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
         if not memory:
             _only_for_owner(path)
         if kept is not None:

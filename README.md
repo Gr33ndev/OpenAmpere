@@ -136,6 +136,8 @@ cd /opt/openampere && sudo docker compose exec openampere openampere reset-passw
 
 If OpenAmpere is in a different folder (for a manual installation, the folder of the repository), replace `/opt/openampere` with that folder.
 
+The same command is needed when the app says that the database was damaged and your previous password could not be taken over. Until then, nobody can set a new password in the app, so that nobody else in your home network can choose one first.
+
 Problems during setup? See [Troubleshooting](#troubleshooting). How to back up your data, move to a new computer or remove OpenAmpere again is described under [Backup and restore](#backup-and-restore), [Moving to a new computer](#moving-to-a-new-computer) and [Uninstalling](#uninstalling).
 
 #### Connect Home Assistant

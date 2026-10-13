@@ -4,10 +4,12 @@
 
 import json
 import sqlite3
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
 
+from openampere import __main__ as cli
 from openampere.api import create_app
 from openampere.config import EDITABLE, restore_settings
 from openampere.runtime import Runtime
@@ -50,7 +52,6 @@ def test_a_damaged_database_is_kept_aside_and_the_app_starts_empty(tmp_path):
     path = tmp_path / "openampere.db"
     storage = Storage(path)
     fill(storage)
-    storage.set_meta("auth", {"salt": "00", "hash": "x"})
     storage.close()
     damage(path)
     broken = path.read_bytes()
@@ -61,7 +62,7 @@ def test_a_damaged_database_is_kept_aside_and_the_app_starts_empty(tmp_path):
     assert damaged and damaged["file"].startswith(str((tmp_path / "openampere.db.damaged-").resolve()))
     assert (tmp_path / damaged["file"].rsplit("/", 1)[-1]).read_bytes() == broken  # kept as it was
     assert runtime.storage.samples(0, 2e9) == []
-    assert client.get("/api/auth/status").json()["configured"] is False  # the owner must set a password again
+    assert client.get("/api/auth/status").json()["configured"] is False  # had none: set one as on a new installation
 
     login(client)
     assert client.delete("/api/database/damaged").status_code == 200
@@ -134,7 +135,7 @@ def test_restore_brings_back_the_data_but_keeps_password_sessions_and_secrets(tm
     runtime.storage.close()
 
 
-def test_restore_after_a_damaged_database_clears_the_notice(tmp_path):
+def test_restore_after_a_damaged_database_clears_the_notice(tmp_path, monkeypatch):
     path = tmp_path / "openampere.db"
     runtime, client = start(path)
     login(client)
@@ -146,6 +147,9 @@ def test_restore_after_a_damaged_database_clears_the_notice(tmp_path):
     runtime, client = start(path)
     assert client.get("/api/status").json()["database"]["damaged"]
     client.cookies.clear()
+    monkeypatch.setenv("OPENAMPERE_STORAGE_PATH", str(path))
+    monkeypatch.setattr(sys, "argv", ["openampere", "reset-password"])
+    cli.main()  # the password was lost with the file: the owner resets it on the server first
     login(client)  # a new password on the empty database
     assert client.post("/api/backup/restore", content=backup).json() == {"restarting": False}  # no server here
     runtime, client = restart(runtime, client)

@@ -4,7 +4,7 @@ import { StrictMode, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuthStatus, Status } from "./api";
 import { useLive, useResource } from "./api";
-import { DirectAccessLocked, PasswordSetup, useLoginPrompt } from "./AuthScreens";
+import { DirectAccessLocked, PasswordSetup, SetupLocked, useLoginPrompt } from "./AuthScreens";
 import { Dashboard } from "./Dashboard";
 import { RetroDefs } from "./EnergyFlow";
 import { NavDevices, NavHome, NavMore, NavReport } from "./icons";
@@ -79,7 +79,8 @@ function App() {
       <div className="app">
         <main>
           <DatabaseNotice status={status} auth={auth} />
-          {auth.home_assistant === "direct" ? <DirectAccessLocked onRetry={reloadAuth} /> : <PasswordSetup onDone={reloadAuth} />}
+          {auth.home_assistant === "direct" ? <DirectAccessLocked onRetry={reloadAuth} />
+            : auth.locked ? <SetupLocked onRetry={reloadAuth} /> : <PasswordSetup onDone={reloadAuth} />}
         </main>
         <ToastHost />
       </div>

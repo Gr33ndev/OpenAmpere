@@ -402,6 +402,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/auth/status")
     def auth_status(request: Request):
         status = {"configured": auth.configured, "authenticated": logged_in(request)}
+        if auth.locked:
+            status["locked"] = True
         if ha_app.active():
             status["home_assistant"] = "ingress" if ha_app.via_ingress(request) else "direct"
         return status
@@ -412,6 +414,11 @@ def create_app(runtime: Runtime) -> FastAPI:
             # otherwise anybody in the home network (or any user of Home Assistant) could set it before its owner
             raise HTTPException(403, "Das Passwort legt ein Administrator von Home Assistant fest: OpenAmpere in der "
                                      "Seitenleiste öffnen, dann Mehr → Zugriffsschutz.")
+        if auth.locked and not ha_admin(request):
+            raise HTTPException(403, "Die Datenbank war beschädigt, und das bisherige Passwort ließ sich nicht "
+                                     "übernehmen. Damit niemand sonst im Heimnetz ein Passwort festlegen kann, bitte "
+                                     "zuerst auf dem Server im Terminal „openampere reset-password“ ausführen (wie "
+                                     "bei einem vergessenen Passwort). Danach hier ein neues Passwort festlegen.")
         try:
             salt = auth.setup(body.password)
         except ValueError as err:

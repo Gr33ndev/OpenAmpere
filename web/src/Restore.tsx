@@ -111,7 +111,7 @@ export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthSta
           <p><strong>{t("shell.databaseNotice.title")}</strong></p>
           <p>{t("shell.databaseNotice.whatHappened", { date: updatedLabel(damaged.ts) })}</p>
           <p>{tx("shell.databaseNotice.fileKept", { file: <code className="code-inline wrap">{damaged.file}</code> })}</p>
-          {auth && !auth.configured
+          {auth?.locked ? null : auth && !auth.configured
             ? <p><strong>{t("shell.databaseNotice.setPasswordNow")}</strong></p>
             : <p>{t("shell.databaseNotice.restoreHint")}</p>}
           {auth?.authenticated && (

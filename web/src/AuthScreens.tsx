@@ -69,6 +69,22 @@ export function DirectAccessLocked({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/** The database was damaged and its password could not be taken over: the first-password setup stays closed until the
+ *  owner runs reset-password on the server, so that nobody else in the home network can choose a password first. */
+export function SetupLocked({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="page setup">
+      <div className="page-head"><h1>{t("shell.passwordSetup.setPassword")}</h1></div>
+      <div className="card form">
+        <p className="flush">{t("shell.setupLocked.text")}</p>
+        <p className="flush">{tx("shell.setupLocked.nextStep", {
+          command: <code>cd /opt/openampere && sudo docker compose exec openampere openampere reset-password</code> })}</p>
+        <Button variant="secondary" onClick={onRetry}>{t("common.tryAgainNow")}</Button>
+      </div>
+    </div>
+  );
+}
+
 /** Access protection in the Home Assistant sidebar: Home Assistant already checked the login, the password is only
  *  for direct access by IP address (evcc, phones). It can be set again without the old one (#300). */
 function SidebarSecurity({ auth, onChange }: { auth: AuthStatus; onChange: () => void }) {

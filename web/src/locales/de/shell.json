@@ -89,6 +89,10 @@
     "passwordHint": "Mindestens 8 Zeichen",
     "remoteAccessHint": "Ansehen ist im Heimnetz ohne Passwort möglich. Für Zugriff von unterwegs nutze ein VPN (z. B. das deiner FRITZ!Box, WireGuard oder Tailscale) – {warning}"
   },
+  "setupLocked": {
+    "text": "Die Datenbank war beschädigt, und OpenAmpere konnte dein bisheriges Passwort nicht übernehmen. Damit niemand sonst im Heimnetz ein Passwort festlegen und deine Anlage steuern kann, ist das hier gesperrt.",
+    "nextStep": "So geht es weiter: Auf dem Server im Terminal {command} ausführen und danach hier „Jetzt erneut versuchen“ wählen. Dann kannst du ein neues Passwort festlegen. Liegt OpenAmpere in einem anderen Ordner, /opt/openampere durch diesen Ordner ersetzen."
+  },
   "subPage": {
     "back": "Zurück"
   },

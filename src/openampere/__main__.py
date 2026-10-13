@@ -139,7 +139,7 @@ def main() -> None:
         # plain connection on purpose: works while the app is running (SQLite handles other processes)
         db = sqlite3.connect(str(path), timeout=10)
         with db:
-            db.execute("DELETE FROM meta WHERE key IN ('auth', 'sessions', 'known_devices')")
+            db.execute("DELETE FROM meta WHERE key IN ('auth', 'sessions', 'known_devices', 'setup_locked')")
         db.close()
         print("Passwort zurückgesetzt. Beim nächsten Öffnen der App kann ein neues festgelegt werden.")
         return

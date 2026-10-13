@@ -363,7 +363,10 @@ export function directAddress(app: NonNullable<Status["home_assistant"]>): strin
 }
 
 /** home_assistant: only in the Home Assistant app (#300), "ingress" when opened in its sidebar */
-export type AuthStatus = { configured: boolean; authenticated: boolean; home_assistant?: "ingress" | "direct" };
+export type AuthStatus = {
+  configured: boolean; authenticated: boolean; home_assistant?: "ingress" | "direct";
+  locked?: boolean; // a damaged database had a password that could not be taken over: reset-password on the server first
+};
 
 /** POST with a raw body (file upload) – same headers as JSON requests. */
 export async function postFile<T>(path: string, file: Blob, type = "application/zip"): Promise<T> {
