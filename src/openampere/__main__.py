@@ -22,7 +22,8 @@ from . import logs
 if TYPE_CHECKING:
     from .runtime import Runtime
 
-HEALTH_PATH = "/api/auth/status?healthcheck=1"  # needs no login and no inverter
+# needs no login and no inverter (#356); older images ask /api/auth/status?healthcheck=1, which still answers
+HEALTH_PATH = "/api/health"
 
 
 def check_data_dir(config_path: str | None) -> None:

@@ -25,6 +25,7 @@ from .runtime import Runtime
 log = logging.getLogger(__name__)
 
 RELEASES_URL = "https://api.github.com/repos/Gr33ndev/OpenAmpere/releases/latest"
+RELEASE_PAGES = "https://github.com/"
 CHECK_EVERY_S = 6 * 3600
 UPDATER_ALIVE_S = 60  # the updater writes a sign of life every few seconds
 AUTO_HOURS = range(2, 5)  # automatic updates at night, when nobody looks at the app
@@ -44,7 +45,10 @@ def fetch_latest() -> dict:
     if len(raw) > MAX_ANSWER_BYTES:
         raise ValueError("answer too large")
     data = json.loads(raw)
-    return {"version": str(data.get("tag_name", "")).lstrip("v"), "url": data.get("html_url"),
+    url = data.get("html_url")
+    if not (isinstance(url, str) and url.startswith(RELEASE_PAGES)):
+        url = None  # the app shows it as a link: never to another site, never a javascript: link
+    return {"version": str(data.get("tag_name", "")).lstrip("v"), "url": url,
             "notes": data.get("body") or "", "published": data.get("published_at")}
 
 

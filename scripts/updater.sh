@@ -27,7 +27,8 @@ CHECK_AFTER_S=${OPENAMPERE_CHECK_AFTER_S:-60} # how long the new version must ru
 HEALTH_WAIT_S=${OPENAMPERE_HEALTH_WAIT_S:-240} # extra wait while the health check is starting (start period 180 s in the Dockerfile)
 VERIFY=${OPENAMPERE_VERIFY_IMAGES:-ja}
 OWN_IMAGE=ghcr.io/gr33ndev/openampere
-SIGNER=https://github.com/Gr33ndev/OpenAmpere/.github/workflows/release.yml@refs/tags/v # + the version in the label
+REPO=Gr33ndev/OpenAmpere
+SIGNER=https://github.com/$REPO/.github/workflows/release.yml@refs/tags/v # + the version in the label
 WANTED="" # the version the app asks for
 
 mkdir -p "$STATE"
@@ -81,7 +82,8 @@ older() {
 
 # verified IMAGE [RUNNING] [WANTED]: exit code 0 if the image may be started. Only OpenAmpere's own image is checked:
 # a stable version, not the image of the Home Assistant app (same workflow), not older than the image RUNNING (an image
-# id) or the version WANTED, and signed by the release workflow run of exactly this version.
+# id) or the version WANTED, and signed by the release workflow run of exactly this version in this repository (the
+# identity alone would also fit a workflow of another repository that calls release.yml as a reusable workflow).
 verified() {
   case "$VERIFY" in [nN]*) return 0 ;; esac
   case "$1" in "$OWN_IMAGE" | "$OWN_IMAGE":* | "$OWN_IMAGE"@*) ;; *) return 0 ;; esac  # also pinned by digest
@@ -95,7 +97,7 @@ verified() {
   [ -n "$ref" ] || return 1
   cosign verify-attestation --new-bundle-format --type slsaprovenance1 \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$SIGNER$version" \
-    "$ref" >/dev/null 2>&1
+    --certificate-github-workflow-repository "$REPO" "$ref" >/dev/null 2>&1
 }
 
 update() {
@@ -148,7 +150,8 @@ update() {
     status "done" "Update installiert."
     docker image prune -f >/dev/null 2>&1
   elif [ -n "$old" ]; then
-    docker tag "$old" "$image" && docker compose up -d "$APP"
+    # the failed version is not left on the disk (Docker keeps it while a container still uses it)
+    docker tag "$old" "$image" && docker compose up -d "$APP" && docker image rm "$new" >/dev/null 2>&1
     status failed "Die neue Version ist nicht richtig gestartet. Die bisherige Version läuft wieder."
   else
     status failed "Die neue Version ist nicht richtig gestartet."

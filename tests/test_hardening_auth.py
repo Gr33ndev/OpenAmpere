@@ -31,6 +31,7 @@ V1 = external.PREFIX
 # GET routes anybody in the home network may read without logging in, like the overview of the web app. A new GET
 # route goes into PROTECTED_READS in api.py, or here if it shows nothing private (#164, #352).
 PUBLIC_READS = {
+    "/api/health",  # the health check of Docker and Home Assistant: a constant, no data
     "/api/auth/status", "/api/status", "/api/settings",  # settings: private values hidden without login
     "/api/setup/networks", "/api/setup/drivers", "/api/battery/health", "/api/battery/settings",
     "/api/grid/export-limit", "/api/import/cloud", "/api/outages", "/api/storage", "/api/live", "/api/energy/summary",

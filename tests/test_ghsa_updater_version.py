@@ -177,7 +177,7 @@ def test_a_new_version_that_does_not_start_is_rolled_back(fake):
     """The rollback goes to the image that ran before, by its id: no check, no download."""
     setup(fake, new=stable("0.27.0"), signed="v0.27.0", health="false 0")
     log, status = run_update(fake)
-    assert f"tag old {IMAGE}" in log and log.rstrip().endswith("compose up -d openampere")
+    assert f"tag old {IMAGE}" in log and log.rstrip().endswith("compose up -d openampere\nimage rm new")  # #356
     assert "Die bisherige Version läuft wieder" in status
 
 
