@@ -4,6 +4,16 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.26.4 (2026-10-13)
+
+### Behoben
+
+- Calculate consumption from the other energy values, not the inverter's load counter (#349)
+
+### Weitere Änderungen
+
+- Bring the issue templates in line with the app (#348)
+
 ## 0.26.3 (2026-10-13)
 
 ### Behoben
@@ -91,15 +101,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - **site:** Steps to add the app repository by hand for way 2 (#310)
 - Complete steps to add the app repository, with its maintainer (#308)
-
-## 0.22.0 (2026-10-12)
-
-### Neu
-
-- The control log names the user of Home Assistant (#306)
-- OpenAmpere as a Home Assistant app for Home Assistant OS (#304)
-
-### Weitere Änderungen
-
-- **deps:** Update Python dependencies (#301)
-- **ui:** Check the retro charts with a full week (#303)
