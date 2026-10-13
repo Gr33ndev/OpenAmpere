@@ -130,7 +130,7 @@ SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Fram
 INGRESS_HEADERS = {"Content-Security-Policy": "frame-ancestors 'self'", "X-Content-Type-Options": "nosniff",
                    "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
-PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/diagnostics", "/api/gridmeter", "/api/remote",
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/gridmeter", "/api/remote",
                    "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
@@ -661,6 +661,13 @@ def create_app(runtime: Runtime) -> FastAPI:
         """limit=0: the whole log, for the export. "note": the reason or error in the language of the app (#153)."""
         lang = request.headers.get(i18n.HEADER)
         return {"entries": [{**e, "note": i18n.log_note(e["result"], lang)} for e in storage.control_log(limit)]}
+
+    @app.get("/api/control/log/report")
+    def get_control_log_report(request: Request, limit: int = Query(100, ge=1, le=1000)):
+        """The newest entries for a report (#329): masked by privacy.py like every export for a report."""
+        lang = request.headers.get(i18n.HEADER)
+        entries = [{**e, "note": i18n.log_note(e["result"], lang)} for e in storage.control_log(limit)]
+        return {"entries": privacy.control_log_for_report(runtime, entries, time.time())}
 
     # ---- history import from the former vendor cloud ---------------------
 

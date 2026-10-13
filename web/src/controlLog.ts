@@ -245,6 +245,26 @@ export function statusLabel(s: LogStatus): string {
     warning: t("settings.controlLog.statusWarning"), error: t("settings.controlLog.statusError") }[s];
 }
 
+/** An entry of /api/control/log/report (#329): masked by the server's privacy.py, how long ago instead of the time. */
+export type ReportEntry = Omit<LogEntry, "ts"> & { ago_s: number };
+
+function ago(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return t("settings.controlLog.agoNow");
+  if (minutes < 120) return t("settings.controlLog.agoMinutes", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  return hours < 48 ? t("settings.controlLog.agoHours", { count: hours }) : t("settings.controlLog.agoDays", { count: Math.floor(hours / 24) });
+}
+
+/** The newest entries as text for an issue: only what the server masked, no dates and clock times. */
+export function logReport(entries: ReportEntry[]): string {
+  const lines = entries.map((e) => {
+    const d = describe({ ...e, ts: 0 });
+    return `- ${ago(e.ago_s)}: ${d.text}${d.by ? ` (${d.by})` : ""} – ${statusLabel(d.status)}${d.note ? `: ${d.note}` : ""}`;
+  });
+  return [`## ${t("settings.controlLog.reportTitle")}`, "", ...lines].join("\n");
+}
+
 /** The whole log as CSV for Excel or LibreOffice: ";" where the decimal separator is ",", with BOM for the umlauts. */
 export function logCsv(entries: LogEntry[]): string {
   const separator = (1.5).toLocaleString(LOCALE).includes(",") ? ";" : ",";

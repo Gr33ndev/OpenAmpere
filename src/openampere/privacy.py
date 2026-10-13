@@ -11,7 +11,9 @@ forget one:
   services and devices: the same value always by the same pseudonym (`for_report`);
 - times of the owner's actions: as a duration, never the clock time (`ago`);
 - register values: values at private addresses (card numbers, exact counters) removed, readable text shortened
-  unless the owner includes it (`masked_block`).
+  unless the owner includes it (`masked_block`);
+- the control log: names chosen by the owner, references and times replaced, values that tell the system size
+  rounded (`control_log_for_report`).
 """
 
 from __future__ import annotations
@@ -57,7 +59,7 @@ class Pseudonyms:
             self.known[inverter_host.lower()] = "<Wechselrichter>"
         self.counts: Counter = Counter()
 
-    def _name(self, value: str, kind: str) -> str:
+    def name(self, value: str, kind: str) -> str:
         key = value.lower()
         if key not in self.known:
             self.counts[kind] += 1
@@ -69,18 +71,18 @@ class Pseudonyms:
             ipaddress.ip_address(match.group(0))
         except ValueError:  # e.g. a time like 12:34:56 or a version number
             return match.group(0)
-        return self._name(match.group(0), kind)
+        return self.name(match.group(0), kind)
 
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
-        text = _EMAIL.sub(lambda m: self._name(m.group(0), "E-Mail"), text)
+        text = _EMAIL.sub(lambda m: self.name(m.group(0), "E-Mail"), text)
         text = _HOME.sub(r"\1/<Benutzer>", text)
-        text = _MAC.sub(lambda m: self._name(m.group(0), "MAC"), text)
+        text = _MAC.sub(lambda m: self.name(m.group(0), "MAC"), text)
         text = _IPV4.sub(self._ip, text)
         text = _IPV6.sub(self._ip, text)
         text = _STAMP.sub("<Zeitpunkt>", text)  # e.g. openampere.db.before-restore-20261010-153012 (#223)
-        return _HOST.sub(lambda m: self._name(m.group(0), "Host"), text)
+        return _HOST.sub(lambda m: self.name(m.group(0), "Host"), text)
 
     def apply(self, value):
         if isinstance(value, str):
@@ -119,6 +121,42 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
             if serial:
                 known[serial] = shorten(serial)
     return Pseudonyms(config.inverter.host, known)
+
+
+# the control log (#329): what the owner named (a person, an app access, a device), when something happens in the
+# owner's day, references of the grid operator and values that tell the size of the system (#149)
+LOG_NAMES = {"source", "name", "consumer", "loadpoint", "vehicle"}
+LOG_TIMES = {"outage", "time"}
+LOG_LEFT_OUT = {"grid_operator_confirmation"}
+LOG_ROUNDED = {"export_limit_w": -2, "installed_kwp": 0, "battery_kwh": 0}
+HOME_ASSISTANT = " (Home Assistant)"
+
+
+def control_log_for_report(runtime: Runtime, entries: list[dict], now: float) -> list[dict]:
+    """Control log entries for a report: how long ago instead of the time, and the details masked."""
+    pseudonyms = for_report(runtime)
+
+    def clean(value, key: str | None = None):
+        if isinstance(value, dict):
+            return {k: clean(v, k) for k, v in value.items()}
+        if isinstance(value, list):
+            return [clean(v, key) for v in value]
+        if value is None or value == "":
+            return value
+        if key in LOG_LEFT_OUT:
+            return "<entfernt>"
+        if key in LOG_TIMES:
+            return "<Zeitpunkt>"
+        if key in LOG_ROUNDED and isinstance(value, (int, float)) and not isinstance(value, bool):
+            return round(value, LOG_ROUNDED[key])
+        if key in LOG_NAMES and isinstance(value, str):
+            suffix = HOME_ASSISTANT if value.endswith(HOME_ASSISTANT) else ""
+            return pseudonyms.name(value.removesuffix(HOME_ASSISTANT), "Name") + suffix
+        return pseudonyms.apply(value)
+
+    return [{"ago_s": max(0, round(now - e["ts"])), "action": e["action"], "details": clean(e["details"]),
+             "dry_run": e["dry_run"], "result": pseudonyms.text(e["result"]),
+             **({"note": pseudonyms.text(e["note"])} if e.get("note") else {})} for e in entries]
 
 
 def duration(seconds: float) -> str:

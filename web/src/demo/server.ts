@@ -481,6 +481,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
     legal_max_w: 5880, external_change: null }),
   "/api/control/log": controlLog,
+  // the demo has no personal data: the same entries, with how long ago instead of the time (#329)
+  "/api/control/log/report": () => ({ entries: controlLog().entries.map(({ ts, ...e }) => ({ ...e, ago_s: Math.round(now() - ts) })) }),
   "/api/import/cloud": () => ({ status: "done", phase: "soc", days_total: 487, work_done: 487, soc_done: 487, imported: 46752, key_set: true }),
   "/api/tokens": () => {
     const now = Date.now() / 1000;
