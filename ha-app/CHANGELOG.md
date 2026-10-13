@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.25.1 (2026-10-13)
+
+### Behoben
+
+- **saj:** Show the on-grid and off-grid battery reserve the right way round (#335)
+
 ## 0.25.0 (2026-10-13)
 
 ### Neu
@@ -180,13 +186,3 @@ Important: your installation only gets the improved update helper if you run the
 ### Behoben
 
 - **ui:** Show the easter egg correctly on safari (#201)
-
-## 0.18.0 (2026-10-09)
-
-### Neu
-
-- **ui:** Add easter egg (#199)
-
-### Weitere Änderungen
-
-- Mark control of the foxess h3 with the new map as confirmed (#197)

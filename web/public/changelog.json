@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.25.1",
+      "date": "2026-10-13",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "saj",
+            "text": "Show the on-grid and off-grid battery reserve the right way round (#335)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.25.0",
       "date": "2026-10-13",
       "first": false,
