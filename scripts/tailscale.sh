@@ -19,8 +19,18 @@ INBOX="$STATE/inbox"
 SOCKET=/tmp/tailscaled.sock
 NAME=${OPENAMPERE_REMOTE_NAME:-openampere} # name of this machine in the tailnet: openampere.<tailnet>.ts.net
 PORT=${OPENAMPERE_PORT:-8080} # where OpenAmpere listens on this machine, for HTTPS via tailscale serve
+APP_UID=${OPENAMPERE_APP_UID:-1000} # user of the OpenAmpere image
 
 mkdir -p "$STATE"
+
+# private FILE [OWNER]: FILE new and empty, readable only by OWNER (default: root). For the pending login link: whoever
+# opens it first adds this machine to their tailnet, so other users of this machine must not read it.
+private() {
+  rm -f "$1" && (umask 077 && : >"$1") || return 1
+  [ -z "${2:-}" ] || chown "$2:$2" "$1"
+}
+# files of an older version of this helper were readable by everyone
+chmod 600 "$STATE/login.log" "$STATE/status.json" 2>/dev/null
 
 # kernel (install.sh chooses it where the machine has /dev/net/tun): an own network interface, so only services that
 # listen on all addresses (OpenAmpere) are reachable from the tailnet, not those meant only for this machine.
@@ -54,7 +64,9 @@ case "$TUN" in userspace-networking) echo userspace ;; *) echo kernel ;; esac >"
 ts() { tailscale --socket="$SOCKET" "$@"; }
 
 publish() {
-  if ts status --json --peers=false >"$STATE/status.json.tmp" 2>/dev/null; then
+  # status.json holds the login link (AuthURL) as well: only for the app
+  if private "$STATE/status.json.tmp" "$APP_UID" &&
+    ts status --json --peers=false >"$STATE/status.json.tmp" 2>/dev/null; then
     mv "$STATE/status.json.tmp" "$STATE/status.json"
   else
     rm -f "$STATE/status.json.tmp"
@@ -85,10 +97,12 @@ while true; do
       login)
         # waits until someone has logged in with the link; the link also shows up in status.json (AuthURL).
         # --accept-dns=false: Tailscale never touches the DNS settings of this machine
+        private "$STATE/login.log"
         ts login --hostname="$NAME" --accept-dns=false >"$STATE/login.log" 2>&1 &
         login_pid=$!
         ;;
       logout)
+        private "$STATE/login.log"
         ts logout >"$STATE/login.log" 2>&1
         ;;
       https-on)

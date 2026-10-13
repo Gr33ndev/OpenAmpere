@@ -139,3 +139,11 @@ Based on the OWASP Top 10 (2021) and the CWE Top 25.
 - The first password can be set by anyone in the home network until the owner sets it.
 - Someone with access to the server or the `data/` folder can read the credentials.
 - Modbus TCP has no authentication; this is a property of the devices.
+- In the Home Assistant app the server process holds the app's `SUPERVISOR_TOKEN`. It needs the token for three calls
+  (the users of Home Assistant from `config/auth/list`, to recognise admins in the sidebar; the network from
+  `/network/info`; the notice after installing the integration), and with `homeassistant_api` and `hassio_api` the
+  token reaches the API of Home Assistant with admin rights. Someone who could run code in the OpenAmpere process
+  could therefore control Home Assistant and every device in it, not only the inverter. Mitigation: the process runs
+  as an unprivileged user without capabilities, in an AppArmor profile without the config folder of Home Assistant,
+  and the token is only sent to the Supervisor, never returned by the API or stored. Planned (#357): move these calls
+  into a separate helper with its own user and remove the token from the environment of the server.
