@@ -120,10 +120,16 @@ class ChangePasswordRequest(BaseModel):
 # the diagnostics report that can hold the full serial number); /api/settings hides its private values instead (#164)
 # no framing by other sites (clickjacking), no guessing of content types, and no address of the app (LAN IP or tailnet
 # name) sent to other sites in the Referer header when a link is followed
-SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Frame-Options": "DENY",
+# and only the app's own files may run, load and connect: no inline scripts, no eval, no plugins, no <base> (#358).
+# Matters most in the Home Assistant sidebar, where the app shares the origin and the login of Home Assistant.
+# data: is the checkmark image in the CSS; 'self' also covers the live WebSocket. The UI tests serve the same policy
+# (web/vite.config.ts), so they fail when the app needs more.
+CONTENT_POLICY = "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; img-src 'self' data:"
+SECURITY_HEADERS = {"Content-Security-Policy": f"{CONTENT_POLICY}; frame-ancestors 'none'", "X-Frame-Options": "DENY",
                     "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
 # the Home Assistant sidebar shows the app in a frame of its own origin (#300); other sites still cannot frame it
-INGRESS_HEADERS = {"Content-Security-Policy": "frame-ancestors 'self'", "X-Content-Type-Options": "nosniff",
+INGRESS_HEADERS = {"Content-Security-Policy": f"{CONTENT_POLICY}; frame-ancestors 'self'",
+                   "X-Frame-Options": "SAMEORIGIN", "X-Content-Type-Options": "nosniff",
                    "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/wallbox/ocpp", "/api/gridmeter", "/api/remote",
@@ -1385,9 +1391,14 @@ def create_app(runtime: Runtime) -> FastAPI:
 
         @app.get("/{path:path}", include_in_schema=False)
         def spa(path: str):
+            if path == "api" or path.startswith("api/"):
+                raise HTTPException(404)  # an unknown endpoint, not a page of the app (#358)
             # normalized first, then only files inside the web app's folder (no "../" out of it)
             root = os.path.realpath(WEB_DIST)
-            file = os.path.realpath(os.path.join(root, path))
+            try:
+                file = os.path.realpath(os.path.join(root, path))
+            except ValueError:  # e.g. a NUL byte in the address: no file has such a name (#358)
+                file = ""
             if path and file.startswith(root + os.sep) and os.path.isfile(file):
                 return FileResponse(file)
             return FileResponse(WEB_DIST / "index.html")

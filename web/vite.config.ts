@@ -22,6 +22,11 @@ export default defineConfig({
   // ingress address (#300)
   base: "./",
   build: { outDir: demo ? "../_site/demo" : "../src/openampere/web", emptyOutDir: true },
+  // the UI tests run on `vite preview`: same Content-Security-Policy as the server (CONTENT_POLICY in
+  // src/openampere/api.py), so a test fails with a console error when the app needs more (#358)
+  preview: {
+    headers: { "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; img-src 'self' data:" },
+  },
   server: {
     proxy: {
       "/api": { target: "http://localhost:8089", ws: true },

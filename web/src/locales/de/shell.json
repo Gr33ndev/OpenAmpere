@@ -77,7 +77,7 @@
     "forgotPassword": "Passwort vergessen? Auf dem Server im Terminal {command} ausführen und danach hier ein neues Passwort festlegen. Liegt OpenAmpere in einem anderen Ordner, /opt/openampere durch diesen Ordner ersetzen.",
     "logOut": "Abmelden",
     "logOutAllDevices": "Alle Geräte abmelden",
-    "logOutAllHint": "Alle Handys und Computer müssen sich danach neu anmelden, um Einstellungen zu ändern.",
+    "logOutAllHint": "Alle Handys und Computer müssen sich danach neu anmelden, um Einstellungen zu ändern. Zugänge für Apps wie Home Assistant gelten weiter. Entfernen kannst du sie unter Mehr → Verbundene Apps.",
     "logOutAllQuestion": "Alle Geräte abmelden?",
     "logOutDevice": "Dieses Gerät abmelden",
     "loggedIn": "Dieses Gerät ist angemeldet und darf Einstellungen ändern.",
@@ -85,7 +85,7 @@
     "neverExpose": "gib OpenAmpere niemals per Portfreigabe ins Internet frei.",
     "newPassword": "Neues Passwort",
     "notLoggedIn": "Dieses Gerät ist nicht angemeldet – nur Anzeige.",
-    "passwordChanged": "Passwort geändert – andere Geräte müssen sich neu anmelden",
+    "passwordChanged": "Passwort geändert – andere Geräte müssen sich neu anmelden. Zugänge für Apps gelten weiter (Mehr → Verbundene Apps).",
     "passwordHint": "Mindestens 8 Zeichen",
     "remoteAccessHint": "Ansehen ist im Heimnetz ohne Passwort möglich. Für Zugriff von unterwegs nutze ein VPN (z. B. das deiner FRITZ!Box, WireGuard oder Tailscale) – {warning}"
   },
