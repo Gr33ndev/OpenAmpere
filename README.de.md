@@ -165,11 +165,11 @@ Wer selbst bauen oder mitentwickeln will, nimmt das Repository statt des Scripts
 
 ```bash
 git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
-mkdir -p data && sudo chown 1000:1000 data
+mkdir -p data && sudo chown 1000:1000 data && sudo chmod 700 data
 docker compose up -d --build
 ```
 
-Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`. Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.de.md](docs/evcc.de.md). Ebenso Tailscale für den Zugriff von unterwegs; dafür vorher den Ordner `remote/` außerhalb von `data/` anlegen, wie es die Kommentare in der `docker-compose.yml` beschreiben.
+Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `data/`; sonst muss niemand den Ordner lesen können (`chmod 700`, wie beim Install-Script). Dort liegt neben der Datenbank `secret.key`, der Schlüssel für die gespeicherten Zugangsdaten. Ohne ihn müssen sie in der App neu eingegeben werden. evcc für eine Wallbox steht in der `docker-compose.yml` als auskommentierter Dienst bereit, siehe [docs/evcc.de.md](docs/evcc.de.md). Ebenso Tailscale für den Zugriff von unterwegs; dafür vorher den Ordner `remote/` außerhalb von `data/` anlegen, wie es die Kommentare in der `docker-compose.yml` beschreiben.
 
 #### Release prüfen
 
@@ -181,6 +181,15 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33nd
 ```
 
 `--signer-workflow` stellt sicher, dass der Release-Workflow das Image gebaut hat und kein anderer Workflow des Repositorys, `--source-ref`, dass dieser Workflow für den Versions-Tag lief und nicht für einen Branch. `<version>` steht ohne führendes `v`, z. B. `0.10.0` (also `--source-ref refs/tags/v0.10.0`). Im Image-Namen geht auch `latest`, das ist immer die höchste stabile Version; `--source-ref` nennt dann diese Version. Das geht für Releases nach 0.9.0. Die SBOM (die Liste der Pakete im Image) zeigt `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+
+Das Image der [Home-Assistant-App](#weg-2-home-assistant-app) baut und bestätigt derselbe Workflow. Es hat kein `latest`, seine Version ist die in `ha-app/config.yaml`:
+
+```bash
+gh attestation verify oci://ghcr.io/gr33ndev/openampere-ha-app:<version> --owner Gr33ndev \
+  --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
+```
+
+Home Assistant selbst prüft das nicht, wenn es die App installiert oder aktualisiert. Wer sichergehen will, führt den Befehl oben aus.
 
 **Der Update-Helfer prüft das automatisch.** Bevor er eine neue Version startet (Knopf in der App oder nachts), prüft er das Image mit [cosign](https://docs.sigstore.dev/cosign/) gegen den Release-Workflow dieses Repositorys, ein Konto braucht es dafür nicht. Eine ältere Version als die laufende startet er nicht, auch wenn sie echt ist: Ältere Versionen können bekannte Fehler haben (diesen Schutz bekommen bestehende Installationen, wenn sie das Install-Script einmal erneut ausführen). Schlägt die Prüfung fehl, wird die neue Version nicht gestartet, die bisherige läuft weiter, und die App zeigt einen Hinweis. Installationen von vor 0.10.1 bekommen diesen Helfer, wenn sie das Install-Script einmal erneut ausführen. Nur für den Notfall schaltet `OPENAMPERE_VERIFY_IMAGES=nein` beim Dienst `updater` die Prüfung ab.
 
@@ -200,7 +209,7 @@ OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sicherste
 
 **Niemals per Portfreigabe direkt ins Internet stellen.** Wer die App so erreicht, kann den Wechselrichter steuern, sobald das Passwort geknackt oder abgefangen ist (kein HTTPS).
 
-Eigene Hostnamen (z. B. ein Reverse-Proxy im Heimnetz) müssen unter `server.allowed_hosts` eingetragen werden; IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag.
+Eigene Hostnamen (z. B. ein Reverse-Proxy im Heimnetz) müssen unter `server.allowed_hosts` eingetragen werden; IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag. Trage dort nicht `"*"` ein: Das schaltet den Schutz gegen DNS-Rebinding ab. Dann könnte jede Website, die ein Browser in deinem Heimnetz öffnet, alles lesen, was OpenAmpere ohne Anmeldung zeigt, auch die Live-Werte, und das Passwort festlegen, solange keines festgelegt ist. Trage stattdessen die Namen ein, die du brauchst.
 
 Für eine automatisierte Installation lassen sich alle Werte zusätzlich per `data/config.yaml` (siehe `config.example.yaml`) oder per Umgebungsvariable `OPENAMPERE_…` vorgeben. Umgebungsvariablen haben Vorrang und erscheinen in der App als „fest eingestellt“.
 
@@ -309,7 +318,7 @@ Starte OpenAmpere auf dem alten Rechner danach nicht wieder. Sonst sprechen zwei
 
 ## Deinstallieren
 
-**Vorher bedenken:** Einstellungen, die OpenAmpere am Wechselrichter geändert hat, etwa Notstrom-Reserve, Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung, speichert der Wechselrichter selbst. Sie bleiben auch nach dem Deinstallieren aktiv, siehe [Sicherheit bei Steuerfunktionen](#sicherheit-bei-steuerfunktionen). Willst du die früheren Werte zurück, stelle sie vorher in der App wieder ein. Welche Werte vorher galten, steht unter **Mehr → Steuerung und Protokoll**. Nutzt du **Laden aus dem Netz**, schalte es vorher aus und warte ein paar Minuten, bis OpenAmpere die Fernsteuerung des Wechselrichters wieder freigegeben hat.
+**Vorher bedenken:** Einstellungen, die OpenAmpere am Wechselrichter geändert hat, etwa Notstrom-Reserve, Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung, speichert der Wechselrichter selbst. Sie bleiben auch nach dem Deinstallieren aktiv, siehe [Sicherheit bei Steuerfunktionen](#sicherheit-bei-steuerfunktionen). Willst du die früheren Werte zurück, stelle sie vorher in der App wieder ein. Welche Werte vorher galten, steht unter **Mehr → Steuerung und Protokoll**. Nutzt du **Laden aus dem Netz**, schalte es vorher aus und warte ein paar Minuten, bis OpenAmpere die Fernsteuerung des Wechselrichters wieder freigegeben hat. Geräte an einem Relais, die OpenAmpere eingeschaltet hat, bleiben nach dem Deinstallieren an: Stelle sie vorher auf der Seite **Geräte** auf **Aus**.
 
 Willst du deine Daten behalten, lade vorher eine Sicherung herunter (siehe [Sichern und Wiederherstellen](#sichern-und-wiederherstellen)). Dann auf dem Server im Terminal:
 
@@ -446,6 +455,8 @@ Alles, was auf den Wechselrichter schreibt, ist ab Werk **aus**. Freigegeben wir
 - Jede Änderung landet mit altem und neuem Wert im Protokoll und wird nach dem Schreiben vom Gerät zurückgelesen.
 
 Einstellungen wie Ladegrenzen, Betriebsmodus oder Einspeisebegrenzung speichert der Wechselrichter selbst. Sie bleiben aktiv, auch wenn OpenAmpere nicht läuft oder deinstalliert wird. Wer etwas zurücknehmen will, muss es in der App (oder beim Installationsbetrieb) wieder ändern.
+
+Ähnlich ist es bei Geräten an einem Relais, etwa einer Wärmepumpe oder einem Heizstab ohne Modbus: Ein Relais, das OpenAmpere eingeschaltet hat, bleibt an, solange OpenAmpere gestoppt oder deinstalliert ist. Nur regelbare Geräte setzt OpenAmpere beim Beenden auf 0 W. Stelle solche Geräte deshalb vor dem Stoppen auf der Seite **Geräte** auf **Aus**, siehe [docs/devices.de.md](docs/devices.de.md#relais-und-geschaltete-geräte).
 
 Andere Apps wie [Home Assistant](docs/homeassistant.de.md) steuern nur über einen eigenen Zugang mit der Berechtigung
 „Lesen + Steuern“ und nur, solange die Steuerung freigegeben ist. Den Hauptschalter, den Testmodus und die

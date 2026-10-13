@@ -166,11 +166,11 @@ If you want to build it yourself or contribute to development, use the repositor
 
 ```bash
 git clone https://github.com/Gr33ndev/OpenAmpere.git openampere && cd openampere
-mkdir -p data && sudo chown 1000:1000 data
+mkdir -p data && sudo chown 1000:1000 data && sudo chmod 700 data
 docker compose up -d --build
 ```
 
-The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md). So is Tailscale for access from anywhere; it needs the folder `remote/` outside `data/`, created first as the comments in `docker-compose.yml` describe.
+The app runs in the container as user 1000 and needs write access to `data/`; nobody else needs to read it (`chmod 700`, as the install script does). Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md). So is Tailscale for access from anywhere; it needs the folder `remote/` outside `data/`, created first as the comments in `docker-compose.yml` describe.
 
 #### Verifying a release
 
@@ -182,6 +182,15 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33nd
 ```
 
 `--signer-workflow` makes sure the image was built by the release workflow, not by another workflow of the repository, and `--source-ref` that this workflow ran for the version tag, not for a branch. `<version>` is written without the leading `v`, e.g. `0.10.0` (so `--source-ref refs/tags/v0.10.0`). In the image name, `latest` works as well; it is always the highest stable version, and `--source-ref` then names that version. Pre-releases and versions released later for an older line do not get `latest`. This works for releases after 0.9.0. The SBOM (the list of packages in the image) is shown by `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+
+The image of the [Home Assistant app](#way-2-home-assistant-app) is built and attested by the same workflow. It has no `latest`; its version is the one in `ha-app/config.yaml`:
+
+```bash
+gh attestation verify oci://ghcr.io/gr33ndev/openampere-ha-app:<version> --owner Gr33ndev \
+  --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
+```
+
+Home Assistant itself does not check this when it installs or updates the app; run the command above if you want to be sure.
 
 **The update helper checks this automatically.** Before it starts a new version (update button in the app or at night), it verifies the image with [cosign](https://docs.sigstore.dev/cosign/) against the release workflow of this repository; no account is needed. It does not start an older version than the one running, even a genuine one: older versions can have known flaws (existing installations get this protection by running the install script once more). If the check fails, the new version is not started and the previous one keeps running, with a message in the app. Installations from before 0.10.1 get this helper by running the install script once more. Only for emergencies, `OPENAMPERE_VERIFY_IMAGES=nein` in the `updater` service turns the check off.
 
@@ -201,7 +210,7 @@ OpenAmpere is built for the home network. The safest way to reach it on the go i
 
 **Never expose it directly to the internet via port forwarding.** Anyone who reaches the app that way can control the inverter as soon as the password is cracked or intercepted (no HTTPS).
 
-Custom hostnames (e.g. a reverse proxy on the home network) must be added under `server.allowed_hosts`; IP addresses, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` and Tailscale names (`*.ts.net`) work without an entry.
+Custom hostnames (e.g. a reverse proxy on the home network) must be added under `server.allowed_hosts`; IP addresses, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` and Tailscale names (`*.ts.net`) work without an entry. Do not use `"*"` there: it turns off the protection against DNS rebinding, so any website opened in a browser on your home network could read everything OpenAmpere shows without a login, including the live values, and set the password as long as none is set. Enter the names you need instead.
 
 For an automated installation, all values can additionally be preset via `data/config.yaml` (see `config.example.yaml`) or via `OPENAMPERE_…` environment variables. Environment variables take precedence and appear in the app as „fest eingestellt“ (fixed).
 
@@ -309,7 +318,7 @@ Do not start OpenAmpere on the old computer again afterwards. Otherwise two prog
 
 ## Uninstalling
 
-**Before you start:** settings that OpenAmpere changed on the inverter, such as the backup power reserve, charge limits, operating mode or feed-in limit, are stored by the inverter itself. They stay active after uninstalling, see [Safety of control functions](#safety-of-control-functions). If you want the earlier values back, set them again in the app first. Which values applied before is shown under **Mehr → Steuerung und Protokoll** (More → Control and log). If you use **Laden aus dem Netz** (Charging from the grid), switch it off first and wait a few minutes until OpenAmpere has released the inverter's remote control.
+**Before you start:** settings that OpenAmpere changed on the inverter, such as the backup power reserve, charge limits, operating mode or feed-in limit, are stored by the inverter itself. They stay active after uninstalling, see [Safety of control functions](#safety-of-control-functions). If you want the earlier values back, set them again in the app first. Which values applied before is shown under **Mehr → Steuerung und Protokoll** (More → Control and log). If you use **Laden aus dem Netz** (Charging from the grid), switch it off first and wait a few minutes until OpenAmpere has released the inverter's remote control. Devices on a relay that OpenAmpere switched on stay on after uninstalling: set them to **Aus** (Off) on the **Geräte** (Devices) page first.
 
 If you want to keep your data, download a backup first (see [Backup and restore](#backup-and-restore)). Then, in a terminal on the server:
 
@@ -446,6 +455,8 @@ Everything that writes to the inverter is **off** by default. It is enabled in t
 - Every change is recorded in the log with its old and new value, and is read back from the device after writing.
 
 Settings such as charge limits, operating mode or feed-in limit are stored by the inverter itself. They remain active even if OpenAmpere is not running or is uninstalled. To undo something, you have to change it again in the app (or have the installer do it).
+
+The same applies to devices on a relay, such as a heat pump or an immersion heater without Modbus: a relay that OpenAmpere switched on stays on while OpenAmpere is stopped or uninstalled. Only adjustable devices are set to 0 W when OpenAmpere stops. Before stopping OpenAmpere, set such devices to **Aus** (Off) on the **Geräte** (Devices) page, see [docs/devices.md](docs/devices.md#relays-and-switched-devices).
 
 Other apps such as [Home Assistant](docs/homeassistant.md) can only control via their own access with the permission
 „Lesen + Steuern“ (Read + control), and only while control is enabled. They cannot change the main switch, test mode or the

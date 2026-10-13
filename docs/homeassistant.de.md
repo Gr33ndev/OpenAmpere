@@ -80,6 +80,10 @@ PV-Erzeugung bei „Solarmodule“, Speicher geladen/entladen bei „Batteriespe
 Nur mit der Berechtigung **„Lesen + Steuern“** und nur, solange die Steuerung in OpenAmpere eingeschaltet ist
 (Mehr → Steuerung und Protokoll). Ist sie aus, sind diese Entitäten in Home Assistant nicht verfügbar.
 
+Mit dieser Berechtigung können **alle Benutzer von Home Assistant und alle Automationen** die Steuer-Entitäten
+verwenden, nicht nur Administratoren: Home Assistant kann Entitäten nicht auf bestimmte Benutzer beschränken. Willst du
+das nicht, wähle **„Nur lesen“**.
+
 | Entität | |
 |---|---|
 | Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen |

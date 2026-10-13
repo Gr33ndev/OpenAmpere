@@ -72,6 +72,11 @@ a minimum run time and a minimum pause time. OpenAmpere does not read their powe
 | Any device with web addresses | One address for on, one for off (http or https) | not yet confirmed | Any device in the home network that can be switched by calling an address. |
 | Heat pump with SG-Ready input | Via a relay above that switches the SG-Ready contact | not yet confirmed | OpenAmpere only switches the relay; what the heat pump does with the signal is set on the heat pump. |
 
+**A relay that OpenAmpere switched on stays on while OpenAmpere is stopped or uninstalled.** When it stops, OpenAmpere
+only sets adjustable devices (such as the immersion heaters above) to 0 W. OpenAmpere gives relays no time limit: they keep their
+state until OpenAmpere runs again and switches them as needed. Before you stop or uninstall OpenAmpere, set these
+devices to **Aus** (Off) on the **Geräte** (Devices) page.
+
 ## Wallboxes
 
 | Device | Connection | Read | Control | Tested on real hardware | Notes |

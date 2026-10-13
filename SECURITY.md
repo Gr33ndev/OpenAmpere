@@ -32,12 +32,14 @@ details.
 - Control features are off by default and start in test mode.
 - Credentials (passwords for the grid operator portal and evcc, ntfy token, cloud API keys, switch addresses of devices,
   which often contain a password) are stored encrypted in the database (AES-256-GCM). The key is in `data/secret.key`, readable only by the app user. The database alone does not
-  reveal them, and backups do not contain them at all. The app never returns them, and for passwords not even parts of
+  reveal them, and downloaded backups (More → Data & backup) do not contain them at all. The app never returns them, and for passwords not even parts of
   them. The app's own access password is only stored as a scrypt hash.
 - Other apps (e.g. the Home Assistant integration) connect only over HTTPS, pin the certificate of OpenAmpere and use
   a token that is shown once, stored only as a hash and limited to reading or to the released commands.
-- Updates, from the app and by running the installer again, are only started if the image was built by the release
-  workflow of this repository (signed build provenance, see [Verifying a release](README.md#verifying-a-release)).
+- Standalone installation with Docker: updates, from the app and by running the installer again, are only started if
+  the image was built by the release workflow of this repository (signed build provenance, see
+  [Verifying a release](README.md#verifying-a-release)). This check is done by OpenAmpere's update helper; it does not
+  cover the Home Assistant app (see below).
 
 ## What OpenAmpere does not protect
 
@@ -48,6 +50,11 @@ details.
   able to read them after every restart without a login, to fetch data from the grid operator and evcc. So do not
   share the folder, and secure the server itself.
 - Credentials in `config.yaml` or environment variables are stored there in plain text.
+- Backups of Home Assistant include the whole data folder of the Home Assistant app: `secret.key` and a copy of the
+  database, and with them the stored credentials. They are protected only by the encryption of Home Assistant's
+  backups, so keep its encryption key safe.
+- Home Assistant installs and updates the Home Assistant app without checking the build provenance of its image.
+  You can check it yourself, see [Verifying a release](README.md#verifying-a-release).
 - Modbus TCP itself has no authentication. Anyone on the home network can talk to the inverter even without
   OpenAmpere.
 - Until a password is set, anyone on the home network can set it. Set it right after the installation.

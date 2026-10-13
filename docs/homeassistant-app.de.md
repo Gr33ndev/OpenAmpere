@@ -26,8 +26,10 @@ sonst kann es dein Installationsbetrieb erledigen.
 
 In der Seitenleiste brauchst du kein Passwort: Home Assistant hat schon geprüft, wer du bist. Einstellungen ändern und
 den Wechselrichter steuern dürfen dort nur **Administratoren von Home Assistant**; andere Benutzer von Home Assistant
-können nur ansehen. Den Eintrag in der Seitenleiste sehen nur Administratoren. Im Protokoll (Mehr → Steuerung und
-Protokoll) steht, welcher Benutzer von Home Assistant etwas geändert hat.
+können nur ansehen. Den Eintrag in der Seitenleiste sehen nur Administratoren. Bei Änderungen in der Seitenleiste steht
+im Protokoll (Mehr → Steuerung und Protokoll), welcher Benutzer von Home Assistant sie gemacht hat. Bei Änderungen über
+die Home-Assistant-Integration steht dort stattdessen der Name des Zugangs (Mehr → Verbundene Apps), nicht der
+Benutzer.
 
 ## Zugriff über die IP-Adresse
 
@@ -35,6 +37,12 @@ Außer über die Seitenleiste kannst du OpenAmpere direkt unter `http://<Adresse
 Beispiel auf dem Handy ohne Home Assistant oder für [evcc](https://evcc.io). Dafür braucht OpenAmpere ein Passwort. Lege
 es in der Seitenleiste unter **Mehr → Zugriffsschutz** fest. Bis dahin ist der direkte Zugriff gesperrt. Hast du es
 vergessen, legst du dort einfach ein neues fest, das alte brauchst du nicht.
+
+Browser schicken ihre Anmelde-Cookies an jeden Port einer Adresse. Öffnest du OpenAmpere unter derselben Adresse wie
+Home Assistant, bekommen auch Home Assistant und seine anderen Apps die Anmeldung von OpenAmpere. Öffne den direkten
+Zugriff deshalb unter einer anderen Adresse als Home Assistant: Rufst du Home Assistant über seinen Namen auf (zum
+Beispiel `homeassistant.local:8123`), öffne OpenAmpere über die IP-Adresse, oder umgekehrt. In der Seitenleiste spielt
+das keine Rolle.
 
 - **Port belegt oder anderer Port gewünscht:** Einstellungen → Apps → OpenAmpere → **Konfiguration → Netzwerk**. Ist
   Port 8780 schon von einer anderen App belegt, startet OpenAmpere nicht. Wähle dann dort einen anderen Port.
@@ -55,7 +63,9 @@ und installiert sie selbst, HACS brauchst du nicht.** Updates der App aktualisie
    noch einmal in Home Assistant.
 
 Steuer-Entitäten sind nur verfügbar, solange in OpenAmpere die Steuerung eingeschaltet ist (Mehr → Steuerung und
-Protokoll).
+Protokoll). Mit **„Lesen + Steuern“** können alle Benutzer von Home Assistant und alle Automationen sie verwenden, nicht
+nur Administratoren. Home Assistant kann Entitäten nicht auf bestimmte Benutzer beschränken. Willst du das nicht, wähle
+**„Nur lesen“**.
 
 Hattest du die Integration vorher über HACS installiert? Dann lässt die App sie in Ruhe und sagt das in einem Hinweis.
 Entferne sie in HACS und starte die App neu, ab dann hält die App sie aktuell. Mehr dazu in der
@@ -82,13 +92,20 @@ Es darf nur ein OpenAmpere mit dem Wechselrichter sprechen. Zwei stören sich ge
 
 - **Sicherungen** von Home Assistant enthalten OpenAmpere mit Verlauf, Einstellungen und gespeicherten Zugangsdaten.
   OpenAmpere schreibt dafür jedes Mal eine saubere Kopie seiner Datenbank. Wiederherstellen kannst du sie wie bei jeder
-  anderen App.
+  anderen App. In so einer Sicherung steht auch der Schlüssel für die gespeicherten Zugangsdaten (`secret.key`). Wer
+  die Sicherung öffnen kann, kann sie also lesen. Geschützt sind sie nur durch die Verschlüsselung der Sicherungen von
+  Home Assistant: Bewahre deren Schlüssel sicher auf und gib Sicherungen nicht weiter.
 - **Updates** kommen über Home Assistant: Einstellungen → Apps → OpenAmpere. Dort kannst du auch automatische Updates
   einschalten.
 - **Von unterwegs** öffnest du OpenAmpere über den Fernzugriff von Home Assistant in der Seitenleiste, zum Beispiel mit
   Home Assistant Cloud oder der Tailscale-App für Home Assistant.
 
 ## Deinstallieren
+
+Schalte vorher die Geräte aus, die OpenAmpere über ein Relais schaltet, zum Beispiel eine Wärmepumpe oder einen
+Heizstab: Stelle sie auf der Seite **Geräte** auf **Aus**. Wenn OpenAmpere beendet wird, setzt es regelbare Geräte auf
+0 W. Ein Relais, das es eingeschaltet hat, bleibt aber an, bis OpenAmpere wieder läuft. Das gilt auch, wenn du die App
+nur stoppst.
 
 Lade vorher unter **Mehr → Daten & Sicherung** eine Sicherung herunter, falls du zurückkommen möchtest: Beim
 Deinstallieren der App werden ihre Daten gelöscht (Verlauf und Einstellungen). Dann die App unter Einstellungen → Apps →

@@ -62,8 +62,8 @@ does not make this worse and cannot prevent it.
 3. **OpenAmpere → inverter:** only the control features write, and only through the checks in
    [Writing to the inverter](#writing-to-the-inverter). Continuous control uses the inverter's remote control with a
    watchdog, so it ends by itself if OpenAmpere stops.
-4. **Data folder:** credentials are encrypted with AES-256-GCM; the key lives in a separate file. Backups contain no
-   credentials, no password hash and no app tokens, and a restored backup keeps the current password, sessions,
+4. **Data folder:** credentials are encrypted with AES-256-GCM; the key lives in a separate file. Downloaded backups
+   contain no credentials, no password hash and no app tokens, and a restored backup keeps the current password, sessions,
    tokens and secrets.
 5. **App → updater:** the app cannot reach Docker. It can only write a request file; the updater decides what to pull
    and verifies the image before starting it, and rolls back if the new version does not become healthy.
@@ -129,6 +129,13 @@ Based on the OWASP Top 10 (2021) and the CWE Top 25.
 
 - Plain HTTP in the home network: someone listening there can read the session cookie and the password at login.
   Mitigation: VPN with HTTPS for remote access; the home network is assumed to be trusted.
+- Cookies are bound to the host name, not to the port: the browser sends the session cookie to every service under the
+  same name, for example Home Assistant on port 8123, its apps or evcc. Such a service could act as the owner in
+  OpenAmpere. Mitigation: open OpenAmpere under a host name of its own (e.g. the IP address when Home Assistant is
+  opened by its name), over HTTPS (Tailscale), or in the Home Assistant app through the sidebar, which needs no
+  session cookie.
+- Backups of Home Assistant contain the app's whole data folder, including `secret.key` and a copy of the database;
+  only Home Assistant's backup encryption protects them.
 - The first password can be set by anyone in the home network until the owner sets it.
 - Someone with access to the server or the `data/` folder can read the credentials.
 - Modbus TCP has no authentication; this is a property of the devices.

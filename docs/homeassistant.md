@@ -83,6 +83,10 @@ Only with the **Lesen + Steuern** (Read + control) permission, and only while co
 (**Mehr → Steuerung und Protokoll**, More → Control and log). If it is off, these entities are unavailable in Home
 Assistant.
 
+With this permission, **every user of Home Assistant and every automation** can use the control entities, not only
+administrators: Home Assistant cannot limit entities to certain users. If that is not what you want, choose **Nur
+lesen** (Read only).
+
 | Entity | |
 |---|---|
 | Work mode | Self-use, feed-in first, backup, peak shaving |

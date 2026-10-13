@@ -31,7 +31,7 @@
     "codeShownOnce": "The code is only shown now. It works like a key: do not share it, only paste it into the app.",
     "connectNewApp": "Connect a new app",
     "connectionCode": "Connection code",
-    "controlScopeHint": "The app may also change the work mode, battery limits, charging from the grid and the mode of your devices – only while control is turned on here. The main switch, export limit and settings stay with OpenAmpere.",
+    "controlScopeHint": "The app may also change the work mode, battery limits, charging from the grid and the mode of your devices – only while control is turned on here. The main switch, export limit and settings stay with OpenAmpere. In Home Assistant, every user and every automation can then use these controls, not only administrators.",
     "createAccess": "Create access",
     "created": "Created {date}",
     "done": "Done",

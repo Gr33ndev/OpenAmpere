@@ -25,6 +25,12 @@ OpenAmpere currently has one maintainer: [@Gr33ndev](https://github.com/Gr33ndev
 Everyone who can change the repository or read private vulnerability reports must use two-factor authentication on
 GitHub with an authenticator app (TOTP), a security key or a passkey. SMS alone is not enough.
 
+The update helper of existing installations and the documented `gh attestation verify` commands trust images signed
+by the release workflow of `github.com/Gr33ndev/OpenAmpere`, identified by these names only. The account `Gr33ndev` and
+the repository `OpenAmpere` must therefore never be renamed, transferred or deleted: a freed name could be registered by
+someone else, whose release workflow would then pass the check. A move needs a new release of the update helper first,
+and every installation must run the install script again.
+
 ## Becoming a maintainer
 
 People who contribute regularly and carefully, for example drivers, reviews or helping others in issues, can be invited as maintainers. With a second maintainer, changes to drivers and control functions will need a review by someone other than the author.

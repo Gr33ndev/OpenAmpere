@@ -24,8 +24,9 @@ devices your installer can do it.
 
 In the sidebar you need no password: Home Assistant has already checked who you are. Only **administrators of Home
 Assistant** may change settings and control the inverter there; other users of Home Assistant can only view. The
-sidebar entry is only shown to administrators. The control log (More → Control and log) shows which user of Home
-Assistant changed something.
+sidebar entry is only shown to administrators. For changes made in the sidebar, the control log (More → Control and
+log) shows which user of Home Assistant made them. Changes through the Home Assistant integration show the name of the
+app access instead (More → Connected apps), not the user.
 
 ## Access by IP address
 
@@ -33,6 +34,11 @@ Besides the sidebar, OpenAmpere can be opened directly at `http://<address of Ho
 phone without Home Assistant or for [evcc](https://evcc.io). This access needs a password. Set it in the sidebar under
 **More → Access protection**; until then, direct access is locked. If you forget it, set a new one there. The old one
 is not needed.
+
+Browsers send their login cookies to every port of an address. If you open OpenAmpere at the same address as Home
+Assistant, Home Assistant and its other apps also receive OpenAmpere's login. So open direct access under a different
+address than Home Assistant: if you open Home Assistant by its name (for example `homeassistant.local:8123`), open
+OpenAmpere by the IP address, or the other way round. In the sidebar this does not matter.
 
 - **Port in use, or another port:** Settings → Apps → OpenAmpere → **Configuration → Network**. If port 8780 is taken
   by another app, OpenAmpere does not start; choose another port there.
@@ -51,7 +57,9 @@ it along and installs it itself; you need no HACS.** Updates of the app update t
 3. Home Assistant and OpenAmpere show the same 6-digit code. Compare it in OpenAmpere under **More → Connected apps**
    and allow the connection, read only or with control. Then confirm the code once more in Home Assistant.
 
-Control entities are only available while control is switched on in OpenAmpere (More → Control and log).
+Control entities are only available while control is switched on in OpenAmpere (More → Control and log). With
+**Read + control**, every user of Home Assistant and every automation can use them, not only administrators. Home
+Assistant cannot limit entities to certain users. If that is not what you want, choose **Read only**.
 
 Had the integration through HACS before? Then the app leaves it alone and says so in a notice. Remove it in HACS and
 restart the app; from then on the app keeps it up to date. Details:
@@ -76,12 +84,18 @@ Only one OpenAmpere may talk to the inverter. Two of them disturb each other.
 ## Backups and updates
 
 - **Backups** of Home Assistant include OpenAmpere with its history, settings and stored credentials. OpenAmpere
-  writes a consistent copy of its database for each backup. Restore it like any other app.
+  writes a consistent copy of its database for each backup. Restore it like any other app. Such a backup also contains
+  the key for the stored credentials (`secret.key`), so anyone who can open the backup can read them. Only the
+  encryption of Home Assistant's backups protects them: keep its encryption key safe and do not share backups.
 - **Updates** come through Home Assistant: Settings → Apps → OpenAmpere. You can turn on automatic updates there.
 - **Remote access:** open OpenAmpere in the sidebar through the remote access of Home Assistant, for example Home
   Assistant Cloud or the Tailscale app for Home Assistant.
 
 ## Uninstalling
+
+First switch off the devices that OpenAmpere switches through a relay, for example a heat pump or an immersion heater:
+on the **Devices** page set them to **Off**. When OpenAmpere stops, it sets adjustable devices to 0 W, but a relay it
+switched on stays on until OpenAmpere runs again. This also applies when you only stop the app.
 
 Download a backup first under **More → Data & backup** if you might come back: uninstalling the app deletes its
 data (history and settings). Then uninstall the app under Settings → Apps → OpenAmpere.

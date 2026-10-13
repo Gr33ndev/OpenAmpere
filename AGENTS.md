@@ -155,7 +155,9 @@ Every change reaches owners in three ways, all built from the same release (#300
   copied by the installer; users must run it again to get changes. The website serves the scripts of the latest
   release tag, not of `main`.
 - **The update helper verifies image provenance** with cosign against `.github/workflows/release.yml`; renaming that
-  workflow or the repository breaks updates.
+  workflow or the repository breaks updates. The check (and `gh attestation verify --owner Gr33ndev`) trusts the
+  names `Gr33ndev` and `OpenAmpere`, not a fixed account or repository ID: never rename, transfer or delete the account
+  or the repository, or someone who registers a freed name can sign images that pass (see GOVERNANCE.md).
 - **The Website workflow cancels older runs** (`concurrency: pages`); a "cancelled" run on `main` is normal.
 - **Release:** maintainers only, from a clean `main`: `scripts/release.sh X.Y.Z` then
   `git push origin vX.Y.Z`, wait for the "Release" workflow, then `git push origin main` (Home Assistant offers the
