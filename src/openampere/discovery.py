@@ -186,6 +186,10 @@ class Rediscovery:
         if host is None or host == inverter.host:
             return None
         log.warning("inverter found at new address %s (was %s)", host, inverter.host)
+        # told before the address is changed: in the control log, in the app and by a notification (#351). Another
+        # device answering with the same serial number would get OpenAmpere's commands, so the owner must know.
+        runtime.storage.log_control("inverter_relocated", {"from": {"host": inverter.host}, "to": {"host": host}},
+                                    False, "ok")
         runtime.storage.set_meta("relocated", {"from": inverter.host, "to": host, "ts": now})
         await runtime.update_settings({"inverter.host": host})
         return host

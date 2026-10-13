@@ -12,6 +12,7 @@ limit, remote power, settings, tariffs, devices' configuration (it contains URLs
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from collections import deque
 from dataclasses import asdict
@@ -21,6 +22,8 @@ from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketD
 from .apitokens import ApiTokens, Pairing
 from .control import SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
+
+log = logging.getLogger(__name__)
 
 API_VERSION = 1
 PREFIX = "/api/external/v1"
@@ -35,9 +38,23 @@ SETTINGS_WAIT_S = 5.0
 STALE_AFTER_S = 60
 
 
+# the writes of battery settings are kept in storage: a restart (or a crash loop) must not start a new hour (#351)
+KEPT = "battery:"
+KEPT_META = "external_battery_writes"
+
+
 class RateLimit:
-    def __init__(self) -> None:
+    def __init__(self, storage=None, now: float | None = None) -> None:
+        """storage: keeps the writes of battery settings beyond a restart (None: only in memory)."""
         self._writes: dict[str, deque] = {}
+        self._storage = storage
+        stored = storage.get_meta(KEPT_META) if storage is not None else None
+        now = time.time() if now is None else now
+        for key, times in (stored.items() if isinstance(stored, dict) else ()):
+            if isinstance(key, str) and key.startswith(KEPT) and isinstance(times, list):
+                # only the last hour; a time in the future (the clock was set back) would block for longer
+                self._writes[key] = deque(sorted(float(t) for t in times if isinstance(t, (int, float))
+                                                 and not isinstance(t, bool) and now - 3600 < t <= now))
 
     def check(self, key: str, per_hour: int, now: float | None = None) -> None:
         now = time.time() if now is None else now
@@ -49,6 +66,12 @@ class RateLimit:
             raise HTTPException(429, f"Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). "
                                      f"Bitte in {wait} min erneut versuchen.")
         writes.append(now)
+        if self._storage is not None and key.startswith(KEPT):
+            kept = {k: [t for t in v if t > now - 3600] for k, v in self._writes.items() if k.startswith(KEPT)}
+            try:
+                self._storage.set_meta(KEPT_META, {k: v for k, v in kept.items() if v})
+            except Exception as err:  # noqa: BLE001 - e.g. disk full: still limited in memory
+                log.debug("could not store the writes of battery settings: %s", err)
 
 
 def bearer(value: str | None) -> str | None:
@@ -61,7 +84,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
              version: str, battery: BatteryControl, charging, surplus, devices, live_apps: dict) -> None:
     """live_apps: token id -> {"since", "connections"} of the apps with an open live connection (#79)."""
     collector = runtime.collector
-    limits = RateLimit()
+    limits = RateLimit(runtime.storage)
 
     def source(request: Request) -> str:
         return f"{request.state.token['name']} (Zugang für Apps)"

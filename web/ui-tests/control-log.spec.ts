@@ -30,6 +30,8 @@ const ENTRIES = [
   // #322: changes of the grid charging settings, with the state of charge at the time
   { action: "grid_charging_settings", details: { from: { target_soc: 45, mode: "cheapest", max_price_ct: null },
     to: { target_soc: 35, mode: "window", max_price_ct: 25.5 }, soc: 30 }, dry_run: false, result: "ok" },
+  // #351: found at a new address by its serial number
+  { action: "inverter_relocated", details: { from: { host: "192.0.2.10" }, to: { host: "192.0.2.20" } }, dry_run: false, result: "ok" },
   { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort", note: "Fehler: keine Antwort" },
 ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
 
@@ -54,6 +56,7 @@ test("control log entries read as sentences and can be exported", async ({ page,
     "Notstrom-Reserve nach dem Laden aus dem Netz wieder auf 20 % gestellt (vorübergehend 61 %).",
     "Notstrom-Reserve nach dem Laden aus dem Netz nicht zurückgestellt: Sie wurde inzwischen auf 35 % geändert, dieser Wert bleibt.",
     "Laden aus dem Netz geändert: Laden bis von 45 % auf 35 %, Lade-Art von Günstigste Zeit auf Festes Zeitfenster und Höchstpreis von keiner auf 25,50 ct/kWh. (Ladestand 30 %)",
+    "Wechselrichter unter einer neuen Adresse im Heimnetz gefunden: 192.0.2.20 statt 192.0.2.10. OpenAmpere verbindet sich jetzt mit dieser Adresse.",
     "Sonstige Änderung (something_new).",
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();

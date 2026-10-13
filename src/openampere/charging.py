@@ -73,6 +73,9 @@ def validate(raw: dict, rated_w: int | None, battery_max_w: int | None = None) -
         # only real yes/no: "false" as text must not switch grid charging on (#242)
         if not isinstance(s.enabled, bool) or not isinstance(s.legal_confirmed, bool):
             raise ValueError
+        # NaN or Infinity in the JSON: a maximum price of NaN would never match and Infinity none at all (#351)
+        if not math.isfinite(s.battery_kwh) or (s.max_price_ct is not None and not math.isfinite(s.max_price_ct)):
+            raise ValueError
     except (TypeError, ValueError, OverflowError):  # OverflowError: Infinity in the JSON
         raise ValueError("Ungültige Einstellungen für das Laden aus dem Netz.") from None
     if s.mode not in ("cheapest", "window"):
@@ -111,21 +114,36 @@ class GridCharging:
 
     # ---- settings ------------------------------------------------------------
 
+    def _power_limits(self) -> tuple[int | None, int | None]:
+        """The inverter's rated power (None while no device is known) and the battery's allowed charging power."""
+        device = self.runtime.collector.device
+        battery_max_w = round(self.runtime.config.battery.max_charge_kw * 1000) or None
+        return (device.rated_power_w if device else None), battery_max_w
+
     @property
     def settings(self) -> ChargingSettings:
         """Checked like a change in the app also when read: the stored values may come from a restored backup."""
         stored = self.runtime.storage.get_meta("grid_charging") or {}
         try:
-            return validate(stored if isinstance(stored, dict) else {}, None)
+            settings = validate(stored if isinstance(stored, dict) else {}, None)
         except ValueError as err:
             log.warning("stored grid charging settings ignored: %s", err)
             return ChargingSettings()  # off
+        # never more than the inverter and the battery allow now: a restored backup or a lower battery limit set
+        # after saving must not lead to a command above it (#351). Lowered, not refused: charging goes on.
+        rated_w, battery_max_w = self._power_limits()
+        limit = min(rated_w or 15_000, battery_max_w or 15_000)
+        if settings.power_w > limit:
+            if limit < MIN_CHARGE_W:
+                log.warning("stored grid charging settings ignored: the allowed charging power is below %s W",
+                            MIN_CHARGE_W)
+                return ChargingSettings()  # off
+            settings.power_w = limit
+        return settings
 
     def save(self, raw: dict, source: str | None = None) -> ChargingSettings:
         """source: who asked for it if not the web app, e.g. the name of an app's access token."""
-        device = self.runtime.collector.device
-        battery_max_w = round(self.runtime.config.battery.max_charge_kw * 1000) or None
-        settings = validate(raw, device.rated_power_w if device else None, battery_max_w)
+        settings = validate(raw, *self._power_limits())
         old = self.settings
         self.runtime.storage.set_meta("grid_charging", asdict(settings))
         self.full_at_soc, self._limit = None, None  # new settings: try again, read the charge limit again (#242)
