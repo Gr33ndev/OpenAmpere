@@ -561,6 +561,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         device = dict(collector.device.__dict__) if collector.device else None
         firmware = storage.get_meta("firmware") or {}
         database = {key: storage.get_meta(f"database_{key}") for key in ("damaged", "restored", "rollback")}
+        database["ha_backup"] = storage.get_meta(ha_app.BACKUP_RESTORED)  # Home Assistant restored a backup (#350)
         if not logged_in(request):  # the serial number identifies the installation (#164): shortened without login
             if device:
                 device["serial"] = privacy.shorten(device.get("serial"))
@@ -821,7 +822,7 @@ def create_app(runtime: Runtime) -> FastAPI:
                         raise HTTPException(413, "Datei zu groß (max. 4 GB).")
                     file.write(chunk)
             outside = runtime.outside_secrets()  # the backup does not move them (GHSA-8mjv-f2x6-2v3h)
-            await asyncio.to_thread(storage.stage_restore, upload,
+            await asyncio.to_thread(storage.stage_restore, upload, source=actor(request),
                                     settings=lambda backup, current: restore_settings(backup, current, outside))
         except InvalidBackup as err:
             raise HTTPException(400, str(err)) from None
@@ -845,6 +846,12 @@ def create_app(runtime: Runtime) -> FastAPI:
     def dismiss_database_rollback():
         """The owner has read that an older version continues with the copy from before an upgrade (#166)."""
         storage.delete_meta("database_rollback")
+        return {"ok": True}
+
+    @app.delete("/api/database/ha-backup")
+    def dismiss_ha_backup():
+        """The owner has read that Home Assistant restored a backup with the password and app accesses of then."""
+        storage.delete_meta(ha_app.BACKUP_RESTORED)
         return {"ok": True}
 
     @app.get("/api/live")

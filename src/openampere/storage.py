@@ -120,9 +120,11 @@ SETUP_LOCKED = "setup_locked"
 # Access and device state stay those of the running installation when a backup is restored: backups contain no
 # sessions, and an empty or old password would let anyone in the home network take over (or lock out the owner).
 # api_tokens: tokens revoked since the backup must stay revoked. remote_command: whether OpenAmpere still has to
-# switch off the inverter's remote control right now (#141).
+# switch off the inverter's remote control right now (#141). grid_charging_reserve(_stops_at_reserve): a backup reserve
+# 0.23.1 raised and that is still to be set back (charging.RAISED_RESERVE, #320); a backup must neither bring back an
+# old one nor drop one that is pending.
 KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "consumer_switched_on",  # last: #243
-                   "known_devices", SETUP_LOCKED)
+                   "known_devices", SETUP_LOCKED, "grid_charging_reserve", "grid_charging_stops_at_reserve")
 SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26
 
 
@@ -209,11 +211,52 @@ def _stamp() -> str:
     return time.strftime("%Y%m%d-%H%M%S")
 
 
+def _current_access_rows(path: Path) -> dict[str, str | None]:
+    """The access and device state (KEEP_ON_RESTORE) of the database as it is now, as stored (None: no such row).
+    Rows that cannot be read (e.g. a damaged file) are left out."""
+    rows: dict[str, str | None] = {}
+    if not path.is_file():
+        return rows
+    try:
+        db = sqlite3.connect(str(path))  # not read-only: only then can SQLite read a write-ahead log left over
+    except (sqlite3.Error, OSError):
+        return rows
+    try:
+        for key in KEEP_ON_RESTORE:
+            try:
+                row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            except sqlite3.Error:
+                continue
+            rows[key] = None if row is None else row[0]
+    finally:
+        db.close()
+    return rows
+
+
 def _apply_pending_restore(path: Path) -> Path | None:
     """Puts a backup that was restored in the app in place of the database, before anything opens it.
-    The previous database is kept next to it. Returns where."""
+    The previous database is kept next to it. Returns where. The access and device state (KEEP_ON_RESTORE) is taken
+    from the database it replaces, not from the time the backup was uploaded: a password changed, a logout everywhere
+    or an app access revoked in between stays. Without that, the backup is not restored."""
     pending = Path(f"{path}{RESTORE_SUFFIX}")
     if not pending.is_file():
+        return None
+    try:
+        db = sqlite3.connect(str(pending))
+        try:
+            with db:
+                for key, value in _current_access_rows(path).items():
+                    if value is None:
+                        db.execute("DELETE FROM meta WHERE key=?", (key,))
+                    else:
+                        db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, value))
+        finally:
+            db.close()
+    except (sqlite3.Error, OSError) as err:  # e.g. a full disk: the owner can upload the backup again
+        log.error("could not take the password and app accesses over into the restored backup (%s); "
+                  "the backup is not restored", err)
+        for suffix in ("", "-journal"):
+            Path(f"{pending}{suffix}").unlink(missing_ok=True)
         return None
     kept = path.with_name(f"{path.name}{KEPT_SUFFIX}{_stamp()}")
     _move_with_side_files(path, kept)  # also a write-ahead log without its database: it must not meet the backup
@@ -587,15 +630,18 @@ class Storage:
                 if row:
                     settings = {k: v for k, v in json.loads(row[0]).items() if k not in drop_settings}
                     dest.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
-                dest.execute("DELETE FROM meta WHERE key IN ('sessions', 'auth', 'api_tokens', 'known_devices')")
+                dest.execute("DELETE FROM meta WHERE key IN ('sessions', 'auth', 'api_tokens', 'known_devices', "
+                             "'grid_charging_reserve', 'grid_charging_stops_at_reserve')")
             dest.execute("VACUUM")  # really remove the deleted data from the file
             dest.close()
 
-    def stage_restore(self, upload: str | Path, *, settings: Callable[[dict, dict], dict] | None = None) -> None:
+    def stage_restore(self, upload: str | Path, *, settings: Callable[[dict, dict], dict] | None = None,
+                      source: str | None = None) -> None:
         """Checks an uploaded backup and copies its data next to the database, where it replaces it on the next start
         (nothing has the database open then). The password, sessions and app tokens are taken over from the running
-        installation; settings(backup, current) gives the settings to restore (config.restore_settings). Raises
-        InvalidBackup, or OSError without enough free space."""
+        installation; settings(backup, current) gives the settings to restore (config.restore_settings). Every
+        restore is in the control log, with who restored it (source, see api.actor). Raises InvalidBackup, or OSError
+        without enough free space."""
         upload = Path(upload)
         check_backup(upload)
         with self._lock:
@@ -620,11 +666,12 @@ class Storage:
                 # update_latest: what the app shows as a new version, with a link, is looked up again
                 values = {**keep, "settings": restored, "settings_revision": revision + 1,
                           "database_damaged": None, "database_restored": None, "update_latest": None}
-                changes = _audited_changes(current, restored)
-                if changes:  # control switched on or off by the restore belongs into the control log, too
-                    result = "Datensicherung wiederhergestellt"
-                    db.execute("INSERT INTO control_log VALUES (?,?,?,?,?)",
-                               (time.time(), "control_switches", json.dumps(changes), 0, result))
+                # also control switched on or off by the restore
+                details = {"from": {}, "to": {}, **_audited_changes(current, restored),
+                           **({"source": source} if source else {})}
+                result = "Datensicherung wiederhergestellt"
+                db.execute("INSERT INTO control_log VALUES (?,?,?,?,?)",
+                           (time.time(), "control_switches", json.dumps(details), 0, result))
                 for key, value in values.items():
                     if value is None:
                         db.execute("DELETE FROM meta WHERE key=?", (key,))

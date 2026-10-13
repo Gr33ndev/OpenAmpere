@@ -133,7 +133,9 @@ Every change reaches owners in three ways, all built from the same release (#300
   permanently stored registers. Release only what OpenAmpere started (`_remote_owned`; after a restart the
   `remote_command` meta plus its own register values, #141).
 - Switching off is the safe direction and is written even with the master switch off or in test mode: releasing the
-  remote control, 0 W to a heating rod and "off" to a relay OpenAmpere switched on (#217, #243). Within 10 minutes
+  remote control, 0 W to a heating rod and "off" to a relay OpenAmpere switched on (#217, #243), and setting a backup
+  reserve raised by 0.23.1 back to the owner's value (#320; only to a device with `supports_control` and within the
+  current limits, #350). Within 10 minutes
   after a new connection, a remote command with enable 1 and OpenAmpere's timeout (180 s) counts as OpenAmpere's own
   (the inverter brings back its values after a restart, #143), so another controller using exactly these values would
   be switched off as well. Keep both when changing the release logic.

@@ -29,6 +29,18 @@ test("rollback notice explains which database is used", async ({ page, api }) =>
   expect(await layoutProblems(page)).toEqual([]);
 });
 
+// #350: after Home Assistant restored a backup, password and app accesses are those of then: the owner checks them
+test("notice after a restored Home Assistant backup asks to check password and app accesses", async ({ page, api }) => {
+  const status = await demoRequest<Record<string, unknown>>("GET", "/api/status");
+  api.override("/api/status", { ...status, database: { damaged: null, restored: null, rollback: null,
+    ha_backup: { ts: Date.now() / 1000 - 60 } } });
+  await open(page, "");
+  const notice = page.locator(".top-notice");
+  await expect(notice).toContainText("Home Assistant hat eine Sicherung wiederhergestellt");
+  await expect(notice).toContainText("Mehr → Verbundene Apps");
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
 test("restoring a backup asks before replacing the data", async ({ page }) => {
   await open(page, "more/data");
   const chooser = page.waitForEvent("filechooser");

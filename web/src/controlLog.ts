@@ -126,14 +126,17 @@ const version = (v: unknown) => str(typeof v === "string" ? v : obj(v).version) 
 function sentence(e: LogEntry, details: Values, from: Values, to: Values): string {
   const name = str(to.consumer ?? from.consumer) || t("common.device");
   switch (e.action) {
-    case "control_switches":
-      return Object.keys(to).map((key) => {
+    case "control_switches": {
+      // a restored backup: always logged, with the switches it changed (#350)
+      const restored = e.result === "Datensicherung wiederhergestellt" ? [t("settings.controlLog.backupRestored")] : [];
+      return [...restored, ...Object.keys(to).map((key) => {
         if (key === "control.enabled") return to[key] ? t("settings.controlLog.controlOn") : t("settings.controlLog.controlOff");
         if (key === "control.dry_run") return to[key] ? t("settings.controlLog.testModeOn") : t("settings.controlLog.testModeOff");
         if (key === "grid.feed_in_rule") return t("settings.controlLog.feedInRule", { from: feedInRule(from[key]), to: feedInRule(to[key]) });
         if (key === "pv.installed_kwp") return t("settings.controlLog.pvCapacity", { from: kwp(from[key]), to: kwp(to[key]) });
         return t("settings.controlLog.setting", { name: key, from: str(from[key]) || unknown(), to: str(to[key]) || unknown() });
-      }).join(" ") || t("settings.controlLog.unknown", { action: e.action });
+      })].join(" ") || t("settings.controlLog.unknown", { action: e.action });
+    }
     case "battery_settings":
       return t("settings.controlLog.batterySettings", { changes: batteryChanges(from, to, false) });
     case "battery_settings_check":

@@ -14,6 +14,10 @@
   },
   "databaseNotice": {
     "fileKept": "The damaged file was not deleted, it is in OpenAmpere's data folder: {file}",
+    "haBackupCheck": "Please check the password under More → Access protection and the accesses under More → Connected apps: if you changed the password or removed an access since the backup, please do it again.",
+    "haBackupTitle": "Home Assistant restored a backup",
+    "haBackupWhat": "Since the start ({date}), OpenAmpere runs with the database from a Home Assistant backup. The password and the accesses for apps are again as they were when the backup was made. Signed-in devices have to sign in again.",
+    "haBackupWhatNoDate": "Since the start, OpenAmpere runs with the database from a Home Assistant backup. The password and the accesses for apps are again as they were when the backup was made. Signed-in devices have to sign in again.",
     "hide": "Hide notice",
     "restoreHint": "Do you have a backup? Then restore it here or under More → Data & backup. Without a backup, please set up OpenAmpere again.",
     "rollbackFileKept": "The database of the newer version was not deleted, it is in OpenAmpere's data folder: {file}",

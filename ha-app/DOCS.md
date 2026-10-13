@@ -87,6 +87,9 @@ Only one OpenAmpere may talk to the inverter. Two of them disturb each other.
   writes a consistent copy of its database for each backup. Restore it like any other app. Such a backup also contains
   the key for the stored credentials (`secret.key`), so anyone who can open the backup can read them. Only the
   encryption of Home Assistant's backups protects them: keep its encryption key safe and do not share backups.
+- **After restoring a backup**, the password and the accesses for apps are again as they were when the backup was
+  made, and signed-in devices sign in again. If you changed the password or removed an access under **More → Connected
+  apps** since then, do it again. OpenAmpere reminds you of this until you hide the notice.
 - **Updates** come through Home Assistant: Settings → Apps → OpenAmpere. You can turn on automatic updates there.
 - **Remote access:** open OpenAmpere in the sidebar through the remote access of Home Assistant, for example Home
   Assistant Cloud or the Tailscale app for Home Assistant.
