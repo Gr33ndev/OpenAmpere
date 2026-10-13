@@ -28,7 +28,7 @@ map:
     read_only: false
 discovery:
   - openampere  # the Home Assistant integration offers to set up the app
-watchdog: http://[HOST]:[PORT:8080]/api/auth/status?healthcheck=1
+watchdog: http://[HOST]:[PORT:8080]/api/health
 # seconds Home Assistant waits when stopping before it kills the app: shutting down first switches off the remote
 # control of the inverter and the own devices, which can take longer than the default 10 s (#351)
 timeout: 30

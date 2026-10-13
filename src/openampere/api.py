@@ -410,6 +410,13 @@ def create_app(runtime: Runtime) -> FastAPI:
         return auth.verify_password(password, request.client.host if request.client else None,
                                    request.cookies.get(DEVICE_COOKIE))
 
+    @app.get("/api/health")
+    async def liveness():
+        """For Docker's HEALTHCHECK and the watchdog of Home Assistant (__main__.HEALTH_PATH, ha-app/config.yaml): no
+        login, no inverter. Answered on the event loop without the database lock or the thread pool, so a slow
+        database or busy threads do not count as a hang, and a hung event loop does."""
+        return {"ok": True}
+
     # ---- access protection ---------------------------------------------------
 
     @app.get("/api/auth/status")
