@@ -8,14 +8,14 @@ import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_U
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, dayOf, isoDate, kw, num, percent, timeZone, todayIso, updatedLabel } from "./format";
 import { decimalInput, parseDecimal as toNumber, parseWatts } from "./decimal";
-import { batterySettingName, batterySettingValue, describe, logCsv, statusLabel, type LogEntry } from "./controlLog";
+import { batterySettingName, batterySettingValue, describe, logCsv, logReport, statusLabel, type LogEntry, type ReportEntry } from "./controlLog";
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
 import { ControlModeBar } from "./ControlMode";
 import { LastRestore, RestoreButton } from "./Restore";
 import { UpdatesCard } from "./Updates";
-import { AmountInput, Button, Checkbox, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
+import { AmountInput, Button, Checkbox, copyText, Dialog, Field, LearnMore, LoadState, MenuRow, Notice, Segmented, Slider, SubPage, SwitchRow, toast, Unsaved } from "./ui";
 
 export type PageProps = { onBack: () => void; onNavigate?: (page: string) => void };
 
@@ -593,6 +593,22 @@ export function ControlPage({ onBack }: PageProps) {
     const { entries } = await getJson<{ entries: LogEntry[] }>("/api/control/log?limit=0");
     return new File([logCsv(entries)], `${t("settings.controlLog.fileName")}-${todayIso()}.csv`, { type: "text/csv;charset=utf-8" });
   };
+  // for an issue (#329): masked by the server, the text stays visible if copying fails
+  const [report, setReport] = useState<string | null>(null);
+  const copyReport = async () => {
+    try {
+      const text = logReport((await getJson<{ entries: ReportEntry[] }>("/api/control/log/report")).entries);
+      if (await copyText(text)) {
+        setReport(null);
+        toast(t("settings.controlLog.reportCopied"));
+      } else {
+        setReport(text);
+        toast(t("settings.controlLog.reportCopyFailed"), "error");
+      }
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
 
   return (
     <SubPage title={t("common.controlLog")} onBack={onBack}>
@@ -616,6 +632,10 @@ export function ControlPage({ onBack }: PageProps) {
         <div className="card form">
           <p className="hint">{t("settings.controlLog.exportHint")}</p>
           <DownloadButton file={exportLog} label={t("settings.controlLog.export")} />
+          <p className="hint">{t("settings.controlLog.reportHint")}</p>
+          <Button variant="secondary" onClick={() => void copyReport()}>{t("settings.controlLog.copyReport")}</Button>
+          {report && <textarea className="input report-text" readOnly rows={12} value={report}
+            onFocus={(e) => e.currentTarget.select()} aria-label={t("settings.controlLog.reportTitle")} />}
         </div>
       )}
     </SubPage>

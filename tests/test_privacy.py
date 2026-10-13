@@ -29,3 +29,33 @@ def test_shorten_and_durations():
     assert shorten("SN0123456789") == "SN01…89" and shorten("ABC") == "…" and shorten(None) is None
     assert ago(30) == "vor weniger als einer Minute" and ago(90 * 60) == "vor 90 Minuten"
     assert ago(5 * 3600) == "vor 5 Stunden" and ago(3 * 86400) == "vor 3 Tagen"
+
+
+def test_control_log_for_a_report(tmp_path, authed):
+    """#329: the log goes into issues without the owner's names, times, references and the system's size."""
+    from fastapi.testclient import TestClient
+
+    from openampere.api import create_app
+    from openampere.runtime import Runtime
+    from openampere.storage import Storage
+
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    log = runtime.storage.log_control
+    log("export_limit", {"from": {"export_limit_w": 9876}, "to": {"export_limit_w": 6543}, "rule": "limit_60",
+                         "installed_kwp": 10.9, "grid_operator_confirmation": "NB-2026-0815",
+                         "source": "Erika Muster (Home Assistant)"}, False, "Fehler: 192.168.178.5 antwortet nicht")
+    log("token_created", {"name": "Eriks Handy", "scope": "read"}, False, "ok")
+    log("outage_removed", {"from": {"outage": "03.10.2026 21:14"}, "to": {"outage": "entfernt"}}, False, "kein Stromausfall")
+    client = TestClient(create_app(runtime))
+    assert client.get("/api/control/log/report").status_code == 401  # like the log itself
+    authed(client)
+    entries = client.get("/api/control/log/report").json()["entries"]
+    text = str(entries)
+    for private in ("Erika", "Eriks Handy", "NB-2026-0815", "192.168.178.5", "21:14", "9876", "6543", "10.9"):
+        assert private not in text, private
+    outage, token, limit = entries
+    assert limit["details"]["to"]["export_limit_w"] == 6500 and limit["details"]["installed_kwp"] == 11
+    # newest first: the app access got its pseudonym before the person
+    assert token["details"]["name"] == "<Name-1>" and limit["details"]["source"] == "<Name-2> (Home Assistant)"
+    assert outage["details"]["to"]["outage"] == "<Zeitpunkt>" and "ts" not in outage and outage["ago_s"] >= 0
+    runtime.storage.close()
