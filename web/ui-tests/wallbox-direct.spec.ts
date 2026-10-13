@@ -55,3 +55,23 @@ test("another wallbox is pointed to the device reader", async ({ page }) => {
   await page.getByRole("button", { name: "Gerät auslesen" }).click();
   await expect(page.locator(".page-head h1")).toHaveText("Gerät auslesen");
 });
+
+// #328: listening over OCPP, the wallbox connects to the direct address
+test("the OCPP listener shows the address and what the wallbox reported", async ({ page, api }) => {
+  const idle = { active: false, remaining_s: 0, connected: false, path: "/ocpp", charge_point: null, vendor: null, model: null,
+    firmware: null, configuration_keys: 0, status: null, messages: 0 };
+  api.override("/api/wallbox/ocpp", idle);
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await expect(page.locator(".notice", { hasText: "ohne Ladeprofil lädt sie ohne Begrenzung" })).toBeVisible();
+  const connected = { ...idle, active: true, remaining_s: 840, connected: true, charge_point: "SN01", vendor: "FoxESS",
+    model: "A022KP1", firmware: "1.16", configuration_keys: 42, status: "Available", messages: 7 };
+  api.override("/api/wallbox/ocpp/start", connected);
+  api.override("/api/wallbox/ocpp", connected);
+  await page.getByRole("button", { name: "OCPP-Zuhörer starten (15 Minuten)" }).click();
+  await expect(page.locator(".code-block")).toHaveText(/^ws:\/\/.+\/ocpp$/);
+  await expect(page.locator(".notice", { hasText: "OpenAmpere hört zu" })).toBeVisible();
+  await expect(page.locator(".facts")).toContainText("FoxESS A022KP1");
+  await expect(page.getByText("Stell die Wallbox in der App des Herstellers wieder")).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+});
