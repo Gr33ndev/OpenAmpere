@@ -1,6 +1,40 @@
 {
   "versions": [
     {
+      "version": "0.25.0",
+      "date": "2026-10-13",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "wallbox",
+            "text": "Listen to a wallbox over ocpp for the diagnostics report (#333)"
+          },
+          {
+            "scope": "control",
+            "text": "Copy the control log for a report without personal data (#331)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Check a foxess wallbox read-only in the setup (#327)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Read any modbus device in the home network, read-only (#326)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "homeassistant",
+            "text": "Report an alarm only for fault codes other than 0 (#332)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.24.0",
       "date": "2026-10-12",
       "first": false,
