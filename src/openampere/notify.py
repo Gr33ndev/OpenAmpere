@@ -26,6 +26,10 @@ STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database bri
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
     """Publishes as JSON to the server root (UTF-8 safe, unlike HTTP headers): https://ntfy.sh/topic."""
+    if "@" in url:  # never part of a topic; urllib would take user name and password for the host name and quote
+        # them in its error, which goes into the log and the shared diagnostics report
+        raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "
+                         "eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.")
     parts = urllib.parse.urlsplit(url)
     topic = parts.path.strip("/")
     if parts.scheme not in ("http", "https") or not topic or "/" in topic:

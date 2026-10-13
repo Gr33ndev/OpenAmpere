@@ -106,6 +106,7 @@
     "zipFileTooLarge": "The ZIP file is too large."
   },
   "config": {
+    "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
     "settingTChangedApp": "The setting {key} can't be changed in the app."
   },
   "consumers": {

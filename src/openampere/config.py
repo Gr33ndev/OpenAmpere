@@ -378,5 +378,9 @@ def validate(changes: dict) -> dict:
                 value = str(value).strip()
         except (TypeError, ValueError, LookupError):
             raise ValueError(_invalid_message(key, rule)) from None
+        if key == "notify.ntfy_url" and "@" in value:
+            # a password in the address would be shown in the settings, kept in backups and quoted in errors
+            raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "
+                             "eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.")
         clean[key] = value
     return clean

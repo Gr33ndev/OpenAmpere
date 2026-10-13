@@ -102,6 +102,10 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
     config = runtime.config
     known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
              config.meter.username: "<Benutzername>"}
+    # user name and password in the ntfy address: the app refuses them, but config.yaml may still have them
+    userinfo = config.notify.ntfy_url.partition("://")[2].rpartition("@")[0]
+    for value in userinfo.split(":", 1):
+        known[value] = known[urllib.parse.unquote(value)] = "<Zugangsdaten>"
     for meter in config.meter.meter_ids or []:
         known[str(meter)] = "<Zählernummer>"
     for device in runtime.storage.get_meta("consumers") or []:  # hosts and switch addresses of devices
