@@ -24,7 +24,8 @@ EMPTY_SOC = 15  # a gap only means "battery empty" if the charge was this low be
 
 def _counters(snap: Snapshot) -> dict:
     t = snap.totals
-    return {"pv": t.pv, "load": t.load, "battery_charge": t.battery_charge, "battery_discharge": t.battery_discharge}
+    return {"pv": t.pv, "load": t.consumption, "battery_charge": t.battery_charge,  # not the load counter (#346)
+            "battery_discharge": t.battery_discharge}
 
 
 def _kwh(start: dict, end: dict, key: str) -> float | None:

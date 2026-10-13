@@ -4,6 +4,7 @@
 
 import sqlite3
 from collections import namedtuple
+from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,6 +41,20 @@ def add_note_author(db):
     db.execute("ALTER TABLE notes ADD COLUMN author TEXT")
 
 
+@contextmanager
+def version_1():
+    """OpenAmpere at schema version 1: the tests simulate later versions on top of it."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(storage_module, "MIGRATIONS", {})
+        patch.setattr(storage_module, "SCHEMA_VERSION", 1)
+        yield
+
+
+def create_version_1(path) -> None:
+    with version_1():
+        Storage(path).close()
+
+
 @pytest.fixture
 def version3(monkeypatch):
     """A future OpenAmpere with two more schema versions."""
@@ -65,18 +80,20 @@ def test_a_database_from_before_schema_versions_counts_as_version_1(tmp_path):
                      "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
                      "INSERT INTO samples VALUES (1750000000, 1, 2, 3, 4, 50);")
     db.close()
-    storage = Storage(path)
-    assert len(storage.samples(0, 2e9)) == 1 and "t_cell_min" in storage.samples(0, 2e9)[0]
-    storage.close()
+    with version_1():
+        storage = Storage(path)
+        assert len(storage.samples(0, 2e9)) == 1 and "t_cell_min" in storage.samples(0, 2e9)[0]
+        storage.close()
     assert version_of(path) == 1
     assert not list(tmp_path.glob("t.db.schema-*"))  # older versions read version 1 as they always did
 
 
 def test_upgrade_copies_the_database_and_migrates_step_by_step(tmp_path, monkeypatch):
     path = tmp_path / "t.db"
-    storage = Storage(path)
-    storage.set_meta("installation_id", "before-upgrade")
-    storage.close()
+    with version_1():
+        storage = Storage(path)
+        storage.set_meta("installation_id", "before-upgrade")
+        storage.close()
     (tmp_path / "t.db.schema-0").write_bytes(b"an older copy")
 
     monkeypatch.setattr(storage_module, "MIGRATIONS", {1: add_notes, 2: add_note_author})
@@ -96,7 +113,7 @@ def test_upgrade_copies_the_database_and_migrates_step_by_step(tmp_path, monkeyp
 
 def test_a_failed_step_is_rolled_back_and_the_start_stops(tmp_path, monkeypatch):
     path = tmp_path / "t.db"
-    Storage(path).close()
+    create_version_1(path)
 
     def broken(db):
         db.execute("CREATE TABLE half_done (x)")
@@ -112,9 +129,10 @@ def test_a_failed_step_is_rolled_back_and_the_start_stops(tmp_path, monkeypatch)
 
 def test_rollback_uses_the_copy_from_before_the_upgrade(tmp_path, monkeypatch):
     path = tmp_path / "t.db"
-    storage = Storage(path)
-    storage.set_meta("installation_id", "kept")
-    storage.close()
+    with version_1():
+        storage = Storage(path)
+        storage.set_meta("installation_id", "kept")
+        storage.close()
     with monkeypatch.context() as newer:  # the new version upgrades the database and writes to it
         newer.setattr(storage_module, "MIGRATIONS", {1: add_notes, 2: add_note_author})
         newer.setattr(storage_module, "SCHEMA_VERSION", 3)
@@ -122,7 +140,9 @@ def test_rollback_uses_the_copy_from_before_the_upgrade(tmp_path, monkeypatch):
         storage.set_meta("written_by", "newer version")
         storage.close()
 
-    runtime = Runtime({}, Storage(path))  # the updater went back to the previous version
+    monkeypatch.setattr(storage_module, "MIGRATIONS", {})  # the updater went back to the previous version
+    monkeypatch.setattr(storage_module, "SCHEMA_VERSION", 1)
+    runtime = Runtime({}, Storage(path))
     client = TestClient(create_app(runtime))
     assert runtime.storage.get_meta("installation_id") == "kept"
     assert runtime.storage.get_meta("written_by") is None
@@ -151,7 +171,7 @@ def test_a_newer_database_without_a_copy_stops_with_a_clear_message(tmp_path):
 
 def test_no_upgrade_without_space_for_the_copy(tmp_path, monkeypatch):
     path = tmp_path / "t.db"
-    Storage(path).close()
+    create_version_1(path)
     monkeypatch.setattr(storage_module, "MIGRATIONS", {1: add_notes, 2: add_note_author})
     monkeypatch.setattr(storage_module, "SCHEMA_VERSION", 3)
     usage = namedtuple("usage", "total used free")
@@ -189,3 +209,25 @@ def test_the_start_stops_with_the_message(tmp_path, monkeypatch):
     monkeypatch.setattr(Runtime, "from_files", newer)  # imported in main(), see the health check (#167)
     with pytest.raises(SystemExit, match="neueren Version"):
         cli.main()
+
+
+def test_version_2_recomputes_the_consumption_of_recorded_quarters(tmp_path):
+    """#346: the consumption recorded from the inverter's load counter becomes the balance of the other flows."""
+    create_version_1(tmp_path / "t.db")
+    db = sqlite3.connect(tmp_path / "t.db")
+    db.executemany("INSERT INTO energy_15m(ts, pv, load, grid_import, grid_export, battery_charge, battery_discharge, "
+                   "source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
+                       (0, 1000, 1500, 100, 200, 600, 500, "local"),  # balance 800
+                       (900, 0, 300, 0, 0, 100, 0, "local"),  # balance -100: 0, taken from the next quarter
+                       (1800, 0, 300, 0, 0, 0, 250, "local"),  # 250 - 100
+                       (2700, 500, 777, 0, 0, 0, 0, "cloud"),  # imported history stays as it is
+                       (3600, None, 400, None, None, None, None, "local"),  # incomplete: stays as it is
+                   ])
+    db.commit()
+    db.close()
+    storage = Storage(tmp_path / "t.db")
+    try:
+        assert [r["load"] for r in storage.energy(0, 4500)] == [800, 0, 150, 777, 400]
+    finally:
+        storage.close()
+    assert version_of(tmp_path / "t.db") == 2

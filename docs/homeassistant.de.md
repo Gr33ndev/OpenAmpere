@@ -62,7 +62,8 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 |---|---|
 | PV-Leistung, Hausverbrauch, Netzleistung, Speicherleistung | Netz: + Bezug, − Einspeisung. Speicher: + Entladen, − Laden |
 | Leistung je Modulfeld | Namen wie in OpenAmpere, ausgeblendete Felder fehlen |
-| PV-Erzeugung, Verbrauch, Netzbezug, Einspeisung, Speicher geladen/entladen | Gesamtzähler in kWh, **passend fürs Energie-Dashboard** |
+| PV-Erzeugung, Verbrauch, Netzbezug, Einspeisung, Speicher geladen/entladen | Gesamtzähler in kWh, **passend fürs Energie-Dashboard**. Den Verbrauch rechnet OpenAmpere aus den anderen Zählern aus, wie in der App. |
+| Verbrauchszähler des Wechselrichters | Ausgeblendet. Der eigene Zähler des Wechselrichters zählt oft mehr, als im Haus verbraucht wurde. Ältere Versionen zeigten ihn als „Verbrauch“. |
 | Ladestand, Speicher-Gesundheit, -Spannung, -Strom, -Temperatur, Wechselrichter-Temperatur | |
 | Wechselrichter verbunden, Inselbetrieb (Stromausfall), Lädt aus dem Netz, Alarm | Ja/Nein |
 | Je Heizstab/Schalter: Leistung, Eingeschaltet, Temperatur | |

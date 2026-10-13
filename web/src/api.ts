@@ -12,6 +12,7 @@ export type Counters = {
   grid_export: number | null;
   battery_charge: number | null;
   battery_discharge: number | null;
+  consumption?: number | null; // live counters: from the balance of the others, "load" is the inverter's counter (#346)
 };
 
 export type Snapshot = {
@@ -75,7 +76,6 @@ export type Summary = {
   energy_wh: Counters;
   partial_since?: number | null;
   recorded_since?: number | null; // first day: the chart starts here, the totals come from the inverter
-  conversion_loss_wh?: number;
   money?: { savings_eur: number; feed_in_eur: number; grid_cost_eur: number; base_fee_eur?: number; net_cost_eur?: number };
   autarky: number | null;
   self_consumption: number | null;

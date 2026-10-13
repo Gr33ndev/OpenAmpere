@@ -30,14 +30,11 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
           <dt>{t("report.keyFigures.intoBattery")}</dt><dd>{energyKwh(e?.battery_charge)}</dd>
           <dt>{t("report.keyFigures.fromBattery")}</dt><dd>{energyKwh(e?.battery_discharge)}</dd>
           <dt>{t("report.keyFigures.selfConsumed")}</dt><dd>{percent(summary?.self_consumption, true)}</dd>
-          {!!summary?.conversion_loss_wh && summary.conversion_loss_wh >= 50 && <>
-            <dt>{t("report.keyFigures.inverterLosses")}</dt><dd>{energyKwh(summary.conversion_loss_wh)}</dd></>}
           {summary?.money && <><dt>{t("report.keyFigures.feedInPayment")}</dt><dd>{euro(summary.money.feed_in_eur)}</dd></>}
           {summary?.money && <><dt>{t("report.keyFigures.costGridImport")}</dt><dd>{euro(summary.money.grid_cost_eur)}</dd></>}
           {!!summary?.money?.base_fee_eur && <><dt>{t("common.standingCharge")}</dt><dd>{euro(summary.money.base_fee_eur)}</dd></>}
           {summary?.money?.net_cost_eur != null && <><dt>{t("report.keyFigures.netElectricityCost")}</dt><dd>{euro(summary.money.net_cost_eur)}</dd></>}
         </dl>
-        {!!summary?.conversion_loss_wh && summary.conversion_loss_wh >= 50 && <p className="hint">{t("report.keyFigures.lossesHint")}</p>}
         {summary?.money && <p className="hint">{t("report.keyFigures.savingsHint")}</p>}
       </details>
     </div>

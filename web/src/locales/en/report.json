@@ -79,8 +79,6 @@
     "fromBattery": "Used from the battery",
     "fromGrid": "Drawn from the grid",
     "intoBattery": "Stored in the battery",
-    "inverterLosses": "Inverter losses",
-    "lossesHint": "The inverter measures solar power before and consumption after the conversion to AC. The difference is lost in the device, usually a few percent of generation.",
     "netElectricityCost": "Net electricity cost",
     "savings": "Savings of about {amount}",
     "savingsHint": "The savings are an estimate based on your electricity tariff (More → Electricity tariff): self-consumed solar power at the electricity price plus the feed-in payment. Net cost means grid import and standing charge minus the feed-in payment.",

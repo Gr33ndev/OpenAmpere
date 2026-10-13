@@ -79,8 +79,6 @@
     "fromBattery": "Aus dem Speicher genutzt",
     "fromGrid": "Aus dem Netz bezogen",
     "intoBattery": "In den Speicher geladen",
-    "inverterLosses": "Verluste im Wechselrichter",
-    "lossesHint": "Der Wechselrichter misst den Solarstrom vor und den Verbrauch nach der Umwandlung in Wechselstrom. Die Differenz geht im Gerät verloren, meist einige Prozent der Erzeugung.",
     "netElectricityCost": "Stromkosten unterm Strich",
     "savings": "Ersparnis etwa {amount}",
     "savingsHint": "Die Ersparnis ist eine Schätzung mit deinem Stromtarif (Mehr → Stromtarif): selbst genutzter Solarstrom zum Strompreis plus Einspeisevergütung. Unterm Strich heißt Netzbezug und Grundpreis minus Einspeisevergütung.",

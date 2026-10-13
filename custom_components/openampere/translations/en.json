@@ -116,8 +116,11 @@
       "pv_energy": {
         "name": "PV production"
       },
-      "load_energy": {
+      "consumption_energy": {
         "name": "Consumption"
+      },
+      "load_energy": {
+        "name": "Consumption counter of the inverter"
       },
       "grid_import_energy": {
         "name": "Grid import"

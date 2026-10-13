@@ -116,8 +116,11 @@
       "pv_energy": {
         "name": "PV-Erzeugung"
       },
-      "load_energy": {
+      "consumption_energy": {
         "name": "Verbrauch"
+      },
+      "load_energy": {
+        "name": "Verbrauchszähler des Wechselrichters"
       },
       "grid_import_energy": {
         "name": "Netzbezug"

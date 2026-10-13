@@ -63,7 +63,8 @@ one connection, and every command from Home Assistant goes through the same chec
 |---|---|
 | PV power, house consumption, grid power, battery power | Grid: + import, − export. Battery: + discharging, − charging |
 | Power per PV string | Names as in OpenAmpere; hidden strings are left out |
-| PV production, consumption, grid import, grid export, battery charged/discharged | Total counters in kWh, **suitable for the Energy dashboard** |
+| PV production, consumption, grid import, grid export, battery charged/discharged | Total counters in kWh, **suitable for the Energy dashboard**. OpenAmpere calculates the consumption from the other counters, as in the app. |
+| Consumption counter of the inverter | Hidden. The inverter's own counter often counts more than the house used. Older versions showed it as "Consumption". |
 | State of charge, battery health, voltage, current and temperature, inverter temperature | |
 | Inverter connected, off-grid (power cut), charging from the grid, alarm | Yes/no |
 | Per immersion heater/switch: power, on, temperature | |
