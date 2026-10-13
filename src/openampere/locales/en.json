@@ -261,6 +261,8 @@
   },
   "runtime": {
     "enterCommissioningDate": "Please enter the commissioning date.",
+    "secretFromConfigFile": "The login details ({names}) are in the file config.yaml. So that they are not sent to another address, please change {where} there as well, or enter the login details here again together with the new setting.",
+    "secretFromEnvironment": "The login details ({names}) are set by an environment variable. So that they are not sent to another address, please change {where} where the environment variable is set.",
     "setEnvironmentVariableT": "Set by an environment variable, can't be changed in the app: {blocked}"
   },
   "secretbox": {

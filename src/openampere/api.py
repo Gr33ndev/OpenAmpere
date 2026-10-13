@@ -782,7 +782,9 @@ def create_app(runtime: Runtime) -> FastAPI:
                     if size > MAX_BACKUP_BYTES:
                         raise HTTPException(413, "Datei zu groß (max. 4 GB).")
                     file.write(chunk)
-            await asyncio.to_thread(storage.stage_restore, upload, settings=restore_settings)
+            outside = runtime.outside_secrets()  # the backup does not move them (GHSA-8mjv-f2x6-2v3h)
+            await asyncio.to_thread(storage.stage_restore, upload,
+                                    settings=lambda backup, current: restore_settings(backup, current, outside))
         except InvalidBackup as err:
             raise HTTPException(400, str(err)) from None
         except OSError as err:

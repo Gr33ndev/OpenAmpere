@@ -14,6 +14,7 @@ import os
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import date
 from pathlib import Path
+from typing import Iterable
 
 import yaml
 
@@ -321,10 +322,11 @@ def _invalid_message(key: str, rule: tuple) -> str:
     return f"{label}: ungültiger Wert."
 
 
-def restore_settings(backup: dict, current: dict) -> dict:
+def restore_settings(backup: dict, current: dict, outside: Iterable[str] = ()) -> dict:
     """The settings of a restored backup: only what the app may change, each value checked like a change in the app.
     A backup holds no secrets: the current ones are kept, unless the backup sends them somewhere else (another evcc
-    or ntfy address, another portal login); then they have to be entered again."""
+    or ntfy address, another portal login); then they have to be entered again. outside: secrets set in config.yaml
+    or by an environment variable, which stay; their addresses are not taken from the backup."""
     restored: dict = {}
     for key, value in (backup if isinstance(backup, dict) else {}).items():
         if key in SECRETS or key not in EDITABLE:
@@ -333,6 +335,12 @@ def restore_settings(backup: dict, current: dict) -> dict:
             restored.update(validate({key: value}))
         except Exception:  # noqa: BLE001 - an unusable value is left out, the default applies
             continue
+    for key in outside:  # GHSA-8mjv-f2x6-2v3h
+        for target in SECRET_TARGETS.get(key, ()):
+            if target in current:
+                restored[target] = current[target]
+            else:
+                restored.pop(target, None)
     for key in SECRETS & current.keys():
         if all(restored.get(target) == current.get(target) for target in SECRET_TARGETS.get(key, ())):
             restored[key] = current[key]

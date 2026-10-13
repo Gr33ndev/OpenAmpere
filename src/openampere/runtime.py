@@ -77,6 +77,11 @@ class Runtime:
             log.info("stored secrets are encrypted now")
         return plain
 
+    def outside_secrets(self) -> set[str]:
+        """The secrets set in config.yaml or by an environment variable: the app cannot remove them."""
+        config, _ = build_config(self.file_values)
+        return {key for key in SECRET_TARGETS if get_value(config, key)}
+
     def _save_settings(self, plain: dict) -> None:
         self.storage.save_settings({k: self.secrets.encrypt(k, v) if k in SECRETS and isinstance(v, str) else v
                                     for k, v in plain.items()})
@@ -163,6 +168,21 @@ class Runtime:
                 saved.pop(secret, None)
         old = self.config
         new, locked = build_config(self.file_values, saved)
+        # a secret from config.yaml or an environment variable stays when the app drops its own: its address is
+        # changed where the secret is set, or together with the secret entered again (GHSA-8mjv-f2x6-2v3h)
+        moved = [secret for secret, targets in SECRET_TARGETS.items()
+                 if secret not in clean and get_value(new, secret) and any(get_value(new, t) for t in targets)
+                 and any(get_value(old, t) != get_value(new, t) for t in targets)]
+        if moved:
+            names = ", ".join(moved)
+            where = ", ".join(t for secret in moved for t in SECRET_TARGETS[secret])
+            if set(moved) & locked:
+                raise PermissionError(f"Die Zugangsdaten ({names}) sind fest als Umgebungsvariable eingestellt. "
+                                      f"Damit sie nicht an eine andere Adresse gehen, bitte {where} dort ändern, wo "
+                                      f"die Umgebungsvariable eingestellt ist.")
+            raise PermissionError(f"Die Zugangsdaten ({names}) stehen in der Datei config.yaml. Damit sie nicht an "
+                                  f"eine andere Adresse gehen, bitte {where} auch dort ändern oder die Zugangsdaten "
+                                  f"hier zusammen mit der neuen Einstellung noch einmal eingeben.")
         make_driver(new)  # validate before persisting
         self._save_settings(saved)
         self.storage.set_meta("settings_revision", self.settings_revision + 1)
