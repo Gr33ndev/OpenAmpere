@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { demoRequest, snapshot } from "../src/demo/server";
 
 /** Every test gets the real app with the API answered by the demo simulation, and fails on any console error
@@ -49,6 +49,17 @@ export const test = base.extend<{ api: { override(path: string, body: unknown): 
 });
 
 export { expect };
+
+/** A still screenshot of an element. In Safari's engine Playwright takes it through the Web Inspector, which adds a
+ *  <style> of its own that the app's Content-Security-Policy refuses (#358): that console error is not the app's. */
+export async function screenshot(locator: Locator, consoleErrors: string[]): Promise<Buffer> {
+  const before = consoleErrors.length;
+  const image = await locator.screenshot({ animations: "disabled" });
+  await locator.page().evaluate(() => 0); // one more round trip: the console messages of the screenshot are in
+  const added = consoleErrors.splice(before);
+  consoleErrors.push(...added.filter((error) => !error.startsWith("Refused to apply a stylesheet")));
+  return image;
+}
 
 /** Every page of the app, as hash routes. */
 export const PAGES = [

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
-import { expect, layoutProblems, open, PAGES, test } from "./fixtures";
+import { expect, layoutProblems, open, PAGES, screenshot, test } from "./fixtures";
 
 const ARROWS = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight"];
 
@@ -31,15 +31,15 @@ test("a wrong key starts the code over", async ({ page }) => {
 });
 
 // the pixel filter drew nothing in Safari when it was applied to the HTML icons
-test("the icons stay visible in the retro look", async ({ page }) => {
+test("the icons stay visible in the retro look", async ({ page, consoleErrors }) => {
   await open(page, "");
   for (const key of [...ARROWS, "b", "a"]) await page.keyboard.press(key);
   await expect(page.locator(".flow")).toHaveClass(/retro/);
   for (const name of ["sun", "battery", "grid"]) {
     const icon = page.locator(`.flow-node.${name} .flow-icon`);
-    const shown = await icon.screenshot({ animations: "disabled" });
+    const shown = await screenshot(icon, consoleErrors);
     await icon.evaluate((el) => el.querySelectorAll("svg").forEach((svg) => { svg.style.visibility = "hidden"; }));
-    const hidden = await icon.screenshot({ animations: "disabled" });
+    const hidden = await screenshot(icon, consoleErrors);
     expect(shown.equals(hidden), `${name} icon is drawn`).toBe(false);
   }
 });
@@ -57,14 +57,14 @@ test("the retro look covers the whole app, stays when switching pages and goes w
   await expect(html).not.toHaveClass(/retro/);
 });
 
-test("the navigation icons stay visible in the retro look", async ({ page }) => {
+test("the navigation icons stay visible in the retro look", async ({ page, consoleErrors }) => {
   await open(page, "");
   for (const key of [...ARROWS, "b", "a"]) await page.keyboard.press(key);
   await expect(page.locator("html")).toHaveClass(/retro/);
   const icon = page.locator("nav.bottom button").nth(3);
-  const shown = await icon.screenshot({ animations: "disabled" });
+  const shown = await screenshot(icon, consoleErrors);
   await icon.evaluate((el) => { el.querySelector("svg")!.style.visibility = "hidden"; });
-  const hidden = await icon.screenshot({ animations: "disabled" });
+  const hidden = await screenshot(icon, consoleErrors);
   expect(shown.equals(hidden), "navigation icon is drawn").toBe(false);
 });
 

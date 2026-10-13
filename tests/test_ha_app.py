@@ -66,8 +66,8 @@ def test_the_sidebar_needs_no_login_and_may_frame_the_app(tmp_path, app_mode):
     _, sidebar, _ = clients(tmp_path)
     status = sidebar.get("/api/auth/status")
     assert status.json() == {"configured": False, "authenticated": True, "home_assistant": "ingress"}
-    assert status.headers["content-security-policy"] == "frame-ancestors 'self'"
-    assert "x-frame-options" not in status.headers
+    assert status.headers["content-security-policy"].endswith("; frame-ancestors 'self'")
+    assert status.headers["x-frame-options"] == "SAMEORIGIN"
     assert sidebar.put("/api/settings", json={"tariff.feed_in_ct": 7}).status_code == 200
     assert sidebar.get("/api/control/log").status_code == 200  # protected reads too
 

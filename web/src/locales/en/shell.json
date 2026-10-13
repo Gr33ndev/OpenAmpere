@@ -77,7 +77,7 @@
     "forgotPassword": "Forgot your password? Run {command} in a terminal on the server, then set a new password here. If OpenAmpere is in a different folder, replace /opt/openampere with that folder.",
     "logOut": "Log out",
     "logOutAllDevices": "Log out all devices",
-    "logOutAllHint": "All phones and computers then need to log in again to change settings.",
+    "logOutAllHint": "All phones and computers then need to log in again to change settings. App access, e.g. for Home Assistant, stays valid. You can remove it under More → Connected apps.",
     "logOutAllQuestion": "Log out all devices?",
     "logOutDevice": "Log out this device",
     "loggedIn": "This device is logged in and can change settings.",
@@ -85,7 +85,7 @@
     "neverExpose": "never expose OpenAmpere to the internet with port forwarding.",
     "newPassword": "New password",
     "notLoggedIn": "This device is not logged in – view only.",
-    "passwordChanged": "Password changed – other devices need to log in again",
+    "passwordChanged": "Password changed – other devices need to log in again. App access stays valid (More → Connected apps).",
     "passwordHint": "At least 8 characters",
     "remoteAccessHint": "Viewing works without a password in your home network. For remote access use a VPN (e.g. the one in your FRITZ!Box, WireGuard or Tailscale) – {warning}"
   },
