@@ -29,6 +29,9 @@ map:
 discovery:
   - openampere  # the Home Assistant integration offers to set up the app
 watchdog: http://[HOST]:[PORT:8080]/api/auth/status?healthcheck=1
+# seconds Home Assistant waits when stopping before it kills the app: shutting down first switches off the remote
+# control of the inverter and the own devices, which can take longer than the default 10 s (#351)
+timeout: 30
 # a copy of a database that is being written can be broken: backups take a consistent copy instead
 backup_pre: ha-app-start ha-backup-copy
 backup_post: ha-app-start ha-backup-done

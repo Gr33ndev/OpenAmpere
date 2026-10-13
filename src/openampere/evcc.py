@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import time
 import urllib.error
 import urllib.parse
@@ -53,6 +54,13 @@ def _num(value) -> float | None:
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
+def _within(value: float | None, low: float, high: float, default: float) -> float:
+    """A number from evcc limited to what a wallbox can have; missing, zero, negative or NaN: the default (#351)."""
+    if value is None or not math.isfinite(value) or value <= 0:
+        return default
+    return min(max(value, low), high)
+
+
 def normalize_mode(mode: str | None, always_charge) -> str | None:
     """New evcc: smart (+ always charge) instead of pv / minpv."""
     if mode == "smart":
@@ -79,8 +87,9 @@ def normalize_loadpoint(index: int, lp: dict, vehicles: dict | None = None) -> d
         "soc": _num(lp.get("vehicleSoc")),
         "range_km": _num(lp.get("vehicleRange")),
         "limit_soc": _num(lp.get("effectiveLimitSoc")) or _num(lp.get("limitSoc")),
-        "phases": int(_num(lp.get("phasesActive")) or 1),
-        "min_current_a": _num(lp.get("effectiveMinCurrent")) or _num(lp.get("minCurrent")) or 6.0,
+        # limited: a negative minimum current made the room kept for the car negative, surplus that was not there
+        "phases": int(_within(_num(lp.get("phasesActive")), 1, 3, 1)),
+        "min_current_a": _within(_num(lp.get("effectiveMinCurrent")) or _num(lp.get("minCurrent")), 1, 32, 6.0),
         "pv_action": lp.get("pvAction"),
         "pv_remaining_s": _num(lp.get("pvRemaining")),
         "remaining_s": _num(lp.get("chargeRemainingDuration")),

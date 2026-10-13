@@ -105,6 +105,20 @@ def _sendable(url: str) -> bool:
     return "@" not in urllib.parse.urlsplit(url).netloc and not UNSENDABLE.search(url)
 
 
+def _addresses(host: str) -> set[str]:
+    """The host as written and the addresses it stands for (a name, an IPv4 address or [IPv6])."""
+    host = host.strip().removeprefix("[").removesuffix("]").lower()
+    try:
+        return {host} | {str(info[4][0]).lower() for info in socket.getaddrinfo(host, None)}
+    except (OSError, UnicodeError, ValueError):  # not resolvable (now): compared as written
+        return {host}
+
+
+def _same_address(a: tuple[str, int], b: tuple[str, int]) -> bool:
+    """Also "localhost" and 127.0.0.1, or a name and its address, are the same device (#351)."""
+    return a[1] == b[1] and bool(_addresses(a[0]) & _addresses(b[0]))
+
+
 def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consumer]:
     """inverter: its host and port; a heating rod must not be set up at that address."""
     if not isinstance(raw, list) or len(raw) > MAX_CONSUMERS:
@@ -137,7 +151,7 @@ def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consume
             raise ValueError(f"{c.name}: Mindestzeiten 0–240 Minuten.")
         if not 1 <= c.port <= 65535 or not 1 <= c.unit <= 247:
             raise ValueError(f"{c.name}: Ungültiger Port oder Geräteadresse.")
-        if c.kind == "mypv" and inverter and (c.host.strip().lower(), c.port) == (inverter[0].strip().lower(), inverter[1]):
+        if c.kind == "mypv" and inverter and _same_address((c.host, c.port), inverter):
             raise ValueError(f"{c.name}: Das ist die Adresse des Wechselrichters. Bitte die IP-Adresse des Heizstabs "
                              "angeben.")
         if c.price_limit_ct is not None and not -100 <= c.price_limit_ct <= 200:
@@ -492,18 +506,18 @@ class SurplusControl:
         state.on, state.power_w = watts > 0, watts
 
     async def _read_rods(self, consumers: list[Consumer]) -> None:
-        for c in consumers:
-            if not c.adjustable:
-                continue
+        """All at once: a heating rod that does not answer must not hold back the others (#351)."""
+        async def read(c: Consumer) -> None:
             state = self.states.setdefault(c.id, State())
             try:
                 reading = await self._rod(c).read()
             except Exception as err:  # noqa: BLE001
                 state.error, state.actual_w = str(err), None
-                continue
+                return
             state.error = None
             state.temperature_c, state.target_c = reading.temperature_c, reading.target_c
             state.status, state.actual_w = reading.status_text, reading.power_w
+        await asyncio.gather(*(read(c) for c in consumers if c.adjustable))
 
     def _price_now(self, now: float) -> float | None:
         tariffs = self.runtime.tariffs
@@ -544,14 +558,18 @@ class SurplusControl:
         consumers = [c for c in self.consumers if c.enabled]
         if not consumers:
             return
-        await self._read_rods(consumers)  # status and water temperature are shown even without control
+        # switching off first: heating rods that answer slowly must not hold it back (#351); status and water
+        # temperature are read and shown even without control
         if not runtime.config.control.enabled:
             await self._safe_off(consumers, "Steuerung ausgeschaltet", now)
+            await self._read_rods(consumers)
             return
         snap = runtime.collector.latest
         if snap is None or runtime.collector.stale or snap.grid_power is None:
             await self._safe_off(consumers, "keine aktuellen Messwerte", now)  # safe state
+            await self._read_rods(consumers)
             return
+        await self._read_rods(consumers)
         dry = runtime.config.control.dry_run
         soc = snap.battery_soc or 0
         battery = snap.battery_power or 0  # + = discharging

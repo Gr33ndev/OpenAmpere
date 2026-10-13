@@ -260,6 +260,7 @@ write_files() {
     say "  openampere:"
     say "    image: $IMAGE"
     say "    restart: unless-stopped"
+    say "    stop_grace_period: 30s  # Zeit zum Abschalten der Fernsteuerung beim Beenden"
     say "    network_mode: host  # damit die Gerätesuche das Heimnetz sieht"
     say "    cap_drop: [ALL]  # die App braucht keine besonderen Rechte"
     say "    security_opt: [\"no-new-privileges:true\"]"

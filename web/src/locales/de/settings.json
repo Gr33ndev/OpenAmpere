@@ -273,6 +273,7 @@
       "one": "1 Stunde",
       "other": "{hours} Stunden"
     },
+    "inverterRelocated": "Wechselrichter unter einer neuen Adresse im Heimnetz gefunden: {to} statt {from}. OpenAmpere verbindet sich jetzt mit dieser Adresse.",
     "legalConfirmed": "rechtliche Hinweise bestätigt",
     "legalWithdrawn": "Bestätigung der rechtlichen Hinweise zurückgenommen",
     "maxPrice": "Höchstpreis",
@@ -486,7 +487,7 @@
     "settingOverwritten": "Einstellung überschrieben",
     "storage": "Speicherplatz und Messwerte",
     "storageHint": "Wenn Messwerte nicht gespeichert werden können oder der Speicherplatz knapp wird, und wenn es wieder geht.",
-    "unreachableHint": "Nach 15 Minuten ohne Verbindung, und wenn sie wieder steht."
+    "unreachableHint": "Nach 15 Minuten ohne Verbindung, wenn sie wieder steht und wenn OpenAmpere den Wechselrichter unter einer neuen Adresse gefunden hat."
   },
   "exportLimitPage": {
     "aboveRule": "Der eingestellte Wert liegt über dem, was die gewählte Regel erlaubt ({max}).",

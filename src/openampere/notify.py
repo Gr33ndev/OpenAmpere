@@ -21,6 +21,7 @@ from .runtime import Runtime
 log = logging.getLogger(__name__)
 
 UNREACHABLE_AFTER_S = 15 * 60
+RELOCATED_RECENT_S = 24 * 3600  # notifications switched on later do not report an old change of address
 STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database briefly locked) is no reason to warn
 
 
@@ -104,6 +105,18 @@ class Notifier:
             if self.sent.get(key) != value and await self.push(title, message, tags):
                 self._remember(key, value)
                 sent.append(title)
+
+        if cfg.on_unreachable:
+            # found at a new address and switched over (discovery.Rediscovery): the owner should know (#351)
+            relocated = self.runtime.storage.get_meta("relocated")
+            ts = relocated.get("ts") if isinstance(relocated, dict) else None
+            if (isinstance(ts, (int, float)) and now - ts < RELOCATED_RECENT_S
+                    and ts > float(self.sent.get("relocated_ts") or 0)):
+                await notify("relocated_ts", ts, "Wechselrichter unter neuer Adresse",
+                             "OpenAmpere hat den Wechselrichter unter einer neuen Adresse im Heimnetz gefunden und "
+                             "verbindet sich jetzt mit ihr. Das passiert, wenn der Router ihm eine neue Adresse gibt. "
+                             "Die Adressen stehen in der App unter Mehr → Steuerung und Protokoll. Hast du nichts "
+                             "geändert und kennst die neue Adresse nicht, schalte die Steuerung dort aus.", "warning")
 
         if cfg.on_unreachable and collector.configured:
             since = collector.disconnected_since
