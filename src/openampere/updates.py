@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import ha_app
+from .outbound import read_within
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -27,6 +28,8 @@ RELEASES_URL = "https://api.github.com/repos/Gr33ndev/OpenAmpere/releases/latest
 CHECK_EVERY_S = 6 * 3600
 UPDATER_ALIVE_S = 60  # the updater writes a sign of life every few seconds
 AUTO_HOURS = range(2, 5)  # automatic updates at night, when nobody looks at the app
+MAX_ANSWER_BYTES = 2 * 1024 ** 2  # the description of one release with its files is a few kB
+DEADLINE_S = 60
 
 
 def parse_version(text: str | None) -> tuple[int, ...] | None:
@@ -37,8 +40,10 @@ def parse_version(text: str | None) -> tuple[int, ...] | None:
 def fetch_latest() -> dict:
     request = urllib.request.Request(RELEASES_URL, headers={"Accept": "application/vnd.github+json",
                                                             "User-Agent": "OpenAmpere"})
-    with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - fixed https URL
-        data = json.load(response)
+    _, raw = read_within(request, timeout=10, deadline=DEADLINE_S, limit=MAX_ANSWER_BYTES + 1)
+    if len(raw) > MAX_ANSWER_BYTES:
+        raise ValueError("answer too large")
+    data = json.loads(raw)
     return {"version": str(data.get("tag_name", "")).lstrip("v"), "url": data.get("html_url"),
             "notes": data.get("body") or "", "published": data.get("published_at")}
 

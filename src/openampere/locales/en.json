@@ -97,6 +97,7 @@
     "openampereAlreadyRunningStop": "OpenAmpere is already running ({err}). Please stop the other instance first."
   },
   "cloudImport": {
+    "answerTooLarge": "The answer of the EKD cloud is too large.",
     "apiKeyWasRejected": "The API key was rejected by the EKD cloud.",
     "ekdCloudTReached": "The EKD cloud can't be reached.",
     "enterApiKeyFirst": "Please enter the API key first.",
@@ -104,6 +105,7 @@
     "noHistoryDataFound2": "No history data found in the EKD cloud.",
     "noSystemFoundApi": "No system found for this API key.",
     "notValidZipFile": "This is not a valid ZIP file.",
+    "redirectsElsewhere": "The EKD cloud redirects to another address. OpenAmpere only sends the API key to the address entered.",
     "zipFileTooLarge": "The ZIP file is too large."
   },
   "config": {
@@ -226,6 +228,7 @@
     "enterEmailPasswordCustomer": "Please enter the email and password for the customer portal.",
     "loginNetzeBwFailed": "The login at Netze BW failed (error {status}).",
     "loginNetzeBwHaving": "The login at Netze BW is having problems right now (error {status}).",
+    "netzeBwAnswerTooLarge": "The Netze BW customer portal sent an unexpectedly large answer.",
     "netzeBwAsksExtra": "Netze BW asks for an extra login step (e.g. two-factor or captcha). OpenAmpere can't do that.",
     "netzeBwCustomerPortal": "The Netze BW customer portal can't be reached right now.",
     "netzeBwError": "Netze BW, {step}: error {status}.",

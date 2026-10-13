@@ -31,9 +31,10 @@ from http.cookiejar import CookieJar
 from importlib.metadata import PackageNotFoundError, version
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, urlencode, urljoin, urlparse
-from urllib.request import HTTPCookieProcessor, Request, build_opener
+from urllib.request import HTTPCookieProcessor, Request
 from zoneinfo import ZoneInfo
 
+from ..outbound import fetch_within
 from .base import Meter, Provider, ProviderAuthError, ProviderError
 
 log = logging.getLogger(__name__)
@@ -49,6 +50,8 @@ DIRECTION = {"import": "Bezug", "export": "Einspeisung"}
 CHUNK_DAYS = 7  # quarter hours of a week per request
 PAUSE_S = 0.3  # between requests while catching up, to go easy on the portal
 QUARTER = timedelta(minutes=15)
+MAX_ANSWER_BYTES = 10 * 1024 ** 2  # a page of the portal or the values of a week: some 100 kB
+DEADLINE_S = 120  # one request with its redirects, also an answer sent very slowly
 
 
 def _user_agent() -> str:
@@ -106,7 +109,6 @@ class NetzeBw(Provider):
 
     def _new_session(self) -> None:
         self.cookies = CookieJar()
-        self.opener = build_opener(HTTPCookieProcessor(self.cookies))
         self.logged_in = False
 
     # ---- HTTP ----------------------------------------------------------------
@@ -114,12 +116,17 @@ class NetzeBw(Provider):
     def _open(self, url: str, data: bytes | None = None, headers: dict | None = None) -> tuple[int, str, bytes]:
         request = Request(url, data=data, headers={"User-Agent": USER_AGENT, **(headers or {})})
         try:
-            with self.opener.open(request, timeout=self.timeout) as resp:
-                return resp.status, resp.geturl(), resp.read()
+            status, final_url, _, body = fetch_within(request, timeout=self.timeout, deadline=DEADLINE_S,
+                                                      limit=MAX_ANSWER_BYTES + 1,
+                                                      handlers=(HTTPCookieProcessor(self.cookies),))
         except HTTPError as err:
-            return err.code, err.geturl(), err.read()
+            err.close()  # the text of an error answer is not needed, only its status
+            return err.code, err.geturl(), b""
         except (URLError, TimeoutError, OSError) as err:
             raise ProviderError("Das Kundenportal von Netze BW ist gerade nicht erreichbar.") from err
+        if len(body) > MAX_ANSWER_BYTES:
+            raise ProviderError("Das Kundenportal von Netze BW hat eine unerwartet große Antwort geschickt.")
+        return status, final_url, body
 
     def _get(self, path: str, params: dict | None, step: str, accept: str, retry: bool = True) -> bytes:
         if not self.logged_in:

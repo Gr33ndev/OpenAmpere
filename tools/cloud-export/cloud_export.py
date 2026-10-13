@@ -44,7 +44,17 @@ INSTALLATION_ID = re.compile(r"[A-Za-z0-9-]+")
 
 
 class AuthError(Exception):
-    pass
+    """Stops the export: the key was rejected or would have to go to another address."""
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """The API key must never go to another address: a redirect is refused (urllib raises HTTPError for it)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001 - urllib's signature
+        return None
+
+
+_opener = urllib.request.build_opener(_NoRedirect)
 
 
 def log(msg: str) -> None:
@@ -91,9 +101,12 @@ class Client:
         for attempt in range(1, 7):
             self._wait_turn()
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                with _opener.open(request, timeout=self.timeout) as response:
                     return response.status, json.loads(response.read() or b"null")
             except urllib.error.HTTPError as err:
+                if 300 <= err.code < 400:
+                    raise AuthError(f"the API redirects to another address (HTTP {err.code}); the API key is "
+                                    "only sent to CLOUD_API_BASE_URL") from None
                 body = err.read()
                 if err.code in (400, 404):
                     try:

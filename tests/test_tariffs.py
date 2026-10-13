@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-import io
 import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -42,8 +41,7 @@ def test_dynamic_tariff_uses_exchange_prices(tmp_path, monkeypatch):
     t.save([{"valid_from": "2026-01-01", "kind": "dynamic", "surcharge_ct": 20, "vat_percent": 19, "feed_in_ct": 8}])
 
     payload = {"data": [{"start_timestamp": ts * 1000, "end_timestamp": (ts + 3600) * 1000, "marketprice": 100.0}]}
-    monkeypatch.setattr(tariffs_module.urllib.request, "urlopen",
-                        lambda *a, **k: io.BytesIO(json.dumps(payload).encode()))
+    monkeypatch.setattr(tariffs_module, "read_within", lambda *a, **k: ({}, json.dumps(payload).encode()))
     import asyncio
     assert asyncio.run(t.refresh_prices(now=ts)) == 4  # one hour -> four quarter hours
     assert asyncio.run(t.refresh_prices(now=ts + 60)) == 0  # not again within the hour

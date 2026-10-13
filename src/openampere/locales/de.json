@@ -97,6 +97,7 @@
     "openampereAlreadyRunningStop": "OpenAmpere läuft bereits ({err}). Bitte die andere Instanz zuerst beenden."
   },
   "cloudImport": {
+    "answerTooLarge": "Die Antwort der EKD-Cloud ist zu groß.",
     "apiKeyWasRejected": "Der API-Schlüssel wurde von der EKD-Cloud abgelehnt.",
     "ekdCloudTReached": "Die EKD-Cloud ist nicht erreichbar.",
     "enterApiKeyFirst": "Bitte zuerst den API-Schlüssel hinterlegen.",
@@ -104,6 +105,7 @@
     "noHistoryDataFound2": "In der EKD-Cloud wurden keine Verlaufsdaten gefunden.",
     "noSystemFoundApi": "Zu diesem API-Schlüssel wurde keine Anlage gefunden.",
     "notValidZipFile": "Das ist keine gültige ZIP-Datei.",
+    "redirectsElsewhere": "Die EKD-Cloud leitet auf eine andere Adresse um. OpenAmpere schickt den API-Schlüssel nur an die eingetragene Adresse.",
     "zipFileTooLarge": "Die ZIP-Datei ist zu groß."
   },
   "config": {
@@ -226,6 +228,7 @@
     "enterEmailPasswordCustomer": "Bitte E-Mail und Passwort für das Kundenportal eintragen.",
     "loginNetzeBwFailed": "Die Anmeldung bei Netze BW hat nicht geklappt (Fehler {status}).",
     "loginNetzeBwHaving": "Die Anmeldung bei Netze BW ist gerade gestört (Fehler {status}).",
+    "netzeBwAnswerTooLarge": "Das Kundenportal von Netze BW hat eine unerwartet große Antwort geschickt.",
     "netzeBwAsksExtra": "Netze BW verlangt bei der Anmeldung einen weiteren Schritt (z. B. Zwei-Faktor oder Captcha). Das kann OpenAmpere nicht.",
     "netzeBwCustomerPortal": "Das Kundenportal von Netze BW ist gerade nicht erreichbar.",
     "netzeBwError": "Netze BW, {step}: Fehler {status}.",

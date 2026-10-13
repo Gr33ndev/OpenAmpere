@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""HTTP requests with credentials (evcc, ntfy): never sent on to another address by a redirect.
+"""HTTP requests with credentials (evcc, ntfy, EKD cloud): never sent on to another address by a redirect.
 
 urllib follows redirects and keeps headers such as Authorization and Cookie, also to another host. The servers
 OpenAmpere talks to with credentials answer directly, so a redirect is refused (urllib raises HTTPError for it).
@@ -108,11 +108,22 @@ def read_within(request: urllib.request.Request, *, timeout: float, deadline: fl
     """Sends the request and reads at most `limit` bytes of the answer, all within `deadline` seconds; `timeout` is
     the socket timeout. Afterwards the connection is cut and TimeoutError raised. Returns the headers and the answer.
     `redirect`: False refuses a redirect like open_without_redirect."""
+    _, _, headers, body = fetch_within(request, timeout=timeout, deadline=deadline, limit=limit, redirect=redirect,
+                                       context=context)
+    return headers, body
+
+
+def fetch_within(request: urllib.request.Request, *, timeout: float, deadline: float, limit: int,
+                 redirect: bool = True, context: ssl.SSLContext | None = None,
+                 handlers: tuple[urllib.request.BaseHandler, ...] = ()) -> tuple[int, str, Message, bytes]:
+    """Like read_within, also returns the status and the address the answer came from (after redirects).
+    `handlers`: further urllib handlers, e.g. one that keeps the cookies of a login."""
     cut = _Deadline(deadline)
-    handlers = [_DeadlineHTTPHandler(cut), _DeadlineHTTPSHandler(cut, context)] + ([] if redirect else [_NoRedirect])
+    handlers = (_DeadlineHTTPHandler(cut), _DeadlineHTTPSHandler(cut, context), *handlers,
+                *(() if redirect else (_NoRedirect,)))
     try:
         with urllib.request.build_opener(*handlers).open(request, timeout=timeout) as response:
-            headers, body = response.headers, response.read(limit)
+            status, url, headers, body = response.status, response.geturl(), response.headers, response.read(limit)
     except Exception as err:
         cut.close()
         if cut.expired:
@@ -121,7 +132,7 @@ def read_within(request: urllib.request.Request, *, timeout: float, deadline: fl
     cut.close()
     if cut.expired:  # the answer may have been cut short
         raise TimeoutError("timed out")
-    return headers, body
+    return status, url, headers, body
 
 
 def in_home_network(host: str) -> bool:
