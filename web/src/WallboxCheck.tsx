@@ -6,7 +6,7 @@ import { DeviceSearch } from "./DeviceSearch";
 import { num } from "./format";
 import { t } from "./i18n";
 import { navigate } from "./route";
-import { Button, Field, LoadState, Notice, toast } from "./ui";
+import { Button, copyText, Field, LoadState, Notice, toast } from "./ui";
 
 /** A wallbox without evcc (#318), so far only a read-only check (#325): nothing is written to the wallbox, the
  *  result goes into the diagnostics report so the registers can be confirmed on real devices. */
@@ -59,7 +59,71 @@ function Facts({ f }: { f: Findings }) {
   );
 }
 
-export function DirectWallbox() {
+type OcppView = { active: boolean; remaining_s: number; connected: boolean; path: string; charge_point: string | null;
+  vendor: string | null; model: string | null; firmware: string | null; configuration_keys: number; status: string | null;
+  messages: number };
+
+/** Listening over OCPP (#328): the wallbox connects to OpenAmpere, which answers "Pending" and only asks. */
+function OcppListen({ origin }: { origin: string }) {
+  const { data: view, setData } = useResource<OcppView>("/api/wallbox/ocpp", 3000);
+  const [busy, setBusy] = useState(false);
+  // the wallbox connects to the direct address, never to the one of the Home Assistant sidebar
+  const address = origin ? `${origin.replace(/^http/, "ws")}${view?.path ?? "/ocpp"}` : "";
+  const run = async (path: string) => {
+    setBusy(true);
+    try {
+      setData(await postJson<OcppView>(path, {}));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    if (await copyText(address)) toast(t("devices.wallboxDirect.ocppCopied"));
+  };
+  return (
+    <>
+      <div className="section-title">{t("devices.wallboxDirect.ocppTitle")}</div>
+      <div className="card form">
+        <p className="hint flush">{t("devices.wallboxDirect.ocppIntro")}</p>
+        <Notice kind="warn">{t("devices.wallboxDirect.ocppWarning")}</Notice>
+        {!origin ? <Notice kind="info">{t("devices.wallboxPage.directAccessOff")}</Notice> : !view?.active ? (
+          <Button variant="secondary" busy={busy} disabled={busy || !view} onClick={() => void run("/api/wallbox/ocpp/start")}>
+            {t("devices.wallboxDirect.ocppStart")}</Button>
+        ) : (
+          <>
+            <p className="hint flush">{t("devices.wallboxDirect.ocppAddress")}</p>
+            <pre className="code-block">{address}</pre>
+            <button type="button" className="link" onClick={() => void copy()}>{t("devices.wallboxDirect.ocppCopy")}</button>
+            <Notice kind={view.connected ? "ok" : "info"}>
+              {view.connected ? t("devices.wallboxDirect.ocppConnected") : t("devices.wallboxDirect.ocppWaiting",
+                { minutes: Math.ceil(view.remaining_s / 60) })}
+            </Notice>
+            {(view.vendor || view.model) && (
+              <dl className="facts">
+                <dt>{t("devices.wallboxDirect.ocppVendor")}</dt><dd>{[view.vendor, view.model].filter(Boolean).join(" ")}</dd>
+                {view.firmware && <><dt>{t("devices.wallboxDirect.firmware")}</dt><dd>{view.firmware}</dd></>}
+                {view.status && <><dt>{t("devices.wallboxDirect.status")}</dt><dd>{view.status}</dd></>}
+                <dt>{t("devices.wallboxDirect.ocppSettings")}</dt><dd>{view.configuration_keys}</dd>
+              </dl>
+            )}
+            <Button variant="secondary" busy={busy} disabled={busy} onClick={() => void run("/api/wallbox/ocpp/stop")}>
+              {t("devices.wallboxDirect.ocppStop")}</Button>
+          </>
+        )}
+        {!!view?.messages && (
+          <>
+            <p className="hint flush">{t("devices.wallboxDirect.ocppSwitchBack")}</p>
+            <Button variant="secondary" onClick={() => navigate("more/diagnostics")}>{t("devices.wallboxDirect.toReport")}</Button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+export function DirectWallbox({ origin }: { origin: string }) {
   const { data, error, reload } = useResource<{ models: { key: string; label: string }[] }>("/api/wallbox/models");
   const models = data?.models ?? [];
   const [model, setModel] = useState("");
@@ -162,6 +226,7 @@ export function DirectWallbox() {
           </div>
         </>
       )}
+      <OcppListen origin={origin} />
     </>
   );
 }

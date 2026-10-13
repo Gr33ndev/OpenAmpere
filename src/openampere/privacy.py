@@ -13,7 +13,9 @@ forget one:
 - register values: values at private addresses (card numbers, exact counters) removed, readable text shortened
   unless the owner includes it (`masked_block`);
 - the control log: names chosen by the owner, references and times replaced, values that tell the system size
-  rounded (`control_log_for_report`).
+  rounded (`control_log_for_report`);
+- what a wallbox said over OCPP: serial numbers shortened, SIM numbers and secret settings left out, times and
+  energy counters replaced (`ocpp_for_report`).
 """
 
 from __future__ import annotations
@@ -157,6 +159,55 @@ def control_log_for_report(runtime: Runtime, entries: list[dict], now: float) ->
     return [{"ago_s": max(0, round(now - e["ts"])), "action": e["action"], "details": clean(e["details"]),
              "dry_run": e["dry_run"], "result": pseudonyms.text(e["result"]),
              **({"note": pseudonyms.text(e["note"])} if e.get("note") else {})} for e in entries]
+
+
+# OCPP (#328): serial numbers of the wallbox and its meter, SIM card numbers, settings with secrets or addresses
+OCPP_SERIALS = ("chargePointSerialNumber", "chargeBoxSerialNumber", "meterSerialNumber")
+OCPP_LEFT_OUT = ("iccid", "imsi")
+OCPP_TIMES = {"timestamp", "scheduleStart", "startSchedule", "validFrom", "validTo"}
+OCPP_SECRET = re.compile(r"pass|key|token|secret|ssid|auth|url|host|address|server|ip$|domain|user|apn|id$", re.I)
+
+
+def ocpp_for_report(record: dict | None, include_serial: bool = False) -> dict | None:
+    """What a wallbox said during the OCPP listener, for the report; addresses in it are pseudonymised with the rest of
+    the report (`for_report`)."""
+    if not record:
+        return None
+    boot = dict(record.get("boot") or {})
+    for key in OCPP_SERIALS:
+        if boot.get(key) and not include_serial:
+            boot[key] = shorten(str(boot[key]))
+    for key in OCPP_LEFT_OUT:
+        if boot.get(key):
+            boot[key] = "<entfernt>"
+    def setting(key: str, value):
+        # yes/no and numbers say how the wallbox behaves; text in a setting about access or addresses may be a secret
+        harmless = str(value).strip().lower() in ("true", "false", "") or str(value).replace(".", "", 1).isdigit()
+        return value if harmless or not OCPP_SECRET.search(key) else "<entfernt>"
+
+    configuration = [{"key": c.get("key"), "readonly": c.get("readonly"),
+                      "value": setting(str(c.get("key") or ""), c.get("value"))}
+                     for c in record.get("configuration") or [] if isinstance(c, dict)]
+
+    def without_times(value):
+        if isinstance(value, dict):
+            return {k: "<Zeitpunkt>" if k in OCPP_TIMES else without_times(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [without_times(v) for v in value]
+        return value
+
+    def meter(values: dict) -> dict:  # energy counters only as "present": exact readings identify the owner
+        sampled = [{**s, "value": "<Zählerstand>"} if str(s.get("measurand", "")).startswith("Energy") else s
+                   for v in values.get("meterValue") or [] for s in v.get("sampledValue") or [] if isinstance(s, dict)]
+        return {"connectorId": values.get("connectorId"), "sampledValue": without_times(sampled)}
+
+    charge_point = record.get("charge_point")
+    return {"charge_point": charge_point if include_serial else shorten(charge_point), "boot": without_times(boot),
+            "configuration": configuration, "unknown_keys": record.get("unknown_keys"),
+            "schedule": without_times(record.get("schedule")), "status": without_times(record.get("status") or []),
+            "meter_values": [meter(v) for v in record.get("meter_values") or [] if isinstance(v, dict)],
+            "refused": record.get("refused") or [], "errors": record.get("errors") or [],
+            "messages": record.get("messages", 0)}
 
 
 def duration(seconds: float) -> str:

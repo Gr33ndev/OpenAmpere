@@ -130,7 +130,7 @@ SECURITY_HEADERS = {"Content-Security-Policy": "frame-ancestors 'none'", "X-Fram
 INGRESS_HEADERS = {"Content-Security-Policy": "frame-ancestors 'self'", "X-Content-Type-Options": "nosniff",
                    "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
-PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/gridmeter", "/api/remote",
+PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/wallbox/ocpp", "/api/gridmeter", "/api/remote",
                    "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
@@ -1128,6 +1128,30 @@ def create_app(runtime: Runtime) -> FastAPI:
                                                  request.app_mode, request.wired)
         except probe.ProbeError as err:
             raise HTTPException(400, err.message) from None
+
+    # ---- listening to a wallbox over OCPP (#328), read-only ------------------
+
+    @app.get("/api/wallbox/ocpp")
+    def ocpp_view():
+        return diagnostics.ocpp.view()
+
+    @app.post("/api/wallbox/ocpp/start")
+    def ocpp_start():
+        return diagnostics.ocpp.start()
+
+    @app.post("/api/wallbox/ocpp/stop")
+    async def ocpp_stop():
+        return await diagnostics.ocpp.stop()
+
+    # the wallbox connects here (the charge point id is usually appended); the listener checks its own rules, the
+    # login middleware does not cover WebSockets
+    @app.websocket("/ocpp")
+    async def ocpp_socket(ws: WebSocket):
+        await diagnostics.ocpp.serve(ws, None)
+
+    @app.websocket("/ocpp/{charge_point}")
+    async def ocpp_socket_with_id(ws: WebSocket, charge_point: str):
+        await diagnostics.ocpp.serve(ws, charge_point[:64])
 
     # ---- evcc (wallbox) -----------------------------------------------------
 

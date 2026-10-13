@@ -36,6 +36,12 @@ control it this way yet. The result goes into the diagnostics report (**Mehr →
 confirm the registers on real devices. For other wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads
 any registers.
 
+Optionally the check can also listen over **OCPP 1.6J** (#328): start the listener there and enter the address shown
+as OCPP server in the manufacturer's app. OpenAmpere answers the wallbox with "Pending" and only asks for its settings;
+it never starts or stops charging. While the wallbox is set to OCPP, neither the manufacturer's app nor evcc controls
+it, and without a charging profile it charges without a limit: switch it back afterwards. In the Home Assistant app
+the wallbox needs the direct address (direct access by IP must be on).
+
 ## How the two work together
 
 ```

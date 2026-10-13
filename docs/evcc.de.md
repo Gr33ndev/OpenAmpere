@@ -38,6 +38,12 @@ kann OpenAmpere sie so noch nicht. Das Ergebnis kommt in den Diagnosebericht (**
 hilft das, die Register an echten Geräten zu bestätigen. Für andere Wallboxen liest **Mehr → Diagnose → Gerät
 auslesen** beliebige Register.
 
+Wahlweise kann die Prüfung auch per **OCPP 1.6J** zuhören (#328): Starte dort den Zuhörer und trage die angezeigte
+Adresse in der App des Herstellers als OCPP-Server ein. OpenAmpere antwortet der Wallbox mit „Pending“ und fragt nur
+ihre Einstellungen ab; es startet und stoppt kein Laden. Solange die Wallbox auf OCPP steht, steuern sie weder die App
+des Herstellers noch evcc, und ohne Ladeprofil lädt sie ohne Begrenzung: Stell sie danach wieder zurück. In der
+Home-Assistant-App braucht die Wallbox die direkte Adresse (der direkte Zugriff per IP muss an sein).
+
 ## Wie die beiden zusammenarbeiten
 
 ```

@@ -20,6 +20,7 @@ from datetime import datetime
 from . import logs, privacy
 from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
+from .ocpp import OcppListener, ocpp_markdown
 from .probe import Probe, section_markdown
 from .runtime import Runtime
 from .wallbox import WallboxCheck, check_markdown
@@ -45,7 +46,8 @@ class Diagnostics:
         self.running = False
         self._watched = 0.0
         self.probe = Probe(runtime)  # reading any device (#324); its last results go into the report
-        self.wallbox = WallboxCheck(self.probe)  # the read-only wallbox check of the setup (#325), likewise
+        self.wallbox = WallboxCheck(self.probe)
+        self.ocpp = OcppListener(runtime)  # listening to a wallbox over OCPP (#328), likewise  # the read-only wallbox check of the setup (#325), likewise
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -172,7 +174,8 @@ class Diagnostics:
                                                     "timeout_s": self.runtime.config.inverter.timeout},
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
                                      "probe": self.probe.section(include_text=include_serial),
-                                     "wallbox": self.wallbox.section(include_text=include_serial)},
+                                     "wallbox": self.wallbox.section(include_text=include_serial),
+                                     "ocpp": privacy.ocpp_for_report(self.ocpp.record, include_serial)},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -192,7 +195,7 @@ class Diagnostics:
         number and the addresses of other services; the report is shared publicly. One set of pseudonyms for all
         parts, so the same address has the same name everywhere in the report."""
         pseudonyms = privacy.for_report(self.runtime, include_serial)
-        return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox")}}
+        return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp")}}
 
     @staticmethod
     def _version() -> str:
@@ -383,6 +386,8 @@ def report_markdown(report: dict) -> str:
         lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]
     if report.get("wallbox"):  # the wallbox check of the setup (#325)
         lines += ["", "### Wallbox-Prüfung", "", *check_markdown(report["wallbox"])]
+    if report.get("ocpp"):  # listening to a wallbox over OCPP (#328)
+        lines += ["", "### Wallbox über OCPP", "", *ocpp_markdown(report["ocpp"])]
     log = report.get("log") or []
     if log:  # times relative to the report (-HH:MM:SS)
         lines += ["", f"<details><summary>Protokoll (letzte {len(log)} Zeilen)</summary>", "", "```text",
