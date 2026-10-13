@@ -23,6 +23,7 @@ from pathlib import Path
 from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import HTTPConnection
 from pydantic import BaseModel, Field
 
 from . import discovery, cloud_import, external, ha_app, health, i18n, privacy, probe
@@ -289,14 +290,19 @@ def create_app(runtime: Runtime) -> FastAPI:
             return origin is None
         return origin.split("://", 1)[-1].rstrip("/").lower() == (host or "").lower()
 
+    def host_ok(conn: HTTPConnection) -> bool:
+        """Against DNS rebinding. Through the Home Assistant sidebar the Host is the address Home Assistant was opened
+        with, also a remote one (#344): Home Assistant checked the login there. For requests and WebSockets alike."""
+        return ha_app.via_ingress(conn) or host_allowed(conn.headers.get("host"), runtime.config.server.allowed_hosts)
+
     @app.middleware("http")
     async def security(request: Request, call_next):
         host = request.headers.get("host")
-        # through the Home Assistant sidebar: Home Assistant checked the login, the Host is the one of its address.
-        # Only admins of Home Assistant count as logged in there: the Supervisor forwards every user (#300).
+        # through the Home Assistant sidebar only admins of Home Assistant count as logged in: the Supervisor forwards
+        # every user (#300)
         ingress = ha_app.via_ingress(request)
         request.state.ha_admin = ingress and await admins.is_admin(request.headers.get(ha_app.USER_HEADER))
-        if not ingress and not host_allowed(host, runtime.config.server.allowed_hosts):
+        if not host_ok(request):
             if len(host or "") > MAX_HOST_SHOWN:
                 host = f"{host[:MAX_HOST_SHOWN]}…"
             return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
@@ -831,7 +837,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         # live data reveals presence at home: only same-origin pages may subscribe
         host = ws.headers.get("host")
         origin = ws.headers.get("origin")
-        if not host_allowed(host, runtime.config.server.allowed_hosts) or (origin is not None and not origin_ok(origin, host)):
+        if not host_ok(ws) or (origin is not None and not origin_ok(origin, host)):
             await ws.close(code=1008)
             return
         await ws.accept()

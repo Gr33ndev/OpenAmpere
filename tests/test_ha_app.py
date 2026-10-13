@@ -8,6 +8,7 @@ import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from openampere import discovery, ha_app
 from openampere.api import create_app
@@ -98,6 +99,28 @@ def test_direct_access_is_locked_until_a_password_is_set_in_the_sidebar(tmp_path
     assert direct.put("/api/settings", json={"tariff.feed_in_ct": 7}).json()["code"] == "setup_required"
     response = direct.get("/api/status")
     assert response.headers["x-frame-options"] == "DENY"
+
+
+def test_live_values_in_the_sidebar_of_a_remote_address(tmp_path, app_mode):
+    """The companion app often opens Home Assistant by its remote address; the live values must still come (#344)."""
+    _, sidebar, direct = clients(tmp_path)
+    with sidebar.websocket_connect("/api/live/ws", headers={"origin": f"https://{HA_HOST}"}):
+        pass
+    for client, headers in ((sidebar, {"origin": "https://other.example"}),  # another web site in the same browser
+                            (direct, {"host": HA_HOST})):  # not through the sidebar: the host check applies
+        with pytest.raises(WebSocketDisconnect) as closed:
+            with client.websocket_connect("/api/live/ws", headers=headers):
+                pass
+        assert closed.value.code == 1008
+
+
+def test_docker_installations_check_the_host_of_the_live_values(tmp_path, monkeypatch):
+    monkeypatch.delenv("SUPERVISOR_TOKEN", raising=False)
+    _, sidebar, _ = clients(tmp_path)
+    with pytest.raises(WebSocketDisconnect) as closed:
+        with sidebar.websocket_connect("/api/live/ws"):
+            pass
+    assert closed.value.code == 1008
 
 
 def test_forwarded_for_does_not_make_a_request_come_from_the_sidebar(tmp_path, app_mode):
