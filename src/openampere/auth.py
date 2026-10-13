@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import ipaddress
 import os
+import re
 import secrets
 import threading
 import time
@@ -27,6 +28,7 @@ SESSION_TTL_S = 90 * 24 * 3600
 DEVICE_COOKIE = "openampere_device"
 DEVICE_TTL_S = 400 * 24 * 3600  # the longest browsers keep a cookie
 MAX_DEVICES = 50
+MAX_SESSIONS = 100  # the newest ones: logins cannot fill the database with sessions
 MIN_PASSWORD_LENGTH = 8  # NIST SP 800-63B; shorter passwords of older versions keep working
 MAX_FAILED_LOGINS = 5  # per device and minute: one device trying passwords does not lock out the others
 MAX_FAILED_TOTAL = 30  # all devices together per minute: many addresses do not make guessing faster
@@ -52,16 +54,34 @@ def _token_id(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+# name[:port], IPv4[:port] or [IPv6][:port]; nothing else, e.g. no "/", "?", "#" or "@" that would change how the
+# address of the request is read
+_HOST = re.compile(r"(?:\[(?P<v6>[0-9a-z:.%_-]+)\]|(?P<name>[a-z0-9._-]+))(?::[0-9]{0,5})?")
+
+
+def _host_name(host_header: str) -> str | None:
+    """The name or address in a Host header, None if the header is not a plain host with an optional port."""
+    host = host_header.strip().lower()
+    if host.count(":") > 1 and not host.startswith("["):  # an IPv6 address without brackets (and so without port)
+        host = f"[{host}]"
+    match = _HOST.fullmatch(host)
+    if match is None:
+        return None
+    if match["v6"] is not None:
+        try:
+            ipaddress.IPv6Address(match["v6"])
+        except ValueError:
+            return None
+        return match["v6"]
+    return match["name"]
+
+
 def host_allowed(host_header: str | None, extra: list[str]) -> bool:
-    if not host_header:
+    host = _host_name(host_header) if host_header else None
+    if host is None:
         return False
     if "*" in extra:
         return True
-    host = host_header.strip().lower()
-    if host.startswith("["):  # IPv6 literal with port
-        host = host[1:host.find("]")]
-    elif host.count(":") == 1:
-        host = host.split(":", 1)[0]
     try:
         ipaddress.ip_address(host)
         return True
@@ -211,7 +231,8 @@ class Auth:
         with self._sessions_lock:
             sessions = self._sessions()
             sessions[_token_id(token)] = {"until": time.time() + SESSION_TTL_S, "salt": salt}
-            self.storage.set_meta("sessions", sessions)
+            newest = sorted(sessions.items(), key=lambda item: item[1]["until"])[-MAX_SESSIONS:]
+            self.storage.set_meta("sessions", dict(newest))
         return token
 
     def valid(self, token: str | None) -> bool:

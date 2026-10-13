@@ -308,7 +308,7 @@ def create_app(runtime: Runtime) -> FastAPI:
                 host = f"{host[:MAX_HOST_SHOWN]}…"
             return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
                                            "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
-        path = request.url.path
+        path = request.scope["path"]  # the path the routes see, not one read from the URL with the Host in it
         writing = request.method not in ("GET", "HEAD", "OPTIONS")
         if path.startswith(external.PREFIX + "/") or path == external.PREFIX:
             # other apps (#76): only with a token in the Authorization header and only over HTTPS; no cookies,
@@ -396,9 +396,15 @@ def create_app(runtime: Runtime) -> FastAPI:
         secure = request.url.scheme == "https"
         response.set_cookie(SESSION_COOKIE, auth.create_session(salt), max_age=SESSION_TTL_S, httponly=True,
                             samesite="strict", path="/", secure=secure)
+        remember_device(response, request)
+
+    def remember_device(response: Response, request: Request) -> None:
+        """A new device cookie (see Auth.remember_device), not through the Home Assistant sidebar."""
+        if ha_app.via_ingress(request):
+            return
         device = auth.remember_device(request.cookies.get(DEVICE_COOKIE))
         response.set_cookie(DEVICE_COOKIE, device, max_age=DEVICE_TTL_S, httponly=True, samesite="strict",
-                            path="/api/auth", secure=secure)
+                            path="/api/auth", secure=request.url.scheme == "https")
 
     def verify_password(request: Request, password: str) -> str | None:
         return auth.verify_password(password, request.client.host if request.client else None,
@@ -453,6 +459,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         if everywhere and (auth.valid(token) or ha_admin(request)):
             auth.revoke(token, everywhere=True)
             auth.forget_devices()
+            # the device that asked stays known: others trying passwords cannot lock its owner out (as after a new
+            # password)
+            remember_device(response, request)
         else:
             auth.revoke(token)
         response.delete_cookie(SESSION_COOKIE, path="/")
