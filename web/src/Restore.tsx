@@ -13,13 +13,13 @@ export function RestoreButton({ variant = "secondary" }: { variant?: "primary" |
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<"upload" | "restart" | "manual" | null>(null);
-  const before = useRef<number | null>(null);
+  const before = useRef<string | null>(null);
 
   const restore = async (chosen: File) => {
     setFile(null);
     setPhase("upload");
     try {
-      before.current = (await getJson<Status>("/api/status")).database.restored?.ts ?? null;
+      before.current = JSON.stringify((await getJson<Status>("/api/status")).database.restored ?? null);
       const result = await postFile<{ restarting: boolean }>("/api/backup/restore", chosen, "application/vnd.sqlite3");
       setPhase(result.restarting ? "restart" : "manual");
     } catch (e) {
@@ -30,11 +30,12 @@ export function RestoreButton({ variant = "secondary" }: { variant?: "primary" |
 
   useEffect(() => {
     if (phase !== "restart") return;
-    // the restored database answers with a new restore time; until then the old server or none at all
+    // the restored database answers with a new restore time (or, without login, now with one at all); until then the
+    // old server or none at all
     const timer = window.setInterval(async () => {
       try {
         const status = await getJson<Status>("/api/status");
-        if ((status.database.restored?.ts ?? null) !== before.current) window.location.reload();
+        if (JSON.stringify(status.database.restored ?? null) !== before.current) window.location.reload();
       } catch {
         /* still starting */
       }
@@ -75,7 +76,7 @@ export function RestoreButton({ variant = "secondary" }: { variant?: "primary" |
 
 /** The last restore: when, and where the database it replaced is kept. */
 export function LastRestore({ restored }: { restored: Status["database"]["restored"] }) {
-  if (!restored) return null;
+  if (!restored || restored === true) return null; // without login only whether there was one (#353)
   return (
     <p className="hint">
       {tx("settings.restoreCard.lastRestore", { date: updatedLabel(restored.ts),
@@ -96,7 +97,7 @@ async function dismiss(path: string, hide: () => void) {
 
 /** What happened to the database at the start, on every screen until the owner hides it: it could not be read and
  *  OpenAmpere began with an empty one (#165), or an older version continues with the copy from before an update
- *  (#166). */
+ *  (#166). Without login the server says only that it happened, not when or which file (#353). */
 export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthStatus | null }) {
   const { damaged, rollback } = status.database ?? {};
   const [hidden, setHidden] = useState<string[]>([]);
@@ -109,8 +110,12 @@ export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthSta
       {damaged && showDamaged && (
         <Notice kind="error">
           <p><strong>{t("shell.databaseNotice.title")}</strong></p>
-          <p>{t("shell.databaseNotice.whatHappened", { date: updatedLabel(damaged.ts) })}</p>
-          <p>{tx("shell.databaseNotice.fileKept", { file: <code className="code-inline wrap">{damaged.file}</code> })}</p>
+          {typeof damaged === "object" ? (
+            <>
+              <p>{t("shell.databaseNotice.whatHappened", { date: updatedLabel(damaged.ts) })}</p>
+              <p>{tx("shell.databaseNotice.fileKept", { file: <code className="code-inline wrap">{damaged.file}</code> })}</p>
+            </>
+          ) : <p>{t("shell.databaseNotice.whatHappenedNoDate")}</p>}
           {auth?.locked ? null : auth && !auth.configured
             ? <p><strong>{t("shell.databaseNotice.setPasswordNow")}</strong></p>
             : <p>{t("shell.databaseNotice.restoreHint")}</p>}
@@ -127,8 +132,12 @@ export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthSta
       {rollback && showRollback && (
         <Notice kind="warn">
           <p><strong>{t("shell.databaseNotice.rollbackTitle")}</strong></p>
-          <p>{t("shell.databaseNotice.rollbackWhat", { date: updatedLabel(rollback.ts) })}</p>
-          <p>{tx("shell.databaseNotice.rollbackFileKept", { file: <code className="code-inline wrap">{rollback.kept}</code> })}</p>
+          {typeof rollback === "object" ? (
+            <>
+              <p>{t("shell.databaseNotice.rollbackWhat", { date: updatedLabel(rollback.ts) })}</p>
+              <p>{tx("shell.databaseNotice.rollbackFileKept", { file: <code className="code-inline wrap">{rollback.kept}</code> })}</p>
+            </>
+          ) : <p>{t("shell.databaseNotice.rollbackWhatNoDate")}</p>}
           {auth?.authenticated && (
             <div className="button-row">
               <Button variant="secondary" onClick={() => void dismiss("/api/database/rollback", hide("rollback"))}>

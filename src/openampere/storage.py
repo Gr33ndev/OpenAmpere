@@ -369,14 +369,14 @@ class Storage:
             with self._db:
                 for key, value in values.items():
                     self._set_meta(key, value)
-                self._set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
+                self._set_meta("database_damaged", {"ts": time.time(), "file": damaged.name})
         if not memory:
             _only_for_owner(path)
         self._copies = [] if memory else schema_copies(path)
         with self._lock:
             self._keep_copies_current(KEEP_ON_RESTORE)  # also what was changed while OpenAmpere was not running
         if kept is not None:
-            self.set_meta("database_restored", {"ts": time.time(), "kept": str(kept.resolve())})
+            self.set_meta("database_restored", {"ts": time.time(), "kept": kept.name})
         if rolled_back is not None:
             self.set_meta("database_rollback", rolled_back)
         # per-input energy of the running quarter; persisted so a restart does not lose it
@@ -472,7 +472,7 @@ class Storage:
                     version, SCHEMA_VERSION, copy.name, newer.name)
         _move_with_side_files(path, newer)
         _move_with_side_files(copy, path)
-        return {"ts": time.time(), "version": version, "kept": str(newer.resolve())}
+        return {"ts": time.time(), "version": version, "kept": newer.name}
 
     def close(self) -> None:
         with self._lock:

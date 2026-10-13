@@ -538,10 +538,16 @@ def create_app(runtime: Runtime) -> FastAPI:
         control = runtime.config.control
         device = dict(collector.device.__dict__) if collector.device else None
         firmware = storage.get_meta("firmware") or {}
+        database = {key: storage.get_meta(f"database_{key}") for key in ("damaged", "restored", "rollback")}
         if not logged_in(request):  # the serial number identifies the installation (#164): shortened without login
             if device:
                 device["serial"] = privacy.shorten(device.get("serial"))
             firmware = {**firmware, "serial": privacy.shorten(firmware.get("serial"))} if firmware else firmware
+            database = {key: bool(value) for key, value in database.items()}  # what happened, not when or which file
+        else:  # only the name of a kept file: older versions stored the whole path, which says nothing to the owner
+            database = {key: {k: Path(v).name if k in ("file", "kept") and isinstance(v, str) else v
+                              for k, v in value.items()} if isinstance(value, dict) else value
+                        for key, value in database.items()}
         return {
             "version": VERSION,
             "configured": collector.configured,
@@ -553,9 +559,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "clock_wrong": storage.clock_wrong,
             "web_build": WEB_BUILD,
             "relocated": storage.get_meta("relocated"),
-            "database": {"damaged": storage.get_meta("database_damaged"),
-                         "restored": storage.get_meta("database_restored"),
-                         "rollback": storage.get_meta("database_rollback")},
+            "database": database,
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.interval,
             "device": device,
@@ -615,7 +619,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/battery/settings")
     async def get_battery_settings():
         try:
-            return await battery.read()
+            return await battery.read(shared=True)
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
         except Exception as err:  # e.g. timeout through a proxy; the technical text goes to the log, not to the app
@@ -643,7 +647,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.get("/api/grid/export-limit")
     async def get_export_limit():
         try:
-            return await export_limit.read()
+            return await export_limit.read(shared=True)
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
         except Exception as err:  # e.g. timeout through a proxy; the technical text goes to the log, not to the app

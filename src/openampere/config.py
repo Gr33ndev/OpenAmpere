@@ -15,8 +15,11 @@ from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import date
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlsplit
 
 import yaml
+
+from .secretbox import PREFIX as ENCRYPTED_PREFIX
 
 
 @dataclass
@@ -311,6 +314,7 @@ LABELS = {
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
     "pv.commissioning_date": "Inbetriebnahme",
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
+    "cloud.api_key": "API-Schlüssel der EKD-Cloud",
     "evcc.password": "Admin-Passwort von evcc", "notify.ntfy_token": "ntfy-Zugangs-Token",
     "meter.provider": "Netzbetreiber", "meter.username": "E-Mail für das Kundenportal",
     "meter.password": "Passwort für das Kundenportal",
@@ -393,5 +397,15 @@ def validate(changes: dict) -> dict:
             # a password in the address would be shown in the settings, kept in backups and quoted in errors
             raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "
                              "eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.")
+        label = LABELS.get(key, key)
+        if kind == "url" and "@" in urlsplit(value).netloc:
+            # like the ntfy address: an address can be shown without login, kept in backups and quoted in errors (#353)
+            raise ValueError(f"Benutzername und Passwort gehören nicht in die {label}. Bitte die Adresse ohne sie "
+                             "eintragen.")
+        if kind == "secret" and value.startswith(ENCRYPTED_PREFIX):
+            # it would be taken for an encrypted value when it is read again, and get lost (#353)
+            raise ValueError(f"{label}: Der Wert beginnt mit „{ENCRYPTED_PREFIX}“. So beginnen nur verschlüsselt "
+                             "gespeicherte Werte, deshalb kann OpenAmpere ihn nicht speichern. Bitte den Wert so "
+                             "eintragen, wie du ihn bekommen hast.")
         clean[key] = value
     return clean

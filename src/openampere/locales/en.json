@@ -107,6 +107,8 @@
     "zipFileTooLarge": "The ZIP file is too large."
   },
   "config": {
+    "credentialsNotInAddress": "User name and password don't belong in the {label}. Please enter the address without them.",
+    "encryptedPrefixNotAllowed": "{label}: The value starts with “{ENCRYPTED_PREFIX}”. Only values stored encrypted start like this, so OpenAmpere can't save it. Please enter the value exactly as you received it.",
     "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
     "settingTChangedApp": "The setting {key} can't be changed in the app."
   },

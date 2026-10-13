@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import itertools
 import logging
+import time
 from dataclasses import asdict
 
 from .drivers.base import WorkMode
@@ -34,6 +35,7 @@ LOW_RESERVE_MIN = 0
 # it takes a new value a few seconds later (#322)
 READ_BACK_WAITS_S = (1, 2, 3)
 VERIFY_AFTER_S = 45.0  # re-read written values after this time to detect a second master overwriting them
+SHARED_READ_S = 3.0  # a reading for the app is given to every request in this time, instead of one Modbus read each
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +46,39 @@ def control_lock(runtime: Runtime) -> asyncio.Lock:
     if lock is None:
         lock = runtime._control_lock = asyncio.Lock()
     return lock
+
+
+class SharedRead:
+    """Readings for the app (open without login on the home network): requests at the same time share one Modbus
+    read, and its result is given out for SHARED_READ_S, so many requests cannot keep the inverter busy. Checks and
+    read-backs around a write never use it; a write makes the shared result out of date."""
+
+    def __init__(self, read) -> None:
+        self._read = read
+        self._task: asyncio.Task | None = None
+        self._result: tuple[float, object, dict] | None = None  # (monotonic time, driver, values)
+
+    def invalidate(self) -> None:
+        self._task = None  # a reading still running belongs to the requests that already wait for it
+        self._result = None
+
+    async def get(self, driver) -> dict:
+        if self._result and self._result[1] is driver and time.monotonic() - self._result[0] < SHARED_READ_S:
+            return dict(self._result[2])
+        if self._task is None or self._task.done():
+            self._task = asyncio.create_task(self._run(driver))
+            # retrieved here, so a failed reading nobody waits for any more is not reported as never retrieved
+            self._task.add_done_callback(lambda task: task.cancelled() or task.exception())
+        task = self._task
+        # shielded: a request that is given up (e.g. the page was closed) must not cancel the others' reading
+        return dict(await asyncio.shield(task))
+
+    async def _run(self, driver) -> dict:
+        task = self._task
+        values = await self._read()
+        if self._task is task:  # not made out of date by a write in the meantime
+            self._result = (time.monotonic(), driver, values)
+        return values
 
 
 def write_order(current: dict, diff: dict) -> list[str]:
@@ -98,6 +133,7 @@ class BatteryControl:
         self.known: dict | None = None  # the last settings read or read back after a change, for other apps (#336)
         self._known_task: asyncio.Task | None = None
         self._changes = 0  # a reading that started before a change is out of date (#342)
+        self._shared = SharedRead(self._read)
 
     def _driver(self):
         collector = self.runtime.collector
@@ -111,8 +147,9 @@ class BatteryControl:
         data["work_mode"] = settings.work_mode.value if settings.work_mode else None
         return data
 
-    async def read(self) -> dict:
-        data = await self._read()
+    async def read(self, shared: bool = False) -> dict:
+        """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
+        data = await self._shared.get(self._driver()) if shared else await self._read()
         data["unreadable"] = [k for k in FIELDS if data.get(k) is None]
         data["external_change"] = self.external_change
         return data
@@ -145,6 +182,7 @@ class BatteryControl:
             result = await self._write(changes, source, confirm_low_reserve)
         finally:
             self._changes += 1
+            self._shared.invalidate()
         self.known = result["settings"]  # what the inverter holds now, also for a change from the app (#342)
         return result
 
@@ -305,6 +343,7 @@ class ExportLimitControl:
         self.runtime = runtime
         self.external_change: dict | None = None
         self._verify_task: asyncio.Task | None = None
+        self._shared = SharedRead(self._read_limit)
 
     def _driver(self):
         collector = self.runtime.collector
@@ -317,12 +356,22 @@ class ExportLimitControl:
         rule, kwp = config.grid.feed_in_rule, config.pv.installed_kwp
         return {"rule": rule, "installed_kwp": kwp, "legal_max_w": legal_max_w(rule, kwp)}
 
-    async def read(self) -> dict:
-        limit = await self._driver().read_export_limit()
-        return {**asdict(limit), **self._rule(), "external_change": self.external_change}
+    async def _read_limit(self) -> dict:
+        return asdict(await self._driver().read_export_limit())
+
+    async def read(self, shared: bool = False) -> dict:
+        """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
+        limit = await self._shared.get(self._driver()) if shared else await self._read_limit()
+        return {**limit, **self._rule(), "external_change": self.external_change}
 
     async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "", source: str | None = None) -> dict:
         """source: who asked for it if not the web app, e.g. an admin of Home Assistant through its sidebar (#305)."""
+        try:
+            return await self._write(limit_w, confirmed, reference, source)
+        finally:
+            self._shared.invalidate()
+
+    async def _write(self, limit_w: int, confirmed: bool, reference: str, source: str | None) -> dict:
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")

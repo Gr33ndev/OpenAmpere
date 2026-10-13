@@ -146,9 +146,10 @@ def test_rollback_uses_the_copy_from_before_the_upgrade(tmp_path, monkeypatch):
     client = TestClient(create_app(runtime))
     assert runtime.storage.get_meta("installation_id") == "kept"
     assert runtime.storage.get_meta("written_by") is None
-    rollback = client.get("/api/status").json()["database"]["rollback"]
+    assert client.get("/api/status").json()["database"]["rollback"] is True  # details only after login (#353)
+    rollback = runtime.storage.get_meta("database_rollback")
     assert rollback["version"] == 3
-    kept = tmp_path / rollback["kept"].rsplit("/", 1)[-1]
+    kept = tmp_path / rollback["kept"]
     assert kept.name.startswith("t.db.newer-3-") and version_of(kept) == 3
     assert version_of(path) == 1 and not (tmp_path / "t.db.schema-1").exists()  # the copy is in use now
 
