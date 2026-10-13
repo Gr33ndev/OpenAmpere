@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import (AUDITED, EDITABLE, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value,
+from .config import (AUDITED, EDITABLE, LABELS, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value,
                      read_yaml, validate)
 from .drivers import registry
 from .cloud_import import CloudImport
@@ -174,15 +174,17 @@ class Runtime:
                  if secret not in clean and get_value(new, secret) and any(get_value(new, t) for t in targets)
                  and any(get_value(old, t) != get_value(new, t) for t in targets)]
         if moved:
-            names = ", ".join(moved)
-            where = ", ".join(t for secret in moved for t in SECRET_TARGETS[secret])
+            names = "“ und „".join(LABELS[secret] for secret in moved)
+            targets = [t for secret in moved for t in SECRET_TARGETS[secret]]
             if set(moved) & locked:
-                raise PermissionError(f"Die Zugangsdaten ({names}) sind fest als Umgebungsvariable eingestellt. "
+                where = " und ".join(f"„{LABELS[t]}“ (OPENAMPERE_{t.replace('.', '_').upper()})" for t in targets)
+                raise PermissionError(f"Die Zugangsdaten „{names}“ sind fest als Umgebungsvariable eingestellt. "
                                       f"Damit sie nicht an eine andere Adresse gehen, bitte {where} dort ändern, wo "
                                       f"die Umgebungsvariable eingestellt ist.")
-            raise PermissionError(f"Die Zugangsdaten ({names}) stehen in der Datei config.yaml. Damit sie nicht an "
-                                  f"eine andere Adresse gehen, bitte {where} auch dort ändern oder die Zugangsdaten "
-                                  f"hier zusammen mit der neuen Einstellung noch einmal eingeben.")
+            where = " und ".join(f"„{LABELS[t]}“ ({t})" for t in targets)
+            raise PermissionError(f"Die Zugangsdaten „{names}“ stehen in der Datei config.yaml. Damit sie nicht an "
+                                  f"eine andere Adresse gehen, bitte {where} auch in der config.yaml ändern oder die "
+                                  f"Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.")
         make_driver(new)  # validate before persisting
         self._save_settings(saved)
         self.storage.set_meta("settings_revision", self.settings_revision + 1)

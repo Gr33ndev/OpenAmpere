@@ -269,8 +269,8 @@
   },
   "runtime": {
     "enterCommissioningDate": "Bitte das Datum der Inbetriebnahme angeben.",
-    "secretFromConfigFile": "Die Zugangsdaten ({names}) stehen in der Datei config.yaml. Damit sie nicht an eine andere Adresse gehen, bitte {where} auch dort ändern oder die Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.",
-    "secretFromEnvironment": "Die Zugangsdaten ({names}) sind fest als Umgebungsvariable eingestellt. Damit sie nicht an eine andere Adresse gehen, bitte {where} dort ändern, wo die Umgebungsvariable eingestellt ist.",
+    "secretFromConfigFile": "Die Zugangsdaten „{names}“ stehen in der Datei config.yaml. Damit sie nicht an eine andere Adresse gehen, bitte {where} auch in der config.yaml ändern oder die Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.",
+    "secretFromEnvironment": "Die Zugangsdaten „{names}“ sind fest als Umgebungsvariable eingestellt. Damit sie nicht an eine andere Adresse gehen, bitte {where} dort ändern, wo die Umgebungsvariable eingestellt ist.",
     "setEnvironmentVariableT": "Fest eingestellt (Umgebungsvariable), in der App nicht änderbar: {blocked}"
   },
   "secretbox": {

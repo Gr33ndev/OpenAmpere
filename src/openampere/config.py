@@ -311,6 +311,9 @@ LABELS = {
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
     "pv.commissioning_date": "Inbetriebnahme",
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
+    "evcc.password": "Admin-Passwort von evcc", "notify.ntfy_token": "ntfy-Zugangs-Token",
+    "meter.provider": "Netzbetreiber", "meter.username": "E-Mail für das Kundenportal",
+    "meter.password": "Passwort für das Kundenportal",
 }
 
 

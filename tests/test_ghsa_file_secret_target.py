@@ -56,7 +56,7 @@ async def test_a_secret_from_the_environment_does_not_follow_a_new_address(tmp_p
         monkeypatch.setenv(name, value)
     rt = Runtime(targets_only(FILE), Storage(tmp_path / "t.db"))
     try:
-        with pytest.raises(PermissionError, match="Umgebungsvariable"):
+        with pytest.raises(PermissionError, match=r"Umgebungsvariable.*\(OPENAMPERE_(EVCC|NOTIFY|METER)_"):
             await rt.update_settings(change)
         assert not set(change) & set(rt.storage.get_settings())
         assert get_value(rt.config, secret) == ENV[f"OPENAMPERE_{secret.replace('.', '_').upper()}"]
@@ -82,7 +82,9 @@ def test_the_message_tells_the_owner_where_to_change_the_address(tmp_path):
         response = client.put("/api/settings", json={"evcc.url": "http://attacker.example:7070"})
         assert response.status_code == 409
         detail = response.json()["detail"]
-        assert "config.yaml" in detail and "evcc.url" in detail and "evcc.password" in detail
+        assert detail == ("Die Zugangsdaten „Admin-Passwort von evcc“ stehen in der Datei config.yaml. Damit sie "
+                          "nicht an eine andere Adresse gehen, bitte „evcc-Adresse“ (evcc.url) auch in der config.yaml "
+                          "ändern oder die Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.")
         english = client.put("/api/settings", json={"evcc.url": "http://attacker.example:7070"},
                              headers={"x-openampere-lang": "en"}).json()["detail"]
         assert english != detail and "config.yaml" in english  # translated
