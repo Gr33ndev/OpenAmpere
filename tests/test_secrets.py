@@ -83,28 +83,17 @@ def test_the_evcc_login_cookie_goes_only_to_the_address_it_came_from(tmp_path, m
     rt = Runtime({}, Storage(tmp_path / "t.db"))
     evcc = Evcc(rt)
     sent = []
+    headers = {"Set-Cookie": "auth=abc; Path=/"}
 
-    class Answer:
-        headers = {"Set-Cookie": "auth=abc; Path=/"}
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def read(self, size=-1):
-            return b"{}"
-
-    def urlopen(request, timeout):
+    def read_within(request, **kwargs):
         sent.append((request.full_url, request.get_header("Cookie")))
-        return Answer()
-    monkeypatch.setattr("openampere.evcc.open_without_redirect", urlopen)
+        return headers, b"{}"
+    monkeypatch.setattr("openampere.evcc.read_within", read_within)
     monkeypatch.setattr(rt.config.evcc, "url", "http://evcc.local:7070")
     evcc._http("GET", "/api/state")
     evcc._http("GET", "/api/state")
     monkeypatch.setattr(rt.config.evcc, "url", "http://attacker.example:7070")
-    Answer.headers = {}
+    headers = {}
     evcc._http("GET", "/api/state")
     assert sent == [("http://evcc.local:7070/api/state", None), ("http://evcc.local:7070/api/state", "auth=abc"),
                     ("http://attacker.example:7070/api/state", None)]

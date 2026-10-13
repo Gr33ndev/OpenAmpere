@@ -27,6 +27,7 @@ from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 
 from .drivers.mypv import MyPvHeatingRod
+from .outbound import read_within
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ class Consumer:
 # again, also after the device was changed or removed or a backup was restored (#217, #243)
 SWITCHED_ON = "consumer_switched_on"
 RETRY_S, RETRY_MAX_S = 15, 600  # an unreachable device is tried again after 15 s, 30 s, … up to every 10 minutes
+SWITCH_DEADLINE_S = 10  # a switch command ends after this, also when the device answers byte by byte
 GIVE_UP_S = 24 * 3600  # a disabled or removed device that stays unreachable is given up after a day
 
 @dataclass
@@ -155,8 +157,7 @@ def switch_url(c: Consumer, on: bool) -> str:
 
 def _call(url: str) -> None:
     request = urllib.request.Request(url, headers={"User-Agent": "OpenAmpere"})
-    with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310 - user-configured LAN device
-        response.read(1024)
+    read_within(request, timeout=5, deadline=SWITCH_DEADLINE_S, limit=1024)  # user-configured LAN device
 
 
 def _failure(err: Exception) -> str:
@@ -522,13 +523,15 @@ class SurplusControl:
         return sum(min_power_w(lp) for lp in state["loadpoints"] if wants_surplus(lp) and not lp["charging"])
 
     async def _safe_off(self, consumers: list[Consumer], reason: str, now: float) -> None:
-        for c in consumers:
+        """All at once: a device that answers slowly must not hold back switching off the others."""
+        async def off(c: Consumer) -> None:
             state = self.states.get(c.id)
             if state and (state.on or state.switched_on or state.written_w):
                 if c.adjustable:
                     await self.set_power(c, 0, reason, now)
                 else:
                     await self.switch(c, False, reason, now)
+        await asyncio.gather(*(off(c) for c in consumers))
 
     async def tick(self, now: float | None = None) -> None:
         async with self._lock:
@@ -593,21 +596,24 @@ class SurplusControl:
                 self._retired[c_id] = known
             else:
                 self._forget(c_id)
-        for c_id, c in list(self._retired.items()):
-            state = self.states.get(c_id)
-            if state and state.failures and now - state.failing_since > GIVE_UP_S:
-                self._log({"from": {"consumer": c.name}, "to": {"consumer": c.name, "on": False}}, False,
-                          "seit einem Tag nicht erreichbar, OpenAmpere schaltet es nicht mehr")
-            elif state and c.adjustable and (state.power_w or state.written_w):
-                await self.set_power(c, 0, "Gerät deaktiviert, entfernt oder geändert", now)
-                if state.written_w:
-                    continue  # not reachable: again later
-            elif state and (state.on or state.switched_on):
-                await self.switch(c, False, "Gerät deaktiviert, entfernt oder geändert", now)
-                if state.switched_on:
-                    continue
-            self._retired.pop(c_id, None)  # also when it was enabled again meanwhile (#243)
-            self._forget(c_id)
+        # all at once: a device that answers slowly must not hold back switching off the others
+        await asyncio.gather(*(self._retire_one(c_id, c, now) for c_id, c in list(self._retired.items())))
+
+    async def _retire_one(self, c_id: str, c: Consumer, now: float) -> None:
+        state = self.states.get(c_id)
+        if state and state.failures and now - state.failing_since > GIVE_UP_S:
+            self._log({"from": {"consumer": c.name}, "to": {"consumer": c.name, "on": False}}, False,
+                      "seit einem Tag nicht erreichbar, OpenAmpere schaltet es nicht mehr")
+        elif state and c.adjustable and (state.power_w or state.written_w):
+            await self.set_power(c, 0, "Gerät deaktiviert, entfernt oder geändert", now)
+            if state.written_w:
+                return  # not reachable: again later
+        elif state and (state.on or state.switched_on):
+            await self.switch(c, False, "Gerät deaktiviert, entfernt oder geändert", now)
+            if state.switched_on:
+                return
+        self._retired.pop(c_id, None)  # also when it was enabled again meanwhile (#243)
+        self._forget(c_id)
 
     async def _manual(self, c: Consumer, state: State, mode: str, now: float) -> float:
         on = mode == "boost"
