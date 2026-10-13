@@ -107,6 +107,15 @@ def test_a_fix_merged_from_a_security_advisory_is_listed_with_the_advisory():
     assert groups["other"] == []
 
 
+def test_an_advisory_only_mentioned_in_the_text_is_not_listed():
+    """#370: the fix of one advisory refers to an earlier one; only the advisory on a line of its own is listed."""
+    groups, _ = changelog["parse"](log(
+        ("Merge commit from fork", "GHSA-2j3r-6fcx-9m7v moved the folders, the example did not (the rest of\n"
+                                   "GHSA-2j3r-6fcx-9m7v).\n\nGHSA-3grw-j32m-8gcj\n\nCo-Authored-By: x"),
+    ), title={}.get)
+    assert groups["fix"] == [{"scope": "security", "text": "Close security advisory GHSA-3grw-j32m-8gcj"}]
+
+
 def test_security_advisories_are_linked_in_the_release_notes():
     item = {"scope": "security", "text": "Restoring a crafted backup takes over unchecked data (GHSA-4jmw-6h58-vc78)"}
     assert release_notes["line"](item) == (
