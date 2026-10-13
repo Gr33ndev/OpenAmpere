@@ -41,6 +41,7 @@ _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|
                    r"(?![\w-])", re.I)
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
+_FRAMES = re.compile(r"(?:\n>>>>> [^\n]*)+")  # raw Modbus frames pymodbus appends to its errors
 
 
 def shorten(text: str | None) -> str | None:
@@ -94,6 +95,12 @@ class Pseudonyms:
         if isinstance(value, dict):
             return {k: self.apply(v) for k, v in value.items()}
         return value
+
+
+def log_for_report(lines: list[str] | None) -> list[str] | None:
+    """pymodbus appends the last raw Modbus frames to its errors (">>>>> send: 0x0 …"). They hold register values such
+    as the energy counters, which identify an installation (#338); one note replaces them, the error itself stays."""
+    return [_FRAMES.sub("\n>>>>> <Modbus-Rohdaten entfernt>", line) for line in lines] if lines else lines
 
 
 def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:

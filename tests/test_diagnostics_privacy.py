@@ -31,3 +31,28 @@ def test_the_report_has_no_date_and_time():
               "connection": {"mode": "persistent", "timeout_s": 3}}
     text = report_markdown(report)
     assert "13:37" not in text and "01.06.2026" not in text
+
+
+def test_raw_modbus_frames_are_not_in_the_report(tmp_path):
+    import logging
+
+    from pymodbus.logging import Log
+
+    from openampere.logs import RecentLogs
+    recent, logger = RecentLogs(), logging.getLogger("pymodbus.logging")
+    logger.addHandler(recent)
+    try:  # pymodbus appends the last frames to its errors; they hold register values such as energy counters (#338)
+        Log.frame_dump = [(Log.SEND_DATA, b"\x00\xf8\x00\x00\x00\x06\x01\x03\x40\xbf\x00\x40", b""),
+                          (Log.RECV_DATA, b"\x00\xf8\x00\x00\x00\x07\x01\x03\x04\x00\x0e\x53\xc2", b"")]
+        Log.error("No response received after 0 retries, continue with next request")
+    finally:
+        logger.removeHandler(recent)
+        Log.frame_dump = []
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    report = Diagnostics(runtime)._pseudonymise({"created": time.time(), "version": "dev", "device": {},
+                                                 "checks": [], "log": recent.lines(),
+                                                 "connection": {"mode": "persistent", "timeout_s": 3}})
+    text = report_markdown(report)
+    assert "No response received after 0 retries" in text and "<Modbus-Rohdaten entfernt>" in text
+    assert "0x53" not in text and "send:" not in text and "recv:" not in text
+    runtime.storage.close()

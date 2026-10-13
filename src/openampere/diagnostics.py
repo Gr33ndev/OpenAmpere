@@ -195,6 +195,7 @@ class Diagnostics:
         number and the addresses of other services; the report is shared publicly. One set of pseudonyms for all
         parts, so the same address has the same name everywhere in the report."""
         pseudonyms = privacy.for_report(self.runtime, include_serial)
+        report = {**report, "log": privacy.log_for_report(report.get("log"))}
         return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp")}}
 
     @staticmethod
