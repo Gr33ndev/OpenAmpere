@@ -1,6 +1,92 @@
 {
   "versions": [
     {
+      "version": "0.27.0",
+      "date": "2026-10-14",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "release",
+            "text": "List only the advisory a fix closes, not one it mentions (#371)"
+          },
+          {
+            "scope": "restore",
+            "text": "Keep the current password and app accesses when a backup is restored (#367)"
+          },
+          {
+            "scope": "updates",
+            "text": "Keep the health check working while the database is busy and harden the update helper (#361)"
+          },
+          {
+            "scope": "auth",
+            "text": "Harden login, sessions, app access and pairing (#366)"
+          },
+          {
+            "scope": "status",
+            "text": "Hide database file names and times without login, refuse credentials in the evcc address (#369)"
+          },
+          {
+            "scope": "security",
+            "text": "Let the web app run only its own scripts (#368)"
+          },
+          {
+            "scope": "install",
+            "text": "Keep the tailscale login link and evcc data private and check helpers against the release (#364)"
+          },
+          {
+            "scope": "control",
+            "text": "Keep grid charging and surplus control within safe limits (#363)"
+          },
+          {
+            "scope": null,
+            "text": "Never send the cloud api key on after a redirect and limit online requests in size and time (#362)"
+          },
+          {
+            "scope": "security",
+            "text": "Home Assistant integration does not check the server when pairing (GHSA-8f28-gpm6-w56g)"
+          },
+          {
+            "scope": "security",
+            "text": "Going back to an older version restores old passwords, sessions and revoked tokens (GHSA-x8rj-ccv8-qvmp)"
+          },
+          {
+            "scope": "security",
+            "text": "Dependency update workflow can run code from an updated package with a write token (GHSA-mh4w-fmr4-2wpw)"
+          },
+          {
+            "scope": "security",
+            "text": "Update helper and installer accept an older release (GHSA-8893-x8jf-64v6)"
+          },
+          {
+            "scope": "security",
+            "text": "Release workflow signs files from any tag when started by hand (GHSA-3xmc-fc67-chgq)"
+          },
+          {
+            "scope": "security",
+            "text": "Manual Docker Compose layout lets the root Tailscale helper follow a link in the data folder (GHSA-3grw-j32m-8gcj)"
+          },
+          {
+            "scope": "security",
+            "text": "Website build can replace the install script that owners run with sudo (GHSA-g83m-rrj2-cm2j)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Correct security notes on backups, home assistant control and relays (#365)"
+          },
+          {
+            "scope": null,
+            "text": "Check website texts for unsafe html and pin the release helper images (#360)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.26.4",
       "date": "2026-10-13",
       "first": false,

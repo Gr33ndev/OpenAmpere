@@ -3,7 +3,7 @@
 # OpenAmpere as a Home Assistant app (#300). Home Assistant reads this file from the main branch. The version is the
 # tag of the image it installs: scripts/release.sh sets it, and main is pushed only after the image is published.
 name: OpenAmpere
-version: "0.26.4"
+version: "0.27.0"
 slug: openampere
 description: Local app for solar systems with battery storage (FoxESS H3, SAJ H2/HS2), without a cloud
 url: https://github.com/Gr33ndev/OpenAmpere

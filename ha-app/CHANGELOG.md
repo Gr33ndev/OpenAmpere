@@ -4,6 +4,32 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.27.0 (2026-10-14)
+
+### Behoben
+
+- **release:** List only the advisory a fix closes, not one it mentions (#371)
+- **restore:** Keep the current password and app accesses when a backup is restored (#367)
+- **updates:** Keep the health check working while the database is busy and harden the update helper (#361)
+- **auth:** Harden login, sessions, app access and pairing (#366)
+- **status:** Hide database file names and times without login, refuse credentials in the evcc address (#369)
+- **security:** Let the web app run only its own scripts (#368)
+- **install:** Keep the tailscale login link and evcc data private and check helpers against the release (#364)
+- **control:** Keep grid charging and surplus control within safe limits (#363)
+- Never send the cloud api key on after a redirect and limit online requests in size and time (#362)
+- **security:** Home Assistant integration does not check the server when pairing (GHSA-8f28-gpm6-w56g)
+- **security:** Going back to an older version restores old passwords, sessions and revoked tokens (GHSA-x8rj-ccv8-qvmp)
+- **security:** Dependency update workflow can run code from an updated package with a write token (GHSA-mh4w-fmr4-2wpw)
+- **security:** Update helper and installer accept an older release (GHSA-8893-x8jf-64v6)
+- **security:** Release workflow signs files from any tag when started by hand (GHSA-3xmc-fc67-chgq)
+- **security:** Manual Docker Compose layout lets the root Tailscale helper follow a link in the data folder (GHSA-3grw-j32m-8gcj)
+- **security:** Website build can replace the install script that owners run with sudo (GHSA-g83m-rrj2-cm2j)
+
+### Weitere Änderungen
+
+- Correct security notes on backups, home assistant control and relays (#365)
+- Check website texts for unsafe html and pin the release helper images (#360)
+
 ## 0.26.4 (2026-10-13)
 
 ### Behoben
@@ -89,15 +115,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **charging:** Charge past the backup reserve on inverters that stop there (#316)
-
-## 0.23.0 (2026-10-12)
-
-### Neu
-
-- **battery:** Allow a backup power reserve below 10 % after a warning (#314)
-- **connection:** Say when the inverter's connections are all taken (#312)
-
-### Weitere Änderungen
-
-- **site:** Steps to add the app repository by hand for way 2 (#310)
-- Complete steps to add the app repository, with its maintainer (#308)
