@@ -34,7 +34,10 @@
  *
  * Checks: a key missing in German or an unknown placeholder fails the build. A key missing in another language is
  * shown in German and reported as a warning with the count per language; German keys no template uses and keys
- * that exist only in a translation are reported too.
+ * that exist only in a translation are reported too. Values are HTML, so every value of every language may only use
+ * the tags of SAFE_TAGS (#355): <a href> to an https:// or relative address, <strong>, <em>, <code>, <br>, <p>, no
+ * other attributes. Anything else (<script>, onclick=, a javascript: link, a "<" that is not such a tag) fails the
+ * build; write a "<" in a text as &lt;.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -48,6 +51,12 @@ const CHANGELOG_FILE = "web/public/changelog.json";
 const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
 const ADVISORIES = "https://github.com/Gr33ndev/OpenAmpere/security/advisories/";
+
+// tags a text value may contain, with the attributes each may have (#355)
+const SAFE_TAGS = { a: ["href"], strong: [], em: [], code: [], br: [], p: [] };
+const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[a-zA-Z][a-zA-Z0-9-]*="[^"<>]*")*)\s*\/?>/y;
+// https:// or a relative address (no scheme, not //host); "&" only as &amp;, so no entity can hide a scheme
+const SAFE_HREF = /^(?:https:\/\/|(?![a-zA-Z][a-zA-Z0-9+.-]*:|\/\/))(?:[^\s\0-\x1f\x7f"'<>\\&]|&amp;)*$/;
 
 const errors = [];
 const warnings = [];
@@ -162,6 +171,29 @@ if (changelogUsed) {
 }
 const germanKeys = Object.entries(texts[REFERENCE] ?? {}).flatMap(([file, node]) => keysOf(node, file));
 const unused = germanKeys.filter((key) => !used.has(key));
+/** Why value is not safe to insert as HTML, undefined if it is (only SAFE_TAGS, see above). */
+function unsafeHtml(value) {
+  for (let start = value.indexOf("<"); start >= 0; start = value.indexOf("<", start + 1)) {
+    TAG.lastIndex = start;
+    const match = TAG.exec(value);
+    if (!match) return `"${value.slice(start, start + 20)}…" is not a simple tag (write a "<" in a text as &lt;)`;
+    const [tag, closing, name, attributes] = match;
+    const allowed = Object.hasOwn(SAFE_TAGS, name.toLowerCase()) && SAFE_TAGS[name.toLowerCase()];
+    if (!allowed) return `<${name}> is not allowed (only ${Object.keys(SAFE_TAGS).join(", ")})`;
+    for (const [, attribute, address] of attributes.matchAll(/([a-zA-Z][a-zA-Z0-9-]*)="([^"]*)"/g)) {
+      if (closing || !allowed.includes(attribute.toLowerCase())) return `${tag} has the attribute ${attribute}, which is not allowed`;
+      if (!SAFE_HREF.test(address)) return `${tag} links to an address that is neither https:// nor relative`;
+    }
+  }
+  return undefined;
+}
+for (const [lang, files] of Object.entries(texts)) {
+  for (const key of Object.entries(files).flatMap(([file, node]) => keysOf(node, file))) {
+    const problem = unsafeHtml(lookup(lang, key));
+    if (problem) errors.push(`site/locales/${lang}/${key.split(".")[0]}.json: ${key}: ${problem}`);
+  }
+}
+
 if (unused.length) warnings.push(`${unused.length} German text(s) no page uses: ${unused.join(", ")}`);
 for (const lang of Object.keys(texts)) {
   if (lang === REFERENCE) continue;
