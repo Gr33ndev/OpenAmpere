@@ -92,6 +92,53 @@ async def test_test_connection_reports_label_and_choice(tmp_path):
         assert not wrong["ok"]
 
 
+@pytest.mark.parametrize("depth_registers", [True, False])
+async def test_saj_reads_on_grid_and_off_grid_depth(depth_registers):
+    sim = SajSimulatedInverter(max_connections=3, depth_registers=depth_registers)
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("saj", "127.0.0.1", port, 1, timeout=3)
+        await driver.connect()
+        settings = await driver.read_settings()
+        snap = await driver.read()
+        await driver.close()
+    # the backup reserve is the on-grid depth, not the off-grid one (#334); without the settings registers
+    # (some firmware) the on-grid limit comes from 0x402A, the off-grid one stays unknown, live values still work
+    off_grid = 5 if depth_registers else None
+    assert (settings.min_soc_on_grid, settings.min_soc, settings.max_soc) == (20, off_grid, 100)
+    assert driver.has_depth_registers == depth_registers
+    assert snap.battery_soc == pytest.approx(sim.energy.soc, abs=0.1)
+
+
+async def test_saj_diagnostics_shows_both_sets_of_limits(tmp_path):
+    from openampere.diagnostics import Diagnostics
+    sim = SajSimulatedInverter(max_connections=3)
+    server, port = await serve(sim)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2})
+            for _ in range(150):
+                if runtime.collector.latest:
+                    break
+                await asyncio.sleep(0.1)
+            checks = {c["id"]: c for c in (await Diagnostics(runtime).run())["checks"]}
+        finally:
+            await runtime.collector.stop()
+    assert checks["saj_limits"]["summary"] == (
+        "Netzbetrieb 20 %, Notstrombetrieb 5 %, Ladegrenze 100 %, Betriebsart 0 (0x3644–0x3647); "
+        "Reserve im Backup-Modus 10 % (0x3651); Rücklese-Register 0x4029 100 %, 0x402A 20 %, 0x402B 0 %, 0x402C 10 %")
+
+
+def test_saj_settings_prefer_the_depth_registers():
+    from openampere.drivers.saj.driver import to_settings
+    raw = {"app_mode": 0, "max_soc": 100, "min_soc_on_grid": 25, "reserve_soc": 0}
+    # without the settings registers only the on-grid limit is known; 0x402C is not taken for off grid (#334)
+    assert (to_settings(raw).min_soc_on_grid, to_settings(raw).min_soc) == (25, None)
+    assert (to_settings(raw, [30, 10]).min_soc_on_grid, to_settings(raw, [30, 10]).min_soc) == (30, 10)
+
+
 def test_saj_grid_counter_source_does_not_switch():
     from openampere.drivers.saj.driver import to_snapshot
     raw = {"grid_import_sum_total": 5000.0, "grid_import_l1_total": 1700.0}

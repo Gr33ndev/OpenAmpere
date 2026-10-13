@@ -328,8 +328,10 @@ class SajSimulatedInverter(SimulatedInverter):
     """SAJ H2 register layout on top of the same energy model. Read-only."""
 
     def __init__(self, *, device_type: int = 0x005B, serial: str = "HST2103SIM00001", unit: int = 1,
-                 max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0) -> None:
+                 max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
+                 depth_registers: bool = True) -> None:
         self.map = None
+        self.depth_registers = depth_registers
         self.model = f"SAJ {saj.DEVICE_TYPES.get(device_type, hex(device_type))}"
         self.serial = serial
         self.strict_function = False
@@ -365,8 +367,12 @@ class SajSimulatedInverter(SimulatedInverter):
         put("ambient_temperature", 21)
         put("app_mode", 0)
         put("max_soc", 100)
-        put("min_soc", 10)
-        put("reserve_soc", 20)
+        put("min_soc_on_grid", 20)
+        put("reserve_soc", 10)
+        if self.depth_registers:
+            for i, value in enumerate((20, 5, 100, 0)):  # on grid, off grid, charge limit, app mode
+                self.regs[saj.DEPTH_ADDRESS + i] = value
+            self.regs[saj.BACKUP_SOC_ADDRESS] = 10
         put("battery_voltage", 52)
         put("battery_current", -e.battery_w / 52)
         put("battery_temperature", 23)

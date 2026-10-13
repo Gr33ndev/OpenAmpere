@@ -110,7 +110,7 @@ With the old map, read each register in the 41xxx range individually. Do not rea
 
 ## SAJ H2 / HS2
 
-The facts come from community projects; sources and licenses are listed in [NOTICE](../NOTICE). The driver is located in `src/openampere/drivers/saj/`.
+The facts come from community projects; sources and licenses are listed in [NOTICE](../NOTICE). Names and meanings of single registers are checked against SAJ's Modbus protocols for related inverters (R5/R6/C6 and H1); there is no public protocol for the H2/HS2. The driver is located in `src/openampere/drivers/saj/`.
 
 - **Connection:** FC03, port 502, device address **1 or 2**. Which one depends on the installation; detection tries both.
 - **Detection:** block 0x8F00 with 29 registers:
@@ -134,6 +134,17 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   | Grid | 0x40AD | W, + = import |
 
 - **Counters:** U32 in 0.01 kWh starting at 0x40BF. For grid import and export across all three phases, the total counters starting at 0x4167 apply; they are missing on some firmware, in which case the L1 counters are used. Note: SAJ calls export "sell" and grid import "feed-in".
+- **Battery limits (read-only, #334):**
+  - Backup reserve: on-grid discharge depth 0x3644; lower limit during a power outage: off-grid discharge depth
+    0x3645; both in % SoC (not depth of discharge). These registers are not in a public SAJ protocol. 0x3644 is
+    confirmed on real devices by the community (the old IQ box writes it as the reserve); 0x3645 is known only by its
+    name. They are read only with the battery settings, not with every poll.
+  - Firmware without them: the on-grid limit comes from the read-back register 0x402A ("set SoC_L"; in SAJ's protocol
+    for the H1 the matching setting applies to grid-connected operation), the off-grid limit stays unknown. 0x402C
+    ("reserved SoC") is not used: it may mirror the off-grid depth or the reserve of the backup mode 0x3651.
+  - The charge limit is read from 0x4029.
+  - The diagnostics report shows 0x3644–0x3647, 0x3651 and 0x4029–0x402C side by side to settle this on more
+    devices.
 - **Still to be verified on a real device:**
   - the signs of battery and grid power
   - whether the PV counter covers all MPPTs

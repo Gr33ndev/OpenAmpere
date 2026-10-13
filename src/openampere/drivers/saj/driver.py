@@ -8,10 +8,10 @@ import logging
 import time
 
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
-from ..modbus import ModbusDevice, ModbusIllegalError, ascii_text
+from ..modbus import ModbusDevice, ModbusIllegalError, ModbusReadError, ascii_text
 from ..regs import counter_step_wh, decode
-from .registers import (BLOCKS, DEVICE_TYPE_RANGE, DEVICE_TYPES, INFO_ADDRESS, INFO_LENGTH, OFF_GRID_MODE,
-                        READ_FUNCTION, VALUES)
+from .registers import (BLOCKS, DEPTH_ADDRESS, DEVICE_TYPE_RANGE, DEVICE_TYPES, INFO_ADDRESS, INFO_LENGTH,
+                        OFF_GRID_MODE, READ_FUNCTION, VALUES)
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ class SajDriver(ModbusDevice):
         super().__init__(host, port, unit, timeout=timeout, read_attempts=read_attempts)
         self.read_function = READ_FUNCTION
         self.grid_counter_source: str | None = None  # "sum" or "l1", fixed after the first reading
+        self.has_depth_registers = True  # False once the device rejects them (some firmware)
 
     async def _detect(self) -> DeviceInfo:
         hit = await self._probe(INFO_ADDRESS, INFO_LENGTH, (READ_FUNCTION,))
@@ -81,10 +82,15 @@ class SajDriver(ModbusDevice):
 
     async def read_settings(self) -> BatterySettings:
         raw = await self.read_raw()
-        modes = {0: WorkMode.SELF_USE, 2: WorkMode.BACKUP}
-        as_int = lambda key: int(raw[key]) if key in raw else None  # noqa: E731
-        return BatterySettings(work_mode=modes.get(as_int("app_mode")), min_soc=as_int("min_soc"),
-                               max_soc=as_int("max_soc"), min_soc_on_grid=as_int("reserve_soc"))
+        depths = None
+        if self.has_depth_registers:
+            try:
+                depths = await self._read(DEPTH_ADDRESS, 2, READ_FUNCTION)
+            except ModbusIllegalError:
+                self.has_depth_registers = False
+            except ModbusReadError as err:
+                log.debug("discharge depths not readable, using the read-back registers: %s", err)
+        return to_settings(raw, depths)
 
     async def read_export_limit(self) -> ExportLimit:
         return ExportLimit(supported=False, rated_power_w=self.info.rated_power_w if self.info else None)
@@ -96,6 +102,16 @@ class SajDriver(ModbusDevice):
 
     async def remote_active(self) -> bool:
         return False
+
+
+def to_settings(raw: dict[str, float], depths: list[int] | None = None) -> BatterySettings:
+    """depths are the on-grid and off-grid discharge depths from the settings registers. Without them only the
+    on-grid limit is known, from the read-back register 0x402A; the off-grid one is not guessed (#334)."""
+    modes = {0: WorkMode.SELF_USE, 2: WorkMode.BACKUP}
+    as_int = lambda key: int(raw[key]) if key in raw else None  # noqa: E731
+    on_grid, off_grid = depths if depths else (as_int("min_soc_on_grid"), None)
+    return BatterySettings(work_mode=modes.get(as_int("app_mode")), min_soc=off_grid, max_soc=as_int("max_soc"),
+                           min_soc_on_grid=on_grid)
 
 
 def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None = None) -> Snapshot:
