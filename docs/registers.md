@@ -136,15 +136,17 @@ The facts come from community projects; sources and licenses are listed in [NOTI
 - **Counters:** U32 in 0.01 kWh starting at 0x40BF. For grid import and export across all three phases, the total counters starting at 0x4167 apply; they are missing on some firmware, in which case the L1 counters are used. Note: SAJ calls export "sell" and grid import "feed-in".
 - **Battery limits (read-only, #334):**
   - Backup reserve: on-grid discharge depth 0x3644; lower limit during a power outage: off-grid discharge depth
-    0x3645; both in % SoC (not depth of discharge). These registers are not in a public SAJ protocol. 0x3644 is
-    confirmed on real devices by the community (the old IQ box writes it as the reserve); 0x3645 is known only by its
-    name. They are read only with the battery settings, not with every poll.
+    0x3645; both in % SoC (not depth of discharge). These registers are not in a public SAJ protocol. A diagnostics
+    report from a real device (#334) confirms both: they matched the on-grid and off-grid values of the
+    manufacturer's app. 0x3644 is also confirmed by the community (the old IQ box writes it as the reserve). They are
+    read only with the battery settings, not with every poll.
   - Firmware without them: the on-grid limit comes from the read-back register 0x402A ("set SoC_L"; in SAJ's protocol
-    for the H1 the matching setting applies to grid-connected operation), the off-grid limit stays unknown. 0x402C
-    ("reserved SoC") is not used: it may mirror the off-grid depth or the reserve of the backup mode 0x3651.
+    for the H1 the matching setting applies to grid-connected operation; on the device in #334 it equalled 0x3644),
+    the off-grid limit stays unknown. 0x402C ("reserved SoC") is not used: on that device it equalled 0x3645 and not
+    the reserve of the backup mode 0x3651, but the off-grid depth was 0, so this is not yet certain.
   - The charge limit is read from 0x4029.
-  - The diagnostics report shows 0x3644–0x3647, 0x3651 and 0x4029–0x402C side by side to settle this on more
-    devices.
+  - The diagnostics report shows 0x3644–0x3647, 0x3651 and 0x4029–0x402C side by side; a report with an off-grid
+    depth other than 0 would settle 0x402C.
 - **Still to be verified on a real device:**
   - the signs of battery and grid power
   - whether the PV counter covers all MPPTs
