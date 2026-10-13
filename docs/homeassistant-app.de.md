@@ -51,7 +51,8 @@ und installiert sie selbst, HACS brauchst du nicht.** Updates der App aktualisie
    (Einstellungen → System → Neu starten).
 2. Danach steht unter **Einstellungen → Geräte & Dienste** **Entdeckt: OpenAmpere**. Bestätige das.
 3. Home Assistant und OpenAmpere zeigen denselben 6-stelligen Code. Vergleiche ihn in OpenAmpere unter
-   **Mehr → Verbundene Apps** und erlaube die Verbindung, nur lesen oder auch steuern.
+   **Mehr → Verbundene Apps** und erlaube die Verbindung, nur lesen oder auch steuern. Bestätige den Code danach
+   noch einmal in Home Assistant.
 
 Steuer-Entitäten sind nur verfügbar, solange in OpenAmpere die Steuerung eingeschaltet ist (Mehr → Steuerung und
 Protokoll).

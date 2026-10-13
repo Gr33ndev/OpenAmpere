@@ -105,8 +105,11 @@ Die Wallbox steuerst du in Home Assistant über die
 - **Eigener Zugang je App:** Er ist nur für diese Schnittstelle gültig, nicht für die Web-App, und lässt sich unter
   Mehr → Verbundene Apps jederzeit entfernen („zuletzt benutzt“ steht dabei). OpenAmpere speichert nur einen Hash.
 - **Verschlüsselt mit festem Zertifikat:** OpenAmpere erzeugt beim ersten Start ein eigenes Zertifikat. Home
-  Assistant merkt sich dessen Fingerabdruck und lehnt jedes andere ab. Wer sich im Netz dazwischenschaltet, fällt
-  auf, beim Koppeln an unterschiedlichen Codes.
+  Assistant merkt sich dessen Fingerabdruck und lehnt jedes andere ab. Beim Koppeln zeigen beide denselben Code: Du
+  vergleichst ihn in OpenAmpere, bevor du die Verbindung erlaubst, und Home Assistant lässt ihn dich noch einmal
+  bestätigen, bevor es etwas speichert. Stehen dort verschiedene Codes oder zeigt OpenAmpere keine Anfrage, antwortet
+  unter der Adresse jemand anderes: dann ablehnen und den Dialog schließen. Ein Verbindungscode aus OpenAmpere enthält
+  den Fingerabdruck selbst und braucht keinen Vergleich.
 - **Nur freigegebene Befehle**, siehe oben. Der Hauptschalter bleibt in OpenAmpere.
 - **Keine persönlichen Daten in Home Assistant:** keine Seriennummern, Zählernummern oder Netzbetreiber-Daten. Sie
   würden sonst in Backups von Home Assistant landen. Die Diagnose der Integration schwärzt Zugang und Adresse.

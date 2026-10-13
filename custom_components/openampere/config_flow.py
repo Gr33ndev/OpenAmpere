@@ -5,8 +5,10 @@
 Pairing: Home Assistant reads the certificate OpenAmpere shows, commits to a random number, learns OpenAmpere's
 number and reveals its own. Both sides compute six digits from the certificate they see and both numbers; you
 compare them and allow the connection in OpenAmpere (Mehr → Verbundene Apps). Then Home Assistant gets its token.
-If someone sits in between, the codes differ. The connection code (made in OpenAmpere) holds address, port,
-certificate fingerprint and token in one string.
+If someone sits in between, the codes differ. That protects OpenAmpere's token; Home Assistant itself cannot tell
+whether the answer "allowed" came from OpenAmpere or from another device at the same address. So it stores the
+connection only after you confirm here that OpenAmpere showed this code (GHSA-8f28-gpm6-w56g). The connection code
+(made in OpenAmpere) holds address, port, certificate fingerprint and token in one string.
 """
 
 from __future__ import annotations
@@ -108,6 +110,20 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
             return self._discovered.host
         return self._get_reauth_entry().data[CONF_HOST] if self.source == SOURCE_REAUTH else ""
 
+    def _default_port(self) -> int:
+        if self._discovered:
+            return self._discovered.port
+        return self._get_reauth_entry().data.get(CONF_PORT, DEFAULT_PORT) if self.source == SOURCE_REAUTH \
+            else DEFAULT_PORT
+
+    def _known_fingerprint(self) -> str | None:
+        """The certificate Home Assistant already trusts for this OpenAmpere, if it knows it."""
+        if self.source == SOURCE_REAUTH:
+            return self._get_reauth_entry().data.get(CONF_FINGERPRINT)
+        entry = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, self.unique_id) \
+            if self.unique_id else None
+        return entry.data.get(CONF_FINGERPRINT) if entry else None
+
     async def _finish(self, installation_id: str, data: dict[str, Any]) -> ConfigFlowResult:
         await self.async_set_unique_id(installation_id)
         if self.source == SOURCE_REAUTH:
@@ -192,9 +208,9 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
                 # e.g. too many open requests: OpenAmpere's own words
                 errors["base"] = "pairing_failed"
                 self._failure_detail = plain_detail(str(err))
-        port = self._discovered.port if self._discovered else DEFAULT_PORT
         schema = vol.Schema({vol.Required(CONF_HOST, default=self._default_host()): str,
-                             vol.Required(CONF_PORT, default=port): vol.All(vol.Coerce(int), vol.Range(1, 65535))})
+                             vol.Required(CONF_PORT, default=self._default_port()):
+                                 vol.All(vol.Coerce(int), vol.Range(1, 65535))})
         return self.async_show_form(step_id="pair", data_schema=schema, errors=errors,
                                     description_placeholders={"detail": self._failure_detail})
 
@@ -229,10 +245,27 @@ class OpenAmpereConfigFlow(ConfigFlow, domain=DOMAIN):
             self._connection.token = self._task.result()
         except PairingRejected:
             return self.async_show_progress_done(next_step_id="failed")
-        return self.async_show_progress_done(next_step_id="paired")
+        known = self._known_fingerprint()
+        new_certificate = known is not None and known != self._connection.fingerprint
+        return self.async_show_progress_done(next_step_id="confirm_new_certificate" if new_certificate
+                                             else "confirm_code")
 
-    async def async_step_paired(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_confirm_code(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """The answer "allowed" may come from any device at the address: stored only once you confirm the code."""
+        if user_input is None:
+            return self._confirm_form("confirm_code")
         return await self._finish(self._pairing["installation_id"], self._data(self._connection))
+
+    async def async_step_confirm_new_certificate(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """As confirm_code, with a warning: this OpenAmpere shows another certificate than the one Home Assistant
+        knows (expected after reinstalling it or moving it to another device)."""
+        if user_input is None:
+            return self._confirm_form("confirm_new_certificate")
+        return await self._finish(self._pairing["installation_id"], self._data(self._connection))
+
+    def _confirm_form(self, step_id: str) -> ConfigFlowResult:
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({}),
+                                    description_placeholders={"code": f"{self._code[:3]} {self._code[3:]}"})
 
     async def async_step_failed(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_abort(reason=self._failure)

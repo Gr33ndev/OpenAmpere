@@ -95,6 +95,8 @@ async def pair_until_progress(hass: HomeAssistant, statuses: list[dict]):
         assert result["description_placeholders"]["code"] == f"{expected[:3]} {expected[3:]}"
         await hass.async_block_till_done()
         result = await hass.config_entries.flow.async_configure(result["flow_id"])
+        if result["type"] is FlowResultType.FORM and result["step_id"] == "confirm_code":
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], {})  # code confirmed
         return result
 
 
@@ -139,6 +141,9 @@ async def test_the_app_is_discovered_and_paired_without_an_address(hass: HomeAss
         assert fetch.call_args.args == (APP_HOST, 8443)
         await hass.async_block_till_done()
         result = await hass.config_entries.flow.async_configure(result["flow_id"])
+        assert result["type"] is FlowResultType.FORM and result["step_id"] in ("confirm_code",
+                                                                                 "confirm_new_certificate")
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})  # code confirmed
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == {"host": APP_HOST, "port": 8443, "fingerprint": FINGERPRINT, "token": "oa_app",
                               "app_slug": "abcd1234_openampere"}  # to notice when the app is uninstalled
@@ -183,6 +188,9 @@ async def test_another_certificate_is_never_taken_over_without_pairing(hass: Hom
         assert result["type"] is FlowResultType.SHOW_PROGRESS
         await hass.async_block_till_done()
         result = await hass.config_entries.flow.async_configure(result["flow_id"])
+        assert result["type"] is FlowResultType.FORM and result["step_id"] in ("confirm_code",
+                                                                                 "confirm_new_certificate")
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})  # code confirmed
     assert result["type"] is FlowResultType.ABORT and result["reason"] == "app_connected"
     assert entry.data == {"host": APP_HOST, "port": 8443, "fingerprint": "cd" * 32, "token": "oa_app",
                           "app_slug": "abcd1234_openampere"}

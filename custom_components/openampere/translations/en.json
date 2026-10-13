@@ -30,6 +30,14 @@
           "port": "Default 8443. Only change it if you changed it in OpenAmpere."
         }
       },
+      "confirm_code": {
+        "title": "Confirm the code",
+        "description": "OpenAmpere reports that the connection was allowed.\n\n**Code: {code}**\n\nOnly continue if you just allowed the request from “Home Assistant” in OpenAmpere (Mehr → Verbundene Apps) and it showed exactly this code. If you did not allow anything there or the code was different, close this window: another device may be answering at this address."
+      },
+      "confirm_new_certificate": {
+        "title": "Confirm the code – new certificate",
+        "description": "OpenAmpere now shows a different certificate than the one Home Assistant knows. That is expected after OpenAmpere was installed again or moved to another device, otherwise not.\n\n**Code: {code}**\n\nOnly continue if you just allowed the request from “Home Assistant” in OpenAmpere (Mehr → Verbundene Apps) and it showed exactly this code. If in doubt, close this window, create a connection code in OpenAmpere and choose “Paste a connection code”."
+      },
       "code": {
         "title": "Paste a connection code",
         "description": "Create an access in OpenAmpere under Mehr → Verbundene Apps and paste the connection code here.",

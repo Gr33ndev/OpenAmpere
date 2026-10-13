@@ -30,6 +30,14 @@
           "port": "Standard 8443. Nur ändern, wenn du ihn in OpenAmpere geändert hast."
         }
       },
+      "confirm_code": {
+        "title": "Code bestätigen",
+        "description": "OpenAmpere meldet, dass die Verbindung erlaubt wurde.\n\n**Code: {code}**\n\nFahre nur fort, wenn du gerade in OpenAmpere (Mehr → Verbundene Apps) die Anfrage von „Home Assistant“ erlaubt hast und dort genau dieser Code stand. Hast du dort nichts erlaubt oder stand dort ein anderer Code, schließe dieses Fenster: Dann antwortet unter dieser Adresse vielleicht ein anderes Gerät."
+      },
+      "confirm_new_certificate": {
+        "title": "Code bestätigen – neues Zertifikat",
+        "description": "OpenAmpere zeigt jetzt ein anderes Zertifikat als das, das Home Assistant kennt. Das ist normal, wenn OpenAmpere neu installiert oder auf ein anderes Gerät umgezogen wurde, sonst nicht.\n\n**Code: {code}**\n\nFahre nur fort, wenn du gerade in OpenAmpere (Mehr → Verbundene Apps) die Anfrage von „Home Assistant“ erlaubt hast und dort genau dieser Code stand. Im Zweifel schließe dieses Fenster, erstelle in OpenAmpere einen Verbindungscode und wähle „Verbindungscode einfügen“."
+      },
       "code": {
         "title": "Verbindungscode einfügen",
         "description": "Erstelle in OpenAmpere unter Mehr → Verbundene Apps einen Zugang und füge den Verbindungscode hier ein.",

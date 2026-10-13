@@ -49,7 +49,7 @@ it along and installs it itself; you need no HACS.** Updates of the app update t
    → Restart).
 2. Under **Settings → Devices & services** it then shows **Discovered: OpenAmpere**. Confirm it.
 3. Home Assistant and OpenAmpere show the same 6-digit code. Compare it in OpenAmpere under **More → Connected apps**
-   and allow the connection, read only or with control.
+   and allow the connection, read only or with control. Then confirm the code once more in Home Assistant.
 
 Control entities are only available while control is switched on in OpenAmpere (More → Control and log).
 

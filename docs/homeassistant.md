@@ -108,8 +108,10 @@ You control the wallbox in Home Assistant through the
 - **A separate access token per app:** It is only valid for this interface, not for the web app, and can be removed
   at any time under Mehr → Verbundene Apps (with "last used" shown next to it). OpenAmpere stores only a hash.
 - **Encrypted with a pinned certificate:** OpenAmpere creates its own certificate on first start. Home Assistant
-  remembers its fingerprint and rejects any other. Anyone intercepting on the network is noticed: during pairing, by
-  the codes not matching.
+  remembers its fingerprint and rejects any other. During pairing both show the same code: you compare it in
+  OpenAmpere before allowing the connection, and Home Assistant asks you to confirm it once more before it stores
+  anything. If the codes differ or OpenAmpere showed no request, someone else is answering at that address: reject
+  it and close the dialog. A connection code from OpenAmpere carries the fingerprint itself and needs no comparison.
 - **Only approved commands**, see above. The main switch stays in OpenAmpere.
 - **No personal data in Home Assistant:** no serial numbers, meter numbers or grid operator data. Otherwise they
   would end up in Home Assistant backups. The integration's diagnostics redact the access token and the address.
