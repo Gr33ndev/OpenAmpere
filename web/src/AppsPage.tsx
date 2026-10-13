@@ -88,9 +88,7 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
           <Field label={t("common.permission")}>
             <Segmented value={scope} onChange={setScope} options={SCOPES} />
           </Field>
-          <p className="hint">{scope === "read"
-            ? t("settings.appsPage.readScopeHint")
-            : t("settings.appsPage.controlScopeHint")}</p>
+          <ScopeHint scope={scope} />
           <Button busy={busy} disabled={DEMO || !name.trim()} onClick={create}>{t("settings.appsPage.createAccess")}</Button>
           {DEMO && <p className="hint">{t("settings.appsPage.notInDemo")}</p>}
         </div>
@@ -128,6 +126,11 @@ export function AppsPage({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** What the chosen permission allows. In Home Assistant every user and automation can use control entities (#359). */
+function ScopeHint({ scope }: { scope: Scope }) {
+  return <p className="hint">{scope === "read" ? t("settings.appsPage.readScopeHint") : t("settings.appsPage.controlScopeHint")}</p>;
+}
+
 /** A pairing request: the app shows the same six digits if nobody sits in between. */
 function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (data: Tokens) => void }) {
   const [scope, setScope] = useState<Scope>("read");
@@ -152,6 +155,7 @@ function PairingCard({ request, onDone }: { request: PairingRequest; onDone: (da
         <span className="sr-only">{t("settings.pairingCard.codeLabel", { code: request.code.split("").join(" ") })}</span></p>
       <p className="hint">{tx("settings.pairingCard.checkCode", { code: <strong>{t("settings.pairingCard.exactCode")}</strong> })}</p>
       <Field label={t("common.permission")}><Segmented value={scope} onChange={setScope} options={SCOPES} /></Field>
+      <ScopeHint scope={scope} />
       <div className="button-row">
         <Button busy={busy} onClick={() => void decide(true)}>{t("settings.pairingCard.allow")}</Button>
         <Button variant="secondary" disabled={busy} onClick={() => void decide(false)}>{t("settings.pairingCard.decline")}</Button>

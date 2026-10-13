@@ -79,6 +79,11 @@ einträgst.
 | Beliebiges Gerät mit Web-Adressen | Eine Adresse zum Einschalten, eine zum Ausschalten (http oder https) | noch nicht bestätigt | Jedes Gerät im Heimnetz, das sich über den Aufruf einer Adresse schalten lässt. |
 | Wärmepumpe mit SG-Ready-Eingang | Über eines der Relais oben, das den SG-Ready-Kontakt schaltet | noch nicht bestätigt | OpenAmpere schaltet nur das Relais; was die Wärmepumpe mit dem Signal macht, stellst du an der Wärmepumpe ein. |
 
+**Ein Relais, das OpenAmpere eingeschaltet hat, bleibt an, solange OpenAmpere gestoppt oder deinstalliert ist.** Beim
+Beenden setzt OpenAmpere nur regelbare Geräte (wie die Heizstäbe oben) auf 0 W. OpenAmpere gibt Relais keine Zeitbegrenzung mit:
+Sie bleiben, wie sie sind, bis OpenAmpere wieder läuft und sie nach Bedarf schaltet. Bevor du OpenAmpere stoppst oder
+deinstallierst, stelle diese Geräte auf der Seite **Geräte** auf **Aus**.
+
 ## Wallboxen
 
 | Gerät | Verbindung | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |

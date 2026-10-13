@@ -120,10 +120,11 @@ def verify_commands(text: str) -> list[str]:
     return commands
 
 
-@pytest.mark.parametrize("name", ["README.md", "README.de.md", ".github/workflows/release.yml"])
-def test_every_documented_check_pins_the_release_tag(name):
+# the image, the image of the Home Assistant app (#359, only in the READMEs) and the attached files
+@pytest.mark.parametrize(("name", "count"), [("README.md", 3), ("README.de.md", 3), (".github/workflows/release.yml", 2)])
+def test_every_documented_check_pins_the_release_tag(name, count):
     commands = verify_commands((ROOT / name).read_text())
-    assert len(commands) == 2  # the image and the attached files
+    assert len(commands) == count
     for command in commands:
         assert re.search(r"--source-ref refs/tags/v<version>", command), command
         assert "--signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml" in command, command

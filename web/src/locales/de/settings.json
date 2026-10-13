@@ -31,7 +31,7 @@
     "codeShownOnce": "Der Code wird nur jetzt angezeigt. Er ist wie ein Schlüssel: nicht weitergeben, nur in die App einfügen.",
     "connectNewApp": "Neue App verbinden",
     "connectionCode": "Verbindungscode",
-    "controlScopeHint": "Die App darf zusätzlich Betriebsmodus, Speicher-Grenzen, Laden aus dem Netz und die Betriebsart deiner Geräte ändern – nur, solange die Steuerung hier eingeschaltet ist. Hauptschalter, Einspeisebegrenzung und Einstellungen bleiben OpenAmpere vorbehalten.",
+    "controlScopeHint": "Die App darf zusätzlich Betriebsmodus, Speicher-Grenzen, Laden aus dem Netz und die Betriebsart deiner Geräte ändern – nur, solange die Steuerung hier eingeschaltet ist. Hauptschalter, Einspeisebegrenzung und Einstellungen bleiben OpenAmpere vorbehalten. In Home Assistant können dann alle Benutzer und alle Automationen diese Steuerung nutzen, nicht nur Administratoren.",
     "createAccess": "Zugang erstellen",
     "created": "Erstellt {date}",
     "done": "Fertig",
