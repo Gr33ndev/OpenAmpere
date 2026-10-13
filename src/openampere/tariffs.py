@@ -18,12 +18,15 @@ from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+from .outbound import read_within
 from .storage import QUARTER, Storage
 
 log = logging.getLogger(__name__)
 
 PRICE_SOURCES = {"DE": "https://api.awattar.de/v1/marketdata", "AT": "https://api.awattar.at/v1/marketdata"}
 FETCH_EVERY_S = 3600
+MAX_ANSWER_BYTES = 1024 ** 2  # prices of a few days are some kB
+DEADLINE_S = 60
 
 
 @dataclass
@@ -242,11 +245,14 @@ def fetch_prices(area: str, start: float, end: float) -> list[tuple[int, float]]
     """aWATTar market data -> [(quarter-hour timestamp, EUR/MWh)], hourly values spread over their quarters."""
     url = f"{PRICE_SOURCES[area]}?start={int(start * 1000)}&end={int(end * 1000)}"
     request = urllib.request.Request(url, headers={"User-Agent": "OpenAmpere"})
-    with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - fixed https URL
-        data = json.load(response)["data"]
+    _, raw = read_within(request, timeout=20, deadline=DEADLINE_S, limit=MAX_ANSWER_BYTES + 1)
+    if len(raw) > MAX_ANSWER_BYTES:
+        raise ValueError("answer too large")
+    data = json.loads(raw)["data"]
     rows = []
     for item in data:
-        t0, t1 = item["start_timestamp"] // 1000, item["end_timestamp"] // 1000
+        # only the requested time: an entry with a wrong or huge time span must not make countless rows
+        t0, t1 = max(item["start_timestamp"] // 1000, int(start)), min(item["end_timestamp"] // 1000, int(end))
         for ts in range(t0 // QUARTER * QUARTER, t1, QUARTER):
             rows.append((ts, float(item["marketprice"])))
     return rows

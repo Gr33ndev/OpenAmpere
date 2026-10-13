@@ -28,6 +28,7 @@ from pathlib import Path
 from datetime import date, datetime, timedelta
 
 from .drivers.base import raise_if_cancelled
+from .outbound import read_within
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ CLIENT_TYPE = "de.ekd.customer.apiclient"  # protocol constant required by the c
 MIN_INTERVAL_S = 65
 MAX_UNPACKED_BYTES = 2 * 1024 ** 3  # ZIP import: limits against "zip bombs"
 MAX_ENTRY_BYTES = 50 * 1024 ** 2
+MAX_ANSWER_BYTES = 50 * 1024 ** 2  # one answer of the cloud, the same as one file of a ZIP
+REQUEST_DEADLINE_S = 120  # a whole request, also an answer sent very slowly
 BACKOFF_S = 300
 MAX_NETWORK_FAILURES = 12  # ~1 h of retries before giving up (e.g. cloud switched off)
 
@@ -210,9 +213,16 @@ class CloudImport:
         req = urllib.request.Request(url, headers={
             "x-client-api-key": api_key, "x-client-type": CLIENT_TYPE, "accept": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=30) as response:
-                return response.status, json.loads(response.read() or b"null")
+            # the API key goes to this address only, and a huge answer must not fill the memory
+            _, raw = read_within(req, timeout=30, deadline=REQUEST_DEADLINE_S, limit=MAX_ANSWER_BYTES + 1,
+                                 redirect=False)
+            if len(raw) > MAX_ANSWER_BYTES:
+                raise CloudApiError("Die Antwort der EKD-Cloud ist zu groß.", retry=False)
+            return 200, json.loads(raw or b"null")  # any other status raises HTTPError
         except urllib.error.HTTPError as err:
+            if 300 <= err.code < 400:
+                raise CloudApiError("Die EKD-Cloud leitet auf eine andere Adresse um. OpenAmpere schickt den "
+                                    "API-Schlüssel nur an die eingetragene Adresse.", retry=False) from None
             if err.code == 401:
                 raise CloudApiError("Der API-Schlüssel wurde von der EKD-Cloud abgelehnt.", retry=False) from None
             if err.code in (400, 404):
