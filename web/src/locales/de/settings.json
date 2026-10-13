@@ -227,6 +227,7 @@
     "agoNow": "vor weniger als einer Minute",
     "backupLowerLimit": "Untergrenze im Notstrombetrieb",
     "backupReserve": "Notstrom-Reserve",
+    "backupRestored": "Datensicherung wiederhergestellt.",
     "batteryOverwritten": "Ein anderes Gerät hat die Speicher-Einstellung geändert: {changes}.",
     "batterySettings": "Speicher-Einstellung geändert: {changes}.",
     "batterySize": "Speichergröße",

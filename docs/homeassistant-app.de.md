@@ -95,6 +95,9 @@ Es darf nur ein OpenAmpere mit dem Wechselrichter sprechen. Zwei stören sich ge
   anderen App. In so einer Sicherung steht auch der Schlüssel für die gespeicherten Zugangsdaten (`secret.key`). Wer
   die Sicherung öffnen kann, kann sie also lesen. Geschützt sind sie nur durch die Verschlüsselung der Sicherungen von
   Home Assistant: Bewahre deren Schlüssel sicher auf und gib Sicherungen nicht weiter.
+- **Nach dem Wiederherstellen einer Sicherung** sind das Passwort und die Zugänge für Apps wieder so wie zur Zeit der
+  Sicherung, und angemeldete Geräte melden sich neu an. Hast du seither das Passwort geändert oder unter **Mehr → Verbundene Apps**
+  einen Zugang entfernt, mach das bitte noch einmal. OpenAmpere erinnert dich daran, bis du den Hinweis ausblendest.
 - **Updates** kommen über Home Assistant: Einstellungen → Apps → OpenAmpere. Dort kannst du auch automatische Updates
   einschalten.
 - **Von unterwegs** öffnest du OpenAmpere über den Fernzugriff von Home Assistant in der Seitenleiste, zum Beispiel mit

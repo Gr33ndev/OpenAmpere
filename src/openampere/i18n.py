@@ -96,7 +96,8 @@ def translate(text: str, lang: str | None) -> str:
 
 # Results of the control log that the app already says in its own sentence, and results that only wrap a reason (#153)
 LOG_SAID = {"ok", "manual", "auto"}
-LOG_SAID_KEYS = {"api.logNoPowerCut", "control.logOverwritten", "control.logNotDoneTestMode", "evcc.logNotSentTestMode"}
+LOG_SAID_KEYS = {"api.logNoPowerCut", "control.logOverwritten", "control.logNotDoneTestMode", "evcc.logNotSentTestMode",
+                 "storage.logBackupRestored"}
 LOG_REASON_KEYS = {"charging.logStarted", "charging.logFinished", "charging.logWouldCharge", "charging.logRemoteReleased",
                    "consumers.logNotSwitchedTestMode", "consumers.logNotSentTestMode"}
 

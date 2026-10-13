@@ -14,6 +14,10 @@
   },
   "databaseNotice": {
     "fileKept": "Die beschädigte Datei wurde nicht gelöscht, sie liegt im Datenordner von OpenAmpere: {file}",
+    "haBackupCheck": "Bitte prüfe unter Mehr → Zugriffsschutz das Passwort und unter Mehr → Verbundene Apps die Zugänge: Hast du seit der Sicherung das Passwort geändert oder einen Zugang entfernt, mach das bitte noch einmal.",
+    "haBackupTitle": "Home Assistant hat eine Sicherung wiederhergestellt",
+    "haBackupWhat": "OpenAmpere läuft seit dem Start ({date}) mit der Datenbank aus einer Sicherung von Home Assistant. Passwort und Zugänge für Apps sind wieder so wie zur Zeit der Sicherung. Angemeldete Geräte müssen sich neu anmelden.",
+    "haBackupWhatNoDate": "OpenAmpere läuft seit dem Start mit der Datenbank aus einer Sicherung von Home Assistant. Passwort und Zugänge für Apps sind wieder so wie zur Zeit der Sicherung. Angemeldete Geräte müssen sich neu anmelden.",
     "hide": "Hinweis ausblenden",
     "restoreHint": "Hast du eine Datensicherung? Dann stelle sie hier oder unter Mehr → Daten & Sicherung wieder her. Ohne Sicherung richte OpenAmpere bitte neu ein.",
     "rollbackFileKept": "Die Datenbank der neueren Version wurde nicht gelöscht, sie liegt im Datenordner von OpenAmpere: {file}",

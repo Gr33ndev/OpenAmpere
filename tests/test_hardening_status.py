@@ -43,7 +43,7 @@ def test_status_without_login_says_only_whether_something_happened(tmp_path):
         anonymous = TestClient(create_app(runtime))
         login(TestClient(create_app(runtime)))  # a password is set: the anonymous client is not logged in
         database = anonymous.get("/api/status").json()["database"]
-        assert database == {"damaged": True, "restored": True, "rollback": True}
+        assert database == {"damaged": True, "restored": True, "rollback": True, "ha_backup": False}
         runtime.storage.delete_meta("database_damaged")
         assert anonymous.get("/api/status").json()["database"]["damaged"] is False
     finally:
@@ -59,6 +59,7 @@ def test_status_with_login_shows_only_file_names(tmp_path):
             "damaged": {"ts": DAMAGED["ts"], "file": "openampere.db.damaged-20260101-120000"},
             "restored": {"ts": RESTORED["ts"], "kept": "openampere.db.before-restore-20260101-120000"},
             "rollback": {"ts": ROLLBACK["ts"], "version": 3, "kept": "openampere.db.newer-3-20260101"},
+            "ha_backup": None,
         }
     finally:
         runtime.storage.close()

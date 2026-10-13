@@ -206,7 +206,7 @@ function status() {
   const latest = current();
   return {
     version: "Demo", configured: true, connected: true, last_error: null, last_update: latest ? now() : null,
-    stale: false, poll_interval: 10, relocated: null, database: { damaged: null, restored: null, rollback: null }, timezone: "Europe/Berlin", web_build: null, clock_wrong: false,
+    stale: false, poll_interval: 10, relocated: null, database: { damaged: null, restored: null, rollback: null, ha_backup: null }, timezone: "Europe/Berlin", web_build: null, clock_wrong: false,
     devices: { grid_charging: false, items: deviceItems() },
     device: { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
       register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true,
@@ -519,7 +519,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 /** Endpoints that only change something: the demo refuses them with DEMO_WRITE_MESSAGE. */
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
-  "/api/database/damaged", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
+  "/api/database/damaged", "/api/database/ha-backup", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
   "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",

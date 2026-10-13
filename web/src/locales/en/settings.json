@@ -227,6 +227,7 @@
     "agoNow": "less than a minute ago",
     "backupLowerLimit": "Lower limit during backup power",
     "backupReserve": "Backup reserve",
+    "backupRestored": "Backup restored.",
     "batteryOverwritten": "Another device changed the battery settings: {changes}.",
     "batterySettings": "Battery settings changed: {changes}.",
     "batterySize": "Battery size",

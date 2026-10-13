@@ -281,7 +281,7 @@ def test_a_restored_backup_brings_no_triggers_views_or_own_tables(tmp_path):
     assert client.post("/api/auth/logout?everywhere=true").status_code == 200
     assert "attacker" not in (runtime.storage.get_meta("sessions") or {})
     runtime.storage.log_control("test", {}, True, "ok")
-    assert len(runtime.storage.control_log()) == 1
+    assert [e["action"] for e in runtime.storage.control_log()] == ["test", "control_switches"]  # and the restore
     runtime.storage.close()
 
 

@@ -32,6 +32,7 @@ ADMIN_GROUP = "system-admin"
 USERS_REFRESH_S = 60  # an admin whose rights were taken away keeps them at most this long
 UNKNOWN_USER_RETRY_S = 5  # a new admin is asked for again after a few seconds
 BACKUP_COPY = "ha-backup.db"  # next to the database; the database itself is excluded from the backup (config.yaml)
+BACKUP_RESTORED = "ha_backup_restored"  # meta: the database came from a Home Assistant backup, shown until dismissed
 WEB_PORT = "8080/tcp"  # inside the container; the port on the host is set in the app's network settings
 HTTPS_PORT = "8443/tcp"
 REFRESH_S = 600
@@ -297,7 +298,8 @@ def integration_notice(status: dict) -> str | None:
 def write_backup_copy(db: Path) -> Path:
     """Before Home Assistant makes a backup (backup_pre): a consistent copy of the whole database next to it. A copy of
     the file while it is written can be broken, so the backup leaves out the database and takes this copy. Unlike the
-    download in the app, it keeps password, sessions and app tokens: a restore must not lock the owner out."""
+    download in the app, it keeps password and app tokens: a restore must not lock the owner out. Logins (sessions)
+    are left out: after a restore everybody logs in again, also a device that was logged out everywhere since."""
     target = db.with_name(BACKUP_COPY)
     partial = target.with_name(f"{BACKUP_COPY}.part")
     source = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)  # the server keeps writing meanwhile
@@ -305,6 +307,9 @@ def write_backup_copy(db: Path) -> Path:
         copy = sqlite3.connect(str(partial))
         try:
             source.backup(copy)
+            copy.execute("PRAGMA secure_delete=ON")  # really removed from the file
+            with copy:
+                copy.execute("DELETE FROM meta WHERE key='sessions'")
         finally:
             copy.close()
     finally:
@@ -321,7 +326,9 @@ def remove_backup_copy(db: Path) -> None:
 
 def adopt_backup_copy(db: Path) -> bool:
     """At the start: after Home Assistant restored a backup, only the copy is there and becomes the database. A copy
-    next to an existing database is a left-over of a backup that was not finished and is removed."""
+    next to an existing database is a left-over of a backup that was not finished and is removed. The app then asks
+    the owner to check password and app accesses (BACKUP_RESTORED): they are those from the time of the backup.
+    Logins are not taken over: devices logged out since the backup must not be logged in again."""
     copy = db.with_name(BACKUP_COPY)
     if not copy.is_file():
         return False
@@ -329,4 +336,15 @@ def adopt_backup_copy(db: Path) -> bool:
         remove_backup_copy(db)
         return False
     os.replace(copy, db)
+    try:
+        conn = sqlite3.connect(str(db))
+        try:
+            with conn:
+                conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)",
+                             (BACKUP_RESTORED, json.dumps({"ts": time.time()})))
+                conn.execute("DELETE FROM meta WHERE key='sessions'")  # also from backups of older versions
+        finally:
+            conn.close()
+    except sqlite3.Error as err:  # e.g. a damaged copy: the start handles the database (#165)
+        log.warning("could not note the restored Home Assistant backup: %s", err)
     return True

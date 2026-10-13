@@ -96,15 +96,17 @@ async function dismiss(path: string, hide: () => void) {
 }
 
 /** What happened to the database at the start, on every screen until the owner hides it: it could not be read and
- *  OpenAmpere began with an empty one (#165), or an older version continues with the copy from before an update
- *  (#166). Without login the server says only that it happened, not when or which file (#353). */
+ *  OpenAmpere began with an empty one (#165), an older version continues with the copy from before an update
+ *  (#166), or Home Assistant restored a backup with the password and app accesses of then (#350). Without login the
+ *  server says only that it happened, not when or which file (#353). */
 export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthStatus | null }) {
-  const { damaged, rollback } = status.database ?? {};
+  const { damaged, rollback, ha_backup: haBackup } = status.database ?? {};
   const [hidden, setHidden] = useState<string[]>([]);
   const hide = (kind: string) => () => setHidden((list) => [...list, kind]);
   const showDamaged = !!damaged && !hidden.includes("damaged");
   const showRollback = !!rollback && !hidden.includes("rollback");
-  if (!showDamaged && !showRollback) return null;
+  const showHaBackup = !!haBackup && !hidden.includes("ha_backup");
+  if (!showDamaged && !showRollback && !showHaBackup) return null;
   return (
     <div className="page top-notice">
       {damaged && showDamaged && (
@@ -141,6 +143,22 @@ export function DatabaseNotice({ status, auth }: { status: Status; auth: AuthSta
           {auth?.authenticated && (
             <div className="button-row">
               <Button variant="secondary" onClick={() => void dismiss("/api/database/rollback", hide("rollback"))}>
+                {t("shell.databaseNotice.hide")}
+              </Button>
+            </div>
+          )}
+        </Notice>
+      )}
+      {haBackup && showHaBackup && (
+        <Notice kind="warn">
+          <p><strong>{t("shell.databaseNotice.haBackupTitle")}</strong></p>
+          <p>{typeof haBackup === "object"
+            ? t("shell.databaseNotice.haBackupWhat", { date: updatedLabel(haBackup.ts) })
+            : t("shell.databaseNotice.haBackupWhatNoDate")}</p>
+          <p>{t("shell.databaseNotice.haBackupCheck")}</p>
+          {auth?.authenticated && (
+            <div className="button-row">
+              <Button variant="secondary" onClick={() => void dismiss("/api/database/ha-backup", hide("ha_backup"))}>
                 {t("shell.databaseNotice.hide")}
               </Button>
             </div>

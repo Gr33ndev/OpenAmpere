@@ -25,7 +25,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
-from .control import control_lock
+from .control import LOW_RESERVE_MIN, check_limits, control_lock
 from .drivers.modbus import ModbusIllegalError, friendly_error
 from .runtime import Runtime
 from .storage import QUARTER
@@ -366,21 +366,36 @@ class GridCharging:
         set back to the owner's value on the next tick, also with the master switch off or in test mode (the safe
         direction, like releasing the remote control), and only if it still has the value OpenAmpere wrote: a reserve
         the owner or another device changed in the meantime stays. Tried again on the next tick if the inverter does
-        not answer."""
+        not answer. Only a value within the limits is written back, and only to a device OpenAmpere may control. A
+        reserve below 10 % counts as allowed here: it was the inverter's own value before 0.23.1 raised it (#313)."""
         runtime, collector = self.runtime, self.runtime.collector
         if runtime.storage.get_meta(STOPS_AT_RESERVE):
             runtime.storage.delete_meta(STOPS_AT_RESERVE)
         raised = runtime.storage.get_meta(RAISED_RESERVE)
         if not raised or collector.driver is None or not collector.connected:
             return
+        if collector.device is None or not collector.device.supports_control:
+            return
+        if not _reserve_pair(raised):
+            log.warning("not setting the backup reserve back: the remembered values are not valid")
+            runtime.storage.delete_meta(RAISED_RESERVE)
+            return
         driver = collector.driver
         details: dict | None = None
         async with control_lock(runtime):
             try:
-                current = (await driver.read_settings()).min_soc_on_grid
+                settings = await driver.read_settings()
+                current = settings.min_soc_on_grid
                 if current is None:
                     return  # unreadable right now: tried again on the next tick
                 if current == raised["raised"]:
+                    try:
+                        check_limits({"min_soc": settings.min_soc, "max_soc": settings.max_soc,
+                                      "min_soc_on_grid": raised["original"]}, low_reserve=True)
+                    except ValueError as err:  # e.g. the charge limit was lowered since: the reserve stays
+                        log.warning("not setting the backup reserve back to %s %%: %s", raised["original"], err)
+                        runtime.storage.delete_meta(RAISED_RESERVE)
+                        return
                     await driver.write_soc_limits(min_soc_on_grid=raised["original"])
                     details = {"from": {"min_soc_on_grid": current}, "to": {"min_soc_on_grid": raised["original"]}}
                     result = await self._read_back_reserve(raised["original"])
@@ -439,3 +454,13 @@ class GridCharging:
             plan = {"quarters": [], "reason": self._full_reason()}
         return {"settings": asdict(self.settings), "active": self.active, "last_error": self.last_error,
                 "plan": {**plan, "quarters": plan["quarters"][:96]}}
+
+
+def _reserve_pair(raised) -> bool:
+    """The reserve 0.23.1 remembered (#315): whole percentages within the limits of a reserve already set on the
+    inverter (#313). Anything else (e.g. from an old or edited database) is not written to the inverter."""
+    if not isinstance(raised, dict):
+        return False
+    original, value = raised.get("original"), raised.get("raised")
+    return (all(type(v) is int for v in (original, value)) and LOW_RESERVE_MIN <= original <= 100
+            and 0 <= value <= 100)

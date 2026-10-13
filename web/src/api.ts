@@ -45,10 +45,11 @@ export type Status = {
   relocated: { from: string; to: string; ts: number } | null;
   /** damaged: the database could not be read at the start and was replaced by an empty one (#165);
    *  restored: the last backup restored in the app, with the file of the database it replaced;
-   *  rollback: this older version found a newer version's database and uses the copy from before the upgrade (#166).
+   *  rollback: this older version found a newer version's database and uses the copy from before the upgrade (#166);
+   *  ha_backup: Home Assistant restored a backup of the app, with the password and app accesses of then (#350).
    *  Without login only whether it happened (true/false), not when or which file (#353). */
   database: { damaged: { ts: number; file: string } | boolean | null; restored: { ts: number; kept: string } | boolean | null;
-    rollback: { ts: number; version: number; kept: string } | boolean | null };
+    rollback: { ts: number; version: number; kept: string } | boolean | null; ha_backup: { ts: number } | boolean | null };
   timezone: string;
   web_build: string | null;
   clock_wrong: boolean;
