@@ -136,11 +136,15 @@ def main() -> None:
         path = Path(build_config(read_yaml(args.config))[0].storage.path)
         if not path.is_file():
             raise SystemExit(f"Keine Datenbank unter {path} gefunden.")
-        # plain connection on purpose: works while the app is running (SQLite handles other processes)
-        db = sqlite3.connect(str(path), timeout=10)
-        with db:
-            db.execute("DELETE FROM meta WHERE key IN ('auth', 'sessions', 'known_devices', 'setup_locked')")
-        db.close()
+        from .storage import schema_copies
+
+        # plain connection on purpose: works while the app is running (SQLite handles other processes); also in the
+        # copy an older version continues with after a rollback, which would otherwise bring back the old password
+        for name in (path, *schema_copies(path)):
+            db = sqlite3.connect(str(name), timeout=10)
+            with db:
+                db.execute("DELETE FROM meta WHERE key IN ('auth', 'sessions', 'known_devices', 'setup_locked')")
+            db.close()
         print("Passwort zurückgesetzt. Beim nächsten Öffnen der App kann ein neues festgelegt werden.")
         return
     if args.command == "ha-integration":

@@ -99,7 +99,9 @@ def _consumption_from_balance(db: sqlite3.Connection) -> None:
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
-# database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database.
+# database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database. The access
+# and device state (KEEP_ON_RESTORE) in the copy is kept that of the running installation: the older version takes
+# the copy as it is, and an old password, sessions or revoked app tokens must not become valid again with it.
 MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance}
 SCHEMA_VERSION = 2
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
@@ -257,6 +259,16 @@ def _copy_backup(upload: Path, target: Path) -> None:
         db.close()
 
 
+def schema_copies(path: Path) -> list[Path]:
+    """The copies an older version continues with after a rollback (<db>.schema-<version>, see MIGRATIONS)."""
+    copies = []
+    for copy in path.parent.glob(f"{glob.escape(path.name)}{COPY_SUFFIX}*"):
+        number = copy.name[len(path.name) + len(COPY_SUFFIX):]
+        if number.isdigit() and int(number) < SCHEMA_VERSION:
+            copies.append(copy)
+    return copies
+
+
 def _user_version(path: Path) -> int:
     db = sqlite3.connect(str(path))
     try:
@@ -360,6 +372,9 @@ class Storage:
                 self._set_meta("database_damaged", {"ts": time.time(), "file": str(damaged.resolve())})
         if not memory:
             _only_for_owner(path)
+        self._copies = [] if memory else schema_copies(path)
+        with self._lock:
+            self._keep_copies_current(KEEP_ON_RESTORE)  # also what was changed while OpenAmpere was not running
         if kept is not None:
             self.set_meta("database_restored", {"ts": time.time(), "kept": str(kept.resolve())})
         if rolled_back is not None:
@@ -481,19 +496,49 @@ class Storage:
         return self._get_meta(key)
 
     def set_meta(self, key: str, value) -> None:
-        with self._lock, self._db:
-            self._set_meta(key, value)
+        with self._lock:
+            with self._db:
+                self._set_meta(key, value)
+            self._keep_copies_current((key,))
 
     def replace_meta(self, key: str, value, field: str, expected) -> bool:
         """Replaces an entry only while its field still has the expected value. One statement, so nothing written in
         between (also by another process, e.g. `openampere reset-password`) is overwritten."""
-        with self._lock, self._db:
-            return self._db.execute("UPDATE meta SET value=? WHERE key=? AND json_extract(value, ?)=?",
-                                    (json.dumps(value), key, f"$.{field}", expected)).rowcount == 1
+        with self._lock:
+            with self._db:
+                replaced = self._db.execute("UPDATE meta SET value=? WHERE key=? AND json_extract(value, ?)=?",
+                                            (json.dumps(value), key, f"$.{field}", expected)).rowcount == 1
+            if replaced:
+                self._keep_copies_current((key,))
+            return replaced
 
     def delete_meta(self, key: str) -> None:
-        with self._lock, self._db:
-            self._db.execute("DELETE FROM meta WHERE key=?", (key,))
+        with self._lock:
+            with self._db:
+                self._db.execute("DELETE FROM meta WHERE key=?", (key,))
+            self._keep_copies_current((key,))
+
+    def _keep_copies_current(self, keys: tuple[str, ...]) -> None:
+        """Writes the access and device state (KEEP_ON_RESTORE) into the copy from before the upgrade, see MIGRATIONS.
+        The released versions take the copy as it is after a rollback. Call with the lock held."""
+        keys = tuple(key for key in keys if key in KEEP_ON_RESTORE)
+        if not keys or not self._copies:
+            return
+        rows = {key: self._db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone() for key in keys}
+        for copy in self._copies:
+            try:
+                db = sqlite3.connect(str(copy))
+                try:
+                    with db:
+                        for key, row in rows.items():
+                            if row is None:
+                                db.execute("DELETE FROM meta WHERE key=?", (key,))
+                            else:
+                                db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, row[0]))
+                finally:
+                    db.close()
+            except (sqlite3.Error, OSError) as err:  # e.g. a full disk: the next start tries again
+                log.warning("could not update %s in %s: %s", ", ".join(keys), copy.name, err)
 
     def _set_meta(self, key: str, value) -> None:
         self._db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, json.dumps(value)))
