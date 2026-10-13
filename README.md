@@ -170,7 +170,7 @@ mkdir -p data && sudo chown 1000:1000 data
 docker compose up -d --build
 ```
 
-The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md).
+The app runs in the container as user 1000 and needs write access to `data/`. Besides the database, that folder contains `secret.key`, the key for the stored credentials. Without it, they have to be entered again in the app. evcc for a wallbox is available in `docker-compose.yml` as a commented-out service, see [docs/evcc.md](docs/evcc.md). So is Tailscale for access from anywhere; it needs the folder `remote/` outside `data/`, created first as the comments in `docker-compose.yml` describe.
 
 #### Verifying a release
 

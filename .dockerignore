@@ -6,3 +6,4 @@ src/openampere/web
 .pytest_cache
 evcc/
 tailscale/
+remote/

@@ -11,6 +11,7 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./data:/data
+      # - ./remote:/data/remote  # Austausch mit Tailscale, nur zusammen mit dem Dienst tailscale unten
     environment:
       TZ: Europe/Berlin
       # Optional: Werte hier fest vorgeben. Sie sind dann in der App gesperrt.
@@ -26,8 +27,12 @@ services:
   #   volumes:
   #     - ./evcc:/root/.evcc
 
-  # Optional, für den Zugriff von unterwegs: Tailscale (https://tailscale.com). Zum Einschalten die Zeilen unten
-  # einkommentieren und `docker compose up -d` ausführen, dann in der App unter Mehr → Zugriff von unterwegs einrichten.
+  # Optional, für den Zugriff von unterwegs: Tailscale (https://tailscale.com). Zum Einschalten zuerst den Ordner für
+  # den Austausch mit der App anlegen. Er gehört root, die App schreibt nur in inbox (GHSA-2j3r-6fcx-9m7v):
+  #   sudo mkdir -p remote/inbox && sudo chown root:root remote && sudo chmod 755 remote
+  #   sudo chown 1000:1000 remote/inbox
+  # Dann die Zeile ./remote:/data/remote bei openampere oben und die Zeilen unten einkommentieren, `docker compose up -d`
+  # ausführen und in der App unter Mehr → Zugriff von unterwegs einrichten.
   # tailscale:
   #   image: tailscale/tailscale:stable
   #   restart: unless-stopped
@@ -35,5 +40,5 @@ services:
   #   entrypoint: ["sh", "/openampere/tailscale.sh"]
   #   volumes:
   #     - ./tailscale:/var/lib/tailscale
-  #     - ./data/remote:/remote
+  #     - ./remote:/remote  # nicht unter data: dort könnte die App Links anlegen
   #     - ./scripts/tailscale.sh:/openampere/tailscale.sh:ro

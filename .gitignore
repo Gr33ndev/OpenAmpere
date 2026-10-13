@@ -19,3 +19,4 @@ evcc/
 .DS_Store
 .venv-ha/
 tailscale/
+/remote/
