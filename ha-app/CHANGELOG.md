@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.26.2 (2026-10-13)
+
+### Behoben
+
+- **homeassistant:** Show a battery setting change right away (#343)
+
 ## 0.26.1 (2026-10-13)
 
 ### Behoben
@@ -116,40 +122,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - Use an obviously made-up meter number in the diagnostics test (#299)
 - **agents:** Note that switching off is written in test mode too (#298)
-
-## 0.20.0 (2026-10-11)
-
-### Behoben
-
-- **release:** List fixes merged from security advisories in the changelog (#274)
-- **security:** Database and its copies are readable by other users of the host (GHSA-p5pf-45jm-94c3)
-- **security:** Restoring a crafted backup takes over unchecked device, charging and update data (GHSA-4jmw-6h58-vc78)
-- **security:** Concurrent first setup can silently replace the owner's new password (GHSA-m3qh-j9xv-jf9m)
-- **security:** Full inverter serial number readable without login (GHSA-vcc7-57gx-gcgr)
-- **security:** Wallbox charging sessions readable without login (GHSA-33vp-mf38-3mj3)
-- **security:** A long Host header blocks the server (regular expression denial of service) (GHSA-vrrc-53mr-hc3c)
-- **security:** Large request bodies without login can exhaust the memory (GHSA-gfr8-g665-933w)
-- **security:** Home Assistant setup dialog shows unverified server text as Markdown (GHSA-vx3h-6qm5-fqr2)
-- **security:** Exported control log can contain spreadsheet formulas (GHSA-9qfr-fvc7-hm9g)
-- **security:** Backup download link stays valid after logout and can be used more than once (GHSA-f9rp-mp8c-m936)
-- **security:** Switch addresses with device passwords are stored unencrypted and included in backups (GHSA-3jrg-5v7g-9f96)
-- **security:** Changing the evcc or ntfy address sends the stored password or token to the new address (GHSA-pgj6-8cf2-3qxp)
-- **security:** Client address used for login limits can be spoofed with X-Forwarded-For (GHSA-7qj3-8hhh-r724)
-- **security:** Anyone on the home network can lock the owner out of the login (GHSA-cp8v-wgf4-r8cj)
-- **security:** Root helper containers follow symbolic links in the app's data folder (GHSA-2j3r-6fcx-9m7v)
-- **security:** Restoring a crafted backup can plant database triggers that keep an attacker logged in (GHSA-q3c2-xqgm-w8jw)
-- **charging:** Run one grid charging tick or stop at a time (#272)
-- Refuse redirects with credentials, limit and check outgoing requests (#270)
-- **api:** Send security headers with every answer (#264)
-- **charging:** Switch the remote control off when a command is refused (#261)
-- **consumers:** Write to a my-PV heating rod only after it answered like one (#262)
-- Check the language from the switch, serve web files by normalized path (#256)
-- No technical error texts in the app, only known language codes in links (#255)
-
-### Weitere Änderungen
-
-- Stub the evcc opener in the cookie test (#273)
-- **pages:** Add the install scripts in a job without npm (#268)
-- **release:** Tag only the highest stable version as latest (#266)
-- **deps:** Run dependency code without write access (#260)
-- **changelog:** Add a summary for 0.19.0 (#253)

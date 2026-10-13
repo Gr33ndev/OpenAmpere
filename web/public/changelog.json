@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.26.2",
+      "date": "2026-10-13",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "homeassistant",
+            "text": "Show a battery setting change right away (#343)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.26.1",
       "date": "2026-10-13",
       "first": false,
