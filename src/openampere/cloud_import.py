@@ -81,6 +81,19 @@ def soc_values(body: dict) -> list[tuple[int, float]]:
     return [(ts, soc) for ts, soc in values if soc is not None and 0 <= soc <= 100]
 
 
+def _read_entry(archive: zipfile.ZipFile, name: str, limit: int) -> bytes:
+    """Unpacks one entry in small pieces and counts what really comes out: the sizes in the ZIP can be false,
+    and reading it in one go would inflate the whole entry in memory before any check."""
+    chunks, size = [], 0
+    with archive.open(name) as entry:
+        while chunk := entry.read(1024 ** 2):
+            size += len(chunk)
+            if size > limit:
+                raise ValueError("Die ZIP-Datei ist zu groß.")
+            chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def import_zip(storage: Storage, data: bytes | str | Path) -> dict:
     """Reads */work/*.json and */stateOfCharge/*.json from an export ZIP (its bytes or a file)."""
     try:
@@ -90,7 +103,7 @@ def import_zip(storage: Storage, data: bytes | str | Path) -> dict:
     total = sum(info.file_size for info in archive.infolist())
     if total > MAX_UNPACKED_BYTES or any(info.file_size > MAX_ENTRY_BYTES for info in archive.infolist()):
         raise ValueError("Die ZIP-Datei ist zu groß.")
-    rows, socs, days = [], [], 0
+    rows, socs, days, budget = [], [], 0, MAX_UNPACKED_BYTES
     for name in archive.namelist():
         parts = name.replace("\\", "/").split("/")
         if len(parts) < 2 or not parts[-1].endswith(".json"):
@@ -99,8 +112,13 @@ def import_zip(storage: Storage, data: bytes | str | Path) -> dict:
         if folder not in ("work", "stateOfCharge"):
             continue
         try:
-            payload = json.loads(archive.read(name))
-        except (ValueError, KeyError, zipfile.BadZipFile):  # also a damaged entry (CRC error), #223
+            raw = _read_entry(archive, name, min(MAX_ENTRY_BYTES, budget))
+        except (KeyError, zipfile.BadZipFile):  # also a damaged entry (CRC error), #223
+            continue
+        budget -= len(raw)
+        try:
+            payload = json.loads(raw)
+        except ValueError:
             continue
         if not isinstance(payload, dict):
             continue
