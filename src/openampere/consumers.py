@@ -14,10 +14,13 @@ room to start charging) or last (it gets what is left). Optionally a device also
 from __future__ import annotations
 
 import asyncio
+import http.client
 import logging
 import re
 import secrets
+import socket
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field, replace
@@ -35,6 +38,7 @@ CONFIRM_TICKS = 2  # a condition must hold this many checks in a row (clouds!)
 MAX_CONSUMERS = 8
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}|\[[0-9A-Fa-f:.]{2,45}\]")  # host name, IPv4 or [IPv6]
 KINDS = ("mypv", "shelly2", "shelly1", "http")
+UNSENDABLE = re.compile(r"[\x00-\x20\x7f]")  # spaces and control characters: urllib refuses to send them
 
 
 @dataclass
@@ -93,6 +97,12 @@ def _check_url(url: str) -> str:
     return url
 
 
+def _sendable(url: str) -> bool:
+    """urllib cannot send a user name and password before the @ or a space or control character, and its error quotes
+    the address. Checked when saving, not in validate(): a device stored by an older version keeps loading."""
+    return "@" not in urllib.parse.urlsplit(url).netloc and not UNSENDABLE.search(url)
+
+
 def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consumer]:
     """inverter: its host and port; a heating rod must not be set up at that address."""
     if not isinstance(raw, list) or len(raw) > MAX_CONSUMERS:
@@ -147,6 +157,25 @@ def _call(url: str) -> None:
     request = urllib.request.Request(url, headers={"User-Agent": "OpenAmpere"})
     with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310 - user-configured LAN device
         response.read(1024)
+
+
+def _failure(err: Exception) -> str:
+    """Why a switch command failed, in fixed words: the text of the error can quote the switch address with the
+    device's password, and the error of a device is shown without a login (GHSA-7whx-cq9r-q56g)."""
+    cause = err.reason if isinstance(err, urllib.error.URLError) else err
+    if isinstance(err, urllib.error.HTTPError):
+        reason = f"das Gerät meldet HTTP-Status {err.code}"
+    elif isinstance(cause, TimeoutError):
+        reason = "keine Antwort vom Gerät"
+    elif isinstance(cause, ConnectionRefusedError):
+        reason = "Verbindung abgelehnt"
+    elif isinstance(cause, socket.gaierror):
+        reason = "Adresse nicht gefunden"
+    elif isinstance(cause, (http.client.InvalidURL, ValueError)):  # a port, character or scheme urllib cannot send
+        reason = "ungültige Adresse"
+    else:
+        reason = "keine Verbindung"
+    return reason
 
 
 def make_heating_rod(c: Consumer) -> MyPvHeatingRod:
@@ -205,6 +234,11 @@ class SurplusControl:
     def save(self, raw: list) -> list[Consumer]:
         inverter = self.runtime.config.inverter
         consumers = validate(self._with_hidden_urls(raw), (inverter.host, inverter.port) if inverter.host else None)
+        for c in consumers:
+            if c.kind == "http" and not (_sendable(c.url_on) and _sendable(c.url_off)):
+                raise ValueError(f"{c.name}: Diese Schaltadresse kann OpenAmpere nicht senden. Bitte keinen "
+                                 "Benutzernamen und kein Passwort vor das @ schreiben und Leerzeichen als %20 "
+                                 "eintragen.")
         new = {c.id: c for c in consumers}
         enabled = {c.id for c in consumers if c.enabled}
         for c_id in enabled:
@@ -407,7 +441,8 @@ class SurplusControl:
                 return  # not reachable: tried again later, not on every tick (#243)
             try:
                 await asyncio.to_thread(_call, switch_url(c, on))
-            except Exception as err:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001
+                err = _failure(error)  # never the text of the error: it can quote the address with its password
                 state.error = f"Nicht erreichbar: {err}"
                 if self._failed(state, now):
                     self._log(details, False, f"Fehler: {err}")

@@ -401,7 +401,8 @@ async def test_shutdown_stops_grid_charging_even_when_another_step_fails(tmp_pat
 # GHSA-3jrg-5v7g-9f96: switch addresses often hold the device's password; they were stored unencrypted and were in
 # every backup
 HTTP_CONFIG = {"name": "Heizstab", "kind": "http", "power_w": 1000, "min_on_min": 0, "min_off_min": 0,
-               "url_on": "http://admin:geheim-4711@heater.local/on", "url_off": "http://admin:geheim-4711@heater.local/off"}
+               "url_on": "http://heater.local/on?password=geheim-4711",
+               "url_off": "http://heater.local/off?password=geheim-4711"}
 
 
 def database_bytes(runtime) -> bytes:
