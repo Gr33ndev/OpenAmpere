@@ -5,8 +5,8 @@
 # Usage (from the repository root): scripts/site-scripts.sh <folder>
 # They come from the newest stable release tag, so a change on main reaches new installations only with a release.
 # SCRIPTS_REF=<git ref> takes them from another ref instead (e.g. SCRIPTS_REF=HEAD). Without a v* tag (e.g. a
-# shallow clone) they come from the working tree. Runs no code of dependencies: the website workflow calls it in a
-# job of its own, so the npm packages that build the site cannot change what users install (see pages.yml).
+# shallow clone) they come from the working tree. Runs no code of dependencies: the website workflow calls it in the
+# job that assembles the site, so the npm packages that build the site cannot change what users install (pages.yml).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
