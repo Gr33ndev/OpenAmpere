@@ -71,7 +71,7 @@ jobs:
           sbom: true
           provenance: mode=max
       # check with: gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev \
-      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml
+      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ steps.image.outputs.name }}
@@ -115,16 +115,33 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # all tags and commits for the notes
+      # the files of the tag are signed below, so a run by hand takes only a version tag made by scripts/release.sh
+      # (annotated) whose commit is on main (GHSA-3xmc-fc67-chgq). A pushed tag comes before main (see release.sh);
+      # pushing v* tags needs admin rights (ruleset)
+      - name: The tag is a version tag of main
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::Not a version tag"; exit 1; }
+          [ "$(git cat-file -t "refs/tags/$TAG" 2>/dev/null)" = tag ] \
+            || { echo "::error::$TAG is not an annotated tag of this repository"; exit 1; }
+          if [ "$EVENT" != push ]; then
+            git fetch -q origin +refs/heads/main:refs/remotes/origin/main
+            git merge-base --is-ancestor "refs/tags/$TAG^{commit}" refs/remotes/origin/main \
+              || { echo "::error::$TAG is not on main"; exit 1; }
+          fi
       - name: Collect the files to attach
         run: |
           # the install scripts as of the tag (a manual run checks out main) with checksums to verify a download
           mkdir assets
           for f in install.sh tailscale.sh updater.sh; do
-            if git cat-file -e "$TAG:scripts/$f" 2>/dev/null; then git show "$TAG:scripts/$f" > "assets/$f"; fi
+            if git cat-file -e "refs/tags/$TAG:scripts/$f" 2>/dev/null; then
+              git show "refs/tags/$TAG:scripts/$f" > "assets/$f"
+            fi
           done
           (cd assets && sha256sum *.sh > SHA256SUMS && cat SHA256SUMS)
       # check with: gh attestation verify install.sh --repo Gr33ndev/OpenAmpere \
-      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml
+      #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
       - id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

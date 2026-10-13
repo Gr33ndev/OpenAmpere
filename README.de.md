@@ -176,14 +176,15 @@ Die App läuft im Container als Benutzer 1000 und braucht Schreibrechte auf `dat
 Die Release-Images baut der [Release-Workflow](.github/workflows/release.yml) dieses Repositorys, mit signiertem Herkunftsnachweis (Build Provenance) und SBOM. Mit der [GitHub CLI](https://cli.github.com) lässt sich prüfen, ob ein Image wirklich hier gebaut wurde:
 
 ```bash
-gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev
+gh attestation verify oci://ghcr.io/gr33ndev/openampere:<version> --owner Gr33ndev \
+  --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
 ```
 
-`<version>` steht ohne führendes `v`, z. B. `0.10.0`, oder `latest`. Das geht für Releases nach 0.9.0. Die SBOM (die Liste der Pakete im Image) zeigt `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
+`--signer-workflow` stellt sicher, dass der Release-Workflow das Image gebaut hat und kein anderer Workflow des Repositorys, `--source-ref`, dass dieser Workflow für den Versions-Tag lief und nicht für einen Branch. `<version>` steht ohne führendes `v`, z. B. `0.10.0` (also `--source-ref refs/tags/v0.10.0`). Im Image-Namen geht auch `latest`, das ist immer die höchste stabile Version; `--source-ref` nennt dann diese Version. Das geht für Releases nach 0.9.0. Die SBOM (die Liste der Pakete im Image) zeigt `docker buildx imagetools inspect ghcr.io/gr33ndev/openampere:<version> --format '{{ json .SBOM }}'`.
 
 **Der Update-Helfer prüft das automatisch.** Bevor er eine neue Version startet (Knopf in der App oder nachts), prüft er das Image mit [cosign](https://docs.sigstore.dev/cosign/) gegen den Release-Workflow dieses Repositorys, ein Konto braucht es dafür nicht. Schlägt die Prüfung fehl, wird die neue Version nicht gestartet, die bisherige läuft weiter, und die App zeigt einen Hinweis. Installationen von vor 0.10.1 bekommen diesen Helfer, wenn sie das Install-Script einmal erneut ausführen. Nur für den Notfall schaltet `OPENAMPERE_VERIFY_IMAGES=nein` beim Dienst `updater` die Prüfung ab.
 
-`install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Auch sie haben einen signierten Herkunftsnachweis (`openampere-<version>.intoto.jsonl`); nach dem Herunterladen prüft `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere`, ob ein Script aus diesem Repository stammt. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
+`install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Auch sie haben einen signierten Herkunftsnachweis (`openampere-<version>.intoto.jsonl`); nach dem Herunterladen prüft `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>`, ob ein Script vom Release-Workflow dieses Repositorys stammt, und zwar aus dieser Version. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
 
 #### Zugriff von unterwegs
 
