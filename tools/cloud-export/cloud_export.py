@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -37,6 +38,9 @@ DAILY_ENDPOINTS = [
     ("consumptionPower", "/history/consumption/power", {}),
     ("totalWork", "/total/common/work", {}),
 ]
+
+# The installation id becomes a folder name and part of the request path, so only a plain id is accepted.
+INSTALLATION_ID = re.compile(r"[A-Za-z0-9-]+")
 
 
 class AuthError(Exception):
@@ -130,6 +134,8 @@ def write_json(path: Path, status: int, body: object) -> None:
 def resolve_installation(client: Client, out: Path) -> str:
     uuid = os.environ.get("CLOUD_INSTALLATION_UUID", "").strip()
     if uuid:
+        if not INSTALLATION_ID.fullmatch(uuid):
+            sys.exit("CLOUD_INSTALLATION_UUID may only contain letters, digits and '-'.")
         return uuid
     status, body = client.get("/api/v1/customer/installation")
     write_json(out / "installations.json", status, body)
@@ -137,7 +143,10 @@ def resolve_installation(client: Client, out: Path) -> str:
         sys.exit("No installation returned; set CLOUD_INSTALLATION_UUID.")
     if len(body) > 1:
         sys.exit("Several installations found (see installations.json); set CLOUD_INSTALLATION_UUID.")
-    return body[0]["uuid"]
+    uuid = body[0].get("uuid") if isinstance(body[0], dict) else None
+    if not isinstance(uuid, str) or not INSTALLATION_ID.fullmatch(uuid):
+        sys.exit("The cloud returned an invalid installation id (see installations.json); stopping.")
+    return uuid
 
 
 def find_start(client: Client, base: str, inst_dir: Path) -> date:
