@@ -10,7 +10,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.openampere.api import InvalidAuth, OpenAmpereError
+from custom_components.openampere.api import CannotConnect, InvalidAuth, OpenAmpereError
+from custom_components.openampere.coordinator import MAX_MISSED_STATES
 from custom_components.openampere.diagnostics import async_get_config_entry_diagnostics
 
 from conftest import info
@@ -169,6 +170,34 @@ async def test_old_values_are_unavailable_while_the_inverter_is_not_connected(ha
     push(stale=False)
     await hass.async_block_till_done()
     assert hass.states.get(entity_id(hass, "sensor", "_pv_power")).state == "5200.0"
+
+
+async def test_a_failed_query_keeps_the_entities_while_live_values_come(hass: HomeAssistant, entry, client) -> None:
+    """#336: behind a slow Modbus proxy one query of the state failed now and then, and every entity was
+    unavailable for a minute although the live values kept coming."""
+    await setup(hass, entry)
+    coordinator = entry.runtime_data
+    work_mode = entity_id(hass, "select", "_work_mode")
+    client.state.side_effect = CannotConnect("keine Verbindung")
+
+    await coordinator.async_refresh()  # no live connection: unavailable as before
+    assert hass.states.get(work_mode).state == "unavailable"
+
+    client.state.side_effect = None
+    await coordinator.async_refresh()
+    coordinator._on_live_connection(True)
+    client.state.side_effect = CannotConnect("keine Verbindung")
+    for _ in range(MAX_MISSED_STATES):
+        await coordinator.async_refresh()
+        assert hass.states.get(work_mode).state == "self_use"
+    await coordinator.async_refresh()  # not only now and then: unavailable
+    assert hass.states.get(work_mode).state == "unavailable"
+
+    client.state.side_effect = None
+    await coordinator.async_refresh()
+    client.state.side_effect = CannotConnect("keine Verbindung")
+    await coordinator.async_refresh()  # counted again from the last answer
+    assert hass.states.get(work_mode).state == "self_use"
 
 
 async def test_set_up_before_the_first_reading_sets_up_again_once_it_is_there(hass: HomeAssistant, entry, client) -> None:

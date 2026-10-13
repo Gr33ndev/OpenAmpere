@@ -20,6 +20,9 @@ from .app import async_check_app
 from .const import CONF_MIN_INTERVAL, DEFAULT_MIN_INTERVAL_S, DOMAIN, STATE_INTERVAL_S
 
 APP_CHECK_S = 300  # while OpenAmpere does not answer: is the Home Assistant app still installed? (#300)
+# failed queries in a row that keep the entities while live values still come: one slow answer (e.g. behind a
+# Modbus proxy) must not make every entity unavailable for a minute (#336)
+MAX_MISSED_STATES = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._listener: asyncio.Task | None = None
         self._reload_scheduled = False
         self._app_checked = 0.0
+        self._missed_states = 0
 
     @property
     def can_control(self) -> bool:
@@ -53,11 +57,16 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # revoked token or a different server/certificate: ask for a new connection code
             raise ConfigEntryAuthFailed(str(err)) from err
         except (CannotConnect, OpenAmpereError) as err:
+            if self.live_connected and self.data is not None and self._missed_states < MAX_MISSED_STATES:
+                self._missed_states += 1
+                _LOGGER.debug("OpenAmpere state not fetched (%d/%d): %s", self._missed_states, MAX_MISSED_STATES, err)
+                return self.data
             if self.config_entry and time.monotonic() - self._app_checked > APP_CHECK_S:
                 self._app_checked = time.monotonic()
                 self.config_entry.async_create_background_task(
                     self.hass, async_check_app(self.hass, self.config_entry), f"{DOMAIN} app check")
             raise UpdateFailed(str(err)) from err
+        self._missed_states = 0
         return {**(self.data or {}), **state}
 
     def start_listening(self) -> None:

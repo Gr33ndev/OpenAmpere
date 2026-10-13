@@ -27,6 +27,12 @@ PREFIX = "/api/external/v1"
 # writes per hour: inverter settings end up in its non-volatile memory; an automation in a loop must not wear it out
 BATTERY_WRITES_PER_HOUR = 6
 OTHER_WRITES_PER_HOUR = 60
+# /state waits at most this long for the battery settings, then answers with the last ones: behind a slow Modbus
+# proxy a reading can take longer than Home Assistant waits for the answer (#336)
+SETTINGS_WAIT_S = 5.0
+# a longer grace than for OpenAmpere's own control: behind a slow Modbus proxy one reading can take 20 s and more,
+# and Home Assistant should not make the readings unavailable for that (#336)
+STALE_AFTER_S = 60
 
 
 class RateLimit:
@@ -67,7 +73,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     def status() -> dict:
         latest = collector.latest
         control = runtime.config.control
-        return {"connected": collector.connected, "stale": collector.stale,
+        return {"connected": collector.connected, "stale": collector.stale_after(STALE_AFTER_S),
                 "last_update": latest.timestamp if latest else None,
                 "off_grid": collector.outages.current is not None,  # confirmed, not the flag of one reading (#89)
                 "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run}}
@@ -134,15 +140,33 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }
 
-    @app.get(f"{PREFIX}/state")
-    async def state():
+    battery_settings: dict | None = None
+    settings_task: asyncio.Task | None = None
+
+    async def read_battery_settings() -> None:
+        nonlocal battery_settings
         try:
             settings = await battery.read()
             battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS)}
         except Exception:  # noqa: BLE001 - not connected or no answer: the rest is still useful
             battery_settings = None
+
+    async def current_battery_settings() -> dict | None:
+        """One reading at a time; a slow one keeps running for the next query instead of being cancelled."""
+        nonlocal settings_task
+        if settings_task is None or settings_task.done():
+            settings_task = asyncio.create_task(read_battery_settings())
+        try:
+            await asyncio.wait_for(asyncio.shield(settings_task), SETTINGS_WAIT_S)
+        except TimeoutError:
+            pass
+        return battery_settings
+
+    @app.get(f"{PREFIX}/state")
+    async def state():
+        settings = await current_battery_settings()
         grid = charging.settings
-        return {**live_message(), "type": "state", "battery_settings": battery_settings,
+        return {**live_message(), "type": "state", "battery_settings": settings,
                 "grid_charging": {"enabled": grid.enabled, "target_soc": grid.target_soc, "active": charging.active},
                 "price_ct": runtime.tariffs.price_at(time.time(), runtime.tz)}
 

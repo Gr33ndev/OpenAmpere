@@ -105,9 +105,13 @@ class Collector:
     @property
     def stale(self) -> bool:
         """True when the last reading is too old to be shown as live."""
+        return self.stale_after(30)
+
+    def stale_after(self, seconds: float) -> bool:
+        """Not connected, or no reading for three poll intervals and at least `seconds`."""
         if self.latest is None:
             return True
-        return not self.connected or time.time() - self.latest.timestamp > max(3 * self.interval, 30)
+        return not self.connected or time.time() - self.latest.timestamp > max(3 * self.interval, seconds)
 
     def _check_firmware(self) -> None:
         """An update can change registers: remember the firmware and note when it changes."""
