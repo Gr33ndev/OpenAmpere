@@ -49,7 +49,9 @@ TAG = re.compile(r"^v\d+\.\d+\.\d+$")  # stable versions only
 # A fix merged from a security advisory's private fork arrives as one commit with this title; its message names the
 # advisory. It is listed as a fix with the advisory's title (looked up with the GitHub CLI if it is there).
 ADVISORY_MERGE = "Merge commit from fork"
-GHSA = re.compile(r"GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}")
+# only an id on a line of its own, as every advisory fix ends: a fix that mentions an earlier advisory in its text
+# ("the rest of GHSA-…") must not list that one again (#370)
+GHSA = re.compile(r"^\s*(GHSA(?:-[23456789cfghjmpqrvwx]{4}){3})\s*$", re.MULTILINE)
 
 
 def git(*args: str) -> str:
