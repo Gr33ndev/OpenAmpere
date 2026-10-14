@@ -32,6 +32,7 @@ import json
 import os
 import socket
 import struct
+import sys
 import time
 
 from cryptography.exceptions import InvalidTag
@@ -39,6 +40,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 PORT = 6668
 DISCOVERY_PORTS = (6667, 7000)  # devices with protocol 3.3 and newer announce themselves here (UDP broadcast)
+LIMITED_BROADCAST = "255.255.255.255"
+SIOCGIFADDR, SIOCGIFBRDADDR = 0x8915, 0x8919  # Linux: address and broadcast address of a network card
 VERSION = b"3.5"
 VERSION_HEADER = VERSION + bytes(12)
 PREFIX = b"\x00\x00\x66\x99"
@@ -278,12 +281,36 @@ def announced(data: bytes, source: str) -> dict | None:
     return {"device_id": str(info["gwId"]), "host": source, "product_key": str(info.get("productKey") or "") or None}
 
 
-async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS) -> list[dict]:
+def broadcast_addresses() -> list[str]:
+    """Where announcements arrive: 255.255.255.255 and, on Linux (Docker, Home Assistant), the broadcast address of
+    every network card in the home network (a device may send to 192.168.1.255 instead)."""
+    found = [LIMITED_BROADCAST]
+    if not sys.platform.startswith("linux"):
+        return found
+    import fcntl
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        for _, name in socket.if_nameindex():
+            request = struct.pack("256s", name.encode()[:15])
+            try:
+                address = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFADDR, request)[20:24])
+                broadcast = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFBRDADDR, request)[20:24])
+                own = ipaddress.ip_address(address)
+            except (OSError, ValueError):
+                continue  # no IPv4 address or no broadcast (loopback, Tailscale, VPN)
+            if own.is_private and not own.is_loopback and broadcast not in ("0.0.0.0", *found):
+                found.append(broadcast)
+    return found
+
+
+async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS,
+                 addresses: tuple[str, ...] | None = None) -> list[dict]:
     """Tuya devices with protocol 3.5 that announce themselves in the home network within `seconds`.
 
-    They broadcast every few seconds on UDP 6667 or 7000; only devices with the same version are kept. A port that is
-    taken (another Tuya tool on this computer) is skipped. Only with a network of the host: in the Home Assistant app
-    (its own network) the broadcasts do not arrive, the callers skip the search there.
+    They broadcast every few seconds on UDP 6667 or 7000; only devices with the same version are kept. The sockets are
+    bound to the broadcast addresses only, never to all interfaces: nothing sent to this computer's own address
+    reaches them, only broadcasts. A port that is taken (another Tuya tool) is skipped; OSError if none could be
+    opened. Only with a network of the host: in the Home Assistant app (its own network) the broadcasts do not
+    arrive, the callers skip the search there.
     """
     found: dict[str, dict] = {}
     loop = asyncio.get_running_loop()
@@ -295,20 +322,20 @@ async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS)
                 found[device["device_id"]] = device
 
     transports = []
-    for port in ports:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            # all interfaces on purpose: a broadcast to 255.255.255.255 reaches only a socket bound to all of them,
-            # not one bound to the address of an interface. Open for the few seconds of a search, receiving only;
-            # announced() keeps only devices in the home network that send from their own address.
-            sock.bind(("", port))  # lgtm[py/bind-socket-all-network-interfaces]
-        except OSError:
-            sock.close()
-            continue
-        transport, _ = await loop.create_datagram_endpoint(Listener, sock=sock)
-        transports.append(transport)
     try:
+        for address in addresses or broadcast_addresses():
+            for port in ports:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    sock.bind((address, port))
+                except OSError:
+                    sock.close()
+                    continue
+                transport, _ = await loop.create_datagram_endpoint(Listener, sock=sock)
+                transports.append(transport)
+        if not transports:
+            raise OSError("no port for the search")
         await asyncio.sleep(seconds)
     finally:
         for transport in transports:

@@ -147,7 +147,8 @@
     "currentValue": "{current} A (höchstens {max} A)",
     "phaseCurrents": "Strom je Phase",
     "phases": "Phasen",
-    "address": "IP-Adresse der Wallbox"
+    "address": "IP-Adresse der Wallbox",
+    "searchUnavailable": "Die Suche ist auf diesem Rechner gerade nicht möglich. Bitte die IP-Adresse aus deinem Router abschreiben."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

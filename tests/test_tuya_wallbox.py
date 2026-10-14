@@ -360,7 +360,8 @@ def test_an_announcement_counts_only_from_the_address_it_names():
 
 async def test_the_search_receives_announcements_and_drops_forged_ones():
     port = closed_port()
-    search = asyncio.create_task(tuya.search(0.5, ports=(port,)))
+    # bound to 127.0.0.1 here so the test needs no network; the app binds to the broadcast addresses
+    search = asyncio.create_task(tuya.search(0.5, ports=(port,), addresses=("127.0.0.1",)))
     await asyncio.sleep(0.1)
     import socket
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
@@ -368,6 +369,28 @@ async def test_the_search_receives_announcements_and_drops_forged_ones():
         sender.sendto(announcement("192.168.1.99"), ("127.0.0.1", port))  # forged: names another address
     found = await search
     assert [d["host"] for d in found] == ["127.0.0.1"]
+
+
+async def test_the_search_never_listens_on_all_interfaces(monkeypatch):
+    """Only broadcasts reach it: nothing sent to this computer's own address (CodeQL: bind to all interfaces)."""
+    bound = []
+
+    class Spy(tuya.socket.socket):
+        def bind(self, address):
+            bound.append(address[0])
+            super().bind(("127.0.0.1", 0))  # no real broadcast port in a test
+    monkeypatch.setattr(tuya.socket, "socket", Spy)
+    await tuya.search(0.01)
+    assert bound and tuya.LIMITED_BROADCAST in bound
+    assert not {"", "0.0.0.0"} & set(bound)
+
+
+async def test_the_search_is_unavailable_when_no_port_can_be_opened():
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as taken:
+        taken.bind(("127.0.0.1", 0))
+        with pytest.raises(OSError):  # the app then says the search is not available
+            await tuya.search(0.01, ports=(taken.getsockname()[1],), addresses=("127.0.0.1",))
 
 
 @pytest.mark.parametrize("ha_app_mode", [False, True], ids=["standalone", "home-assistant-app"])

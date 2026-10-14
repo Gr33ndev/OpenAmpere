@@ -182,7 +182,9 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
   const search = async () => {
     setSearching(true);
     try {
-      setFound((await postJson<{ available: boolean; devices: Found[] }>("/api/wallboxes/search", {})).devices);
+      const result = await postJson<{ available: boolean; devices: Found[] }>("/api/wallboxes/search", {});
+      if (!result.available) toast(t("devices.nativeWallbox.searchUnavailable"), "error");
+      setFound(result.available ? result.devices : null);
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {

@@ -147,7 +147,8 @@
     "currentValue": "{current} A (at most {max} A)",
     "phaseCurrents": "Current per phase",
     "phases": "Phases",
-    "address": "IP address of the wallbox"
+    "address": "IP address of the wallbox",
+    "searchUnavailable": "The search is not possible on this computer right now. Please copy the IP address from your router."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

@@ -59,3 +59,13 @@ test("a portable wallbox is added: search, check the connection, save", async ({
   await save.click();
   await expect(page.getByText("Mobile Wallbox 2")).toBeVisible();
 });
+
+test("a search that is not possible says so instead of finding nothing", async ({ page, api }) => {
+  api.override("/api/wallboxes/search", { available: false, devices: [] });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen" }).click();
+  await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
+  await expect(page.getByText("Die Suche ist auf diesem Rechner gerade nicht möglich")).toBeVisible();
+  await expect(page.getByText("Keine Tuya-Wallbox gefunden")).toHaveCount(0);
+});
