@@ -26,10 +26,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
 
 
 class WorkModeSelect(ControlEntity, SelectEntity):
-    _attr_options = WORK_MODES
-
     def __init__(self, coordinator: OpenAmpereCoordinator) -> None:
         super().__init__(coordinator, "work_mode")
+        # only the modes of the device (SAJ: two, #377); an older OpenAmpere does not say: all of them
+        offered = (coordinator.info.get("device") or {}).get("work_modes")
+        self._attr_options = [mode for mode in WORK_MODES if not offered or mode in offered]
 
     @property
     def current_option(self) -> str | None:

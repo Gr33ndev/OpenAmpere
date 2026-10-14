@@ -141,6 +141,14 @@ async def test_commands(hass: HomeAssistant, entry, client) -> None:
                                        blocking=True)
 
 
+async def test_only_the_work_modes_of_the_device(hass: HomeAssistant, entry, client) -> None:
+    sajinfo = info()
+    sajinfo["device"] = {**sajinfo["device"], "manufacturer": "SAJ", "work_modes": ["self_use", "backup"]}
+    client.info.return_value = sajinfo
+    await setup(hass, entry)
+    assert hass.states.get(entity_id(hass, "select", "_work_mode")).attributes["options"] == ["self_use", "backup"]
+
+
 async def test_read_only_access_has_no_controls(hass: HomeAssistant, entry, client) -> None:
     client.info.return_value = info("read")
     await setup(hass, entry)

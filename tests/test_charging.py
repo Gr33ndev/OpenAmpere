@@ -382,10 +382,10 @@ async def test_switching_off_during_a_tick_does_not_leave_the_remote_control_on(
             set_power = runtime.collector.driver.set_remote_power
             writing, go_on = asyncio.Event(), asyncio.Event()
 
-            async def slow(power_w, timeout_s):
+            async def slow(power_w, timeout_s, **kwargs):
                 writing.set()
                 await go_on.wait()
-                await set_power(power_w, timeout_s)
+                await set_power(power_w, timeout_s, **kwargs)
             runtime.collector.driver.set_remote_power = slow
             tick = asyncio.create_task(charging.tick(now=10_000))
             await writing.wait()

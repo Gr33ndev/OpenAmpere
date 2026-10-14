@@ -26,7 +26,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 |---|---|---|
 | FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige und Steuerung bestätigt |
 | FoxESS H3, ältere Firmware / H3 Smart / H3 Pro | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
-| SAJ H2 / HS2 | Anzeige. Die Steuerung wird erst freigegeben, wenn der Treiber an echten Geräten geprüft ist. | Noch nicht bestätigt |
+| SAJ H2 / HS2 | Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet. | Noch nicht bestätigt |
 | Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
 | Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
 | Wallbox | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)). | Noch nicht bestätigt |

@@ -39,7 +39,7 @@ async def test_export_limit_rules(tmp_path):
         runtime = await connected_runtime(tmp_path, port)
         control = ExportLimitControl(runtime)
         try:
-            assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000,
+            assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000, "step_w": 1,
                                             "rule": "unknown", "installed_kwp": 0.0, "legal_max_w": None,
                                             "external_change": None}
 

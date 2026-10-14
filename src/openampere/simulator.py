@@ -325,11 +325,17 @@ class SimulatedInverter:
 
 
 class SajSimulatedInverter(SimulatedInverter):
-    """SAJ H2 register layout on top of the same energy model. Read-only."""
+    """SAJ H2 register layout on top of the same energy model. Accepts the writes of the control (#377): battery
+    settings, work mode, the charge slots of the time-of-use mode (charging while a slot runs on the clock of the
+    simulator) and the export limit."""
+
+    WRITABLE = frozenset({saj.CHARGE_ENABLE_ADDRESS, *range(0x3606, 0x3606 + 3 * 7), *saj.SOC_ADDRESSES.values(),
+                          saj.APP_MODE_ADDRESS, saj.EXPORT_LIMIT_ADDRESS, saj.EXPORT_MODE_ADDRESS,
+                          saj.TOU_OUTSIDE_ADDRESS})
 
     def __init__(self, *, device_type: int = 0x005B, serial: str = "HST2103SIM00001", unit: int = 1,
                  max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
-                 depth_registers: bool = True) -> None:
+                 depth_registers: bool = True, read_only: bool = False) -> None:
         self.map = None
         self.depth_registers = depth_registers
         self.model = f"SAJ {saj.DEVICE_TYPES.get(device_type, hex(device_type))}"
@@ -337,22 +343,80 @@ class SajSimulatedInverter(SimulatedInverter):
         self.strict_function = False
         self.max_connections = max_connections
         self.connections = 0
-        self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, True, unit
+        self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, read_only, unit
+        self.rated_w = 10000
+        self.clock = datetime.now  # the inverter's clock, which the charge slots follow
         self.energy = EnergyModel()
         self.regs = {}
         for start, count in saj.BLOCKS:
             for address in range(start, start + count):
                 self.regs[address] = 0
-        info = [device_type, 10000, 1234] + [0] * 26
+        for address in (*self.WRITABLE, *range(saj.TIME_ADDRESS, saj.TIME_ADDRESS + 4), 0x365B):
+            self.regs.setdefault(address, 0)
+        self.regs[saj.TOU_OUTSIDE_ADDRESS] = 1
+        self.regs[saj.EXPORT_LIMIT_ADDRESS] = 1000
+        if depth_registers:
+            for i, value in enumerate((20, 5, 100, 0)):  # on grid, off grid, charge limit, app mode
+                self.regs[saj.DEPTH_ADDRESS + i] = value
+            self.regs[saj.BACKUP_SOC_ADDRESS] = 10
+        else:  # firmware without the settings registers rejects them
+            for address in range(saj.DEPTH_ADDRESS, saj.DEPTH_ADDRESS + 4):
+                self.regs.pop(address, None)
+        info = [device_type, self.rated_w, 1234] + [0] * 26
         text = serial.encode("ascii")[:20].ljust(20, b"\0")
         info[3:13] = [(text[2 * i] << 8) | text[2 * i + 1] for i in range(10)]
         info[23:26] = [1050, 1020, 1010]
         for i, word in enumerate(info):
             self.regs[saj.INFO_ADDRESS + i] = word
+        self.on_write(saj.APP_MODE_ADDRESS)
         self.update_registers()
 
-    def on_write(self, address: int) -> None:  # pragma: no cover - writes are rejected (read_only)
-        pass
+    def handle(self, pdu: bytes) -> bytes:
+        self._sync()
+        function = pdu[0]
+        if function in (6, 16) and not self.read_only:
+            address, count = struct.unpack(">HH", pdu[1:5]) if function == 16 else (pdu[1] << 8 | pdu[2], 1)
+            if any(a not in self.WRITABLE or a not in self.regs for a in range(address, address + count)):
+                return bytes([function | 0x80, ILLEGAL_ADDRESS])
+            if function == 6:
+                self.regs[address] = struct.unpack(">H", pdu[3:5])[0]
+            else:
+                words = struct.unpack(f">{count}H", pdu[6:6 + count * 2])
+                for i, word in enumerate(words):
+                    self.regs[address + i] = word
+            self.on_write(address)
+            return pdu[:5]
+        return super().handle(pdu)
+
+    def on_write(self, address: int) -> None:
+        e = self.energy
+        if saj.DEPTH_ADDRESS in self.regs:
+            e.min_soc_on_grid = self.regs[saj.SOC_ADDRESSES["min_soc_on_grid"]]
+            e.min_soc = self.regs[saj.SOC_ADDRESSES["min_soc"]]
+            e.max_soc = self.regs[saj.SOC_ADDRESSES["max_soc"]]
+            e.work_mode = WorkMode.BACKUP if self.regs[saj.APP_MODE_ADDRESS] == 2 else WorkMode.SELF_USE
+        mode = self.regs[saj.EXPORT_MODE_ADDRESS]
+        e.export_limit_w = (self.regs[saj.EXPORT_LIMIT_ADDRESS] * self.rated_w / 1000
+                            if mode in saj.EXPORT_POWER_MODES else self.rated_w)
+        self._sync()
+
+    def _sync(self) -> None:
+        """The clock registers, and charging while a charge slot of the time-of-use mode runs."""
+        now = self.clock()
+        for i, word in enumerate((now.year, now.month << 8 | now.day, now.hour << 8 | now.minute, now.second << 8)):
+            self.regs[saj.TIME_ADDRESS + i] = word
+        minute, day = now.hour * 60 + now.minute, 1 << now.weekday()
+        power = 0
+        if self.regs.get(saj.APP_MODE_ADDRESS) == saj.APP_MODE_TIME:
+            for n in range(7):
+                if not self.regs[saj.CHARGE_ENABLE_ADDRESS] & (1 << n):
+                    continue
+                start, end, days = (self.regs[0x3606 + 3 * n + i] for i in range(3))
+                if days >> 8 & day and (start >> 8) * 60 + (start & 0xFF) <= minute < (end >> 8) * 60 + (end & 0xFF):
+                    power = (days & 0xFF) * self.rated_w / 100
+        self.energy.remote_enabled = power > 0
+        self.energy.remote_power_w = -power
+        self.energy.remote_deadline = time.monotonic() + 3600
 
     def update_registers(self) -> None:
         e = self.energy
@@ -365,14 +429,11 @@ class SajSimulatedInverter(SimulatedInverter):
         put("running_mode", 2)
         put("inverter_temperature", 30 + e.pv_w / 400)
         put("ambient_temperature", 21)
-        put("app_mode", 0)
-        put("max_soc", 100)
-        put("min_soc_on_grid", 20)
+        # the read-back registers follow the settings
+        put("app_mode", self.regs.get(saj.APP_MODE_ADDRESS, 0))
+        put("max_soc", e.max_soc)
+        put("min_soc_on_grid", e.min_soc_on_grid if self.depth_registers else 20)
         put("reserve_soc", 10)
-        if self.depth_registers:
-            for i, value in enumerate((20, 5, 100, 0)):  # on grid, off grid, charge limit, app mode
-                self.regs[saj.DEPTH_ADDRESS + i] = value
-            self.regs[saj.BACKUP_SOC_ADDRESS] = 10
         put("battery_voltage", 52)
         put("battery_current", -e.battery_w / 52)
         put("battery_temperature", 23)
@@ -519,7 +580,7 @@ def main() -> None:
         pass
     elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
-                                   fault_rate=args.fault_rate, latency_s=args.latency)
+                                   fault_rate=args.fault_rate, latency_s=args.latency, read_only=args.read_only)
     else:
         register_map = H3_NEW if args.map == "new" else H3_LEGACY
         model = args.model or ("H3-10.0-Smart" if args.map == "new" else " H3-10.0-E")

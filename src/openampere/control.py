@@ -215,6 +215,8 @@ class BatteryControl:
                 changes["work_mode"] = WorkMode(changes["work_mode"]).value
             except ValueError:
                 raise ValueError("Unbekannter Betriebsmodus") from None
+            if device is not None and device.work_modes is not None and changes["work_mode"] not in device.work_modes:
+                raise ValueError(f"Diesen Betriebsmodus gibt es bei {device.manufacturer}-Geräten nicht.")
         for key in SOC_FIELDS:
             if key in changes:
                 try:
@@ -338,6 +340,12 @@ RULE_SHARE = {"limit_60": 0.6, "limit_70": 0.7}
 RULE_LABEL = {"limit_60": "60 %", "limit_70": "70 %"}
 
 
+def same_limit(found: int | None, limit_w: int, step: int) -> bool:
+    """The inverter holds limit_w: exactly, or rounded down to its step (SAJ: per mille of the rated power), never
+    more feed-in than asked for."""
+    return found is not None and 0 <= limit_w - found < step
+
+
 def legal_max_w(rule: str, installed_kwp: float) -> int | None:
     """Highest feed-in power the declared rule allows (percentages refer to the installed module power)."""
     share = RULE_SHARE.get(rule)
@@ -401,7 +409,8 @@ class ExportLimitControl:
             if not 0 <= limit_w <= maximum:
                 raise ValueError(f"Wert muss zwischen 0 und {maximum} W liegen")
             old = current["limit_w"]
-            if limit_w == old:
+            step = current.get("step_w") or 1
+            if same_limit(old, limit_w, step):
                 return {"dry_run": control.dry_run, "written": False, **current}
 
             raising = old is None or limit_w > old
@@ -445,27 +454,28 @@ class ExportLimitControl:
             if after is None:
                 result = "Rücklesen fehlgeschlagen"
             else:
-                result = "ok" if after["limit_w"] == limit_w else f"Rücklesen abweichend: {after['limit_w']} W"
+                result = ("ok" if same_limit(after["limit_w"], limit_w, step)
+                          else f"Rücklesen abweichend: {after['limit_w']} W")
             storage.log_control("export_limit", details, False, result)
             self.external_change = None
-            self._schedule_verify(limit_w)
+            self._schedule_verify(limit_w, step)
             if after is None:
                 raise WriteFailed("Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es "
                                   "später erneut.")
             return {"dry_run": False, "written": True, "result": result, **after}
 
-    def _schedule_verify(self, limit_w: int) -> None:
+    def _schedule_verify(self, limit_w: int, step: int = 1) -> None:
         if self._verify_task is not None:
             self._verify_task.cancel()
-        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w))
+        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w, step))
 
-    async def _verify(self, limit_w: int) -> None:
+    async def _verify(self, limit_w: int, step: int = 1) -> None:
         async for _ in after_write():
             try:
                 now = (await self.read())["limit_w"]
             except Exception:  # noqa: BLE001
                 continue
-            if now is not None and now != limit_w:
+            if now is not None and not same_limit(now, limit_w, step):
                 self.external_change = {"expected": limit_w, "found": now}
                 self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},
                                                                         "to": {"export_limit_w": now}},

@@ -150,10 +150,27 @@ The facts come from community projects; sources and licenses are listed in [NOTI
 - **Still to be verified on a real device:**
   - the signs of battery and grid power
   - whether the PV counter covers all MPPTs
-- **Control:** deliberately locked in OpenAmpere. Known, but unverified:
-  - AppMode 0x3647
-  - SoC limits 0x3644–0x3646
-  - export limit 0x365A in per mille of rated power
+- **Control (#377):** from SAJ's "H2-3~6K-S2 single phase communication protocol" (2022-12-02), written the same
+  way by home-assistant-saj-h2-modbus (`charge_control.py`) and evcc (`saj-h2.yaml`); FC06, one register at a time.
+  Enabled for the type codes 0x005A–0x005E; AS2 and other codes stay read-only.
+  - Battery settings: on-grid depth 0x3644, off-grid depth 0x3645, charge limit 0x3646 (% SoC), AppMode 0x3647
+    (0 self-use, 2 backup; 1 time-of-use, 3 passive and 10 peak shaving are not offered). `read_settings` reads
+    0x3644–0x3647, the registers it writes.
+  - Export limit: 0x365A in per mille of rated power, effective only while 0x365C (anti-reflux mode) is 1 (total
+    power) or 3 (per phase power); 2 limits by phase current (0x365B, A) and is shown as not supported. Written
+    rounded down to the per-mille step; with 0x365C = 0 (off) the limit counts as the rated power, and writing a
+    limit sets 0x365C = 1.
+  - Grid charging: SAJ has no remote control with a timeout. The protocol has none for passive mode (0x3636–0x363A),
+    and owners report that passive mode stays on for hours after one write (stanus74/home-assistant-saj-h2-modbus#157).
+    OpenAmpere therefore uses charge slot 7 of the time-of-use mode: 0x3618 start and 0x3619 end (hh << 8 | mm),
+    0x361A days (high byte, bit 0 = Monday) and power in % of rated power (low byte), switched on by bit 6 of 0x3604,
+    AppMode 0x3647 = 1, and 0x365F = 1 (self-use outside the slots). The slot covers today from now for 10 minutes
+    and is extended when fewer than 5 are left, following the inverter's clock (0x4000, 4 registers: year,
+    month << 8 | day, hour << 8 | minute, second << 8). If OpenAmpere stops, charging ends with the slot. OpenAmpere
+    keeps the owner's AppMode, 0x365F and slot 7 and puts them back; it never takes over slot 7 while the owner has
+    it switched on, and releases it only while it still holds OpenAmpere's values.
+  - Not used: the undocumented block 0x8300–0x8306, which the previous IQ box writes every 1–3 s while charging
+    (stanus74/home-assistant-saj-h2-modbus#18); nobody has tested whether it ends by itself.
 
 ## FoxESS AC EV Charger (wallbox, read-only check)
 

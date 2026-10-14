@@ -43,7 +43,7 @@ async def test_detects_saj_on_either_unit(unit):
         snap = await driver.read()
         await driver.close()
     assert (info.driver, info.unit, info.manufacturer) == ("saj", unit, "SAJ")
-    assert info.model == "H2 5-10K S3" and info.serial == "HST2103SIM00001" and not info.supports_control
+    assert info.model == "H2 5-10K S3" and info.serial == "HST2103SIM00001" and info.supports_control
     assert info.energy_step_wh == 10  # counters in 0.01 kWh (#194)
     e = sim.energy
     assert snap.pv_power == pytest.approx(e.pv_w, abs=2)
@@ -62,23 +62,27 @@ async def test_unreachable_fails_fast():
     assert time.monotonic() - started < 3
 
 
-async def test_runtime_auto_driver_with_saj_is_read_only(tmp_path):
-    sim = SajSimulatedInverter(unit=2, max_connections=3)
+async def test_runtime_auto_driver_with_an_saj_as2_stays_read_only(tmp_path):
+    """Control is enabled for H2/HS2 (#377), not for AS2 and other types of the family."""
+    sim = SajSimulatedInverter(unit=2, max_connections=3, device_type=0x0055)
     server, port = await serve(sim)
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
-        await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
-        for _ in range(150):
-            if runtime.collector.latest:
-                break
-            await asyncio.sleep(0.1)
-        assert runtime.collector.device.driver == "saj"
-        result = await discovery.test_connection(runtime, "127.0.0.1", port, 0)
-        assert result["ok"] and result["device"]["driver"] == "saj"
-        await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
-        with pytest.raises(ValueError, match="noch nicht freigegeben"):
-            await BatteryControl(runtime).write({"min_soc_on_grid": 30})
-        await runtime.collector.stop()
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2})
+            for _ in range(150):
+                if runtime.collector.latest:
+                    break
+                await asyncio.sleep(0.1)
+            assert runtime.collector.device.driver == "saj" and not runtime.collector.device.supports_control
+            result = await discovery.test_connection(runtime, "127.0.0.1", port, 0)
+            assert result["ok"] and result["device"]["driver"] == "saj"
+            await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
+            with pytest.raises(ValueError, match="noch nicht freigegeben"):
+                await BatteryControl(runtime).write({"min_soc_on_grid": 30})
+        finally:
+            await runtime.collector.stop()
 
 
 async def test_test_connection_reports_label_and_choice(tmp_path):
@@ -136,7 +140,8 @@ def test_saj_settings_prefer_the_depth_registers():
     raw = {"app_mode": 0, "max_soc": 100, "min_soc_on_grid": 25, "reserve_soc": 0}
     # without the settings registers only the on-grid limit is known; 0x402C is not taken for off grid (#334)
     assert (to_settings(raw).min_soc_on_grid, to_settings(raw).min_soc) == (25, None)
-    assert (to_settings(raw, [30, 10]).min_soc_on_grid, to_settings(raw, [30, 10]).min_soc) == (30, 10)
+    settings = to_settings(raw, [30, 10, 90, 2])  # 0x3644–0x3647, the registers OpenAmpere writes (#377)
+    assert (settings.min_soc_on_grid, settings.min_soc, settings.max_soc, settings.work_mode.value) == (30, 10, 90, "backup")
 
 
 def test_saj_grid_counter_source_does_not_switch():
