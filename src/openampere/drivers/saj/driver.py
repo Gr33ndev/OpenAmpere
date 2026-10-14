@@ -146,11 +146,18 @@ class SajDriver(ModbusDevice):
         percent = min(100, max(1, math.ceil(-int(watts) * 100 / rated)))
         now = await self._clock()
         mask, slot, app_mode, outside = await self._charge_state()
-        state = self._remote or restore
-        if not (state and state.get("slot_ours") and mask & SLOT_BIT and slot == state["slot_ours"]):
-            if mask & SLOT_BIT:  # the owner uses this slot (or it was changed): never take it over
-                raise NotSupported(f"Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der "
-                                   "SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden.")
+        prior = self._remote or restore
+        if mask & SLOT_BIT and not (prior and slot == prior.get("slot_ours")):
+            # the owner uses this slot (or someone switched on other values): never take it over
+            raise NotSupported(f"Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der "
+                               "SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden.")
+        if prior:
+            # a running session keeps the owner's values from its start, also when someone changed the slot or the
+            # mode in between: otherwise these would be taken for the owner's and put back at the end (#382)
+            state = dict(prior)
+            if slot != state.get("slot_ours"):
+                state["slot_ours"] = None  # changed while switched off: written again
+        else:
             state = {"app_mode": app_mode, "outside": outside, "slot": slot, "slot_ours": None}
         ours = state["slot_ours"]
         wanted = charge_slot(now, percent)
@@ -162,12 +169,14 @@ class SajDriver(ModbusDevice):
                     await self._write(Reg(CHARGE_SLOT_ADDRESS + i), word)
             state = {**state, "slot_ours": wanted}
         self._remote = state  # before switching on: a start that fails half way is switched off by the release
-        if ours is None:  # switched on after the slot holds OpenAmpere's values; time-of-use last
-            if outside != 1:
-                await self._write(Reg(TOU_OUTSIDE_ADDRESS), 1)  # outside the slot: self-use, not standby
+        # switched on after the slot holds OpenAmpere's values, time-of-use last; with every command, like the remote
+        # control of FoxESS: what another device (e.g. the old IQ box) changed meanwhile is set again (#382)
+        if outside != 1:
+            await self._write(Reg(TOU_OUTSIDE_ADDRESS), 1)  # outside the slot: self-use, not standby
+        if not mask & SLOT_BIT:
             await self._write(Reg(CHARGE_ENABLE_ADDRESS), mask | SLOT_BIT)
-            if app_mode != APP_MODE_TIME:
-                await self._write(Reg(APP_MODE_ADDRESS), APP_MODE_TIME)
+        if app_mode != APP_MODE_TIME:
+            await self._write(Reg(APP_MODE_ADDRESS), APP_MODE_TIME)
         return dict(state)
 
     async def release_remote_power(self, timeout_s: int | None = None, restore: dict | None = None) -> bool:
