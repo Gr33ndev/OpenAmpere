@@ -193,7 +193,7 @@
     "smartHome": "Smart home",
     "timeout": "Timeout per request",
     "timeoutHint": "If the inverter is behind a Modbus proxy or on Wi-Fi, a higher value can prevent dropped connections.",
-    "viaEvcc": "via evcc"
+    "wallboxWays": "through evcc or directly"
   },
   "connectionStatus": {
     "addIntegrationStep": "Add the integration and choose “Pair with OpenAmpere”: {link}. Enter there:",
@@ -331,7 +331,11 @@
     "wallboxPlan": "{name}: charging plan set to {soc} by {time}.",
     "wallboxPlanDeleted": "{name}: charging plan deleted.",
     "windowEnd": "Charging window until",
-    "windowStart": "Charging window from"
+    "windowStart": "Charging window from",
+    "wallboxCurrent": "{name}: charging current set to {current} A.",
+    "wallboxStart": "{name}: charging started.",
+    "wallboxStop": "{name}: charging paused.",
+    "wallboxReleased": "{name}: OpenAmpere let go of the wallbox and set your charging current back."
   },
   "controlPage": {
     "emptyState": "No changes yet.",

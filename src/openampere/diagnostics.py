@@ -24,6 +24,7 @@ from .ocpp import OcppListener, ocpp_markdown
 from .probe import Probe, section_markdown
 from .runtime import Runtime
 from .wallbox import WallboxCheck, check_markdown
+from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
@@ -48,6 +49,7 @@ class Diagnostics:
         self.probe = Probe(runtime)  # reading any device (#324); its last results go into the report
         self.wallbox = WallboxCheck(self.probe)
         self.ocpp = OcppListener(runtime)  # listening to a wallbox over OCPP (#328), likewise  # the read-only wallbox check of the setup (#325), likewise
+        self.wallboxes = None  # wallbox.native.NativeWallboxes, set by the app: their state goes into the report
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -175,7 +177,8 @@ class Diagnostics:
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
                                      "probe": self.probe.section(include_text=include_serial),
                                      "wallbox": self.wallbox.section(include_text=include_serial),
-                                     "ocpp": privacy.ocpp_for_report(self.ocpp.record, include_serial)},
+                                     "ocpp": privacy.ocpp_for_report(self.ocpp.record, include_serial),
+                                     "wallboxes": self.wallboxes.report() if self.wallboxes else []},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -196,7 +199,8 @@ class Diagnostics:
         parts, so the same address has the same name everywhere in the report."""
         pseudonyms = privacy.for_report(self.runtime, include_serial)
         report = {**report, "log": privacy.log_for_report(report.get("log"))}
-        return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp")}}
+        return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp",
+                                                                          "wallboxes")}}
 
     @staticmethod
     def _version() -> str:
@@ -453,6 +457,8 @@ def report_markdown(report: dict) -> str:
         lines += ["", "### Geräte-Abfrage", "", *section_markdown(report["probe"])]
     if report.get("wallbox"):  # the wallbox check of the setup (#325)
         lines += ["", "### Wallbox-Prüfung", "", *check_markdown(report["wallbox"])]
+    for i, wallbox in enumerate(report.get("wallboxes") or [], 1):  # wallboxes OpenAmpere controls itself
+        lines += ["", f"### Wallbox {i} (direkt)", "", *native_markdown(wallbox)]
     if report.get("ocpp"):  # listening to a wallbox over OCPP (#328)
         lines += ["", "### Wallbox über OCPP", "", *ocpp_markdown(report["ocpp"])]
     log = report.get("log") or []

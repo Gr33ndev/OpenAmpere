@@ -15,6 +15,12 @@ Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/ev
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.
 
+The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
+tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own
+implementation and contains no tinytuya code. The data points of the dé wallbox are based on facts from tuya-local
+(https://github.com/make-all/tuya-local, MIT License) and EV_charger (https://github.com/lachand/EV_charger,
+MIT License), and on status reads an owner shared.
+
 Daily smart-meter values of Netze BW are fetched from its customer portal meine.netze-bw.de. The endpoints and
 the login flow are based on facts from ha-netze-bw (https://github.com/cygnusb/ha-netze-bw), Copyright (c) 2026
 cygnusb, MIT License. The CSV format of the quarter-hour values is based on facts from a working importer a

@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""All extra devices in one place: heating rods and switched loads (OpenAmpere) and charge points (evcc).
+"""All extra devices in one place: heating rods and switched loads (OpenAmpere), charge points (evcc) and wallboxes
+OpenAmpere controls itself.
 
 Gives the app one list with live power, records each device's power and energy for the analysis, and
 remembers names so the history keeps its labels after a device was renamed or removed.
@@ -18,8 +19,8 @@ from .periods import bucket_start
 from .runtime import Runtime
 
 class Devices:
-    def __init__(self, runtime: Runtime, surplus: SurplusControl, evcc: Evcc) -> None:
-        self.runtime, self.surplus, self.evcc = runtime, surplus, evcc
+    def __init__(self, runtime: Runtime, surplus: SurplusControl, evcc: Evcc, wallboxes=None) -> None:
+        self.runtime, self.surplus, self.evcc, self.wallboxes = runtime, surplus, evcc, wallboxes
 
     # ---- live --------------------------------------------------------------------
 
@@ -49,6 +50,17 @@ class Devices:
                 # car battery and range, only while plugged in (evcc keeps old values otherwise)
                 "soc": lp["soc"] if not lp["heating"] and lp.get("connected") else None,
                 "range_km": lp.get("range_km") if not lp["heating"] and lp.get("connected") else None,
+            })
+        for wb in self.wallboxes.wallboxes if self.wallboxes else []:
+            reading, live = self.wallboxes.fresh(wb), self.wallboxes.live.get(wb.id)
+            devices.append({
+                "key": f"w:{wb.id}", "id": wb.id, "source": "wallbox", "name": wb.name, "kind": "wallbox",
+                "enabled": wb.enabled, "power_w": reading.power_w if reading else 0.0,
+                "active": bool(reading and reading.charging), "on": reading.charging if reading else None,
+                "temperature_c": None, "target_c": None, "status": None,
+                # a portable wallbox is often unplugged: no old values, only since when it is away
+                "error": live.error if live and live.online is False else None, "override": None,
+                "connected": reading.connected if reading else None, "soc": None, "range_km": None,
             })
         return devices
 

@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import hmac
+import json
 import logging
 import math
 import random
@@ -26,6 +29,7 @@ from datetime import datetime
 
 from .drivers.base import WorkMode
 from .drivers.foxess.registers import H3_LEGACY, H3_NEW, MODEL_ADDRESS, SERIAL_ADDRESS, RegisterMap, encode
+from . import tuya
 from .drivers.saj import registers as saj
 
 log = logging.getLogger("openampere.simulator")
@@ -547,6 +551,100 @@ class SimulatedFoxCharger(SimulatedInverter):
         return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
 
 
+class SimulatedTuyaCharger:
+    """The portable dé wallbox over Tuya LAN 3.5 (wallbox/de_tuya.py): data points like an owner's status reads,
+    the session key exchange of tuya.py, and only one connection at a time like the real device. `plugged`: a car is
+    connected; it charges after a start (140) with the current of 150 on all `phases`."""
+
+    STATES = {"idle": "SLEEP", "plugged": "IDLEINS", "charging": "WORKING", "finished": "STOP"}
+
+    def __init__(self, local_key: str = "0123456789abcdef", *, plugged: bool = False, phases: int = 3,
+                 steps: tuple[int, ...] = (6, 8, 10, 13, 16)) -> None:
+        self.local_key = local_key.encode()
+        self.plugged, self.phases, self.steps = plugged, phases, steps
+        self.charging, self.full = False, False
+        self.current_a, self.max_current_a = 16, 16
+        self.session_wh, self.session_s, self.lifetime_wh = 0.0, 0.0, 350_000.0
+        self.busy = False  # a connection is open: the next one is closed right away
+        self.writes: list[dict] = []  # every data point written, for tests
+        self.connections = 0
+
+    def dps(self) -> dict[str, object]:
+        charging = self.charging and self.plugged and not self.full
+        amps = self.current_a if charging else 0
+        phase = [[2300, amps * 10, round(amps * 230 / 100)] if i < self.phases else [0, 0, 0] for i in range(3)]
+        state = ("charging" if charging else "finished" if self.full and self.plugged
+                 else "plugged" if self.plugged else "idle")
+        metrics = {"L1": phase[0], "L2": phase[1], "L3": phase[2], "t": 220,
+                   "p": round(amps * 230 * self.phases / 100), "d": int(self.session_s * 10),
+                   "e": int(self.session_wh / 100)}
+        info = {"r": "Type B, AC 30mA + DC 6mA", "fv": "1.0.0", "cp": "6.6" if charging else "9.0" if self.plugged
+                else "12.6", "t": "230", "e": str(int(self.lifetime_wh / 100))}
+        return {"101": 300 if charging else 101, "102": json.dumps(metrics, separators=(",", ":")),
+                "106": json.dumps(info, separators=(",", ":")), "107": json.dumps(list(self.steps)),
+                "109": self.STATES[state], "150": self.current_a, "152": self.max_current_a, "155": False,
+                "156": False, "157": 1, "188": False, "189": 150}
+
+    def apply(self, values: dict) -> dict:
+        self.writes.append(dict(values))
+        changed = {}
+        if "150" in values and isinstance(values["150"], int) and 6 <= values["150"] <= self.max_current_a:
+            self.current_a = changed["150"] = values["150"]
+        if "140" in values:
+            self.charging = bool(values["140"]) and self.plugged
+            if self.charging:
+                self.session_wh, self.session_s = 0.0, 0.0
+        return changed
+
+    def tick(self, seconds: float) -> None:
+        if self.charging and self.plugged and not self.full:
+            self.session_s += seconds
+            watts = self.current_a * 230 * self.phases
+            self.session_wh += watts * seconds / 3600
+            self.lifetime_wh += watts * seconds / 3600
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        if self.busy:
+            writer.close()
+            return
+        self.busy, self.connections = True, self.connections + 1
+        key, sequence, own, client = self.local_key, 0, b"", b""
+
+        def send(command: int, payload: bytes) -> None:
+            nonlocal sequence
+            sequence += 1
+            writer.write(tuya.pack(key, sequence, command, struct.pack(">I", 0) + payload))
+
+        try:
+            while True:
+                _, command, payload = tuya.unpack(key, await tuya.read_frame(reader))
+                if command == tuya.KEY_START:
+                    own = random.randbytes(16)
+                    send(tuya.KEY_ANSWER, own + hmac.new(self.local_key, payload, hashlib.sha256).digest())
+                    client = payload
+                elif command == tuya.KEY_FINISH:
+                    if payload != hmac.new(self.local_key, own, hashlib.sha256).digest():
+                        return
+                    key = tuya.session_key(self.local_key, client, own)
+                elif command == tuya.QUERY:
+                    send(tuya.QUERY, json.dumps({"protocol": 4, "t": int(time.time()), "data": {"dps": self.dps()}}).encode())
+                elif command == tuya.CONTROL:
+                    body = json.loads(payload[len(tuya.VERSION_HEADER):])
+                    changed = self.apply(body.get("data", {}).get("dps", {}))
+                    send(tuya.CONTROL, b"")
+                    if changed:
+                        report = {"protocol": 4, "t": int(time.time()), "data": {"dps": changed}}
+                        send(tuya.STATUS, tuya.VERSION_HEADER + json.dumps(report).encode())
+                elif command == tuya.HEARTBEAT:
+                    send(tuya.HEARTBEAT, b"")
+                await writer.drain()
+        except (asyncio.IncompleteReadError, ConnectionError, tuya.TuyaError, ValueError):
+            pass
+        finally:
+            self.busy = False
+            writer.close()
+
+
 async def run(host: str, port: int, speed: float, sim: SimulatedInverter, tick_s: float = 1.0) -> None:
     server = await asyncio.start_server(sim.serve_client, host, port)
     log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else "saj_h2",
@@ -564,8 +662,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv", "foxess-charger"], default="foxess",
-                        help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox)")
+    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv", "foxess-charger", "de-tuya"], default="foxess",
+                        help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
+                             "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
+    parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
+    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
     parser.add_argument("--model", default=None, help="model string at register 30000")
@@ -581,7 +682,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("mypv", "foxess-charger"):
+    if args.vendor in ("mypv", "foxess-charger", "de-tuya"):
         pass
     elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
@@ -601,6 +702,20 @@ def main() -> None:
                 await server.serve_forever()
         try:
             asyncio.run(run_charger())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "de-tuya":
+        async def run_tuya() -> None:
+            charger = SimulatedTuyaCharger(args.local_key, plugged=args.plugged)
+            server = await asyncio.start_server(charger.serve_client, args.host, args.port)
+            log.info("simulating a portable dé wallbox (Tuya 3.5) on %s:%d", args.host, args.port)
+            async with server:
+                while True:
+                    await asyncio.sleep(1)
+                    charger.tick(args.speed)
+        try:
+            asyncio.run(run_tuya())
         except KeyboardInterrupt:
             pass
         return

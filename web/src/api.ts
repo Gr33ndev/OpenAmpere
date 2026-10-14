@@ -407,7 +407,7 @@ export function useStale(snap: Snapshot | null, online: boolean, status: Status 
 }
 
 export type Device = {
-  key: string; id: string | number; source: "openampere" | "evcc"; name: string;
+  key: string; id: string | number; source: "openampere" | "evcc" | "wallbox"; name: string;
   kind: "heating_rod" | "switch" | "wallbox" | "heat_pump"; enabled: boolean; power_w: number; active: boolean;
   on: boolean | null; temperature_c: number | null; target_c: number | null; status: string | null; error: string | null;
   override: { mode: "off" | "boost"; until: number | null } | null;

@@ -104,8 +104,8 @@ def log_for_report(lines: list[str] | None) -> list[str] | None:
 
 
 def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
-    """Pseudonyms that also know the installation's own private values: the addresses of the inverter, ntfy, evcc and
-    the surplus devices, the meter user name and numbers and, unless the owner includes it, the serial number."""
+    """Pseudonyms that also know the installation's own private values: the addresses of the inverter, ntfy, evcc, the
+    surplus devices and the wallboxes (with their device IDs and local keys), the meter user name and numbers and, unless the owner includes it, the serial number."""
     config = runtime.config
     known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
              config.meter.username: "<Benutzername>"}
@@ -127,6 +127,16 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
                 host = urllib.parse.urlsplit(url).hostname
                 if host:
                     known.setdefault(host, "<Geräteadresse>")
+    for wallbox in runtime.storage.get_meta("wallboxes") or []:  # wallboxes OpenAmpere controls itself (Tuya)
+        if not isinstance(wallbox, dict):
+            continue
+        if wallbox.get("host"):
+            known[str(wallbox["host"]).strip()] = "<Wallbox-Adresse>"
+        if wallbox.get("device_id"):
+            known[str(wallbox["device_id"]).strip()] = "<Geräte-ID>"
+        key = runtime.secrets.decrypt("wallbox.local_key", wallbox.get("local_key") or "")
+        if key:
+            known[key] = "<Local Key>"
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")

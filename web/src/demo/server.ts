@@ -370,6 +370,16 @@ function consumers() {
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
 }
 
+/** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. */
+function nativeWallboxes() {
+  const away = Math.floor(Date.now() / 1000) - 3 * 3600;
+  return { max: 4, search: true, models: [{ key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)" }],
+    wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
+      host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
+      online: false, offline_since: away, updated: away, error: "Das Gerät ist unter 192.168.178.60 nicht erreichbar.",
+      reading: null, controlled: false }] };
+}
+
 function evcc() {
   return { configured: true, url: "http://evcc.local:7070", error: null, updated: now(), priority: "wallbox_first",
     state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()],
@@ -506,6 +516,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/wallbox/ocpp": () => ({ active: false, remaining_s: 0, connected: false, path: "/ocpp", charge_point: null, vendor: null,
     model: null, firmware: null, configuration_keys: 0, status: null, messages: 0 }),
   "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger" }] }),
+  "/api/wallboxes": nativeWallboxes,
   "/api/devices": devices,
   "/api/surplus-order": () => ({ order: ["battery", "wallbox", "c:demo1"], battery_soc: 50, items: [
     { key: "battery", name: "Speicher", kind: "battery" }, { key: "wallbox", name: "Carport", kind: "wallbox" },
@@ -520,7 +531,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
   "/api/database/damaged", "/api/database/ha-backup", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
-  "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
+  "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];

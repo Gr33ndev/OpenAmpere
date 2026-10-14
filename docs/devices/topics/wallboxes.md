@@ -1,4 +1,4 @@
-# Wallboxes through evcc and OCPP
+# Wallboxes through evcc, OCPP and directly
 
 > **Not official manufacturer information.** Compiled by the OpenAmpere contributors; can be incomplete or wrong. No
 > affiliation with evcc or the manufacturers named here, not legal advice. See [Device knowledge](../README.md).
@@ -9,8 +9,11 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
 
 ## Summary
 
-- OpenAmpere does not control wallboxes itself; evcc does. OpenAmpere gives evcc the site meters (grid, PV, battery),
-  so evcc needs no Modbus connection of its own to the inverter.
+- Most wallboxes are controlled through evcc. OpenAmpere gives evcc the site meters (grid, PV, battery), so evcc needs
+  no Modbus connection of its own to the inverter.
+- A few wallboxes OpenAmpere controls itself, without evcc: so far the portable dé wallbox over Tuya LAN, see
+  [tuya/de-portable.md](../tuya/de-portable.md). Several of them, and an evcc wallbox next to them, share the place
+  "wallbox" in the order of the solar surplus.
 - Which wallboxes work is decided by evcc. Many need a paid evcc sponsor token; the public trial token runs out after
   some days, and evcc then no longer starts the wallbox.
 - In evcc a loadpoint with the heating feature is a heat pump or heating rod; its "SoC" values are temperatures.
@@ -35,6 +38,7 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
 | Decision | Why | Issue/PR |
 |---|---|---|
 | Wallboxes are controlled only through evcc's REST API; OpenAmpere serves evcc the site meters at `/api/evcc/site`. | evcc supports many wallboxes; the inverter keeps a free connection slot. | [docs/devices.md](../../devices.md), [evcc.md](../../evcc.md) |
+| Wallboxes OpenAmpere knows itself are controlled without evcc (`wallbox/native.py`), so far the portable dé wallbox; evcc stays the way for all others. | No sponsor token, no second program for a single wallbox. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318), [#386](https://github.com/Gr33ndev/OpenAmpere/issues/386), [tuya/de-portable.md](../tuya/de-portable.md) |
 | The sponsor token's state is shown in the app; a missing or expired token gets its own message. | An expired token stops the wallbox. | [#317](https://github.com/Gr33ndev/OpenAmpere/issues/317), [#319](https://github.com/Gr33ndev/OpenAmpere/issues/319) |
 | The limit of a heating loadpoint is a temperature capped at 20–90 °C; a car loadpoint uses 20–100 %. | evcc uses the same field for both. | [#245](https://github.com/Gr33ndev/OpenAmpere/issues/245), [#249](https://github.com/Gr33ndev/OpenAmpere/issues/249) |
 | evcc's battery priority (`priority_soc`) is sent only with control switched on and outside test mode, and it is logged. | Same rules as every other control. | [#219](https://github.com/Gr33ndev/OpenAmpere/issues/219), [#226](https://github.com/Gr33ndev/OpenAmpere/issues/226) |

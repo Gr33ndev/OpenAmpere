@@ -9,6 +9,7 @@ import { lang, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
 import { DirectWallbox } from "./WallboxCheck";
+import { NativeWallboxSetup, type WallboxesView } from "./NativeWallbox";
 
 export type EvccLoadpoint = {
   id: number; title: string; heating: boolean; mode: "off" | "pv" | "minpv" | "now" | null; connected: boolean;
@@ -247,8 +248,10 @@ export function WallboxPage({ onBack }: PageProps) {
     }
   };
   const cars = view?.state?.loadpoints ?? [];
-  // evcc or, as a preview, OpenAmpere itself (#318, #325)
-  const [way, setWay] = useState<"evcc" | "direct">("evcc");
+  // evcc or OpenAmpere itself (#318, #325); "direct" first when a wallbox is set up that way
+  const { data: native } = useResource<WallboxesView>("/api/wallboxes");
+  const [chosen, setWay] = useState<"evcc" | "direct" | null>(null);
+  const way = chosen ?? (native?.wallboxes.length && !view?.configured ? "direct" : "evcc");
 
   return (
     <SubPage title={t("devices.wallboxPage.title")} onBack={onBack}>
@@ -258,7 +261,13 @@ export function WallboxPage({ onBack }: PageProps) {
         <Segmented value={way} onChange={setWay}
           options={[["evcc", t("devices.wallboxDirect.wayEvcc")], ["direct", t("devices.wallboxDirect.wayDirect")]]} />
       </fieldset>
-      {way === "direct" ? <DirectWallbox origin={origin} /> : <>
+      {way === "direct" ? <>
+        <NativeWallboxSetup />
+        <details className="advanced">
+          <summary>{t("devices.nativeWallbox.checkOther")}</summary>
+          <DirectWallbox origin={origin} />
+        </details>
+      </> : <>
       <p className="hint">{tx("devices.wallboxPage.intro", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
       {!view && <LoadState error={error} onRetry={reload} />}
       {view?.state && <Notice kind="ok">{t("devices.wallboxPage.connected", { version: view.state.version ?? "" })} ·{" "}

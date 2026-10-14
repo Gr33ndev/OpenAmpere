@@ -48,6 +48,11 @@ from .notify import Notifier
 from .remote import Remote
 from .updates import Updates
 from .wallbox import WALLBOXES
+from .outbound import in_home_network
+from .tuya import TuyaDevice, TuyaError
+from .tuya import search as tuya_search
+from .wallbox.de_tuya import MODELS as WALLBOX_MODELS
+from .wallbox.native import NativeWallboxes
 from .diagnostics import Diagnostics, report_markdown
 
 log = logging.getLogger(__name__)
@@ -180,6 +185,14 @@ class WallboxCheckRequest(BaseModel):
 
 
 
+class WallboxTestRequest(BaseModel):
+    """A wallbox OpenAmpere controls itself, read once from the setup form."""
+    model: str = Field("de_tuya", pattern="^(de_tuya)$")
+    host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
+    local_key: str = Field("", max_length=64)
+    id: str | None = Field(None, max_length=16)
+
+
 UPLOAD_PREFIXES = (".cloud-upload-", ".restore-upload-")
 
 
@@ -203,10 +216,12 @@ def create_app(runtime: Runtime) -> FastAPI:
     gridmeter = GridMeter(runtime)
     billing = Billing(runtime.storage, runtime.tariffs, gridmeter)
     evcc = Evcc(runtime)
-    surplus = SurplusControl(runtime, evcc)
-    devices = Devices(runtime, surplus, evcc)
+    wallboxes = NativeWallboxes(runtime)
+    surplus = SurplusControl(runtime, evcc, wallboxes)
+    devices = Devices(runtime, surplus, evcc, wallboxes)
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
+    diagnostics.wallboxes = wallboxes
     updates = Updates(runtime, VERSION)
     remote = Remote(runtime)
     home_assistant = ha_app.HomeAssistant()
@@ -226,11 +241,15 @@ def create_app(runtime: Runtime) -> FastAPI:
                 except Exception as err:  # noqa: BLE001 - never stop the watchdog
                     log.warning("background job failed: %s", err)
 
+    async def refresh_wallboxes() -> None:
+        wallboxes.refresh()  # in the background: an unplugged wallbox must not hold up the loop
+
     async def fast_loop() -> None:
-        """Every few seconds: read evcc and share the solar surplus (the heating rod follows the sun)."""
+        """Every few seconds: read evcc and the wallboxes and share the solar surplus (the heating rod follows the
+        sun)."""
         while True:
             await asyncio.sleep(max(5.0, min(runtime.config.inverter.poll_interval, 15.0)))
-            for job in (evcc.refresh, surplus.tick, devices.record_async):
+            for job in (evcc.refresh, refresh_wallboxes, surplus.tick, devices.record_async):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -252,8 +271,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         yield
         watchdog_task.cancel()
         fast_task.cancel()
-        # each step on its own, the remote control of the inverter first: an error in one must not skip the others
-        steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop,
+        # each step on its own, the remote control of the inverter first: an error in one must not skip the others;
+        # a wallbox keeps charging as it is (it has no watchdog, and a restart for an update should not stop the car)
+        steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop, wallboxes.wait,
                  lambda: runtime.cloud_import.stop(status="running"),  # keeps running after the next start
                  collector.stop)
         for step in steps:
@@ -1054,9 +1074,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             if key == "battery":
                 items.append({"key": key, "name": "Speicher", "kind": "battery"})
             elif key == "wallbox":
-                if evcc.configured:
-                    items.append({"key": key, "name": " / ".join(lp["title"] for lp in lps if not lp["heating"]) or "Wallbox",
-                                  "kind": "wallbox"})
+                native = [wb.name for wb in wallboxes.enabled()]
+                if evcc.configured or native:
+                    titles = [lp["title"] for lp in lps if not lp["heating"]] + native
+                    items.append({"key": key, "name": " / ".join(titles) or "Wallbox", "kind": "wallbox"})
             else:
                 c = names[key]
                 items.append({"key": key, "name": c.name, "kind": "heating_rod" if c.adjustable else "switch"})
@@ -1069,7 +1090,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.put("/api/surplus-order")
     async def put_surplus_order(body: dict = Body(...)):
         order = list(body.get("order") or [])
-        if "wallbox" not in order:  # the app hides the wallbox when evcc is not set up
+        if "wallbox" not in order:  # the app hides the wallbox when none is set up
             order.insert(order.index("battery") + 1 if "battery" in order else 0, "wallbox")
         try:
             surplus.save_order(order, body.get("battery_soc", 50))
@@ -1178,6 +1199,54 @@ def create_app(runtime: Runtime) -> FastAPI:
                                                  request.app_mode, request.wired)
         except probe.ProbeError as err:
             raise HTTPException(400, err.message) from None
+
+    # ---- wallboxes OpenAmpere reads and controls itself (portable dé wallbox over Tuya) ------------
+
+    @app.get("/api/wallboxes")
+    def get_wallboxes(request: Request):
+        return wallboxes.view(hide_device_id=not logged_in(request))
+
+    @app.put("/api/wallboxes")
+    async def put_wallboxes(body: dict = Body(...)):
+        try:
+            wallboxes.save(body.get("wallboxes"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        wallboxes.refresh()
+        return wallboxes.view()
+
+    @app.post("/api/wallboxes/{wallbox_id}/mode")
+    async def wallbox_mode(wallbox_id: str, request: Request, body: dict = Body(...)):
+        try:
+            wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=actor(request))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await surplus.tick()
+        return wallboxes.view()
+
+    @app.post("/api/wallboxes/test")
+    async def wallbox_test(request: WallboxTestRequest):
+        """Reads a wallbox once with the address and key from the form (a stored key if none is given)."""
+        stored = next((wb for wb in wallboxes.wallboxes if wb.id == request.id), None)
+        key = request.local_key or (stored.local_key if stored else "")
+        try:
+            if not in_home_network(request.host):
+                raise TuyaError("Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
+            dps = await TuyaDevice(request.host.strip(), key).status()
+        except TuyaError as err:
+            raise HTTPException(400, err.message) from None
+        reading = WALLBOX_MODELS[request.model].interpret(dps)
+        return {"reading": {k: v for k, v in asdict(reading).items() if k != "lifetime_kwh"}}
+
+    @app.post("/api/wallboxes/search")
+    async def wallbox_search():
+        if ha_app.active():
+            return {"available": False, "devices": []}
+        try:
+            return {"available": True, "devices": await tuya_search()}
+        except OSError as err:  # no network for broadcasts
+            log.warning("Tuya search failed: %s", err)
+            return {"available": False, "devices": []}
 
     # ---- listening to a wallbox over OCPP (#328), read-only ------------------
 

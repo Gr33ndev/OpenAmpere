@@ -11,6 +11,7 @@ import { BatteryPage, ChargingPage, LOW_RESERVE, type ChargingView } from "./Set
 import { goBack, navigate } from "./route";
 import { Button, Notice, Segmented, Slider, toast } from "./ui";
 import { EVCC_URL, SponsorNotice, WallboxCard, type EvccView } from "./WallboxPage";
+import { NativeWallboxCard, type WallboxesView } from "./NativeWallbox";
 
 const COLORS: Record<Device["kind"], string[]> = {
   wallbox: ["var(--wallbox)", "var(--wallbox-2)"],
@@ -196,6 +197,7 @@ function SurplusOrder() {
 export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot | null }) {
   const { data, reload } = useResource<DevicesView>("/api/devices", 5_000);
   const { data: evcc, setData: setEvcc } = useResource<EvccView>("/api/evcc", 10_000);
+  const { data: native, setData: setNative } = useResource<WallboxesView>("/api/wallboxes", 10_000);
   const nav = { onBack: () => goBack("devices"), onNavigate: (p: string) => navigate(`more/${p}`) };
   if (page === "setup") { navigate("more/device-setup"); return null; } // moved to Mehr → Verbindung
   if (page === "wallbox") { navigate("more/wallbox"); return null; }
@@ -204,7 +206,8 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
 
   const own = (data?.devices ?? []).filter((d) => d.source === "openampere");
   const loadpoints = evcc?.state?.loadpoints ?? [];
-  const noExtras = data && !own.length && !loadpoints.length;
+  const wallboxes = (native?.wallboxes ?? []).filter((w) => w.enabled);
+  const noExtras = data && !own.length && !loadpoints.length && !wallboxes.length;
   let content: ReactNode = null;
   if (noExtras) {
     content = (
@@ -225,9 +228,10 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
       <div className="section-title">{t("common.battery")}</div>
       <BatteryCard snap={snap} />
       {content}
+      {!!(loadpoints.length || wallboxes.length) && <div className="section-title">{t("common.wallbox")}</div>}
+      {wallboxes.map((wb) => <NativeWallboxCard key={wb.id} wb={wb} onChange={setNative} />)}
       {!!loadpoints.length && (
         <>
-          <div className="section-title">{t("common.wallbox")}</div>
           {loadpoints.map((lp) => <WallboxCard key={lp.id} lp={lp} onChange={setEvcc} />)}
           <p className="hint small-credit">{tx("devices.devicesTab.controlledBy", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
         </>

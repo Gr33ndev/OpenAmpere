@@ -193,7 +193,7 @@
     "smartHome": "Smart Home",
     "timeout": "Zeitlimit pro Anfrage",
     "timeoutHint": "Hängt der Wechselrichter hinter einem Modbus-Proxy oder im WLAN, kann ein höherer Wert Verbindungsabbrüche vermeiden.",
-    "viaEvcc": "über evcc"
+    "wallboxWays": "über evcc oder direkt"
   },
   "connectionStatus": {
     "addIntegrationStep": "Integration hinzufügen und „Mit OpenAmpere koppeln“ wählen: {link}. Dort eintragen:",
@@ -331,7 +331,11 @@
     "wallboxPlan": "{name}: Ladeplan auf {soc} bis {time} gesetzt.",
     "wallboxPlanDeleted": "{name}: Ladeplan gelöscht.",
     "windowEnd": "Ladefenster bis",
-    "windowStart": "Ladefenster ab"
+    "windowStart": "Ladefenster ab",
+    "wallboxCurrent": "{name}: Ladestrom auf {current} A gestellt.",
+    "wallboxStart": "{name}: Laden gestartet.",
+    "wallboxStop": "{name}: Laden pausiert.",
+    "wallboxReleased": "{name}: OpenAmpere hat die Wallbox abgegeben und deinen Ladestrom wieder eingestellt."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

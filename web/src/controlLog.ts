@@ -102,13 +102,18 @@ function wallboxText(name: string, action: unknown, value: unknown): string {
   switch (action) {
     case "mode": {
       const modes: Record<string, string> = { off: t("common.off"), pv: t("devices.modes.solar"), minpv: t("devices.modes.minSolar"),
-        now: t("devices.modes.fast") };
+        now: t("devices.modes.fast"), manual: t("devices.nativeWallbox.modeManual") };
       const mode = modes[str(value)] ?? str(value);
       return t("settings.controlLog.wallboxMode", { name, mode });
     }
     case "limit_soc": return t("settings.controlLog.wallboxLimit", { name, soc: pct(value) });
     case "min_soc": return t("settings.controlLog.wallboxMinSoc", { name, soc: pct(value) });
     case "plan_delete": return t("settings.controlLog.wallboxPlanDeleted", { name });
+    // wallboxes OpenAmpere controls itself
+    case "current": return t("settings.controlLog.wallboxCurrent", { name, current: str(value) });
+    case "start": return t("settings.controlLog.wallboxStart", { name });
+    case "stop": return t("settings.controlLog.wallboxStop", { name });
+    case "release": return t("settings.controlLog.wallboxReleased", { name });
     case "priority_soc": return t("settings.controlLog.wallboxBatteryPriority", { name, soc: pct(value) });
     case "plan": {
       const plan = obj(value);
@@ -184,6 +189,7 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
     case "device_mode":
       return modeText(str(details.device) || t("common.device"), to.mode, to.hours);
     case "evcc":
+    case "wallbox": // a wallbox OpenAmpere controls itself
       return wallboxText(str(from.loadpoint) || t("settings.controlLog.wallbox"), to.action, to.value);
     case "remote_access":
       return ({
