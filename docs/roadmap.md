@@ -28,5 +28,5 @@ changes (see [GOVERNANCE.md](../GOVERNANCE.md)).
   system.
 - **No code, graphics or texts from the previous manufacturer app.**
 - **No general home automation platform:** wallboxes, smart homes and dashboards are connected through evcc and Home
-  Assistant instead. Exception under discussion (#318): a few known wallboxes directly, so far only a read-only check
-  in the setup (#325).
+  Assistant instead. Exception (#318): a few known wallboxes directly, so far the portable dé wallbox over Tuya LAN
+  (display and control, #386) and a read-only check of the FoxESS AC EV Charger in the setup (#325).

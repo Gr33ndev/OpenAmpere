@@ -12,7 +12,8 @@ test("the direct check shows what the wallbox answers and leads to the report", 
   api.override("/api/wallbox/check", READABLE);
   await open(page, "more/wallbox");
   await expect(page.getByText("Messwerte von OpenAmpere in evcc übernehmen")).toBeVisible();  // evcc stays the default
-  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByText("Andere Wallbox prüfen (nur lesen)").click();
   await expect(page.locator(".notice", { hasText: "Vorschau" })).toBeVisible();
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByLabel("Ist die Wallbox mit dem Wechselrichter verkabelt").selectOption("yes");
@@ -32,7 +33,8 @@ test("a wallbox found in the home network is taken over like in the device reade
   api.override("/api/diagnostics/search", { available: true, devices: [
     { service: "_modbus._tcp", name: "EVC-SIMULATED01", host: "192.168.178.61", port: 1502 }] });
   await open(page, "more/wallbox");
-  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByText("Andere Wallbox prüfen (nur lesen)").click();
   await page.getByRole("button", { name: "Wallbox im Heimnetz suchen" }).click();
   await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(page.getByLabel("Adresse der Wallbox")).toHaveValue("192.168.178.61");
@@ -42,7 +44,8 @@ test("a wallbox found in the home network is taken over like in the device reade
 test("an unreachable wallbox names the ports that were tried", async ({ page, api }) => {
   api.override("/api/wallbox/check", { ...READABLE, port: null, outcome: "unreachable", tried_ports: [502, 1502], findings: {} });
   await open(page, "more/wallbox");
-  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByText("Andere Wallbox prüfen (nur lesen)").click();
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByRole("button", { name: "Wallbox prüfen" }).click();
   await expect(page.locator(".notice.error")).toContainText("502, 1502");
@@ -50,7 +53,8 @@ test("an unreachable wallbox names the ports that were tried", async ({ page, ap
 
 test("another wallbox is pointed to the device reader", async ({ page }) => {
   await open(page, "more/wallbox");
-  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByText("Andere Wallbox prüfen (nur lesen)").click();
   await page.getByRole("combobox").first().selectOption("other");  // the choice of the wallbox model
   await page.getByRole("button", { name: "Gerät auslesen" }).click();
   await expect(page.locator(".page-head h1")).toHaveText("Gerät auslesen");
@@ -62,7 +66,8 @@ test("the OCPP listener shows the address and what the wallbox reported", async 
     firmware: null, configuration_keys: 0, status: null, messages: 0 };
   api.override("/api/wallbox/ocpp", idle);
   await open(page, "more/wallbox");
-  await page.getByRole("button", { name: "direkt (Vorschau)" }).click();
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByText("Andere Wallbox prüfen (nur lesen)").click();
   await expect(page.locator(".notice", { hasText: "ohne Ladeprofil lädt sie ohne Begrenzung" })).toBeVisible();
   const connected = { ...idle, active: true, remaining_s: 840, connected: true, charge_point: "SN01", vendor: "FoxESS",
     model: "A022KP1", firmware: "1.16", configuration_keys: 42, status: "Available", messages: 7 };

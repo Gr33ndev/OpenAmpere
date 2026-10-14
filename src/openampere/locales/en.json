@@ -304,11 +304,36 @@
     "most6TimeWindows": "At most 6 time windows, prices between -100 and 200 ct/kWh.",
     "twoTariffsStartSame": "Two tariffs start on the same day."
   },
+  "tuya": {
+    "connectionClosed": "The device closed the connection. Maybe another program is connected to it right now; Tuya devices allow only one connection.",
+    "keyDoesNotMatch": "The device answers, but the local key does not match. It changes when the device is paired again in the app; please enter the current local key.",
+    "keyNotConfirmed": "The device did not confirm the local key. Please enter the current local key.",
+    "localKey16Chars": "The local key must be exactly 16 characters long.",
+    "loginAborted": "The device aborted the login. Usually the local key does not match (it changes when the device is paired again in the app), or another program is connected right now; Tuya devices allow only one connection.",
+    "noAnswerAt": "The device at {host} does not answer.",
+    "notReachableAt": "The device cannot be reached at {host}.",
+    "notTuya35": "The device does not answer in the Tuya protocol 3.5.",
+    "unreadableAnswer": "The device sent an answer that cannot be read."
+  },
   "updates": {
     "updateHelperIsnT": "The update helper isn't running. Please run the install script once more.",
     "updatesComeViaHomeAssistant": "Updates come through Home Assistant: Settings → Apps → OpenAmpere."
   },
   "wallbox": {
-    "unknownWallbox": "OpenAmpere does not know this wallbox yet."
+    "unknownWallbox": "OpenAmpere does not know this wallbox yet.",
+    "atMostWallboxes": "At most {MAX_WALLBOXES} wallboxes.",
+    "deviceIdFormat": "{name}: The device ID consists of 10 to 40 letters and digits.",
+    "enterIpInHomeNetwork": "Please enter the IP address of the wallbox in the home network.",
+    "enterIpInHomeNetworkNamed": "{name}: Please enter the IP address of the wallbox in the home network.",
+    "giveEachWallboxName": "Please give every wallbox a name.",
+    "invalidWallboxData": "Invalid details for a wallbox.",
+    "localKey16CharsNamed": "{name}: The local key must be exactly 16 characters long.",
+    "maxCurrentRange": "{name}: The highest charging current must be between 6 and 32 A.",
+    "modeFast": "charging mode “fast”",
+    "sentDespiteTestMode": "sent despite test mode, OpenAmpere lets go of the wallbox: {reason}",
+    "surplusAtLeast": "surplus {available} W, at least {lowest} W",
+    "unknownChargingModeNamed": "{name}: Unknown charging mode.",
+    "unknownWallboxNamed": "{name}: OpenAmpere does not know this wallbox yet.",
+    "wallboxDoesNotExist": "This wallbox does not exist."
   }
 }

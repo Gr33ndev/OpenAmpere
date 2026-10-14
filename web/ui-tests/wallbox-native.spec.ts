@@ -1,0 +1,61 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
+import { demoRequest } from "../src/demo/server";
+import type { NativeWallbox, WallboxesView } from "../src/NativeWallbox";
+import { expect, layoutProblems, open, test } from "./fixtures";
+
+const READING = { state: "charging", connected: true, charging: true, power_w: 5520, voltage_v: [230, 230, 230],
+  current_a: [8, 8, 8], installed_phases: 3, active_phases: 3, session_kwh: 2.4, session_s: 1800, temperature_c: 22,
+  set_current_a: 8, max_current_a: 16, steps_a: [6, 8, 10, 13, 16], firmware: "1.0.0", cp_v: 6.6 };
+
+async function view(): Promise<WallboxesView> {
+  return demoRequest<WallboxesView>("GET", "/api/wallboxes");
+}
+
+// a portable wallbox is unplugged most of the time: shown as away, without old values
+test("an unplugged portable wallbox is shown as away on the devices tab", async ({ page }) => {
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Mobile Wallbox" });
+  await expect(card).toContainText("nicht erreichbar seit");
+  await expect(card).toContainText("verbindet sich von selbst wieder");
+  await expect(card.locator(".facts")).toHaveCount(0);
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("a charging wallbox shows its current and the mode can be changed", async ({ page, api }) => {
+  const base = await view();
+  const charging: NativeWallbox = { ...base.wallboxes[0], online: true, offline_since: null, error: null,
+    reading: READING as NativeWallbox["reading"] };
+  api.override("/api/wallboxes", { ...base, wallboxes: [charging] });
+  api.override("/api/wallboxes/demo0001/mode", { ...base, wallboxes: [{ ...charging, mode: "now" }] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Mobile Wallbox" });
+  await expect(card).toContainText("lädt mit 5,52 kW");
+  await expect(card.locator(".facts")).toContainText("8 A (höchstens 16 A)");
+  await card.getByRole("button", { name: "Sofort" }).click();
+  await expect(card).toContainText("Lädt sofort mit voller Leistung");
+});
+
+test("a portable wallbox is added: search, check the connection, save", async ({ page, api }) => {
+  const base = await view();
+  api.override("/api/wallboxes/search", { available: true, devices: [
+    { device_id: "simulated0000000001", host: "192.168.178.61", product_key: null }] });
+  api.override("/api/wallboxes/test", { reading: { ...READING, charging: false, power_w: 0 } });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await expect(page.getByText("Mobile Wallbox").first()).toBeVisible();  // the one already set up
+  await page.getByRole("button", { name: "Wallbox hinzufügen" }).click();
+  await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.61");
+  const save = page.getByRole("button", { name: "Speichern" });
+  await expect(save).toBeDisabled();  // the local key is still missing
+  await page.getByLabel("Local Key").fill("0123456789abcdef");
+  await page.getByRole("button", { name: "Verbindung prüfen" }).click();
+  await expect(page.locator(".notice.ok")).toContainText("3 Phasen");
+  expect(await layoutProblems(page)).toEqual([]);
+  api.override("/api/wallboxes", { ...base, wallboxes: [...base.wallboxes, { ...base.wallboxes[0], id: "demo0002",
+    name: "Mobile Wallbox 2", host: "192.168.178.61" }] });
+  await save.click();
+  await expect(page.getByText("Mobile Wallbox 2")).toBeVisible();
+});

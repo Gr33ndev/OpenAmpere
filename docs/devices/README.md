@@ -18,6 +18,7 @@ through hundreds of issues again.
 | FoxESS H3, register map of newer firmware | [foxess/h3-new-map.md](foxess/h3-new-map.md) |
 | FoxESS H3, register map of older firmware | [foxess/h3-legacy-map.md](foxess/h3-legacy-map.md) |
 | FoxESS AC EV Charger (read-only wallbox check) | [foxess/ac-charger.md](foxess/ac-charger.md) |
+| Portable dé wallbox over Tuya LAN (display and control) | [tuya/de-portable.md](tuya/de-portable.md) |
 | SAJ H2, HS2, AS2 (sold as "Ampere.StoragePro") | [saj/h2-family.md](saj/h2-family.md) |
 | SAJ type code 0x005E, "3P-X E2" | [saj/0x005e-3p-x-e2.md](saj/0x005e-3p-x-e2.md) |
 | my-PV AC ELWA heating rod | [mypv/elwa.md](mypv/elwa.md) |
@@ -26,7 +27,7 @@ through hundreds of issues again.
 | Sales names and manufacturer models | [topics/names.md](topics/names.md) |
 | Modbus connections, proxies and what all inverters share | [topics/modbus.md](topics/modbus.md) |
 | Relays, smart plugs, SG Ready | [topics/consumers.md](topics/consumers.md) |
-| Wallboxes through evcc and OCPP | [topics/wallboxes.md](topics/wallboxes.md) |
+| Wallboxes through evcc, OCPP and directly | [topics/wallboxes.md](topics/wallboxes.md) |
 
 [devices.md](../devices.md) is the short support overview, [registers.md](../registers.md) an index of the register
 tables on these pages.

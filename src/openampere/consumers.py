@@ -203,9 +203,10 @@ def _switching(c: Consumer) -> tuple:
     return c.kind, c.host.strip(), c.channel, c.port, c.unit, c.url_on, c.url_off
 
 class SurplusControl:
-    def __init__(self, runtime: Runtime, evcc=None) -> None:
+    def __init__(self, runtime: Runtime, evcc=None, wallboxes=None) -> None:
         self.runtime = runtime
         self.evcc = evcc
+        self.wallboxes = wallboxes  # wallbox.native.NativeWallboxes: wallboxes OpenAmpere controls itself
         self.states: dict[str, State] = {}
         self._rods: dict[str, tuple[tuple, MyPvHeatingRod]] = {}
         self._retired: dict[str, Consumer] = {}  # disabled, removed or changed: switched off on the next tick (#217)
@@ -556,17 +557,26 @@ class SurplusControl:
         self._restore()
         await self._retire(now)
         consumers = [c for c in self.consumers if c.enabled]
-        if not consumers:
+        native = self.wallboxes
+        wallboxes = []
+        if native is not None:
+            native.restore()
+            await native.retire(now)
+            wallboxes = native.enabled()
+        if not consumers and not wallboxes:
             return
         # switching off first: heating rods that answer slowly must not hold it back (#351); status and water
         # temperature are read and shown even without control
         if not runtime.config.control.enabled:
-            await self._safe_off(consumers, "Steuerung ausgeschaltet", now)
+            await asyncio.gather(self._safe_off(consumers, "Steuerung ausgeschaltet", now),
+                                 *([native.release_all("Steuerung ausgeschaltet")] if wallboxes else []))
             await self._read_rods(consumers)
             return
         snap = runtime.collector.latest
         if snap is None or runtime.collector.stale or snap.grid_power is None:
             await self._safe_off(consumers, "keine aktuellen Messwerte", now)  # safe state
+            for wb in wallboxes:  # no surplus known: solar charging winds down after its minimum time
+                await native.step(wb, 0.0, now)
             await self._read_rods(consumers)
             return
         await self._read_rods(consumers)
@@ -583,12 +593,36 @@ class SurplusControl:
                 return float(state.actual_w if state.actual_w is not None else state.power_w)
             return float(c.power_w if state.on else 0)
 
+        # wallboxes OpenAmpere controls count like its own devices: their charging is surplus they may keep
+        controlled = [wb for wb in wallboxes if native.controls(wb)]
+        wallbox_w = 0.0 if dry else sum(native.power(wb, now) for wb in controlled)
         # what would be free if all our devices were off; battery charging is shared separately
-        free = -grid - max(0.0, battery) + sum(own_power(c) for c in consumers) - self._wallbox_reserve()
+        free = -grid - max(0.0, battery) + sum(own_power(c) for c in consumers) + wallbox_w - self._wallbox_reserve()
         charge = max(0.0, -battery)
         price = self._price_now(now)
+        by_key = {f"c:{c.id}": c for c in consumers}
 
-        for c in consumers:
+        def take(used: float) -> None:
+            nonlocal free, charge
+            from_free = min(max(free, 0.0), used)
+            free -= from_free
+            charge = max(0.0, charge - (used - from_free))
+
+        for key in self.order()["order"]:
+            if key == "wallbox":
+                for wb in wallboxes:
+                    if not native.controls(wb):
+                        await native.step(wb, 0.0, now)  # "manual": only lets go of it
+                        continue
+                    own = native.power(wb, now) if dry else 0.0  # test mode: its charging is not in `free`
+                    battery_first = soc < self.evcc_priority_soc()
+                    used = await native.step(wb, free + own + (0.0 if battery_first else charge), now)
+                    if not dry:
+                        take(used)
+                continue
+            c = by_key.get(key)
+            if c is None:
+                continue
             state = self.states.setdefault(c.id, State())
             available = free + (charge if soc >= self.battery_first_soc(c) else 0.0)
             cheap = c.price_limit_ct is not None and price is not None and price <= c.price_limit_ct
@@ -599,9 +633,7 @@ class SurplusControl:
                 used = await self._adjust(c, state, available, cheap, now)
             else:
                 used = await self._switch_step(c, state, available, cheap, now)
-            from_free = min(max(free, 0.0), used)
-            free -= from_free
-            charge = max(0.0, charge - (used - from_free))
+            take(used)
 
     async def _retire(self, now: float) -> None:
         """Devices that were disabled or removed: switched off if OpenAmpere switched them on, then forgotten (#217)."""
