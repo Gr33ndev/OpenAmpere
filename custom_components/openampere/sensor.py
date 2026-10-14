@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
-from .coordinator import OpenAmpereCoordinator
+from .coordinator import OpenAmpereCoordinator, firmware
 from .entity import OpenAmpereEntity
 
 
@@ -105,6 +105,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         entities.append(DevicePowerSensor(coordinator, device["id"]))
         if device["kind"] == "heating_rod":
             entities.append(DeviceTemperatureSensor(coordinator, device["id"]))
+    entities.append(FirmwareSensor(coordinator))
     async_add_entities(entities)
 
 
@@ -122,6 +123,19 @@ class OpenAmpereSensor(OpenAmpereEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         return self.entity_description.value(self.data)
+
+
+class FirmwareSensor(OpenAmpereEntity, SensorEntity):
+    """Firmware of the inverter, e.g. for an automation when it changes with an update (#372)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: OpenAmpereCoordinator) -> None:
+        super().__init__(coordinator, "firmware")
+
+    @property
+    def native_value(self) -> str | None:
+        return firmware(self.coordinator)
 
 
 class PvInputSensor(OpenAmpereEntity, SensorEntity):

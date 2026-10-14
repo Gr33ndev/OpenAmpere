@@ -13,6 +13,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CannotConnect, CertificateMismatch, InvalidAuth, OpenAmpereClient, OpenAmpereError
@@ -45,10 +46,27 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self.info["token"]["scope"] == "control"
 
     def async_update_listeners(self) -> None:
+        self._follow_firmware()
         super().async_update_listeners()
         if not self._reload_scheduled and self.config_entry and needs_reload(self.info, (self.data or {}).get("live")):
             self._reload_scheduled = True
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+
+    def _follow_firmware(self) -> None:
+        """The device info has the firmware from the setup: keep it current after an update of the inverter."""
+        device = self.info.get("device")
+        current = firmware(self)
+        if not device or current is None or current == device.get("firmware"):
+            return
+        device["firmware"] = current
+        if not self.config_entry:
+            return
+        registry = dr.async_get(self.hass)
+        # not async_get_device (deprecated) nor its successor (newer than the oldest Home Assistant supported)
+        identifier = (DOMAIN, self.info["installation_id"])
+        for entry in dr.async_entries_for_config_entry(registry, self.config_entry.entry_id):
+            if identifier in entry.identifiers:
+                registry.async_update_device(entry.id, hw_version=current)
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -91,6 +109,14 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.live_connected = connected
             if self.data is not None:
                 self.async_update_listeners()
+
+
+def firmware(coordinator: OpenAmpereCoordinator) -> str | None:
+    """Firmware of the inverter: from the state, which follows an update; an older OpenAmpere has it only in /info."""
+    status = (coordinator.data or {}).get("status") or {}
+    if "firmware" in status:
+        return status["firmware"]
+    return (coordinator.info.get("device") or {}).get("firmware")
 
 
 def needs_reload(info: dict, live: dict | None) -> bool:

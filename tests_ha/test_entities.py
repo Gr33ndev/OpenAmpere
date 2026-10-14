@@ -8,13 +8,14 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.openampere.api import CannotConnect, InvalidAuth, OpenAmpereError
 from custom_components.openampere.coordinator import MAX_MISSED_STATES
 from custom_components.openampere.diagnostics import async_get_config_entry_diagnostics
 
-from conftest import info
+from conftest import INSTALLATION, info, state
 
 
 async def setup(hass: HomeAssistant, entry) -> None:
@@ -61,6 +62,30 @@ async def test_push_updates_live_values(hass: HomeAssistant, entry, client) -> N
     assert hass.states.get(entity_id(hass, "binary_sensor", "_off_grid")).state == "on"
     assert coordinator.data["battery_settings"]["min_soc_on_grid"] == 24  # kept from the last full update
 
+
+
+async def test_firmware_follows_an_update_of_the_inverter(hass: HomeAssistant, entry, client) -> None:
+    """#372: a diagnostic sensor for automations, and the device info no longer stays at the firmware of the setup."""
+    await setup(hass, entry)
+    firmware = entity_id(hass, "sensor", "_firmware")
+    assert hass.states.get(firmware).state == "1.40"
+    assert er.async_get(hass).async_get(firmware).entity_category == "diagnostic"
+    coordinator = entry.runtime_data
+    coordinator._on_push({"type": "live", "live": coordinator.data["live"],
+                          "status": {**coordinator.data["status"], "firmware": "1.50"}})
+    await hass.async_block_till_done()
+    assert hass.states.get(firmware).state == "1.50"
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert [d.hw_version for d in devices if ("openampere", INSTALLATION) in d.identifiers] == ["1.50"]
+
+
+async def test_firmware_from_an_older_openampere(hass: HomeAssistant, entry, client) -> None:
+    """An OpenAmpere before #372 has the firmware only in /info."""
+    old = state()
+    del old["status"]["firmware"]
+    client.state.return_value = old
+    await setup(hass, entry)
+    assert hass.states.get(entity_id(hass, "sensor", "_firmware")).state == "1.40"
 
 
 async def test_alarm_only_for_fault_codes_other_than_0(hass: HomeAssistant, entry, client) -> None:

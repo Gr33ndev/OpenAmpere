@@ -16,7 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 from openampere import control, external
 from openampere.api import create_app
 from openampere.apitokens import CODE_PREFIX, MAX_TOKENS, ApiTokens
-from openampere.drivers.base import Snapshot
+from openampere.drivers.base import DeviceInfo, Snapshot
 from openampere.runtime import Runtime
 from openampere.storage import Storage
 from openampere.tls import ensure_certificate, fingerprint
@@ -238,6 +238,16 @@ def test_other_apps_see_readings_as_old_only_after_a_minute(runtime, web):
     collector.latest = Snapshot(timestamp=time.time())
     collector.connected = False  # no grace without a connection
     assert client.get(f"{V1}/state").json()["status"]["stale"] is True
+
+
+def test_state_follows_the_firmware_of_the_inverter(runtime, web):
+    """#372: in /info the firmware is only read when Home Assistant sets up; an update of the inverter must show."""
+    client = app_client(web, new_token(web, "read"))
+    assert client.get(f"{V1}/state").json()["status"]["firmware"] is None  # no inverter yet
+    runtime.collector.device = DeviceInfo("FoxESS", "H3", firmware="1.40")
+    assert client.get(f"{V1}/state").json()["status"]["firmware"] == "1.40"
+    runtime.collector.device = DeviceInfo("FoxESS", "H3", firmware="1.50")  # read again on reconnect
+    assert client.get(f"{V1}/state").json()["status"]["firmware"] == "1.50"
 
 
 def test_live_websocket_needs_https_and_a_token(runtime, web):
