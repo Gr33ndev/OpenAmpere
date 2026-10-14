@@ -105,14 +105,13 @@ None of these registers is confirmed on a device for OpenAmpere yet; the check e
   1.6 leaves expiry and reboot behaviour open.
 - Meaning of the read but uninterpreted words (0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010, 0x3001–0x3004,
   0x3007–0x3009) and of 0x1018–0x1019.
-- Whether FoxESS should be asked for permission to use the protocol facts
-  ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 
 ## Sources
 
 - FoxESS EV Charger Modbus TCP protocol V1.6: given to owners by FoxESS support, not public, marked "all rights
-  reserved"; only register addresses and meanings are used, in own words. Whether FoxESS should be asked for
-  permission is open in [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318).
+  reserved". Following the [README](../README.md#sources), only facts (register addresses, meanings, units) are
+  used, in own words; the document is not quoted, not added to the repository and not passed on
+  ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - FoxESS Fox Switch app manual V1.0.1 and FoxESS energy management user manual (as summarised in
   [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - Owner reports in public evcc discussions (facts only; evcc's FoxESS driver is not used).

@@ -48,6 +48,9 @@ pull request that made them.
 
 - **Allowed:** public manufacturer documents (named, not copied into the repository), projects with a compatible
   license (credited in [NOTICE](../../NOTICE)), diagnostics reports and tests in our issues, and owners' reports.
+- **Not public, but handed to owners** (e.g. a protocol the manufacturer's support sends on request, marked "all
+  rights reserved"): only the facts (register addresses, meanings, units), in own words. The document is named, but
+  never quoted, never added to the repository and never passed on.
 - **Not allowed:** documents under NDA or meant only for partners, anything from the Ampere.IQ app or its decompiled
   code, projects whose license does not allow reuse.
 - **In own words:** register addresses and their meaning are facts; text, tables and the structure of a manufacturer
