@@ -131,7 +131,9 @@ Every change reaches owners in three ways, all built from the same release (#300
   every change in the control log.
 - Continuous control (e.g. grid charging) only via the inverter's remote control with a watchdog timeout, never via
   permanently stored registers. Release only what OpenAmpere started (`_remote_owned`; after a restart the
-  `remote_command` meta plus its own register values, #141).
+  `remote_command` meta plus its own register values, #141). The one exception is a device without such a remote
+  control (SAJ, #377): a short time slot of the inverter that ends by itself and that OpenAmpere extends, with the
+  owner's values kept in the `remote_command` meta and put back, and a note in the app how long charging goes on.
 - Switching off is the safe direction and is written even with the master switch off or in test mode: releasing the
   remote control, 0 W to a heating rod and "off" to a relay OpenAmpere switched on (#217, #243), and setting a backup
   reserve raised by 0.23.1 back to the owner's value (#320; only to a device with `supports_control` and within the

@@ -52,6 +52,10 @@ class ModbusIllegalError(ModbusReadError):
     """The device rejected the request (illegal function/address/value): retrying will not help."""
 
 
+class DeviceRefused(ModbusIllegalError):
+    """The driver refuses a write for a reason the owner can act on; the message is shown in the app."""
+
+
 class ModbusTransientError(ModbusReadError):
     """Timeout, busy device or a gateway/proxy that could not reach the inverter: try again later."""
 
@@ -79,6 +83,8 @@ def friendly_error(err: BaseException) -> str:
         return BUSY_MESSAGE
     if isinstance(err, DeviceUnreachable):
         return "Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die Adresse und ist Modbus TCP aktiviert?"
+    if isinstance(err, DeviceRefused):
+        return str(err)
     if isinstance(err, ModbusIllegalError):
         return "Der Wechselrichter hat die Anfrage abgelehnt (Register nicht vorhanden)."
     if isinstance(err, (ModbusTransientError, TimeoutError, asyncio.TimeoutError)):

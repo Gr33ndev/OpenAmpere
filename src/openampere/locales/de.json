@@ -170,6 +170,7 @@
     "logReadBackDiffers": "Rücklesen abweichend: {mismatch}",
     "logReadBackDiffersW": "Rücklesen abweichend: {limit_w} W",
     "logReadBackFailed": "Rücklesen fehlgeschlagen",
+    "lowReserveConfirm": "Eine Notstrom-Reserve unter 10 % bitte ausdrücklich bestätigen: Der Speicher wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die Garantie gefährden.",
     "mustBetween100": "{key} muss zwischen {low} und 100 % liegen",
     "noResponseInverterCheck": "Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es später erneut.",
     "noResponseInverterTry": "Keine Antwort vom Wechselrichter. Bitte später erneut versuchen.",
@@ -179,7 +180,7 @@
     "unknownSetting": "Unbekannte Einstellung: {unknown}",
     "unknownWorkMode": "Unbekannter Betriebsmodus",
     "valueMustBetween0": "Wert muss zwischen 0 und {maximum} W liegen",
-    "lowReserveConfirm": "Eine Notstrom-Reserve unter 10 % bitte ausdrücklich bestätigen: Der Speicher wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die Garantie gefährden."
+    "workModeNotAvailable": "Diesen Betriebsmodus gibt es bei {manufacturer}-Geräten nicht."
   },
   "diagnostics": {
     "diagnosisAlreadyRunning": "Die Diagnose läuft bereits."
@@ -189,7 +190,7 @@
     "onlyPrivateNetworksUp": "Nur private Netze bis /22 können durchsucht werden"
   },
   "driver": {
-    "controlNotEnabledYet": "Steuerung ist für SAJ-Geräte noch nicht freigegeben"
+    "chargeSlotInUse": "Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",

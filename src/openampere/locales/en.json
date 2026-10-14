@@ -170,6 +170,7 @@
     "logReadBackDiffers": "read back differently: {mismatch}",
     "logReadBackDiffersW": "read back differently: {limit_w} W",
     "logReadBackFailed": "reading back failed",
+    "lowReserveConfirm": "Please confirm a backup power reserve below 10 % explicitly: the battery is then discharged deeper, which can shorten its life and put the warranty at risk.",
     "mustBetween100": "{key} must be between {low} and 100 %",
     "noResponseInverterCheck": "No response from the inverter. Please check the values and try again later.",
     "noResponseInverterTry": "No response from the inverter. Please try again later.",
@@ -179,7 +180,7 @@
     "unknownSetting": "Unknown setting: {unknown}",
     "unknownWorkMode": "Unknown work mode",
     "valueMustBetween0": "Value must be between 0 and {maximum} W",
-    "lowReserveConfirm": "Please confirm a backup power reserve below 10 % explicitly: the battery is then discharged deeper, which can shorten its life and put the warranty at risk."
+    "workModeNotAvailable": "This operating mode is not available on {manufacturer} devices."
   },
   "diagnostics": {
     "diagnosisAlreadyRunning": "The diagnosis is already running."
@@ -189,7 +190,7 @@
     "onlyPrivateNetworksUp": "Only private networks up to /22 can be scanned"
   },
   "driver": {
-    "controlNotEnabledYet": "Control is not enabled yet for SAJ devices"
+    "chargeSlotInUse": "Charge time {CHARGE_SLOT} is already in use in the inverter. Please free it in the SAJ app, then OpenAmpere can charge from the grid."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",

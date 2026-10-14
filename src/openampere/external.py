@@ -190,7 +190,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "token": {"name": request.state.token["name"], "scope": request.state.token["scope"]},
             # no serial number: it would end up in Home Assistant's backups
             "device": {"manufacturer": device.manufacturer, "model": device.model, "firmware": device.firmware,
-                       "rated_power_w": device.rated_power_w, "supports_control": device.supports_control}
+                       "rated_power_w": device.rated_power_w, "supports_control": device.supports_control,
+                       "work_modes": device.work_modes}  # None: all modes (SAJ offers two, #377)
             if device else None,
             "pv_inputs": [{"index": i, "name": names[i] if i < len(names) and names[i] else f"Modulfeld {i + 1}"}
                           for i in range(count) if str(i + 1) not in hidden],

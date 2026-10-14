@@ -170,7 +170,7 @@ class FoxessDriver(ModbusDevice):
                 raise ValueError(f"{name} must be between {low} and 100 %")
             await self._write(self.map.settings[name], value)
 
-    async def set_remote_power(self, watts: int, timeout_s: int) -> None:
+    async def set_remote_power(self, watts: int, timeout_s: int, restore: dict | None = None) -> None:
         """Order matters: timeout first, then enable (single writes), then the power setpoint.
         The inverter's own watchdog ends remote control after timeout_s without a new command."""
         assert self.map is not None
@@ -185,7 +185,7 @@ class FoxessDriver(ModbusDevice):
         self._remote_owned = int(timeout_s)
         await self._write(s["remote_power"], int(watts))
 
-    async def release_remote_power(self, timeout_s: int | None = None) -> bool:
+    async def release_remote_power(self, timeout_s: int | None = None, restore: dict | None = None) -> bool:
         """Ends remote control, but only if OpenAmpere started it – never someone else's (e.g. a smartbox).
 
         Ours means switched on with 1 and our watchdog timeout (the smartbox uses other values, #141). timeout_s

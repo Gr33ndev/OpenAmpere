@@ -40,6 +40,10 @@ class DeviceInfo:
     # smallest step of the lifetime energy counters in Wh according to the register map (100 = 0.1 kWh, #194);
     # None if unknown. Firmware may count coarser than its unit, the recorded data can show that (Storage).
     energy_step_wh: int | None = None
+    work_modes: tuple[str, ...] | None = None  # the work modes the device offers; None: all of WorkMode
+    # grid charging through a time slot of the device instead of a remote control with a timeout (SAJ, #377): it
+    # keeps charging this many minutes at most after OpenAmpere stops; None: remote control with a timeout
+    charging_continues_min: int | None = None
 
 
 @dataclass
@@ -147,6 +151,7 @@ class ExportLimit:
     supported: bool
     limit_w: int | None = None  # current feed-in limit
     rated_power_w: int | None = None  # nominal inverter power (100 %)
+    step_w: int = 1  # resolution: a limit is written rounded down to it (SAJ: per mille of the rated power)
 
 
 @dataclass
@@ -171,11 +176,13 @@ class InverterDriver(Protocol):
     async def write_soc_limits(self, *, min_soc: int | None = None, max_soc: int | None = None,
                                min_soc_on_grid: int | None = None) -> None: ...
 
-    async def set_remote_power(self, watts: int, timeout_s: int) -> None:
-        """Force battery power (+ discharge, - charge) until timeout or release."""
+    async def set_remote_power(self, watts: int, timeout_s: int, restore: dict | None = None) -> dict | None:
+        """Force battery power (+ discharge, - charge) until timeout or release. A driver that changes stored settings
+        for it (SAJ) returns what it needs to put them back; the caller keeps it and passes it in again as restore,
+        also after a restart."""
         ...
 
-    async def release_remote_power(self, timeout_s: int | None = None) -> bool:
+    async def release_remote_power(self, timeout_s: int | None = None, restore: dict | None = None) -> bool:
         """End remote control if OpenAmpere started it (or it still shows OpenAmpere's timeout_s); True if ended."""
         ...
 

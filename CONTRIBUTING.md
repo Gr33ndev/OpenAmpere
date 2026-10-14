@@ -211,7 +211,8 @@ Mistakes when writing can affect devices, the warranty or the grid connection re
 - **Writing functions** are only reachable via the control features, respect test mode, check limits before writing,
   read back afterwards and write to the log.
 - **Continuous control** (e.g. charging based on price) only via remote control with a watchdog, never via
-  permanently stored registers.
+  permanently stored registers. Only a device without such a remote control (SAJ, #377) may use a short time slot
+  of the inverter that ends by itself and that OpenAmpere extends.
 - **Legal topics** (feed-in limitation, § 14a EnWG, EEG) must be raised in the issue before any code is written.
 
 ### Adding grid operators (meter readings)

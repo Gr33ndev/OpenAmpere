@@ -197,7 +197,7 @@ export function BatteryPage({ onBack }: PageProps) {
 
           <div className="section-title">{t("common.operatingMode")}</div>
           <div className="card choices">
-            {WORK_MODES.map((m) => (
+            {WORK_MODES.filter((m) => !status?.device?.work_modes || status.device.work_modes.includes(m.id)).map((m) => (
               <button type="button" key={m.id} className={`choice ${form.work_mode === m.id ? "active" : ""}`} disabled={!editable}
                 onClick={() => set({ work_mode: m.id })}>
                 <span className="radio" />
@@ -1364,6 +1364,9 @@ export function ExportLimitPage({ onBack }: PageProps) {
                     </div>
                   </Field>
                 )}
+                {preset === "custom" && (current?.step_w ?? 1) > 1 && (
+                  <p className="hint">{t("settings.exportLimitPage.stepHint", { step: watt(current?.step_w ?? 1) })}</p>
+                )}
                 {valid && !unchanged && <p className="hint">{t("settings.exportLimitPage.newLabel")}{" "}<strong>{watt(target)}</strong>{pct(target)}</p>}
                 {!valid && custom.trim() !== "" && cap != null && <p className="hint">{t("settings.exportLimitPage.allowedRange", { max: watt(cap) })}</p>}
                 {unchanged && <p className="hint">{t("settings.exportLimitPage.unchanged")}</p>}
@@ -1530,9 +1533,14 @@ export function ChargingPage({ onBack }: PageProps) {
     <SubPage title={t("settings.chargingPage.title")} onBack={onBack}>
       <p className="hint">{t("settings.chargingPage.intro")}{" "}
         <strong>{t("settings.chargingPage.experimental")}</strong></p>
-      <LearnMore>
-        <p className="hint">{t("settings.chargingPage.remoteControlHint")}</p>
-      </LearnMore>
+      {status?.device?.charging_continues_min ? (
+        <Notice kind="warn">{t("settings.chargingPage.slotControlHint",
+          { manufacturer: status.device.manufacturer, minutes: status.device.charging_continues_min })}</Notice>
+      ) : (
+        <LearnMore>
+          <p className="hint">{t("settings.chargingPage.remoteControlHint")}</p>
+        </LearnMore>
+      )}
       <ControlModeBar compact />
       {!form && <LoadState error={error} onRetry={reload} />}
       {form && data && (

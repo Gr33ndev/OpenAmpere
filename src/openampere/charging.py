@@ -5,6 +5,7 @@
 Safety rules:
 - Only through the inverter's remote control with a short watchdog timeout. If OpenAmpere stops, the
   inverter returns to its normal mode by itself after REMOTE_TIMEOUT_S. Nothing is stored permanently.
+  SAJ has no such remote control: a short charge slot that OpenAmpere extends ends by itself instead (#377).
 - The watchdog may leave the remote control switched on (#141): OpenAmpere remembers in storage that it switched
   it on and switches it off until that worked, also after a restart or a new connection.
 - The inverter may bring back OpenAmpere's values after its own restart (#143): for a few minutes after every new
@@ -289,11 +290,18 @@ class GridCharging:
                                  "prüfen (Fernsteuerung).", error=True)
                 self.runtime.storage.set_meta("grid_charging", {**asdict(s), "enabled": False})
                 return
-        # remembered before writing: a command that half worked must be switched off as well
-        runtime.storage.set_meta(REMOTE_COMMAND, {"ts": now, "power_w": CHARGE_SIGN * s.power_w,
-                                                  "timeout_s": REMOTE_TIMEOUT_S, "released": None})
+        # remembered before writing: a command that half worked must be switched off as well. With it what a driver
+        # needs to put the owner's settings back (SAJ charges through a stored time slot, #377), also after a restart
+        previous = runtime.storage.get_meta(REMOTE_COMMAND) or {}
+        restore = None if previous.get("released") else previous.get("restore")
+        command = {"ts": now, "power_w": CHARGE_SIGN * s.power_w, "timeout_s": REMOTE_TIMEOUT_S, "released": None,
+                   **({"restore": restore} if restore else {})}
+        runtime.storage.set_meta(REMOTE_COMMAND, command)
         try:
-            await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S)
+            restore_now = await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S,
+                                                                  restore=restore)
+            if restore_now and restore_now != restore:
+                runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": restore_now})
         except Exception as exc:  # noqa: BLE001
             err = friendly_error(exc)  # the technical text goes to the log, not into the app
             log.warning("grid charging command failed: %s", exc)
@@ -337,7 +345,8 @@ class GridCharging:
         if not was_active and not ((pending or reconnected) and collector.connected):
             return
         try:
-            switched_off = await collector.driver.release_remote_power(command.get("timeout_s", REMOTE_TIMEOUT_S))
+            switched_off = await collector.driver.release_remote_power(command.get("timeout_s", REMOTE_TIMEOUT_S),
+                                                                       restore=command.get("restore"))
         except ModbusIllegalError as err:  # cannot write at all (read-only proxy): trying again does not help
             switched_off, failed = False, err
         except Exception as err:  # noqa: BLE001 - tried again on the next tick

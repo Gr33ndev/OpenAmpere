@@ -292,6 +292,7 @@ class Diagnostics:
 
         if getattr(driver, "KEY", None) == "saj":
             checks.append(await self._saj_limits())
+            checks.append(await self._saj_control())
 
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
@@ -301,6 +302,41 @@ class Diagnostics:
                                 "Nicht ausgeführt (kann andere Geräte kurz stören)."))
 
         return checks + self._history_checks()
+
+    async def _saj_control(self) -> Check:
+        """What grid charging and the export limit of an SAJ use (#377): OpenAmpere's charge slot, the time-of-use
+        mode outside the slots, the export limit and its mode, and the inverter's clock the slot follows."""
+        from .drivers.saj.registers import (CHARGE_ENABLE_ADDRESS, CHARGE_SLOT, CHARGE_SLOT_ADDRESS,
+                                            EXPORT_LIMIT_ADDRESS, READ_FUNCTION, TIME_ADDRESS, TOU_OUTSIDE_ADDRESS)
+        enable = await self._try(CHARGE_ENABLE_ADDRESS, 1, READ_FUNCTION)
+        slot = await self._try(CHARGE_SLOT_ADDRESS, 3, READ_FUNCTION)
+        outside = await self._try(TOU_OUTSIDE_ADDRESS, 1, READ_FUNCTION)
+        export = await self._try(EXPORT_LIMIT_ADDRESS, 3, READ_FUNCTION)
+        clock = await self._try(TIME_ADDRESS, 4, READ_FUNCTION)
+        parts = []
+        # the slot without its times and days: they tell when the owner charged (only its length and power)
+        length = power = on = None
+        if enable["ok"] and slot["ok"]:
+            start, end, days = slot["words"]
+            on = bool(enable["words"][0] & (1 << (CHARGE_SLOT - 1)))
+            length = (end >> 8) * 60 + (end & 0xFF) - (start >> 8) * 60 - (start & 0xFF)
+            power = days & 0xFF
+            parts.append(f"Ladezeit {CHARGE_SLOT} {'an' if on else 'aus'}, {length} min, {power} % "
+                         f"(0x3604, 0x{CHARGE_SLOT_ADDRESS:04X})")
+        else:
+            parts.append(f"Ladezeiten {enable.get('error') or slot.get('error')}")
+        parts.append(f"außerhalb der Ladezeiten {outside['words'][0]} (0x365F)" if outside["ok"]
+                     else f"0x365F {outside['error']}")
+        if export["ok"]:
+            limit, _, mode = export["words"]
+            parts.append(f"Einspeisebegrenzung {limit / 10:g} %, Modus {mode} (0x365A, 0x365C)")
+        else:
+            parts.append(f"0x365A–0x365C {export['error']}")
+        parts.append("Uhr des Wechselrichters lesbar" if clock["ok"] else f"Uhr (0x4000) {clock['error']}")
+        # the clock only as readable or not: a time of day is not needed and would be a personal detail
+        return Check("saj_control", "Steuerung (SAJ)", "info", "; ".join(parts),
+                     {"slot_on": on, "slot_minutes": length, "slot_power_percent": power,
+                      "0x365F": outside.get("words"), "0x365A": export.get("words"), "clock": clock["ok"]})
 
     async def _saj_limits(self) -> Check:
         """All SAJ battery limits side by side: the settings (on grid, off grid, charge limit, work mode, reserve in

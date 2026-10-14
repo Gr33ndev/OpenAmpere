@@ -4,7 +4,7 @@ This guide is for developers who want OpenAmpere to support another inverter, hy
 It explains how drivers fit into the app, how to add a read-only driver step by step, what the (optional) write path
 has to guarantee, how to work without the hardware, which tests a driver needs and how to get it reviewed.
 
-**Read-only first.** A new driver starts as display only (`supports_control=False`), like the SAJ driver today.
+**Read-only first.** A new driver starts as display only (`supports_control=False`), as the SAJ driver did until #377.
 Writing to a device comes later, in a separate pull request, once the registers have been verified on a real device.
 
 Contents:
@@ -26,7 +26,7 @@ Contents:
 | `src/openampere/drivers/regs.py` | `Reg`, `Kind` (`U16`, `I16`, `U32`, `I32`), `decode()` and `encode()`. |
 | `src/openampere/drivers/registry.py` | `DRIVERS`, `LABELS`, `create()`, `detect_driver()`, `detect()` and `AutoDriver`. |
 | `src/openampere/drivers/foxess/` | FoxESS H3 family: two register maps (`H3_NEW`, `H3_LEGACY`), read and write path. |
-| `src/openampere/drivers/saj/` | SAJ H2 / HS2: read-only. The smallest complete example and the best template. |
+| `src/openampere/drivers/saj/` | SAJ H2 / HS2: the smallest complete example and the best template; control through a charge slot instead of a remote control (#377). |
 | `src/openampere/drivers/mypv.py` | my-PV heating rods. Not an inverter driver, see [Other devices](#other-devices). |
 
 ### The driver interface
@@ -97,7 +97,7 @@ Things that are easy to get wrong:
 
 ```python
 DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver}
-LABELS = {"auto": "Automatisch erkennen", "foxess": "FoxESS H3 / H3 Smart / H3 Pro", "saj": "SAJ H2 / HS2 (nur Anzeige)"}
+LABELS = {"auto": "Automatisch erkennen", "foxess": "FoxESS H3 / H3 Smart / H3 Pro", "saj": "SAJ H2 / HS2"}
 ```
 
 `detect_driver()` goes through `DRIVERS` in order and, for each driver, through its `DEFAULT_UNITS` (Modbus unit
@@ -251,13 +251,18 @@ they are all zero (no second module).
 
 ### Step 6: the settings methods of a read-only driver
 
-The control features call these methods, so a read-only driver still implements them, as `SajDriver` does:
+The control features call these methods, so a read-only driver still implements them:
 
 - `read_settings()` returns a `BatterySettings` with whatever is readable (or all `None`);
 - `read_export_limit()` returns `ExportLimit(supported=False, rated_power_w=...)`;
 - `write_work_mode`, `write_soc_limits`, `set_remote_power`, `release_remote_power` and `write_export_limit` raise
-  an error (`SajDriver` uses `NotSupported`, a subclass of `ModbusIllegalError`);
+  an error (a subclass of `ModbusIllegalError`; `DeviceRefused` if the app should show its message);
 - `remote_active()` returns `False`.
+
+A device without a remote control that ends by itself may charge through a stored time slot that ends by itself
+instead, as `SajDriver` does (#377): `set_remote_power` returns the owner's values it replaced, the caller keeps
+them and passes them back as `restore` (also after a restart), and `DeviceInfo.charging_continues_min` tells the
+app how long charging can go on after OpenAmpere stops.
 
 ### Step 7: register the driver
 
@@ -338,7 +343,7 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 | `--max-connections N` | connection limit (default 2) |
 | `--fault-rate 0.2` | share of reads answered with "gateway target failed" (flaky Modbus proxy) |
 | `--latency 1.5` | extra seconds per answer (slow proxy or network) |
-| `--read-only` | FoxESS: reject writes like a read-only proxy (the SAJ simulator always does) |
+| `--read-only` | reject writes like a read-only proxy |
 
 To simulate your device, subclass `SimulatedInverter` the way `SajSimulatedInverter` does: create the registers of
 your `BLOCKS` and the identification block in `self.regs`, and write the `EnergyModel` values into them in
@@ -395,9 +400,9 @@ block. Templates:
 
 | What | Template |
 |---|---|
-| Detected on every default unit id, `DeviceInfo` correct, `supports_control` false | `test_detects_saj_on_either_unit` in `tests/test_detection.py` |
+| Detected on every default unit id, `DeviceInfo` correct | `test_detects_saj_on_either_unit` in `tests/test_detection.py` |
 | Auto-detection still picks the right vendor; forcing the wrong driver fails | `test_detects_foxess`, `test_test_connection_reports_label_and_choice` in `tests/test_detection.py` |
-| A read-only driver refuses control in the app | `test_runtime_auto_driver_with_saj_is_read_only` in `tests/test_detection.py` |
+| A read-only device refuses control in the app | `test_runtime_auto_driver_with_an_saj_as2_stays_read_only` in `tests/test_detection.py` |
 | Snapshot matches the simulator: signs, SoC, counters, energy balance | `test_detect_and_read` in `tests/test_foxess_driver.py` |
 | A missing optional block does not stop readings | `test_missing_optional_block_does_not_stop_readings` in `tests/test_foxess_driver.py` |
 | A value confirmed on a real device | `test_inverter_temperature_in_tenths_of_a_degree` in `tests/test_foxess_driver.py` |

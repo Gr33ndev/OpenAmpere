@@ -56,7 +56,11 @@ export type Status = {
   devices: { grid_charging: boolean; items: Device[] };
   device: { manufacturer: string; model: string; serial: string | null; firmware: string | null; register_map: string | null;
     driver: string | null; unit: number | null; rated_power_w: number | null; supports_control: boolean;
-    energy_step_wh?: number | null } | null;
+    energy_step_wh?: number | null;
+    /** the work modes the device offers (SAJ: self_use, backup); null: all */
+    work_modes?: string[] | null;
+    /** grid charging through a time slot of the device (SAJ, #377): it keeps charging this long after OpenAmpere stops */
+    charging_continues_min?: number | null } | null;
   /** step of the inverter's energy counters in Wh (#194): 100 = 0.1 kWh; missing on servers before this field */
   energy_step_wh?: number;
   control: { enabled: boolean; dry_run: boolean };
@@ -160,6 +164,8 @@ export function activeInputs(snap: Snapshot | null, hidden: string[] = []) {
 export type FeedInRule = "unknown" | "limit_60" | "limit_70" | "operator" | "none";
 export type ExportLimit = {
   supported: boolean; limit_w: number | null; rated_power_w: number | null;
+  /** resolution in W (SAJ: per mille of the rated power); a limit is written rounded down to it */
+  step_w?: number;
   rule: FeedInRule; installed_kwp: number; legal_max_w: number | null;
 };
 

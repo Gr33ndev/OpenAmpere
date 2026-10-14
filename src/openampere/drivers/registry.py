@@ -23,7 +23,7 @@ DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriv
 LABELS = {
     "auto": "Automatisch erkennen",
     "foxess": "FoxESS H3 / H3 Smart / H3 Pro",
-    "saj": "SAJ H2 / HS2 (nur Anzeige)",
+    "saj": "SAJ H2 / HS2",
 }
 
 DETECT_TIMEOUT_S = 2.5

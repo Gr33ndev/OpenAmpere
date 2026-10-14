@@ -97,6 +97,24 @@ DEPTH_ADDRESS = 0x3644
 APP_MODE_ADDRESS = 0x3647  # work mode setting (0 self-use, 2 backup)
 BACKUP_SOC_ADDRESS = 0x3651  # reserve in backup mode, used by evcc (#334: shown in the diagnostics report only)
 
+# control (#377), from SAJ's "H2-3~6K-S2 single phase communication protocol" (2022-12-02), used the same way by
+# stanus74/home-assistant-saj-h2-modbus and evcc (saj-h2.yaml). All written with FC06, one register at a time.
+SOC_ADDRESSES = {"min_soc_on_grid": 0x3644, "min_soc": 0x3645, "max_soc": 0x3646}  # % SoC
+APP_MODES = {0: "self_use", 2: "backup"}  # 0x3647; 1 = time-of-use, 3 = passive, 10 = peak shaving are not offered
+APP_MODE_TIME = 1
+TIME_ADDRESS = 0x4000  # inverter clock, read-only: year, month << 8 | day, hour << 8 | minute, second << 8
+CHARGE_ENABLE_ADDRESS = 0x3604  # bit n: charge slot n + 1 is on
+# grid charging uses the last of the seven charge slots, so the owner's own slots (usually the first) stay as they are
+CHARGE_SLOT = 7
+CHARGE_SLOT_ADDRESS = 0x3606 + 3 * (CHARGE_SLOT - 1)  # start hh << 8 | mm, end hh << 8 | mm, days << 8 | power %
+TOU_OUTSIDE_ADDRESS = 0x365F  # time-of-use mode outside the slots: 0 standby, 1 self-use
+EXPORT_LIMIT_ADDRESS = 0x365A  # per mille of rated power
+EXPORT_MODE_ADDRESS = 0x365C  # 0 off, 1 total power, 2 phase current, 3 phase power
+EXPORT_POWER_MODES = (1, 3)  # the modes in which 0x365A applies
+# device types with control: H2 and HS2 (protocol, stanus74, evcc) and 0x005E, a type sold as "Ampere.StoragePro"
+# whose settings registers matched the manufacturer's app (#334); AS2 and other codes stay read-only
+CONTROL_TYPES = frozenset({0x005A, 0x005B, 0x005C, 0x005D, 0x005E})
+
 RUNNING_MODES = {0: "Init", 1: "Wait", 2: "Run", 3: "Off-grid", 4: "On-grid storage", 5: "Fault",
                  6: "Update", 7: "Test", 8: "Self-check", 9: "Reset"}
 OFF_GRID_MODE = 3
