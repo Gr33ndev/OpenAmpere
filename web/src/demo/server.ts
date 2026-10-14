@@ -373,7 +373,7 @@ function consumers() {
 /** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. */
 function nativeWallboxes() {
   const away = Math.floor(Date.now() / 1000) - 3 * 3600;
-  return { max: 4, search: true, models: [{ key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)" }],
+  return { max: 4, search: true, models: [{ key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya" }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
       online: false, offline_since: away, updated: away, error: "Das Gerät ist unter 192.168.178.60 nicht erreichbar.",

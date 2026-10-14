@@ -90,6 +90,7 @@ def _tenth(value) -> float | None:
 class DeTuyaCharger:
     key = "de_tuya"
     label = "dé Mobile Wallbox 11 kW (Tuya)"
+    protocol = "tuya"  # the app shows the fields and the steps to the local key of a Tuya device
     START, CURRENT = "140", "150"
 
     @classmethod

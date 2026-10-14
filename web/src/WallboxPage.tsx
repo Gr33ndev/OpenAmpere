@@ -8,7 +8,6 @@ import { nextDay } from "./zoned";
 import { lang, LOCALE, t, tx } from "./i18n";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LoadState, Notice, Segmented, Slider, SubPage, toast } from "./ui";
-import { DirectWallbox } from "./WallboxCheck";
 import { NativeWallboxSetup, type WallboxesView } from "./NativeWallbox";
 
 export type EvccLoadpoint = {
@@ -262,11 +261,7 @@ export function WallboxPage({ onBack }: PageProps) {
           options={[["evcc", t("devices.wallboxDirect.wayEvcc")], ["direct", t("devices.wallboxDirect.wayDirect")]]} />
       </fieldset>
       {way === "direct" ? <>
-        <NativeWallboxSetup />
-        <details className="advanced">
-          <summary>{t("devices.nativeWallbox.checkOther")}</summary>
-          <DirectWallbox origin={origin} />
-        </details>
+        <NativeWallboxSetup origin={origin} />
       </> : <>
       <p className="hint">{tx("devices.wallboxPage.intro", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
       {!view && <LoadState error={error} onRetry={reload} />}

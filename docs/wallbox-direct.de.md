@@ -41,7 +41,9 @@ Wallbox im Heimnetz: Gib ihn nicht weiter und poste ihn nirgends.
 ## In OpenAmpere einrichten
 
 1. **Mehr → Verbindung → Wallbox** öffnen und **direkt** wählen.
-2. **Wallbox hinzufügen** antippen.
+2. **Wallbox hinzufügen oder prüfen** antippen und bei **Welche Wallbox hast du?** die dé-Wallbox wählen (unter
+   „Anzeigen und steuern“). Das Formular zeigt dann genau die Felder, die diese Wallbox braucht, und die Schritte
+   zum Local Key.
 3. **Tuya-Wallbox im Heimnetz suchen** antippen. Ist die Wallbox eingesteckt und im WLAN, erscheint sie; mit
    **Übernehmen** werden IP-Adresse und Geräte-ID eingetragen. Sonst die IP-Adresse aus dem Router abschreiben.
 4. Den **Local Key** eintragen und den **höchsten Ladestrom**, den OpenAmpere einstellen darf, zum Beispiel 16 A für
@@ -95,7 +97,8 @@ Netz hat. Trag die IP-Adresse aus dem Router von Hand ein.
 ## Andere Wallboxen prüfen (nur lesen)
 
 Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Unter
-**direkt → Andere Wallbox prüfen (nur lesen)** prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der
+**direkt → Wallbox hinzufügen oder prüfen** wählst du sie bei **Welche Wallbox hast du?** unter „Nur prüfen
+(Vorschau)“. Dann prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der
 sie gerade steht, und zeigt, was sie antwortet. An der Wallbox wird nichts geändert. Das Ergebnis kommt in den
 Diagnosebericht (**Mehr → Diagnose**); wenn du ihn teilst, hilft das, die Register an echten Geräten zu bestätigen.
 Für andere Wallboxen liest **Mehr → Diagnose → Gerät auslesen** beliebige Register.

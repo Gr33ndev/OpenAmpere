@@ -5,7 +5,9 @@ import { postJson, putJson, useResource } from "./api";
 import { kw, num, timeZone } from "./format";
 import { LOCALE, t } from "./i18n";
 import { WALLBOX_DIRECT_GUIDE } from "./links";
+import { navigate } from "./route";
 import { Button, Dialog, Field, LoadState, Notice, Segmented, Switch, toast } from "./ui";
+import { useCheckModels, WallboxCheck } from "./WallboxCheck";
 
 /** Wallboxes OpenAmpere reads and controls itself, without evcc: so far the portable dé wallbox over Tuya. A
  *  portable wallbox is often unplugged: it is then shown as away, without old values, until it answers again. */
@@ -24,7 +26,7 @@ export type NativeWallbox = {
   online: boolean | null; offline_since: number | null; updated: number | null; error: string | null;
   reading: WallboxReading | null; controlled: boolean;
 };
-export type WallboxesView = { wallboxes: NativeWallbox[]; models: { key: string; label: string }[]; max: number;
+export type WallboxesView = { wallboxes: NativeWallbox[]; models: { key: string; label: string; protocol: "tuya" }[]; max: number;
   search: boolean };
 type Found = { device_id: string; host: string; product_key: string | null };
 
@@ -108,9 +110,10 @@ const toItem = (wb: NativeWallbox | Draft) => ({ id: wb.id, name: wb.name, model
   mode: wb.mode, enabled: wb.enabled });
 
 /** The setup: the wallboxes OpenAmpere controls itself, add, change, remove. */
-export function NativeWallboxSetup() {
+export function NativeWallboxSetup({ origin }: { origin: string }) {
   const { data: view, error, reload, setData } = useResource<WallboxesView>("/api/wallboxes", 10_000);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<NativeWallbox | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -129,11 +132,22 @@ export function NativeWallboxSetup() {
   };
   if (!view) return <LoadState error={error} onRetry={reload} />;
   const others = (id?: string) => view.wallboxes.filter((w) => w.id !== id).map(toItem);
+  const onSave = async (d: Draft) => {
+    if (await save([...others(d.id), toItem(d)])) {
+      setDraft(null);
+      setAdding(false);
+    }
+  };
 
   return (
     <>
       <p className="hint">{t("devices.nativeWallbox.intro")}</p>
-      {view.wallboxes.map((wb) => (
+      {view.wallboxes.map((wb) => draft?.id === wb.id ? (
+        <div className="card form" key={wb.id}>
+          <p className="hint flush">{wb.label}</p>
+          <WallboxForm view={view} draft={draft} busy={busy} onSave={onSave} onCancel={() => setDraft(null)} />
+        </div>
+      ) : (
         <div className="card" key={wb.id}>
           <div className="wallbox-head">
             <div>
@@ -145,18 +159,17 @@ export function NativeWallboxSetup() {
           </div>
           {wb.online === false && wb.error && <Notice kind="warn">{wb.error}</Notice>}
           <div className="button-row">
-            <Button variant="secondary" onClick={() => setDraft({ ...toItem(wb), id: wb.id, device_id: wb.device_id ?? "",
-              local_key: "", max_current_a: String(wb.max_current_a) })}>{t("devices.nativeWallbox.edit")}</Button>
+            <Button variant="secondary" onClick={() => { setAdding(false); setDraft({ ...toItem(wb), id: wb.id,
+              device_id: wb.device_id ?? "", local_key: "", max_current_a: String(wb.max_current_a) }); }}>
+              {t("devices.nativeWallbox.edit")}</Button>
             <Button variant="secondary" onClick={() => setRemoving(wb)}>{t("common.remove")}</Button>
           </div>
         </div>
       ))}
-      {draft ? (
-        <WallboxForm view={view} draft={draft} busy={busy} onCancel={() => setDraft(null)}
-          onSave={async (d) => { if (await save([...others(d.id), toItem(d)])) setDraft(null); }} />
-      ) : view.wallboxes.length < view.max && (
-        <Button variant="secondary" onClick={() => setDraft(empty(view.models[0]?.key ?? "de_tuya"))}>
-          {t("devices.nativeWallbox.add")}</Button>
+      {adding ? (
+        <AddWallbox view={view} origin={origin} busy={busy} onSave={onSave} onCancel={() => setAdding(false)} />
+      ) : (
+        <Button variant="secondary" onClick={() => { setDraft(null); setAdding(true); }}>{t("devices.nativeWallbox.add")}</Button>
       )}
       {removing && (
         <Dialog title={t("devices.nativeWallbox.removeQuestion", { name: removing.name })} confirm={t("common.remove")} danger
@@ -169,6 +182,52 @@ export function NativeWallboxSetup() {
   );
 }
 
+/** One form for every wallbox without evcc: first which one, then what it needs. A wallbox OpenAmpere controls gets
+ *  its connection details (for Tuya with the steps to the local key); one it can only check so far gets the read-only
+ *  check with its report; any other one is pointed to the device reader. */
+function AddWallbox({ view, origin, busy, onSave, onCancel }: {
+  view: WallboxesView; origin: string; busy: boolean; onSave: (d: Draft) => void; onCancel: () => void;
+}) {
+  const { data: checkable, error, reload } = useCheckModels();
+  const [model, setModel] = useState(view.models[0]?.key ?? "other");
+  if (!checkable) return <LoadState error={error} onRetry={reload} />;
+  const controlled = view.models.find((m) => m.key === model);
+  const checked = checkable.models.find((m) => m.key === model);
+  const full = view.wallboxes.length >= view.max;
+  // the choice stays the same element while the fields below change: focus and keyboard keep working
+  return (
+    <div className="card form">
+      <Field label={t("devices.nativeWallbox.which")} hint={controlled ? t("devices.nativeWallbox.whichControlled")
+        : checked ? t("devices.nativeWallbox.whichChecked") : t("devices.wallboxDirect.otherHint")}>
+        <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
+          <optgroup label={t("devices.nativeWallbox.groupControlled")}>
+            {view.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+          </optgroup>
+          <optgroup label={t("devices.nativeWallbox.groupChecked")}>
+            {checkable.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+          </optgroup>
+          <option value="other">{t("devices.wallboxDirect.modelOther")}</option>
+        </select>
+      </Field>
+      {controlled && full && (
+        <>
+          <Notice kind="info">{t("devices.nativeWallbox.full", { max: view.max })}</Notice>
+          <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
+        </>
+      )}
+      {controlled && !full && <WallboxForm key={model} view={view} draft={empty(model)} busy={busy} onSave={onSave} onCancel={onCancel} />}
+      {checked && <WallboxCheck key={model} origin={origin} model={model} onCancel={onCancel} />}
+      {!controlled && !checked && (
+        <div className="button-row">
+          <Button variant="secondary" onClick={() => navigate("more/device-reader")}>{t("devices.wallboxDirect.toDeviceReader")}</Button>
+          <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The fields of a wallbox OpenAmpere controls; the card around them comes from the caller. */
 function WallboxForm({ view, draft, busy, onSave, onCancel }: {
   view: WallboxesView; draft: Draft; busy: boolean; onSave: (d: Draft) => void; onCancel: () => void;
 }) {
@@ -203,33 +262,16 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
       setTesting(false);
     }
   };
-  const keyMissing = !d.local_key && !stored?.local_key_set;
+  const tuya = view.models.find((m) => m.key === d.model)?.protocol === "tuya";
+  const keyMissing = tuya && !d.local_key && !stored?.local_key_set;
 
   return (
-    <div className="card form">
+    <>
       <Field label={t("devices.nativeWallbox.name")} hint={t("devices.nativeWallbox.nameHint")}>
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
-      <Field label={t("devices.wallboxDirect.model")} hint={t("devices.nativeWallbox.modelHint")}>
-        <select className="input" value={d.model} onChange={(e) => set({ model: e.target.value })}>
-          {view.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-        </select>
-      </Field>
-      <Notice kind="info">{t("devices.nativeWallbox.keyIntro")}</Notice>
-      {/* open for a new wallbox: without the key nothing works */}
-      <details className="advanced" open={!stored?.local_key_set}>
-        <summary>{t("devices.nativeWallbox.keyHowTo")}</summary>
-        <ol className="steps-list">
-          <li>{t("devices.nativeWallbox.keyStep1")}</li>
-          <li>{t("devices.nativeWallbox.keyStep2")}</li>
-          <li>{t("devices.nativeWallbox.keyStep3")}</li>
-          <li>{t("devices.nativeWallbox.keyStep4")}</li>
-          <li>{t("devices.nativeWallbox.keyStep5")}</li>
-        </ol>
-        <p className="hint">{t("devices.nativeWallbox.keyChanges")}</p>
-        <p className="hint"><a href={WALLBOX_DIRECT_GUIDE()} target="_blank" rel="noreferrer">{t("devices.nativeWallbox.guide")}</a></p>
-      </details>
-      {view.search ? (
+      {tuya && <TuyaKeyGuide />}
+      {tuya && (view.search ? (
         <>
           <Button variant="secondary" busy={searching} onClick={() => void search()}>{t("devices.nativeWallbox.search")}</Button>
           {found && !found.length && <p className="hint">{t("devices.nativeWallbox.nothingFound")}</p>}
@@ -240,24 +282,28 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
             </div>
           ))}
         </>
-      ) : <p className="hint">{t("devices.nativeWallbox.noSearchInApp")}</p>}
+      ) : <p className="hint">{t("devices.nativeWallbox.noSearchInApp")}</p>)}
       <Field label={t("devices.nativeWallbox.address")} hint={t("devices.nativeWallbox.addressHint", { example: "192.168.178.60" })}>
         <input className="input" value={d.host} inputMode="decimal" autoComplete="off" onChange={(e) => set({ host: e.target.value })} />
       </Field>
-      <Field label={t("devices.nativeWallbox.localKey")}
-        hint={stored?.local_key_set ? t("devices.nativeWallbox.localKeySaved") : t("devices.nativeWallbox.localKeyHint")}>
-        <input className="input" type="password" autoComplete="off" value={d.local_key} maxLength={16}
-          onChange={(e) => set({ local_key: e.target.value })} />
-      </Field>
+      {tuya && (
+        <Field label={t("devices.nativeWallbox.localKey")}
+          hint={stored?.local_key_set ? t("devices.nativeWallbox.localKeySaved") : t("devices.nativeWallbox.localKeyHint")}>
+          <input className="input" type="password" autoComplete="off" value={d.local_key} maxLength={16}
+            onChange={(e) => set({ local_key: e.target.value })} />
+        </Field>
+      )}
       <Field label={t("devices.nativeWallbox.maxCurrent")} hint={t("devices.nativeWallbox.maxCurrentHint")}>
         <input className="input" value={d.max_current_a} inputMode="numeric" onChange={(e) => set({ max_current_a: e.target.value })} />
       </Field>
-      <details className="advanced">
-        <summary>{t("common.advanced")}</summary>
-        <Field label={t("devices.nativeWallbox.deviceId")} hint={t("devices.nativeWallbox.deviceIdHint")}>
-          <input className="input" value={d.device_id} autoComplete="off" onChange={(e) => set({ device_id: e.target.value })} />
-        </Field>
-      </details>
+      {tuya && (
+        <details className="advanced">
+          <summary>{t("common.advanced")}</summary>
+          <Field label={t("devices.nativeWallbox.deviceId")} hint={t("devices.nativeWallbox.deviceIdHint")}>
+            <input className="input" value={d.device_id} autoComplete="off" onChange={(e) => set({ device_id: e.target.value })} />
+          </Field>
+        </details>
+      )}
       {tested && (
         <Notice kind="ok">{t("devices.nativeWallbox.testOk", { phases: tested.installed_phases,
           current: tested.set_current_a ?? "–", firmware: tested.firmware ?? "–" })}</Notice>
@@ -269,6 +315,27 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
         <Button busy={busy} disabled={!d.name.trim() || !d.host.trim() || keyMissing} onClick={() => onSave(d)}>{t("common.save")}</Button>
         <Button variant="secondary" onClick={onCancel}>{t("common.cancel")}</Button>
       </div>
-    </div>
+    </>
+  );
+}
+
+/** The local key of a Tuya device: what it is, and the steps on Tuya's developer platform folded in until tapped. */
+function TuyaKeyGuide() {
+  return (
+    <>
+      <Notice kind="info">{t("devices.nativeWallbox.keyIntro")}</Notice>
+      <details className="advanced">
+        <summary>{t("devices.nativeWallbox.keyHowTo")}</summary>
+        <ol className="steps-list">
+          <li>{t("devices.nativeWallbox.keyStep1")}</li>
+          <li>{t("devices.nativeWallbox.keyStep2")}</li>
+          <li>{t("devices.nativeWallbox.keyStep3")}</li>
+          <li>{t("devices.nativeWallbox.keyStep4")}</li>
+          <li>{t("devices.nativeWallbox.keyStep5")}</li>
+        </ol>
+        <p className="hint">{t("devices.nativeWallbox.keyChanges")}</p>
+        <p className="hint"><a href={WALLBOX_DIRECT_GUIDE()} target="_blank" rel="noreferrer">{t("devices.nativeWallbox.guide")}</a></p>
+      </details>
+    </>
   );
 }

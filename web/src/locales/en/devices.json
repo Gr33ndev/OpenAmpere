@@ -110,7 +110,7 @@
   },
   "nativeWallbox": {
     "intro": "OpenAmpere reads these wallboxes itself and can let them charge with your solar surplus, without evcc and without a cloud. You can set up several wallboxes.",
-    "add": "Add wallbox",
+    "add": "Add or check a wallbox",
     "edit": "Change",
     "defaultName": "Portable wallbox",
     "name": "Name",
@@ -133,7 +133,6 @@
     "testOk": "Connected. The wallbox reports {phases} phases, set to {current} A (firmware {firmware}).",
     "removeQuestion": "Remove “{name}”?",
     "removeHint": "If OpenAmpere controlled the wallbox, it first sets your own charging current back as soon as the wallbox can be reached.",
-    "checkOther": "Check another wallbox (read only)",
     "modeManual": "Manual",
     "hintManual": "OpenAmpere only shows the wallbox and changes nothing. You control it in its app as usual.",
     "hintPv": "Charges only with solar surplus. If it is no longer enough, charging pauses after a few minutes.",
@@ -150,7 +149,6 @@
     "address": "IP address of the wallbox",
     "searchUnavailable": "The search is not possible on this computer right now. Please copy the IP address from your router.",
     "nameHint": "What the wallbox is called in OpenAmpere, for example “Garage” or “Portable wallbox”.",
-    "modelHint": "So far this is the only wallbox OpenAmpere knows without evcc. Connect other wallboxes through evcc.",
     "keyHowTo": "How to get the local key (step by step)",
     "keyStep1": "On a computer, create a free account on iot.tuya.com.",
     "keyStep2": "Under “Cloud → Development”, create a project (“Create Cloud Project”). As data center choose the one your app account is in, in Germany “Central Europe”.",
@@ -159,7 +157,13 @@
     "keyStep5": "Under “Cloud → API Explorer”, query the device details (“Query Device Details”) with the wallbox's device ID. The answer has the key after “local_key”. Copy these 16 characters into the field “Local key” below.",
     "keyChanges": "If you pair the wallbox again in the app, the local key changes; then fetch it again the same way. Do not pass the key on: it lets anyone control the wallbox in the home network. The pages of the Tuya platform change often, the names may differ slightly.",
     "guide": "Open the detailed guide",
-    "testHint": "“Check connection” reads the wallbox once with these details. Nothing is changed on it."
+    "testHint": "“Check connection” reads the wallbox once with these details. Nothing is changed on it.",
+    "which": "Which wallbox do you have?",
+    "whichControlled": "OpenAmpere shows this wallbox and controls it with your solar power, without evcc.",
+    "whichChecked": "OpenAmpere cannot control this wallbox yet. The check only reads it and creates a report you can share. This helps to support it soon.",
+    "full": "{max} wallboxes are set up already, no more are possible.",
+    "groupControlled": "Show and control",
+    "groupChecked": "Check only (preview)"
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",
@@ -238,7 +242,6 @@
     "firmware": "Firmware",
     "invalidNumbers": "Please enter port and device address as numbers.",
     "maxPower": "Maximum charging power",
-    "model": "Wallbox",
     "modelCode": "Model",
     "modelOther": "another one or don't know",
     "no": "no",

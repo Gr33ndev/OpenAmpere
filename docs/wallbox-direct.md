@@ -41,7 +41,9 @@ post it anywhere.
 ## Setting it up in OpenAmpere
 
 1. Open **Mehr → Verbindung → Wallbox** (More → Connection → Wallbox) and choose **direkt** (directly).
-2. Tap **Wallbox hinzufügen** (Add wallbox).
+2. Tap **Wallbox hinzufügen oder prüfen** (Add or check a wallbox) and under **Welche Wallbox hast du?** (Which
+   wallbox do you have?) choose the dé wallbox (under "Anzeigen und steuern", show and control). The form then shows
+   exactly the fields this wallbox needs and the steps to the local key.
 3. Tap **Tuya-Wallbox im Heimnetz suchen** (Search the home network for a Tuya wallbox). If the wallbox is plugged in
    and on the Wi-Fi, it shows up; **Übernehmen** (Use) fills in its IP address and device ID. Otherwise copy the IP
    address from your router.
@@ -96,7 +98,8 @@ network of its own. Enter the IP address from your router by hand.
 ## Checking other wallboxes (read-only)
 
 For more wallboxes OpenAmpere is preparing the direct way, starting with the FoxESS AC EV Charger (#318). Under
-**direkt → Andere Wallbox prüfen (nur lesen)** (check another wallbox, read-only), OpenAmpere checks the wallbox
+**direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose it under **Welche Wallbox hast du?**
+in "Nur prüfen (Vorschau)" (check only, preview). Then OpenAmpere checks the wallbox
 read-only, in the mode it is in, and shows what it answers. Nothing is changed on the wallbox. The result goes into
 the diagnostics report (**Mehr → Diagnose**); sharing it helps to confirm the registers on real devices. For other
 wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads any registers.
