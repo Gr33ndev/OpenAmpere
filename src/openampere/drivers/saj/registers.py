@@ -24,6 +24,8 @@ DEVICE_TYPES = {
     0x0055: "AS2 3-6K", 0x0056: "AS2 5-10K",
     0x005A: "H2 3-6K S2", 0x005B: "H2 5-10K S3",
     0x005C: "HS2 3-6K S2", 0x005D: "HS2 5-10K S3",
+    # not in SAJ's protocol: the model the manufacturer's app shows for this code, without its power class (#339)
+    0x005E: "3P-X E2",
 }
 DEVICE_TYPE_RANGE = range(0x0050, 0x0070)  # family range; unknown codes inside it are accepted with a warning
 
@@ -111,8 +113,8 @@ TOU_OUTSIDE_ADDRESS = 0x365F  # time-of-use mode outside the slots: 0 standby, 1
 EXPORT_LIMIT_ADDRESS = 0x365A  # per mille of rated power
 EXPORT_MODE_ADDRESS = 0x365C  # 0 off, 1 total power, 2 phase current, 3 phase power
 EXPORT_POWER_MODES = (1, 3)  # the modes in which 0x365A applies
-# device types with control: H2 and HS2 (protocol, stanus74, evcc) and 0x005E, a type sold as "Ampere.StoragePro"
-# whose settings registers matched the manufacturer's app (#334); AS2 and other codes stay read-only
+# device types with control: H2 and HS2 (protocol, stanus74, evcc) and 0x005E, a three-phase type sold as
+# "Ampere.StoragePro" whose settings registers matched the manufacturer's app (#334); AS2 and other codes stay read-only
 CONTROL_TYPES = frozenset({0x005A, 0x005B, 0x005C, 0x005D, 0x005E})
 
 RUNNING_MODES = {0: "Init", 1: "Wait", 2: "Run", 3: "Off-grid", 4: "On-grid storage", 5: "Fault",
