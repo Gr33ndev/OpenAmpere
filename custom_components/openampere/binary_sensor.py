@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Yes/no states: connection to the inverter, power cut (off-grid), grid charging, alarm, devices on."""
+"""Yes/no states: connection to the inverter, power cut (off-grid), grid charging, alarm, devices on, wallboxes."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator
-from .entity import OpenAmpereEntity
+from .entity import OpenAmpereEntity, WallboxEntity, WallboxReadingEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,6 +48,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     entities: list[BinarySensorEntity] = [OpenAmpereBinarySensor(coordinator, d) for d in BINARY_SENSORS]
     entities.append(LiveConnectionSensor(coordinator))
     entities += [DeviceOnSensor(coordinator, d["id"]) for d in coordinator.info["devices"]]
+    for wallbox in coordinator.info.get("wallboxes") or []:  # missing on older OpenAmpere versions
+        entities += [WallboxOnlineSensor(coordinator, wallbox["id"]),
+                     WallboxReadingSensor(coordinator, "wallbox_plugged_in", wallbox["id"]),
+                     WallboxReadingSensor(coordinator, "wallbox_charging", wallbox["id"])]
     async_add_entities(entities)
 
 
@@ -96,3 +100,34 @@ class DeviceOnSensor(OpenAmpereEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return bool(self.device["on"]) if self.device else None
+
+
+class WallboxOnlineSensor(WallboxEntity, BinarySensorEntity):
+    """Whether the wallbox answers in the home network; unknown while it is switched off in OpenAmpere."""
+
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, wallbox_id: str) -> None:
+        super().__init__(coordinator, "wallbox_online", wallbox_id)
+
+    @property
+    def is_on(self) -> bool | None:
+        online = self.wallbox["online"] if self.wallbox else None
+        return None if online is None else bool(online)
+
+
+class WallboxReadingSensor(WallboxReadingEntity, BinarySensorEntity):
+    """A car plugged in, or charging: from the last reading of the wallbox."""
+
+    FIELDS = {"wallbox_plugged_in": ("connected", BinarySensorDeviceClass.PLUG),
+              "wallbox_charging": ("charging", BinarySensorDeviceClass.BATTERY_CHARGING)}
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, key: str, wallbox_id: str) -> None:
+        super().__init__(coordinator, key, wallbox_id)
+        self._field, self._attr_device_class = self.FIELDS[key]
+
+    @property
+    def is_on(self) -> bool | None:
+        value = self.wallbox.get(self._field) if self.wallbox else None
+        return None if value is None else bool(value)

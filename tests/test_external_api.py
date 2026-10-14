@@ -394,3 +394,72 @@ def test_a_made_up_device_id_does_not_count_against_the_limits(runtime, web, mon
     monkeypatch.setattr(runtime.config.control, "enabled", True)
     for _ in range(61):  # more than the limit per hour: still "not found", no entries for the ids
         assert app.put(f"{V1}/devices/does-not-exist/mode", json={"mode": "boost"}).status_code == 400
+
+
+def test_wallboxes_for_other_apps_without_address_or_key_and_their_mode_through_the_checks(runtime, monkeypatch):
+    """Wallboxes OpenAmpere controls itself (#388): values for Home Assistant, the mode through the same checks."""
+    from openampere import api as api_module
+    from openampere.wallbox.de_tuya import Reading
+    from openampere.wallbox.native import Live, NativeWallboxes
+
+    key, sent, created = "ab12cd34ef56gh78", [], []
+
+    class Wallboxes(NativeWallboxes):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+        def refresh(self, now=None):  # no reads in the home network from a test
+            pass
+
+        def device(self, wb):
+            class Device:
+                async def set(self, values, read_back=True):
+                    sent.append(values)
+                    return values
+            return Device()
+
+    monkeypatch.setattr(api_module, "NativeWallboxes", Wallboxes)
+    web = login(TestClient(create_app(runtime), base_url="https://testserver"))
+    assert web.put("/api/wallboxes", json={"wallboxes": [{"name": "Carport", "host": "192.168.0.50",
+                                                          "local_key": key, "mode": "pv"}]}).status_code == 200
+    wallboxes = created[0]
+    wb = wallboxes.wallboxes[0]
+    wallboxes.live[wb.id] = Live(reading=Reading(state="charging", connected=True, charging=True, power_w=4140.0,
+                                                 set_current_a=6, active_phases=3), updated=time.time(), online=True)
+    client = app_client(web, new_token(web, "control"))
+
+    info = client.get(f"{V1}/info").json()
+    assert info["wallboxes"] == [{"id": wb.id, "name": "Carport", "model": "dé Mobile Wallbox 11 kW (Tuya)"}]
+    state = client.get(f"{V1}/state").json()
+    assert state["wallboxes"] == [{"id": wb.id, "name": "Carport", "enabled": True, "mode": "pv", "online": True,
+                                   "state": "charging", "connected": True, "charging": True, "power_w": 4140.0,
+                                   "current_a": 6}]
+    assert state["devices"] == []  # not among the heating rods and switches (an older integration would break)
+    for text in (str(info), str(state)):
+        assert "192.168.0.50" not in text and key not in text
+
+    # the master switch first, then the mode through set_mode: logged with the token's name
+    reader = app_client(web, new_token(web, "read", "Nur lesen"))
+    assert reader.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": "now"}).json()["code"] == "read_only"
+    assert client.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": "now"}).status_code == 403
+    monkeypatch.setattr(runtime.config.control, "enabled", True)
+    monkeypatch.setattr(type(runtime.collector), "stale", property(lambda self: False))
+    runtime.collector.latest = Snapshot(timestamp=time.time(), grid_power=-6000.0, battery_power=0.0, battery_soc=90.0)
+    assert client.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": "turbo"}).status_code == 400
+    assert client.put(f"{V1}/wallboxes/nope/mode", json={"mode": "now"}).status_code == 400
+    response = client.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": "now"})
+    assert response.status_code == 200 and response.json()["wallboxes"][0]["mode"] == "now"
+    assert wallboxes.wallboxes[0].mode == "now"
+    log = runtime.storage.control_log()
+    assert any(e["details"]["to"] == {"action": "mode", "value": "now"}
+               and e["details"]["source"] == "Home Assistant (Zugang für Apps)" for e in log)
+    # test mode (on by default) applies to what the surplus control does with the new mode: nothing sent
+    assert sent == [] and any(e["dry_run"] and e["details"]["to"]["action"] == "current" for e in log)
+
+
+def test_a_made_up_wallbox_id_does_not_count_against_the_limits(runtime, web, monkeypatch):
+    app = app_client(web, new_token(web, scope="control"))
+    monkeypatch.setattr(runtime.config.control, "enabled", True)
+    for _ in range(61):
+        assert app.put(f"{V1}/wallboxes/0a1b2c3d/mode", json={"mode": "now"}).status_code == 400

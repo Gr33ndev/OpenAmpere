@@ -18,3 +18,6 @@ DEFAULT_MIN_INTERVAL_S = 0  # 0 = every live value OpenAmpere sends
 
 WORK_MODES = ["self_use", "feed_in_first", "backup", "peak_shaving"]
 DEVICE_MODES = ["auto", "off", "boost"]
+# wallboxes OpenAmpere controls itself (#388)
+WALLBOX_MODES = ["manual", "off", "pv", "minpv", "now"]
+WALLBOX_STATES = ["idle", "plugged_in", "charging", "waiting", "paused", "finished", "fault", "unknown"]

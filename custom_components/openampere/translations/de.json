@@ -164,6 +164,25 @@
           "test": "Testen",
           "active": "Aktiv"
         }
+      },
+      "wallbox_power": {
+        "name": "Ladeleistung"
+      },
+      "wallbox_state": {
+        "name": "Zustand",
+        "state": {
+          "idle": "Kein Auto",
+          "plugged_in": "Auto eingesteckt",
+          "charging": "Lädt",
+          "waiting": "Wartet",
+          "paused": "Pausiert",
+          "finished": "Laden beendet",
+          "fault": "Störung",
+          "unknown": "Unbekannt"
+        }
+      },
+      "wallbox_current": {
+        "name": "Eingestellter Ladestrom"
       }
     },
     "binary_sensor": {
@@ -184,6 +203,15 @@
       },
       "device_on": {
         "name": "Eingeschaltet"
+      },
+      "wallbox_online": {
+        "name": "Erreichbar"
+      },
+      "wallbox_plugged_in": {
+        "name": "Auto eingesteckt"
+      },
+      "wallbox_charging": {
+        "name": "Lädt"
       }
     },
     "select": {
@@ -202,6 +230,16 @@
           "auto": "Automatik (Überschuss)",
           "off": "Aus",
           "boost": "Boost (volle Leistung)"
+        }
+      },
+      "wallbox_mode": {
+        "name": "Lademodus",
+        "state": {
+          "manual": "Von Hand",
+          "off": "Aus",
+          "pv": "Solar",
+          "minpv": "Min + Solar",
+          "now": "Sofort"
         }
       }
     },

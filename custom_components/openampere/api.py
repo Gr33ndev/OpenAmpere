@@ -148,6 +148,9 @@ class OpenAmpereClient:
     async def set_device_mode(self, device_id: str, mode: str) -> dict:
         return await self._request("PUT", f"/devices/{device_id}/mode", {"mode": mode})
 
+    async def set_wallbox_mode(self, wallbox_id: str, mode: str) -> dict:
+        return await self._request("PUT", f"/wallboxes/{wallbox_id}/mode", {"mode": mode})
+
     async def listen(self, on_message: Callable[[dict], None], on_connection: Callable[[bool], Awaitable[None] | None]
                      | None = None) -> None:
         """Live values by push until cancelled; reconnects with a growing pause."""

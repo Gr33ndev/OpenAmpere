@@ -164,6 +164,25 @@
           "test": "Test mode",
           "active": "Active"
         }
+      },
+      "wallbox_power": {
+        "name": "Charging power"
+      },
+      "wallbox_state": {
+        "name": "State",
+        "state": {
+          "idle": "No car",
+          "plugged_in": "Car plugged in",
+          "charging": "Charging",
+          "waiting": "Waiting",
+          "paused": "Paused",
+          "finished": "Charging finished",
+          "fault": "Fault",
+          "unknown": "Unknown"
+        }
+      },
+      "wallbox_current": {
+        "name": "Charging current set"
       }
     },
     "binary_sensor": {
@@ -184,6 +203,15 @@
       },
       "device_on": {
         "name": "On"
+      },
+      "wallbox_online": {
+        "name": "Reachable"
+      },
+      "wallbox_plugged_in": {
+        "name": "Car plugged in"
+      },
+      "wallbox_charging": {
+        "name": "Charging"
       }
     },
     "select": {
@@ -202,6 +230,16 @@
           "auto": "Automatic (surplus)",
           "off": "Off",
           "boost": "Boost (full power)"
+        }
+      },
+      "wallbox_mode": {
+        "name": "Charging mode",
+        "state": {
+          "manual": "Manual",
+          "off": "Off",
+          "pv": "Solar",
+          "minpv": "Min + Solar",
+          "now": "Fast"
         }
       }
     },
