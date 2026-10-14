@@ -613,6 +613,19 @@ class Storage:
                               "ORDER BY ts DESC LIMIT 1", (action, result_prefix.replace("%", "") + "%"))
         return rows[0]["ts"] if rows else None
 
+    def last_overwrite(self, since: float) -> dict | None:
+        """The newest change another device made to a value OpenAmpere had written (an entry "…_check"), with the
+        names of the settings. None once OpenAmpere wrote that setting again: a new check then decides."""
+        rows = self._fetchall("SELECT * FROM control_log WHERE action LIKE '%\\_check' ESCAPE '\\' AND ts > ? "
+                              "ORDER BY ts DESC LIMIT 1", (since,))
+        if not rows:
+            return None
+        entry = rows[0]
+        if self._fetchall("SELECT 1 FROM control_log WHERE action=? AND dry_run=0 AND ts > ? LIMIT 1",
+                          (entry["action"].removesuffix("_check"), entry["ts"])):
+            return None
+        return {"ts": entry["ts"], "settings": sorted(json.loads(entry["details"]).get("to") or {})}
+
     def control_log(self, limit: int = 50) -> list[dict]:
         """The newest entries first; limit 0 returns all of them."""
         rows = self._fetchall("SELECT * FROM control_log ORDER BY ts DESC LIMIT ?", (limit or -1,))

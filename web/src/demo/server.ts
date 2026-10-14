@@ -213,7 +213,7 @@ function status() {
       energy_step_wh: 10 },
     energy_step_wh: 10,
     control: { enabled: true, dry_run: true },
-    storage: { failing_since: null, error: null, free_bytes: 24e9, low_space: false },
+    storage: { failing_since: null, error: null, free_bytes: 24e9, low_space: false }, overwritten: null,
     firmware: { serial: "DEMO000001", firmware: "1.50 / 1.20", since: dayStart(new Date()) - 41 * 86400,
       history: [{ ts: dayStart(new Date()) - 41 * 86400 + 52_000, old: "1.48 / 1.20", new: "1.50 / 1.20" }] },
   };

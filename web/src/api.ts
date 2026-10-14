@@ -67,6 +67,8 @@ export type Status = {
   storage?: { failing_since: number | null; error: "full" | "read_only" | "other" | null; free_bytes: number | null;
     low_space: boolean };
   firmware?: { serial?: string | null; firmware?: string; since?: number; history: { ts: number; old: string; new: string }[] };
+  /** another device (e.g. the old smartbox) set these settings back after a change by OpenAmpere */
+  overwritten?: { ts: number; settings: string[] } | null;
 };
 
 export type Period = "day" | "week" | "month" | "year";

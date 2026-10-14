@@ -181,7 +181,7 @@ async def test_a_written_limit_is_logged_also_when_the_read_back_fails(tmp_path,
 
 async def test_an_unreadable_limit_is_no_change_by_another_device(tmp_path, monkeypatch):
     from openampere import control as control_module
-    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.1)
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.1,))
     sim, server, port = await start()
     async with server:
         runtime = await connected_runtime(tmp_path, port)

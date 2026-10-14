@@ -10,6 +10,7 @@ import { RetroDefs } from "./EnergyFlow";
 import { NavDevices, NavHome, NavMore, NavReport } from "./icons";
 import { DevicesTab } from "./DevicesPage";
 import { More } from "./More";
+import { OverwrittenDialog } from "./Overwritten";
 import { Report } from "./Report";
 import { applyTheme, storedTheme } from "./SettingsPages";
 import { DatabaseNotice } from "./Restore";
@@ -130,6 +131,7 @@ function App() {
           </button>
         ))}
       </nav>
+      <OverwrittenDialog status={status} />
       {login.dialog}
       <ToastHost />
       <RetroDefs />
