@@ -17,7 +17,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator, firmware
-from .entity import OpenAmpereEntity
+from .const import WALLBOX_STATES
+from .entity import OpenAmpereEntity, WallboxReadingEntity
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,6 +106,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         entities.append(DevicePowerSensor(coordinator, device["id"]))
         if device["kind"] == "heating_rod":
             entities.append(DeviceTemperatureSensor(coordinator, device["id"]))
+    for wallbox in coordinator.info.get("wallboxes") or []:  # missing on older OpenAmpere versions
+        entities += [WallboxPowerSensor(coordinator, wallbox["id"]), WallboxStateSensor(coordinator, wallbox["id"]),
+                     WallboxCurrentSensor(coordinator, wallbox["id"])]
     entities.append(FirmwareSensor(coordinator))
     async_add_entities(entities)
 
@@ -189,3 +193,46 @@ class DeviceTemperatureSensor(OpenAmpereEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         return self.device["temperature_c"] if self.device else None
+
+
+class WallboxPowerSensor(WallboxReadingEntity, SensorEntity):
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, wallbox_id: str) -> None:
+        super().__init__(coordinator, "wallbox_power", wallbox_id)
+
+    @property
+    def native_value(self) -> float | None:
+        return self.wallbox["power_w"] if self.wallbox else None
+
+
+class WallboxStateSensor(WallboxReadingEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = WALLBOX_STATES
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, wallbox_id: str) -> None:
+        super().__init__(coordinator, "wallbox_state", wallbox_id)
+
+    @property
+    def native_value(self) -> str | None:
+        state = self.wallbox["state"] if self.wallbox else None
+        return state if state in WALLBOX_STATES else "unknown" if state else None
+
+
+class WallboxCurrentSensor(WallboxReadingEntity, SensorEntity):
+    """The charging current set in the wallbox (what OpenAmpere or the owner set), not the one measured."""
+
+    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
+    _attr_device_class = SensorDeviceClass.CURRENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, wallbox_id: str) -> None:
+        super().__init__(coordinator, "wallbox_current", wallbox_id)
+
+    @property
+    def native_value(self) -> int | None:
+        return self.wallbox["current_a"] if self.wallbox else None

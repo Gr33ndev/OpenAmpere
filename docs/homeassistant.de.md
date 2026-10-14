@@ -67,6 +67,7 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 | Ladestand, Speicher-Gesundheit, -Spannung, -Strom, -Temperatur, Wechselrichter-Temperatur | |
 | Wechselrichter verbunden, Inselbetrieb (Stromausfall), Lädt aus dem Netz, Alarm | Ja/Nein |
 | Je Heizstab/Schalter: Leistung, Eingeschaltet, Temperatur | |
+| Je Wallbox, die OpenAmpere selbst steuert: Ladeleistung, Zustand, Auto eingesteckt, Lädt, Erreichbar, eingestellter Ladestrom | Eine eigene Geräte-Karte je Wallbox; eine neu eingerichtete erscheint von selbst. Ist die Wallbox nicht erreichbar (z. B. ausgesteckt), sind ihre Werte „nicht verfügbar“, nur „Erreichbar“ steht dann auf „Aus“. |
 
 **Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv), Firmware des
 Wechselrichters (eine Diagnose-Entität; sie ändert sich nach einem Update des Wechselrichters und kann so eine
@@ -92,6 +93,7 @@ das nicht, wähle **„Nur lesen“**.
 | Notstrom-Reserve, Ladegrenze, Untergrenze im Notstrombetrieb | in %; bei SAJ zusätzlich die Reserve im Modus Notstromreserve |
 | Laden aus dem Netz, Ladeziel aus dem Netz | einmal in OpenAmpere einrichten (rechtliche Hinweise) |
 | Betriebsart je Heizstab/Schalter | Automatik (Überschuss), Aus, Boost |
+| Lademodus je Wallbox, die OpenAmpere selbst steuert | Von Hand, Aus, Solar, Min + Solar, Sofort. Wie in der App: Im Testmodus schreibt OpenAmpere nichts an die Wallbox, sondern trägt nur ins Protokoll ein, was es tun würde. |
 
 Jede Änderung prüft OpenAmpere wie in der App: Grenzwerte, Testmodus, Rücklesen. Im Protokoll steht sie mit
 dem Namen des Zugangs. **Höchstens 6 Änderungen pro Stunde je Speicher-Einstellung**, damit eine Automation in einer
@@ -103,7 +105,7 @@ Schleife den Speicher des Wechselrichters nicht abnutzt. Darüber lehnt OpenAmpe
 - direkte Lade-/Entladeleistung
 - Einstellungen, Tarife, Passwort, Zugänge, Datensicherung, Updates und die Geräte-Konfiguration
 
-Die Wallbox steuerst du in Home Assistant über die
+Eine Wallbox, die evcc steuert, bedienst du in Home Assistant über die
 [evcc-Integration](https://www.home-assistant.io/integrations/evcc/).
 
 ## Sicherheit

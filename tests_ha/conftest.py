@@ -13,6 +13,7 @@ from custom_components.openampere.const import CONF_FINGERPRINT, CONF_TOKEN, DOM
 
 FINGERPRINT = "ab" * 32
 INSTALLATION = "1f0e7c3a-0000-4000-8000-000000000001"
+WALLBOX = "0a1b2c3d"
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +29,7 @@ def info(scope: str = "control") -> dict:
                    "supports_control": True},
         "pv_inputs": [{"index": 0, "name": "Süddach"}, {"index": 1, "name": "Westdach"}],
         "devices": [{"id": "rod1", "name": "Heizstab", "kind": "heating_rod"}],
+        "wallboxes": [{"id": WALLBOX, "name": "Carport", "model": "dé Mobile Wallbox 11 kW (Tuya)"}],
         "poll_interval": 10, "web_port": 8080,
     }
 
@@ -46,6 +48,8 @@ def state(control_enabled: bool = True) -> dict:
                    "control": {"enabled": control_enabled, "dry_run": False}, "firmware": "1.40"},
         "devices": [{"id": "rod1", "name": "Heizstab", "kind": "heating_rod", "enabled": True, "power_w": 1500.0,
                      "on": True, "temperature_c": 52.5, "target_c": 60.0, "status": None, "error": None, "mode": "auto"}],
+        "wallboxes": [{"id": WALLBOX, "name": "Carport", "enabled": True, "mode": "pv", "online": True,
+                       "state": "charging", "connected": True, "charging": True, "power_w": 4140.0, "current_a": 6}],
         "battery_settings": {"work_mode": "self_use", "min_soc": 0, "max_soc": 100, "min_soc_on_grid": 24},
         "grid_charging": {"enabled": False, "target_soc": 80, "active": False},
         "price_ct": 31.5,
@@ -68,7 +72,8 @@ def client():
             patch(f"{base}.listen", AsyncMock(return_value=None)) as listen_mock, \
             patch(f"{base}.set_battery", AsyncMock(return_value={})) as battery_mock, \
             patch(f"{base}.set_grid_charging", AsyncMock(return_value={})) as charging_mock, \
-            patch(f"{base}.set_device_mode", AsyncMock(return_value={})) as device_mock:
+            patch(f"{base}.set_device_mode", AsyncMock(return_value={})) as device_mock, \
+            patch(f"{base}.set_wallbox_mode", AsyncMock(return_value={})) as wallbox_mock:
         yield type("Fake", (), {"info": info_mock, "state": state_mock, "listen": listen_mock,
                                 "set_battery": battery_mock, "set_grid_charging": charging_mock,
-                                "set_device_mode": device_mock})
+                                "set_device_mode": device_mock, "set_wallbox_mode": wallbox_mock})

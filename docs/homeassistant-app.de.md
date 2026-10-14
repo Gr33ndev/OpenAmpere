@@ -52,8 +52,8 @@ das keine Rolle.
 ## Home-Assistant-Integration
 
 Entitäten in Home Assistant (Leistung, Energie fürs Energie-Dashboard, Ladestand und, wenn du es erlaubst, die
-Steuerung von Speicher, Laden aus dem Netz und Heizstab) kommen von der Integration OpenAmpere. **Die App bringt sie mit
-und installiert sie selbst, HACS brauchst du nicht.** Updates der App aktualisieren auch die Integration.
+Steuerung von Speicher, Laden aus dem Netz, Heizstab und einer Wallbox, die OpenAmpere selbst steuert) kommen von der
+Integration OpenAmpere. **Die App bringt sie mit und installiert sie selbst, HACS brauchst du nicht.** Updates der App aktualisieren auch die Integration.
 
 1. Nach dem ersten Start der App zeigt Home Assistant einen Hinweis: **Home Assistant einmal neu starten**
    (Einstellungen → System → Neu starten).

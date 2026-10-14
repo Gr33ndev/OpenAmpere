@@ -571,7 +571,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         return tokens_view()
 
     external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
-                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps)
+                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps, wallboxes=wallboxes)
 
     # ---- live ------------------------------------------------------------
 
