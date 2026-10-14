@@ -45,6 +45,12 @@ test("a portable wallbox is added: search, check the connection, save", async ({
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await expect(page.getByText("Mobile Wallbox").first()).toBeVisible();  // the one already set up
   await page.getByRole("button", { name: "Wallbox hinzufügen" }).click();
+  // a new wallbox: the steps to the local key are open, with a link to the detailed guide
+  const howTo = page.locator("details", { hasText: "So bekommst du den Local Key" });
+  await expect(howTo).toHaveAttribute("open", "");
+  await expect(howTo).toContainText("local_key");
+  await expect(howTo.getByRole("link", { name: "Ausführliche Anleitung öffnen" }))
+    .toHaveAttribute("href", /docs\/wallbox-direct\.de\.md$/);
   await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
   await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.61");

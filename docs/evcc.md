@@ -2,7 +2,7 @@ Deutsch: [evcc.de.md](evcc.de.md)
 
 # Wallbox with evcc
 
-OpenAmpere does not control wallboxes itself. That is the job of [evcc](https://evcc.io), an independent open-source
+This page is about wallboxes controlled by [evcc](https://evcc.io), an independent open-source
 project for solar charging (MIT license, [GitHub](https://github.com/evcc-io/evcc)). evcc supports a great many
 wallboxes and vehicles, charging plans, dynamic tariffs and charging sessions with billing. We do not rebuild that,
 we use it. Thanks to the evcc community!
@@ -26,21 +26,6 @@ support evcc, smart plugs and plugins work without a token.
   token is missing.
 
 We recommend supporting evcc. OpenAmpere uses only the open interface of evcc and has no influence on its terms.
-
-## Without evcc (preview)
-
-For a few wallboxes OpenAmpere is preparing a direct way, starting with the FoxESS AC EV Charger (#318). Under
-**Mehr → Verbindung → Wallbox**, choose **direkt (Vorschau)** (directly, preview): OpenAmpere checks the wallbox
-read-only, in the mode it is in, and shows what it answers. Nothing is changed on the wallbox, and OpenAmpere cannot
-control it this way yet. The result goes into the diagnostics report (**Mehr → Diagnose**); sharing it helps to
-confirm the registers on real devices. For other wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads
-any registers.
-
-Optionally the check can also listen over **OCPP 1.6J** (#328): start the listener there and enter the address shown
-as OCPP server in the manufacturer's app. OpenAmpere answers the wallbox with "Pending" and only asks for its settings;
-it never starts or stops charging. While the wallbox is set to OCPP, neither the manufacturer's app nor evcc controls
-it, and without a charging profile it charges without a limit: switch it back afterwards. In the Home Assistant app
-the wallbox needs the direct address (direct access by IP must be on).
 
 ## How the two work together
 

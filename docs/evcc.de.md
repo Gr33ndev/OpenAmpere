@@ -2,7 +2,7 @@
 
 English: [evcc.md](evcc.md)
 
-OpenAmpere steuert Wallboxen nicht selbst. Das übernimmt [evcc](https://evcc.io), ein eigenständiges
+Diese Seite beschreibt Wallboxen, die [evcc](https://evcc.io) steuert, ein eigenständiges
 Open-Source-Projekt für Solarladen (MIT-Lizenz, [GitHub](https://github.com/evcc-io/evcc)). evcc unterstützt sehr
 viele Wallboxen und Fahrzeuge, Ladepläne, dynamische Tarife und Ladevorgänge mit Abrechnung. Wir bauen das nicht
 nach, sondern nutzen es. Danke an die evcc-Community!
@@ -28,21 +28,6 @@ die evcc unterstützen, Schaltsteckdosen und Plugins funktionieren ohne Token.
 
 Wir empfehlen, evcc zu unterstützen. OpenAmpere nutzt nur die offene Schnittstelle von evcc und hat keinen Einfluss
 auf dessen Bedingungen.
-
-## Ohne evcc (Vorschau)
-
-Für einige Wallboxen bereitet OpenAmpere einen direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Unter
-**Mehr → Verbindung → Wallbox** wählst du **direkt (Vorschau)**: OpenAmpere prüft die Wallbox nur lesend, in der
-Steuerungsart, in der sie gerade steht, und zeigt, was sie antwortet. An der Wallbox wird nichts geändert, und steuern
-kann OpenAmpere sie so noch nicht. Das Ergebnis kommt in den Diagnosebericht (**Mehr → Diagnose**); wenn du ihn teilst,
-hilft das, die Register an echten Geräten zu bestätigen. Für andere Wallboxen liest **Mehr → Diagnose → Gerät
-auslesen** beliebige Register.
-
-Wahlweise kann die Prüfung auch per **OCPP 1.6J** zuhören (#328): Starte dort den Zuhörer und trage die angezeigte
-Adresse in der App des Herstellers als OCPP-Server ein. OpenAmpere antwortet der Wallbox mit „Pending“ und fragt nur
-ihre Einstellungen ab; es startet und stoppt kein Laden. Solange die Wallbox auf OCPP steht, steuern sie weder die App
-des Herstellers noch evcc, und ohne Ladeprofil lädt sie ohne Begrenzung: Stell sie danach wieder zurück. In der
-Home-Assistant-App braucht die Wallbox die direkte Adresse (der direkte Zugriff per IP muss an sein).
 
 ## Wie die beiden zusammenarbeiten
 

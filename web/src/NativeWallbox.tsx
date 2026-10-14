@@ -4,6 +4,7 @@ import { useState } from "react";
 import { postJson, putJson, useResource } from "./api";
 import { kw, num, timeZone } from "./format";
 import { LOCALE, t } from "./i18n";
+import { WALLBOX_DIRECT_GUIDE } from "./links";
 import { Button, Dialog, Field, LoadState, Notice, Segmented, Switch, toast } from "./ui";
 
 /** Wallboxes OpenAmpere reads and controls itself, without evcc: so far the portable dé wallbox over Tuya. A
@@ -206,15 +207,28 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
 
   return (
     <div className="card form">
-      <Field label={t("devices.nativeWallbox.name")}>
+      <Field label={t("devices.nativeWallbox.name")} hint={t("devices.nativeWallbox.nameHint")}>
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
-      <Field label={t("devices.wallboxDirect.model")}>
+      <Field label={t("devices.wallboxDirect.model")} hint={t("devices.nativeWallbox.modelHint")}>
         <select className="input" value={d.model} onChange={(e) => set({ model: e.target.value })}>
           {view.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
       </Field>
       <Notice kind="info">{t("devices.nativeWallbox.keyIntro")}</Notice>
+      {/* open for a new wallbox: without the key nothing works */}
+      <details className="advanced" open={!stored?.local_key_set}>
+        <summary>{t("devices.nativeWallbox.keyHowTo")}</summary>
+        <ol className="steps-list">
+          <li>{t("devices.nativeWallbox.keyStep1")}</li>
+          <li>{t("devices.nativeWallbox.keyStep2")}</li>
+          <li>{t("devices.nativeWallbox.keyStep3")}</li>
+          <li>{t("devices.nativeWallbox.keyStep4")}</li>
+          <li>{t("devices.nativeWallbox.keyStep5")}</li>
+        </ol>
+        <p className="hint">{t("devices.nativeWallbox.keyChanges")}</p>
+        <p className="hint"><a href={WALLBOX_DIRECT_GUIDE()} target="_blank" rel="noreferrer">{t("devices.nativeWallbox.guide")}</a></p>
+      </details>
       {view.search ? (
         <>
           <Button variant="secondary" busy={searching} onClick={() => void search()}>{t("devices.nativeWallbox.search")}</Button>
@@ -248,6 +262,7 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
         <Notice kind="ok">{t("devices.nativeWallbox.testOk", { phases: tested.installed_phases,
           current: tested.set_current_a ?? "–", firmware: tested.firmware ?? "–" })}</Notice>
       )}
+      <p className="hint">{t("devices.nativeWallbox.testHint")}</p>
       <div className="button-row">
         <Button variant="secondary" busy={testing} disabled={!d.host.trim() || keyMissing} onClick={() => void test()}>
           {t("devices.nativeWallbox.test")}</Button>
