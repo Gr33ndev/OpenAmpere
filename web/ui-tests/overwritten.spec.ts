@@ -1,8 +1,22 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { demoRequest } from "../src/demo/server";
+import type { Page, Request } from "@playwright/test";
 import type { Status } from "../src/api";
 import { expect, layoutProblems, open, test } from "./fixtures";
+
+/** page.reload() once no request is running: Safari's engine reports a request the reload cancels as a console
+ *  error ("Fetch API cannot load … due to access control checks"), which failed this test in CI. */
+function quietReload(page: Page): () => Promise<void> {
+  const running = new Set<Request>();
+  page.on("request", (request) => running.add(request));
+  page.on("requestfinished", (request) => running.delete(request));
+  page.on("requestfailed", (request) => running.delete(request));
+  return async () => {
+    await expect.poll(() => running.size, { message: "requests still running" }).toBe(0);
+    await page.reload();
+  };
+}
 
 async function statusWith(overwritten: Status["overwritten"]) {
   return { ...(await demoRequest<Status>("GET", "/api/status")), overwritten };
@@ -10,6 +24,7 @@ async function statusWith(overwritten: Status["overwritten"]) {
 
 // the old smartbox sets changes back: the app explains it on every page instead of only on the battery page
 test("a setting another device set back is explained once", async ({ page, api }) => {
+  const reload = quietReload(page);
   const ts = Date.now() / 1000 - 120;
   api.override("/api/status", await statusWith({ ts, settings: ["min_soc_on_grid", "work_mode"] }));
   await open(page, "report");
@@ -24,23 +39,24 @@ test("a setting another device set back is explained once", async ({ page, api }
 
   await dialog.getByRole("button", { name: "Verstanden" }).click();
   await expect(dialog).toBeHidden();
-  await page.reload();
+  await reload();
   await expect(page.locator("nav.bottom")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   // a new case is shown again
   api.override("/api/status", await statusWith({ ts: ts + 60, settings: ["export_limit_w"] }));
-  await page.reload();
+  await reload();
   await expect(page.getByRole("dialog")).toContainText("Einspeisebegrenzung");
 });
 
 test("closing without confirming shows it again next time", async ({ page, api }) => {
+  const reload = quietReload(page);
   api.override("/api/status", await statusWith({ ts: Date.now() / 1000 - 60, settings: ["max_soc"] }));
   await open(page, "");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Schließen" }).click();
   await expect(dialog).toBeHidden();
-  await page.reload();
+  await reload();
   await expect(page.getByRole("dialog")).toContainText("Ladegrenze");
 });
 
