@@ -48,4 +48,4 @@ def test_status_says_which_settings_without_their_values(tmp_path):
     runtime.storage.log_control("battery_settings_check", OVERWRITTEN, False, "von einem anderen Gerät überschrieben")
     overwritten = anonymous.get("/api/status").json()["overwritten"]
     assert overwritten["settings"] == ["min_soc_on_grid", "work_mode"]
-    assert "15" not in str(overwritten) and "feed_in" not in str(overwritten)
+    assert set(overwritten) == {"ts", "settings"}  # no "from"/"to" with the values
