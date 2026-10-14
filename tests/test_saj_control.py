@@ -174,6 +174,34 @@ async def test_never_takes_over_a_slot_in_use_and_never_releases_someone_elses()
             await driver.close()
 
 
+async def test_takes_over_again_and_keeps_the_owners_values():
+    """#382: another device (e.g. the old IQ box) switches the mode or the slot off while OpenAmpere charges."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    sim.regs[saj.APP_MODE_ADDRESS] = 2  # the owner's backup mode
+    server, driver = await driver_for(sim)
+    async with server:
+        try:
+            await driver.set_remote_power(-3000, 180)
+            sim.regs[saj.APP_MODE_ADDRESS] = 0  # someone sets self-use: the slot no longer charges
+            sim.regs[saj.CHARGE_ENABLE_ADDRESS] = 0  # and switches the slot off
+            sim.on_write(saj.APP_MODE_ADDRESS)
+            await driver.read()
+            assert not sim.energy.remote_enabled
+            restore = await driver.set_remote_power(-3000, 180)
+            assert sim.regs[saj.APP_MODE_ADDRESS] == saj.APP_MODE_TIME and sim.regs[saj.CHARGE_ENABLE_ADDRESS] == BIT
+            assert sim.energy.remote_enabled
+            assert restore["app_mode"] == 2  # still the owner's, not what was found in between
+            sim.regs[SLOT + 1] = hhmm(11, 0)  # the slot changed while switched off: written again
+            sim.regs[saj.CHARGE_ENABLE_ADDRESS] = 0
+            await driver.set_remote_power(-3000, 180)
+            assert slot_words(sim) == [hhmm(10, 0), hhmm(10, 10), 0x01 << 8 | 30]
+            assert await driver.release_remote_power(180)
+            assert sim.regs[saj.APP_MODE_ADDRESS] == 2 and sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0
+        finally:
+            await driver.close()
+
+
 async def test_released_after_a_restart_with_what_was_kept():
     sim = SajSimulatedInverter(max_connections=3)
     sim.clock = lambda: MONDAY_10
