@@ -69,7 +69,8 @@ one connection, and every command from Home Assistant goes through the same chec
 | Inverter connected, off-grid (power cut), charging from the grid, alarm | Yes/no |
 | Per immersion heater/switch: power, on, temperature | |
 
-**Every minute:** current electricity price, battery settings, control (view only / test mode / active).
+**Every minute:** current electricity price, battery settings, control (view only / test mode / active), firmware of
+the inverter (a diagnostic entity; it changes after an update of the inverter, so it can trigger an automation).
 
 **Connection to the inverter lost:** the values read from the inverter become unavailable until OpenAmpere has current readings again, so automations do not act on old values. Price and control stay available.
 

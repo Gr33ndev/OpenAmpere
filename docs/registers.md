@@ -125,7 +125,7 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   |---|---|---|
   | Temperatures | 0x4010 (heat sink), 0x4011 (ambient) | ×0.1 °C |
   | Battery U / I | 0x4069 / 0x406A | ×0.1 V / ×0.01 A |
-  | Battery temperature | 0x406E | ×0.1 °C |
+  | Battery temperature | 0x406E, otherwise 0xA010 (first battery module) | ×0.1 °C; on a real device it matched another integration (#372) |
   | State of charge | 0x406F | ×0.01 % |
   | PV1–4 | 0x4071–0x407C | U ×0.1 V, I ×0.01 A, P in W |
   | House | 0x40A0 | W |

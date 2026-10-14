@@ -133,7 +133,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         return {"connected": collector.connected, "stale": collector.stale_after(STALE_AFTER_S),
                 "last_update": latest.timestamp if latest else None,
                 "off_grid": collector.outages.current is not None,  # confirmed, not the flag of one reading (#89)
-                "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run}}
+                "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run},
+                # here and not only in /info: it changes with an update of the inverter, read at each new connection
+                "firmware": collector.device.firmware if collector.device else None}
 
     def own_devices() -> list[dict]:
         keys = ("id", "name", "kind", "enabled", "power_w", "on", "temperature_c", "target_c", "status", "error")

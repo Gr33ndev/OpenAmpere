@@ -68,7 +68,9 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 | Wechselrichter verbunden, Inselbetrieb (Stromausfall), Lädt aus dem Netz, Alarm | Ja/Nein |
 | Je Heizstab/Schalter: Leistung, Eingeschaltet, Temperatur | |
 
-**Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv).
+**Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv), Firmware des
+Wechselrichters (eine Diagnose-Entität; sie ändert sich nach einem Update des Wechselrichters und kann so eine
+Automation auslösen).
 
 **Verbindung zum Wechselrichter weg:** Die Werte vom Wechselrichter sind „nicht verfügbar“, bis OpenAmpere wieder aktuelle Messwerte hat. So schalten Automationen nicht nach alten Werten. Strompreis und Steuerung bleiben verfügbar.
 
