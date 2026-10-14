@@ -106,7 +106,8 @@ Schleife den Speicher des Wechselrichters nicht abnutzt. Darüber lehnt OpenAmpe
 - Einstellungen, Tarife, Passwort, Zugänge, Datensicherung, Updates und die Geräte-Konfiguration
 
 Eine Wallbox, die evcc steuert, bedienst du in Home Assistant über die
-[evcc-Integration](https://www.home-assistant.io/integrations/evcc/).
+[evcc-Integration](https://www.home-assistant.io/integrations/evcc/). Eine Wallbox, die OpenAmpere ohne evcc selbst
+steuert, bekommt die Entitäten oben; wie du sie einrichtest, steht unter [Wallbox ohne evcc](wallbox-direct.de.md).
 
 ## Sicherheit
 

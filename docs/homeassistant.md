@@ -68,6 +68,7 @@ one connection, and every command from Home Assistant goes through the same chec
 | State of charge, battery health, voltage, current and temperature, inverter temperature | |
 | Inverter connected, off-grid (power cut), charging from the grid, alarm | Yes/no |
 | Per immersion heater/switch: power, on, temperature | |
+| Per wallbox OpenAmpere controls itself: charging power, state, car plugged in, charging, reachable, set charging current | One device card per wallbox; a newly set up one appears by itself. While the wallbox is not reachable (e.g. unplugged), its values are "unavailable" and only "reachable" shows "off". |
 
 **Every minute:** current electricity price, battery settings, control (view only / test mode / active), firmware of
 the inverter (a diagnostic entity; it changes after an update of the inverter, so it can trigger an automation).
@@ -94,6 +95,7 @@ lesen** (Read only).
 | Backup reserve, charge limit, minimum level during a power cut | in %; SAJ also the reserve of the backup mode |
 | Grid charging, grid charging target | set up once in OpenAmpere (legal notes) |
 | Mode per immersion heater/switch | Automatic (surplus), off, boost |
+| Charging mode per wallbox OpenAmpere controls itself | Manual, off, solar, min + solar, fast. As in the app: in test mode OpenAmpere writes nothing to the wallbox and only logs what it would do. |
 
 OpenAmpere checks every change just like in the app: limits, test mode, read-back. The log shows it with the name
 of the access token. **At most 6 changes per hour per battery setting**, so that an automation stuck in a loop does
@@ -105,8 +107,9 @@ not wear out the inverter's memory. Beyond that, OpenAmpere refuses with a messa
 - direct charge/discharge power
 - settings, tariffs, password, access tokens, backups, updates and the device configuration
 
-You control the wallbox in Home Assistant through the
-[evcc integration](https://www.home-assistant.io/integrations/evcc/).
+A wallbox controlled by evcc is operated in Home Assistant through the
+[evcc integration](https://www.home-assistant.io/integrations/evcc/). A wallbox OpenAmpere controls itself, without
+evcc, gets the entities above; how to set it up is described in [Wallbox without evcc](wallbox-direct.md).
 
 ## Security
 
