@@ -27,6 +27,7 @@ import asyncio
 import contextlib
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import socket
@@ -262,28 +263,46 @@ def decode_announcement(data: bytes) -> dict | None:
     return found if isinstance(found, dict) and found.get("gwId") else None
 
 
-async def search(seconds: float = 6.0) -> list[dict]:
+def announced(data: bytes, source: str) -> dict | None:
+    """A device found by its announcement, only if the announcement comes from the address it names and that address
+    is in the home network: anybody who can send a datagram could otherwise move a stored wallbox to another
+    address."""
+    info = decode_announcement(data)
+    if not info or str(info.get("version")) != VERSION.decode() or str(info.get("ip") or source) != source:
+        return None
+    try:
+        if ipaddress.ip_address(source).is_global:
+            return None
+    except ValueError:
+        return None
+    return {"device_id": str(info["gwId"]), "host": source, "product_key": str(info.get("productKey") or "") or None}
+
+
+async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS) -> list[dict]:
     """Tuya devices with protocol 3.5 that announce themselves in the home network within `seconds`.
 
     They broadcast every few seconds on UDP 6667 or 7000; only devices with the same version are kept. A port that is
-    taken (another Tuya tool on this computer) is skipped.
+    taken (another Tuya tool on this computer) is skipped. Only with a network of the host: in the Home Assistant app
+    (its own network) the broadcasts do not arrive, the callers skip the search there.
     """
     found: dict[str, dict] = {}
     loop = asyncio.get_running_loop()
 
     class Listener(asyncio.DatagramProtocol):
         def datagram_received(self, data, addr):
-            info = decode_announcement(data)
-            if info and str(info.get("version")) == VERSION.decode():
-                found[str(info["gwId"])] = {"device_id": str(info["gwId"]), "host": str(info.get("ip") or addr[0]),
-                                            "product_key": str(info.get("productKey") or "") or None}
+            device = announced(data, addr[0])
+            if device:
+                found[device["device_id"]] = device
 
     transports = []
-    for port in DISCOVERY_PORTS:
+    for port in ports:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            sock.bind(("", port))
+            # all interfaces on purpose: a broadcast to 255.255.255.255 reaches only a socket bound to all of them,
+            # not one bound to the address of an interface. Open for the few seconds of a search, receiving only;
+            # announced() keeps only devices in the home network that send from their own address.
+            sock.bind(("", port))  # lgtm[py/bind-socket-all-network-interfaces]
         except OSError:
             sock.close()
             continue

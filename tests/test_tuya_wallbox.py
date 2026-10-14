@@ -340,3 +340,99 @@ async def test_the_report_has_no_address_device_id_key_or_counter(tmp_path, monk
     assert "Wallbox 1 (direkt)" in text and "de_tuya" in text
     for private in ("192.168.178.77", "bfsimulated12345678", KEY, "lifetime_kwh"):
         assert private not in text
+
+
+# ---- the search, and both ways to run: standalone (host network) and the Home Assistant app ----------------------
+
+
+def announcement(ip: str, version: str = "3.5") -> bytes:
+    info = {"ip": ip, "gwId": "simulated0000000000", "version": version, "productKey": "abc"}
+    return tuya.pack(tuya.DISCOVERY_KEY, 0, 0x13, b"\x00\x00\x00\x00" + json.dumps(info).encode())
+
+
+def test_an_announcement_counts_only_from_the_address_it_names():
+    assert tuya.announced(announcement("192.168.1.50"), "192.168.1.50")["host"] == "192.168.1.50"
+    assert tuya.announced(announcement("192.168.1.99"), "192.168.1.50") is None  # sent by another device
+    assert tuya.announced(announcement("8.8.8.8"), "8.8.8.8") is None  # not in the home network
+    assert tuya.announced(announcement("192.168.1.50", "3.3"), "192.168.1.50") is None
+    assert tuya.announced(b"garbage", "192.168.1.50") is None
+
+
+async def test_the_search_receives_announcements_and_drops_forged_ones():
+    port = closed_port()
+    search = asyncio.create_task(tuya.search(0.5, ports=(port,)))
+    await asyncio.sleep(0.1)
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
+        sender.sendto(announcement("127.0.0.1"), ("127.0.0.1", port))
+        sender.sendto(announcement("192.168.1.99"), ("127.0.0.1", port))  # forged: names another address
+    found = await search
+    assert [d["host"] for d in found] == ["127.0.0.1"]
+
+
+@pytest.mark.parametrize("ha_app_mode", [False, True], ids=["standalone", "home-assistant-app"])
+def test_setup_works_in_both_ways_to_run(tmp_path, monkeypatch, ha_app_mode):
+    """Reading over TCP works in both; the search needs the host network and is off in the Home Assistant app."""
+    from fastapi.testclient import TestClient
+
+    from conftest import login
+    from openampere import api as api_module
+    from openampere import ha_app
+    from openampere.api import create_app
+
+    if ha_app_mode:
+        from test_ha_app import USERS
+        monkeypatch.setenv("SUPERVISOR_TOKEN", "test-token")
+
+        async def users():
+            return USERS
+        monkeypatch.setattr(ha_app, "home_assistant_users", users)
+    else:
+        monkeypatch.delenv("SUPERVISOR_TOKEN", raising=False)
+    searched = []
+
+    async def fake_search(*_args, **_kwargs):
+        searched.append(True)
+        return [{"device_id": "simulated0000000000", "host": "192.168.1.50", "product_key": None}]
+    monkeypatch.setattr(api_module, "tuya_search", fake_search)
+
+    async def run():
+        async with simulated(plugged=True) as (_charger, port):
+            monkeypatch.setattr(api_module, "TuyaDevice", lambda host, key: tuya.TuyaDevice(host, key, port=port))
+            runtime = Runtime({}, Storage(tmp_path / "t.db"))
+            if ha_app_mode:  # through the sidebar of Home Assistant, as an admin
+                client = TestClient(create_app(runtime), client=(ha_app.INGRESS_PROXY, 50000),
+                                    headers={"x-openampere": "1", ha_app.USER_HEADER: "admin"})
+            else:
+                client = login(TestClient(create_app(runtime), client=("192.0.2.10", 50000)))
+            with client:
+                assert client.get("/api/wallboxes").json()["search"] is not ha_app_mode
+                found = client.post("/api/wallboxes/search").json()
+                assert found["available"] is not ha_app_mode and bool(searched) is not ha_app_mode
+                answer = await asyncio.to_thread(client.post, "/api/wallboxes/test",
+                                                 json={"host": "127.0.0.1", "local_key": KEY})
+                assert answer.status_code == 200 and answer.json()["reading"]["connected"]
+                saved = client.put("/api/wallboxes", json={"wallboxes": [
+                    {"name": "Mobil", "host": "127.0.0.1", "local_key": KEY}]})
+                assert saved.status_code == 200 and saved.json()["wallboxes"][0]["local_key_set"]
+                assert ha_app.active() is ha_app_mode
+    asyncio.run(run())
+
+
+async def test_the_home_assistant_app_never_searches_for_a_wallbox_that_went_away(tmp_path, monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "test-token")
+    _runtime, wallboxes = setup(tmp_path, monkeypatch, closed_port())
+    wallboxes.save([{**vars(w), "device_id": "simulated0000000000"} for w in wallboxes.wallboxes])
+    calls = []
+
+    async def fake_search(*_args, **_kwargs):
+        calls.append(True)
+        return []
+    monkeypatch.setattr(tuya, "search", fake_search)
+    wb = wallboxes.wallboxes[0]
+    live = native_module.Live(online=False, offline_since=0.0)
+    await wallboxes.read(wb, live)
+    assert live.online is False and calls == []
+    monkeypatch.delenv("SUPERVISOR_TOKEN")
+    await wallboxes.read(wb, live)  # standalone: searched after two minutes away
+    assert calls == [True]
