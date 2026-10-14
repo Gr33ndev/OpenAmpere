@@ -157,6 +157,8 @@
   },
   "control": {
     "backupPowerReserveMust": "The backup power reserve must not be below the lower limit in backup power mode",
+    "backupReserveAboveChargeLimit": "The reserve in backup mode must not be above the charge limit",
+    "backupReserveRange": "The reserve in backup mode must be between {BACKUP_SOC_MIN} and 100 %",
     "chargeLimitMustAbove": "The charge limit must be above the backup power reserve",
     "controlDevicesNotEnabled": "Control of {manufacturer} devices is not enabled in OpenAmpere yet (display only).",
     "currentBatteryLimitsCouldn": "The current battery limits couldn't be read completely. Please try again later.",
@@ -172,6 +174,7 @@
     "logReadBackFailed": "reading back failed",
     "lowReserveConfirm": "Please confirm a backup power reserve below 10 % explicitly: the battery is then discharged deeper, which can shorten its life and put the warranty at risk.",
     "mustBetween100": "{key} must be between {low} and 100 %",
+    "noBackupReserve": "This device has no reserve of its own for the backup mode.",
     "noResponseInverterCheck": "No response from the inverter. Please check the values and try again later.",
     "noResponseInverterTry": "No response from the inverter. Please try again later.",
     "raiseRemoveExportLimit": "To raise or remove the export limit, you must confirm that you have your grid operator's written approval, and enter the date/reference of that approval.",
