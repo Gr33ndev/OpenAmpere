@@ -89,7 +89,7 @@ das nicht, wähle **„Nur lesen“**.
 | Entität | |
 |---|---|
 | Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen |
-| Notstrom-Reserve, Ladegrenze, Untergrenze im Notstrombetrieb | in % |
+| Notstrom-Reserve, Ladegrenze, Untergrenze im Notstrombetrieb | in %; bei SAJ zusätzlich die Reserve im Modus Notstromreserve |
 | Laden aus dem Netz, Ladeziel aus dem Netz | einmal in OpenAmpere einrichten (rechtliche Hinweise) |
 | Betriebsart je Heizstab/Schalter | Automatik (Überschuss), Aus, Boost |
 

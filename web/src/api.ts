@@ -60,7 +60,9 @@ export type Status = {
     /** the work modes the device offers (SAJ: self_use, backup); null: all */
     work_modes?: string[] | null;
     /** grid charging through a time slot of the device (SAJ, #377): it keeps charging this long after OpenAmpere stops */
-    charging_continues_min?: number | null } | null;
+    charging_continues_min?: number | null;
+    /** the backup work mode keeps its own reserve (SAJ, #380) */
+    backup_reserve?: boolean } | null;
   /** step of the inverter's energy counters in Wh (#194): 100 = 0.1 kWh; missing on servers before this field */
   energy_step_wh?: number;
   control: { enabled: boolean; dry_run: boolean };
@@ -190,6 +192,8 @@ export type BatterySettings = {
   min_soc: number | null;
   max_soc: number | null;
   min_soc_on_grid: number | null;
+  /** the reserve of the backup work mode, only on a device that keeps its own (SAJ, #380) */
+  backup_soc?: number | null;
 };
 
 export type BatteryState = BatterySettings & {

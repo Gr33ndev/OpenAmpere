@@ -75,7 +75,10 @@
     "lowReserveWarranty": "Viele Hersteller setzen für die Garantie eine Reserve von mindestens 10 % voraus. Ein tieferer Wert kann die Garantie gefährden. Prüfe die Garantiebedingungen deines Speichers.",
     "lowReserveOutage": "Bei einem Stromausfall steht weniger Energie für den Notstrom bereit.",
     "lowReserveAdvice": "Empfohlen sind mindestens 10 %. Stell die Reserve nur kurz tiefer, zum Beispiel wenn morgen viel Sonne erwartet wird, und danach wieder auf 10 % oder mehr.",
-    "lowReserveConfirm": "Trotzdem auf {soc} setzen"
+    "lowReserveConfirm": "Trotzdem auf {soc} setzen",
+    "backupModeReserve": "Reserve im Modus Notstromreserve",
+    "backupModeReserveHint": "So viel hält dein Wechselrichter im Modus „Notstromreserve“ für einen Stromausfall zurück. Darüber versorgt der Speicher das Haus wie gewohnt.",
+    "reserveNotInBackupMode": "Diese Reserve gilt im Eigenverbrauch. Im Modus „Notstromreserve“ gilt bei deinem Wechselrichter die eigene Reserve weiter unten."
   },
   "changelogPage": {
     "attention": "Achtung",
@@ -837,6 +840,7 @@
     "feedInFirstHint": "Überschuss zuerst ins Netz, Speicher wird nicht entladen.",
     "peakShaving": "Spitzenlast begrenzen",
     "peakShavingHint": "Speicher deckt nur hohe Verbrauchsspitzen.",
-    "selfUseHint": "Solarstrom zuerst im Haus nutzen, Überschuss speichern. Empfohlen."
+    "selfUseHint": "Solarstrom zuerst im Haus nutzen, Überschuss speichern. Empfohlen.",
+    "backupKeepsReserveHint": "Hält eine eigene Reserve für Stromausfälle zurück, darüber wird der Speicher wie gewohnt genutzt."
   }
 }

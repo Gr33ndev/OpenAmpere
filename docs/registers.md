@@ -134,7 +134,7 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   | Grid | 0x40AD | W, + = import |
 
 - **Counters:** U32 in 0.01 kWh starting at 0x40BF. For grid import and export across all three phases, the total counters starting at 0x4167 apply; they are missing on some firmware, in which case the L1 counters are used. Note: SAJ calls export "sell" and grid import "feed-in".
-- **Battery limits (read-only, #334):**
+- **Battery limits (#334):**
   - Backup reserve: on-grid discharge depth 0x3644; lower limit during a power outage: off-grid discharge depth
     0x3645; both in % SoC (not depth of discharge). These registers are not in a public SAJ protocol. A diagnostics
     report from a real device (#334) confirms both: they matched the on-grid and off-grid values of the
@@ -156,6 +156,10 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   - Battery settings: on-grid depth 0x3644, off-grid depth 0x3645, charge limit 0x3646 (% SoC), AppMode 0x3647
     (0 self-use, 2 backup; 1 time-of-use, 3 passive and 10 peak shaving are not offered). `read_settings` reads
     0x3644–0x3647, the registers it writes.
+  - Reserve of the backup mode 0x3651 (% SoC, #380): the protocol says it applies in backup mode, where 0x3644 does
+    not. evcc relies on it (backup mode with 0x3651 = min SoC for normal operation, = max SoC to hold the battery),
+    so in backup mode the battery supplies the house down to 0x3651 and keeps the rest for a power cut; not yet
+    confirmed on a real device. Offered as "Reserve im Modus Notstromreserve" (10 % up to the charge limit).
   - Export limit: 0x365A in per mille of rated power, effective only while 0x365C (anti-reflux mode) is 1 (total
     power) or 3 (per phase power); 2 limits by phase current (0x365B, A) and is shown as not supported. Written
     rounded down to the per-mille step; with 0x365C = 0 (off) the limit counts as the rated power, and writing a

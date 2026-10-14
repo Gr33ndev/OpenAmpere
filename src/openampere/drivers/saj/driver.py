@@ -12,7 +12,7 @@ from datetime import datetime
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
 from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError, ModbusReadError, ascii_text
 from ..regs import Reg, counter_step_wh, decode
-from .registers import (APP_MODE_ADDRESS, APP_MODE_TIME, APP_MODES, BLOCKS, CHARGE_ENABLE_ADDRESS, CHARGE_SLOT,
+from .registers import (APP_MODE_ADDRESS, APP_MODE_TIME, APP_MODES, BACKUP_SOC_ADDRESS, BLOCKS, CHARGE_ENABLE_ADDRESS, CHARGE_SLOT,
                         CHARGE_SLOT_ADDRESS, CONTROL_TYPES, DEPTH_ADDRESS, DEVICE_TYPE_RANGE, DEVICE_TYPES,
                         EXPORT_LIMIT_ADDRESS, EXPORT_MODE_ADDRESS, EXPORT_POWER_MODES, INFO_ADDRESS, INFO_LENGTH,
                         OFF_GRID_MODE, READ_FUNCTION, SOC_ADDRESSES, TIME_ADDRESS, TOU_OUTSIDE_ADDRESS, VALUES)
@@ -60,7 +60,7 @@ class SajDriver(ModbusDevice):
                                register_map="saj_h2", driver=self.KEY, unit=self._unit,
                                rated_power_w=rated_w or None, supports_control=device_type in CONTROL_TYPES,
                                energy_step_wh=counter_step_wh(VALUES), work_modes=tuple(APP_MODES.values()),
-                               charging_continues_min=SLOT_MINUTES)
+                               charging_continues_min=SLOT_MINUTES, backup_reserve=True)
         log.info("connected: %s", self.info)
         return self.info
 
@@ -98,7 +98,20 @@ class SajDriver(ModbusDevice):
                 log.debug("settings registers not readable, using the read-back registers: %s", err)
         if settings and self._remote and settings[3] == APP_MODE_TIME:
             settings[3] = self._remote["app_mode"]  # time-of-use only while OpenAmpere charges: the owner's mode
-        return to_settings(raw, settings)
+        backup = None
+        if settings:
+            try:
+                backup = (await self._read(BACKUP_SOC_ADDRESS, 1, READ_FUNCTION))[0]
+            except ModbusReadError as err:
+                log.debug("reserve of the backup mode not readable: %s", err)
+        return to_settings(raw, settings, backup)
+
+    async def write_backup_soc(self, value: int) -> None:
+        """The reserve the backup work mode keeps for a power cut (0x3651, #380); above it the battery supplies the
+        house as usual."""
+        if not 10 <= value <= 100:
+            raise ValueError("backup_soc must be between 10 and 100 %")
+        await self._write(Reg(BACKUP_SOC_ADDRESS), value)
 
     async def write_work_mode(self, mode: WorkMode) -> None:
         values = {name: value for value, name in APP_MODES.items()}
@@ -254,8 +267,9 @@ def minutes_left(now: datetime, slot: list[int]) -> int:
     return max(0, (slot[1] >> 8) * 60 + (slot[1] & 0xFF) - (now.hour * 60 + now.minute))
 
 
-def to_settings(raw: dict[str, float], settings: list[int] | None = None) -> BatterySettings:
-    """settings are the registers 0x3644–0x3647: on-grid and off-grid discharge depth, charge limit, work mode.
+def to_settings(raw: dict[str, float], settings: list[int] | None = None, backup: int | None = None) -> BatterySettings:
+    """settings are the registers 0x3644–0x3647: on-grid and off-grid discharge depth, charge limit, work mode;
+    backup is 0x3651, the reserve of the backup work mode (#380).
     Without them only the read-back registers are known (0x402A on grid, 0x4029 charge limit, 0x4022 work mode);
     the off-grid limit is not guessed (#334)."""
     modes = {value: WorkMode(name) for value, name in APP_MODES.items()}
@@ -264,7 +278,8 @@ def to_settings(raw: dict[str, float], settings: list[int] | None = None) -> Bat
         on_grid, off_grid, max_soc, app_mode = settings
     else:
         on_grid, off_grid, max_soc, app_mode = as_int("min_soc_on_grid"), None, as_int("max_soc"), as_int("app_mode")
-    return BatterySettings(work_mode=modes.get(app_mode), min_soc=off_grid, max_soc=max_soc, min_soc_on_grid=on_grid)
+    return BatterySettings(work_mode=modes.get(app_mode), min_soc=off_grid, max_soc=max_soc, min_soc_on_grid=on_grid,
+                           backup_soc=backup)
 
 
 def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None = None) -> Snapshot:

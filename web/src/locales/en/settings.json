@@ -75,7 +75,10 @@
     "lowReserveWarranty": "Many manufacturers require a reserve of at least 10 % for the warranty. A lower value can put the warranty at risk. Check the warranty terms of your battery.",
     "lowReserveOutage": "In a power outage, less energy is left for backup power.",
     "lowReserveAdvice": "At least 10 % is recommended. Set the reserve lower only for a short time, for example when a lot of sun is expected tomorrow, and then back to 10 % or more.",
-    "lowReserveConfirm": "Set it to {soc} anyway"
+    "lowReserveConfirm": "Set it to {soc} anyway",
+    "backupModeReserve": "Reserve in the backup reserve mode",
+    "backupModeReserveHint": "This much your inverter keeps for a power cut in the “Backup reserve” mode. Above it, the battery supplies the house as usual.",
+    "reserveNotInBackupMode": "This reserve applies in self-consumption. In the “Backup reserve” mode your inverter uses its own reserve further down."
   },
   "changelogPage": {
     "attention": "Attention",
@@ -837,6 +840,7 @@
     "feedInFirstHint": "Surplus goes to the grid first, the battery is not discharged.",
     "peakShaving": "Limit peak load",
     "peakShavingHint": "The battery only covers high consumption peaks.",
-    "selfUseHint": "Use solar power in the house first and store the surplus. Recommended."
+    "selfUseHint": "Use solar power in the house first and store the surplus. Recommended.",
+    "backupKeepsReserveHint": "Keeps its own reserve for power cuts; above it the battery is used as usual."
   }
 }

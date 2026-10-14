@@ -44,6 +44,8 @@ class DeviceInfo:
     # grid charging through a time slot of the device instead of a remote control with a timeout (SAJ, #377): it
     # keeps charging this many minutes at most after OpenAmpere stops; None: remote control with a timeout
     charging_continues_min: int | None = None
+    # the backup work mode keeps its own reserve (SAJ 0x3651, #380) instead of the reserve of normal operation
+    backup_reserve: bool = False
 
 
 @dataclass
@@ -160,6 +162,7 @@ class BatterySettings:
     min_soc: int | None = None
     max_soc: int | None = None
     min_soc_on_grid: int | None = None
+    backup_soc: int | None = None  # reserve of the backup work mode, if the device has its own (SAJ 0x3651, #380)
 
 
 class InverterDriver(Protocol):
@@ -175,6 +178,8 @@ class InverterDriver(Protocol):
 
     async def write_soc_limits(self, *, min_soc: int | None = None, max_soc: int | None = None,
                                min_soc_on_grid: int | None = None) -> None: ...
+
+    # only a device with DeviceInfo.backup_reserve: async def write_backup_soc(self, value: int) -> None
 
     async def set_remote_power(self, watts: int, timeout_s: int, restore: dict | None = None) -> dict | None:
         """Force battery power (+ discharge, - charge) until timeout or release. A driver that changes stored settings

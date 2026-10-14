@@ -157,6 +157,8 @@
   },
   "control": {
     "backupPowerReserveMust": "Die Notstrom-Reserve darf nicht unter der Untergrenze im Notstrombetrieb liegen",
+    "backupReserveAboveChargeLimit": "Die Reserve im Backup-Modus darf nicht über der Ladegrenze liegen",
+    "backupReserveRange": "Die Reserve im Backup-Modus muss zwischen {BACKUP_SOC_MIN} und 100 % liegen",
     "chargeLimitMustAbove": "Die Ladegrenze muss über der Notstrom-Reserve liegen",
     "controlDevicesNotEnabled": "Für {manufacturer}-Geräte ist die Steuerung in OpenAmpere noch nicht freigegeben (nur Anzeige).",
     "currentBatteryLimitsCouldn": "Die aktuellen Speicher-Grenzen konnten nicht vollständig gelesen werden. Bitte später erneut versuchen.",
@@ -172,6 +174,7 @@
     "logReadBackFailed": "Rücklesen fehlgeschlagen",
     "lowReserveConfirm": "Eine Notstrom-Reserve unter 10 % bitte ausdrücklich bestätigen: Der Speicher wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die Garantie gefährden.",
     "mustBetween100": "{key} muss zwischen {low} und 100 % liegen",
+    "noBackupReserve": "Eine eigene Reserve für den Backup-Modus gibt es bei diesem Gerät nicht.",
     "noResponseInverterCheck": "Keine Antwort vom Wechselrichter. Bitte prüfe die Werte und versuche es später erneut.",
     "noResponseInverterTry": "Keine Antwort vom Wechselrichter. Bitte später erneut versuchen.",
     "raiseRemoveExportLimit": "Zum Erhöhen oder Aufheben der Einspeisebegrenzung musst du bestätigen, dass die schriftliche Zustimmung deines Netzbetreibers vorliegt, und Datum/Zeichen dieser Bestätigung angeben.",

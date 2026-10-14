@@ -149,6 +149,25 @@ async def test_only_the_work_modes_of_the_device(hass: HomeAssistant, entry, cli
     assert hass.states.get(entity_id(hass, "select", "_work_mode")).attributes["options"] == ["self_use", "backup"]
 
 
+async def test_reserve_of_the_backup_mode_only_where_the_device_has_one(hass: HomeAssistant, entry, client) -> None:
+    sajinfo = info()
+    sajinfo["device"] = {**sajinfo["device"], "manufacturer": "SAJ", "backup_reserve": True}
+    client.info.return_value = sajinfo
+    saj_state = state()
+    saj_state["battery_settings"] = {**saj_state["battery_settings"], "backup_soc": 80}
+    client.state.return_value = saj_state
+    await setup(hass, entry)
+    backup = entity_id(hass, "number", "_backup_soc")
+    assert hass.states.get(backup).state == "80" and hass.states.get(backup).attributes["min"] == 10
+    await hass.services.async_call("number", "set_value", {"entity_id": backup, "value": 60}, blocking=True)
+    client.set_battery.assert_called_with({"backup_soc": 60})
+
+
+async def test_no_reserve_of_the_backup_mode_on_foxess(hass: HomeAssistant, entry, client) -> None:
+    await setup(hass, entry)
+    assert entity_id(hass, "number", "_backup_soc") is None
+
+
 async def test_read_only_access_has_no_controls(hass: HomeAssistant, entry, client) -> None:
     client.info.return_value = info("read")
     await setup(hass, entry)

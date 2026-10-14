@@ -215,6 +215,9 @@
       "min_soc": {
         "name": "Outage floor"
       },
+      "backup_soc": {
+        "name": "Reserve in backup mode"
+      },
       "grid_charging_target": {
         "name": "Grid charging target"
       }
