@@ -118,7 +118,7 @@ The facts come from community projects; sources and licenses are listed in [NOTI
   - serial number in 0x8F03–0x8F0C
   - product code and firmware versions
   
-  Accepted are the known type codes 0x0055–0x005D as well as codes from the family range 0x0050–0x006F, the latter with a warning in the log. Additional plausibility check: work mode 0x4004 ≤ 9 and state of charge 0x406F ≤ 10000.
+  Accepted are the known type codes 0x0055–0x005E as well as codes from the family range 0x0050–0x006F, the latter with a warning in the log. 0x0055–0x005D come from SAJ's protocol. 0x005E is not in it: the manufacturer's app of an owner shows it as a three-phase "…-3P-X E2" model sold as "Ampere.StoragePro" (#339); the power class in that name is left out, the driver reads the rated power from 0x8F01. Additional plausibility check: work mode 0x4004 ≤ 9 and state of charge 0x406F ≤ 10000.
 - **Measurements:**
 
   | Value | Register | Scaling / sign |
