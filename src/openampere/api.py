@@ -132,6 +132,7 @@ INGRESS_HEADERS = {"Content-Security-Policy": f"{CONTENT_POLICY}; frame-ancestor
                    "X-Frame-Options": "SAMEORIGIN", "X-Content-Type-Options": "nosniff",
                    "Referrer-Policy": "no-referrer"}
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
+OVERWRITE_SHOWN_S = 7 * 86400  # the app explains a setting another device overwrote for this long
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/wallbox/ocpp", "/api/gridmeter", "/api/remote",
                    "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
@@ -591,6 +592,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
             "home_assistant": home_assistant.view(),  # only for the Home Assistant app (#300)
             "storage": collector.storage_state(),
+            # only which settings, not their values: the status is open without login (#164)
+            "overwritten": storage.last_overwrite(time.time() - OVERWRITE_SHOWN_S),
         }
 
     # ---- settings & setup ------------------------------------------------

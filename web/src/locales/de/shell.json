@@ -68,6 +68,19 @@
   "offlineMessage": {
     "noConnection": "Keine Verbindung zum OpenAmpere-Server."
   },
+  "overwritten": {
+    "blockInternet": "Sperre der Smartbox im Router den Internetzugang, z. B. in der FRITZ!Box unter Internet → Filter → Kindersicherung (Zugangsprofil „gesperrt“). Sie liest dann weiter mit, schreibt aber keine Werte mehr aus der Cloud.",
+    "cause": "Meist ist das die bisherige Smartbox (IQ-Box). Sie holt sich etwa alle 100 Sekunden ihre Einstellungen aus der Cloud ihres Herstellers und schreibt sie in den Wechselrichter. Solange sie das tut, bleiben Änderungen in OpenAmpere nicht bestehen.",
+    "close": "Schließen",
+    "disconnect": "Oder trenne die Smartbox vom Netzwerk, wenn du sie nicht mehr brauchst. Kläre vorher, ob sie für etwas anderes nötig ist, etwa für die Steuerung durch deinen Netzbetreiber.",
+    "fixTitle": "So bleiben deine Änderungen bestehen:",
+    "guide": "Anleitung mit allen Schritten",
+    "noticed": "Bemerkt: {date}",
+    "thenAgain": "Ändere die Einstellung danach in OpenAmpere noch einmal.",
+    "title": "Deine Änderung wurde zurückgesetzt",
+    "understood": "Verstanden",
+    "what": "Kurz nach deiner Änderung hat ein anderes Gerät die alten Werte zurück in den Wechselrichter geschrieben: {settings}."
+  },
   "passwordSetup": {
     "continue": "Weiter",
     "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die meisten Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt. Zugangsdaten und die Adresse deiner Push-Nachrichten siehst du nur nach der Anmeldung.",

@@ -34,10 +34,21 @@ LOW_RESERVE_MIN = 0
 # the read back is repeated after these seconds before it reports a mismatch: while the inverter is controlled remotely
 # it takes a new value a few seconds later (#322)
 READ_BACK_WAITS_S = (1, 2, 3)
-VERIFY_AFTER_S = 45.0  # re-read written values after this time to detect a second master overwriting them
+# re-read written values at these seconds after a write to detect a second master overwriting them: an old smartbox
+# fetches its values from the cloud about every 100 s, so the last check comes after more than one such round
+VERIFY_AFTER_S = (45.0, 150.0)
 SHARED_READ_S = 3.0  # a reading for the app is given to every request in this time, instead of one Modbus read each
 
 log = logging.getLogger(__name__)
+
+
+async def after_write():
+    """Yields once at each time of VERIFY_AFTER_S after a write."""
+    waited = 0.0
+    for at in VERIFY_AFTER_S:
+        await asyncio.sleep(at - waited)
+        waited = at
+        yield
 
 
 def control_lock(runtime: Runtime) -> asyncio.Lock:
@@ -302,19 +313,20 @@ class BatteryControl:
         self._verify_task = asyncio.get_running_loop().create_task(self._verify(written))
 
     async def _verify(self, written: dict) -> None:
-        """A second energy manager may write its own values back shortly after ours."""
-        await asyncio.sleep(VERIFY_AFTER_S)
-        try:
-            now = await self._read()
-        except Exception:  # noqa: BLE001 - not connected right now; nothing to report
-            return
-        # a value that could not be read (None, e.g. a single timeout) is no change by another device (#219)
-        changed = {k: now.get(k) for k, v in written.items() if now.get(k) is not None and now.get(k) != v}
-        if changed:
-            self.external_change = {"expected": written, "found": changed}
-            self.runtime.storage.log_control("battery_settings_check", {"from": written, "to": changed}, False,
-                                             "von einem anderen Gerät überschrieben")
-            log.warning("battery settings were overwritten by another device: %s", changed)
+        """A second energy manager may write its own values back some time after ours."""
+        async for _ in after_write():
+            try:
+                now = await self._read()
+            except Exception:  # noqa: BLE001 - not connected right now; nothing to report
+                continue
+            # a value that could not be read (None, e.g. a single timeout) is no change by another device (#219)
+            changed = {k: now.get(k) for k, v in written.items() if now.get(k) is not None and now.get(k) != v}
+            if changed:
+                self.external_change = {"expected": written, "found": changed}
+                self.runtime.storage.log_control("battery_settings_check", {"from": written, "to": changed}, False,
+                                                 "von einem anderen Gerät überschrieben")
+                log.warning("battery settings were overwritten by another device: %s", changed)
+                return
 
 
 class ConfirmationRequired(Exception):
@@ -448,13 +460,14 @@ class ExportLimitControl:
         self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w))
 
     async def _verify(self, limit_w: int) -> None:
-        await asyncio.sleep(VERIFY_AFTER_S)
-        try:
-            now = (await self.read())["limit_w"]
-        except Exception:  # noqa: BLE001
-            return
-        if now is not None and now != limit_w:
-            self.external_change = {"expected": limit_w, "found": now}
-            self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},
-                                                                    "to": {"export_limit_w": now}},
-                                             False, "von einem anderen Gerät überschrieben")
+        async for _ in after_write():
+            try:
+                now = (await self.read())["limit_w"]
+            except Exception:  # noqa: BLE001
+                continue
+            if now is not None and now != limit_w:
+                self.external_change = {"expected": limit_w, "found": now}
+                self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},
+                                                                        "to": {"export_limit_w": now}},
+                                                 False, "von einem anderen Gerät überschrieben")
+                return

@@ -235,7 +235,7 @@ def test_write_order_keeps_every_step_valid():
 async def test_battery_write_detects_second_master_and_partial_writes(tmp_path, monkeypatch):
     from openampere import control as control_module
     from openampere.control import BatteryControl, WriteFailed
-    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.3)
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.3,))
     sim, server, port = await start_sim()
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
@@ -268,6 +268,32 @@ async def test_battery_write_detects_second_master_and_partial_writes(tmp_path, 
             assert entry["action"] == "battery_settings" and "Fehler" in entry["result"]
             assert "Rücklesen abweichend" in entry["result"] and "max_soc" in entry["result"]
             assert sim.energy.work_mode.value == "backup"
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_a_smartbox_overwriting_after_the_first_check_is_found_by_the_second(tmp_path, monkeypatch):
+    """An old smartbox writes its values about every 100 s: one check 45 s after a write missed most of them."""
+    from openampere import control as control_module
+    from openampere.control import BatteryControl
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.2, 0.8))
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            assert (await battery.write({"min_soc_on_grid": 40}))["result"] == "ok"
+            await asyncio.sleep(0.4)
+            assert battery.external_change is None  # the first check found our value
+            sim.regs[sim.map.settings["min_soc_on_grid"].address] = 15
+            sim.on_write(sim.map.settings["min_soc_on_grid"].address)
+            await asyncio.sleep(0.7)
+            assert battery.external_change == {"expected": {"min_soc_on_grid": 40}, "found": {"min_soc_on_grid": 15}}
+            assert runtime.storage.last_overwrite(0)["settings"] == ["min_soc_on_grid"]
         finally:
             await runtime.collector.stop()
 
@@ -470,7 +496,7 @@ async def test_an_unreadable_battery_value_is_no_change_by_another_device(tmp_pa
     """#219: one read timeout after a write (value None) must not report "overwritten by another device"."""
     from openampere import control as control_module
     from openampere.control import BatteryControl
-    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", 0.1)
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.1,))
     sim, server, port = await start_sim()
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))

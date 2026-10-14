@@ -68,6 +68,19 @@
   "offlineMessage": {
     "noConnection": "No connection to the OpenAmpere server."
   },
+  "overwritten": {
+    "blockInternet": "Block the Smartbox's internet access in your router, e.g. on a FRITZ!Box under Internet → Filters → Parental Controls (access profile \"blocked\"). It keeps reading, but no longer writes values from the cloud.",
+    "cause": "Usually this is the previous Smartbox (IQ box). About every 100 seconds it fetches its settings from its manufacturer's cloud and writes them to the inverter. As long as it does, changes made in OpenAmpere do not last.",
+    "close": "Close",
+    "disconnect": "Or disconnect the Smartbox from the network if you no longer need it. First make sure it is not needed for anything else, such as control by your grid operator.",
+    "fixTitle": "How to make your changes last:",
+    "guide": "Guide with all steps",
+    "noticed": "Noticed: {date}",
+    "thenAgain": "Then change the setting in OpenAmpere once more.",
+    "title": "Your change was reverted",
+    "understood": "Got it",
+    "what": "Shortly after your change, another device wrote the old values back to the inverter: {settings}."
+  },
   "passwordSetup": {
     "continue": "Continue",
     "intro": "The password protects all settings of your system. In your home network anyone can view most values without a password – but only people who know it can change anything. Login details and the address of your push messages are only shown after logging in.",

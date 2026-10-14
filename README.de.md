@@ -259,7 +259,7 @@ Hängt am Wechselrichter noch ein anderer Energiemanager (z. B. die bisherige Sm
 
 ### Die bisherige Smartbox setzt Einstellungen zurück
 
-Eine bisherige Smartbox holt sich etwa alle 100 Sekunden ihre Soll-Einstellungen aus der Cloud ihres Herstellers und schreibt sie in den Wechselrichter. Damit überschreibt sie Änderungen von OpenAmpere, etwa an Notstrom-Reserve, Betriebsmodus oder Laden aus dem Netz. OpenAmpere erkennt das, zeigt einen Hinweis und kann eine Benachrichtigung „Einstellung überschrieben“ senden.
+Eine bisherige Smartbox holt sich etwa alle 100 Sekunden ihre Soll-Einstellungen aus der Cloud ihres Herstellers und schreibt sie in den Wechselrichter. Damit überschreibt sie Änderungen von OpenAmpere, etwa an Notstrom-Reserve, Betriebsmodus oder Laden aus dem Netz. OpenAmpere erkennt das, erklärt es in der App mit den Schritten unten und kann eine Benachrichtigung „Einstellung überschrieben“ senden.
 
 Abhilfe:
 - **Internetzugang der Smartbox sperren**, z. B. in der FRITZ!Box unter Internet → Filter → Kindersicherung (Zugangsprofil „gesperrt“). Ein Nutzer hat so erfolgreich auf preisbasiertes Laden umgeschaltet und die Notstrom-Reserve geändert. Die Smartbox liest dann weiter mit, bekommt aber keine Soll-Werte und keine Updates mehr, und die Hersteller-App zeigt keine aktuellen Daten.
