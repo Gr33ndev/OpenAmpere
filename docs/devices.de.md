@@ -3,7 +3,7 @@ English: [devices.md](devices.md)
 # Unterstützte Geräte
 
 Mit welchen Geräten OpenAmpere funktioniert, was es ausliest und steuert und was schon an einer echten Anlage
-bestätigt ist. Hier steht nur, was der Programmcode, [registers.md](registers.md) (englisch) und die Issues belegen.
+bestätigt ist. Hier steht nur, was der Programmcode, die [Geräteseiten](devices/README.md) (englisch) und die Issues belegen.
 
 **So liest du diese Seite:**
 
@@ -23,11 +23,11 @@ automatisch und liest dabei nur. Reihenfolge: FoxESS auf Geräteadresse 247, dan
 
 | Gerät / Modell | Von EKD verkauft als | Registerkarte / Erkennung (Geräteadresse) | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
 |---|---|---|---|---|---|---|
-| FoxESS H3, neuere Firmware | „Ampere.StoragePro E3“ (siehe Hinweise) | `foxess_h3_new`; gewählt, wenn die Energiezähler ab 39601 antworten (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz, Einspeisebegrenzung | Anzeige: bestätigt (#11, #16). Steuerung: bestätigt (#25, #196) | Welche Registerkarte der E3 nutzt, ist in [registers.md](registers.md) noch offen. #11 hat die neue Registerkarte an einem H3 bestätigt; im Formular steht H3, H3 Smart, H3 Pro und E3 zur Auswahl, das genaue Modell ist also nicht genannt. Die Einspeisebegrenzung (46616) stammt aus Community-Unterlagen zum H3 Smart; an einer echten Anlage mit der neuen Registerkarte ist sie bestätigt (#196). |
+| FoxESS H3, neuere Firmware | „Ampere.StoragePro E3“ (siehe Hinweise) | `foxess_h3_new`; gewählt, wenn die Energiezähler ab 39601 antworten (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz, Einspeisebegrenzung | Anzeige: bestätigt (#11, #16). Steuerung: bestätigt (#25, #196) | Welche Registerkarte der E3 nutzt, ist in [h3.md](devices/foxess/h3.md) noch offen. #11 hat die neue Registerkarte an einem H3 bestätigt; im Formular steht H3, H3 Smart, H3 Pro und E3 zur Auswahl, das genaue Modell ist also nicht genannt. Die Einspeisebegrenzung (46616) stammt aus Community-Unterlagen zum H3 Smart; an einer echten Anlage mit der neuen Registerkarte ist sie bestätigt (#196). |
 | FoxESS H3, ältere Firmware | in den Quellen nicht genannt | `foxess_h3_legacy`; gewählt, wenn die neue Registerkarte nicht antwortet, die Zähler ab 32000 aber schon (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz. Keine Einspeisebegrenzung (kein bekanntes Register) | noch nicht bestätigt | Die Speicher-Gesundheit (SoH, 31090) gibt es erst ab Firmware 1.80. Der Hausverbrauch ist die Summe der drei Phasen (kein Gesamtregister). |
 | FoxESS H3 Smart (Modellname `H3-…-Smart` oder `H3-…-M`) | in den Quellen nicht genannt | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | noch nicht bestätigt | Die Register der Einspeisebegrenzung stammen aus Community-Unterlagen zu diesem Modell. |
 | FoxESS H3 Pro (Modellname `H3-Pro-…` oder `P3-Pro-…`) | in den Quellen nicht genannt | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | noch nicht bestätigt | |
-| SAJ H2 (Typcode 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), „3P-X E2“ (0x005E, dreiphasig) | „Ampere.StoragePro“ | `saj_h2`; Kennungsblock 0x8F00 und eine Plausibilitätsprüfung von Betriebsart und Ladestand (Adresse 1 oder 2, beide werden probiert) | Ja | Ja: Speicher-Einstellungen (nur Eigenverbrauch und Backup, mit der Reserve im Backup-Modus), Einspeisebegrenzung, Laden aus dem Netz über ein Ladezeitfenster (#377) | noch nicht bestätigt | Register für die Steuerung aus dem H2-Protokoll von SAJ, so auch genutzt von home-assistant-saj-h2-modbus und evcc. SAJ hat keine Fernsteuerung, die von selbst endet: Laden aus dem Netz nutzt ein kurzes Ladezeitfenster, das OpenAmpere verlängert (siehe [registers.md](registers.md)). Noch zu prüfen: die Vorzeichen von Speicher- und Netzleistung und ob der PV-Zähler alle MPP-Tracker erfasst. Manchen Firmware-Ständen fehlen die summierten Netzzähler (0x4167); dann nimmt OpenAmpere die Zähler von L1. |
+| SAJ H2 (Typcode 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), „3P-X E2“ (0x005E, dreiphasig) | „Ampere.StoragePro“ | `saj_h2`; Kennungsblock 0x8F00 und eine Plausibilitätsprüfung von Betriebsart und Ladestand (Adresse 1 oder 2, beide werden probiert) | Ja | Ja: Speicher-Einstellungen (nur Eigenverbrauch und Backup, mit der Reserve im Backup-Modus), Einspeisebegrenzung, Laden aus dem Netz über ein Ladezeitfenster (#377) | noch nicht bestätigt | Register für die Steuerung aus dem H2-Protokoll von SAJ, so auch genutzt von home-assistant-saj-h2-modbus und evcc. SAJ hat keine Fernsteuerung, die von selbst endet: Laden aus dem Netz nutzt ein kurzes Ladezeitfenster, das OpenAmpere verlängert (siehe [h2-family.md](devices/saj/h2-family.md)). Noch zu prüfen: die Vorzeichen von Speicher- und Netzleistung und ob der PV-Zähler alle MPP-Tracker erfasst. Manchen Firmware-Ständen fehlen die summierten Netzzähler (0x4167); dann nimmt OpenAmpere die Zähler von L1. |
 | SAJ AS2 (Typcode 0x0055, 0x0056) und andere Codes aus dem SAJ-Bereich 0x0050–0x006F | in den Quellen nicht genannt | `saj_h2`, wie oben. Unbekannte Codes aus diesem Bereich werden mit einer Warnung im Protokoll angenommen | Ja | Nein | noch nicht bestätigt | Wird mit derselben Registerkarte wie H2 und HS2 gelesen. |
 
 Mehr zur FoxESS-H3-Familie:
@@ -58,7 +58,7 @@ Mehr zur FoxESS-H3-Familie:
 - **Temperaturen:** Register 39141 (Wechselrichter) zählt in 0,1 °C, abgeglichen mit einer zweiten Anzeige (#11).
   Die „Speicher“-Temperatur aus 37611 ist die Temperatur der BMS-Elektronik, nicht der Zellen (#16).
 
-Einzelheiten zu den Registern und Quellen: [registers.md](registers.md) (englisch) und [NOTICE](../NOTICE).
+Register, Verhalten und Quellen je Gerät: [docs/devices/](devices/README.md) (englisch) und [NOTICE](../NOTICE).
 
 ## Heizstäbe
 

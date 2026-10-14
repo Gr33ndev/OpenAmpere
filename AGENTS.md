@@ -29,7 +29,7 @@ writes as safety-relevant (see below).
 | `ha-app/`, `repository.yaml` | Home Assistant app (#300): config for the Supervisor, start script of the image stage `ha-app`, `DOCS.md` (the English guide shown in Home Assistant; German: `docs/homeassistant-app.de.md`) |
 | `scripts/` | `install.sh` (end-user installer), `updater.sh` / `tailscale.sh` (helper containers), `release.sh`, `deps.sh`, `i18n_messages.py`, … |
 | `tests/` | pytest suite for the backend |
-| `docs/` | `architecture.md`, `registers.md`, `devices.md`, `writing-a-driver.md`; German user guides are `*.de.md` |
+| `docs/` | `architecture.md`, `devices/` (what we know per device, with status and source), `devices.md`, `writing-a-driver.md`; German user guides are `*.de.md` |
 
 ## Commands
 
@@ -68,6 +68,10 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
 - **Everything configurable in the app**, not only in config files.
 - **Demo:** a new API endpoint the app reads needs an answer in `web/src/demo/server.ts` (or a write-only/not-needed
   entry).
+- **Device knowledge** lives in `docs/devices/` (one page per device family or special type, `topics/` across
+  devices). A new register, a behaviour seen on a device, a confirmation or a correction goes onto that page in the
+  same PR, with status (documented, derived, confirmed, open) and source; decisions link their issue or PR. Read its
+  README first: not official information, own words, no NDA material, private sources described but never linked.
 - **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
   collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
   into `PAGES` in `web/ui-tests/fixtures.ts`.
@@ -141,8 +145,8 @@ Every change reaches owners in three ways, all built from the same release (#300
   after a new connection, a remote command with enable 1 and OpenAmpere's timeout (180 s) counts as OpenAmpere's own
   (the inverter brings back its values after a restart, #143), so another controller using exactly these values would
   be switched off as well. Keep both when changing the release logic.
-- New registers need a source: manufacturer docs, a project with a compatible license (credit in `NOTICE` and
-  `docs/registers.md`) or a diagnostics report from a real device.
+- New registers need a source: manufacturer docs, a project with a compatible license (credit in `NOTICE` and on the
+  device page in `docs/devices/`) or a diagnostics report from a real device.
 - Legal topics (export limit, § 14a EnWG, EEG) are settled in the issue before code. Label such issues `safety`.
 
 ## Things that are easy to get wrong
@@ -177,6 +181,6 @@ Every change reaches owners in three ways, all built from the same release (#300
 ## Where to look
 
 - Contributing, i18n details, adding a language: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Architecture: [docs/architecture.md](docs/architecture.md), registers: [docs/registers.md](docs/registers.md)
+- Architecture: [docs/architecture.md](docs/architecture.md), devices and registers: [docs/devices/](docs/devices/README.md)
 - New devices: [docs/writing-a-driver.md](docs/writing-a-driver.md), supported devices: [docs/devices.md](docs/devices.md)
 - Governance and decisions: [GOVERNANCE.md](GOVERNANCE.md), security reports: [SECURITY.md](SECURITY.md)
