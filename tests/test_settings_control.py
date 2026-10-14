@@ -298,6 +298,26 @@ async def test_a_smartbox_overwriting_after_the_first_check_is_found_by_the_seco
             await runtime.collector.stop()
 
 
+async def test_foxess_has_no_reserve_of_its_own_for_the_backup_mode(tmp_path):
+    """#380: only a device that keeps one (SAJ) offers it; on FoxESS it is neither unreadable nor writable."""
+    from openampere.control import BatteryControl
+    sim, server, port = await start_sim()
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2, "control.enabled": True,
+                                           "control.dry_run": False})
+            await wait_connected(runtime)
+            battery = BatteryControl(runtime)
+            state = await battery.read()
+            assert state["backup_soc"] is None and state["unreadable"] == []
+            with pytest.raises(ValueError, match="gibt es bei diesem Gerät nicht"):
+                await battery.write({"backup_soc": 50})
+        finally:
+            await runtime.collector.stop()
+
+
 async def test_rediscovery_finds_inverter_after_ip_change(tmp_path, monkeypatch):
     """The router hands out a new address: the app finds the device by its serial number."""
     from openampere import discovery

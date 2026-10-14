@@ -91,7 +91,7 @@ lesen** (Read only).
 | Entity | |
 |---|---|
 | Work mode | Self-use, feed-in first, backup, peak shaving |
-| Backup reserve, charge limit, minimum level during a power cut | in % |
+| Backup reserve, charge limit, minimum level during a power cut | in %; SAJ also the reserve of the backup mode |
 | Grid charging, grid charging target | set up once in OpenAmpere (legal notes) |
 | Mode per immersion heater/switch | Automatic (surplus), off, boost |
 

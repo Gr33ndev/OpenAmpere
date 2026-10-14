@@ -26,8 +26,12 @@ class WriteFailed(Exception):
     """The inverter (or a Modbus proxy in front of it) did not accept the write."""
 
 
-FIELDS = ("work_mode", "min_soc", "max_soc", "min_soc_on_grid")
+FIELDS = ("work_mode", "min_soc", "max_soc", "min_soc_on_grid", "backup_soc")
 SOC_FIELDS = ("min_soc", "max_soc", "min_soc_on_grid")
+# the reserve of the backup work mode, only on a device that keeps its own (SAJ 0x3651, #380); not a SOC_FIELD: the
+# three limits above are checked against each other, this one only against the charge limit
+BACKUP_SOC = "backup_soc"
+BACKUP_SOC_MIN = 10
 SOC_MIN = {"min_soc": 0, "max_soc": 10, "min_soc_on_grid": 10}  # lowest value per limit in %
 # a backup reserve below SOC_MIN only with an explicit confirmation, every time (#313); the inverter accepts it
 LOW_RESERVE_MIN = 0
@@ -136,6 +140,15 @@ def check_limits(values: dict, low_reserve: bool = False) -> None:
         raise ValueError("Die Ladegrenze muss über der Notstrom-Reserve liegen")
 
 
+def check_backup_soc(value: int, max_soc: int | None) -> None:
+    """The reserve of the backup work mode: at least 10 % like the reserve of normal operation, and not above the
+    charge limit, which the battery would never reach."""
+    if not BACKUP_SOC_MIN <= value <= 100:
+        raise ValueError(f"Die Reserve im Backup-Modus muss zwischen {BACKUP_SOC_MIN} und 100 % liegen")
+    if max_soc is not None and value > max_soc:
+        raise ValueError("Die Reserve im Backup-Modus darf nicht über der Ladegrenze liegen")
+
+
 class BatteryControl:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
@@ -161,7 +174,9 @@ class BatteryControl:
     async def read(self, shared: bool = False) -> dict:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
         data = await self._shared.get(self._driver()) if shared else await self._read()
-        data["unreadable"] = [k for k in FIELDS if data.get(k) is None]
+        device = self.runtime.collector.device
+        has_backup = bool(device and device.backup_reserve)
+        data["unreadable"] = [k for k in FIELDS if data.get(k) is None and (k != BACKUP_SOC or has_backup)]
         data["external_change"] = self.external_change
         return data
 
@@ -217,7 +232,9 @@ class BatteryControl:
                 raise ValueError("Unbekannter Betriebsmodus") from None
             if device is not None and device.work_modes is not None and changes["work_mode"] not in device.work_modes:
                 raise ValueError(f"Diesen Betriebsmodus gibt es bei {device.manufacturer}-Geräten nicht.")
-        for key in SOC_FIELDS:
+        if BACKUP_SOC in changes and not (device is not None and device.backup_reserve):
+            raise ValueError("Eine eigene Reserve für den Backup-Modus gibt es bei diesem Gerät nicht.")
+        for key in (*SOC_FIELDS, BACKUP_SOC):
             if key in changes:
                 try:
                     changes[key] = int(changes[key])
@@ -242,6 +259,8 @@ class BatteryControl:
                                            "wird dann tiefer entladen, das kann seine Lebensdauer verkürzen und die "
                                            "Garantie gefährden.")
             check_limits(merged, low_reserve=lowering or merged.get("min_soc_on_grid") == current.get("min_soc_on_grid"))
+            if BACKUP_SOC in changes:
+                check_backup_soc(changes[BACKUP_SOC], merged.get("max_soc"))
             diff = {k: v for k, v in changes.items() if current.get(k) != v}
             if not diff:
                 return {"dry_run": control.dry_run, "written": {}, "settings": current}
@@ -267,6 +286,8 @@ class BatteryControl:
                     await driver.write_work_mode(WorkMode(diff["work_mode"]))
                 for key in write_order(current, diff):
                     await driver.write_soc_limits(**{key: diff[key]})
+                if BACKUP_SOC in diff:
+                    await driver.write_backup_soc(diff[BACKUP_SOC])
             except Exception as err:  # noqa: BLE001 - logged and translated below
                 error = err
             finally:

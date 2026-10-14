@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Numbers: backup reserve, charge limit, outage floor of the battery and the target of grid charging (all %)."""
+"""Numbers: backup reserve, charge limit, outage floor of the battery, the reserve of the backup work mode (only where
+the device keeps its own, SAJ, #380) and the target of grid charging (all %)."""
 
 from __future__ import annotations
 
@@ -43,6 +44,8 @@ SOC_NUMBERS = (
     # outage floor: down to 0 % (#69), at most the backup reserve
     SocDescription(key="min_soc", bounds=lambda d: (0, _value(d, "min_soc_on_grid", 100))),
 )
+# the reserve the backup work mode keeps: at least 10 %, at most the charge limit (#380)
+BACKUP_SOC = SocDescription(key="backup_soc", bounds=lambda d: (10, _value(d, "max_soc", 100)))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
@@ -50,7 +53,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     coordinator = entry.runtime_data
     if not coordinator.can_control:
         return
-    async_add_entities([*(SocNumber(coordinator, d) for d in SOC_NUMBERS), GridChargingTarget(coordinator)])
+    numbers = [*SOC_NUMBERS, *([BACKUP_SOC] if (coordinator.info.get("device") or {}).get("backup_reserve") else [])]
+    async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator)])
 
 
 class SocNumber(ControlEntity, NumberEntity):

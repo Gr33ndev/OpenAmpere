@@ -215,6 +215,9 @@
       "min_soc": {
         "name": "Untergrenze im Notstrombetrieb"
       },
+      "backup_soc": {
+        "name": "Reserve im Backup-Modus"
+      },
       "grid_charging_target": {
         "name": "Ladeziel aus dem Netz"
       }

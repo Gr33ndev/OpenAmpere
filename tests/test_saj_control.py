@@ -217,3 +217,26 @@ async def test_grid_charging_keeps_what_to_put_back(tmp_path):
             assert sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0 and sim.regs[saj.APP_MODE_ADDRESS] == 0
         finally:
             await runtime.collector.stop()
+
+
+async def test_the_reserve_of_the_backup_mode(tmp_path):
+    """#380: in backup mode an SAJ keeps its own reserve (0x3651), not the one of normal operation."""
+    sim = SajSimulatedInverter(max_connections=3)
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            assert runtime.collector.device.backup_reserve
+            battery = BatteryControl(runtime)
+            state = await battery.read()
+            assert state["backup_soc"] == 10 and "backup_soc" not in state["unreadable"]
+            result = await battery.write({"work_mode": "backup", "backup_soc": 60})
+            assert result["result"] == "ok" and sim.regs[saj.BACKUP_SOC_ADDRESS] == 60
+            assert sim.energy.work_mode.value == "backup" and sim.energy.backup_soc == 60
+            with pytest.raises(ValueError, match="zwischen 10 und 100"):
+                await battery.write({"backup_soc": 5})
+            with pytest.raises(ValueError, match="über der Ladegrenze"):
+                await battery.write({"max_soc": 90, "backup_soc": 95})
+            assert sim.regs[saj.BACKUP_SOC_ADDRESS] == 60
+        finally:
+            battery._verify_task and battery._verify_task.cancel()
+            await runtime.collector.stop()

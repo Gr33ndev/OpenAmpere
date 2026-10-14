@@ -49,6 +49,7 @@ class EnergyModel:
     min_soc: int = 10
     max_soc: int = 100
     min_soc_on_grid: int = 10
+    backup_soc: int | None = None  # SAJ: the reserve of the backup mode, above it the battery supplies the house (#380)
     remote_enabled: bool = False
     remote_power_w: float = 0
     remote_deadline: float = 0
@@ -91,13 +92,16 @@ class EnergyModel:
             battery = -surplus
         elif self.work_mode is WorkMode.FEED_IN_FIRST:
             battery = 0.0 if surplus >= 0 else -surplus
-        elif self.work_mode is WorkMode.BACKUP:
+        elif self.work_mode is WorkMode.BACKUP and self.backup_soc is None:
             battery = min(0.0, -surplus)  # only charge from PV, never discharge
+        elif self.work_mode is WorkMode.BACKUP:
+            battery = -surplus  # down to its own reserve (below)
         else:  # peak shaving
             battery = max(0.0, -surplus - 3000)
 
         battery = max(-self.max_battery_w, min(self.max_battery_w, battery))
-        floor = self.min_soc_on_grid
+        floor = (self.backup_soc if self.work_mode is WorkMode.BACKUP and self.backup_soc is not None
+                 else self.min_soc_on_grid)
         if battery > 0 and self.soc <= floor:
             battery = 0.0
         if battery < 0 and self.soc >= self.max_soc and not self.remote_enabled:
@@ -331,7 +335,7 @@ class SajSimulatedInverter(SimulatedInverter):
 
     WRITABLE = frozenset({saj.CHARGE_ENABLE_ADDRESS, *range(0x3606, 0x3606 + 3 * 7), *saj.SOC_ADDRESSES.values(),
                           saj.APP_MODE_ADDRESS, saj.EXPORT_LIMIT_ADDRESS, saj.EXPORT_MODE_ADDRESS,
-                          saj.TOU_OUTSIDE_ADDRESS})
+                          saj.TOU_OUTSIDE_ADDRESS, saj.BACKUP_SOC_ADDRESS})
 
     def __init__(self, *, device_type: int = 0x005B, serial: str = "HST2103SIM00001", unit: int = 1,
                  max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
@@ -360,7 +364,7 @@ class SajSimulatedInverter(SimulatedInverter):
                 self.regs[saj.DEPTH_ADDRESS + i] = value
             self.regs[saj.BACKUP_SOC_ADDRESS] = 10
         else:  # firmware without the settings registers rejects them
-            for address in range(saj.DEPTH_ADDRESS, saj.DEPTH_ADDRESS + 4):
+            for address in (*range(saj.DEPTH_ADDRESS, saj.DEPTH_ADDRESS + 4), saj.BACKUP_SOC_ADDRESS):
                 self.regs.pop(address, None)
         info = [device_type, self.rated_w, 1234] + [0] * 26
         text = serial.encode("ascii")[:20].ljust(20, b"\0")
@@ -395,6 +399,7 @@ class SajSimulatedInverter(SimulatedInverter):
             e.min_soc = self.regs[saj.SOC_ADDRESSES["min_soc"]]
             e.max_soc = self.regs[saj.SOC_ADDRESSES["max_soc"]]
             e.work_mode = WorkMode.BACKUP if self.regs[saj.APP_MODE_ADDRESS] == 2 else WorkMode.SELF_USE
+            e.backup_soc = self.regs[saj.BACKUP_SOC_ADDRESS]
         mode = self.regs[saj.EXPORT_MODE_ADDRESS]
         e.export_limit_w = (self.regs[saj.EXPORT_LIMIT_ADDRESS] * self.rated_w / 1000
                             if mode in saj.EXPORT_POWER_MODES else self.rated_w)

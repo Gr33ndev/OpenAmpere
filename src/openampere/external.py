@@ -21,7 +21,7 @@ from dataclasses import asdict
 from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 
 from .apitokens import ApiTokens, Pairing
-from .control import SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
+from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
@@ -191,7 +191,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             # no serial number: it would end up in Home Assistant's backups
             "device": {"manufacturer": device.manufacturer, "model": device.model, "firmware": device.firmware,
                        "rated_power_w": device.rated_power_w, "supports_control": device.supports_control,
-                       "work_modes": device.work_modes}  # None: all modes (SAJ offers two, #377)
+                       "work_modes": device.work_modes,  # None: all modes (SAJ offers two, #377)
+                       "backup_reserve": device.backup_reserve}  # its own reserve in backup mode (#380)
             if device else None,
             "pv_inputs": [{"index": i, "name": names[i] if i < len(names) and names[i] else f"Modulfeld {i + 1}"}
                           for i in range(count) if str(i + 1) not in hidden],
@@ -203,7 +204,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     @app.get(f"{PREFIX}/state")
     async def state():
         settings = await battery.latest(SETTINGS_WAIT_S)
-        battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS)} if settings else None
+        battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS, BACKUP_SOC)} if settings else None
         grid = charging.settings
         return {**live_message(), "type": "state", "battery_settings": battery_settings,
                 "grid_charging": {"enabled": grid.enabled, "target_soc": grid.target_soc, "active": charging.active},
@@ -252,7 +253,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
     @app.put(f"{PREFIX}/battery")
     async def put_battery(request: Request, changes: dict = Body(...)):
         require_control()
-        unknown = set(changes) - {"work_mode", *SOC_FIELDS}
+        unknown = set(changes) - {"work_mode", *SOC_FIELDS, BACKUP_SOC}
         if unknown or not changes:
             raise HTTPException(400, "Erlaubt sind work_mode, min_soc, max_soc und min_soc_on_grid.")
         try:

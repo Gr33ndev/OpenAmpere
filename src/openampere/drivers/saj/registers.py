@@ -95,7 +95,7 @@ VALUES = {
 # outage, name only). Read only for the battery settings, not with every poll.
 DEPTH_ADDRESS = 0x3644
 APP_MODE_ADDRESS = 0x3647  # work mode setting (0 self-use, 2 backup)
-BACKUP_SOC_ADDRESS = 0x3651  # reserve in backup mode, used by evcc (#334: shown in the diagnostics report only)
+BACKUP_SOC_ADDRESS = 0x3651  # reserve kept in the backup work mode (protocol, evcc; read and written since #380)
 
 # control (#377), from SAJ's "H2-3~6K-S2 single phase communication protocol" (2022-12-02), used the same way by
 # stanus74/home-assistant-saj-h2-modbus and evcc (saj-h2.yaml). All written with FC06, one register at a time.

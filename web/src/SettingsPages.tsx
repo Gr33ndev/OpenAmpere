@@ -55,7 +55,7 @@ const WORK_MODES: { id: NonNullable<BatterySettings["work_mode"]>; label: string
   { id: "peak_shaving", label: t("settings.workModes.peakShaving"), hint: t("settings.workModes.peakShavingHint") },
 ];
 
-const FIELDS = ["work_mode", "min_soc", "max_soc", "min_soc_on_grid"] as const;
+const FIELDS = ["work_mode", "min_soc", "max_soc", "min_soc_on_grid", "backup_soc"] as const;
 
 function SocSlider({ value, min, max, disabled, onChange }: {
   value: number | null; min: number; max: number; disabled: boolean; onChange: (v: number) => void;
@@ -102,7 +102,7 @@ async function readBack<T>(path: string, setData: (value: T) => void, reload: ()
 export const LOW_RESERVE = 10;
 
 const formOf = (s: BatteryState): BatterySettings => ({ work_mode: s.work_mode, min_soc: s.min_soc, max_soc: s.max_soc,
-  min_soc_on_grid: s.min_soc_on_grid });
+  min_soc_on_grid: s.min_soc_on_grid, backup_soc: s.backup_soc });
 
 export function BatteryPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
@@ -118,7 +118,10 @@ export function BatteryPage({ onBack }: PageProps) {
   const deviceSupportsControl = status?.device?.supports_control ?? true;
   const editable = !!control?.enabled && deviceSupportsControl;
   const changed = form && current && FIELDS.some((k) => form[k] !== current[k]);
-  const socEditable = editable && !!current && !current.unreadable.some((k) => k !== "work_mode");
+  const socEditable = editable && !!current && !current.unreadable.some((k) => k !== "work_mode" && k !== "backup_soc");
+  // the backup work mode keeps its own reserve (SAJ, #380): shown while that mode is chosen
+  const backupReserve = !!status?.device?.backup_reserve;
+  const backupChosen = backupReserve && form?.work_mode === "backup";
   const set = (patch: Partial<BatterySettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
   const lowReserve = form?.min_soc_on_grid != null && form.min_soc_on_grid < LOW_RESERVE;
@@ -180,6 +183,7 @@ export function BatteryPage({ onBack }: PageProps) {
               min={form.min_soc ?? 0} max={Math.min(99, (form.max_soc ?? 100) - 1)}
               onChange={(v) => set({ min_soc_on_grid: v })} />
             {lowReserve && <Notice kind="warn">{t("settings.batteryPage.lowReserveWarning", { soc: percent(form.min_soc_on_grid) })}</Notice>}
+            {backupChosen && <p className="hint">{t("settings.batteryPage.reserveNotInBackupMode")}</p>}
           </div>
 
           <div className="section-title">{t("settings.batteryPage.chargeLimits")}</div>
@@ -201,10 +205,22 @@ export function BatteryPage({ onBack }: PageProps) {
               <button type="button" key={m.id} className={`choice ${form.work_mode === m.id ? "active" : ""}`} disabled={!editable}
                 onClick={() => set({ work_mode: m.id })}>
                 <span className="radio" />
-                <span><strong>{m.label}</strong><span className="meta">{m.hint}</span></span>
+                <span><strong>{m.label}</strong><span className="meta">{m.id === "backup" && backupReserve
+                  ? t("settings.workModes.backupKeepsReserveHint") : m.hint}</span></span>
               </button>
             ))}
           </div>
+
+          {backupChosen && (
+            <>
+              <div className="section-title">{t("settings.batteryPage.backupModeReserve")}</div>
+              <div className="card form">
+                <p className="hint">{t("settings.batteryPage.backupModeReserveHint")}</p>
+                <SocSlider value={form.backup_soc ?? null} disabled={!socEditable || current?.backup_soc == null}
+                  min={10} max={form.max_soc ?? 100} onChange={(v) => set({ backup_soc: v })} />
+              </div>
+            </>
+          )}
 
           {editable && <Button onClick={() => void save()} busy={busy} disabled={!changed}>{t("settings.batteryPage.apply")}</Button>}
           {editable && <Unsaved show={!!changed && !busy} />}
