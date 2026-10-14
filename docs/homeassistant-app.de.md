@@ -80,7 +80,10 @@ Es darf nur ein OpenAmpere mit dem Wechselrichter sprechen. Zwei stören sich ge
 2. **In der App:** den Einrichtungsassistenten durchgehen und dann unter **Mehr → Daten & Sicherung → Sicherung
    wiederherstellen** die Datei auswählen. OpenAmpere startet neu, mit deinem Verlauf und deinen Einstellungen.
 3. **Gespeicherte Zugangsdaten neu eintragen**, zum Beispiel für das Kundenportal des Netzbetreibers, ntfy, evcc oder
-   den Ampere.IQ-Import. Aus Sicherheitsgründen stehen sie nicht in der heruntergeladenen Sicherung.
+   den Ampere.IQ-Import. Aus Sicherheitsgründen stehen sie nicht in der heruntergeladenen Sicherung. Das gilt auch für
+   den Local Key einer Wallbox, die OpenAmpere selbst steuert: In der Sicherung steht er nur verschlüsselt mit dem
+   Schlüssel der alten Installation. Die Wallbox behält ihre Einstellungen und zeigt unter **Mehr → Verbindung →
+   Wallbox** und auf der Seite **Geräte** „Local Key neu eintragen“, bis du den Schlüssel dort neu einträgst.
 4. **Home-Assistant-Integration:** Hast du sie über HACS installiert, entferne sie in HACS (nicht unter Geräte &
    Dienste) und starte die App neu; die App installiert dann ihre eigene. Home Assistant erkennt dein OpenAmpere wieder
    und wechselt von selbst zur App. Es fragt nur einmal nach einer neuen Kopplung. Entitäten und ihr Verlauf bleiben

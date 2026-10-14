@@ -16,6 +16,9 @@
   it keeps charging with the last current. The owner's current is kept in the meta "wallbox_owned" before the first
   write and put back when OpenAmpere lets go (mode "manual", master switch off, wallbox removed or switched off);
   a charge OpenAmpere started is then also stopped, except when the owner chose "manual" (they take over).
+- The local key is stored encrypted with secret.key. A backup restored on another server (or a lost secret.key) leaves
+  a key that cannot be read (#391): the wallbox stays in the list with its settings, is neither read nor controlled,
+  and the app asks for the key again. Saving it with a new key makes it work again under the same id.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ import logging
 import re
 import secrets
 import time
+from collections.abc import Collection
 from dataclasses import asdict, dataclass, field
 
 from .. import ha_app, tuya
@@ -87,7 +91,8 @@ class Live:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
-def validate(raw: list) -> list[NativeWallbox]:
+def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
+    """keyless: ids of stored wallboxes whose key could not be read; they may stay without one."""
     if not isinstance(raw, list) or len(raw) > MAX_WALLBOXES:
         raise ValueError(f"Höchstens {MAX_WALLBOXES} Wallboxen.")
     wallboxes, ids = [], set()
@@ -107,7 +112,7 @@ def validate(raw: list) -> list[NativeWallbox]:
             raise ValueError(f"{wb.name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
         if wb.device_id and not DEVICE_ID.fullmatch(wb.device_id):
             raise ValueError(f"{wb.name}: Die Geräte-ID besteht aus 10 bis 40 Buchstaben und Ziffern.")
-        if len(wb.local_key.encode()) != 16:
+        if len(wb.local_key.encode()) != 16 and not (not wb.local_key and wb.id in keyless):
             raise ValueError(f"{wb.name}: Der Local Key muss genau 16 Zeichen lang sein.")
         if not 6 <= wb.max_current_a <= 32:
             raise ValueError(f"{wb.name}: Der höchste Ladestrom muss zwischen 6 und 32 A liegen.")
@@ -127,6 +132,7 @@ class NativeWallboxes:
         self._retired: dict[str, NativeWallbox] = {}  # removed or switched off while OpenAmpere controlled them
         self._retired_live: dict[str, Live] = {}
         self._restored = False
+        self._unreadable: set[str] = set()  # stored keys that cannot be decrypted: tried and logged once
 
     # ---- settings ------------------------------------------------------------------
 
@@ -136,8 +142,15 @@ class NativeWallboxes:
         return {**wb, "local_key": key if not key or box.is_encrypted(key) else box.encrypt("wallbox.local_key", key)}
 
     def _opened(self, wb: dict) -> dict:
+        """A key that cannot be read (another secret.key) becomes empty: the wallbox waits for a new one."""
         key = wb.get("local_key") or ""
-        return {**wb, "local_key": self.runtime.secrets.decrypt("wallbox.local_key", key) if key else ""}
+        if not key or key in self._unreadable:
+            return {**wb, "local_key": ""}
+        opened = self.runtime.secrets.decrypt("wallbox.local_key", key)
+        if not opened:
+            self._unreadable.add(key)
+            log.warning("wallbox %s: the local key cannot be read, it has to be entered again", wb.get("name"))
+        return {**wb, "local_key": opened}
 
     @property
     def wallboxes(self) -> list[NativeWallbox]:
@@ -145,7 +158,7 @@ class NativeWallboxes:
         found = []
         for raw in self.runtime.storage.get_meta("wallboxes") or []:
             try:
-                found += validate([self._opened(raw)])
+                found += validate([self._opened(raw)], keyless=(str(raw.get("id")),))
             except (ValueError, AttributeError, TypeError) as err:
                 log.warning("stored wallbox ignored: %s", err)
         return found
@@ -157,7 +170,8 @@ class NativeWallboxes:
         self.runtime.storage.set_meta("wallboxes", [self._sealed(asdict(wb)) for wb in wallboxes])
 
     def save(self, raw: list) -> list[NativeWallbox]:
-        """A local key sent empty keeps the stored one (the app never gets it back)."""
+        """A local key sent empty keeps the stored one (the app never gets it back); a wallbox whose key could not
+        be read may stay without one until it is entered again."""
         stored = {wb.id: wb for wb in self.wallboxes}
         if not isinstance(raw, list):
             raise ValueError("Ungültige Angaben bei einer Wallbox.")
@@ -166,14 +180,20 @@ class NativeWallboxes:
             if isinstance(item, dict) and not item.get("local_key") and item.get("id") in stored:
                 item = {**item, "local_key": stored[item["id"]].local_key}
             items.append(item)
-        wallboxes = validate(items)
+        wallboxes = validate(items, keyless={wb.id for wb in stored.values() if not wb.local_key})
         for wb in wallboxes:
             if not in_home_network(wb.host):
                 raise ValueError(f"{wb.name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
         new = {wb.id: wb for wb in wallboxes}
         for old in stored.values():
             now = new.get(old.id)
-            if now is None or not now.enabled or (now.host, now.local_key) != (old.host, old.local_key):
+            if old.id in self._owned() and not old.local_key:
+                # without its key it cannot be reached: with a new key it goes on under its id, or is let go of
+                if now is None or not now.enabled:
+                    self._retired[old.id] = now or old
+                else:
+                    self._retired.pop(old.id, None)
+            elif now is None or not now.enabled or (now.host, now.local_key) != (old.host, old.local_key):
                 if old.id in self._owned():
                     self._retired[old.id] = old  # let go of it with the address it was controlled at
             if now is None or (now.host, now.local_key) != (old.host, old.local_key):
@@ -204,6 +224,8 @@ class NativeWallboxes:
         """Starts a read of every wallbox that is due; never waits for one (a wallbox may be unplugged)."""
         now = time.time() if now is None else now
         for wb in self.enabled():
+            if not wb.local_key:
+                continue  # its key has to be entered again
             live = self.live.setdefault(wb.id, Live())
             if live.task and not live.task.done():
                 continue
@@ -287,11 +309,11 @@ class NativeWallboxes:
         return self.runtime.storage.get_meta(OWNED) or {}
 
     def _own(self, wb: NativeWallbox, reading: Reading, **changes) -> None:
-        """Before OpenAmpere writes for the first time: the owner's current, to put it back later."""
+        """Before OpenAmpere writes for the first time: the owner's current, to put it back later. The wallbox is kept
+        as it is written to now, e.g. with a key entered again after a restore."""
         owned = self._owned()
-        entry = owned.get(wb.id) or {"current_a": reading.set_current_a, "started": False,
-                                     "wallbox": self._sealed(asdict(wb))}
-        owned[wb.id] = {**entry, **changes}
+        entry = owned.get(wb.id) or {"current_a": reading.set_current_a, "started": False}
+        owned[wb.id] = {**entry, "wallbox": self._sealed(asdict(wb)), **changes}
         try:
             self.runtime.storage.set_meta(OWNED, owned)
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
@@ -375,6 +397,8 @@ class NativeWallboxes:
         """One check of a wallbox; available: surplus for it, its own charging included.
         Returns the power it is meant to charge with."""
         now = time.time() if now is None else now
+        if not wb.local_key:
+            return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
         reading = self._fresh(live, now)
         if wb.mode == "manual":
@@ -466,7 +490,7 @@ class NativeWallboxes:
                 self._retired.pop(wb_id, None)
                 self._retired_live.pop(wb_id, None)
                 continue
-            if self._fresh(live, now) is None and now >= live.retry_at:
+            if self._fresh(live, now) is None and now >= live.retry_at and wb.local_key:
                 await self.read(wb, live)
             if self._fresh(live, now) is not None:
                 done = await self.release(wb, "Wallbox entfernt, ausgeschaltet oder geändert", live=live)
@@ -523,7 +547,8 @@ class NativeWallboxes:
         for wb in self.wallboxes:
             live = self.live.get(wb.id) or Live()
             reading = live.reading
-            out.append({"model": wb.model, "mode": wb.mode, "enabled": wb.enabled, "online": live.online,
+            out.append({"model": wb.model, "mode": wb.mode, "enabled": wb.enabled, "local_key_set": bool(wb.local_key),
+                        "online": live.online,
                         "offline_min": round((time.time() - live.offline_since) / 60) if live.online is False else None,
                         "failures": live.failures, "with_device_id": bool(wb.device_id),
                         "reading": None if reading is None else {
@@ -536,7 +561,8 @@ def report_markdown(wallbox: dict) -> list[str]:
     reachable = {True: "ja", False: f"nein, seit {wallbox.get('offline_min')} Minuten", None: "noch nicht gefragt"}
     lines = [f"- Modell: {wallbox['model']}, Lademodus: {wallbox['mode']}, eingeschaltet: "
              f"{'ja' if wallbox['enabled'] else 'nein'}, Geräte-ID eingetragen: "
-             f"{'ja' if wallbox['with_device_id'] else 'nein'}",
+             f"{'ja' if wallbox['with_device_id'] else 'nein'}"
+             + ("" if wallbox.get("local_key_set", True) else ", Local Key: nicht lesbar, neu eintragen"),
              f"- Erreichbar: {reachable.get(wallbox['online'], wallbox['online'])}, Fehlversuche: {wallbox['failures']}"]
     reading = wallbox.get("reading")
     if reading:

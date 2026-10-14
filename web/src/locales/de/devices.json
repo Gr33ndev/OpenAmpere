@@ -125,6 +125,8 @@
     "localKey": "Local Key",
     "localKeyHint": "Genau 16 Zeichen, so wie du ihn von der Tuya-Plattform kopiert hast.",
     "localKeySaved": "Gespeichert. Leer lassen, um ihn zu behalten.",
+    "keyLost": "Local Key neu eintragen",
+    "keyLostHint": "OpenAmpere kann den gespeicherten Local Key dieser Wallbox nicht lesen, zum Beispiel nach dem Wiederherstellen einer Sicherung auf einem anderen Rechner. Bis du ihn neu einträgst, liest und steuert OpenAmpere die Wallbox nicht. Ihre übrigen Einstellungen bleiben erhalten.",
     "maxCurrent": "Höchster Ladestrom (A)",
     "maxCurrentHint": "So viel darf OpenAmpere höchstens einstellen, z. B. 16 für eine rote 16-A-Steckdose. Die Wallbox selbst begrenzt zusätzlich auf den Wert aus ihrer App.",
     "deviceId": "Geräte-ID (freiwillig)",

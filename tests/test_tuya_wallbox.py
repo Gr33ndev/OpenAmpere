@@ -14,6 +14,7 @@ from openampere import tuya
 from openampere.consumers import SurplusControl
 from openampere.drivers.base import Snapshot
 from openampere.runtime import Runtime
+from openampere.secretbox import SecretBox
 from openampere.simulator import SimulatedTuyaCharger
 from openampere.storage import Storage
 from openampere.wallbox import native as native_module
@@ -135,6 +136,10 @@ def test_validation_of_several_wallboxes():
         validate([good] * 5)
     ids = {wb.id for wb in validate([{**good, "id": "same0000"}, {**good, "id": "same0000"}])}
     assert len(ids) == 2  # every wallbox keeps its own id
+    # a stored wallbox whose key could not be read may stay without one, a new one may not
+    assert validate([{**good, "id": "ab12cd34", "local_key": ""}], keyless=("ab12cd34",))[0].local_key == ""
+    with pytest.raises(ValueError, match="Local Key"):
+        validate([{**good, "id": "ab12cd34", "local_key": ""}])
 
 
 def test_the_local_key_is_stored_encrypted_and_never_shown(tmp_path):
@@ -150,6 +155,74 @@ def test_the_local_key_is_stored_encrypted_and_never_shown(tmp_path):
     assert wallboxes.wallboxes[0].local_key == KEY and wallboxes.wallboxes[0].name == "Garage 2"
     with pytest.raises(ValueError):
         wallboxes.save([{"name": "Draußen", "host": "8.8.8.8", "local_key": KEY}])  # not in the home network
+
+
+async def test_a_wallbox_whose_key_cannot_be_read_after_a_restore_stays_and_waits_for_a_new_one(
+        tmp_path, monkeypatch, caplog):
+    """A backup restored on another server: the stored local key was encrypted with another secret.key (#391)."""
+    async with simulated(plugged=True) as (charger, port):
+        charger.current_a = 13  # the owner's current
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="now")
+        site(runtime, grid=0)
+        wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
+        await SurplusControl(runtime, None, wallboxes).tick(now=0)
+        assert charger.charging and charger.current_a == 16
+        wallboxes.save([{**vars(wb), "local_key": "", "max_current_a": 10}])
+
+        runtime.secrets = SecretBox(tmp_path / "other" / "secret.key")  # the new server
+        caplog.set_level(logging.WARNING)
+        restored = NativeWallboxes(runtime)
+        monkeypatch.setattr(restored, "device", lambda w: tuya.TuyaDevice(w.host, w.local_key, port=port, timeout=1))
+        control = SurplusControl(runtime, None, restored)
+        kept = restored.wallboxes[0]
+        assert (kept.id, kept.name, kept.host, kept.mode, kept.max_current_a) == (wb.id, wb.name, wb.host, "now", 10)
+        assert kept.local_key == "" and not restored.view()["wallboxes"][0]["local_key_set"]
+        assert not restored.report()[0]["local_key_set"]
+        # neither read nor controlled
+        connections, writes = charger.connections, len(charger.writes)
+        for now in (10, 20):
+            restored.refresh()
+            await restored.wait()
+            await control.tick(now=now)
+        assert charger.connections == connections and len(charger.writes) == writes and not restored.live.get(wb.id)
+        assert sum("cannot be read" in r.message for r in caplog.records) == 1  # logged once, not on every read
+        # changed in the app without a key (mode, switch): it stays and keeps waiting
+        restored.set_mode(wb.id, "pv")
+        restored.save([{**restored.view()["wallboxes"][0], "local_key": "", "enabled": True}])
+        assert restored.wallboxes[0].mode == "pv" and restored.wallboxes[0].local_key == ""
+
+        # the key entered again: read and controlled under the same id, the owner's current is still known
+        restored.save([{**restored.view()["wallboxes"][0], "local_key": KEY, "mode": "now"}])
+        assert restored.wallboxes[0].local_key == KEY and restored.wallboxes[0].id == wb.id
+        assert not restored._retired and runtime.storage.get_meta("wallbox_owned")[wb.id]["current_a"] == 13
+        restored.refresh()
+        await restored.wait()
+        assert restored.view()["wallboxes"][0]["online"]
+        restored.set_mode(wb.id, "manual")
+        await restored.read(restored.wallboxes[0])
+        await control.tick(now=30)
+        assert charger.current_a == 13 and runtime.storage.get_meta("wallbox_owned") == {}  # let go of again
+
+
+async def test_a_wallbox_removed_on_the_new_server_is_let_go_of_with_the_key_entered_again(tmp_path, monkeypatch):
+    """Owned before the restore, switched off in the app afterwards: the key entered then is used to let go of it."""
+    async with simulated(plugged=True) as (charger, port):
+        charger.current_a = 13
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="now")
+        site(runtime, grid=0)
+        await wallboxes.read(wallboxes.wallboxes[0])
+        await SurplusControl(runtime, None, wallboxes).tick(now=0)
+        assert charger.current_a == 16
+
+        runtime.secrets = SecretBox(tmp_path / "other" / "secret.key")
+        restored = NativeWallboxes(runtime)
+        monkeypatch.setattr(restored, "device", lambda w: tuya.TuyaDevice(w.host, w.local_key, port=port, timeout=1))
+        control = SurplusControl(runtime, None, restored)
+        await control.tick(now=10)
+        restored.save([{**restored.view()["wallboxes"][0], "local_key": KEY, "enabled": False}])
+        await control.tick(now=20)
+        assert charger.current_a == 13 and not charger.charging and runtime.storage.get_meta("wallbox_owned") == {}
 
 
 # ---- offline -------------------------------------------------------------------------------------------------------

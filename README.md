@@ -282,7 +282,7 @@ sudo docker compose start openampere
 
 The file `openampere-sicherung.tar.gz` is then in your home folder on the server. Copy it to another computer or a USB stick. If you set up evcc with the install script, its configuration is in the folder `evcc` next to it. Then write `data evcc` instead of `data` so that it is backed up as well.
 
-**Restore in the app:** under **More → Data & backup**, choose the file from the app at **Restore backup**. You need to be logged in. OpenAmpere checks the file, keeps your password and the stored login details and then restarts. The previous database is kept as a copy in the `data` folder.
+**Restore in the app:** under **More → Data & backup**, choose the file from the app at **Restore backup**. You need to be logged in. OpenAmpere checks the file, keeps your password and the stored login details and then restarts. The previous database is kept as a copy in the `data` folder. Restored on another computer (without the `secret.key` of the old one), the local key of a wallbox OpenAmpere controls itself cannot be read: the wallbox keeps its settings and shows **Local Key neu eintragen** (Enter the local key again) under **More → Connection → Wallbox** and on the **Devices** page. Until you enter the key there, OpenAmpere neither reads nor controls it.
 
 **Bring back the whole data folder:** if you backed up the `data` folder as above, copy it back by hand. The file must be in your home folder on the server:
 

@@ -69,3 +69,32 @@ test("a search that is not possible says so instead of finding nothing", async (
   await expect(page.getByText("Die Suche ist auf diesem Rechner gerade nicht möglich")).toBeVisible();
   await expect(page.getByText("Keine Tuya-Wallbox gefunden")).toHaveCount(0);
 });
+
+// a backup restored on another server: the stored local key cannot be read, the wallbox waits for a new one (#391)
+test("a wallbox whose local key cannot be read asks for it again and is saved with a new one", async ({ page, api }) => {
+  const base = await view();
+  const lost: NativeWallbox = { ...base.wallboxes[0], local_key_set: false, online: null, offline_since: null,
+    error: null, reading: null };
+  api.override("/api/wallboxes", { ...base, wallboxes: [lost] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Mobile Wallbox" });
+  await expect(card.locator(".hint", { hasText: "Local Key neu eintragen" })).toBeVisible();
+  await expect(card.getByText("liest und steuert OpenAmpere die Wallbox nicht")).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+  await card.getByRole("button", { name: "Local Key neu eintragen" }).click();
+
+  await expect(page).toHaveURL(/#\/more\/wallbox$/);
+  await page.getByRole("button", { name: "direkt", exact: true }).click();  // the demo has evcc, too
+  await expect(page.getByText("nach dem Wiederherstellen einer Sicherung")).toBeVisible();
+  await page.getByRole("button", { name: "Local Key neu eintragen" }).click();
+  await expect(page.getByLabel("Name")).toHaveValue("Mobile Wallbox");  // the other settings are kept
+  const save = page.getByRole("button", { name: "Speichern", exact: true });
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Local Key").fill("0123456789abcdef");
+  api.override("/api/wallboxes", { ...base, wallboxes: [{ ...lost, local_key_set: true }] });
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes") && r.method() === "PUT");
+  await save.click();
+  expect((await sent).postDataJSON().wallboxes[0]).toMatchObject({ id: "demo0001", local_key: "0123456789abcdef" });
+  await expect(page.getByText("Mobile Wallbox").first()).toBeVisible();
+  await expect(page.getByText("liest und steuert OpenAmpere die Wallbox nicht")).toHaveCount(0);
+});

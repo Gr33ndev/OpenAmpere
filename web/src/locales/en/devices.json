@@ -125,6 +125,8 @@
     "localKey": "Local key",
     "localKeyHint": "Exactly 16 characters, as you copied it from the Tuya platform.",
     "localKeySaved": "Saved. Leave empty to keep it.",
+    "keyLost": "Enter the local key again",
+    "keyLostHint": "OpenAmpere cannot read the stored local key of this wallbox, for example after a backup was restored on another computer. Until you enter it again, OpenAmpere neither reads nor controls the wallbox. Its other settings are kept.",
     "maxCurrent": "Highest charging current (A)",
     "maxCurrentHint": "OpenAmpere sets at most this much, e.g. 16 for a red 16 A socket. The wallbox also limits to the value from its app.",
     "deviceId": "Device ID (optional)",
