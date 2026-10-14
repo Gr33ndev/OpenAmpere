@@ -159,7 +159,7 @@ VALUES = {
 
 - `Reg(address, kind, scale)`: `decode()` returns `raw * scale`. 32-bit values have the high word at the lower
   address. Choose `scale` so the result is already in the snapshot's unit (W, Wh, °C, %).
-- Keep blocks small and contiguous (Modbus allows at most 125 registers per request; `docs/registers.md`
+- Keep blocks small and contiguous (Modbus allows at most 125 registers per request; `docs/devices/foxess/h3.md`
   recommends at most 100 for FoxESS). If the device rejects a block, `_read_block()` falls back to single reads.
 - Write every open question into the docstring (`VERIFY ON HARDWARE`, as in `saj/registers.py`).
 
@@ -270,7 +270,7 @@ app how long charging can go on after OpenAmpere stops.
   a reason) and a German label to `LABELS` (shown in the setup, e.g. `"ACME X1 (nur Anzeige)"`).
 - `config.py`: add the key to the `"inverter.driver"` choice in `EDITABLE` (and the comment on `InverterConfig.driver`).
 - `web/src/api.ts`: add the key to the `"inverter.driver"` type.
-- Documentation: a section in `docs/registers.md`, a row in the README's "Supported devices" table, the source in
+- Documentation: a page in `docs/devices/` (registers and behaviour with status and source, see its README), a row in the README's "Supported devices" table, the source in
   `NOTICE` (see [section 6](#6-licensing-and-sources)).
 
 ## 3. The write path (optional)
@@ -280,7 +280,7 @@ request with the label `safety`, after the read path has been confirmed on real 
 that are backed by evidence:
 
 - manufacturer documentation,
-- a project with a compatible license, named in `NOTICE` and `docs/registers.md`, or
+- a project with a compatible license, named in `NOTICE` and on the device page in `docs/devices/`, or
 - a diagnostics report from a real device.
 
 ### What the app already guarantees
@@ -390,7 +390,7 @@ Turning a report into code:
    `test_inverter_temperature_in_tenths_of_a_degree` in `tests/test_foxess_driver.py` does. For mapping logic, call
    `to_snapshot()` with a raw dict, as `test_saj_grid_counter_source_does_not_switch` in `tests/test_detection.py`
    does. Use made-up serial numbers and no IP addresses.
-5. Update `docs/registers.md` and remove the matching `VERIFY ON HARDWARE` note.
+5. Update the device page in `docs/devices/` (status "confirmed" with the source) and remove the matching `VERIFY ON HARDWARE` note.
 
 ## 5. Tests
 
@@ -427,7 +427,7 @@ these facts, never code, graphics or texts.
 
 - Sources: manufacturer documentation, projects with a compatible license (the existing drivers use MIT and
   Apache-2.0 projects), or diagnostics reports. If you are unsure about a license, ask in the issue first.
-- Credit every source in `NOTICE` (project, URL, license, copyright holder if given) and in `docs/registers.md`, and
+- Credit every source in `NOTICE` (project, URL, license, copyright holder if given) and on the device page in `docs/devices/`, and
   mention it in the docstring of `registers.py`.
 - Nothing from the Ampere.IQ app or its decompiled code, see `CONTRIBUTING.md`.
 - Use company and product names only to describe compatibility.
@@ -440,7 +440,7 @@ these facts, never code, graphics or texts.
 2. **Small pull requests.** The read-only driver first, the write path later in its own PR.
 3. **PR title** in Conventional Commits format with the vendor as scope, e.g. `feat(acme): read ACME X1 inverters`.
 4. **Checklist** from the PR template, in particular for a driver:
-   - [ ] "New device / new registers" ticked; sources named in `NOTICE` and `docs/registers.md`.
+   - [ ] "New device / new registers" ticked; sources named in `NOTICE` and on the device page in `docs/devices/`.
    - [ ] Detection only reads and does not claim other vendors' simulators.
    - [ ] Snapshot follows the sign conventions; counters in Wh; `None` instead of guessed values.
    - [ ] Simulator and tests added; `.venv/bin/pytest` passes.

@@ -199,7 +199,7 @@ class FoxessDriver(ModbusDevice):
             self._remote_owned = None  # off already, or someone else's now
             return False
         await self._write(s["remote_enable"], 0)
-        for wait_s in (0, 1, 2, 3):  # the read-back may be delayed by a few seconds (registers.md)
+        for wait_s in (0, 1, 2, 3):  # the read-back may be delayed by a few seconds (docs/devices/foxess/h3.md)
             await asyncio.sleep(wait_s)
             if not await self._read_reg(s["remote_enable"], 3):
                 self._remote_owned = None

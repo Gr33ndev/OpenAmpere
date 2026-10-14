@@ -3,7 +3,7 @@ Deutsch: [devices.de.md](devices.de.md)
 # Supported devices
 
 Which devices OpenAmpere works with, what it reads and controls, and what has already been confirmed on a real
-system. The page only lists what the code, [registers.md](registers.md) and the issues show.
+system. The page only lists what the code, the [device pages](devices/README.md) and the issues show.
 
 **How to read this page:**
 
@@ -21,11 +21,11 @@ order: FoxESS at device address (unit id) 247, then SAJ at 1 and 2.
 
 | Device / model | Sold by EKD as | Register map / detection (unit id) | Read | Control | Tested on real hardware | Notes |
 |---|---|---|---|---|---|---|
-| FoxESS H3, newer firmware | "Ampere.StoragePro E3" (see notes) | `foxess_h3_new`; chosen when the energy counters at 39601 answer (unit 247) | Yes | Yes: work mode, backup power reserve and limits, remote control for grid charging, export limit | Reading: confirmed (#11, #16). Control: confirmed (#25, #196) | Which map the E3 uses is still open in [registers.md](registers.md). #11 confirmed the new map on an H3; the issue form's device choice covers H3, H3 Smart, H3 Pro and the E3, so the exact variant is not stated. The export limit (46616) is known from community documentation for the H3 Smart; it is confirmed on a real system with the new map (#196). |
+| FoxESS H3, newer firmware | "Ampere.StoragePro E3" (see notes) | `foxess_h3_new`; chosen when the energy counters at 39601 answer (unit 247) | Yes | Yes: work mode, backup power reserve and limits, remote control for grid charging, export limit | Reading: confirmed (#11, #16). Control: confirmed (#25, #196) | Which map the E3 uses is still open in [h3.md](devices/foxess/h3.md). #11 confirmed the new map on an H3; the issue form's device choice covers H3, H3 Smart, H3 Pro and the E3, so the exact variant is not stated. The export limit (46616) is known from community documentation for the H3 Smart; it is confirmed on a real system with the new map (#196). |
 | FoxESS H3, older firmware | not stated in the sources | `foxess_h3_legacy`; chosen when the new map does not answer but the counters at 32000 do (unit 247) | Yes | Yes: work mode, backup power reserve and limits, remote control for grid charging. No export limit (no known register) | not yet confirmed | Battery health (SoH, 31090) needs firmware 1.80 or newer. House consumption is the sum of the three phases (no total register). |
 | FoxESS H3 Smart (model string `H3-…-Smart` or `H3-…-M`) | not stated in the sources | `foxess_h3_new` (unit 247) | Yes | Yes, as above | not yet confirmed | The export limit registers come from community documentation for this model. |
 | FoxESS H3 Pro (model string `H3-Pro-…` or `P3-Pro-…`) | not stated in the sources | `foxess_h3_new` (unit 247) | Yes | Yes, as above | not yet confirmed | |
-| SAJ H2 (type code 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), "3P-X E2" (0x005E, three-phase) | "Ampere.StoragePro" | `saj_h2`; identification block 0x8F00 plus a plausibility check of work mode and state of charge (unit 1 or 2, both are tried) | Yes | Yes: battery settings (self-use and backup only, with the reserve of the backup mode), export limit, grid charging through a charge slot (#377) | not yet confirmed | Control registers from SAJ's H2 protocol, written the same way by home-assistant-saj-h2-modbus and evcc. SAJ has no remote control that ends by itself: grid charging uses a short charge slot that OpenAmpere extends (see [registers.md](registers.md)). Still to verify: the signs of battery and grid power, and whether the PV counter covers all MPPTs. Some firmware lacks the summed grid counters (0x4167); then the L1 counters are used. |
+| SAJ H2 (type code 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), "3P-X E2" (0x005E, three-phase) | "Ampere.StoragePro" | `saj_h2`; identification block 0x8F00 plus a plausibility check of work mode and state of charge (unit 1 or 2, both are tried) | Yes | Yes: battery settings (self-use and backup only, with the reserve of the backup mode), export limit, grid charging through a charge slot (#377) | not yet confirmed | Control registers from SAJ's H2 protocol, written the same way by home-assistant-saj-h2-modbus and evcc. SAJ has no remote control that ends by itself: grid charging uses a short charge slot that OpenAmpere extends (see [h2-family.md](devices/saj/h2-family.md)). Still to verify: the signs of battery and grid power, and whether the PV counter covers all MPPTs. Some firmware lacks the summed grid counters (0x4167); then the L1 counters are used. |
 | SAJ AS2 (type code 0x0055, 0x0056) and other codes in the SAJ family range 0x0050–0x006F | not stated in the sources | `saj_h2`, as above. Unknown codes in the family range are accepted with a warning in the log | Yes | No | not yet confirmed | Read with the same register map as the H2 and HS2. |
 
 More about the FoxESS H3 family:
@@ -52,7 +52,7 @@ More about the FoxESS H3 family:
 - **Temperatures:** register 39141 (inverter) counts 0.1 °C, checked against another reader (#11). The "battery"
   temperature from 37611 is the temperature of the BMS electronics, not of the cells (#16).
 
-Register details and sources: [registers.md](registers.md) and [NOTICE](../NOTICE).
+Registers, behaviour and sources per device: [docs/devices/](devices/README.md) and [NOTICE](../NOTICE).
 
 ## Immersion heaters
 

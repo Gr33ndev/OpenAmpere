@@ -4,7 +4,7 @@
 
 Register facts are taken from the MIT-licensed foxess_modbus project
 (https://github.com/nathanmarlor/foxess_modbus) and community documentation of FoxESS H3
-based storage systems. See docs/registers.md.
+based storage systems. See docs/devices/foxess/.
 
 32-bit values: high word at the lower address.
 """

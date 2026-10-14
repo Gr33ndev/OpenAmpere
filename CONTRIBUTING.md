@@ -207,13 +207,16 @@ detection, the read and write path, the simulator, the tests a driver needs and 
 Mistakes when writing can affect devices, the warranty or the grid connection requirements. Therefore, additionally:
 
 - **New registers only with a source:** manufacturer documentation, a project with a compatible license (name the
-  source in `docs/registers.md` and `NOTICE`) or a diagnostics report from a real device.
+  source on the device page in `docs/devices/` and in `NOTICE`) or a diagnostics report from a real device.
 - **Writing functions** are only reachable via the control features, respect test mode, check limits before writing,
   read back afterwards and write to the log.
 - **Continuous control** (e.g. charging based on price) only via remote control with a watchdog, never via
   permanently stored registers. Only a device without such a remote control (SAJ, #377) may use a short time slot
   of the inverter that ends by itself and that OpenAmpere extends.
 - **Legal topics** (feed-in limitation, § 14a EnWG, EEG) must be raised in the issue before any code is written.
+- **Device knowledge** (a register, a behaviour seen on a device, a confirmation, a correction) goes onto the device
+  page in [docs/devices/](docs/devices/README.md) in the same pull request, with its status and source. The README
+  there has the rules: not official information, sources in own words, no NDA material, no personal data.
 
 ### Adding grid operators (meter readings)
 
