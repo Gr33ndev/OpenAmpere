@@ -1,6 +1,32 @@
 {
   "versions": [
     {
+      "version": "0.28.0",
+      "date": "2026-10-14",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "homeassistant",
+            "text": "Show the inverter firmware as a sensor that follows an update (#376)"
+          },
+          {
+            "scope": "control",
+            "text": "Explain in the app when another device sets a change back (#374)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Reload in the overwrite test only once no request is running (#375)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.27.0",
       "date": "2026-10-14",
       "first": false,

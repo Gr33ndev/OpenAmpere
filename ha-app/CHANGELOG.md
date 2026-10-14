@@ -4,6 +4,17 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.28.0 (2026-10-14)
+
+### Neu
+
+- **homeassistant:** Show the inverter firmware as a sensor that follows an update (#376)
+- **control:** Explain in the app when another device sets a change back (#374)
+
+### Weitere Änderungen
+
+- Reload in the overwrite test only once no request is running (#375)
+
 ## 0.27.0 (2026-10-14)
 
 ### Behoben
@@ -109,9 +120,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - **charging:** Stop raising the backup reserve for grid charging (#321)
-
-## 0.23.1 (2026-10-12)
-
-### Behoben
-
-- **charging:** Charge past the backup reserve on inverters that stop there (#316)
