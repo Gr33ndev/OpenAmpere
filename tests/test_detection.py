@@ -62,6 +62,18 @@ async def test_unreachable_fails_fast():
     assert time.monotonic() - started < 3
 
 
+async def test_saj_0x005e_has_a_name_and_control(caplog):
+    """#339: the three-phase type sold as "Ampere.StoragePro" is no unknown code any more."""
+    sim = SajSimulatedInverter(max_connections=3, device_type=0x005E)
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("saj", "127.0.0.1", port, 1, timeout=3)
+        info = await driver.connect()
+        await driver.close()
+    assert info.model == "3P-X E2" and info.supports_control
+    assert "unknown SAJ device type" not in caplog.text
+
+
 async def test_runtime_auto_driver_with_an_saj_as2_stays_read_only(tmp_path):
     """Control is enabled for H2/HS2 (#377), not for AS2 and other types of the family."""
     sim = SajSimulatedInverter(unit=2, max_connections=3, device_type=0x0055)
