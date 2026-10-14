@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.29.0",
+      "date": "2026-10-14",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "saj",
+            "text": "Control battery settings, export limit and grid charging of SAJ inverters (#378)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.28.0",
       "date": "2026-10-14",
       "first": false,

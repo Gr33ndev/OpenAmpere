@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.29.0 (2026-10-14)
+
+### Neu
+
+- **saj:** Control battery settings, export limit and grid charging of SAJ inverters (#378)
+
 ## 0.28.0 (2026-10-14)
 
 ### Neu
@@ -106,17 +112,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **homeassistant:** Report an alarm only for fault codes other than 0 (#332)
-
-## 0.24.0 (2026-10-12)
-
-### Neu
-
-- **evcc:** Explain the sponsor token and warn before it runs out (#319)
-
-### Behoben
-
-- **charging:** Explain in the log why grid charging ended and what changed (#323)
-
-### Weitere Änderungen
-
-- **charging:** Stop raising the backup reserve for grid charging (#321)
