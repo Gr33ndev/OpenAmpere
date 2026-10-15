@@ -480,7 +480,7 @@
     "whereToFind": "Beides steht in der ersten Abrechnung des Netzbetreibers oder im Marktstammdatenregister."
   },
   "events": {
-    "alarmHint": "Wenn der Wechselrichter einen Störungscode meldet.",
+    "alarmHint": "Wenn der Wechselrichter länger als 30 Minuten einen Störungscode meldet. Eine kurze Störung, die von selbst vorbei ist, wird nicht gemeldet (manche Wechselrichter zeigen nachts für einige Minuten eine).",
     "batteryFull": "Speicher voll",
     "batteryFullHint": "Einmal am Tag, guter Moment für große Verbraucher.",
     "batteryHealthHint": "Batteriezellen sehr warm oder ungewöhnlich unterschiedlich warm.",
