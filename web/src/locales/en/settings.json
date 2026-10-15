@@ -480,7 +480,7 @@
     "whereToFind": "You'll find both on the grid operator's first statement or in the Marktstammdatenregister."
   },
   "events": {
-    "alarmHint": "When the inverter reports a fault code.",
+    "alarmHint": "When the inverter reports a fault code for longer than 30 minutes. A short fault that is gone by itself is not reported (some inverters show one for a few minutes at night).",
     "batteryFull": "Battery full",
     "batteryFullHint": "Once a day, a good moment for large appliances.",
     "batteryHealthHint": "Battery cells very warm or unusually different in temperature.",

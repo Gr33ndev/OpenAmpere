@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 UNREACHABLE_AFTER_S = 15 * 60
 RELOCATED_RECENT_S = 24 * 3600  # notifications switched on later do not report an old change of address
 STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database briefly locked) is no reason to warn
+# a fault that is gone by itself within this time is no reason to wake anyone, e.g. the about ten minutes of fault
+# every night of SAJ E2 inverters (#404); a fault that lasts is still reported
+ALARM_AFTER_S = 30 * 60
 
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
@@ -68,6 +71,7 @@ class Notifier:
         self.runtime = runtime
         self.sent: dict[str, object] = runtime.storage.get_meta("notify_state") or {}
         self.last_error: str | None = None
+        self.fault_since: float | None = None  # first reading of the current fault, any code
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -134,7 +138,9 @@ class Notifier:
         if cfg.on_alarm and snap is not None:
             codes = [a for a in snap.alarms if a]
             key = ",".join(f"{a:04X}" for a in codes) or None
-            if key and self.sent.get("alarm") != key:
+            # since the first reading with any code: a fault whose code changes is still reported in time
+            self.fault_since = (self.fault_since or now) if key else None
+            if key and now - self.fault_since >= ALARM_AFTER_S and self.sent.get("alarm") != key:
                 await notify("alarm", key, "Störung am Wechselrichter",
                              f"Störungscode: {key}. Details in der App unter Mehr → Meine Anlage.", "rotating_light")
             elif not key and self.sent.get("alarm"):

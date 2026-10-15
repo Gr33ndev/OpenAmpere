@@ -53,13 +53,36 @@ async def test_alarm_and_overwrite(tmp_path, monkeypatch):
     runtime, posts = make(tmp_path, monkeypatch)
     notifier = Notifier(runtime)
     runtime.collector.latest = Snapshot(timestamp=0, alarms=[0, 0x40])
-    assert await notifier.check(now=10) == ["Störung am Wechselrichter"]
+    assert await notifier.check(now=10) == []  # not yet: it may be gone by itself (#404)
+    assert await notifier.check(now=10 + 30 * 60) == ["Störung am Wechselrichter"]
     assert "0040" in posts[-1][1]["message"]  # UTF-8 title travels in JSON
-    assert await notifier.check(now=20) == []
+    assert await notifier.check(now=20 + 30 * 60) == []
 
     runtime.storage.log_control("battery_settings_check", {"from": {}, "to": {}}, False, "überschrieben")
-    assert await notifier.check(now=30) == ["Einstellung überschrieben"]
-    assert await notifier.check(now=40) == []
+    assert await notifier.check(now=30 + 30 * 60) == ["Einstellung überschrieben"]
+    assert await notifier.check(now=40 + 30 * 60) == []
+
+
+async def test_short_fault_is_not_reported(tmp_path, monkeypatch):
+    """SAJ E2 inverters show a fault for about ten minutes every night and then run normally (#404)."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    notifier = Notifier(runtime)
+    for night in range(3):
+        start = night * 86400
+        runtime.collector.latest = Snapshot(timestamp=start, alarms=[0x800000, 0, 0])
+        for minute in range(0, 12):
+            assert await notifier.check(now=start + minute * 60) == []
+        runtime.collector.latest = Snapshot(timestamp=start + 720, alarms=[0, 0, 0])
+        assert await notifier.check(now=start + 720) == []
+    assert posts == []
+
+    # a fault that lasts is reported, also when its code changes on the way
+    runtime.collector.latest = Snapshot(timestamp=0, alarms=[0x800000, 0, 0])
+    assert await notifier.check(now=500_000) == []
+    runtime.collector.latest = Snapshot(timestamp=0, alarms=[0x800000, 0x1, 0])
+    assert await notifier.check(now=500_000 + 20 * 60) == []
+    assert await notifier.check(now=500_000 + 30 * 60) == ["Störung am Wechselrichter"]
+    assert "800000,0001" in posts[-1][1]["message"]
 
 
 async def test_power_cut_is_reported_once_and_its_end(tmp_path, monkeypatch):
