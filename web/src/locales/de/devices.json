@@ -1,4 +1,8 @@
 {
+  "addressesLost": {
+    "hint": "OpenAmpere kann die gespeicherten Schaltadressen dieses Geräts nicht lesen, zum Beispiel nach dem Wiederherstellen einer Sicherung auf einem anderen Rechner. Bis du sie neu einträgst, schaltet OpenAmpere das Gerät nicht, auch nicht aus. Seine übrigen Einstellungen bleiben erhalten.",
+    "title": "Schaltadressen neu eintragen"
+  },
   "batteryCard": {
     "backupReserve": "Notstrom-Reserve: {soc} %",
     "batterySettings": "Speicher einstellen",

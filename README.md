@@ -287,6 +287,8 @@ The file `openampere-sicherung.tar.gz` is then in your home folder on the server
 
 **Restore in the app:** under **More → Data & backup**, choose the file from the app at **Restore backup**. You need to be logged in. OpenAmpere checks the file, keeps your password and the stored login details and then restarts. The previous database is kept as a copy in the `data` folder.
 
+**Devices with their own switch addresses** (under **More → Connection → Immersion heater and other devices**): their addresses often hold the device's password and are in the backup only encrypted with the `secret.key` of the old computer. Restored on another computer, the device keeps its settings and shows **Schaltadressen neu eintragen** (Enter the switch addresses again) there and on the **Devices** page. Until you enter the addresses for switching on and off again, OpenAmpere does not switch the device, not even off. If it is running, switch it off yourself if needed.
+
 **Bring back the whole data folder:** if you backed up the `data` folder as above, copy it back by hand. The file must be in your home folder on the server:
 
 ```bash

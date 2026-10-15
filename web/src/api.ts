@@ -413,6 +413,7 @@ export type Device = {
   override: { mode: "off" | "boost"; until: number | null } | null;
   connected: boolean | null; // wallbox: car plugged in
   soc?: number | null; range_km?: number | null; // wallbox: battery and range of the plugged-in car
+  addresses_lost?: boolean; // own switch addresses that cannot be read (#392): not switched until entered again
 };
 export type DevicesView = { devices: Device[]; today_wh: Record<string, number>;
   evcc: { configured: boolean; error: string | null }; priority: string };

@@ -43,6 +43,7 @@ export function DeviceIcon({ kind, size = 44 }: { kind: Device["kind"]; size?: n
 }
 
 export function deviceStatus(d: Device): string {
+  if (d.addresses_lost) return t("devices.addressesLost.title");
   if (d.error) return d.error;
   if (d.override?.mode === "off") return t("devices.deviceStatus.switchedOffManually");
   if (d.override?.mode === "boost") {
@@ -85,6 +86,10 @@ function OwnDeviceCard({ d, today, onChange }: { d: Device; today: number | unde
         </div>
         <div className="device-power">{kw(d.power_w)}</div>
       </div>
+      {d.addresses_lost && <>
+        <Notice kind="warn">{t("devices.addressesLost.hint")}</Notice>
+        <Button variant="secondary" onClick={() => navigate("more/device-setup")}>{t("devices.addressesLost.title")}</Button>
+      </>}
       {temp != null && (
         <div className="temp-row">
           <span>{t("devices.ownDeviceCard.water", { temperature: num(temp, 1) })}</span>

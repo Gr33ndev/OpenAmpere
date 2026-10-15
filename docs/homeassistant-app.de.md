@@ -88,6 +88,11 @@ Es darf nur ein OpenAmpere mit dem Wechselrichter sprechen. Zwei stören sich ge
 5. **evcc:** Liest evcc die Zähler von OpenAmpere, kopiere die Konfiguration unter **Mehr → Verbindung → Wallbox** neu.
    Darin steht die neue Adresse.
 
+Geräte mit eigenen Schaltadressen (unter **Mehr → Verbindung → Heizstab und weitere Geräte**) behalten ihre
+Einstellungen. Ihre Adressen enthalten aber oft das Passwort des Geräts und stehen in der heruntergeladenen Sicherung nur
+verschlüsselt mit dem Schlüssel der alten Installation. Das Gerät zeigt dort und auf der Seite **Geräte**
+„Schaltadressen neu eintragen“. Bis du die Adressen neu einträgst, schaltet OpenAmpere es nicht, auch nicht aus.
+
 ## Sicherungen und Updates
 
 - **Sicherungen** von Home Assistant enthalten OpenAmpere mit Verlauf, Einstellungen und gespeicherten Zugangsdaten.

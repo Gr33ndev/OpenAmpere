@@ -81,6 +81,11 @@ Only one OpenAmpere may talk to the inverter. Two of them disturb each other.
 5. **evcc:** if evcc reads the meters from OpenAmpere, copy the configuration again under **More → Connection →
    Wallbox**. It contains the new address.
 
+Devices with their own switch addresses (under **More → Connection → Immersion heater and other devices**) keep their
+settings. Their addresses often hold the device's password, though, and are in the downloaded backup only encrypted with
+the key of the old installation. The device shows **Schaltadressen neu eintragen** (Enter the switch addresses again)
+there and on the **Devices** page. Until you enter the addresses again, OpenAmpere does not switch it, not even off.
+
 ## Backups and updates
 
 - **Backups** of Home Assistant include OpenAmpere with its history, settings and stored credentials. OpenAmpere
