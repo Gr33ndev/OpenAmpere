@@ -1,6 +1,61 @@
 {
   "versions": [
     {
+      "version": "0.30.0",
+      "date": "2026-10-15",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "wallbox",
+            "text": "One form to add or check a wallbox, with the steps to the Tuya local key (#389)"
+          },
+          {
+            "scope": "homeassistant",
+            "text": "Show and control OpenAmpere's own wallboxes (#390)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Read and control the portable dé wallbox over Tuya LAN (#387)"
+          },
+          {
+            "scope": "saj",
+            "text": "Show and set the reserve that applies in backup mode (#381)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "wallbox",
+            "text": "Keep a wallbox whose local key cannot be read and ask for it again (#393)"
+          },
+          {
+            "scope": "consumers",
+            "text": "Keep a device whose switch addresses cannot be read and ask for them again (#394)"
+          },
+          {
+            "scope": "saj",
+            "text": "Keep charging from the grid when another device changes the mode or the slot (#383)"
+          },
+          {
+            "scope": "saj",
+            "text": "Show the three-phase type 0x005e by its model name (#379)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "wallbox",
+            "text": "No longer say that wallboxes are controlled only through evcc (#395)"
+          },
+          {
+            "scope": null,
+            "text": "Collect what we know per device in docs/devices with status and source (#385)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.29.0",
       "date": "2026-10-14",
       "first": false,

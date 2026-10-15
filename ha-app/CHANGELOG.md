@@ -4,6 +4,27 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.30.0 (2026-10-15)
+
+### Neu
+
+- **wallbox:** One form to add or check a wallbox, with the steps to the Tuya local key (#389)
+- **homeassistant:** Show and control OpenAmpere's own wallboxes (#390)
+- **wallbox:** Read and control the portable dé wallbox over Tuya LAN (#387)
+- **saj:** Show and set the reserve that applies in backup mode (#381)
+
+### Behoben
+
+- **wallbox:** Keep a wallbox whose local key cannot be read and ask for it again (#393)
+- **consumers:** Keep a device whose switch addresses cannot be read and ask for them again (#394)
+- **saj:** Keep charging from the grid when another device changes the mode or the slot (#383)
+- **saj:** Show the three-phase type 0x005e by its model name (#379)
+
+### Weitere Änderungen
+
+- **wallbox:** No longer say that wallboxes are controlled only through evcc (#395)
+- Collect what we know per device in docs/devices with status and source (#385)
+
 ## 0.29.0 (2026-10-14)
 
 ### Neu
@@ -99,16 +120,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **saj:** Show the on-grid and off-grid battery reserve the right way round (#335)
-
-## 0.25.0 (2026-10-13)
-
-### Neu
-
-- **wallbox:** Listen to a wallbox over ocpp for the diagnostics report (#333)
-- **control:** Copy the control log for a report without personal data (#331)
-- **wallbox:** Check a foxess wallbox read-only in the setup (#327)
-- **diagnostics:** Read any modbus device in the home network, read-only (#326)
-
-### Behoben
-
-- **homeassistant:** Report an alarm only for fault codes other than 0 (#332)
