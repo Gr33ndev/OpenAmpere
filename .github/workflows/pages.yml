@@ -18,9 +18,12 @@ on:
 permissions:
   contents: read
 
+# one deployment at a time: a running one finishes, a newer run waits and runs queued in between are skipped. Not
+# cancel-in-progress: a cancelled run leaves its Pages deployment "in progress", and the next deploy is refused
+# (after a release, the Release trigger and the push of main start two runs a minute apart, #398)
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

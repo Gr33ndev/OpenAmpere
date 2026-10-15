@@ -166,7 +166,8 @@ Every change reaches owners in three ways, all built from the same release (#300
   workflow or the repository breaks updates. The check (and `gh attestation verify --owner Gr33ndev`) trusts the
   names `Gr33ndev` and `OpenAmpere`, not a fixed account or repository ID: never rename, transfer or delete the account
   or the repository, or someone who registers a freed name can sign images that pass (see GOVERNANCE.md).
-- **The Website workflow cancels older runs** (`concurrency: pages`); a "cancelled" run on `main` is normal.
+- **The Website workflow runs one deployment at a time** (`concurrency: pages`, not cancelling a running one, #398);
+  a queued run replaced by a newer one shows as "cancelled" on `main`, which is normal.
 - **Release:** maintainers only, from a clean `main`: `scripts/release.sh X.Y.Z` then
   `git push origin vX.Y.Z`, wait for the "Release" workflow, then `git push origin main` (Home Assistant offers the
   app version in `ha-app/config.yaml` as soon as `main` has it, before that the image must exist). The commit titles since the last tag become the version's entry in
