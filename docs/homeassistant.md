@@ -96,6 +96,7 @@ lesen** (Read only).
 | Grid charging, grid charging target | set up once in OpenAmpere (legal notes) |
 | Mode per immersion heater/switch | Automatic (surplus), off, boost |
 | Charging mode per wallbox OpenAmpere controls itself | Manual, off, solar, min + solar, fast. As in the app: in test mode OpenAmpere writes nothing to the wallbox and only logs what it would do. |
+| Highest charging current per wallbox OpenAmpere controls itself | In A, for the charging mode currently chosen (solar, min + solar, fast), from 6 A up to the highest current set for the wallbox in OpenAmpere. Each mode keeps its own value; unavailable in manual and off. |
 
 OpenAmpere checks every change just like in the app: limits, test mode, read-back. The log shows it with the name
 of the access token. **At most 6 changes per hour per battery setting**, so that an automation stuck in a loop does

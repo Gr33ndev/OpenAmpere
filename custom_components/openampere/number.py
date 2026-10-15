@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 """Numbers: backup reserve, charge limit, outage floor of the battery, the reserve of the backup work mode (only where
-the device keeps its own, SAJ, #380) and the target of grid charging (all %)."""
+the device keeps its own, SAJ, #380) and the target of grid charging (all %); the highest charging current of the
+current mode of each wallbox OpenAmpere controls (A, #409)."""
 
 from __future__ import annotations
 
@@ -9,13 +10,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription, NumberMode
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator
-from .entity import ControlEntity
+from .const import WALLBOX_CHARGING_MODES
+from .entity import ControlEntity, WallboxEntity
 from .helpers import send
 
 
@@ -54,7 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     if not coordinator.can_control:
         return
     numbers = [*SOC_NUMBERS, *([BACKUP_SOC] if (coordinator.info.get("device") or {}).get("backup_reserve") else [])]
-    async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator)])
+    async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator),
+                        *(WallboxModeCurrent(coordinator, w["id"]) for w in coordinator.info.get("wallboxes") or [])])
 
 
 class SocNumber(ControlEntity, NumberEntity):
@@ -100,3 +103,34 @@ class GridChargingTarget(ControlEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         await send(self.coordinator, self.coordinator.client.set_grid_charging({"target_soc": int(value)}))
+
+
+class WallboxModeCurrent(WallboxEntity, ControlEntity, NumberEntity):
+    """The highest charging current of the wallbox's current mode (#402): sent together with that mode, checked by
+    OpenAmpere against the owner's limit. Only in a charging mode; an older OpenAmpere does not send it."""
+
+    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
+    _attr_native_min_value = 6
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, wallbox_id: str) -> None:
+        super().__init__(coordinator, "wallbox_mode_current", wallbox_id)
+
+    @property
+    def available(self) -> bool:
+        return (super().available and self.wallbox["mode"] in WALLBOX_CHARGING_MODES
+                and self.wallbox.get("mode_current_a") is not None)
+
+    @property
+    def native_max_value(self) -> float:
+        return max(6, (self.wallbox or {}).get("max_current_a") or 6)
+
+    @property
+    def native_value(self) -> float | None:
+        wallbox = self.wallbox or {}
+        return (wallbox.get("mode_current_a") or {}).get(wallbox.get("mode"))
+
+    async def async_set_native_value(self, value: float) -> None:
+        mode = self.wallbox["mode"]
+        await send(self.coordinator, self.coordinator.client.set_wallbox_mode(self._wallbox_id, mode, int(value)))

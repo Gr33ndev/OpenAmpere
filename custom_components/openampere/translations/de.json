@@ -258,6 +258,9 @@
       },
       "grid_charging_target": {
         "name": "Ladeziel aus dem Netz"
+      },
+      "wallbox_mode_current": {
+        "name": "Höchster Ladestrom"
       }
     },
     "switch": {

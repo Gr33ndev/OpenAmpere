@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Wallboxes OpenAmpere reads and controls itself (#388): their values, and the charging mode through OpenAmpere."""
+"""Wallboxes OpenAmpere reads and controls itself (#388): their values, and the charging mode with the highest current
+of that mode (#409) through OpenAmpere."""
 
 from __future__ import annotations
 
@@ -41,10 +42,44 @@ async def test_charging_mode_goes_through_openampere(hass: HomeAssistant, entry,
     client.set_wallbox_mode.assert_called_once_with(WALLBOX, "now")
 
 
+async def test_highest_current_of_the_mode_goes_through_openampere(hass: HomeAssistant, entry, client) -> None:
+    """#409: the current of the mode shown, set together with that mode; OpenAmpere checks it against its limit."""
+    await setup(hass, entry)
+    current = entity_id(hass, "number", "_wallbox_mode_current")
+    shown = hass.states.get(current)
+    assert shown.state == "10" and shown.attributes["unit_of_measurement"] == "A"
+    assert shown.attributes["min"] == 6 and shown.attributes["max"] == 16
+    await hass.services.async_call("number", "set_value", {"entity_id": current, "value": 13}, blocking=True)
+    client.set_wallbox_mode.assert_called_once_with(WALLBOX, "pv", 13)
+
+
+async def test_highest_current_follows_the_mode_and_is_unavailable_without_charging(hass: HomeAssistant, entry,
+                                                                                    client) -> None:
+    await setup(hass, entry)
+    coordinator, current = entry.runtime_data, entity_id(hass, "number", "_wallbox_mode_current")
+    for mode, expected in (("now", "16"), ("off", "unavailable"), ("manual", "unavailable")):
+        wallboxes = [{**coordinator.data["wallboxes"][0], "mode": mode}]
+        coordinator._on_push({"type": "live", "live": coordinator.data["live"], "status": coordinator.data["status"],
+                              "devices": coordinator.data["devices"], "wallboxes": wallboxes})
+        await hass.async_block_till_done()
+        assert hass.states.get(current).state == expected, mode
+
+
+async def test_highest_current_unavailable_with_an_older_openampere(hass: HomeAssistant, entry, client) -> None:
+    older = state()
+    wallbox = older["wallboxes"][0]
+    older["wallboxes"] = [{k: v for k, v in wallbox.items() if k not in ("max_current_a", "mode_current_a")}]
+    client.state.return_value = older
+    await setup(hass, entry)
+    assert hass.states.get(entity_id(hass, "number", "_wallbox_mode_current")).state == "unavailable"
+    assert hass.states.get(entity_id(hass, "select", "_wallbox_mode")).state == "pv"
+
+
 async def test_charging_mode_unavailable_while_control_is_off(hass: HomeAssistant, entry, client) -> None:
     client.state.return_value = state(control_enabled=False)
     await setup(hass, entry)
     assert hass.states.get(entity_id(hass, "select", "_wallbox_mode")).state == "unavailable"
+    assert hass.states.get(entity_id(hass, "number", "_wallbox_mode_current")).state == "unavailable"
     assert hass.states.get(entity_id(hass, "sensor", "_wallbox_power")).state == "4140.0"  # reading goes on
 
 
@@ -52,6 +87,7 @@ async def test_read_only_access_has_no_charging_mode(hass: HomeAssistant, entry,
     client.info.return_value = info("read")
     await setup(hass, entry)
     assert entity_id(hass, "select", "_wallbox_mode") is None
+    assert entity_id(hass, "number", "_wallbox_mode_current") is None
     assert entity_id(hass, "sensor", "_wallbox_power") is not None
 
 

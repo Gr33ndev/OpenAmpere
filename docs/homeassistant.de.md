@@ -94,6 +94,7 @@ das nicht, wähle **„Nur lesen“**.
 | Laden aus dem Netz, Ladeziel aus dem Netz | einmal in OpenAmpere einrichten (rechtliche Hinweise) |
 | Betriebsart je Heizstab/Schalter | Automatik (Überschuss), Aus, Boost |
 | Lademodus je Wallbox, die OpenAmpere selbst steuert | Von Hand, Aus, Solar, Min + Solar, Sofort. Wie in der App: Im Testmodus schreibt OpenAmpere nichts an die Wallbox, sondern trägt nur ins Protokoll ein, was es tun würde. |
+| Höchster Ladestrom je Wallbox, die OpenAmpere selbst steuert | In A, für den gerade gewählten Lademodus (Solar, Min + Solar, Sofort), von 6 A bis zum höchsten Ladestrom, der in OpenAmpere für die Wallbox eingestellt ist. Jeder Lademodus behält seinen eigenen Wert; bei „Von Hand“ und „Aus“ nicht verfügbar. |
 
 Jede Änderung prüft OpenAmpere wie in der App: Grenzwerte, Testmodus, Rücklesen. Im Protokoll steht sie mit
 dem Namen des Zugangs. **Höchstens 6 Änderungen pro Stunde je Speicher-Einstellung**, damit eine Automation in einer

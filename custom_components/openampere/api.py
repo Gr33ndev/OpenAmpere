@@ -148,8 +148,10 @@ class OpenAmpereClient:
     async def set_device_mode(self, device_id: str, mode: str) -> dict:
         return await self._request("PUT", f"/devices/{device_id}/mode", {"mode": mode})
 
-    async def set_wallbox_mode(self, wallbox_id: str, mode: str) -> dict:
-        return await self._request("PUT", f"/wallboxes/{wallbox_id}/mode", {"mode": mode})
+    async def set_wallbox_mode(self, wallbox_id: str, mode: str, current_a: int | None = None) -> dict:
+        """current_a: the highest current of this mode, set together with it (#409)."""
+        body = {"mode": mode} if current_a is None else {"mode": mode, "current_a": current_a}
+        return await self._request("PUT", f"/wallboxes/{wallbox_id}/mode", body)
 
     async def listen(self, on_message: Callable[[dict], None], on_connection: Callable[[bool], Awaitable[None] | None]
                      | None = None) -> None:

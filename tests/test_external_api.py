@@ -432,7 +432,8 @@ def test_wallboxes_for_other_apps_without_address_or_key_and_their_mode_through_
     info = client.get(f"{V1}/info").json()
     assert info["wallboxes"] == [{"id": wb.id, "name": "Carport", "model": "dé Mobile Wallbox 11 kW (Tuya)"}]
     state = client.get(f"{V1}/state").json()
-    assert state["wallboxes"] == [{"id": wb.id, "name": "Carport", "enabled": True, "mode": "pv", "online": True,
+    assert state["wallboxes"] == [{"id": wb.id, "name": "Carport", "enabled": True, "mode": "pv", "max_current_a": 16,
+                                   "mode_current_a": {"pv": 16, "minpv": 16, "now": 16}, "online": True,
                                    "state": "charging", "connected": True, "charging": True, "power_w": 4140.0,
                                    "current_a": 6}]
     assert state["devices"] == []  # not among the heating rods and switches (an older integration would break)
@@ -456,6 +457,52 @@ def test_wallboxes_for_other_apps_without_address_or_key_and_their_mode_through_
                and e["details"]["source"] == "Home Assistant (Zugang für Apps)" for e in log)
     # test mode (on by default) applies to what the surplus control does with the new mode: nothing sent
     assert sent == [] and any(e["dry_run"] and e["details"]["to"]["action"] == "current" for e in log)
+
+
+def test_highest_current_of_a_mode_for_other_apps_through_the_same_checks(runtime, monkeypatch):
+    """#409: the current of a mode with the mode, as in the web app: the owner's limit, only in a charging mode,
+    the control switch and the limit per hour; logged with the token's name."""
+    from openampere import api as api_module
+    from openampere.wallbox.native import NativeWallboxes
+
+    created = []
+
+    class Wallboxes(NativeWallboxes):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+        def refresh(self, now=None):  # no reads in the home network from a test
+            pass
+
+    monkeypatch.setattr(api_module, "NativeWallboxes", Wallboxes)
+    web = login(TestClient(create_app(runtime), base_url="https://testserver"))
+    assert web.put("/api/wallboxes", json={"wallboxes": [{"name": "Carport", "host": "192.0.2.50",
+                                                          "local_key": "ab12cd34ef56gh78", "mode": "pv",
+                                                          "max_current_a": 13}]}).status_code == 200
+    wallboxes = created[0]
+    wb_id = wallboxes.wallboxes[0].id
+    client = app_client(web, new_token(web, "control"))
+    url = f"{V1}/wallboxes/{wb_id}/mode"
+    assert client.put(url, json={"mode": "now", "current_a": 10}).status_code == 403  # control switch off
+    monkeypatch.setattr(runtime.config.control, "enabled", True)
+    monkeypatch.setattr(type(runtime.collector), "stale", property(lambda self: False))
+    runtime.collector.latest = Snapshot(timestamp=time.time(), grid_power=0.0, battery_power=0.0, battery_soc=50.0)
+
+    for body in ({"mode": "now", "current_a": 16}, {"mode": "now", "current_a": 5}, {"mode": "off", "current_a": 10},
+                 {"mode": "now", "current_a": "viel"}):
+        assert client.put(url, json=body).status_code == 400, body  # above the owner's 13 A, below 6 A, ...
+    assert wallboxes.wallboxes[0].mode == "pv" and wallboxes.wallboxes[0].mode_current_a == {}
+
+    response = client.put(url, json={"mode": "now", "current_a": 10})
+    assert response.status_code == 200
+    assert response.json()["wallboxes"][0]["mode_current_a"] == {"pv": 13, "minpv": 13, "now": 10}
+    assert wallboxes.wallboxes[0].mode == "now" and wallboxes.wallboxes[0].mode_current_a == {"now": 10}
+    # without a current the mode changes and the chosen currents stay
+    assert client.put(url, json={"mode": "pv"}).json()["wallboxes"][0]["mode_current_a"]["now"] == 10
+    log = runtime.storage.control_log()
+    assert any(e["details"]["to"] == {"action": "mode_current", "value": {"mode": "now", "current_a": 10}}
+               and e["details"]["source"] == "Home Assistant (Zugang für Apps)" for e in log)
 
 
 def test_a_made_up_wallbox_id_does_not_count_against_the_limits(runtime, web, monkeypatch):
