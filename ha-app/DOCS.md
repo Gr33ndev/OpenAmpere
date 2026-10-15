@@ -48,8 +48,8 @@ OpenAmpere by the IP address, or the other way round. In the sidebar this does n
 ## Home Assistant integration
 
 Entities in Home Assistant (power, energy for the Energy dashboard, state of charge and, if you allow it, control of
-the battery, charging from the grid and the immersion heater) come from the OpenAmpere integration. **The app brings
-it along and installs it itself; you need no HACS.** Updates of the app update the integration as well.
+the battery, charging from the grid, the immersion heater and a wallbox OpenAmpere controls itself) come from the
+OpenAmpere integration. **The app brings it along and installs it itself; you need no HACS.** Updates of the app update the integration as well.
 
 1. After the first start of the app, Home Assistant shows a notice: **restart Home Assistant** once (Settings → System
    → Restart).

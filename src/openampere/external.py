@@ -3,10 +3,11 @@
 """API for other apps, first of all the Home Assistant integration (#76): /api/external/v1/...
 
 Only over HTTPS and only with a token (see apitokens). The data is the same as in the web app; the commands are a
-fixed list: battery mode and limits, grid charging on/off with its target and the mode of the own devices. Writing
-needs a "control" token and the control switch in OpenAmpere; everything goes through the same checks as in the
-app and is logged with the token's name. Deliberately not available: the control switch and test mode, the feed-in
-limit, remote power, settings, tariffs, devices' configuration (it contains URLs), tokens, backup and updates.
+fixed list: battery mode and limits, grid charging on/off with its target, the mode of the own devices and the
+charging mode of the wallboxes OpenAmpere controls itself (#388). Writing needs a "control" token and the control
+switch in OpenAmpere; everything goes through the same checks as in the app and is logged with the token's name.
+Deliberately not available: the control switch and test mode, the feed-in limit, remote power, settings, tariffs,
+devices' configuration (it contains URLs), a wallbox's address, device ID and key, tokens, backup and updates.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketD
 from .apitokens import ApiTokens, Pairing
 from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
+from .wallbox.de_tuya import MODELS as WALLBOX_MODELS
 
 log = logging.getLogger(__name__)
 
@@ -115,7 +117,8 @@ def bearer(value: str | None) -> str | None:
 
 
 def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing, *, installation_id: str,
-             version: str, battery: BatteryControl, charging, surplus, devices, live_apps: dict) -> None:
+             version: str, battery: BatteryControl, charging, surplus, devices, live_apps: dict,
+             wallboxes=None) -> None:
     """live_apps: token id -> {"since", "connections"} of the apps with an open live connection (#79)."""
     collector = runtime.collector
     limits = RateLimit(runtime.storage)
@@ -142,10 +145,25 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         return [{**{k: d[k] for k in keys}, "mode": (d["override"] or {}).get("mode", "auto")}
                 for d in devices.live() if d["source"] == "openampere"]
 
+    def own_wallboxes() -> list[dict]:
+        """Wallboxes OpenAmpere reads and controls itself (#318): only fresh values, None while one does not answer
+        (a portable wallbox is often unplugged). Never its address, device ID or key."""
+        found, now = [], time.time()
+        for wb in wallboxes.wallboxes if wallboxes else []:
+            live, reading = wallboxes.live.get(wb.id), wallboxes.fresh(wb, now)
+            found.append({"id": wb.id, "name": wb.name, "enabled": wb.enabled, "mode": wb.mode,
+                          "online": live.online if live and wb.enabled else None,
+                          "state": reading.state if reading else None,
+                          "connected": reading.connected if reading else None,
+                          "charging": reading.charging if reading else None,
+                          "power_w": reading.power_w if reading else None,
+                          "current_a": reading.set_current_a if reading else None})
+        return found
+
     def live_message() -> dict:
         latest = collector.latest
         return {"type": "live", "live": latest.to_dict() if latest else None, "status": status(),
-                "devices": own_devices()}
+                "devices": own_devices(), "wallboxes": own_wallboxes()}
 
     # ---- pairing (no token yet; HTTPS only, see the middleware) ------------------------------------------------
 
@@ -198,6 +216,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
                           for i in range(count) if str(i + 1) not in hidden],
             "pv_input_count": count,  # also the hidden ones: the integration sets up again when the number changes
             "devices": [{"id": d["id"], "name": d["name"], "kind": d["kind"]} for d in own_devices()],
+            "wallboxes": [{"id": wb.id, "name": wb.name, "model": WALLBOX_MODELS[wb.model].label}
+                          for wb in (wallboxes.wallboxes if wallboxes else [])],
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }
 
@@ -302,3 +322,17 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             raise HTTPException(400, str(err)) from None
         await surplus.tick()
         return {"devices": own_devices()}
+
+    @app.put(f"{PREFIX}/wallboxes/{{wallbox_id}}/mode")
+    async def put_wallbox_mode(request: Request, wallbox_id: str, body: dict = Body(...)):
+        require_control()
+        if wallboxes is None or wallbox_id not in {wb.id for wb in wallboxes.wallboxes}:  # no limit entries either
+            raise HTTPException(400, "Diese Wallbox gibt es nicht.")  # as from set_mode
+        try:
+            with limits.counted([f"wallbox:{wallbox_id}"], OTHER_WRITES_PER_HOUR):
+                # logged there with the wallbox's name; the master switch and test mode apply to every write
+                wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=source(request))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await surplus.tick()
+        return {"wallboxes": own_wallboxes()}

@@ -44,7 +44,15 @@ test("a portable wallbox is added: search, check the connection, save", async ({
   await open(page, "more/wallbox");
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await expect(page.getByText("Mobile Wallbox").first()).toBeVisible();  // the one already set up
-  await page.getByRole("button", { name: "Wallbox hinzufügen" }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  // the steps to the local key are folded in and open with a tap, with a link to the detailed guide
+  const howTo = page.locator("details", { hasText: "So bekommst du den Local Key" });
+  await expect(howTo).not.toHaveAttribute("open", "");
+  await expect(howTo.getByText("API Explorer")).toBeHidden();
+  await howTo.getByText("So bekommst du den Local Key").click();
+  await expect(howTo.getByText("API Explorer")).toBeVisible();
+  await expect(howTo.getByRole("link", { name: "Ausführliche Anleitung öffnen" }))
+    .toHaveAttribute("href", /docs\/wallbox-direct\.de\.md$/);
   await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
   await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.61");
@@ -64,10 +72,29 @@ test("a search that is not possible says so instead of finding nothing", async (
   api.override("/api/wallboxes/search", { available: false, devices: [] });
   await open(page, "more/wallbox");
   await page.getByRole("button", { name: "direkt", exact: true }).click();
-  await page.getByRole("button", { name: "Wallbox hinzufügen" }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
   await expect(page.getByText("Die Suche ist auf diesem Rechner gerade nicht möglich")).toBeVisible();
   await expect(page.getByText("Keine Tuya-Wallbox gefunden")).toHaveCount(0);
+});
+
+// one form for every wallbox: what is asked depends on the wallbox chosen
+test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in the same form", async ({ page }) => {
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  const which = page.getByLabel("Welche Wallbox hast du?");
+  await expect(which).toHaveValue("de_tuya");  // the one OpenAmpere controls comes first
+  await expect(page.getByLabel("Local Key")).toBeVisible();
+  const element = await which.elementHandle();
+  await which.selectOption("foxess_ac");
+  // the choice stays the same element while the fields below change (focus and the open list are kept)
+  expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
+  await expect(page.getByLabel("Local Key")).toHaveCount(0);
+  await expect(page.getByText("So bekommst du den Local Key")).toHaveCount(0);
+  await expect(page.locator(".notice", { hasText: "Vorschau" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Wallbox prüfen" })).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
 });
 
 // a backup restored on another server: the stored local key cannot be read, the wallbox waits for a new one (#391)
@@ -88,6 +115,7 @@ test("a wallbox whose local key cannot be read asks for it again and is saved wi
   await expect(page.getByText("nach dem Wiederherstellen einer Sicherung")).toBeVisible();
   await page.getByRole("button", { name: "Local Key neu eintragen" }).click();
   await expect(page.getByLabel("Name")).toHaveValue("Mobile Wallbox");  // the other settings are kept
+  await expect(page.getByText("So bekommst du den Local Key")).toBeVisible();  // the steps to the key are offered
   const save = page.getByRole("button", { name: "Speichern", exact: true });
   await expect(save).toBeDisabled();
   await page.getByLabel("Local Key").fill("0123456789abcdef");

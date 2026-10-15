@@ -538,7 +538,7 @@ class NativeWallboxes:
                                                          if k != "lifetime_kwh"},
                 "controlled": wb.id in self._owned(),
             })
-        return {"wallboxes": items, "models": [{"key": m.key, "label": m.label} for m in MODELS.values()],
+        return {"wallboxes": items, "models": [{"key": m.key, "label": m.label, "protocol": m.protocol} for m in MODELS.values()],
                 "max": MAX_WALLBOXES, "search": not ha_app.active()}
 
     def report(self) -> list[dict]:

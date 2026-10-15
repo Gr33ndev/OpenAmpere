@@ -14,3 +14,5 @@ export const IMPRINT_URL = `${SITE_URL}impressum.html`;
 export const SMARTBOX_GUIDE = () => (lang() === "de"
   ? `${REPO_URL}/blob/main/README.de.md#die-bisherige-smartbox-setzt-einstellungen-zur%C3%BCck`
   : `${REPO_URL}/blob/main/README.md#the-previous-smartbox-resets-settings`);
+/** The guide for wallboxes without evcc: how to get the local key of a Tuya wallbox and set it up. */
+export const WALLBOX_DIRECT_GUIDE = () => `${REPO_URL}/blob/main/docs/${lang() === "de" ? "wallbox-direct.de.md" : "wallbox-direct.md"}`;
