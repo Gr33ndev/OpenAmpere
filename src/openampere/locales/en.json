@@ -322,19 +322,24 @@
     "updatesComeViaHomeAssistant": "Updates come through Home Assistant: Settings → Apps → OpenAmpere."
   },
   "wallbox": {
-    "unknownWallbox": "OpenAmpere does not know this wallbox yet.",
     "atMostWallboxes": "At most {MAX_WALLBOXES} wallboxes.",
     "deviceIdFormat": "{name}: The device ID consists of 10 to 40 letters and digits.",
     "enterIpInHomeNetwork": "Please enter the IP address of the wallbox in the home network.",
     "enterIpInHomeNetworkNamed": "{name}: Please enter the IP address of the wallbox in the home network.",
     "giveEachWallboxName": "Please give every wallbox a name.",
+    "invalidCurrent": "Invalid charging current.",
     "invalidWallboxData": "Invalid details for a wallbox.",
     "localKey16CharsNamed": "{name}: The local key must be exactly 16 characters long.",
     "maxCurrentRange": "{name}: The highest charging current must be between 6 and 32 A.",
+    "modeCurrentRange": "The charging current must be between 6 and {max_current_a} A.",
+    "modeCurrentRangeNamed": "{name}: The charging current of a charging mode must be between 6 and 32 A.",
     "modeFast": "charging mode “fast”",
+    "noCurrentInThisMode": "A charging current cannot be chosen in this charging mode.",
     "sentDespiteTestMode": "sent despite test mode, OpenAmpere lets go of the wallbox: {reason}",
+    "stopAfterRange": "{name}: The waiting time before stopping must be between 1 and 60 minutes.",
     "surplusAtLeast": "surplus {available} W, at least {lowest} W",
     "unknownChargingModeNamed": "{name}: Unknown charging mode.",
+    "unknownWallbox": "OpenAmpere does not know this wallbox yet.",
     "unknownWallboxNamed": "{name}: OpenAmpere does not know this wallbox yet.",
     "wallboxDoesNotExist": "This wallbox does not exist."
   }

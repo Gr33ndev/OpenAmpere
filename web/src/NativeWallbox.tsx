@@ -24,6 +24,7 @@ export type WallboxReading = {
 export type NativeWallbox = {
   id: string; name: string; model: string; label: string; host: string; device_id: string | null;
   local_key_set: boolean; max_current_a: number; mode: WallboxMode; enabled: boolean;
+  mode_current_a: Partial<Record<WallboxMode, number>>; stop_after_min: number;
   online: boolean | null; offline_since: number | null; updated: number | null; error: string | null;
   reading: WallboxReading | null; controlled: boolean;
 };
@@ -33,13 +34,25 @@ type Found = { device_id: string; host: string; product_key: string | null };
 
 const MODES: [WallboxMode, string][] = [["manual", t("devices.nativeWallbox.modeManual")], ["off", t("common.off")],
   ["pv", t("devices.modes.solar")], ["minpv", t("devices.modes.minSolar")], ["now", t("devices.modes.fast")]];
-const MODE_HINT: Record<WallboxMode, string> = {
-  manual: t("devices.nativeWallbox.hintManual"),
-  off: t("devices.modeHint.off"),
-  pv: t("devices.nativeWallbox.hintPv"),
-  minpv: t("devices.modeHint.minpv"),
-  now: t("devices.modeHint.now"),
-};
+function modeHint(wb: NativeWallbox): string {
+  switch (wb.mode) {
+    case "manual": return t("devices.nativeWallbox.hintManual");
+    case "off": return t("devices.modeHint.off");
+    case "pv": return t("devices.nativeWallbox.hintPv", { count: wb.stop_after_min });
+    case "minpv": return t("devices.nativeWallbox.hintMinpv");
+    case "now": return t("devices.nativeWallbox.hintNow");
+  }
+}
+
+/** Steps a wallbox may offer, when it has not told its own yet (e.g. unplugged). */
+const STEPS = [6, 8, 10, 13, 16, 20, 25, 32];
+
+/** Currents to choose for a mode: the wallbox's steps up to the owner's highest current, the chosen one included. */
+function currentOptions(wb: NativeWallbox, chosen: number): [string, string][] {
+  const steps = wb.reading?.steps_a.length ? wb.reading.steps_a : STEPS;
+  const shown = [...new Set([...steps.filter((s) => s <= wb.max_current_a), chosen])].sort((a, b) => a - b);
+  return shown.map((s) => [String(s), t("devices.nativeWallbox.amps", { current: s })]);
+}
 
 /** When a wallbox went away: the weekday and time within a week, the date before (it may be unplugged for long). */
 function since(ts: number): string {
@@ -69,10 +82,11 @@ const amps = (values: (number | null)[]) => values.filter((v): v is number => v 
 export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
   const [busy, setBusy] = useState(false);
   const r = wb.online ? wb.reading : null; // no old values of a wallbox that is away
-  const setMode = async (mode: WallboxMode) => {
+  const chosen = wb.mode_current_a?.[wb.mode] ?? wb.max_current_a;
+  const setMode = async (mode: WallboxMode, current_a?: number) => {
     setBusy(true);
     try {
-      onChange(await postJson<WallboxesView>(`/api/wallboxes/${wb.id}/mode`, { mode }));
+      onChange(await postJson<WallboxesView>(`/api/wallboxes/${wb.id}/mode`, { mode, current_a }));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -94,7 +108,14 @@ export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChang
         <Button variant="secondary" onClick={() => navigate("more/wallbox")}>{t("devices.nativeWallbox.keyLost")}</Button>
       </>}
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
-      <p className="hint">{MODE_HINT[wb.mode]}</p>
+      <p className="hint">{modeHint(wb)}</p>
+      {(wb.mode === "pv" || wb.mode === "minpv" || wb.mode === "now") && (
+        <div className="field" role="group" aria-label={t("devices.nativeWallbox.modeCurrent")}>
+          <span className="field-label">{t("devices.nativeWallbox.modeCurrent")}</span>
+          <Segmented value={String(chosen)} disabled={busy} options={currentOptions(wb, chosen)}
+            onChange={(c) => void setMode(wb.mode, Number(c))} />
+        </div>
+      )}
       {r && (
         <dl className="facts">
           {r.set_current_a != null && <><dt>{t("devices.nativeWallbox.current")}</dt>
@@ -109,12 +130,13 @@ export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChang
 }
 
 type Draft = { id?: string; name: string; model: string; host: string; device_id: string; local_key: string;
-  max_current_a: string; mode: WallboxMode; enabled: boolean };
+  max_current_a: string; mode: WallboxMode; enabled: boolean; mode_current_a: NativeWallbox["mode_current_a"];
+  stop_after_min: string };
 const empty = (model: string): Draft => ({ name: t("devices.nativeWallbox.defaultName"), model, host: "", device_id: "",
-  local_key: "", max_current_a: "16", mode: "manual", enabled: true });
+  local_key: "", max_current_a: "16", mode: "manual", enabled: true, mode_current_a: {}, stop_after_min: "10" });
 const toItem = (wb: NativeWallbox | Draft) => ({ id: wb.id, name: wb.name, model: wb.model, host: wb.host,
   device_id: wb.device_id ?? "", local_key: "local_key" in wb ? wb.local_key : "", max_current_a: Number(wb.max_current_a),
-  mode: wb.mode, enabled: wb.enabled });
+  mode: wb.mode, enabled: wb.enabled, mode_current_a: wb.mode_current_a ?? {}, stop_after_min: Number(wb.stop_after_min ?? 10) });
 
 /** The setup: the wallboxes OpenAmpere controls itself, add, change, remove. */
 export function NativeWallboxSetup({ origin }: { origin: string }) {
@@ -168,7 +190,8 @@ export function NativeWallboxSetup({ origin }: { origin: string }) {
           {!wb.local_key_set && <Notice kind="warn">{t("devices.nativeWallbox.keyLostHint")}</Notice>}
           <div className="button-row">
             <Button variant="secondary" onClick={() => { setAdding(false); setDraft({ ...toItem(wb), id: wb.id,
-              device_id: wb.device_id ?? "", local_key: "", max_current_a: String(wb.max_current_a) }); }}>
+              device_id: wb.device_id ?? "", local_key: "", max_current_a: String(wb.max_current_a),
+              stop_after_min: String(wb.stop_after_min ?? 10) }); }}>
               {wb.local_key_set ? t("devices.nativeWallbox.edit") : t("devices.nativeWallbox.keyLost")}</Button>
             <Button variant="secondary" onClick={() => setRemoving(wb)}>{t("common.remove")}</Button>
           </div>
@@ -303,6 +326,9 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
       )}
       <Field label={t("devices.nativeWallbox.maxCurrent")} hint={t("devices.nativeWallbox.maxCurrentHint")}>
         <input className="input" value={d.max_current_a} inputMode="numeric" onChange={(e) => set({ max_current_a: e.target.value })} />
+      </Field>
+      <Field label={t("devices.nativeWallbox.stopAfter")} hint={t("devices.nativeWallbox.stopAfterHint")}>
+        <input className="input" value={d.stop_after_min} inputMode="numeric" onChange={(e) => set({ stop_after_min: e.target.value })} />
       </Field>
       {tuya && (
         <details className="advanced">

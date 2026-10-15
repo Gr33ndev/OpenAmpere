@@ -141,7 +141,10 @@
     "removeHint": "Hat OpenAmpere die Wallbox gesteuert, stellt es vorher deinen eigenen Ladestrom wieder ein, sobald sie erreichbar ist.",
     "modeManual": "Von Hand",
     "hintManual": "OpenAmpere zeigt die Wallbox nur an und verändert nichts. Du steuerst sie wie gewohnt in ihrer App.",
-    "hintPv": "Lädt nur mit Solarüberschuss. Reicht er nicht mehr, pausiert das Laden nach einigen Minuten.",
+    "hintPv": {
+      "one": "Lädt nur mit Solarüberschuss. Reicht er nicht mehr, lädt die Wallbox mit der kleinsten Stufe weiter (den Rest liefern Speicher oder Netz) und pausiert erst, wenn es 1 Minute so bleibt.",
+      "other": "Lädt nur mit Solarüberschuss. Reicht er nicht mehr, lädt die Wallbox mit der kleinsten Stufe weiter (den Rest liefern Speicher oder Netz) und pausiert erst, wenn es {count} Minuten so bleibt."
+    },
     "awaySince": "nicht erreichbar seit {time}",
     "away": "nicht erreichbar",
     "awayHint": "Eine mobile Wallbox ist oft ausgesteckt. OpenAmpere fragt in Abständen nach und verbindet sich von selbst wieder, sobald sie im WLAN ist.",
@@ -170,7 +173,13 @@
     "full": "Es sind schon {max} Wallboxen eingerichtet, mehr gehen nicht.",
     "groupControlled": "Anzeigen und steuern",
     "groupChecked": "Nur prüfen (Vorschau)",
-    "noCarHint": "Kein Auto angeschlossen: OpenAmpere ändert nichts an der Wallbox. Der gewählte Lademodus gilt, sobald du ein Auto einsteckst. Startet die Wallbox dann von selbst und reicht im Modus Solar der Sonnenstrom nicht, stoppt OpenAmpere das Laden gleich wieder."
+    "noCarHint": "Kein Auto angeschlossen: OpenAmpere ändert nichts an der Wallbox. Der gewählte Lademodus gilt, sobald du ein Auto einsteckst. Startet die Wallbox dann von selbst und reicht im Modus Solar der Sonnenstrom nicht, stoppt OpenAmpere das Laden gleich wieder.",
+    "hintMinpv": "Lädt immer mindestens mit der kleinsten Stufe, bei Sonne schneller, aber höchstens mit dem Ladestrom unten.",
+    "hintNow": "Lädt sofort mit dem Ladestrom unten. Den Strom liefern Sonne, Speicher oder Netz, der Speicher kann sich dabei ins Auto entladen.",
+    "modeCurrent": "Höchster Ladestrom in diesem Modus",
+    "amps": "{current} A",
+    "stopAfter": "Solar-Laden pausieren nach (Minuten)",
+    "stopAfterHint": "Kommt im Modus „Solar“ eine Wolke, lädt die Wallbox so lange mit der kleinsten Stufe weiter. Den Rest liefern Speicher oder Netz. Länger heißt seltener unterbrechen, kürzer heißt weniger Strom aus dem Netz. 1 bis 60 Minuten."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

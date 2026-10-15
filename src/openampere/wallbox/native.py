@@ -10,9 +10,11 @@
   and controlled again as soon as it answers. With its device ID it is searched in the home network when its
   address may have changed.
 - Modes: "manual" (only shown, OpenAmpere never writes), "off", "pv" (solar surplus only), "minpv" (minimum current
-  plus surplus), "now" (full current). The current is set in the steps the wallbox offers (data point 107). Without a
-  car nothing is written: the mode applies once one is plugged in. Many wallboxes start charging on their own when a
-  car is plugged in; in "pv" mode without surplus such a charge is stopped at once.
+  plus surplus), "now" (full current). The current is set in the steps the wallbox offers (data point 107), up to the
+  owner's limit and, per mode, the current the owner chose for it (#402). Without a car nothing is written: the mode
+  applies once one is plugged in. Many wallboxes start charging on their own when a car is plugged in; in "pv" mode
+  without surplus such a charge is stopped at once. A solar charge OpenAmpere started goes on with the lowest step
+  through clouds, the rest from the battery or the grid, and stops only after the waiting time the owner chose (#402).
 - Writing follows the rules of every control: the master switch and the test mode, the limits of the wallbox and of
   the owner, the value read back, every change in the control log. The wallbox has no watchdog: if OpenAmpere stops,
   it keeps charging with the last current. The owner's current is kept in the meta "wallbox_owned" before the first
@@ -43,13 +45,15 @@ log = logging.getLogger(__name__)
 MAX_WALLBOXES = 4
 MODES = ("manual", "off", "pv", "minpv", "now")
 CONTROLLED = ("off", "pv", "minpv", "now")
+CHARGING = ("pv", "minpv", "now")  # modes with their own highest current
 POLL_S = 10.0
 FRESH_S = 35.0  # older values are not used to decide anything
 RETRY_S, RETRY_MAX_S = 15.0, 300.0
 SEARCH_AFTER_S, SEARCH_EVERY_S = 120.0, 900.0  # look for a new address of a wallbox that went away
 VOLTAGE = 230.0
 MARGIN_W = 200.0  # surplus needed above the lowest step before charging starts
-CONFIRM_TICKS = 2  # a condition must hold this many checks in a row (clouds!)
+CONFIRM_TICKS = 2  # surplus must be there this many checks in a row before charging starts (clouds!)
+STOP_AFTER_MIN = 10  # default: a solar charge goes on this long without enough surplus before it stops
 MIN_ON_S = MIN_OFF_S = 300.0  # the car's contactor should not switch every minute
 RAISE_EVERY_S = 30.0  # the current goes up at most this often, down right away
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
@@ -68,6 +72,8 @@ class NativeWallbox:
     local_key: str = ""
     max_current_a: int = 16  # the owner's limit, e.g. for the socket it is plugged into
     mode: str = "manual"
+    mode_current_a: dict = field(default_factory=dict)  # highest current per charging mode, missing: max_current_a
+    stop_after_min: int = STOP_AFTER_MIN  # solar mode: minutes without enough surplus before a charge stops
     enabled: bool = True
     id: str = field(default_factory=lambda: secrets.token_hex(4))
 
@@ -88,7 +94,7 @@ class Live:
     stop_sent: float = float("-inf")
     planned: dict = field(default_factory=dict)  # test mode: what would have been written, logged once
     want_on: int = 0
-    want_off: int = 0
+    short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -120,6 +126,17 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
             raise ValueError(f"{wb.name}: Der höchste Ladestrom muss zwischen 6 und 32 A liegen.")
         if wb.mode not in MODES:
             raise ValueError(f"{wb.name}: Unbekannter Lademodus.")
+        try:
+            wb.stop_after_min = int(wb.stop_after_min)
+            currents = {str(k): int(v) for k, v in dict(wb.mode_current_a or {}).items()}
+        except (TypeError, ValueError):
+            raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
+        if not 1 <= wb.stop_after_min <= 60:
+            raise ValueError(f"{wb.name}: Die Wartezeit vor dem Abbrechen muss zwischen 1 und 60 Minuten liegen.")
+        if any(k not in CHARGING or not 6 <= v <= 32 for k, v in currents.items()):
+            raise ValueError(f"{wb.name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.")
+        # above a lowered highest current it is cut, not refused: the stored wallbox must stay valid
+        wb.mode_current_a = {k: min(v, wb.max_current_a) for k, v in currents.items()}
         if not re.fullmatch(r"[0-9a-f]{8}", wb.id) or wb.id in ids:
             wb.id = secrets.token_hex(4)
         ids.add(wb.id)
@@ -203,18 +220,35 @@ class NativeWallboxes:
         self._store(wallboxes)
         return wallboxes
 
-    def set_mode(self, wallbox_id: str, mode: str, source: str | None = None) -> NativeWallbox:
+    def set_mode(self, wallbox_id: str, mode: str, source: str | None = None, current_a=None) -> NativeWallbox:
+        """current_a: the highest current for this mode, chosen together with it (#402)."""
         if mode not in MODES:
             raise ValueError("Unbekannter Lademodus.")
         wallboxes = self.wallboxes
         wb = next((w for w in wallboxes if w.id == wallbox_id), None)
         if wb is None:
             raise ValueError("Diese Wallbox gibt es nicht.")
+        if current_a is not None:
+            try:
+                current = int(current_a)
+            except (TypeError, ValueError):
+                raise ValueError("Ungültiger Ladestrom.") from None
+            if mode not in CHARGING:
+                raise ValueError("In diesem Lademodus lässt sich kein Ladestrom wählen.")
+            if not 6 <= current <= wb.max_current_a:
+                raise ValueError(f"Der Ladestrom muss zwischen 6 und {wb.max_current_a} A liegen.")
         old, wb.mode = wb.mode, mode
+        before = wb.mode_current_a.get(mode, wb.max_current_a)
+        if current_a is not None:
+            wb.mode_current_a = {**wb.mode_current_a, mode: current}
         self._store(wallboxes)
         live = self.live.setdefault(wb.id, Live())
-        live.want_on = live.want_off = 0
-        self._log(wb, "mode", mode, False, "ok", source=source, before=old)
+        live.want_on, live.short_since = 0, None
+        if old != mode:
+            self._log(wb, "mode", mode, False, "ok", source=source, before=old)
+        if current_a is not None and current != before:
+            self._log(wb, "mode_current", {"mode": mode, "current_a": current}, False, "ok", source=source,
+                      before=before)
         return wb
 
     # ---- reading, in the background --------------------------------------------------
@@ -391,7 +425,7 @@ class NativeWallboxes:
                 live.start_sent = now
             else:
                 live.stop_sent = now
-        live.since, live.want_on, live.want_off = now, 0, 0
+        live.since, live.want_on, live.short_since = now, 0, None
         await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
                           safe=not on and started)
 
@@ -409,12 +443,13 @@ class NativeWallboxes:
         if reading is None:
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
         if not reading.connected:
-            live.want_on = live.want_off = 0
+            live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
             live.planned.pop("start", None)
             return 0.0
         phases = reading.phases()
-        limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a)
+        limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
+                    wb.mode_current_a.get(wb.mode, wb.max_current_a))
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
         lowest = steps[0] * VOLTAGE * phases
         fits = [s for s in steps if s * VOLTAGE * phases <= available - (0 if reading.charging else MARGIN_W)]
@@ -430,13 +465,15 @@ class NativeWallboxes:
         elif reading.charging:
             on, reason = True, f"Überschuss {available:.0f} W"
             if fits:
-                live.want_off = 0
+                live.short_since = None
             else:
-                live.want_off += 1
+                live.short_since = now if live.short_since is None else live.short_since
                 # a charge the wallbox started by itself (many start as soon as a car is plugged in) is stopped at
-                # once: the waiting and minimum time protect only a charge OpenAmpere started for the sun
+                # once: the waiting and minimum time protect only a charge OpenAmpere started for the sun; that one
+                # goes on with the lowest step through clouds for the owner's waiting time (#402)
                 started = bool(self._owned().get(wb.id, {}).get("started"))
-                if not started or (live.want_off >= CONFIRM_TICKS and now - live.since >= MIN_ON_S):
+                waited = now - live.short_since >= wb.stop_after_min * 60 and now - live.since >= MIN_ON_S
+                if not started or waited:
                     on, reason = False, f"zu wenig Überschuss ({available:.0f} W)"
         else:
             on, reason = False, f"Überschuss {available:.0f} W"
@@ -477,7 +514,7 @@ class NativeWallboxes:
                 and live.online is False:
             return False
         self._disown(wb.id)
-        live.want_on = live.want_off = 0
+        live.want_on, live.short_since = 0, None
         live.planned.clear()
         return True
 

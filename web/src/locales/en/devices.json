@@ -141,7 +141,10 @@
     "removeHint": "If OpenAmpere controlled the wallbox, it first sets your own charging current back as soon as the wallbox can be reached.",
     "modeManual": "Manual",
     "hintManual": "OpenAmpere only shows the wallbox and changes nothing. You control it in its app as usual.",
-    "hintPv": "Charges only with solar surplus. If it is no longer enough, charging pauses after a few minutes.",
+    "hintPv": {
+      "one": "Charges with solar surplus only. When it is not enough, the wallbox goes on with the lowest step (the battery or the grid supply the rest) and pauses only when it stays like this for 1 minute.",
+      "other": "Charges with solar surplus only. When it is not enough, the wallbox goes on with the lowest step (the battery or the grid supply the rest) and pauses only when it stays like this for {count} minutes."
+    },
     "awaySince": "not reachable since {time}",
     "away": "not reachable",
     "awayHint": "A portable wallbox is often unplugged. OpenAmpere asks again from time to time and reconnects by itself as soon as it is on the Wi-Fi.",
@@ -170,7 +173,13 @@
     "full": "{max} wallboxes are set up already, no more are possible.",
     "groupControlled": "Show and control",
     "groupChecked": "Check only (preview)",
-    "noCarHint": "No car plugged in: OpenAmpere changes nothing on the wallbox. The chosen charging mode applies as soon as you plug in a car. If the wallbox then starts by itself and in Solar mode there is not enough solar power, OpenAmpere stops charging right away."
+    "noCarHint": "No car plugged in: OpenAmpere changes nothing on the wallbox. The chosen charging mode applies as soon as you plug in a car. If the wallbox then starts by itself and in Solar mode there is not enough solar power, OpenAmpere stops charging right away.",
+    "hintMinpv": "Always charges with at least the lowest step, faster with sun, but at most with the charging current below.",
+    "hintNow": "Charges right away with the charging current below. Sun, battery or grid supply it; the battery may discharge into the car.",
+    "modeCurrent": "Highest charging current in this mode",
+    "amps": "{current} A",
+    "stopAfter": "Pause solar charging after (minutes)",
+    "stopAfterHint": "When a cloud comes in “Solar” mode, the wallbox goes on with the lowest step for this long. The battery or the grid supply the rest. Longer means fewer interruptions, shorter means less power from the grid. 1 to 60 minutes."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

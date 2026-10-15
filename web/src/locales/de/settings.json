@@ -335,7 +335,8 @@
     "wallboxCurrent": "{name}: Ladestrom auf {current} A gestellt.",
     "wallboxStart": "{name}: Laden gestartet.",
     "wallboxStop": "{name}: Laden pausiert.",
-    "wallboxReleased": "{name}: OpenAmpere hat die Wallbox abgegeben und deinen Ladestrom wieder eingestellt."
+    "wallboxReleased": "{name}: OpenAmpere hat die Wallbox abgegeben und deinen Ladestrom wieder eingestellt.",
+    "wallboxModeCurrent": "{name}: im Lademodus „{mode}“ höchstens {current} A."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

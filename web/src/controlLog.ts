@@ -106,6 +106,11 @@ function wallboxText(name: string, action: unknown, value: unknown): string {
       const mode = modes[str(value)] ?? str(value);
       return t("settings.controlLog.wallboxMode", { name, mode });
     }
+    case "mode_current": {
+      const chosen = (value ?? {}) as { mode?: string; current_a?: number };
+      const modes: Record<string, string> = { pv: t("devices.modes.solar"), minpv: t("devices.modes.minSolar"), now: t("devices.modes.fast") };
+      return t("settings.controlLog.wallboxModeCurrent", { name, mode: modes[str(chosen.mode)] ?? str(chosen.mode), current: str(chosen.current_a) });
+    }
     case "limit_soc": return t("settings.controlLog.wallboxLimit", { name, soc: pct(value) });
     case "min_soc": return t("settings.controlLog.wallboxMinSoc", { name, soc: pct(value) });
     case "plan_delete": return t("settings.controlLog.wallboxPlanDeleted", { name });

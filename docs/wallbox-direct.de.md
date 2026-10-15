@@ -64,9 +64,14 @@ Unter **Geräte** erscheint die Wallbox dann mit ihrem Zustand, der Ladeleistung
 |---|---|
 | **Von Hand** | OpenAmpere zeigt die Wallbox nur an und ändert nichts. Du steuerst sie wie gewohnt in ihrer App. So ist jede neue Wallbox eingestellt. |
 | **Aus** | Lädt nicht. Ein laufendes Laden wird gestoppt. |
-| **Solar** | Lädt nur mit Solarüberschuss. Reicht er nicht mehr, pausiert das Laden nach einigen Minuten. |
-| **Min + Solar** | Lädt immer mit dem kleinsten Strom, bei Sonne schneller. |
-| **Sofort** | Lädt sofort mit dem höchsten erlaubten Strom, auch aus dem Netz. |
+| **Solar** | Lädt nur mit Solarüberschuss. Reicht er nicht mehr (eine Wolke), lädt die Wallbox mit dem kleinsten Strom weiter, den Rest liefern Speicher oder Netz. Erst wenn es so bleibt, pausiert das Laden: nach 10 Minuten, einstellbar unter **Mehr → Wallbox** bei der Wallbox (**Solar-Laden pausieren nach**). |
+| **Min + Solar** | Lädt immer mindestens mit dem kleinsten Strom, bei Sonne schneller. |
+| **Sofort** | Lädt sofort, auch aus dem Speicher oder dem Netz. |
+
+Für **Solar**, **Min + Solar** und **Sofort** wählst du auf der Karte der Wallbox unter **Geräte** den höchsten
+Ladestrom, jeweils für den Modus, zum Beispiel 8 A bei **Min + Solar** und 16 A bei **Sofort**. Auf drei Phasen sind
+6 A etwa 4,1 kW, 8 A etwa 5,5 kW und 16 A etwa 11 kW. Mehr als der höchste Ladestrom aus den Einstellungen der
+Wallbox geht nie.
 
 Ohne angeschlossenes Auto ändert OpenAmpere nichts an der Wallbox; den Lademodus kannst du vorher wählen, er gilt
 beim Einstecken. Viele Wallboxen starten beim Einstecken von selbst. Reicht im Modus **Solar** der Sonnenstrom
