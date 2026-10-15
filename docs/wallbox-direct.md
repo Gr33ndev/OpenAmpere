@@ -38,6 +38,11 @@ key with the project's credentials as well.
 new key the same way and enter it in OpenAmpere. The key opens the wallbox in the home network: do not pass it on or
 post it anywhere.
 
+**After restoring a backup on another computer**, OpenAmpere cannot read the stored local key: the backup holds it
+only encrypted with the key of the old installation (`secret.key`). The wallbox keeps its settings and shows **Local
+Key neu eintragen** (Enter the local key again). Until you enter the key again, OpenAmpere neither reads nor controls
+it.
+
 ## Setting it up in OpenAmpere
 
 1. Open **Mehr → Verbindung → Wallbox** (More → Connection → Wallbox) and choose **direkt** (directly).
