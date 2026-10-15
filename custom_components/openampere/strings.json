@@ -258,6 +258,9 @@
       },
       "grid_charging_target": {
         "name": "Grid charging target"
+      },
+      "wallbox_mode_current": {
+        "name": "Highest charging current"
       }
     },
     "switch": {

@@ -4,8 +4,9 @@
 
 Only over HTTPS and only with a token (see apitokens). The data is the same as in the web app; the commands are a
 fixed list: battery mode and limits, grid charging on/off with its target, the mode of the own devices and the
-charging mode of the wallboxes OpenAmpere controls itself (#388). Writing needs a "control" token and the control
-switch in OpenAmpere; everything goes through the same checks as in the app and is logged with the token's name.
+charging mode of the wallboxes OpenAmpere controls itself with the highest current of that mode (#388, #409).
+Writing needs a "control" token and the control switch in OpenAmpere; everything goes through the same checks as in
+the app and is logged with the token's name.
 Deliberately not available: the control switch and test mode, the feed-in limit, remote power, settings, tariffs,
 devices' configuration (it contains URLs), a wallbox's address, device ID and key, tokens, backup and updates.
 """
@@ -25,6 +26,7 @@ from .apitokens import ApiTokens, Pairing
 from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
 from .wallbox.de_tuya import MODELS as WALLBOX_MODELS
+from .wallbox.native import CHARGING as WALLBOX_CHARGING
 
 log = logging.getLogger(__name__)
 
@@ -152,6 +154,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         for wb in wallboxes.wallboxes if wallboxes else []:
             live, reading = wallboxes.live.get(wb.id), wallboxes.fresh(wb, now)
             found.append({"id": wb.id, "name": wb.name, "enabled": wb.enabled, "mode": wb.mode,
+                          # the owner's limit and the highest current of each charging mode (#402, #409)
+                          "max_current_a": wb.max_current_a,
+                          "mode_current_a": {m: wb.mode_current_a.get(m, wb.max_current_a) for m in WALLBOX_CHARGING},
                           "online": live.online if live and wb.enabled else None,
                           "state": reading.state if reading else None,
                           "connected": reading.connected if reading else None,
@@ -330,8 +335,10 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             raise HTTPException(400, "Diese Wallbox gibt es nicht.")  # as from set_mode
         try:
             with limits.counted([f"wallbox:{wallbox_id}"], OTHER_WRITES_PER_HOUR):
-                # logged there with the wallbox's name; the master switch and test mode apply to every write
-                wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=source(request))
+                # logged there with the wallbox's name; the master switch and test mode apply to every write; the
+                # highest current of the mode is optional and checked there against the owner's limit (#409)
+                wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=source(request),
+                                   current_a=body.get("current_a"))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await surplus.tick()
