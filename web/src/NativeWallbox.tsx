@@ -110,11 +110,11 @@ export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChang
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
       <p className="hint">{modeHint(wb)}</p>
       {(wb.mode === "pv" || wb.mode === "minpv" || wb.mode === "now") && (
-        <div className="field" role="group" aria-label={t("devices.nativeWallbox.modeCurrent")}>
-          <span className="field-label">{t("devices.nativeWallbox.modeCurrent")}</span>
+        <fieldset className="field field-group">
+          <legend className="field-label">{t("devices.nativeWallbox.modeCurrent")}</legend>
           <Segmented value={String(chosen)} disabled={busy} options={currentOptions(wb, chosen)}
             onChange={(c) => void setMode(wb.mode, Number(c))} />
-        </div>
+        </fieldset>
       )}
       {r && (
         <dl className="facts">
