@@ -1,6 +1,45 @@
 {
   "versions": [
     {
+      "version": "0.31.0",
+      "date": "2026-10-16",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "homeassistant",
+            "text": "Set the highest charging current of a wallbox's mode (#410)"
+          },
+          {
+            "scope": "report",
+            "text": "Hide and show single lines with a tap on the legend (#408)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Choose the highest current per mode and keep solar charging through clouds (#407)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "notify",
+            "text": "Report an inverter fault only after it has lasted 30 minutes (#406)"
+          },
+          {
+            "scope": "report",
+            "text": "Show every day or month of the period in the bar charts (#405)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "pages",
+            "text": "Let a running deployment finish instead of cancelling it (#399)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.30.1",
       "date": "2026-10-15",
       "first": false,
