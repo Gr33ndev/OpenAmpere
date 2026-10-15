@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.30.1 (2026-10-15)
+
+### Behoben
+
+- **wallbox:** Find the Tuya wallbox, type IP addresses with a dot, stop a self-started charge at once (#397)
+
 ## 0.30.0 (2026-10-15)
 
 ### Neu
@@ -114,9 +120,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 - **security:** Cloud export tool writes files outside its folder when the cloud sends a crafted installation id (GHSA-8qjf-v7mq-g2r5)
 - **security:** Importing a crafted ZIP file can use far more memory than the limits allow (GHSA-963v-6j22-r7x5)
 - **security:** Power curve of the PV inputs loads the readings of a whole year without login (GHSA-p7r4-hj2r-hg5h)
-
-## 0.25.1 (2026-10-13)
-
-### Behoben
-
-- **saj:** Show the on-grid and off-grid battery reserve the right way round (#335)

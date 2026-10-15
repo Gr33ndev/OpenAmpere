@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.30.1",
+      "date": "2026-10-15",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "wallbox",
+            "text": "Find the Tuya wallbox, type IP addresses with a dot, stop a self-started charge at once (#397)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.30.0",
       "date": "2026-10-15",
       "first": false,
