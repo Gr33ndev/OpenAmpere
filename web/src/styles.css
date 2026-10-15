@@ -312,7 +312,10 @@ html.retro body::after { content: ""; position: fixed; inset: 0; z-index: 50; po
 .chart .u-legend { display: none; }
 .chart .u-axis { font-size: 12px; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--label); }
-.legend span { display: flex; align-items: center; gap: 6px; }
+.legend span, .legend button { display: flex; align-items: center; gap: 6px; }
+/* an entry that shows or hides its line (#400); a hidden one is faded and struck through */
+.legend button { font: inherit; color: inherit; background: none; border: 0; padding: 4px 0; margin: -4px 0; cursor: pointer; }
+.legend button[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
 .legend strong { color: var(--text); font-weight: 500; }
 .row-info { display: flex; align-items: center; gap: 12px; }
 .empty, .hint { color: var(--label); font-size: 14px; margin: 0; }

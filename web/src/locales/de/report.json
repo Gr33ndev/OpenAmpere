@@ -161,7 +161,8 @@
     "selfSupplied": "Selbst versorgt",
     "selfSupply": "Eigenversorgung",
     "signHint": "Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.",
-    "socRightAxis": "Ladestand (rechte Achse)"
+    "socRightAxis": "Ladestand (rechte Achse)",
+    "legendHint": "Tippe auf einen Eintrag, um seine Linie aus- oder wieder einzublenden."
   },
   "temperatureSection": {
     "bms": "Speicher-Elektronik (BMS)",
