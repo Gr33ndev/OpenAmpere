@@ -37,7 +37,7 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
 
 | Decision | Why | Issue/PR |
 |---|---|---|
-| Wallboxes are controlled only through evcc's REST API; OpenAmpere serves evcc the site meters at `/api/evcc/site`. | evcc supports many wallboxes; the inverter keeps a free connection slot. | [docs/devices.md](../../devices.md), [evcc.md](../../evcc.md) |
+| Wallboxes OpenAmpere does not know itself are controlled through evcc's REST API (until [#386](https://github.com/Gr33ndev/OpenAmpere/issues/386) the only way); OpenAmpere serves evcc the site meters at `/api/evcc/site`. | evcc supports many wallboxes; the inverter keeps a free connection slot. | [docs/devices.md](../../devices.md), [evcc.md](../../evcc.md) |
 | Wallboxes OpenAmpere knows itself are controlled without evcc (`wallbox/native.py`), so far the portable dé wallbox; evcc stays the way for all others. | No sponsor token, no second program for a single wallbox. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318), [#386](https://github.com/Gr33ndev/OpenAmpere/issues/386), [tuya/de-portable.md](../tuya/de-portable.md) |
 | The sponsor token's state is shown in the app; a missing or expired token gets its own message. | An expired token stops the wallbox. | [#317](https://github.com/Gr33ndev/OpenAmpere/issues/317), [#319](https://github.com/Gr33ndev/OpenAmpere/issues/319) |
 | The limit of a heating loadpoint is a temperature capped at 20–90 °C; a car loadpoint uses 20–100 %. | evcc uses the same field for both. | [#245](https://github.com/Gr33ndev/OpenAmpere/issues/245), [#249](https://github.com/Gr33ndev/OpenAmpere/issues/249) |
