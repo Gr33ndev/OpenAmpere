@@ -287,6 +287,8 @@ Die Datei `openampere-sicherung.tar.gz` liegt danach in deinem Benutzerordner au
 
 **Wiederherstellen in der App:** Unter **Mehr → Daten & Sicherung** wählst du bei **Sicherung wiederherstellen** die Datei aus der App aus. Dafür musst du angemeldet sein. OpenAmpere prüft die Datei, behält dein Passwort und die gespeicherten Zugangsdaten und startet danach neu. Die bisherige Datenbank bleibt als Kopie im Ordner `data` erhalten.
 
+**Geräte mit eigenen Schaltadressen** (unter **Mehr → Verbindung → Heizstab und weitere Geräte**): Ihre Adressen enthalten oft das Passwort des Geräts und stehen in der Sicherung nur verschlüsselt mit der `secret.key` des alten Rechners. Stellst du die Sicherung auf einem anderen Rechner wieder her, behält das Gerät seine Einstellungen und zeigt dort und auf der Seite **Geräte** „Schaltadressen neu eintragen“. Bis du die Adressen zum Ein- und Ausschalten neu einträgst, schaltet OpenAmpere das Gerät nicht, auch nicht aus. Läuft es gerade, schalte es bei Bedarf selbst aus.
+
 **Ganzen Datenordner zurückholen:** Hast du den Ordner `data` wie oben gesichert, kopierst du ihn von Hand zurück. Die Datei muss dafür in deinem Benutzerordner auf dem Server liegen:
 
 ```bash

@@ -1,4 +1,8 @@
 {
+  "addressesLost": {
+    "hint": "OpenAmpere cannot read the stored switch addresses of this device, for example after a backup was restored on another computer. Until you enter them again, OpenAmpere does not switch the device, not even off. Its other settings are kept.",
+    "title": "Enter the switch addresses again"
+  },
   "batteryCard": {
     "backupReserve": "Backup reserve: {soc} %",
     "batterySettings": "Battery settings",

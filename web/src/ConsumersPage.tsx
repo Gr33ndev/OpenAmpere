@@ -5,7 +5,7 @@ import { putJson, useResource } from "./api";
 import { LoginToSee } from "./AuthScreens";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
-import { AmountInput, Button, Dialog, Field, LoadState, SubPage, toast } from "./ui";
+import { AmountInput, Button, Dialog, Field, LoadState, Notice, SubPage, toast } from "./ui";
 import { amountInput } from "./format";
 import { t } from "./i18n";
 
@@ -14,6 +14,8 @@ export type ConsumerData = {
   /** null without a login: the addresses often hold the device's password */
   channel: number; url_on: string | null; url_off: string | null; power_w: number; min_power_w: number; min_on_min: number;
   min_off_min: number; battery_min_soc: number; price_limit_ct: number | null; enabled: boolean;
+  /** the stored addresses cannot be read (a backup restored on another server, #392): not switched until entered again */
+  addresses_lost?: boolean;
   state?: { on: boolean | null; power_w: number; since: number; error: string | null; temperature_c: number | null;
     target_c: number | null; status: string | null; actual_w: number | null };
 };
@@ -60,6 +62,7 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
         <strong className="grow">{kindLabel(c)}</strong>
       </div>
       <Field label={t("common.name")}><input className="input" value={c.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} /></Field>
+      {c.kind === "http" && value.addresses_lost && <Notice kind="warn">{t("devices.addressesLost.hint")}</Notice>}
       {c.kind === "http" ? (urlsHidden ? <LoginToSee /> : (
         <>
           <Field label={t("devices.editor.switchOnUrl")}><input className="input" value={c.url_on ?? ""} placeholder="http://" onChange={(e) => set({ url_on: e.target.value })} /></Field>
@@ -140,7 +143,8 @@ export function ConsumersPage({ onBack }: PageProps) {
   const persist = async (next: ConsumerData[]) => {
     setBusy(true);
     try {
-      const saved = await putJson<{ consumers: ConsumerData[] }>("/api/consumers", { consumers: next.map(({ state: _s, ...c }) => c) });
+      const saved = await putJson<{ consumers: ConsumerData[] }>("/api/consumers",
+        { consumers: next.map(({ state: _s, addresses_lost: _l, ...c }) => c) });
       setData(saved);
       setEditing(null);
       toast(t("common.saved"));
@@ -183,7 +187,8 @@ export function ConsumersPage({ onBack }: PageProps) {
             {list.map((c, i) => (
               <button type="button" key={c.id ?? i} className="device-row-compact" onClick={() => setEditing(i)}>
                 <DeviceIcon kind={c.kind === "mypv" ? "heating_rod" : "switch"} size={36} />
-                <span className="grow"><strong>{c.name}</strong><span className="menu-hint">{kindLabel(c)} · {c.kind === "http" ? t("devices.consumersPage.webAddresses") : c.host}</span></span>
+                <span className="grow"><strong>{c.name}</strong><span className="menu-hint">{kindLabel(c)} · {c.addresses_lost ? t("devices.addressesLost.title")
+                  : c.kind === "http" ? t("devices.consumersPage.webAddresses") : c.host}</span></span>
                 <span className="link">{t("devices.consumersPage.edit")}</span>
               </button>
             ))}

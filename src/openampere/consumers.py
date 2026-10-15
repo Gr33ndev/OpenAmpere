@@ -9,6 +9,10 @@ Two kinds of devices:
 The surplus is shared out in the order of the list. A wallbox controlled by evcc can come first (it gets
 room to start charging) or last (it gets what is left). Optionally a device also runs on cheap grid power
 (dynamic tariff below a price limit). Respects the control switch and the test mode; switching is logged.
+
+Own switch addresses are stored encrypted with secret.key. A backup restored on another server (or a lost secret.key)
+leaves addresses that cannot be read (#392): the device stays in the list with its settings, is never switched (also
+not to switch it off), and the app asks for the addresses again. Saving new ones makes it work again under the same id.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Collection
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 
@@ -64,6 +69,11 @@ class Consumer:
     @property
     def adjustable(self) -> bool:
         return self.kind == "mypv"
+
+    @property
+    def addresses_lost(self) -> bool:
+        """Own switch addresses that could not be read (#392): never switched until they are entered again."""
+        return self.kind == "http" and not (self.url_on and self.url_off)
 
 
 # meta: id -> {"since", "consumer"}: devices OpenAmpere really switched on, with the configuration to switch them off
@@ -119,8 +129,9 @@ def _same_address(a: tuple[str, int], b: tuple[str, int]) -> bool:
     return a[1] == b[1] and bool(_addresses(a[0]) & _addresses(b[0]))
 
 
-def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consumer]:
-    """inverter: its host and port; a heating rod must not be set up at that address."""
+def validate(raw: list, inverter: tuple[str, int] | None = None, unreadable: Collection[str] = ()) -> list[Consumer]:
+    """inverter: its host and port; a heating rod must not be set up at that address.
+    unreadable: ids of stored devices whose switch addresses could not be read; they may stay without them."""
     if not isinstance(raw, list) or len(raw) > MAX_CONSUMERS:
         raise ValueError(f"Höchstens {MAX_CONSUMERS} Geräte.")
     consumers = []
@@ -140,7 +151,8 @@ def validate(raw: list, inverter: tuple[str, int] | None = None) -> list[Consume
         if c.kind not in KINDS:
             raise ValueError("Unbekannte Schaltart.")
         if c.kind == "http":
-            _check_url(c.url_on), _check_url(c.url_off)
+            if not (c.id in unreadable and not c.url_on and not c.url_off):
+                _check_url(c.url_on), _check_url(c.url_off)
         elif not HOST.fullmatch(c.host.strip()):  # a name or an address only: it becomes part of the switch URL
             raise ValueError(f"{c.name}: Bitte die IP-Adresse des Geräts angeben.")
         if not 50 <= c.power_w <= 30_000 or not 0 <= c.battery_min_soc <= 100:
@@ -212,6 +224,8 @@ class SurplusControl:
         self._retired: dict[str, Consumer] = {}  # disabled, removed or changed: switched off on the next tick (#217)
         self._known: dict[str, Consumer] = {}  # configuration of devices remembered as switched on (#243)
         self._restored = False
+        self._unreadable: set[str] = set()  # stored switch addresses that cannot be decrypted: tried once
+        self._unreadable_ids: set[str] = set()  # devices logged with such addresses (also remembered as switched on)
         self._lock = asyncio.Lock()  # one tick at a time (fast loop, app and other apps), #243
 
     # ---- settings ------------------------------------------------------------
@@ -226,8 +240,21 @@ class SurplusControl:
                                if consumer.get(k) and not box.is_encrypted(consumer[k])}}
 
     def _opened(self, consumer: dict) -> dict:
-        return {**consumer, **{k: self.runtime.secrets.decrypt(f"consumer.{k}", consumer[k]) for k in self.URLS
-                               if consumer.get(k)}}
+        """Switch addresses that cannot be read (another secret.key) become empty: the device waits for new ones."""
+        opened = {**consumer}
+        for k in self.URLS:
+            value = consumer.get(k)
+            if not value:
+                continue
+            opened[k] = "" if value in self._unreadable else self.runtime.secrets.decrypt(f"consumer.{k}", value)
+            if not opened[k]:
+                self._unreadable.add(value)
+        device_id = str(consumer.get("id"))
+        if any(consumer.get(k) in self._unreadable for k in self.URLS) and device_id not in self._unreadable_ids:
+            self._unreadable_ids.add(device_id)
+            log.warning("device %s: the switch addresses cannot be read, they have to be entered again",
+                        consumer.get("name"))
+        return opened
 
     def _save_consumers(self, consumers: list[Consumer]) -> None:
         self.runtime.storage.set_meta("consumers", [self._sealed(asdict(c)) for c in consumers])
@@ -239,7 +266,7 @@ class SurplusControl:
         consumers = []
         for raw in stored:
             try:
-                consumers += validate([self._opened(raw)])
+                consumers += validate([self._opened(raw)], unreadable=(str(raw.get("id")),))
             except (ValueError, AttributeError, TypeError) as err:
                 log.warning("stored device ignored: %s", err)
         if any(isinstance(c, dict) and c.get(k) and not self.runtime.secrets.is_encrypted(c[k])
@@ -248,8 +275,11 @@ class SurplusControl:
         return consumers
 
     def save(self, raw: list) -> list[Consumer]:
+        """A device whose switch addresses could not be read may stay without them until they are entered again."""
         inverter = self.runtime.config.inverter
-        consumers = validate(self._with_hidden_urls(raw), (inverter.host, inverter.port) if inverter.host else None)
+        stored = self.consumers
+        consumers = validate(self._with_hidden_urls(raw), (inverter.host, inverter.port) if inverter.host else None,
+                             unreadable={c.id for c in stored if c.addresses_lost})
         for c in consumers:
             if c.kind == "http" and not (_sendable(c.url_on) and _sendable(c.url_off)):
                 raise ValueError(f"{c.name}: Diese Schaltadresse kann OpenAmpere nicht senden. Bitte keinen "
@@ -259,9 +289,12 @@ class SurplusControl:
         enabled = {c.id for c in consumers if c.enabled}
         for c_id in enabled:
             self._retired.pop(c_id, None)
-        for old in self.consumers:
+        for old in stored:
             if old.id not in enabled:
-                self._retired[old.id] = old  # keeps the address, to switch it off once more
+                # keeps the address, to switch it off once more; without readable ones, the addresses entered now
+                self._retired[old.id] = new[old.id] if old.addresses_lost and old.id in new else old
+            elif old.addresses_lost:
+                pass  # the addresses entered again reach the same device: it goes on under its id (#392)
             elif _switching(old) != _switching(new[old.id]):
                 # switched another way now (address, channel, type): the old relay gets its "off" under an id of its
                 # own, so it does not mix with the new one (#243)
@@ -327,8 +360,9 @@ class SurplusControl:
     def view(self, *, hide_urls: bool = False) -> dict:
         """hide_urls: without a login, the switch addresses are left out, they often hold the device's password."""
         hidden = {"url_on": None, "url_off": None} if hide_urls else {}
-        return {"consumers": [{**asdict(c), **hidden, "state": asdict(self.states.get(c.id, State())),
-                               "override": self.override(c.id)} for c in self.consumers]}
+        return {"consumers": [{**asdict(c), **hidden, "addresses_lost": c.addresses_lost,
+                               "state": asdict(self.states.get(c.id, State())), "override": self.override(c.id)}
+                              for c in self.consumers]}
 
     def _with_hidden_urls(self, raw):
         """A switch address sent as null (the app did not get it without a login) keeps its stored value."""
@@ -444,6 +478,8 @@ class SurplusControl:
         if c.adjustable:
             await self.set_power(c, c.power_w if on else 0, reason, now, force_log=True, source=source)
             return
+        if c.addresses_lost:
+            return  # its switch addresses could not be read: never switched until they are entered again (#392)
         state = self.states.setdefault(c.id, State())
         details = {"from": {"consumer": c.name, "on": state.on}, "to": {"consumer": c.name, "on": on},
                    **({"source": source} if source else {})}
@@ -556,7 +592,7 @@ class SurplusControl:
         runtime = self.runtime
         self._restore()
         await self._retire(now)
-        consumers = [c for c in self.consumers if c.enabled]
+        consumers = [c for c in self.consumers if c.enabled and not c.addresses_lost]  # those wait for new addresses
         native = self.wallboxes
         wallboxes = []
         if native is not None:
@@ -645,6 +681,15 @@ class SurplusControl:
             if known is not None and self.states[c_id].switched_on:
                 self._retired[c_id] = known
             else:
+                self._forget(c_id)
+        for c_id, c in list(self._retired.items()):
+            if c.addresses_lost and c_id not in configured:
+                # removed while its switch addresses could not be read: it can never be switched off (#392)
+                state = self.states.get(c_id)
+                if state and state.switched_on:
+                    self._log({"from": {"consumer": c.name}, "to": {"consumer": c.name, "on": False}}, False,
+                              "Schaltadressen nicht lesbar, OpenAmpere kann es nicht ausschalten")
+                self._retired.pop(c_id, None)
                 self._forget(c_id)
         # all at once: a device that answers slowly must not hold back switching off the others
         await asyncio.gather(*(self._retire_one(c_id, c, now) for c_id, c in list(self._retired.items())))

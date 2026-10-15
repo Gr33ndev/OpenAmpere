@@ -365,7 +365,7 @@ function consumers() {
   const rod = heatingRod();
   return { consumers: [{ id: "demo1", name: "Heizstab", kind: "mypv", host: "heizstab.local", port: 502, unit: 1, channel: 0,
     url_on: "", url_off: "", power_w: 3000, min_power_w: 500, min_on_min: 0, min_off_min: 0, battery_min_soc: 50,
-    price_limit_ct: null, enabled: true,
+    price_limit_ct: null, enabled: true, addresses_lost: false,
     state: { on: rod.on, power_w: rod.power, since: now() - 1800, error: null, temperature_c: rod.temperature, target_c: 60,
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
 }

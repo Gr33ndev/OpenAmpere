@@ -1,16 +1,22 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 import asyncio
+import logging
 import os
 import sqlite3
 
 import pytest
+from fastapi.testclient import TestClient
 
 from openampere import consumers as consumers_module
+from openampere.api import create_app
 from openampere.consumers import SurplusControl, switch_url, validate
 from openampere.drivers.base import Snapshot
 from openampere.runtime import Runtime
+from openampere.secretbox import SecretBox
 from openampere.storage import Storage
+
+from conftest import login
 
 ROD = "rod.local"
 PUMP = "pump.local"
@@ -432,3 +438,116 @@ def test_switch_addresses_of_older_versions_are_encrypted_on_the_next_start(tmp_
     runtime.storage.set_meta("consumers", [{**HTTP_CONFIG, "id": "old1"}])
     assert control.consumers[0].url_off == HTTP_CONFIG["url_off"]
     assert runtime.storage.get_meta("consumers")[0]["url_off"].startswith("enc:v1:")
+
+
+# #392: a backup restored on another server holds the switch addresses encrypted with the old secret.key
+def test_a_stored_device_may_stay_without_its_switch_addresses_a_new_one_may_not():
+    lost = {**HTTP_CONFIG, "id": "ab12cd34", "url_on": "", "url_off": ""}
+    assert validate([lost], unreadable=("ab12cd34",))[0].addresses_lost
+    with pytest.raises(ValueError, match="vollständige Adresse"):
+        validate([lost])
+    with pytest.raises(ValueError, match="vollständige Adresse"):  # one of the two entered again is not enough
+        validate([{**lost, "url_on": HTTP_CONFIG["url_on"]}], unreadable=("ab12cd34",))
+
+
+@pytest.mark.parametrize("situation", ["surplus", "control off", "no readings", "switched by hand"])
+async def test_a_device_whose_switch_addresses_cannot_be_read_stays_and_is_never_switched(
+        tmp_path, monkeypatch, caplog, situation):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([{**HTTP_CONFIG, "battery_min_soc": 20}])
+    reading(runtime, grid=-2000)
+    await control.tick(now=1000)
+    await control.tick(now=1030)
+    assert calls == [HTTP_CONFIG["url_on"]]  # switched on before the backup
+    device_id = control.consumers[0].id
+
+    runtime.secrets = SecretBox(tmp_path / "other" / "secret.key")  # the new server
+    caplog.set_level(logging.WARNING)
+    restored = SurplusControl(runtime)
+    kept = restored.consumers[0]
+    assert (kept.id, kept.name, kept.kind, kept.power_w, kept.battery_min_soc) == (device_id, "Heizstab", "http", 1000,
+                                                                                   20)
+    assert (kept.url_on, kept.url_off) == ("", "") and kept.addresses_lost
+    assert restored.view()["consumers"][0]["addresses_lost"]
+    assert restored.view(hide_urls=True)["consumers"][0]["addresses_lost"]
+    if situation == "control off":
+        runtime.config.control.enabled = False
+    elif situation == "no readings":
+        runtime.collector.latest = None
+    elif situation == "switched by hand":
+        await restored.switch(kept, False, "von Hand geschaltet", 2000)
+        restored.set_override(device_id, "boost", now=2000)
+    for now in (2000, 2030, 2060):
+        await restored.tick(now=now)
+    assert calls == [HTTP_CONFIG["url_on"]]  # nothing sent to an empty address, also not to switch it off
+    assert restored.consumers[0].id == device_id  # still there
+    assert sum("switch addresses cannot be read" in r.message for r in caplog.records) == 1  # once, not on every read
+
+
+async def test_a_device_with_unreadable_switch_addresses_works_again_with_new_ones(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([HTTP_CONFIG])
+    reading(runtime, grid=-2000)
+    await control.tick(now=1000)
+    await control.tick(now=1030)
+    device_id = control.consumers[0].id
+
+    runtime.secrets = SecretBox(tmp_path / "other" / "secret.key")
+    restored = SurplusControl(runtime)
+    reading(runtime, grid=2000)  # no surplus: it is meant to be off now
+    await restored.tick(now=2000)
+    # changed in the app without the addresses (logged in: empty, not logged in: null): it stays and keeps waiting
+    restored.save([{**restored.view()["consumers"][0], "power_w": 1200}])
+    restored.save([{**restored.view(hide_urls=True)["consumers"][0], "min_on_min": 5}])
+    kept = restored.consumers[0]
+    assert (kept.power_w, kept.min_on_min, kept.addresses_lost) == (1200, 5, True)
+    await restored.tick(now=2030)
+    assert calls == [HTTP_CONFIG["url_on"]]
+
+    # entered again: switched under the same id, also off what the old server had switched on
+    new_on, new_off = "http://heater.local/on?password=neu-0815", "http://heater.local/off?password=neu-0815"
+    restored.save([{**restored.view()["consumers"][0], "url_on": new_on, "url_off": new_off}])
+    assert restored.consumers[0].id == device_id and not restored.consumers[0].addresses_lost
+    assert not restored.view()["consumers"][0]["addresses_lost"]
+    await restored.tick(now=2060)
+    assert calls == [HTTP_CONFIG["url_on"], new_off]
+    assert SurplusControl(runtime).consumers[0].url_on == new_on  # stored with the new secret.key
+
+
+async def test_a_device_removed_while_its_switch_addresses_cannot_be_read_is_forgotten(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    control = SurplusControl(runtime)
+    control.save([HTTP_CONFIG])
+    reading(runtime, grid=-2000)
+    await control.tick(now=1000)
+    await control.tick(now=1030)
+
+    runtime.secrets = SecretBox(tmp_path / "other" / "secret.key")
+    restored = SurplusControl(runtime)
+    await restored.tick(now=2000)
+    restored.save([])
+    await restored.tick(now=2030)
+    await restored.tick(now=2060)
+    assert calls == [HTTP_CONFIG["url_on"]]
+    assert runtime.storage.get_meta(consumers_module.SWITCHED_ON) == {}
+    assert "nicht lesbar" in runtime.storage.control_log()[0]["result"]
+
+
+def test_the_api_shows_unreadable_switch_addresses_and_refuses_to_switch_by_hand(tmp_path, monkeypatch):
+    calls = []
+    runtime = runtime_with(tmp_path, monkeypatch, calls)
+    old = SecretBox(tmp_path / "old" / "secret.key")  # the server the backup comes from
+    runtime.storage.set_meta("consumers", [{**HTTP_CONFIG, "id": "web1", "url_on": old.encrypt("consumer.url_on", "x"),
+                                            "url_off": old.encrypt("consumer.url_off", "y")}])
+    web = login(TestClient(create_app(runtime), base_url="https://testserver"))
+    assert [c["addresses_lost"] for c in web.get("/api/consumers").json()["consumers"]] == [True]
+    devices = web.get("/api/devices").json()["devices"]
+    assert [d["addresses_lost"] for d in devices if d["id"] == "web1"] == [True]
+    answer = web.post("/api/consumers/web1/switch?on=false")
+    assert answer.status_code == 409 and "neu ein" in answer.json()["detail"]
+    assert calls == []

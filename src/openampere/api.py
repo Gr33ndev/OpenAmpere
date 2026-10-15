@@ -1133,6 +1133,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(404, "Verbraucher nicht gefunden")
         if not runtime.config.control.enabled:
             raise HTTPException(403, "Steuerung ist deaktiviert")
+        if consumer.addresses_lost:
+            raise HTTPException(409, "Die Schaltadressen dieses Geräts sind nicht lesbar, zum Beispiel nach dem "
+                                     "Wiederherstellen einer Sicherung auf einem anderen Rechner. Bitte trage sie unter "
+                                     "Mehr → Verbindung → Heizstab und weitere Geräte neu ein.")
         await surplus.switch(consumer, on, "von Hand geschaltet", time.time(), source=actor(request))
         return surplus.view()
 

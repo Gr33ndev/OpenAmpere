@@ -38,7 +38,7 @@ class Devices:
                 "power_w": float(power or 0), "active": bool(power), "on": state.on,
                 "temperature_c": state.temperature_c, "target_c": state.target_c, "status": state.status,
                 "error": state.error, "override": self.surplus.override(c.id), "connected": None,
-                "soc": None, "range_km": None,
+                "soc": None, "range_km": None, "addresses_lost": c.addresses_lost,
             })
         for lp in (self.evcc.fresh() or {}).get("loadpoints", []):
             devices.append({
