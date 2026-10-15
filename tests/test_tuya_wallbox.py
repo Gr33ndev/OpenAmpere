@@ -554,31 +554,17 @@ async def test_without_a_car_nothing_is_written_and_a_charge_the_wallbox_starts_
         assert charger.writes == [{"140": False}] and not charger.charging  # at once, not after the waiting time
 
 
-def announcement_55aa(ip: str, encrypted: bool = True) -> bytes:
-    """The older format as devices send it: header, return code, the JSON (AES-ECB or plain), CRC, suffix."""
+def test_announcements_in_the_older_format_are_ignored():
+    """The older format (prefix 55AA) is encrypted with AES-ECB, which OpenAmpere does not use (#396); such a device is
+    found through the request or entered by its address."""
     import binascii
     import struct
-
-    from cryptography.hazmat.primitives import padding
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    info = json.dumps({"ip": ip, "gwId": "simulated0000000000", "version": "3.5", "productKey": "abc"}).encode()
-    if encrypted:
-        padder = padding.PKCS7(128).padder()
-        encryptor = Cipher(algorithms.AES(tuya.DISCOVERY_KEY), modes.ECB()).encryptor()
-        info = encryptor.update(padder.update(info) + padder.finalize()) + encryptor.finalize()
-    body = struct.pack(">I", 0) + info
+    body = struct.pack(">I", 0) + json.dumps({"ip": "192.168.1.50", "gwId": "simulated0000000000",
+                                              "version": "3.5"}).encode()
     frame = struct.pack(">4I", 0x55AA, 0, 0x13, len(body) + 8) + body
-    return frame + struct.pack(">I", binascii.crc32(frame) & 0xFFFFFFFF) + b"\x00\x00\xaa\x55"
-
-
-def test_announcements_in_the_older_format_are_understood():
-    """Devices with protocol 3.5 also announce themselves in the older format (checked against tinytuya)."""
-    assert tuya.announced(announcement_55aa("192.168.1.50"), "192.168.1.50")["device_id"] == "simulated0000000000"
-    assert tuya.announced(announcement_55aa("192.168.1.50", encrypted=False), "192.168.1.50")
-    assert tuya.announced(announcement_55aa("192.168.1.99"), "192.168.1.50") is None  # forged
-    broken = bytearray(announcement_55aa("192.168.1.50"))
-    broken[30] ^= 0xFF
-    assert tuya.decode_announcement(bytes(broken)) is None
+    frame += struct.pack(">I", binascii.crc32(frame) & 0xFFFFFFFF) + b"\x00\x00\xaa\x55"
+    assert tuya.decode_announcement(frame) is None
+    assert tuya.announced(frame, "192.168.1.50") is None
 
 
 def test_the_request_asks_devices_to_announce_themselves():
@@ -606,6 +592,6 @@ async def test_the_search_asks_and_takes_an_answer_sent_to_its_own_address():
         finally:
             tuya.REQUEST_PORT = original
         assert json.loads(tuya.unpack(tuya.DISCOVERY_KEY, data)[2])["from"] == "app"
-        device.sendto(announcement_55aa("127.0.0.1"), ("127.0.0.1", port))
+        device.sendto(announcement("127.0.0.1"), ("127.0.0.1", port))  # the answer, in the format of 3.5
         found = await search
     assert [d["host"] for d in found] == ["127.0.0.1"]

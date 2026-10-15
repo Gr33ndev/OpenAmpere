@@ -36,8 +36,6 @@ import sys
 import time
 
 from cryptography.exceptions import InvalidTag
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 PORT = 6668
@@ -49,8 +47,6 @@ VERSION_HEADER = VERSION + bytes(12)
 PREFIX = b"\x00\x00\x66\x99"
 SUFFIX = b"\x00\x00\x99\x66"
 HEADER = struct.Struct(">4sHIII")  # prefix, reserved, sequence number, command, length
-PREFIX_55AA = b"\x00\x00\x55\xaa"  # the older format, still used for announcements
-HEADER_55AA = struct.Struct(">4sIII")  # prefix, sequence number, command, length (from here to the end)
 NONCE_BYTES = 12
 TAG_BYTES = 16
 MAX_LENGTH = 8192  # a status answer is well below 1 KB
@@ -262,38 +258,19 @@ class TuyaDevice:
 
 
 def decode_announcement(data: bytes) -> dict | None:
-    """A UDP announcement of a Tuya device, e.g. {"ip", "gwId", "version", "productKey"}. Devices use two formats: the
-    one of protocol 3.5 (prefix 6699, AES-GCM) and the older one (prefix 55AA, a return code, then the JSON encrypted
-    with AES-ECB, or plain), which also devices with protocol 3.5 send."""
+    """A UDP announcement of a Tuya device in the format of protocol 3.5 (prefix 6699, AES-GCM), e.g. {"ip", "gwId",
+    "version", "productKey"}. The older format (prefix 55AA) is encrypted with AES-ECB; OpenAmpere does not use ECB
+    and ignores it (#396): a device that announces itself only that way is found through the request
+    (discovery_request) or entered by its address."""
+    if not data.startswith(PREFIX) or len(data) < HEADER.size + NONCE_BYTES + TAG_BYTES + len(SUFFIX):
+        return None
     try:
-        if data.startswith(PREFIX):
-            if len(data) < HEADER.size + NONCE_BYTES + TAG_BYTES + len(SUFFIX):
-                return None
-            _, _, payload = unpack(DISCOVERY_KEY, data)
-            payload = payload[4:] if payload[:1] != b"{" else payload
-        elif data.startswith(PREFIX_55AA):
-            _, _, _, length = HEADER_55AA.unpack_from(data)
-            if not 12 <= length <= MAX_LENGTH or len(data) < HEADER_55AA.size + length:
-                return None
-            # return code, payload, CRC and suffix
-            payload = data[HEADER_55AA.size + 4:HEADER_55AA.size + length - 8]
-            if payload[:1] != b"{":
-                payload = _ecb_decrypt(DISCOVERY_KEY, payload)
-        else:
-            return None
+        _, _, payload = unpack(DISCOVERY_KEY, data)
+        payload = payload[4:] if payload[:1] != b"{" else payload
         found = json.loads(payload.rstrip(b"\x00"))
     except (TuyaError, ValueError, UnicodeDecodeError, struct.error):
         return None
     return found if isinstance(found, dict) and found.get("gwId") else None
-
-
-def _ecb_decrypt(key: bytes, data: bytes) -> bytes:
-    if not data or len(data) % 16:
-        raise ValueError("not a whole number of blocks")
-    decryptor = Cipher(algorithms.AES(key), modes.ECB()).decryptor()  # noqa: S305 - the format of the announcement
-    padded = decryptor.update(data) + decryptor.finalize()
-    unpadder = padding.PKCS7(128).unpadder()
-    return unpadder.update(padded) + unpadder.finalize()
 
 
 def discovery_request(own: str) -> bytes:
