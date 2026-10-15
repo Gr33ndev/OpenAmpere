@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import type { Locator } from "@playwright/test";
-import { expect, open, test } from "./fixtures";
+import { expect, layoutProblems, open, test } from "./fixtures";
 
 const day = (d: number) => new Date(2026, 9, d).getTime() / 1000;
 const entry = (d: number, pv: number) => ({
@@ -81,4 +81,56 @@ test("a year with little data still shows all its months", async ({ page, api })
     // January and February are the first two of twelve months: both in the left sixth of the plot
     expect(found[1].end, name).toBeLessThan(0.2);
   }
+});
+
+// a tap on a legend entry hides or shows its line; the choice stays for the next visit (#400)
+test("lines are hidden and shown with the legend and stay so after a reload", async ({ page, api }) => {
+  await page.clock.install({ time: new Date("2026-10-07T12:00:00") });
+  api.override("/api/energy/timeline", { entries: [entry(5, 10000), entry(6, 20000), entry(7, 15000)] });
+  await open(page, "report");
+  await page.getByRole("button", { name: "Woche" }).click();
+  const chart = page.getByRole("img", { name: /^Diagramm Energie/ });
+  const legend = page.locator(".legend").first();
+  const entryButton = (name: string) => legend.getByRole("button", { name });
+  expect((await bars(chart, "--pv")).length).toBe(3);
+
+  // without the self-supplied part the blue bar is only what came from the grid: 2 kWh next to 20 kWh generated
+  await entryButton("Selbst versorgt").click();
+  await expect(entryButton("Selbst versorgt")).toHaveAttribute("aria-pressed", "false");
+  expect((await bars(chart, "--house")).length, "self-supplied hidden").toBe(0);
+  const grid = await bars(chart, "--grid"), pv = await bars(chart, "--pv");
+  expect(grid.length).toBe(3);
+  expect(grid[1].height / pv[1].height).toBeCloseTo(0.1, 1);
+
+  await entryButton("Erzeugt").click();
+  expect((await bars(chart, "--pv")).length, "generation hidden").toBe(0);
+  expect((await bars(chart, "--grid")).length, "grid still shown").toBe(3);
+
+  // the last line cannot be hidden
+  await entryButton("Aus dem Netz").click();
+  await expect(entryButton("Aus dem Netz")).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  await page.getByRole("button", { name: "Woche" }).click();
+  await expect(entryButton("Erzeugt")).toHaveAttribute("aria-pressed", "false");
+  expect((await bars(chart, "--pv")).length).toBe(0);
+  await entryButton("Erzeugt").click();
+  expect((await bars(chart, "--pv")).length, "shown again").toBe(3);
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("a PV input is hidden with the legend of its chart", async ({ page, api }) => {
+  await page.clock.install({ time: new Date("2026-03-10T12:00:00") });
+  const month = (m: number) => Date.UTC(2026, m - 1, 1, 12) / 1000;
+  api.override("/api/pv/inputs", { mode: "energy", inputs: [1, 2], labels: ["Süd", "West"], totals_wh: [450000, 250000],
+    entries: [{ ts: month(1), values: [200000, 100000] }, { ts: month(2), values: [250000, 150000] }] });
+  await open(page, "report");
+  await page.getByRole("button", { name: "Jahr", exact: true }).click();
+  const title = page.locator(".section-title", { hasText: "Nach Modulfeldern" });
+  const chart = title.locator("xpath=following-sibling::div[contains(@class, 'chart')][1]");
+  const legend = title.locator("xpath=following-sibling::div[contains(@class, 'legend')][1]");
+  expect((await bars(chart, "#eec91d")).length).toBe(2);
+  await legend.getByRole("button", { name: /Süd/ }).click();
+  expect((await bars(chart, "#eec91d")).length, "Süd hidden").toBe(0);
+  expect((await bars(chart, "#a78bfa")).length, "West now from the axis").toBe(2);
 });

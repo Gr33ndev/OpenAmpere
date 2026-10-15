@@ -33,6 +33,8 @@ function axisSize(labels: string[] | null, font: string): number {
 
 export type Series = {
   label: string;
+  /** Legend entry that shows or hides it (#400) */
+  key?: string;
   color: string;
   values: (number | null)[];
   unit: string;

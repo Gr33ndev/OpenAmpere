@@ -51,18 +51,47 @@ const fmtHour = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, {
 const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", timeZone: timeZone() });
 const fmtMonth = (ts: number) => new Date(ts * 1000).toLocaleDateString(LOCALE, { month: "short", timeZone: timeZone() });
 
-function Legend({ items }: { items: { color: string; label: string; value?: string }[] }) {
+type LegendItem = { key?: string; color: string; label: string; value?: string };
+
+/** With onToggle, an entry with a key is a button that shows or hides its line (#400). */
+function Legend({ items, hidden, onToggle }: {
+  items: LegendItem[]; hidden?: Set<string>; onToggle?: (key: string) => void;
+}) {
   return (
     <div className="legend">
-      {items.map((i) => (
-        <span key={i.label}>
-          <span className="dot" style={{ background: i.color }} />
-          {i.label}{i.value && <strong>{i.value}</strong>}
-        </span>
-      ))}
+      {items.map((i) => {
+        const content = <><span className="dot" style={{ background: i.color }} />{i.label}{i.value && <strong>{i.value}</strong>}</>;
+        const key = i.key;
+        return key && onToggle ? (
+          <button key={key} type="button" aria-pressed={!hidden?.has(key)} onClick={() => onToggle(key)}>{content}</button>
+        ) : <span key={i.label}>{content}</span>;
+      })}
     </div>
   );
 }
+
+/** Lines hidden with a tap on the legend (#400), kept in this browser for the next visit. A line stays visible if it is
+ *  the last one, and a view whose lines are all hidden (e.g. hidden in another view) shows them all. */
+function useHidden(name: string, keys: string[]): [Set<string>, (key: string) => void] {
+  const storageKey = `openampere.report.hidden.${name}`;
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[]);
+    } catch {
+      return new Set();
+    }
+  });
+  const toggle = (key: string) => {
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key);
+    else if (keys.some((k) => k !== key && !next.has(k))) next.add(key);
+    else return;
+    setHidden(next);
+    try { localStorage.setItem(storageKey, JSON.stringify([...next])); } catch { /* private mode: only for this visit */ }
+  };
+  return [keys.length > 0 && keys.every((k) => hidden.has(k)) ? NONE_HIDDEN : hidden, toggle];
+}
+const NONE_HIDDEN = new Set<string>();
 
 
 /** The day that is "today" right now – updates itself at midnight, also in an app left open overnight. */
@@ -99,9 +128,9 @@ const emptyEnergy = (ts: number): EnergyEntry => ({
 const emptyValues = (ts: number) => ({ ts, values: [] });
 
 /** Values of the touched bar / point, so nobody has to guess from the axis. */
-function Readout({ rows, index, showPower, xFormat, extra = [] }: {
+function Readout({ rows, index, showPower, xFormat, extra = [], hidden }: {
   rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
-  extra?: { label: string; values: (number | null)[] }[];
+  extra?: { label: string; values: (number | null)[] }[]; hidden: Set<string>;
 }) {
   if (index == null || !rows[index]) return <p className="hint readout-hint">{t("report.readout.tapHint")}</p>;
   const r = rows[index];
@@ -109,20 +138,23 @@ function Readout({ rows, index, showPower, xFormat, extra = [] }: {
   if (showPower) {
     const p = r as PowerEntry;
     const grid = kw(Math.abs(p.grid ?? 0)), battery = kw(Math.abs(p.battery ?? 0));
-    items.push([t("common.generation"), kw(p.pv)], [t("common.consumption"), kw(p.house)],
-      [t("common.grid"), p.grid == null ? "–" : p.grid >= 0 ? t("report.readout.gridImport", { power: grid }) : t("report.readout.gridFeedIn", { power: grid })],
-      [t("common.battery"), p.battery == null ? "–"
-        : p.battery >= 0 ? t("report.readout.discharging", { power: battery }) : t("report.readout.charging", { power: battery })]);
+    const lines: [string, [string, string]][] = [["pv", [t("common.generation"), kw(p.pv)]], ["house", [t("common.consumption"), kw(p.house)]],
+      ["grid", [t("common.grid"), p.grid == null ? "–" : p.grid >= 0 ? t("report.readout.gridImport", { power: grid }) : t("report.readout.gridFeedIn", { power: grid })]],
+      ["battery", [t("common.battery"), p.battery == null ? "–"
+        : p.battery >= 0 ? t("report.readout.discharging", { power: battery }) : t("report.readout.charging", { power: battery })]]];
+    items.push(...lines.filter(([key]) => !hidden.has(key)).map(([, item]) => item));
   } else {
     const e = r as EnergyEntry;
-    items.push([t("common.generated"), energyKwh(e.pv)], [t("common.consumed"), energyKwh(e.load)], [t("common.gridImport"), energyKwh(e.grid_import)],
-      [t("report.readout.fedIn"), energyKwh(e.grid_export)], [t("common.charged"), energyKwh(e.battery_charge)], [t("report.readout.discharged"), energyKwh(e.battery_discharge)]);
+    if (!hidden.has("pv")) items.push([t("common.generated"), energyKwh(e.pv)]);
+    items.push([t("common.consumed"), energyKwh(e.load)]);
+    if (!hidden.has("grid")) items.push([t("common.gridImport"), energyKwh(e.grid_import)]);
+    items.push([t("report.readout.fedIn"), energyKwh(e.grid_export)], [t("common.charged"), energyKwh(e.battery_charge)], [t("report.readout.discharged"), energyKwh(e.battery_discharge)]);
   }
   for (const x of extra) {
     const v = x.values[index];
     if (v != null) items.push([x.label, kw(v * 1000)]);
   }
-  if (r.soc != null) items.push([t("common.stateOfCharge"), percent(r.soc)]);
+  if (r.soc != null && !hidden.has("soc")) items.push([t("common.stateOfCharge"), percent(r.soc)]);
   return (
     <div className="readout" aria-live="polite">
       <strong>{xFormat(r.ts)}</strong>
@@ -173,45 +205,58 @@ export function Report() {
     if (!devPower?.devices.length) return [];
     const byTs = new Map(devPower.entries.map((e) => [e.ts, e.values]));
     return devPower.devices.map((d, i) => ({
-      label: d.name, color: deviceColors[d.key], unit: "kW", dash: true,
+      key: `device:${d.key}`, label: d.name, color: deviceColors[d.key], unit: "kW", dash: true,
       values: xs.map((ts) => { const v = byTs.get(ts)?.[i]; return v == null ? null : v / 1000; }),
     }));
   };
 
+  const hasSoc = rows.some((r) => r.soc != null) && (showPower || period === "day");
+  const legend: LegendItem[] = [
+    { key: "pv", color: "var(--pv)", label: t("common.generated") },
+    { key: "house", color: "var(--house)", label: showPower ? t("common.consumption") : t("report.report.selfSupplied") },
+    { key: "grid", color: "var(--grid)", label: showPower ? t("common.grid") : t("report.report.fromGrid") },
+    ...(showPower ? [{ key: "battery", color: "var(--battery)", label: t("common.battery") }] : []),
+    ...(hasSoc ? [{ key: "soc", color: "var(--label)", label: t("report.report.socRightAxis") }] : []),
+    ...(showPower ? (devPower?.devices ?? []).map((d) => ({ key: `device:${d.key}`, color: deviceColors[d.key], label: t("report.report.dashed", { name: d.name }) })) : []),
+  ];
+  const [hidden, toggle] = useHidden("main", legend.map((i) => i.key as string));
+
   const digits = energyDigits();
   // biome-ignore lint/correctness/useExhaustiveDependencies: deviceSeries is recreated on every render, its inputs devPower and deviceColors are listed
   const chart = useMemo(() => {
-    const soc: Series = { label: t("common.stateOfCharge"), color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
-    const hasSoc = rows.some((r) => r.soc != null);
+    const soc: Series = { key: "soc", label: t("common.stateOfCharge"), color: "var(--battery)", values: rows.map((r) => r.soc), unit: "%", scale: "soc" };
+    const visible = (series: Series[]) => series.filter((s) => !s.key || !hidden.has(s.key));
     if (showPower) {
       const p = rows as PowerEntry[];
       const kwOf = (v: number | null) => (v == null ? null : v / 1000);
       return {
         x: p.map((r) => r.ts),
-        series: [
-          { label: t("common.generation"), color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
-          { label: t("common.consumption"), color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
-          { label: t("common.grid"), color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
-          { label: t("common.battery"), color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
+        series: visible([
+          { key: "pv", label: t("common.generation"), color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
+          { key: "house", label: t("common.consumption"), color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
+          { key: "grid", label: t("common.grid"), color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
+          { key: "battery", label: t("common.battery"), color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
           ...deviceSeries(p.map((r) => r.ts)),
           ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
-        ] as Series[],
+        ] as Series[]),
       };
     }
     const en = rows as EnergyEntry[];
     const k = (v: number | null) => (v == null ? null : v / 1000);
     return {
       x: en.map((r) => r.ts),
-      // consumption is drawn as total (blue = from grid) with the self-supplied part (orange) on top
-      series: [
-        { label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", digits, barAlign: -1 },
-        { label: t("common.gridImport"), color: "var(--grid)", values: en.map((r) => k(r.load)), unit: "kWh", digits, barAlign: 1 },
-        { label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", digits, barAlign: 1,
+      // consumption is drawn as total (blue = from grid) with the self-supplied part (orange) on top; without the
+      // self-supplied part the blue bar is only what came from the grid
+      series: visible([
+        { key: "pv", label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", digits, barAlign: -1 },
+        { key: "grid", label: t("common.gridImport"), color: "var(--grid)", unit: "kWh", digits, barAlign: 1,
+          values: en.map((r) => k(hidden.has("house") ? r.grid_import : r.load)) },
+        { key: "house", label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", digits, barAlign: 1,
           values: en.map((r) => (r.load == null ? null : Math.max(0, (r.load - (r.grid_import ?? 0)) / 1000))) },
-        ...(hasSoc && period === "day" ? [{ ...soc, color: "var(--label)" }] : []),
-      ] as Series[],
+        ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
+      ] as Series[]),
     };
-  }, [showPower, rows, period, devPower, deviceColors, digits]);
+  }, [showPower, rows, hasSoc, devPower, deviceColors, digits, hidden]);
 
   return (
     <div className="page">
@@ -247,20 +292,14 @@ export function Report() {
           <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
             label={showPower ? t("report.report.powerChart", { period: title(date, period) })
               : t("report.report.energyChart", { period: title(date, period) })} />
-          <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat}
+          <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat} hidden={hidden}
             extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
         </>
       ) : (
         <p className="empty">{t("report.report.noData")}</p>
       )}
-      <Legend items={[
-        { color: "var(--pv)", label: t("common.generated") },
-        { color: "var(--house)", label: showPower ? t("common.consumption") : t("report.report.selfSupplied") },
-        { color: "var(--grid)", label: showPower ? t("common.grid") : t("report.report.fromGrid") },
-        ...(showPower ? [{ color: "var(--battery)", label: t("common.battery") }] : []),
-        ...(chart.series.some((x) => x.scale === "soc") ? [{ color: "var(--label)", label: t("report.report.socRightAxis") }] : []),
-        ...(showPower ? (devPower?.devices ?? []).map((d) => ({ color: deviceColors[d.key], label: t("report.report.dashed", { name: d.name }) })) : []),
-      ]} />
+      <Legend items={legend} hidden={hidden} onToggle={toggle} />
+      <p className="hint">{t("report.report.legendHint")}</p>
       {showPower && <p className="hint">{t("report.report.signHint")}</p>}
       {period === "day" && summary?.recorded_since && (
         <p className="hint">{t("report.report.recordingSince", {
@@ -289,21 +328,24 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh,
     `/api/pv/inputs?period=${period}&date=${day}&mode=${mode}&resolution=${resolution}`, refresh);
   // colour of the input itself, so it stays the same when another input is hidden
   const inputColor = (i: number) => PV_INPUT_COLORS[((data?.inputs?.[i] ?? i + 1) - 1) % 4];
+  const inputKey = (i: number) => String(data?.inputs?.[i] ?? i + 1);
+  const [hidden, toggle] = useHidden("inputs", (data?.labels ?? []).map((_, i) => inputKey(i)));
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: inputColor is recreated on every render and only depends on data
+  // biome-ignore lint/correctness/useExhaustiveDependencies: inputColor and inputKey are recreated on every render and only depend on data
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
     const entries = fillPeriod(data.entries, mode === "power" ? null : buckets, emptyValues);
     const x = entries.map((e) => e.ts);
+    const shown = data.labels.map((_, i) => i).filter((i) => !hidden.has(inputKey(i)));
     const col = (i: number) => entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000));
     if (mode === "power") {
-      return { x, bars: false, series: data.labels.map((label, i) => ({ label, color: inputColor(i), values: col(i), unit: "kW" })) as Series[] };
+      return { x, bars: false, series: shown.map((i) => ({ label: data.labels[i], color: inputColor(i), values: col(i), unit: "kW" })) as Series[] };
     }
-    // stacked: draw the running sums from the top down so each input shows as its own segment
-    const stacked = data.labels.map((_, i) => entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
-    const series = data.labels.map((label, i) => ({ label, color: inputColor(i), values: stacked[i], unit: "kWh", barAlign: 0 as const }));
+    // stacked: draw the running sums of the shown inputs from the top down so each shows as its own segment
+    const stacked = shown.map((_, n) => entries.map((e) => shown.slice(0, n + 1).reduce((a: number, i) => a + (e.values[i] ?? 0), 0) / 1000));
+    const series = shown.map((i, n) => ({ label: data.labels[i], color: inputColor(i), values: stacked[n], unit: "kWh", barAlign: 0 as const }));
     return { x, bars: true, series: series.reverse() as Series[] };
-  }, [data, mode, buckets]);
+  }, [data, mode, buckets, hidden]);
 
   if (!data || data.labels.length < 2) return null;
   return (
@@ -312,14 +354,8 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh,
       {chart?.x.length ? (
         <Chart x={chart.x} series={chart.series} bars={chart.bars} xFormat={xFormat} height={220} />
       ) : <p className="empty">{t("report.pvInputsSection.emptyState")}</p>}
-      <div className="legend">
-        {data.labels.map((label, i) => (
-          <span key={i}>
-            <span className="dot" style={{ background: inputColor(i) }} />
-            {label}{data.totals_wh && <strong>{kwh(data.totals_wh[i])}</strong>}
-          </span>
-        ))}
-      </div>
+      <Legend hidden={hidden} onToggle={toggle} items={data.labels.map((label, i) => ({ key: inputKey(i), color: inputColor(i), label,
+        value: data.totals_wh ? kwh(data.totals_wh[i]) : undefined }))} />
     </>
   );
 }
