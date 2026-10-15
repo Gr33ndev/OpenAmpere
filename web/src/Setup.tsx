@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
 import { InverterIcon } from "./icons";
-import { Button, Field, Notice } from "./ui";
+import { Button, Field, HOST_INPUT, hostText, Notice } from "./ui";
 import { SMARTBOX_GUIDE } from "./links";
 import { navigate } from "./route";
 import { t, tx } from "./i18n";
@@ -105,7 +105,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         <h2>{t("setup.connectionForm.searchTitle")}</h2>
         <p className="hint">{t("setup.connectionForm.searchHint")}</p>
         <Field label={t("setup.connectionForm.network")} hint={t("setup.connectionForm.networkHint", { example: "192.168.178" })}>
-          <input className="input" value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="192.168.178" inputMode="decimal" />
+          <input className="input" value={prefix} onChange={(e) => setPrefix(hostText(e.target.value))} placeholder="192.168.178" {...HOST_INPUT} />
         </Field>
         <Button variant="secondary" onClick={scan} busy={scanning} disabled={!prefix}>{t("setup.connectionForm.searchButton")}</Button>
         {scanning && <p className="hint">{t("setup.connectionForm.takesFewSeconds")}</p>}
@@ -138,8 +138,8 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
       <div className="card form">
         <h2>{t("setup.connectionForm.enterAddressManually")}</h2>
         <Field label={t("setup.connectionForm.inverterIp")} locked={hostLocked}>
-          <input className="input" value={host} onChange={(e) => { setHost(e.target.value); reset(); }}
-            placeholder={t("setup.connectionForm.example", { example: "192.168.178.50" })} inputMode="decimal" disabled={hostLocked} />
+          <input className="input" value={host} onChange={(e) => { setHost(hostText(e.target.value)); reset(); }}
+            placeholder={t("setup.connectionForm.example", { example: "192.168.178.50" })} {...HOST_INPUT} disabled={hostLocked} />
         </Field>
         {advanced ? (
           <>

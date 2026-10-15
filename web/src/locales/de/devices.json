@@ -169,7 +169,8 @@
     "whichChecked": "Steuern kann OpenAmpere diese Wallbox noch nicht. Die Prüfung liest sie nur aus und erstellt einen Bericht, den du teilen kannst. So hilfst du, sie bald zu unterstützen.",
     "full": "Es sind schon {max} Wallboxen eingerichtet, mehr gehen nicht.",
     "groupControlled": "Anzeigen und steuern",
-    "groupChecked": "Nur prüfen (Vorschau)"
+    "groupChecked": "Nur prüfen (Vorschau)",
+    "noCarHint": "Kein Auto angeschlossen: OpenAmpere ändert nichts an der Wallbox. Der gewählte Lademodus gilt, sobald du ein Auto einsteckst. Startet die Wallbox dann von selbst und reicht im Modus Solar der Sonnenstrom nicht, stoppt OpenAmpere das Laden gleich wieder."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

@@ -436,7 +436,7 @@ def test_an_announcement_counts_only_from_the_address_it_names():
 async def test_the_search_receives_announcements_and_drops_forged_ones():
     port = closed_port()
     # bound to 127.0.0.1 here so the test needs no network; the app binds to the broadcast addresses
-    search = asyncio.create_task(tuya.search(0.5, ports=(port,), addresses=("127.0.0.1",)))
+    search = asyncio.create_task(tuya.search(0.5, ports=(port,), addresses=("127.0.0.1",), ask=False))
     await asyncio.sleep(0.1)
     import socket
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
@@ -465,7 +465,7 @@ async def test_the_search_is_unavailable_when_no_port_can_be_opened():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as taken:
         taken.bind(("127.0.0.1", 0))
         with pytest.raises(OSError):  # the app then says the search is not available
-            await tuya.search(0.01, ports=(taken.getsockname()[1],), addresses=("127.0.0.1",))
+            await tuya.search(0.01, ports=(taken.getsockname()[1],), addresses=("127.0.0.1",), ask=False)
 
 
 @pytest.mark.parametrize("ha_app_mode", [False, True], ids=["standalone", "home-assistant-app"])
@@ -534,3 +534,64 @@ async def test_the_home_assistant_app_never_searches_for_a_wallbox_that_went_awa
     monkeypatch.delenv("SUPERVISOR_TOKEN")
     await wallboxes.read(wb, live)  # standalone: searched after two minutes away
     assert calls == [True]
+
+
+async def test_without_a_car_nothing_is_written_and_a_charge_the_wallbox_starts_itself_stops_at_once(tmp_path, monkeypatch):
+    async with simulated(plugged=False) as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="pv")
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        site(runtime, grid=-8000)  # plenty of sun, but no car
+        for now in (0, 10, 20):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.writes == []  # the mode waits for a car
+        # a car is plugged in and the wallbox starts on its own with its 16 A, there is no surplus
+        charger.plugged, charger.charging = True, True
+        site(runtime, grid=11_000)
+        await wallboxes.read(wb)
+        await control.tick(now=30)
+        assert charger.writes == [{"140": False}] and not charger.charging  # at once, not after the waiting time
+
+
+def test_announcements_in_the_older_format_are_ignored():
+    """The older format (prefix 55AA) is encrypted with AES-ECB, which OpenAmpere does not use (#396); such a device is
+    found through the request or entered by its address."""
+    import binascii
+    import struct
+    body = struct.pack(">I", 0) + json.dumps({"ip": "192.168.1.50", "gwId": "simulated0000000000",
+                                              "version": "3.5"}).encode()
+    frame = struct.pack(">4I", 0x55AA, 0, 0x13, len(body) + 8) + body
+    frame += struct.pack(">I", binascii.crc32(frame) & 0xFFFFFFFF) + b"\x00\x00\xaa\x55"
+    assert tuya.decode_announcement(frame) is None
+    assert tuya.announced(frame, "192.168.1.50") is None
+
+
+def test_the_request_asks_devices_to_announce_themselves():
+    _, command, payload = tuya.unpack(tuya.DISCOVERY_KEY, tuya.discovery_request("192.168.1.10"))
+    assert command == tuya.REQUEST_INFO and json.loads(payload) == {"from": "app", "ip": "192.168.1.10"}
+    # where the search listens: broadcasts and the card's own address in the home network, never all interfaces
+    assert tuya.listen_addresses([("192.168.1.10", "192.168.1.255")]) == ["255.255.255.255", "192.168.1.255",
+                                                                           "192.168.1.10"]
+
+
+async def test_the_search_asks_and_takes_an_answer_sent_to_its_own_address():
+    import socket
+    port, ask_port = closed_port(), closed_port()
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as device:
+        device.bind(("127.0.0.1", ask_port))
+        device.setblocking(False)
+        loop = asyncio.get_running_loop()
+        original = tuya.REQUEST_PORT
+        tuya.REQUEST_PORT = ask_port
+        try:
+            # the cards of a test machine are not a home network: ask from the loopback card
+            search = asyncio.create_task(tuya.search(1.0, ports=(port,), addresses=("127.0.0.1",),
+                                                     cards=[("127.0.0.1", "127.0.0.1")]))
+            data, sender = await asyncio.wait_for(loop.sock_recvfrom(device, 2048), 2)
+        finally:
+            tuya.REQUEST_PORT = original
+        assert json.loads(tuya.unpack(tuya.DISCOVERY_KEY, data)[2])["from"] == "app"
+        device.sendto(announcement("127.0.0.1"), ("127.0.0.1", port))  # the answer, in the format of 3.5
+        found = await search
+    assert [d["host"] for d in found] == ["127.0.0.1"]

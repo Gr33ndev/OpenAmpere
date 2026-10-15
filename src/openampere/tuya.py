@@ -57,6 +57,9 @@ STATUS = 8  # the device reports changed values
 HEARTBEAT = 9
 CONTROL = 13
 QUERY = 16
+REQUEST_INFO = 0x25  # asks devices to announce themselves
+REQUEST_PORT = 7000
+ASK_EVERY_S = 3.0
 WITHOUT_VERSION_HEADER = frozenset({KEY_START, KEY_ANSWER, KEY_FINISH, HEARTBEAT, QUERY})
 # the fixed key Tuya devices use for their UDP announcements (public in every Tuya library)
 DISCOVERY_KEY = hashlib.md5(b"yGAdlopoPVldABfn").digest()
@@ -255,15 +258,24 @@ class TuyaDevice:
 
 
 def decode_announcement(data: bytes) -> dict | None:
-    """A UDP announcement of a Tuya device (protocol 3.5 format), e.g. {"ip", "gwId", "version", "productKey"}."""
-    if len(data) < HEADER.size + NONCE_BYTES + TAG_BYTES + len(SUFFIX) or not data.startswith(PREFIX):
+    """A UDP announcement of a Tuya device in the format of protocol 3.5 (prefix 6699, AES-GCM), e.g. {"ip", "gwId",
+    "version", "productKey"}. The older format (prefix 55AA) is encrypted with AES-ECB; OpenAmpere does not use ECB
+    and ignores it (#396): a device that announces itself only that way is found through the request
+    (discovery_request) or entered by its address."""
+    if not data.startswith(PREFIX) or len(data) < HEADER.size + NONCE_BYTES + TAG_BYTES + len(SUFFIX):
         return None
     try:
         _, _, payload = unpack(DISCOVERY_KEY, data)
-        found = json.loads(payload[4:] if payload[:1] != b"{" else payload)
+        payload = payload[4:] if payload[:1] != b"{" else payload
+        found = json.loads(payload.rstrip(b"\x00"))
     except (TuyaError, ValueError, UnicodeDecodeError, struct.error):
         return None
     return found if isinstance(found, dict) and found.get("gwId") else None
+
+
+def discovery_request(own: str) -> bytes:
+    """Asks devices with protocol 3.5 in the network to announce themselves (some only answer such a request)."""
+    return pack(DISCOVERY_KEY, 0, REQUEST_INFO, json.dumps({"from": "app", "ip": own}).encode())
 
 
 def announced(data: bytes, source: str) -> dict | None:
@@ -281,39 +293,68 @@ def announced(data: bytes, source: str) -> dict | None:
     return {"device_id": str(info["gwId"]), "host": source, "product_key": str(info.get("productKey") or "") or None}
 
 
-def broadcast_addresses() -> list[str]:
-    """Where announcements arrive: 255.255.255.255 and, on Linux (Docker, Home Assistant), the broadcast address of
-    every network card in the home network (a device may send to 192.168.1.255 instead)."""
+def _local_address() -> str | None:
+    """The address of the network card the home network is reached over (no packet is sent)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.168.0.1", 9))
+            return sock.getsockname()[0]
+    except OSError:
+        return None
+
+
+def interfaces() -> list[tuple[str, str]]:
+    """(own address, broadcast address) of every network card in the home network: on Linux (Docker, Home Assistant)
+    read from the cards, elsewhere the card towards the home network with 255.255.255.255."""
+    found: list[tuple[str, str]] = []
+    if sys.platform.startswith("linux"):
+        import fcntl
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            for _, name in socket.if_nameindex():
+                request = struct.pack("256s", name.encode()[:15])
+                try:
+                    address = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFADDR, request)[20:24])
+                    broadcast = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFBRDADDR, request)[20:24])
+                except OSError:
+                    continue  # no IPv4 address or no broadcast (loopback, Tailscale, VPN)
+                found.append((address, broadcast))
+    else:
+        address = _local_address()
+        found = [(address, LIMITED_BROADCAST)] if address else []
+    def usable(address: str, broadcast: str) -> bool:
+        try:
+            own = ipaddress.ip_address(address)
+        except ValueError:
+            return False
+        return own.is_private and not own.is_loopback and broadcast != "0.0.0.0"
+    return [(a, b) for a, b in found if usable(a, b)]
+
+
+def listen_addresses(cards: list[tuple[str, str]]) -> list[str]:
+    """Where announcements and answers arrive: 255.255.255.255, the broadcast address of each card and the card's own
+    address (a device may answer the request directly). Never all interfaces."""
     found = [LIMITED_BROADCAST]
-    if not sys.platform.startswith("linux"):
-        return found
-    import fcntl
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        for _, name in socket.if_nameindex():
-            request = struct.pack("256s", name.encode()[:15])
-            try:
-                address = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFADDR, request)[20:24])
-                broadcast = socket.inet_ntoa(fcntl.ioctl(sock.fileno(), SIOCGIFBRDADDR, request)[20:24])
-                own = ipaddress.ip_address(address)
-            except (OSError, ValueError):
-                continue  # no IPv4 address or no broadcast (loopback, Tailscale, VPN)
-            if own.is_private and not own.is_loopback and broadcast not in ("0.0.0.0", *found):
-                found.append(broadcast)
+    for own, broadcast in cards:
+        found += [a for a in (broadcast, own) if a not in found]
     return found
 
 
-async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS,
-                 addresses: tuple[str, ...] | None = None) -> list[dict]:
-    """Tuya devices with protocol 3.5 that announce themselves in the home network within `seconds`.
+async def search(seconds: float = 8.0, ports: tuple[int, ...] = DISCOVERY_PORTS,
+                 addresses: tuple[str, ...] | None = None, ask: bool = True,
+                 cards: list[tuple[str, str]] | None = None) -> list[dict]:
+    """Tuya devices with protocol 3.5 in the home network, found within `seconds`.
 
-    They broadcast every few seconds on UDP 6667 or 7000; only devices with the same version are kept. The sockets are
-    bound to the broadcast addresses only, never to all interfaces: nothing sent to this computer's own address
-    reaches them, only broadcasts. A port that is taken (another Tuya tool) is skipped; OSError if none could be
-    opened. Only with a network of the host: in the Home Assistant app (its own network) the broadcasts do not
-    arrive, the callers skip the search there.
+    They announce themselves every few seconds on UDP 6667 or 7000; some only after a request, which is sent to the
+    broadcast address of each card every few seconds (ask). Only devices with protocol 3.5 are kept, and only from the
+    address they name (announced). The sockets are bound to the broadcast addresses and the card's own address in the
+    home network, never to all interfaces. A port that is taken (another Tuya tool) is skipped; OSError if none could
+    be opened. Only with a network of the host: in the Home Assistant app (its own network) the announcements do not
+    arrive, the callers skip the search there. addresses and cards replace what is read from the network cards
+    (tests).
     """
     found: dict[str, dict] = {}
     loop = asyncio.get_running_loop()
+    cards = interfaces() if cards is None else cards
 
     class Listener(asyncio.DatagramProtocol):
         def datagram_received(self, data, addr):
@@ -321,9 +362,9 @@ async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS,
             if device:
                 found[device["device_id"]] = device
 
-    transports = []
+    transports, senders = [], []
     try:
-        for address in addresses or broadcast_addresses():
+        for address in addresses or listen_addresses(cards):
             for port in ports:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -336,8 +377,25 @@ async def search(seconds: float = 6.0, ports: tuple[int, ...] = DISCOVERY_PORTS,
                 transports.append(transport)
         if not transports:
             raise OSError("no port for the search")
-        await asyncio.sleep(seconds)
+        if ask:
+            for own, broadcast in cards:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                try:
+                    sock.bind((own, 0))
+                except OSError:
+                    sock.close()
+                    continue
+                senders.append((sock, discovery_request(own), broadcast))
+        deadline = loop.time() + seconds
+        while (left := deadline - loop.time()) > 0:
+            for sock, request, broadcast in senders:
+                with contextlib.suppress(OSError):
+                    sock.sendto(request, (broadcast, REQUEST_PORT))
+            await asyncio.sleep(min(ASK_EVERY_S, left))
     finally:
         for transport in transports:
             transport.close()
+        for sock, _, _ in senders:
+            sock.close()
     return sorted(found.values(), key=lambda d: d["host"])

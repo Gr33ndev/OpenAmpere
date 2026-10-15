@@ -6,7 +6,7 @@ import { kw, num, timeZone } from "./format";
 import { LOCALE, t } from "./i18n";
 import { WALLBOX_DIRECT_GUIDE } from "./links";
 import { navigate } from "./route";
-import { Button, Dialog, Field, LoadState, Notice, Segmented, Switch, toast } from "./ui";
+import { Button, Dialog, Field, HOST_INPUT, hostText, LoadState, Notice, Segmented, Switch, toast } from "./ui";
 import { useCheckModels, WallboxCheck } from "./WallboxCheck";
 
 /** Wallboxes OpenAmpere reads and controls itself, without evcc: so far the portable dé wallbox over Tuya. A
@@ -88,6 +88,7 @@ export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChang
         </div>
       </div>
       {wb.online === false && <p className="hint">{t("devices.nativeWallbox.awayHint")}</p>}
+      {r && !r.connected && wb.mode !== "manual" && <p className="hint">{t("devices.nativeWallbox.noCarHint")}</p>}
       {!wb.local_key_set && <>
         <Notice kind="warn">{t("devices.nativeWallbox.keyLostHint")}</Notice>
         <Button variant="secondary" onClick={() => navigate("more/wallbox")}>{t("devices.nativeWallbox.keyLost")}</Button>
@@ -291,7 +292,7 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
         </>
       ) : <p className="hint">{t("devices.nativeWallbox.noSearchInApp")}</p>)}
       <Field label={t("devices.nativeWallbox.address")} hint={t("devices.nativeWallbox.addressHint", { example: "192.168.178.60" })}>
-        <input className="input" value={d.host} inputMode="decimal" autoComplete="off" onChange={(e) => set({ host: e.target.value })} />
+        <input className="input" value={d.host} {...HOST_INPUT} onChange={(e) => set({ host: hostText(e.target.value) })} />
       </Field>
       {tuya && (
         <Field label={t("devices.nativeWallbox.localKey")}

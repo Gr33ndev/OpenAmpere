@@ -10,7 +10,9 @@
   and controlled again as soon as it answers. With its device ID it is searched in the home network when its
   address may have changed.
 - Modes: "manual" (only shown, OpenAmpere never writes), "off", "pv" (solar surplus only), "minpv" (minimum current
-  plus surplus), "now" (full current). The current is set in the steps the wallbox offers (data point 107).
+  plus surplus), "now" (full current). The current is set in the steps the wallbox offers (data point 107). Without a
+  car nothing is written: the mode applies once one is plugged in. Many wallboxes start charging on their own when a
+  car is plugged in; in "pv" mode without surplus such a charge is stopped at once.
 - Writing follows the rules of every control: the master switch and the test mode, the limits of the wallbox and of
   the owner, the value read back, every change in the control log. The wallbox has no watchdog: if OpenAmpere stops,
   it keeps charging with the last current. The owner's current is kept in the meta "wallbox_owned" before the first
@@ -431,7 +433,10 @@ class NativeWallboxes:
                 live.want_off = 0
             else:
                 live.want_off += 1
-                if live.want_off >= CONFIRM_TICKS and now - live.since >= MIN_ON_S:
+                # a charge the wallbox started by itself (many start as soon as a car is plugged in) is stopped at
+                # once: the waiting and minimum time protect only a charge OpenAmpere started for the sun
+                started = bool(self._owned().get(wb.id, {}).get("started"))
+                if not started or (live.want_off >= CONFIRM_TICKS and now - live.since >= MIN_ON_S):
                     on, reason = False, f"zu wenig Überschuss ({available:.0f} W)"
         else:
             on, reason = False, f"Überschuss {available:.0f} W"

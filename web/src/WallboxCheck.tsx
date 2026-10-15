@@ -6,7 +6,7 @@ import { DeviceSearch } from "./DeviceSearch";
 import { num } from "./format";
 import { t } from "./i18n";
 import { navigate } from "./route";
-import { Button, copyText, Field, Notice, toast } from "./ui";
+import { Button, copyText, Field, HOST_INPUT, hostText, Notice, toast } from "./ui";
 
 /** The read-only check of wallboxes OpenAmpere cannot control yet (#325), part of the form "Wallbox hinzufügen":
  *  nothing is written to the wallbox, the result goes into the diagnostics report so the registers can be confirmed
@@ -156,7 +156,7 @@ export function WallboxCheck({ origin, model, onCancel }: { origin: string; mode
       <DeviceSearch label={t("devices.wallboxDirect.search")}
         onUse={(d) => { setHost(d.host); if (d.port) setPort(String(d.port)); }} />
       <Field label={t("devices.wallboxDirect.address")} hint={t("devices.wallboxDirect.addressHint", { example: "192.168.178.60" })}>
-        <input className="input" value={host} inputMode="decimal" autoComplete="off" onChange={(e) => setHost(e.target.value)} />
+        <input className="input" value={host} {...HOST_INPUT} onChange={(e) => setHost(hostText(e.target.value))} />
       </Field>
       <details className="advanced">
         <summary>{t("common.advanced")}</summary>

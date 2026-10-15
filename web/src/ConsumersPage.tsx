@@ -5,7 +5,7 @@ import { putJson, useResource } from "./api";
 import { LoginToSee } from "./AuthScreens";
 import { DeviceIcon } from "./DevicesPage";
 import type { PageProps } from "./SettingsPages";
-import { AmountInput, Button, Dialog, Field, LoadState, Notice, SubPage, toast } from "./ui";
+import { AmountInput, Button, Dialog, Field, HOST_INPUT, hostText, LoadState, Notice, SubPage, toast } from "./ui";
 import { amountInput } from "./format";
 import { t } from "./i18n";
 
@@ -70,7 +70,7 @@ function Editor({ value, onSave, onCancel, onRemove, busy }: {
         </>
       )) : (
         <Field label={mypv ? t("devices.editor.heaterIp") : t("devices.editor.shellyIp")}>
-          <input className="input" value={c.host} inputMode="decimal" placeholder={t("devices.editor.example", { example: "192.168.178.40" })} onChange={(e) => set({ host: e.target.value })} />
+          <input className="input" value={c.host} {...HOST_INPUT} placeholder={t("devices.editor.example", { example: "192.168.178.40" })} onChange={(e) => set({ host: hostText(e.target.value) })} />
         </Field>
       )}
       <Field label={mypv ? t("devices.editor.maxPower") : t("devices.editor.devicePower")}

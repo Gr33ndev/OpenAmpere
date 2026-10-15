@@ -276,3 +276,11 @@ export function LearnMore({ summary = t("shell.learnMore.learnMore"), children }
 export function Unsaved({ show }: { show: boolean }) {
   return show ? <p className="hint unsaved" role="status">{t("shell.unsaved.notSavedYet")}</p> : null;
 }
+
+/** Props of a field for an IP address or host name: a keyboard with a dot (the decimal keyboard shows a comma in
+ *  German), no capitals or corrections. Pass the typed text through hostText. */
+export const HOST_INPUT = { inputMode: "url", autoCapitalize: "none", autoCorrect: "off", spellCheck: false,
+  autoComplete: "off" } as const;
+
+/** An address as typed: a comma (number keyboards in German) becomes a dot, spaces go. */
+export const hostText = (value: string) => value.replace(/,/g, ".").replace(/\s+/g, "");
