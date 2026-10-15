@@ -69,6 +69,10 @@ Under **Geräte** (Devices) the wallbox then shows its state, charging power and
 | **Min + Solar** | Always charges with the lowest current, faster with sun. |
 | **Sofort** (fast) | Charges right away with the highest allowed current, also from the grid. |
 
+Without a car plugged in, OpenAmpere changes nothing on the wallbox; you can choose the charging mode beforehand,
+it applies when you plug in. Many wallboxes start charging by themselves when a car is plugged in. If in **Solar**
+mode there is not enough solar power then, OpenAmpere stops charging at the next check (after a few seconds).
+
 OpenAmpere sets the current only in the steps the wallbox offers (for example 6, 8, 10, 13 and 16 A), and never above
 your limit and the value from its app. Who gets solar power first (battery, wallbox, immersion heater) is set under
 **Geräte**.

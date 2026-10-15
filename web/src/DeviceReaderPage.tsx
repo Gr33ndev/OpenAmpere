@@ -5,7 +5,7 @@ import { postJson } from "./api";
 import { DeviceSearch, type FoundDevice } from "./DeviceSearch";
 import { t } from "./i18n";
 import type { PageProps } from "./SettingsPages";
-import { Button, Field, LearnMore, Notice, Segmented, SubPage, toast } from "./ui";
+import { Button, Field, HOST_INPUT, hostText, LearnMore, Notice, Segmented, SubPage, toast } from "./ui";
 
 /** Reading any Modbus device in the home network (#324): only reads, the result goes into the diagnostics report. */
 
@@ -120,7 +120,7 @@ export function DeviceReaderPage({ onBack, onNavigate }: PageProps) {
         <p className="hint flush">{t("settings.deviceReader.searchHint")}</p>
         <DeviceSearch label={t("settings.deviceReader.searchButton")} onUse={use} />
         <Field label={t("settings.deviceReader.address")} hint={t("settings.deviceReader.addressHint", { example: "192.168.178.50" })}>
-          <input className="input" value={host} inputMode="decimal" autoComplete="off" onChange={(e) => setHost(e.target.value)} />
+          <input className="input" value={host} {...HOST_INPUT} onChange={(e) => setHost(hostText(e.target.value))} />
         </Field>
         <Button variant="secondary" busy={busy === "identify"} disabled={!!busy || !host.trim()}
           onClick={() => void call<Identified>("identify", "/api/diagnostics/identify", { host: host.trim() }, setIdentified)}>

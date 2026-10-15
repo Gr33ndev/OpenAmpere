@@ -169,7 +169,8 @@
     "whichChecked": "OpenAmpere cannot control this wallbox yet. The check only reads it and creates a report you can share. This helps to support it soon.",
     "full": "{max} wallboxes are set up already, no more are possible.",
     "groupControlled": "Show and control",
-    "groupChecked": "Check only (preview)"
+    "groupChecked": "Check only (preview)",
+    "noCarHint": "No car plugged in: OpenAmpere changes nothing on the wallbox. The chosen charging mode applies as soon as you plug in a car. If the wallbox then starts by itself and in Solar mode there is not enough solar power, OpenAmpere stops charging right away."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

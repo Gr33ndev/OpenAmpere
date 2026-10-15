@@ -68,6 +68,10 @@ Unter **Geräte** erscheint die Wallbox dann mit ihrem Zustand, der Ladeleistung
 | **Min + Solar** | Lädt immer mit dem kleinsten Strom, bei Sonne schneller. |
 | **Sofort** | Lädt sofort mit dem höchsten erlaubten Strom, auch aus dem Netz. |
 
+Ohne angeschlossenes Auto ändert OpenAmpere nichts an der Wallbox; den Lademodus kannst du vorher wählen, er gilt
+beim Einstecken. Viele Wallboxen starten beim Einstecken von selbst. Reicht im Modus **Solar** der Sonnenstrom
+dann nicht, stoppt OpenAmpere das Laden gleich bei der nächsten Prüfung (nach wenigen Sekunden).
+
 OpenAmpere stellt den Ladestrom nur in den Stufen ein, die die Wallbox anbietet (zum Beispiel 6, 8, 10, 13 und 16 A),
 und nie höher als dein Höchstwert und der Wert aus ihrer App. Wer zuerst Sonnenstrom bekommt (Speicher, Wallbox,
 Heizstab), legst du unter **Geräte** fest.

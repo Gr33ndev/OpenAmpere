@@ -55,7 +55,12 @@ test("a portable wallbox is added: search, check the connection, save", async ({
     .toHaveAttribute("href", /docs\/wallbox-direct\.de\.md$/);
   await page.getByRole("button", { name: "Tuya-Wallbox im Heimnetz suchen" }).click();
   await page.getByRole("button", { name: "Übernehmen" }).click();
-  await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.61");
+  const address = page.getByLabel("IP-Adresse der Wallbox");
+  await expect(address).toHaveValue("192.168.178.61");
+  // a keyboard with a dot (the decimal one shows a comma in German); a typed comma becomes a dot
+  await expect(address).toHaveAttribute("inputmode", "url");
+  await address.fill("192,168,178,61");
+  await expect(address).toHaveValue("192.168.178.61");
   const save = page.getByRole("button", { name: "Speichern" });
   await expect(save).toBeDisabled();  // the local key is still missing
   await page.getByLabel("Local Key").fill("0123456789abcdef");
@@ -125,4 +130,15 @@ test("a wallbox whose local key cannot be read asks for it again and is saved wi
   expect((await sent).postDataJSON().wallboxes[0]).toMatchObject({ id: "demo0001", local_key: "0123456789abcdef" });
   await expect(page.getByText("Mobile Wallbox").first()).toBeVisible();
   await expect(page.getByText("liest und steuert OpenAmpere die Wallbox nicht")).toHaveCount(0);
+});
+
+test("without a car the card says that the mode applies once one is plugged in", async ({ page, api }) => {
+  const base = await view();
+  const waiting: NativeWallbox = { ...base.wallboxes[0], online: true, offline_since: null, error: null,
+    reading: { ...READING, state: "idle", connected: false, charging: false, power_w: 0 } as NativeWallbox["reading"] };
+  api.override("/api/wallboxes", { ...base, wallboxes: [waiting] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Mobile Wallbox" });
+  await expect(card).toContainText("kein Fahrzeug angeschlossen");
+  await expect(card).toContainText("gilt, sobald du ein Auto einsteckst");
 });
