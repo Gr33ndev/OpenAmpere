@@ -594,6 +594,9 @@ async def test_each_mode_charges_up_to_its_own_current(tmp_path, monkeypatch):
             wallboxes.set_mode(wb.id, "now", current_a=20)  # above the owner's highest current
         with pytest.raises(ValueError, match="kein Ladestrom"):
             wallboxes.set_mode(wb.id, "off", current_a=8)
+        for bad in (float("inf"), float("nan"), "x", [8]):  # values from the JSON of a request
+            with pytest.raises(ValueError):
+                wallboxes.set_mode(wb.id, "now", current_a=bad)
 
 
 def test_mode_currents_and_waiting_time_are_checked():
@@ -602,7 +605,8 @@ def test_mode_currents_and_waiting_time_are_checked():
     wb = validate([{**base, "max_current_a": 10, "mode_current_a": {"now": 16, "pv": 8}}])[0]
     assert wb.mode_current_a == {"now": 10, "pv": 8} and wb.stop_after_min == 10
     for bad in ({"mode_current_a": {"off": 8}}, {"mode_current_a": {"now": 4}}, {"mode_current_a": {"now": "x"}},
-                {"stop_after_min": 0}, {"stop_after_min": 61}):
+                {"mode_current_a": {"now": float("inf")}}, {"mode_current_a": "now"}, {"stop_after_min": 0},
+                {"stop_after_min": 61}, {"stop_after_min": float("inf")}, {"max_current_a": float("inf")}):
         with pytest.raises(ValueError):
             validate([{**base, **bad}])
 

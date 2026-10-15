@@ -110,7 +110,7 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
             wb.name, wb.host, wb.device_id = str(wb.name).strip()[:40], str(wb.host).strip(), str(wb.device_id).strip()
             wb.local_key, wb.max_current_a, wb.enabled = str(wb.local_key or ""), int(wb.max_current_a), bool(wb.enabled)
             wb.id = str(wb.id)
-        except (TypeError, ValueError, AttributeError):
+        except (TypeError, ValueError, AttributeError, OverflowError):  # OverflowError: Infinity in the JSON
             raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
         if not wb.name:
             raise ValueError("Bitte jeder Wallbox einen Namen geben.")
@@ -129,7 +129,7 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
         try:
             wb.stop_after_min = int(wb.stop_after_min)
             currents = {str(k): int(v) for k, v in dict(wb.mode_current_a or {}).items()}
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
         if not 1 <= wb.stop_after_min <= 60:
             raise ValueError(f"{wb.name}: Die Wartezeit vor dem Abbrechen muss zwischen 1 und 60 Minuten liegen.")
@@ -231,7 +231,7 @@ class NativeWallboxes:
         if current_a is not None:
             try:
                 current = int(current_a)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):  # e.g. a text or Infinity in the JSON
                 raise ValueError("Ungültiger Ladestrom.") from None
             if mode not in CHARGING:
                 raise ValueError("In diesem Lademodus lässt sich kein Ladestrom wählen.")
