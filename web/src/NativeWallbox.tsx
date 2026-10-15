@@ -10,7 +10,8 @@ import { Button, Dialog, Field, LoadState, Notice, Segmented, Switch, toast } fr
 import { useCheckModels, WallboxCheck } from "./WallboxCheck";
 
 /** Wallboxes OpenAmpere reads and controls itself, without evcc: so far the portable dé wallbox over Tuya. A
- *  portable wallbox is often unplugged: it is then shown as away, without old values, until it answers again. */
+ *  portable wallbox is often unplugged: it is then shown as away, without old values, until it answers again. A
+ *  wallbox whose stored key cannot be read (a backup restored on another server, #391) waits for a new key. */
 
 export type WallboxMode = "manual" | "off" | "pv" | "minpv" | "now";
 export type WallboxReading = {
@@ -49,6 +50,7 @@ function since(ts: number): string {
 
 function status(wb: NativeWallbox): string {
   const r = wb.reading;
+  if (!wb.local_key_set) return t("devices.nativeWallbox.keyLost");
   if (wb.online === false) {
     return wb.offline_since ? t("devices.nativeWallbox.awaySince", { time: since(wb.offline_since) }) : t("devices.nativeWallbox.away");
   }
@@ -86,6 +88,10 @@ export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChang
         </div>
       </div>
       {wb.online === false && <p className="hint">{t("devices.nativeWallbox.awayHint")}</p>}
+      {!wb.local_key_set && <>
+        <Notice kind="warn">{t("devices.nativeWallbox.keyLostHint")}</Notice>
+        <Button variant="secondary" onClick={() => navigate("more/wallbox")}>{t("devices.nativeWallbox.keyLost")}</Button>
+      </>}
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
       <p className="hint">{MODE_HINT[wb.mode]}</p>
       {r && (
@@ -158,10 +164,11 @@ export function NativeWallboxSetup({ origin }: { origin: string }) {
               onChange={(on) => void save(view.wallboxes.map((w) => toItem(w.id === wb.id ? { ...w, enabled: on } : w)))} />
           </div>
           {wb.online === false && wb.error && <Notice kind="warn">{wb.error}</Notice>}
+          {!wb.local_key_set && <Notice kind="warn">{t("devices.nativeWallbox.keyLostHint")}</Notice>}
           <div className="button-row">
             <Button variant="secondary" onClick={() => { setAdding(false); setDraft({ ...toItem(wb), id: wb.id,
               device_id: wb.device_id ?? "", local_key: "", max_current_a: String(wb.max_current_a) }); }}>
-              {t("devices.nativeWallbox.edit")}</Button>
+              {wb.local_key_set ? t("devices.nativeWallbox.edit") : t("devices.nativeWallbox.keyLost")}</Button>
             <Button variant="secondary" onClick={() => setRemoving(wb)}>{t("common.remove")}</Button>
           </div>
         </div>

@@ -74,7 +74,10 @@ Only one OpenAmpere may talk to the inverter. Two of them disturb each other.
 2. **In the app:** go through the setup wizard, then restore the backup under **More → Data & backup → Restore
    backup**. OpenAmpere restarts with your history and settings.
 3. **Enter stored credentials again**, for example for the customer portal of the grid operator, ntfy, evcc or the
-   Ampere.IQ import. For safety, they are not part of the downloaded backup.
+   Ampere.IQ import. For safety, they are not part of the downloaded backup. The same goes for the local key of a
+   wallbox OpenAmpere controls itself: the backup holds it only encrypted with the key of the old installation. The
+   wallbox keeps its settings and shows **Local Key neu eintragen** (Enter the local key again) under **More →
+   Connection → Wallbox** and on the **Devices** page until you enter the key there.
 4. **Home Assistant integration:** if you installed it through HACS, remove it in HACS (not in Devices & services)
    and restart the app; the app installs its own. Home Assistant recognises your OpenAmpere and switches to the app by
    itself. It only asks you to pair once more. Entities and their history stay.

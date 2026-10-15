@@ -38,6 +38,11 @@ holt den Schlüssel mit den Zugangsdaten des Projekts ebenso.
 Key. Dann den neuen Schlüssel auf dieselbe Weise abrufen und in OpenAmpere eintragen. Der Schlüssel öffnet die
 Wallbox im Heimnetz: Gib ihn nicht weiter und poste ihn nirgends.
 
+**Nach dem Wiederherstellen einer Sicherung auf einem anderen Rechner** kann OpenAmpere den gespeicherten Local Key
+nicht lesen: In der Sicherung steht er nur verschlüsselt mit dem Schlüssel der alten Installation (`secret.key`). Die
+Wallbox behält ihre Einstellungen und zeigt „Local Key neu eintragen“. Bis du den Schlüssel neu einträgst, liest und
+steuert OpenAmpere sie nicht.
+
 ## In OpenAmpere einrichten
 
 1. **Mehr → Verbindung → Wallbox** öffnen und **direkt** wählen.
