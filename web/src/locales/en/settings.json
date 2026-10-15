@@ -335,7 +335,8 @@
     "wallboxCurrent": "{name}: charging current set to {current} A.",
     "wallboxStart": "{name}: charging started.",
     "wallboxStop": "{name}: charging paused.",
-    "wallboxReleased": "{name}: OpenAmpere let go of the wallbox and set your charging current back."
+    "wallboxReleased": "{name}: OpenAmpere let go of the wallbox and set your charging current back.",
+    "wallboxModeCurrent": "{name}: at most {current} A in charging mode “{mode}”."
   },
   "controlPage": {
     "emptyState": "No changes yet.",

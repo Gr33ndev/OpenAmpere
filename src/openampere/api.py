@@ -1222,7 +1222,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/wallboxes/{wallbox_id}/mode")
     async def wallbox_mode(wallbox_id: str, request: Request, body: dict = Body(...)):
         try:
-            wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=actor(request))
+            wallboxes.set_mode(wallbox_id, str(body.get("mode")), source=actor(request), current_a=body.get("current_a"))
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         await surplus.tick()

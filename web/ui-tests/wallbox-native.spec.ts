@@ -33,7 +33,45 @@ test("a charging wallbox shows its current and the mode can be changed", async (
   await expect(card).toContainText("lädt mit 5,52 kW");
   await expect(card.locator(".facts")).toContainText("8 A (höchstens 16 A)");
   await card.getByRole("button", { name: "Sofort" }).click();
-  await expect(card).toContainText("Lädt sofort mit voller Leistung");
+  await expect(card).toContainText("Lädt sofort mit dem Ladestrom unten");
+});
+
+// the owner chooses the highest current per mode, e.g. 8 A for "fast" (#402)
+test("the highest current is chosen per mode, with the steps of the wallbox", async ({ page, api }) => {
+  const base = await view();
+  const charging: NativeWallbox = { ...base.wallboxes[0], online: true, offline_since: null, error: null, mode: "now",
+    mode_current_a: { now: 8 }, reading: READING as NativeWallbox["reading"] };
+  api.override("/api/wallboxes", { ...base, wallboxes: [charging] });
+  api.override("/api/wallboxes/demo0001/mode", { ...base, wallboxes: [{ ...charging, mode_current_a: { now: 13 } }] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Mobile Wallbox" });
+  const current = card.getByRole("group", { name: "Höchster Ladestrom in diesem Modus" });
+  await expect(current.getByRole("button")).toHaveText(["6 A", "8 A", "10 A", "13 A", "16 A"]);
+  await expect(current.getByRole("button", { name: "8 A" })).toHaveAttribute("aria-pressed", "true");
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0001/mode"));
+  await current.getByRole("button", { name: "13 A" }).click();
+  expect((await sent).postDataJSON()).toEqual({ mode: "now", current_a: 13 });
+  await expect(current.getByRole("button", { name: "13 A" })).toHaveAttribute("aria-pressed", "true");
+
+  // "off" and "manual" have no current of their own
+  api.override("/api/wallboxes", { ...base, wallboxes: [{ ...charging, mode: "off" }] });
+  await page.reload();
+  await expect(card.getByRole("group", { name: "Höchster Ladestrom in diesem Modus" })).toHaveCount(0);
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("the waiting time before solar charging pauses is set in the wallbox settings", async ({ page, api }) => {
+  api.override("/api/wallboxes", await view()); // also the answer to the save
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Ändern" }).first().click();
+  const field = page.getByLabel("Solar-Laden pausieren nach (Minuten)");
+  await expect(field).toHaveValue("10");
+  await field.fill("20");
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes") && r.method() === "PUT");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  const item = (await sent).postDataJSON().wallboxes[0];
+  expect(item).toMatchObject({ stop_after_min: 20, mode_current_a: { now: 8 } });
 });
 
 test("a portable wallbox is added: search, check the connection, save", async ({ page, api }) => {

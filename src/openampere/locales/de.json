@@ -322,19 +322,24 @@
     "updatesComeViaHomeAssistant": "Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere."
   },
   "wallbox": {
-    "unknownWallbox": "Diese Wallbox kennt OpenAmpere noch nicht.",
     "atMostWallboxes": "Höchstens {MAX_WALLBOXES} Wallboxen.",
     "deviceIdFormat": "{name}: Die Geräte-ID besteht aus 10 bis 40 Buchstaben und Ziffern.",
     "enterIpInHomeNetwork": "Bitte die IP-Adresse der Wallbox im Heimnetz angeben.",
     "enterIpInHomeNetworkNamed": "{name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben.",
     "giveEachWallboxName": "Bitte jeder Wallbox einen Namen geben.",
+    "invalidCurrent": "Ungültiger Ladestrom.",
     "invalidWallboxData": "Ungültige Angaben bei einer Wallbox.",
     "localKey16CharsNamed": "{name}: Der Local Key muss genau 16 Zeichen lang sein.",
     "maxCurrentRange": "{name}: Der höchste Ladestrom muss zwischen 6 und 32 A liegen.",
+    "modeCurrentRange": "Der Ladestrom muss zwischen 6 und {max_current_a} A liegen.",
+    "modeCurrentRangeNamed": "{name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.",
     "modeFast": "Lademodus „Schnell“",
+    "noCurrentInThisMode": "In diesem Lademodus lässt sich kein Ladestrom wählen.",
     "sentDespiteTestMode": "trotz Testmodus gesendet, OpenAmpere gibt die Wallbox ab: {reason}",
+    "stopAfterRange": "{name}: Die Wartezeit vor dem Abbrechen muss zwischen 1 und 60 Minuten liegen.",
     "surplusAtLeast": "Überschuss {available} W, mindestens {lowest} W",
     "unknownChargingModeNamed": "{name}: Unbekannter Lademodus.",
+    "unknownWallbox": "Diese Wallbox kennt OpenAmpere noch nicht.",
     "unknownWallboxNamed": "{name}: Diese Wallbox kennt OpenAmpere noch nicht.",
     "wallboxDoesNotExist": "Diese Wallbox gibt es nicht."
   }

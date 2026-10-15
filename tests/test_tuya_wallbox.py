@@ -298,9 +298,12 @@ async def test_solar_mode_starts_with_surplus_and_stops_without(tmp_path, monkey
             await wallboxes.read(wb)
             await control.tick(now=now)
         assert charger.charging and charger.current_a == 6  # down to the lowest step, minimum on time
-        for now in (1400, 1410):
+        for now in (1400, 1620):  # through clouds for the waiting time, 10 minutes by default (#402)
             await wallboxes.read(wb)
             await control.tick(now=now)
+            assert charger.charging and charger.current_a == 6
+        await wallboxes.read(wb)
+        await control.tick(now=1630)  # 10 minutes after the first check without enough surplus for 6 A
         assert not charger.charging and charger.writes[-1] == {"140": False}
         log = runtime.storage.control_log()
         assert {e["action"] for e in log} == {"wallbox"} and not any(e["dry_run"] for e in log)
@@ -534,6 +537,78 @@ async def test_the_home_assistant_app_never_searches_for_a_wallbox_that_went_awa
     monkeypatch.delenv("SUPERVISOR_TOKEN")
     await wallboxes.read(wb, live)  # standalone: searched after two minutes away
     assert calls == [True]
+
+
+async def test_sun_coming_back_within_the_waiting_time_keeps_the_charge(tmp_path, monkeypatch):
+    async with simulated(plugged=True) as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wallboxes.save([{**vars(w), "stop_after_min": 3} for w in wallboxes.wallboxes])
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        monkeypatch.setattr(native_module, "MIN_OFF_S", 0)
+        monkeypatch.setattr(native_module, "MIN_ON_S", 0)
+        site(runtime, grid=-6000)
+        for now in (0, 10):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging
+
+        site(runtime, grid=3000)  # a cloud
+        for now in (20, 150):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        site(runtime, grid=-1000)  # the sun is back before 3 minutes: the waiting time starts again later
+        await wallboxes.read(wb)
+        await control.tick(now=190)
+        site(runtime, grid=3000)
+        for now in (200, 370):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+            assert charger.charging
+        await wallboxes.read(wb)
+        await control.tick(now=380)
+        assert not charger.charging
+
+
+async def test_each_mode_charges_up_to_its_own_current(tmp_path, monkeypatch):
+    """The owner chooses the highest current per mode, e.g. 8 A for minimum + solar and fast (#402)."""
+    async with simulated(plugged=True, steps=(6, 8, 10, 13, 16)) as (charger, port):
+        charger.current_a = 6
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="minpv")
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "minpv", source="app", current_a=8)
+        site(runtime, grid=-11_000)  # sun for 16 A
+        await wallboxes.read(wb)
+        await SurplusControl(runtime, None, wallboxes).tick(now=0)
+        assert charger.writes == [{"150": 8}, {"140": True}]
+
+        wallboxes.set_mode(wb.id, "now", source="app", current_a=10)
+        await wallboxes.read(wb)
+        await SurplusControl(runtime, None, wallboxes).tick(now=100)
+        assert charger.current_a == 10
+        assert wallboxes.wallboxes[0].mode_current_a == {"minpv": 8, "now": 10}
+        log = [e["details"]["to"] for e in runtime.storage.control_log() if e["details"]["to"]["action"] == "mode_current"]
+        assert {"action": "mode_current", "value": {"mode": "now", "current_a": 10}} in log
+
+        with pytest.raises(ValueError, match="zwischen 6 und 16 A"):
+            wallboxes.set_mode(wb.id, "now", current_a=20)  # above the owner's highest current
+        with pytest.raises(ValueError, match="kein Ladestrom"):
+            wallboxes.set_mode(wb.id, "off", current_a=8)
+        for bad in (float("inf"), float("nan"), "x", [8]):  # values from the JSON of a request
+            with pytest.raises(ValueError):
+                wallboxes.set_mode(wb.id, "now", current_a=bad)
+
+
+def test_mode_currents_and_waiting_time_are_checked():
+    base = {"name": "Wallbox", "host": "192.168.1.60", "local_key": KEY, "max_current_a": 16}
+    # a mode current above a lowered highest current is cut, so the stored wallbox stays valid
+    wb = validate([{**base, "max_current_a": 10, "mode_current_a": {"now": 16, "pv": 8}}])[0]
+    assert wb.mode_current_a == {"now": 10, "pv": 8} and wb.stop_after_min == 10
+    for bad in ({"mode_current_a": {"off": 8}}, {"mode_current_a": {"now": 4}}, {"mode_current_a": {"now": "x"}},
+                {"mode_current_a": {"now": float("inf")}}, {"mode_current_a": "now"}, {"stop_after_min": 0},
+                {"stop_after_min": 61}, {"stop_after_min": float("inf")}, {"max_current_a": float("inf")}):
+        with pytest.raises(ValueError):
+            validate([{**base, **bad}])
 
 
 async def test_without_a_car_nothing_is_written_and_a_charge_the_wallbox_starts_itself_stops_at_once(tmp_path, monkeypatch):

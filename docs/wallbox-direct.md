@@ -65,9 +65,14 @@ Under **Geräte** (Devices) the wallbox then shows its state, charging power and
 |---|---|
 | **Von Hand** (manual) | OpenAmpere only shows the wallbox and changes nothing. You control it in its app as usual. Every new wallbox starts like this. |
 | **Aus** (off) | Does not charge. A running charge is stopped. |
-| **Solar** | Charges only with solar surplus. If it is no longer enough, charging pauses after a few minutes. |
-| **Min + Solar** | Always charges with the lowest current, faster with sun. |
-| **Sofort** (fast) | Charges right away with the highest allowed current, also from the grid. |
+| **Solar** | Charges only with solar surplus. If it is no longer enough (a cloud), the wallbox goes on with the lowest current and the battery or the grid supply the rest. Only if it stays like this, charging pauses: after 10 minutes, adjustable under **Mehr → Wallbox** for the wallbox (**Solar-Laden pausieren nach**). |
+| **Min + Solar** | Always charges with at least the lowest current, faster with sun. |
+| **Sofort** (fast) | Charges right away, also from the battery or the grid. |
+
+For **Solar**, **Min + Solar** and **Sofort** you choose the highest charging current on the wallbox's card under
+**Geräte**, for each mode, for example 8 A for **Min + Solar** and 16 A for **Sofort**. On three phases 6 A are about
+4.1 kW, 8 A about 5.5 kW and 16 A about 11 kW. It never goes above the highest charging current in the wallbox's
+settings.
 
 Without a car plugged in, OpenAmpere changes nothing on the wallbox; you can choose the charging mode beforehand,
 it applies when you plug in. Many wallboxes start charging by themselves when a car is plugged in. If in **Solar**

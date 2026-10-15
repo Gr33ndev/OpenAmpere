@@ -376,6 +376,7 @@ function nativeWallboxes() {
   return { max: 4, search: true, models: [{ key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya" }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
+      mode_current_a: { now: 8 }, stop_after_min: 10,
       online: false, offline_since: away, updated: away, error: "Das Gerät ist unter 192.168.178.60 nicht erreichbar.",
       reading: null, controlled: false }] };
 }
