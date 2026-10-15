@@ -20,3 +20,17 @@ export function zonedTime(day: string, hour: number, minute: number, timeZone?: 
   };
   return wall - offset(wall - offset(wall)); // twice: right also next to a daylight saving change
 }
+
+/** Start (seconds) of every bucket of a period in a time zone, like bucket_start on the server: the days of a week or a
+ *  month, the months of a year. A chart gets the whole period on its axis, also where there is no data yet (#403).
+ *  first: the period's first day (YYYY-MM-DD). */
+export function periodBuckets(first: string, period: "week" | "month" | "year", timeZone?: string): number[] {
+  if (period === "year") {
+    return Array.from({ length: 12 }, (_, m) => zonedTime(`${first.slice(0, 4)}-${String(m + 1).padStart(2, "0")}-01`, 0, 0, timeZone));
+  }
+  const days = [first];
+  for (let day = nextDay(first); period === "week" ? days.length < 7 : day.slice(0, 7) === first.slice(0, 7); day = nextDay(day)) {
+    days.push(day);
+  }
+  return days.map((day) => zonedTime(day, 0, 0, timeZone));
+}

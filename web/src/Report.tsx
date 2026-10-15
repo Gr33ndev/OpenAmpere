@@ -14,6 +14,7 @@ import { BillingSection } from "./BillingPage";
 import { OutagesSection } from "./Outages";
 import { VehicleStats } from "./VehicleStats";
 import { EvccSessions } from "./WallboxPage";
+import { periodBuckets } from "./zoned";
 
 const PERIOD_LABEL: Record<Period, string> = { day: t("common.day"), week: t("report.periodLabel.week"), month: t("common.month"), year: t("report.periodLabel.year") };
 const RESOLUTION: Record<Period, string> = { day: "60m", week: "day", month: "day", year: "month" };
@@ -79,6 +80,24 @@ function fromIso(day: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Puts the entries on every bucket of the period, empty where there is no data (yet), so the axis shows the whole
+ *  week, month or year with each label once (#403). Without buckets (a day) the entries stay as they are. */
+function fillPeriod<T extends { ts: number }>(entries: T[], buckets: number[] | null, empty: (ts: number) => T): T[] {
+  if (!buckets) return entries;
+  const slots = buckets.map(empty);
+  for (const e of entries) {
+    let i = buckets.length - 1;
+    while (i > 0 && buckets[i] > e.ts) i--;
+    slots[i] = e;
+  }
+  return slots;
+}
+
+const emptyEnergy = (ts: number): EnergyEntry => ({
+  ts, soc: null, pv: null, load: null, grid_import: null, grid_export: null, battery_charge: null, battery_discharge: null,
+});
+const emptyValues = (ts: number) => ({ ts, values: [] });
+
 /** Values of the touched bar / point, so nobody has to guess from the axis. */
 function Readout({ rows, index, showPower, xFormat, extra = [] }: {
   rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
@@ -141,7 +160,10 @@ export function Report() {
 
   const xFormat = period === "day" ? fmtHour : period === "year" ? fmtMonth : fmtDay;
   const next = shift(date, period, 1);
-  const rows: (EnergyEntry | PowerEntry)[] = (showPower ? power?.entries : energy?.entries) ?? [];
+  const buckets = useMemo(() => (period === "day" ? null : periodBuckets(isoDate(periodStart(fromIso(day), period)), period, timeZone())),
+    [period, day]);
+  const rows: (EnergyEntry | PowerEntry)[] = useMemo(
+    () => (showPower ? power?.entries ?? [] : fillPeriod(energy?.entries ?? [], buckets, emptyEnergy)), [showPower, power, energy, buckets]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the hover is reset whenever another period or view is shown
   useEffect(() => setHover(null), [period, day, dayView, resolution]);
 
@@ -245,9 +267,10 @@ export function Report() {
           time: new Date(summary.recorded_since * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() }) })}</p>
       )}
 
-      <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} totals={devEnergy?.totals_wh}
+      <DevicesSection data={showPower ? devPower : devEnergy} power={showPower} buckets={buckets} totals={devEnergy?.totals_wh}
         colors={colorsFor((showPower ? devPower : devEnergy)?.devices ?? [])} xFormat={xFormat} load={summary?.energy_wh.load ?? null} />
-      <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh} />
+      <PvInputsSection period={period} day={day} showPower={showPower} resolution={resolution} xFormat={xFormat} refresh={refresh}
+        buckets={buckets} />
       <BillingSection />
       <OutagesSection />
       <VehicleStats />
@@ -257,8 +280,9 @@ export function Report() {
 }
 
 /** Solar yield per PV input (module array): power curve for a day, energy per bucket otherwise (stacked bars). */
-function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh }: {
+function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh, buckets }: {
   period: Period; day: string; showPower: boolean; resolution: string; xFormat: (ts: number) => string; refresh: number;
+  buckets: number[] | null;
 }) {
   const mode = showPower ? "power" : "energy";
   const { data } = useResource<PvInputsTimeline>(
@@ -269,16 +293,17 @@ function PvInputsSection({ period, day, showPower, resolution, xFormat, refresh 
   // biome-ignore lint/correctness/useExhaustiveDependencies: inputColor is recreated on every render and only depends on data
   const chart = useMemo(() => {
     if (!data || data.labels.length < 2) return null;
-    const x = data.entries.map((e) => e.ts);
-    const col = (i: number) => data.entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000));
+    const entries = fillPeriod(data.entries, mode === "power" ? null : buckets, emptyValues);
+    const x = entries.map((e) => e.ts);
+    const col = (i: number) => entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000));
     if (mode === "power") {
       return { x, bars: false, series: data.labels.map((label, i) => ({ label, color: inputColor(i), values: col(i), unit: "kW" })) as Series[] };
     }
     // stacked: draw the running sums from the top down so each input shows as its own segment
-    const stacked = data.labels.map((_, i) => data.entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
+    const stacked = data.labels.map((_, i) => entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
     const series = data.labels.map((label, i) => ({ label, color: inputColor(i), values: stacked[i], unit: "kWh", barAlign: 0 as const }));
     return { x, bars: true, series: series.reverse() as Series[] };
-  }, [data, mode]);
+  }, [data, mode, buckets]);
 
   if (!data || data.labels.length < 2) return null;
   return (
@@ -334,21 +359,22 @@ export function TemperatureSection({ day, refresh, heading = t("common.temperatu
 }
 
 /** Energy (stacked bars) or power (lines) per device: wallbox, heating rod, ... */
-function DevicesSection({ data, power, totals, colors, xFormat, load }: {
-  data: DeviceSeries | null; power: boolean; totals?: number[]; colors: Record<string, string>; xFormat: (ts: number) => string;
-  load: number | null;
+function DevicesSection({ data, power, buckets, totals, colors, xFormat, load }: {
+  data: DeviceSeries | null; power: boolean; buckets: number[] | null; totals?: number[]; colors: Record<string, string>;
+  xFormat: (ts: number) => string; load: number | null;
 }) {
   const chart = useMemo(() => {
     if (!data?.devices.length || !data.entries.some((e) => e.values.some((v) => (v ?? 0) > 0))) return null;
-    const x = data.entries.map((e) => e.ts);
     if (power) {
-      return { x, bars: false, series: data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], unit: "kW",
+      return { x: data.entries.map((e) => e.ts), bars: false, series: data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], unit: "kW",
         values: data.entries.map((e) => (e.values[i] == null ? null : (e.values[i] as number) / 1000)) })) as Series[] };
     }
-    const stacked = data.devices.map((_, i) => data.entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
+    const entries = fillPeriod(data.entries, buckets, emptyValues);
+    const x = entries.map((e) => e.ts);
+    const stacked = data.devices.map((_, i) => entries.map((e) => e.values.slice(0, i + 1).reduce((a: number, v) => a + (v ?? 0), 0) / 1000));
     const series = data.devices.map((d, i) => ({ label: d.name, color: colors[d.key], values: stacked[i], unit: "kWh", barAlign: 0 as const }));
     return { x, bars: true, series: series.reverse() as Series[] };
-  }, [data, power, colors]);
+  }, [data, power, colors, buckets]);
   if (!data?.devices.length) return null;
   const deviceSum = (totals ?? []).reduce((a, b) => a + b, 0);
   return (
