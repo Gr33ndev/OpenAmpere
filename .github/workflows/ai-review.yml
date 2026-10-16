@@ -90,6 +90,7 @@ jobs:
           # Read, Grep and Glob are not listed: without that they only work inside the checkout. The process of Claude
           # itself still holds the OAuth token, hence no reading of /proc (or of .git). The summary is written to one
           # file and posted with --body-file: Markdown with backticks in --body counts as a command substitution.
+          # An Edit(path) rule covers the Write tool too, also for a file that does not exist yet.
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 40
