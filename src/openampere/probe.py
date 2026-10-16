@@ -146,14 +146,18 @@ class Probe:
         blocks = [block for start, count in ranges for block in blocks_of(start, count)]
         return await self._exclusive(lambda: self._read(host, port, unit, function, blocks))
 
+    async def is_inverter(self, host: str) -> bool:
+        """Whether host is the address of the inverter OpenAmpere is set up for (any port)."""
+        inverter = self.runtime.config.inverter.host
+        return bool(inverter) and await asyncio.to_thread(lambda: bool(_addresses(host) & _addresses(inverter)))
+
     async def _inverter_driver(self, host: str, port: int):
         """OpenAmpere's driver if host:port is the connected inverter: it allows only a few connections, so the
         registers are read over the existing one instead of opening a second."""
         inverter, collector = self.runtime.config.inverter, self.runtime.collector
-        if port != inverter.port or not inverter.host or collector.driver is None or not collector.connected:
+        if port != inverter.port or collector.driver is None or not collector.connected:
             return None
-        same = await asyncio.to_thread(lambda: bool(_addresses(host) & _addresses(inverter.host)))
-        if not same:
+        if not await self.is_inverter(host):
             return None
         driver = collector.driver
         return getattr(driver, "_driver", None) or driver  # AutoDriver wraps the detected driver
@@ -231,8 +235,7 @@ class Probe:
 
     async def _identify(self, host: str) -> dict:
         inverter = self.runtime.config.inverter
-        is_inverter = bool(inverter.host) and await asyncio.to_thread(
-            lambda: bool(_addresses(host) & _addresses(inverter.host)))
+        is_inverter = await self.is_inverter(host)
 
         async def check(port: int) -> bool:
             if is_inverter and port == inverter.port and self.runtime.collector.connected:
@@ -255,8 +258,10 @@ class Probe:
         if ha_app.active():  # the app has no host network: multicast does not reach the home network
             result = {"available": False, "devices": []}
         else:
-            result = {"available": True,
-                      "devices": await self._exclusive(lambda: asyncio.to_thread(browse, MDNS_SERVICES, SEARCH_S))}
+            devices = await self._exclusive(lambda: asyncio.to_thread(browse, MDNS_SERVICES, SEARCH_S))
+            for device in devices:  # marked, so the inverter is not taken for a wallbox by mistake (#411)
+                device["inverter"] = await self.is_inverter(device["host"])
+            result = {"available": True, "devices": devices}
         self.last_search = result
         return result
 
@@ -428,7 +433,8 @@ def section_markdown(section: dict) -> list[str]:
     lines = []
     search = section.get("search")
     if search:
-        found = ", ".join(f"{d['name']} ({d['host']}:{d['port']})" for d in search["devices"]) or "keine Geräte"
+        found = ", ".join(f"{d['name']} ({d['host']}:{d['port']}{', Wechselrichter' if d.get('inverter') else ''})"
+                          for d in search["devices"]) or "keine Geräte"
         lines.append(f"- Suche im Heimnetz (mDNS): {found}" if search["available"]
                      else "- Suche im Heimnetz (mDNS): in der Home-Assistant-App nicht verfügbar")
     identify = section.get("identify")

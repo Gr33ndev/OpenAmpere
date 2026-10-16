@@ -32,13 +32,16 @@ test("the direct check shows what the wallbox answers and leads to the report", 
 
 test("a wallbox found in the home network is taken over like in the device reader", async ({ page, api }) => {
   api.override("/api/diagnostics/search", { available: true, devices: [
-    { service: "_modbus._tcp", name: "EVC-SIMULATED01", host: "192.168.178.61", port: 1502 }] });
+    { service: "_modbus._tcp", name: "EVC-SIMULATED01", host: "192.168.178.61", port: 1502 },
+    { service: "_modbus._tcp", name: "INVERTER", host: "192.168.178.62", port: 502, inverter: true }] });
   await open(page, "more/wallbox");
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
   await page.getByRole("button", { name: "Wallbox im Heimnetz suchen" }).click();
-  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.locator(".found-list li").nth(1)).toContainText("dein Wechselrichter"); // not taken by mistake (#411)
+  await expect(page.locator(".found-list li").first()).not.toContainText("Wechselrichter");
+  await page.getByRole("button", { name: "Übernehmen" }).first().click();
   await expect(page.getByLabel("Adresse der Wallbox")).toHaveValue("192.168.178.61");
   await expect(page.getByLabel("Port")).toHaveValue("1502");
 });

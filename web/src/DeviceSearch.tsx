@@ -8,7 +8,7 @@ import { Button, Notice, toast } from "./ui";
 /** Devices that announce Modbus TCP in the home network (mDNS), for "Gerät auslesen" (#324) and the wallbox check
  *  (#325); "Übernehmen" hands address and port to the form around it. */
 
-export type FoundDevice = { service: string; name: string; host: string; port: number | null };
+export type FoundDevice = { service: string; name: string; host: string; port: number | null; inverter?: boolean };
 
 export function DeviceSearch({ label, onUse }: { label: string; onUse: (device: FoundDevice) => void }) {
   const [busy, setBusy] = useState(false);
@@ -32,7 +32,7 @@ export function DeviceSearch({ label, onUse }: { label: string; onUse: (device: 
         <ul className="plain-list found-list">
           {found.devices.map((d) => (
             <li key={`${d.host}-${d.name}`}>
-              <span><strong>{d.name}</strong> <span className="meta">{d.host}{d.port ? `:${d.port}` : ""}</span></span>
+              <span><strong>{d.name}</strong> <span className="meta">{d.host}{d.port ? `:${d.port}` : ""}{d.inverter ? ` · ${t("shell.deviceSearch.inverter")}` : ""}</span></span>
               <button type="button" className="link" onClick={() => onUse(d)}>{t("shell.deviceSearch.use")}</button>
             </li>
           ))}

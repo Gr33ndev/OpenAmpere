@@ -246,7 +246,7 @@
   },
   "wallboxDirect": {
     "address": "Wallbox address",
-    "addressHint": "IP address in your home network, e.g. {example}",
+    "addressHint": "IP address of the wallbox in your home network, e.g. {example}, not the one of the inverter. You can find it in your router's device list.",
     "appMode": "Which control mode does the manufacturer's app show?",
     "appModeDefault": "Default",
     "appModeHint": "For FoxESS in the Fox Switch app. Only for the report; you do not have to change anything.",

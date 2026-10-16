@@ -329,6 +329,7 @@
     "giveEachWallboxName": "Bitte jeder Wallbox einen Namen geben.",
     "invalidCurrent": "Ungültiger Ladestrom.",
     "invalidWallboxData": "Ungültige Angaben bei einer Wallbox.",
+    "inverterAddress": "Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox ein, du findest sie zum Beispiel in der Geräteliste deines Routers.",
     "localKey16CharsNamed": "{name}: Der Local Key muss genau 16 Zeichen lang sein.",
     "maxCurrentRange": "{name}: Der höchste Ladestrom muss zwischen 6 und 32 A liegen.",
     "modeCurrentRange": "Der Ladestrom muss zwischen 6 und {max_current_a} A liegen.",
