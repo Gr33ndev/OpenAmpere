@@ -150,12 +150,15 @@ Suche von OpenAmpere heißt sie `EVC-…`. In evcc richtest du sie mit der Vorla
 braucht evcc ein Sponsor-Token.
 
 - Stell in der App **Fox Switch** die Steuerungsart der Wallbox auf **Modbus TCP**. In der Standard-Einstellung
-  bekommt evcc keine Antwort, oder die Verbindung wird geschlossen.
-- `connection reset by peer` in evcc heißt: Die Wallbox hat die Verbindung sofort wieder geschlossen. Meist steht
-  sie noch nicht auf Modbus TCP, oder ein anderes Programm hält schon ihre Verbindung (OpenAmpere geht davon aus, dass
-  sie nur eine erlaubt). Lass nur ein Programm die Wallbox lesen.
+  lässt sich die Wallbox laut FoxESS über Modbus nur lesen, evcc kann sie dann nicht steuern. Manche Firmware lehnt
+  sogar das Lesen ab („Gerät beschäftigt“).
+- `connection reset by peer` in evcc heißt: Die Wallbox hat die Verbindung sofort wieder geschlossen. Woran das
+  liegt, ist noch nicht geklärt. Möglich sind eine andere Steuerungsart als Modbus TCP oder ein anderes Programm, das
+  schon ihre Verbindung hält (OpenAmpere geht davon aus, dass sie nur eine erlaubt). Lass nur ein Programm die
+  Wallbox lesen.
 - Register-Listen anderer Wallbox-Hersteller (zum Beispiel die Register 100, 300 und 400) passen nicht zu dieser
-  Wallbox. Ein „benutzerdefiniertes“ Gerät in evcc mit diesen Registern läuft nur in Zeitüberschreitungen.
+  Wallbox. Bei einem Besitzer lief ein „benutzerdefiniertes“ Gerät in evcc mit diesen Registern nur in
+  Zeitüberschreitungen.
 
 Ohne evcc kann OpenAmpere die Wallbox nur lesend prüfen, siehe
 [wallbox-direct.de.md](wallbox-direct.de.md#andere-wallboxen-prüfen-nur-lesen).
