@@ -169,6 +169,8 @@ def test_site_meters_for_evcc(tmp_path, monkeypatch):
     site = client.get("/api/evcc/site", headers={"host": "openampere:8080"}).json()  # docker service name
     assert (site["grid_power"], site["pv_power"], site["battery_power"], site["battery_soc"]) == (-1200, 5000, -2000, 55)
     assert site["grid_import_kwh"] == 1000 and site["pv_kwh"] == 9000
+    runtime.storage._external["total"] = 50_000  # a second PV inverter OpenAmpere counted (#419)
+    assert client.get("/api/evcc/site", headers={"host": "openampere:8080"}).json()["pv_kwh"] == 9050
 
 
 async def test_battery_priority_respects_the_control_switch_and_test_mode(tmp_path, evcc_server):

@@ -1324,7 +1324,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"grid_power": snap.grid_power, "pv_power": snap.pv_power, "battery_power": snap.battery_power,
                 "battery_soc": snap.battery_soc, "grid_import_kwh": (snap.totals.grid_import or 0) / 1000 or None,
                 "grid_export_kwh": (snap.totals.grid_export or 0) / 1000 or None,
-                "pv_kwh": (snap.totals.pv or 0) / 1000 or None, "timestamp": snap.timestamp}
+                # with the energy of a second PV inverter OpenAmpere integrated (#419); it stays when that is switched
+                # off, so the counter never goes back
+                "pv_kwh": ((snap.totals.pv or 0) + storage.external_total()) / 1000 or None, "timestamp": snap.timestamp}
 
     @app.get("/api/prices")
     def get_prices(date: str | None = None):
