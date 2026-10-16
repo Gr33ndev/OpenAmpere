@@ -52,6 +52,8 @@ scripts/deps.sh                                              # after dependency 
 
 CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo, check:i18n), `ui` (Playwright), `docker`, `homeassistant`,
 `hassfest`, `hacs`, and `check` (Conventional Commits for the PR title and every commit).
+`AI review` (not required) comments on pull requests from this repository following `.github/claude-review.md`;
+when a rule here changes, check whether that file needs the change too.
 
 ## Rules
 
