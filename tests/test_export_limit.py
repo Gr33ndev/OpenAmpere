@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from openampere.api import create_app
 from openampere.control import ConfirmationRequired, ControlDisabled, ExportLimitControl
+from openampere.diagnostics import export_limit_check
 from openampere.drivers.foxess.registers import H3_LEGACY, H3_NEW
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedInverter
@@ -199,3 +200,14 @@ async def test_an_unreadable_limit_is_no_change_by_another_device(tmp_path, monk
             assert runtime.storage.control_log()[0]["action"] == "export_limit"
         finally:
             await runtime.collector.stop()
+
+
+def test_diagnostics_read_a_limit_above_the_rated_power_as_no_limit():
+    """#413: about 60000 W on a 10 kW inverter means no limit is set, not a wrong unit or register."""
+    within = export_limit_check([0, 6000], 10_000)
+    assert (within.status, within.summary, within.details["rounded_w"]) == ("ok", "etwa 6000 W", 6000)
+    above = export_limit_check([0, 60_000], 10_000)
+    assert above.status == "info" and "keine Begrenzung" in above.summary and above.hint
+    assert export_limit_check([0, 40_000], None).status == "info"  # rated power unknown: 30 kW
+    negative = export_limit_check([0xFFFF, 0xF000], 10_000)
+    assert negative.status == "warn" and "unplausibel" in negative.summary and "rounded_w" not in negative.details

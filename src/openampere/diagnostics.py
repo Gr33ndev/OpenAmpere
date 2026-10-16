@@ -29,6 +29,7 @@ from .wallbox.native import report_markdown as native_markdown
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
 REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
+EXPORT_LIMIT = "Einspeisebegrenzung (46616)"
 
 
 @dataclass
@@ -39,6 +40,27 @@ class Check:
     summary: str = ""
     details: dict = field(default_factory=dict)
     hint: str = ""  # what it means and what to do, shown below the result
+
+
+def export_limit_check(words: list[int], rated: int | None) -> Check:
+    """The export limit register 46616–46617 (I32, W). Above the rated power the inverter cannot export that much
+    anyway: usually no limit is set (#413). Only a negative value points to a wrong unit or register."""
+    value = (words[0] << 16) | words[1]
+    if value >= 1 << 31:
+        value -= 1 << 32
+    details = {"high_word": words[0], "rated_power_w": rated}
+    if value < 0:
+        return Check("export_limit", EXPORT_LIMIT, "warn", "negativer Wert – unplausibel, Einheit/Register prüfen", details)
+    # rounded: the exact limit tells the exact system size (60 or 70 % of the kWp, #149)
+    rounded = round(value, -2)
+    details["rounded_w"] = rounded
+    if value <= (rated or 30_000):
+        return Check("export_limit", EXPORT_LIMIT, "ok", f"etwa {rounded} W", details)
+    return Check("export_limit", EXPORT_LIMIT, "info", f"etwa {rounded} W – über der Nennleistung, vermutlich keine "
+                 "Begrenzung eingestellt", details,
+                 "So viel kann der Wechselrichter gar nicht einspeisen. Meist heißt das: Am Wechselrichter ist keine "
+                 "Einspeisebegrenzung eingestellt. Zeigt die App des Herstellers eine Begrenzung, teile bitte den "
+                 "Bericht.")
 
 
 class Diagnostics:
@@ -276,14 +298,7 @@ class Diagnostics:
             # 5. export limit register (read only)
             r = await self._try(46616, 2, 3)
             if r["ok"]:
-                value = (r["words"][0] << 16) | r["words"][1]
-                rated = device.rated_power_w if device else None
-                plausible = 0 <= value <= (rated or 30_000)
-                # rounded: the exact limit tells the exact system size (60 or 70 % of the kWp, #149)
-                rounded = round(value, -2)
-                checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "ok" if plausible else "warn",
-                                    f"etwa {rounded} W" + ("" if plausible else " – unplausibel, Einheit/Register prüfen"),
-                                    {"high_word": r["words"][0], "rounded_w": rounded, "rated_power_w": rated}))
+                checks.append(export_limit_check(r["words"], device.rated_power_w if device else None))
             else:
                 checks.append(Check("export_limit", "Einspeisebegrenzung (46616)", "warn", f"{r['error']}"))
 
