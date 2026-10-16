@@ -246,7 +246,7 @@
   },
   "wallboxDirect": {
     "address": "Adresse der Wallbox",
-    "addressHint": "IP-Adresse im Heimnetz, z. B. {example}",
+    "addressHint": "IP-Adresse der Wallbox im Heimnetz, z. B. {example}, nicht die des Wechselrichters. Du findest sie in der Geräteliste deines Routers.",
     "appMode": "Welche Steuerungsart zeigt die App des Herstellers?",
     "appModeDefault": "Standard",
     "appModeHint": "Bei FoxESS in der App Fox Switch. Nur für den Bericht, umstellen musst du nichts.",

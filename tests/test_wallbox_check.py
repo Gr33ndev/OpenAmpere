@@ -112,6 +112,17 @@ async def test_the_report_keeps_private_values_out(runtime):
     assert "Wallbox-Prüfung" in report_markdown(report) and "A022KP1" in report_markdown(report)
 
 
+async def test_the_inverters_address_is_named_as_such(runtime):
+    """The owner entered the inverter's address: say so instead of talking about its unit id (#411)."""
+    charger = SimulatedFoxCharger()
+    server, port = await serve(charger)
+    runtime.config.inverter.host = "127.0.0.1"
+    async with server:
+        with pytest.raises(probe.ProbeError, match="Adresse deines Wechselrichters"):
+            await WallboxCheck(Probe(runtime)).run("foxess_ac", " 127.0.0.1 ", port, None)
+    assert charger.functions == []  # nothing read
+
+
 async def test_unknown_wallbox(runtime):
     with pytest.raises(probe.ProbeError, match="kennt OpenAmpere noch nicht"):
         await WallboxCheck(Probe(runtime)).run("other", "127.0.0.1", 502, None)

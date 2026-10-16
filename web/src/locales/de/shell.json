@@ -31,6 +31,7 @@
   },
   "deviceSearch": {
     "nothingFound": "Kein Gerät gefunden, das sich im Heimnetz mit Modbus TCP meldet. Viele Geräte melden sich nicht: Gib die Adresse dann unten ein, du findest sie zum Beispiel in der Geräteliste deines Routers.",
+    "inverter": "dein Wechselrichter",
     "unavailable": "Die Suche im Heimnetz geht in der Home-Assistant-App nicht. Gib die Adresse des Geräts unten ein.",
     "use": "Übernehmen"
   },

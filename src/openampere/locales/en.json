@@ -329,6 +329,7 @@
     "giveEachWallboxName": "Please give every wallbox a name.",
     "invalidCurrent": "Invalid charging current.",
     "invalidWallboxData": "Invalid details for a wallbox.",
+    "inverterAddress": "This is the address of your inverter. Please enter the address of the wallbox; you can find it, for example, in the device list of your router.",
     "localKey16CharsNamed": "{name}: The local key must be exactly 16 characters long.",
     "maxCurrentRange": "{name}: The highest charging current must be between 6 and 32 A.",
     "modeCurrentRange": "The charging current must be between 6 and {max_current_a} A.",

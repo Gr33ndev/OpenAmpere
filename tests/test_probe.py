@@ -224,6 +224,18 @@ async def test_no_search_in_the_home_assistant_app(runtime, monkeypatch):
     assert await Probe(runtime).search() == {"available": False, "devices": []}
 
 
+async def test_the_search_marks_the_inverter(runtime, monkeypatch):
+    """So the inverter is not taken for the wallbox by mistake (#411)."""
+    monkeypatch.setattr(probe.ha_app, "active", lambda: False)
+    monkeypatch.setattr(probe, "browse", lambda services, seconds: [
+        {"service": "_modbus._tcp", "name": "EVC-1", "host": "127.0.0.2", "port": 502},
+        {"service": "_modbus._tcp", "name": "Inverter", "host": "127.0.0.1", "port": 502}])
+    runtime.config.inverter.host = "127.0.0.1"
+    found = await Probe(runtime).search()
+    assert [d["inverter"] for d in found["devices"]] == [False, True]
+    assert "Inverter (127.0.0.1:502, Wechselrichter)" in probe.section_markdown({"search": found})[0]
+
+
 async def test_identify_reads_the_title_and_the_vendor_part_of_the_mac(runtime, monkeypatch, tmp_path):
     class Page(BaseHTTPRequestHandler):
         def log_message(self, *args):

@@ -31,6 +31,7 @@
   },
   "deviceSearch": {
     "nothingFound": "No device found that announces Modbus TCP in your home network. Many devices do not announce themselves: then enter the address below; you can find it, for example, in your router's device list.",
+    "inverter": "your inverter",
     "unavailable": "Searching the home network does not work in the Home Assistant app. Enter the device's address below.",
     "use": "Use"
   },

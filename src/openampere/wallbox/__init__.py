@@ -35,6 +35,9 @@ class WallboxCheck:
         wallbox = WALLBOXES.get(key)
         if wallbox is None:
             raise ProbeError("Diese Wallbox kennt OpenAmpere noch nicht.")
+        if await self.probe.is_inverter(host.strip()):  # read over the inverter's connection, its unit id (#411)
+            raise ProbeError("Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox ein, du "
+                             "findest sie zum Beispiel in der Geräteliste deines Routers.")
         unit = unit or wallbox.unit
         result = {"model": key, "label": wallbox.label, "host": host.strip(), "port": None, "unit": unit,
                   "outcome": "unreachable", "tried_ports": [], "blocks": [], "findings": {},
