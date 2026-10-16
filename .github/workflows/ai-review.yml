@@ -59,6 +59,15 @@ jobs:
           wc -l "$out"
           delimiter="EOF_$(openssl rand -hex 16)"
           { echo "text<<$delimiter"; cat "$out"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+      - name: Install the isolation for the commands Claude runs
+        # what the action does itself only with allowed_non_write_users; CLAUDE_CODE_SUBPROCESS_ENV_SCRUB needs it
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap socat
+          # Ubuntu 24.04 restricts unprivileged user namespaces, which bubblewrap needs
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
