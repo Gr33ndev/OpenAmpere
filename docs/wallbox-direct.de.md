@@ -110,7 +110,8 @@ Netz hat. Trag die IP-Adresse aus dem Router von Hand ein.
 
 ## Andere Wallboxen prüfen (nur lesen)
 
-Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Unter
+Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Das ist
+auch die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat; im Router heißt sie `EVC-…`. Unter
 **direkt → Wallbox hinzufügen oder prüfen** wählst du sie bei **Welche Wallbox hast du?** unter „Nur prüfen
 (Vorschau)“. Dann prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der
 sie gerade steht, und zeigt, was sie antwortet. An der Wallbox wird nichts geändert. Das Ergebnis kommt in den

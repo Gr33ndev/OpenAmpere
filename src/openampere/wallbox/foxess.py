@@ -23,6 +23,7 @@ MODEL = 0x101E  # ASCII, 4 registers
 class FoxEssCharger(Wallbox):
     key = "foxess_ac"
     label = "FoxESS AC EV Charger"
+    sold_by = ("EKD",)  # with Ampere.IQ systems; announces itself as EVC-<serial> like any FoxESS charger (#412)
     ports = (502, 1502)  # the protocol says 502; at least one integration uses 1502
     unit = 1
     function = 3

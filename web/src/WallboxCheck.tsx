@@ -211,5 +211,5 @@ export function WallboxCheck({ origin, model, onCancel }: { origin: string; mode
 
 /** Wallboxes that can only be checked so far: the model choice of "Wallbox hinzufügen" lists them. */
 export function useCheckModels() {
-  return useResource<{ models: { key: string; label: string }[] }>("/api/wallbox/models");
+  return useResource<{ models: { key: string; label: string; sold_by?: string[] }[] }>("/api/wallbox/models");
 }

@@ -178,6 +178,7 @@
     "hintNow": "Charges right away with the charging current below. Sun, battery or grid supply it; the battery may discharge into the car.",
     "modeCurrent": "Highest charging current in this mode",
     "amps": "{current} A",
+    "soldBy": "{label} (also sold by {sellers})",
     "stopAfter": "Pause solar charging after (minutes)",
     "stopAfterHint": "When a cloud comes in “Solar” mode, the wallbox goes on with the lowest step for this long. The battery or the grid supply the rest. Longer means fewer interruptions, shorter means less power from the grid. 1 to 60 minutes."
   },

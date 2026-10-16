@@ -143,6 +143,23 @@ Host-Netzwerk, so erreicht evcc OpenAmpere unter `http://localhost:8080` und Ope
 `http://localhost:7070`. Wer evcc lieber mit Datei konfiguriert, bindet zusätzlich `./evcc.yaml:/etc/evcc.yaml` ein,
 siehe [Docker-Anleitung von evcc](https://docs.evcc.io/en/installation/docker).
 
+## FoxESS AC EV Charger (auch die Wallbox von EKD-Anlagen)
+
+Die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat, ist ein FoxESS AC EV Charger: Im Router und in der
+Suche von OpenAmpere heißt sie `EVC-…`. In evcc richtest du sie mit der Vorlage **FoxESS** (`foxess-evc`) ein. Dafür
+braucht evcc ein Sponsor-Token.
+
+- Stell in der App **Fox Switch** die Steuerungsart der Wallbox auf **Modbus TCP**. In der Standard-Einstellung
+  bekommt evcc keine Antwort, oder die Verbindung wird geschlossen.
+- `connection reset by peer` in evcc heißt: Die Wallbox hat die Verbindung sofort wieder geschlossen. Meist steht
+  sie noch nicht auf Modbus TCP, oder ein anderes Programm hält schon ihre Verbindung (OpenAmpere geht davon aus, dass
+  sie nur eine erlaubt). Lass nur ein Programm die Wallbox lesen.
+- Register-Listen anderer Wallbox-Hersteller (zum Beispiel die Register 100, 300 und 400) passen nicht zu dieser
+  Wallbox. Ein „benutzerdefiniertes“ Gerät in evcc mit diesen Registern läuft nur in Zeitüberschreitungen.
+
+Ohne evcc kann OpenAmpere die Wallbox nur lesend prüfen, siehe
+[wallbox-direct.de.md](wallbox-direct.de.md#andere-wallboxen-prüfen-nur-lesen).
+
 ## Grenzen
 
 - Manche Geräte sind in evcc nur mit einem [Sponsoring](https://docs.evcc.io/docs/sponsorship) nutzbar. Das ist
