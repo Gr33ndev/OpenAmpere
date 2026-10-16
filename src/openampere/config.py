@@ -74,6 +74,9 @@ class PvConfig:
     hidden_inputs: list = field(default_factory=list)  # input numbers ("3") not shown anywhere, e.g. an unused MPPT
     installed_kwp: float = 0.0  # installed module power (kWp, from the Marktstammdatenregister); 0 = unknown
     commissioning_date: str = ""  # YYYY-MM-DD the plant went into operation (Inbetriebnahme); "" = unknown
+    # an extra PV inverter the inverter measures with a meter (SAJ: Meter B, #419): counted as solar power
+    external: bool = False
+    external_name: str = ""  # e.g. "Garage"; "" = "Zweiter Wechselrichter"
 
 
 @dataclass
@@ -190,6 +193,8 @@ EDITABLE: dict[str, tuple] = {
     "pv.hidden_inputs": ("strlist", 6, 2),
     "pv.installed_kwp": ("float", 0, 1000),
     "pv.commissioning_date": ("date",),
+    "pv.external": ("bool",),
+    "pv.external_name": ("str", 30),
     "battery.capacity_kwh": ("float", 0, 200),
     "battery.max_charge_kw": ("float", 0, 50),
     "updates.check": ("bool",),
@@ -312,7 +317,8 @@ LABELS = {
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
-    "pv.commissioning_date": "Inbetriebnahme",
+    "pv.commissioning_date": "Inbetriebnahme", "pv.external": "Zweiter Wechselrichter",
+    "pv.external_name": "Name des zweiten Wechselrichters",
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
     "cloud.api_key": "API-Schlüssel der EKD-Cloud",
     "evcc.password": "Admin-Passwort von evcc", "notify.ntfy_token": "ntfy-Zugangs-Token",
@@ -390,7 +396,7 @@ def validate(changes: dict) -> dict:
                     raise ValueError
                 value = [str(v).strip()[: rule[2]] for v in value]
             else:
-                value = str(value).strip()
+                value = str(value).strip()[: rule[1] if len(rule) > 1 else None]
         except (TypeError, ValueError, LookupError):
             raise ValueError(_invalid_message(key, rule)) from None
         if key == "notify.ntfy_url" and "@" in value:

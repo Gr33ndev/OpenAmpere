@@ -12,7 +12,7 @@ import { t, tx } from "./i18n";
 type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
 type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
-  sample?: { pv_power: number | null; battery_soc: number | null } | null };
+  sample?: { pv_power: number | null; battery_soc: number | null; pv_external_power?: number | null } | null };
 
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
   serial?: string | null; busy?: boolean };
@@ -173,6 +173,9 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
             {result.sample && <div>{t("setup.connectionForm.currentValues", { pv: kw(result.sample.pv_power), soc: percent(result.sample.battery_soc) })}</div>}
             {!result.device.supports_control && <div className="hint">{t("setup.connectionForm.readOnlyDevice")}</div>}
           </Notice>
+        )}
+        {result?.ok && result.sample?.pv_external_power != null && (
+          <Notice kind="info">{t("setup.connectionForm.secondInverterHint", { power: kw(result.sample.pv_external_power) })}</Notice>
         )}
         {result && !result.ok && <Notice kind="error">{result.error}</Notice>}
         {error && <Notice kind="error">{error}</Notice>}

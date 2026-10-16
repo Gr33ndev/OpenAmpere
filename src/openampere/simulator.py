@@ -353,6 +353,7 @@ class SajSimulatedInverter(SimulatedInverter):
         self.connections = 0
         self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, read_only, unit
         self.rated_w = 10000
+        self.meter_b_w = 0.0  # an extra PV inverter measured by Meter B (#419); 0 = no such meter
         self.clock = datetime.now  # the inverter's clock, which the charge slots follow
         self.energy = EnergyModel()
         self.regs = {}
@@ -454,6 +455,7 @@ class SajSimulatedInverter(SimulatedInverter):
             put(f"pv{i + 1}_current", power / voltage if voltage else 0)
             put(f"pv{i + 1}_power", power)
         put("house_power", e.house_w)
+        put("meter_b_pv_power", self.meter_b_w)
         put("pv_power", e.pv_w)
         put("battery_power", e.battery_w)
         put("grid_power", e.grid_w)

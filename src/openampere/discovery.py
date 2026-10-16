@@ -118,8 +118,9 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
     except (ConnectionError, OSError, asyncio.TimeoutError) as err:
         return {"ok": False, "error": friendly_error(err)}
     try:
-        snap = await device.read()
-        sample = {"pv_power": snap.pv_power, "battery_soc": snap.battery_soc}
+        snap = (await device.read()).sanitize()
+        # pv_external_power: the inverter has a meter for a second PV inverter (SAJ Meter B), the setup points to it
+        sample = {"pv_power": snap.pv_power, "battery_soc": snap.battery_soc, "pv_external_power": snap.pv_external_power}
     except Exception:  # identification worked; a failed sample read is not fatal
         sample = None
     finally:

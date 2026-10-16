@@ -53,6 +53,7 @@ class Runtime:
         self.collector = Collector(make_driver(self.config), storage, self.config.inverter.poll_interval,
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
+        self.collector.external_pv = self.config.pv.external
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
         self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct),
                                self.eeg_rate)
@@ -192,6 +193,7 @@ class Runtime:
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 
         self.collector.retention_days = new.storage.raw_retention_days
+        self.collector.external_pv = new.pv.external
         if old.log.level != new.log.level:
             logs.apply_level(new.log.level)
         control_changes = {k: (get_value(old, k), get_value(new, k))

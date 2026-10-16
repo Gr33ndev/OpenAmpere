@@ -28,7 +28,8 @@
     "unknownModbusDevice": "Unknown Modbus device",
     "busyInverter": "Inverter, currently busy",
     "busyHint": "“Currently busy”: the device does not allow another connection; an inverter allows only very few. First check whether another program still reads the inverter, for example Home Assistant with a Modbus setup of its own, a dashboard, a script of your own or a second OpenAmpere installation, and stop it or remove its connection to the inverter. If the old IQ box is still connected and you no longer need it, then disconnect it from the network (unplug its LAN cable or switch it off). Then search again. A connected IQ box also overwrites settings you change in OpenAmpere ({guide}).",
-    "busyGuide": "more in the guide"
+    "busyGuide": "more in the guide",
+    "secondInverterHint": "Do you have a second PV inverter whose power a meter at the storage system measures (“Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The meter reads {power} right now."
   },
   "setup": {
     "apiKeyHint": "For this you need the personal API key from the Ampere.IQ app. OpenAmpere is an independent project with no ties to EKD.",

@@ -129,6 +129,7 @@ async def test_saj_reads_on_grid_and_off_grid_depth(depth_registers):
 async def test_saj_diagnostics_shows_both_sets_of_limits(tmp_path):
     from openampere.diagnostics import Diagnostics
     sim = SajSimulatedInverter(max_connections=3)
+    sim.meter_b_w = 740  # a second PV inverter on Meter B that is not counted yet (#419)
     server, port = await serve(sim)
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
@@ -145,6 +146,9 @@ async def test_saj_diagnostics_shows_both_sets_of_limits(tmp_path):
     assert checks["saj_limits"]["summary"] == (
         "Netzbetrieb 20 %, Notstrombetrieb 5 %, Ladegrenze 100 %, Betriebsart 0 (0x3644–0x3647); "
         "Reserve im Backup-Modus 10 % (0x3651); Rücklese-Register 0x4029 100 %, 0x402A 20 %, 0x402B 0 %, 0x402C 10 %")
+    meter_b = checks["saj_meter_b"]
+    assert meter_b["status"] == "warn" and meter_b["summary"].startswith("etwa 700 W, nicht mitgezählt")
+    assert "Modulfelder benennen" in meter_b["hint"] and meter_b["details"]["rounded_w"] == 700
 
 
 def test_saj_settings_prefer_the_depth_registers():
@@ -162,3 +166,44 @@ def test_saj_grid_counter_source_does_not_switch():
     assert to_snapshot(raw, 0, "sum").totals.grid_import == 5000.0
     # the summed register is missing once: no fallback to L1 (would look like -3300 kWh)
     assert to_snapshot({"grid_import_l1_total": 1700.0}, 0, "sum").totals.grid_import is None
+
+
+async def test_saj_meter_b_is_counted_as_solar_power_when_switched_on(tmp_path):
+    """#419: an extra PV inverter measured by Meter B (0x40A3) is not part of 0x40A5."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.meter_b_w = 500
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("saj", "127.0.0.1", port, 1, timeout=3)
+        await driver.connect()
+        snap = (await driver.read()).sanitize()
+        sim.meter_b_w = -4  # standby at night, the meter installed the other way round
+        sim.update_registers()
+        night = (await driver.read()).sanitize()
+        await driver.close()
+    inverter_pv = snap.pv_power
+    assert snap.pv_external_power == 500 and night.pv_external_power == 0
+    assert snap.count_external_pv(True).pv_power == inverter_pv + 500
+    assert night.count_external_pv(False).pv_external_power is None
+
+
+async def test_the_collector_counts_meter_b_only_with_the_setting(tmp_path):
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.meter_b_w = 700
+    server, port = await serve(sim)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.driver": "saj", "inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.poll_interval": 2})
+            while runtime.collector.latest is None:
+                await asyncio.sleep(0.05)
+            assert runtime.collector.latest.pv_external_power is None and runtime.collector.external_pv_w == 700
+            await runtime.update_settings({"pv.external": True, "pv.external_name": " Garage " + "x" * 40})
+            assert runtime.config.pv.external_name == ("Garage " + "x" * 40)[:30]
+            first = runtime.collector.latest
+            while runtime.collector.latest is first:
+                await asyncio.sleep(0.05)
+            assert runtime.collector.latest.pv_external_power == 700
+        finally:
+            await runtime.collector.stop()

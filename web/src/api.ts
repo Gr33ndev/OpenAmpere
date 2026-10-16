@@ -17,7 +17,8 @@ export type Counters = {
 
 export type Snapshot = {
   timestamp: number;
-  pv_power: number | null;
+  pv_power: number | null; // with a counted second PV inverter
+  pv_external_power?: number | null; // second PV inverter the inverter measures (SAJ Meter B, #419), when counted
   house_power: number | null;
   grid_power: number | null; // + import
   battery_power: number | null; // + discharge
@@ -36,6 +37,8 @@ export type Snapshot = {
 
 export type Status = {
   version: string;
+  /** what the inverter's meter for a second PV inverter reads (SAJ Meter B, #419), also before it is counted */
+  external_pv_w?: number | null;
   configured: boolean;
   connected: boolean;
   last_error: string | null;
@@ -118,6 +121,8 @@ export type Settings = {
     "pv.input_names": string[];
     "pv.installed_kwp": number;
     "pv.hidden_inputs": string[];
+    "pv.external": boolean;
+    "pv.external_name": string;
     "battery.capacity_kwh": number;
     "battery.max_charge_kw": number;
     "updates.check": boolean;

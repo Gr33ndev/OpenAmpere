@@ -94,7 +94,8 @@ class Snapshot:
     """One reading of the energy system.
 
     Sign conventions (all W):
-      pv_power       >= 0
+      pv_power       >= 0 (with an extra PV inverter, if the owner counts it: pv_external_power is part of it)
+      pv_external_power >= 0 (an extra PV inverter the device measures with a meter, e.g. SAJ Meter B, #419)
       house_power    >= 0 (consumption)
       grid_power     + = import from grid, - = export to grid
       battery_power  + = discharging,      - = charging
@@ -102,6 +103,7 @@ class Snapshot:
 
     timestamp: float
     pv_power: float | None = None
+    pv_external_power: float | None = None
     house_power: float | None = None
     grid_power: float | None = None
     battery_power: float | None = None
@@ -132,7 +134,7 @@ class Snapshot:
         self.battery_soh = ok(self.battery_soh, 0, 100)
         self.battery_temperature = ok(self.battery_temperature, -40, 90)
         self.temperatures = {k: v for k, v in self.temperatures.items() if ok(v, -40, 120) is not None}
-        for name in ("pv_power", "house_power"):
+        for name in ("pv_power", "house_power", "pv_external_power"):
             setattr(self, name, ok(getattr(self, name), 0, MAX_PLAUSIBLE_W))
         for name in ("grid_power", "battery_power"):
             setattr(self, name, ok(getattr(self, name), -MAX_PLAUSIBLE_W, MAX_PLAUSIBLE_W))
@@ -141,6 +143,16 @@ class Snapshot:
         for counters in (self.totals, self.today):
             balance = energy_balance(asdict(counters))
             counters.consumption = None if balance is None else max(0.0, balance)
+        return self
+
+    def count_external_pv(self, counted: bool) -> Snapshot:
+        """Adds the extra PV inverter to pv_power when the owner switched it on (#419), otherwise drops it. It is not
+        part of the inverter's own PV power: without it the solar power, and the house in the energy balance, are too
+        low."""
+        if not counted:
+            self.pv_external_power = None
+        elif self.pv_external_power is not None and self.pv_power is not None:
+            self.pv_power += self.pv_external_power
         return self
 
 

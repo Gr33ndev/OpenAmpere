@@ -59,8 +59,9 @@ export function inputName(names: string[] | undefined, index: number) {
 export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
   const { data: settings } = useResource<Settings>("/api/settings");
   const inputs = activeInputs(snap, settings?.values["pv.hidden_inputs"]);
-  if (inputs.length < 2) return null; // a single input is already the PV total
-  const max = Math.max(...inputs.map((i) => i.power ?? 0), 1);
+  const external = snap?.pv_external_power ?? null; // a second PV inverter (#419): one more row without V and A
+  if (inputs.length + (external != null ? 1 : 0) < 2) return null; // a single input is already the PV total
+  const max = Math.max(...inputs.map((i) => i.power ?? 0), external ?? 0, 1);
   return (
     <>
       <div className="section-title">{t("overview.pvInputsCard.title")}</div>
@@ -75,6 +76,16 @@ export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
             <div className="meta">{i.voltage != null ? `${num(i.voltage, 0)} V` : "–"} · {i.current != null ? `${num(i.current, 1)} A` : "–"}</div>
           </div>
         ))}
+        {external != null && (
+          <div className="input-row">
+            <div className="input-head">
+              <span><span className="dot" style={{ background: "var(--pv)" }} />{settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter")}</span>
+              <strong>{kw(external)}</strong>
+            </div>
+            <div className="bar"><div className="bar-fill" style={{ width: `${(external / max) * 100}%`, background: "var(--pv)" }} /></div>
+            <div className="meta">{t("overview.pvInputsCard.measuredByMeter")}</div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -156,6 +167,31 @@ function ImportHint() {
   );
 }
 
+const HIDE_SECOND_INVERTER_KEY = "openampere.hideSecondInverter";
+
+/** The inverter's meter for a second PV inverter (SAJ Meter B) reads power, but it is not counted yet (#419). */
+function SecondInverterHint({ status, external }: { status: Status | null; external: boolean | undefined }) {
+  const [hidden, setHidden] = useState(() => {
+    try { return localStorage.getItem(HIDE_SECOND_INVERTER_KEY) === "1"; } catch { return false; }
+  });
+  const meter = status?.external_pv_w;
+  if (hidden || external !== false || meter == null || meter <= 50) return null;
+  const hide = () => {
+    try { localStorage.setItem(HIDE_SECOND_INVERTER_KEY, "1"); } catch { /* private mode */ }
+    setHidden(true);
+  };
+  return (
+    <div className="notice info import-hint">
+      <div><strong>{t("overview.secondInverterHint.title")}</strong>{" "}
+        {t("overview.secondInverterHint.hint", { power: kw(meter) })}</div>
+      <div className="actions">
+        <button type="button" className="link" onClick={() => navigate("more/pv")}>{t("common.setUp")}</button>
+        <button type="button" className="link" onClick={hide}>{t("overview.importHint.hide")}</button>
+      </div>
+    </div>
+  );
+}
+
 const HIDE_TIPS_KEY = "openampere.hideTips";
 
 /** Short introduction for the first visits. */
@@ -206,6 +242,7 @@ function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; to
 export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
   const { data: devicesView } = useResource<DevicesView>("/api/devices", 30_000);
+  const { data: settings } = useResource<Settings>("/api/settings");
   const e = today?.energy_wh;
   const stale = useStale(snap, online, status);
   const devices = status?.devices.items ?? [];
@@ -227,7 +264,9 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
       )}
       <StorageNotice storage={status?.storage} />
       <ImportHint />
-      <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging} />
+      <SecondInverterHint status={status} external={settings?.values["pv.external"]} />
+      <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging}
+        externalName={settings?.values["pv.external_name"]} />
 
       <div className="section-title">{t("overview.dashboard.todayTitle")}</div>
       {today?.partial_since && <p className="hint">{t("overview.dashboard.recordedSince", { time: time(today.partial_since) })}</p>}

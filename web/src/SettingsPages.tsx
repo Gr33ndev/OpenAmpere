@@ -1484,7 +1484,38 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
           {hidden.length > 0 && <p className="hint">{t("settings.pvSystemPage.hiddenHint")}</p>}
         </div>
       ))}
+      {settings && <ExternalPvCard settings={settings} save={save} />}
     </SubPage>
+  );
+}
+
+/** A second PV inverter without its own connection that the inverter measures with a meter (SAJ Meter B, #419). Shown
+ *  when the inverter has such a meter or the second inverter is already counted. */
+function ExternalPvCard({ settings, save }: { settings: Settings["values"]; save: ReturnType<typeof useSettings>["save"] }) {
+  const { data: status } = useResource<Status>("/api/status", 10_000);
+  const [on, setOn] = useState(settings["pv.external"]);
+  const [name, setName] = useState(settings["pv.external_name"]);
+  useEffect(() => { setOn(settings["pv.external"]); setName(settings["pv.external_name"]); }, [settings]);
+  const meter = status?.external_pv_w;
+  if (meter == null && !settings["pv.external"]) return null;
+  const dirty = on !== settings["pv.external"] || name !== settings["pv.external_name"];
+  return (
+    <>
+      <div className="section-title">{t("settings.externalPv.title")}</div>
+      <div className="card form">
+        <p className="hint flush">{t("settings.externalPv.intro")}</p>
+        <SwitchRow label={t("settings.externalPv.count")} checked={on} onChange={setOn}
+          hint={meter != null ? t("settings.externalPv.meterNow", { power: kw(meter) }) : undefined} />
+        {on && (
+          <Field label={t("settings.externalPv.name")} hint={t("settings.externalPv.nameHint")}>
+            <input className="input" maxLength={30} value={name} placeholder={t("overview.energyFlow.secondInverter")}
+              onChange={(e) => setName(e.target.value)} />
+          </Field>
+        )}
+        <Button disabled={!dirty} onClick={() => save({ "pv.external": on, "pv.external_name": name.trim() })}>{t("common.save")}</Button>
+        <Unsaved show={dirty} />
+      </div>
+    </>
   );
 }
 

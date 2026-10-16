@@ -14,7 +14,9 @@ const NOT_IN_DEMO: Record<string, unknown> = {
   "/api/setup/drivers": { drivers: [] },
 };
 
-export const test = base.extend<{ api: { override(path: string, body: unknown): void }; consoleErrors: string[] }>({
+export const test = base.extend<{
+  api: { override(path: string, body: unknown): void; live(patch: Record<string, unknown>): void }; consoleErrors: string[];
+}>({
   consoleErrors: [async ({ page }, use) => {
     const errors: string[] = [];
     page.on("console", (message) => {
@@ -26,6 +28,7 @@ export const test = base.extend<{ api: { override(path: string, body: unknown): 
   }, { auto: true }],
   api: [async ({ page }, use) => {
     const overrides = new Map<string, unknown>();
+    let livePatch: Record<string, unknown> = {}; // changes to the live values, e.g. a second PV inverter
     await page.route("**/api/**", async (route) => {
       const url = new URL(route.request().url());
       const path = url.pathname.startsWith(INGRESS) ? url.pathname.slice(INGRESS.length - 1) : url.pathname;
@@ -39,12 +42,12 @@ export const test = base.extend<{ api: { override(path: string, body: unknown): 
       }
     });
     await page.routeWebSocket("**/api/live/ws", (ws) => {
-      const send = () => ws.send(JSON.stringify(snapshot()));
+      const send = () => ws.send(JSON.stringify({ ...snapshot(), ...livePatch }));
       send();
       const timer = setInterval(send, 2000);
       ws.onClose(() => clearInterval(timer));
     });
-    await use({ override: (path, body) => overrides.set(path, body) });
+    await use({ override: (path, body) => overrides.set(path, body), live: (patch) => { livePatch = patch; } });
   }, { auto: true }],
 });
 
