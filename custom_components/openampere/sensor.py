@@ -102,6 +102,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     coordinator = entry.runtime_data
     entities: list[SensorEntity] = [OpenAmpereSensor(coordinator, d) for d in SENSORS]
     entities += [PvInputSensor(coordinator, pv["index"], pv["name"]) for pv in coordinator.info["pv_inputs"]]
+    if external := coordinator.info.get("pv_external"):  # a counted second PV inverter (#419)
+        entities += [ExternalPvSensor(coordinator, d, external["name"]) for d in EXTERNAL_PV]
     for device in coordinator.info["devices"]:
         entities.append(DevicePowerSensor(coordinator, device["id"]))
         if device["kind"] == "heating_rod":
@@ -165,6 +167,22 @@ class PvInputSensor(OpenAmpereEntity, SensorEntity):
     def native_value(self) -> float | None:
         inputs = self.live.get("pv_inputs") or []
         return inputs[self._index].get("power") if self._index < len(inputs) else None
+
+
+# a second PV inverter OpenAmpere counts (#419): its power, and the energy OpenAmpere integrated from it, which is
+# not in pv_energy (the inverter's counter); in the energy dashboard it is a second solar source
+EXTERNAL_PV: tuple[OpenAmpereSensorDescription, ...] = (
+    OpenAmpereSensorDescription(key="pv_external_power", value=_live("pv_external_power"), **POWER),
+    OpenAmpereSensorDescription(key="pv_external_energy", value=_total("pv_external"), **ENERGY),
+)
+
+
+class ExternalPvSensor(OpenAmpereSensor):
+    """Named like in OpenAmpere, e.g. "Garage"."""
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, description: OpenAmpereSensorDescription, name: str) -> None:
+        super().__init__(coordinator, description)
+        self._attr_translation_placeholders = {"name": name}
 
 
 class DevicePowerSensor(OpenAmpereEntity, SensorEntity):

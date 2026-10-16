@@ -79,10 +79,10 @@ export function PvInputsCard({ snap }: { snap: Snapshot | null }) {
         {external != null && (
           <div className="input-row">
             <div className="input-head">
-              <span><span className="dot" style={{ background: "var(--pv)" }} />{settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter")}</span>
+              <span><span className="dot" style={{ background: "var(--pv-external)" }} />{settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter")}</span>
               <strong>{kw(external)}</strong>
             </div>
-            <div className="bar"><div className="bar-fill" style={{ width: `${(external / max) * 100}%`, background: "var(--pv)" }} /></div>
+            <div className="bar"><div className="bar-fill" style={{ width: `${(external / max) * 100}%`, background: "var(--pv-external)" }} /></div>
             <div className="meta">{t("overview.pvInputsCard.measuredByMeter")}</div>
           </div>
         )}

@@ -36,6 +36,7 @@
 
   --brand: var(--accent);
   --pv: var(--warning);
+  --pv-external: #c08d10; /* a second PV inverter (#419): darker gold, drawn over the PV bar as its part */
   --house: var(--coral);
   --grid: var(--sky);
   --battery: var(--success);

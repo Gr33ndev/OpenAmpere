@@ -63,6 +63,7 @@ one connection, and every command from Home Assistant goes through the same chec
 |---|---|
 | PV power, house consumption, grid power, battery power | Grid: + import, − export. Battery: + discharging, − charging |
 | Power per PV string | Names as in OpenAmpere; hidden strings are left out |
+| Second inverter: power and production | Only when OpenAmpere counts a second PV inverter (SAJ "Meter B", under **Mehr → Meine Anlage → Modulfelder benennen**), named as there. It has no counter of its own: OpenAmpere calculates the production from its power. PV power above includes it, PV production (the inverter's counter) does not. |
 | PV production, consumption, grid import, grid export, battery charged/discharged | Total counters in kWh, **suitable for the Energy dashboard**. OpenAmpere calculates the consumption from the other counters, as in the app. |
 | Consumption counter of the inverter | Hidden. The inverter's own counter often counts more than the house used. Older versions showed it as "Consumption". |
 | State of charge, battery health, voltage, current and temperature, inverter temperature | |
@@ -77,7 +78,8 @@ the inverter (a diagnostic entity; it changes after an update of the inverter, s
 
 **Energy dashboard:** **Einstellungen → Dashboards → Energie** (Settings → Dashboards → Energy). Grid import and
 grid export under **Stromnetz** (Electricity grid), PV production under **Solarmodule** (Solar panels), battery
-charged/discharged under **Batteriespeicher** (Home battery storage).
+charged/discharged under **Batteriespeicher** (Home battery storage). A second inverter's production is added as
+another source under **Solarmodule**.
 
 ## Control
 

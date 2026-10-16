@@ -118,6 +118,10 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       <div className="card">
         <dl className="facts">
           <dt>{t("settings.installationPage.pvGeneration")}</dt><dd>{energyKwh(snap?.totals.pv)}</dd>
+          {snap?.totals.pv_external != null && <>
+            <dt>{settings?.["pv.external_name"] || t("overview.energyFlow.secondInverter")}</dt>
+            <dd>{energyKwh(snap.totals.pv_external)}</dd>
+          </>}
           <dt>{t("common.consumption")}</dt><dd>{energyKwh(snap?.totals.consumption)}</dd>
           <dt>{t("common.gridImport")}</dt><dd>{energyKwh(snap?.totals.grid_import)}</dd>
           <dt>{t("common.feedIn")}</dt><dd>{energyKwh(snap?.totals.grid_export)}</dd>

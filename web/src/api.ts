@@ -13,6 +13,7 @@ export type Counters = {
   battery_charge: number | null;
   battery_discharge: number | null;
   consumption?: number | null; // live counters: from the balance of the others, "load" is the inverter's counter (#346)
+  pv_external?: number | null; // stored energy: the part of pv from a second PV inverter (#419); null without one
 };
 
 export type Snapshot = {
@@ -95,7 +96,8 @@ export type Summary = {
 };
 
 export type EnergyEntry = Counters & { ts: number; soc: number | null };
-export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null };
+export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null;
+  pv_external?: number | null };
 
 export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password";
 export type Settings = {

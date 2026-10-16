@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useMemo, useState } from "react";
-import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Summary } from "./api";
+import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Settings, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
 import { energyDigits, energyKwh, isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
@@ -128,9 +128,9 @@ const emptyEnergy = (ts: number): EnergyEntry => ({
 const emptyValues = (ts: number) => ({ ts, values: [] });
 
 /** Values of the touched bar / point, so nobody has to guess from the axis. */
-function Readout({ rows, index, showPower, xFormat, extra = [], hidden }: {
+function Readout({ rows, index, showPower, xFormat, extra = [], hidden, externalLabel }: {
   rows: (EnergyEntry | PowerEntry)[]; index: number | null; showPower: boolean; xFormat: (ts: number) => string;
-  extra?: { label: string; values: (number | null)[] }[]; hidden: Set<string>;
+  extra?: { label: string; values: (number | null)[] }[]; hidden: Set<string>; externalLabel: string;
 }) {
   if (index == null || !rows[index]) return <p className="hint readout-hint">{t("report.readout.tapHint")}</p>;
   const r = rows[index];
@@ -143,9 +143,13 @@ function Readout({ rows, index, showPower, xFormat, extra = [], hidden }: {
       ["battery", [t("common.battery"), p.battery == null ? "–"
         : p.battery >= 0 ? t("report.readout.discharging", { power: battery }) : t("report.readout.charging", { power: battery })]]];
     items.push(...lines.filter(([key]) => !hidden.has(key)).map(([, item]) => item));
+    if (p.pv_external != null && !hidden.has("pv_external")) items.splice(1, 0, [externalLabel, kw(p.pv_external)]);
   } else {
     const e = r as EnergyEntry;
     if (!hidden.has("pv")) items.push([t("common.generated"), energyKwh(e.pv)]);
+    if (e.pv_external != null && !hidden.has("pv_external")) {
+      items.push([t("report.report.externalPart", { name: externalLabel }), energyKwh(e.pv_external)]);
+    }
     items.push([t("common.consumed"), energyKwh(e.load)]);
     if (!hidden.has("grid")) items.push([t("common.gridImport"), energyKwh(e.grid_import)]);
     items.push([t("report.readout.fedIn"), energyKwh(e.grid_export)], [t("common.charged"), energyKwh(e.battery_charge)], [t("report.readout.discharged"), energyKwh(e.battery_discharge)]);
@@ -180,6 +184,7 @@ export function Report() {
   const refresh = running ? 60_000 : 0;
 
   const { data: summary } = useResource<Summary>(`/api/energy/summary?period=${period}&date=${day}`, refresh);
+  const { data: settings } = useResource<Settings>("/api/settings");
   const { data: energy, error: energyError } = useResource<{ entries: EnergyEntry[] }>(
     showPower ? null : `/api/energy/timeline?period=${period}&date=${day}&resolution=${resolution}`, refresh);
   const { data: power, error: powerError } = useResource<{ entries: PowerEntry[] }>(
@@ -211,8 +216,12 @@ export function Report() {
   };
 
   const hasSoc = rows.some((r) => r.soc != null) && (showPower || period === "day");
+  // a second PV inverter (#419): its part of the generation, drawn over the PV bar or as its own line
+  const hasExternal = rows.some((r) => (r.pv_external ?? 0) > 0);
+  const externalLabel = settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter");
   const legend: LegendItem[] = [
     { key: "pv", color: "var(--pv)", label: t("common.generated") },
+    ...(hasExternal ? [{ key: "pv_external", color: "var(--pv-external)", label: t("report.report.externalPart", { name: externalLabel }) }] : []),
     { key: "house", color: "var(--house)", label: showPower ? t("common.consumption") : t("report.report.selfSupplied") },
     { key: "grid", color: "var(--grid)", label: showPower ? t("common.grid") : t("report.report.fromGrid") },
     ...(showPower ? [{ key: "battery", color: "var(--battery)", label: t("common.battery") }] : []),
@@ -233,6 +242,8 @@ export function Report() {
         x: p.map((r) => r.ts),
         series: visible([
           { key: "pv", label: t("common.generation"), color: "var(--pv)", values: p.map((r) => kwOf(r.pv)), unit: "kW" },
+          ...(hasExternal ? [{ key: "pv_external", label: externalLabel, color: "var(--pv-external)", unit: "kW",
+            values: p.map((r) => kwOf(r.pv_external ?? null)) }] : []),
           { key: "house", label: t("common.consumption"), color: "var(--house)", values: p.map((r) => kwOf(r.house)), unit: "kW" },
           { key: "grid", label: t("common.grid"), color: "var(--grid)", values: p.map((r) => kwOf(r.grid)), unit: "kW" },
           { key: "battery", label: t("common.battery"), color: "var(--battery)", values: p.map((r) => kwOf(r.battery)), unit: "kW" },
@@ -249,6 +260,8 @@ export function Report() {
       // self-supplied part the blue bar is only what came from the grid
       series: visible([
         { key: "pv", label: t("common.generation"), color: "var(--pv)", values: en.map((r) => k(r.pv)), unit: "kWh", digits, barAlign: -1 },
+        ...(hasExternal ? [{ key: "pv_external", label: externalLabel, color: "var(--pv-external)", unit: "kWh", digits,
+          barAlign: -1, values: en.map((r) => k(r.pv_external ?? null)) }] : []),
         { key: "grid", label: t("common.gridImport"), color: "var(--grid)", unit: "kWh", digits, barAlign: 1,
           values: en.map((r) => k(hidden.has("house") ? r.grid_import : r.load)) },
         { key: "house", label: t("report.report.selfSupply"), color: "var(--house)", unit: "kWh", digits, barAlign: 1,
@@ -256,7 +269,7 @@ export function Report() {
         ...(hasSoc ? [{ ...soc, color: "var(--label)" }] : []),
       ] as Series[]),
     };
-  }, [showPower, rows, hasSoc, devPower, deviceColors, digits, hidden]);
+  }, [showPower, rows, hasSoc, hasExternal, externalLabel, devPower, deviceColors, digits, hidden]);
 
   return (
     <div className="page">
@@ -292,7 +305,7 @@ export function Report() {
           <Chart x={chart.x} series={chart.series} bars={!showPower} xFormat={xFormat} height={300} onHover={setHover}
             label={showPower ? t("report.report.powerChart", { period: title(date, period) })
               : t("report.report.energyChart", { period: title(date, period) })} />
-          <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat} hidden={hidden}
+          <Readout rows={rows} index={hover} showPower={showPower} xFormat={xFormat} hidden={hidden} externalLabel={externalLabel}
             extra={chart.series.filter((x) => x.dash).map((x) => ({ label: x.label, values: x.values }))} />
         </>
       ) : (

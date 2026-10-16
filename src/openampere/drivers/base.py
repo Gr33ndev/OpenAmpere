@@ -59,6 +59,9 @@ class EnergyCounters:
     battery_charge: float | None = None
     battery_discharge: float | None = None
     consumption: float | None = None  # from the balance of the other counters (Snapshot.sanitize), what the app shows
+    # a counted second PV inverter (#419): not a counter of the device but OpenAmpere's integral of its power (only in
+    # totals, set by the collector); not part of pv or consumption
+    pv_external: float | None = None
 
 
 # in and out of the house: what came from the roof, the grid and the battery minus what went to the grid and the battery

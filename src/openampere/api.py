@@ -36,7 +36,7 @@ from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, Exp
 from .drivers.base import Snapshot
 from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
-from .storage import FLOWS, InvalidBackup, Storage
+from .storage import EXTERNAL, FLOWS, InvalidBackup, Storage
 from .discovery import Rediscovery
 from .billing import Billing
 from .gridmeter import GridMeter
@@ -94,6 +94,12 @@ class BodyLimit:
             return message
 
         await self.app(scope, limited, send)
+
+
+def add_part(total: float | None, part: float | None) -> float | None:
+    """Sums the energy of the second PV inverter (#419): None as long as no quarter had it, so the app shows it
+    only where it exists."""
+    return total if part is None else (total or 0.0) + part
 
 
 def ratios(flows: dict) -> dict:
@@ -946,15 +952,20 @@ def create_app(runtime: Runtime) -> FastAPI:
         money_rows = None
         if running and start <= running["ts"] < end:
             # stored quarters + the quarter hour that is still running = exactly what the counters say
-            flows = {f: (flows[f] or 0) + running[f] for f in FLOWS}
+            flows = {**{f: (flows[f] or 0) + running[f] for f in FLOWS},
+                     EXTERNAL: add_part(flows.get(EXTERNAL), running.get(EXTERNAL))}
             quarters += 1
             first = storage.first_quarter(start, end) or running["ts"]
             if period == "day" and first > start + 900:
                 # first day: recording started during the day; the inverter's daily counters are complete
                 recorded_since = first
                 today = {**latest.today.__dict__, "load": latest.today.consumption}  # not the load counter (#346)
+                if today["pv"] is not None and today["load"] is not None and flows.get(EXTERNAL):
+                    # the second PV inverter has no daily counter: what OpenAmpere recorded of it (#419)
+                    today["pv"] += flows[EXTERNAL]
+                    today["load"] += flows[EXTERNAL]
                 if all(today.get(f) is not None for f in FLOWS) and today["pv"] >= flows["pv"]:
-                    flows = {f: today[f] for f in FLOWS}
+                    flows = {**{f: today[f] for f in FLOWS}, EXTERNAL: flows.get(EXTERNAL)}
                     money_rows = [{"ts": start, **flows}]  # the money must follow the same values (#15)
                 else:
                     partial_since = first
@@ -1348,21 +1359,26 @@ def create_app(runtime: Runtime) -> FastAPI:
         buckets: dict[float, dict] = {}
         for row in storage.energy(t0, t1):
             key = bucket_start(row["ts"], resolution, tz)
-            bucket = buckets.setdefault(key, {**dict.fromkeys(FLOWS, 0.0), "soc": None, "sources": set()})
+            bucket = buckets.setdefault(key, {**dict.fromkeys(FLOWS, 0.0), EXTERNAL: None, "soc": None, "sources": set()})
             for f in FLOWS:
                 bucket[f] += row[f] or 0
+            bucket[EXTERNAL] = add_part(bucket[EXTERNAL], row[EXTERNAL])
             bucket["soc"] = row["soc"] if row["soc"] is not None else bucket["soc"]
             bucket["sources"].add(row["source"] or "local")
         fmt = {"15m": "%d.%m.%Y %H:%M", "60m": "%d.%m.%Y %H:%M", "day": "%d.%m.%Y", "month": "%m.%Y"}[resolution]
         num = lambda v: "" if v is None else f"{v:.3f}".replace(".", ",")  # noqa: E731
+        # the second PV inverter (#419) gets a column at the end, only when there is one: other columns stay in place
+        external = any(b[EXTERNAL] is not None for b in buckets.values())
         lines = ["Zeit;Erzeugung (kWh);Verbrauch (kWh);Netzbezug (kWh);Einspeisung (kWh);"
-                 "Speicher geladen (kWh);Speicher entladen (kWh);Ladestand (%);Quelle"]
+                 "Speicher geladen (kWh);Speicher entladen (kWh);Ladestand (%);Quelle"
+                 + (";davon zweiter Wechselrichter (kWh)" if external else "")]
         for key in sorted(buckets):
             b = buckets[key]
             when = datetime.datetime.fromtimestamp(key, tz).strftime(fmt)
             source = "+".join(sorted({"local": "OpenAmpere", "cloud": "Cloud-Import"}.get(x, x) for x in b["sources"]))
             lines.append(";".join([when, *(num(b[f] / 1000) for f in FLOWS),
-                                   "" if b["soc"] is None else f"{b['soc']:.0f}", source]))
+                                   "" if b["soc"] is None else f"{b['soc']:.0f}", source,
+                                   *([num(None if b[EXTERNAL] is None else b[EXTERNAL] / 1000)] if external else [])]))
         body = "\ufeff" + "\r\n".join(lines) + "\r\n"  # BOM: Excel detects UTF-8 (umlauts)
         name = f"openampere-{start}-bis-{end}-{resolution}.csv"
         return Response(body, media_type="text/csv; charset=utf-8",
@@ -1379,9 +1395,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             rows.append(running)  # show the running quarter hour too
         for row in rows:
             key = bucket_start(row["ts"], resolution, runtime.tz)
-            bucket = buckets.setdefault(key, {"ts": key, **dict.fromkeys(FLOWS, 0.0), "soc": None})
+            bucket = buckets.setdefault(key, {"ts": key, **dict.fromkeys(FLOWS, 0.0), EXTERNAL: None, "soc": None})
             for f in FLOWS:
                 bucket[f] += row[f] or 0
+            bucket[EXTERNAL] = add_part(bucket[EXTERNAL], row.get(EXTERNAL))
             bucket["soc"] = row["soc"] if row["soc"] is not None else bucket["soc"]
         return {"period": period, "resolution": resolution, "from": start, "to": end,
                 "entries": list(buckets.values())}
@@ -1395,7 +1412,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         entries = []
         for ts, rows in buckets.items():
             entry = {"ts": ts}
-            for key in ("pv", "house", "grid", "battery", "soc"):
+            for key in ("pv", "house", "grid", "battery", "soc", EXTERNAL):
                 values = [r[key] for r in rows if r[key] is not None]
                 entry[key] = sum(values) / len(values) if values else None
             entries.append(entry)

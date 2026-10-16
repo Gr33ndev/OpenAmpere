@@ -62,6 +62,7 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 |---|---|
 | PV-Leistung, Hausverbrauch, Netzleistung, Speicherleistung | Netz: + Bezug, − Einspeisung. Speicher: + Entladen, − Laden |
 | Leistung je Modulfeld | Namen wie in OpenAmpere, ausgeblendete Felder fehlen |
+| Zweiter Wechselrichter: Leistung und Erzeugung | Nur wenn OpenAmpere einen zweiten PV-Wechselrichter mitzählt (SAJ „Meter B“, unter Mehr → Meine Anlage → Modulfelder benennen), mit seinem Namen. Er hat keinen eigenen Zähler: Die Erzeugung rechnet OpenAmpere aus seiner Leistung. Die PV-Leistung oben enthält ihn, die PV-Erzeugung (der Zähler des Wechselrichters) nicht. |
 | PV-Erzeugung, Verbrauch, Netzbezug, Einspeisung, Speicher geladen/entladen | Gesamtzähler in kWh, **passend fürs Energie-Dashboard**. Den Verbrauch rechnet OpenAmpere aus den anderen Zählern aus, wie in der App. |
 | Verbrauchszähler des Wechselrichters | Ausgeblendet. Der eigene Zähler des Wechselrichters zählt oft mehr, als im Haus verbraucht wurde. Ältere Versionen zeigten ihn als „Verbrauch“. |
 | Ladestand, Speicher-Gesundheit, -Spannung, -Strom, -Temperatur, Wechselrichter-Temperatur | |
@@ -76,7 +77,8 @@ Automation auslösen).
 **Verbindung zum Wechselrichter weg:** Die Werte vom Wechselrichter sind „nicht verfügbar“, bis OpenAmpere wieder aktuelle Messwerte hat. So schalten Automationen nicht nach alten Werten. Strompreis und Steuerung bleiben verfügbar.
 
 **Energie-Dashboard:** Einstellungen → Dashboards → Energie. Netzbezug und Einspeisung bei „Stromnetz“,
-PV-Erzeugung bei „Solarmodule“, Speicher geladen/entladen bei „Batteriespeicher“.
+PV-Erzeugung bei „Solarmodule“, Speicher geladen/entladen bei „Batteriespeicher“. Ein zweiter Wechselrichter kommt
+mit seiner Erzeugung als weitere Quelle zu „Solarmodule“.
 
 ## Steuern
 

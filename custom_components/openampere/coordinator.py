@@ -48,8 +48,9 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def async_update_listeners(self) -> None:
         self._follow_firmware()
         super().async_update_listeners()
-        if not self._reload_scheduled and self.config_entry and needs_reload(self.info, (self.data or {}).get("live"),
-                                                                           (self.data or {}).get("wallboxes")):
+        data = self.data or {}
+        if not self._reload_scheduled and self.config_entry and needs_reload(self.info, data.get("live"),
+                                                                           data.get("wallboxes"), data.get("status")):
             self._reload_scheduled = True
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
@@ -121,10 +122,13 @@ def firmware(coordinator: OpenAmpereCoordinator) -> str | None:
     return (coordinator.info.get("device") or {}).get("firmware")
 
 
-def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None) -> bool:
+def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, status: dict | None = None) -> bool:
     """Set up before OpenAmpere had its first reading (e.g. everything starting after a power cut): the device and
     the PV inputs were unknown, so set up again once they are there (#220). Also when a wallbox was added or removed
-    in OpenAmpere (#388); an older OpenAmpere sends none."""
+    in OpenAmpere (#388), or a second PV inverter switched on, off or renamed (#419); an older OpenAmpere sends
+    neither."""
+    if status and "pv_external" in status and "pv_external" in info and status["pv_external"] != info["pv_external"]:
+        return True
     if wallboxes is not None and "wallboxes" in info \
             and sorted(w["id"] for w in wallboxes) != sorted(w["id"] for w in info["wallboxes"]):
         return True

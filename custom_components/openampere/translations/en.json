@@ -151,6 +151,12 @@
       "pv_input_power": {
         "name": "{name}"
       },
+      "pv_external_power": {
+        "name": "{name}"
+      },
+      "pv_external_energy": {
+        "name": "{name} production"
+      },
       "device_power": {
         "name": "Power"
       },
