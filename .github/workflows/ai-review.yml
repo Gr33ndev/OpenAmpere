@@ -29,7 +29,6 @@ jobs:
       contents: read
       pull-requests: write
       issues: read
-      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,6 +36,10 @@ jobs:
       - uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # the token of this workflow instead of the Claude GitHub App: no app with write access to the
+          # repository, comments come from github-actions[bot] (no other workflow comments on pull requests,
+          # which matters for "gh pr comment --edit-last" in .github/claude-review.md)
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
