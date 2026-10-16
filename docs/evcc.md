@@ -148,13 +148,14 @@ a file, also mount `./evcc.yaml:/etc/evcc.yaml`, see the
 The wallbox EKD sold with its Ampere.IQ systems is a FoxESS AC EV Charger: in the router and in OpenAmpere's search it
 shows up as `EVC-…`. In evcc it is set up with the template **FoxESS** (`foxess-evc`), which needs a sponsor token.
 
-- In the **Fox Switch** app, set the wallbox's communication mode to **Modbus TCP**. In the default mode evcc gets no
-  answer or the connection is closed.
-- `connection reset by peer` in evcc means the wallbox closed the connection right away: usually it is not in the
-  Modbus TCP mode yet, or another program already holds its connection (OpenAmpere assumes the wallbox allows only
-  one). Run only one program that reads the wallbox.
+- In the **Fox Switch** app, set the wallbox's communication mode to **Modbus TCP**. In the default mode Modbus is
+  read-only according to FoxESS, so evcc cannot control the wallbox; some firmware refuses even reading ("server
+  device busy").
+- `connection reset by peer` in evcc means the wallbox closed the connection right away. The cause is not known yet;
+  possible are a communication mode other than Modbus TCP, or another program that already holds the wallbox's
+  connection (OpenAmpere assumes the wallbox allows only one). Run only one program that reads the wallbox.
 - Register lists for other wallbox makes (for example holding registers 100, 300 and 400) do not fit this wallbox. A
-  "custom" charger in evcc built from them only runs into timeouts.
+  "custom" charger built from them in evcc ran into timeouts for one owner.
 
 Without evcc, OpenAmpere can check the wallbox read-only, see [wallbox-direct.md](wallbox-direct.md#checking-other-wallboxes-read-only).
 

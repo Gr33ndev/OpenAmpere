@@ -116,11 +116,24 @@ async def test_the_inverters_address_is_named_as_such(runtime):
     """The owner entered the inverter's address: say so instead of talking about its unit id (#411)."""
     charger = SimulatedFoxCharger()
     server, port = await serve(charger)
-    runtime.config.inverter.host = "127.0.0.1"
+    runtime.config.inverter.host, runtime.config.inverter.port = "127.0.0.1", port
     async with server:
         with pytest.raises(probe.ProbeError, match="Adresse deines Wechselrichters"):
             await WallboxCheck(Probe(runtime)).run("foxess_ac", " 127.0.0.1 ", port, None)
+        runtime.config.inverter.port = 502
+        with pytest.raises(probe.ProbeError, match="Adresse deines Wechselrichters"):  # among the usual ports
+            await WallboxCheck(Probe(runtime)).run("foxess_ac", "127.0.0.1", None, None)
     assert charger.functions == []  # nothing read
+
+
+async def test_another_port_of_the_inverters_address_is_checked(runtime):
+    """E.g. a Modbus gateway with several devices behind one address (#417)."""
+    charger = SimulatedFoxCharger()
+    server, port = await serve(charger)
+    runtime.config.inverter.host, runtime.config.inverter.port = "127.0.0.1", 9
+    async with server:
+        result = await WallboxCheck(Probe(runtime)).run("foxess_ac", "127.0.0.1", port, None)
+    assert result["outcome"] == "readable"
 
 
 async def test_unknown_wallbox(runtime):

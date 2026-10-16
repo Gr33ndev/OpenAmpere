@@ -35,7 +35,10 @@ class WallboxCheck:
         wallbox = WALLBOXES.get(key)
         if wallbox is None:
             raise ProbeError("Diese Wallbox kennt OpenAmpere noch nicht.")
-        if await self.probe.is_inverter(host.strip()):  # read over the inverter's connection, its unit id (#411)
+        candidates = (port,) if port else wallbox.ports
+        # the inverter's own port is read over its connection with its unit id: most likely the wrong address (#411).
+        # Another port of the same address can be another device, e.g. behind a Modbus gateway (#417).
+        if self.probe.runtime.config.inverter.port in candidates and await self.probe.is_inverter(host.strip()):
             raise ProbeError("Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox ein, du "
                              "findest sie zum Beispiel in der Geräteliste deines Routers.")
         unit = unit or wallbox.unit
@@ -44,7 +47,7 @@ class WallboxCheck:
                   "answers": {"app_mode": app_mode if app_mode in APP_MODES else "unknown",
                               "wired": wired if wired in WIRED else "unknown"}}
         read = None
-        for candidate in (port,) if port else wallbox.ports:
+        for candidate in candidates:
             result["tried_ports"].append(candidate)
             try:
                 read = await self.probe.read_ranges(host, candidate, unit, wallbox.function, list(wallbox.ranges))
