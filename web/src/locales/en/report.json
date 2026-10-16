@@ -162,7 +162,8 @@
     "selfSupply": "Self-supplied",
     "signHint": "Grid above zero means import, below zero feed-in. Battery above zero means discharging, below zero charging.",
     "socRightAxis": "State of charge (right axis)",
-    "legendHint": "Tap an entry to hide or show its line again."
+    "legendHint": "Tap an entry to hide or show its line again.",
+    "externalPart": "of which {name}"
   },
   "temperatureSection": {
     "bms": "Battery electronics (BMS)",

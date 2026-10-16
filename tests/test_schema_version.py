@@ -231,4 +231,27 @@ def test_version_2_recomputes_the_consumption_of_recorded_quarters(tmp_path):
         assert [r["load"] for r in storage.energy(0, 4500)] == [800, 0, 150, 777, 400]
     finally:
         storage.close()
+    assert version_of(tmp_path / "t.db") == storage_module.SCHEMA_VERSION
+
+
+def test_version_3_adds_the_columns_of_a_second_pv_inverter(tmp_path):
+    """#419: an existing database keeps its rows and gets pv_external in energy_15m and samples, empty."""
+    create_version_1(tmp_path / "t.db")
+    db = sqlite3.connect(tmp_path / "t.db")
+    db.execute("INSERT INTO energy_15m(ts, pv, load, grid_import, grid_export, battery_charge, battery_discharge, source) "
+               "VALUES (0, 1000, 800, 0, 200, 0, 0, 'local')")
+    db.execute("INSERT INTO samples(ts, pv, house, grid, battery, soc) VALUES (10, 4000, 500, 0, -3500, 50)")
+    db.commit()
+    db.close()
+    db = sqlite3.connect(tmp_path / "t.db")
+    Storage._migrate(db, 1, 2)  # an installation that already is on version 2
+    db.close()
     assert version_of(tmp_path / "t.db") == 2
+    storage = Storage(tmp_path / "t.db")
+    try:
+        assert [(r["pv"], r["pv_external"]) for r in storage.energy(0, 900)] == [(1000, None)]
+        assert [(r["pv"], r["pv_external"]) for r in storage.samples(0, 100)] == [(4000, None)]
+        assert storage.energy_sum(0, 900)["pv_external"] is None
+    finally:
+        storage.close()
+    assert version_of(tmp_path / "t.db") == 3

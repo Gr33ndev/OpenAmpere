@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { demoRequest } from "../src/demo/server";
-import type { Settings, Status } from "../src/api";
+import type { Settings, Status, Summary } from "../src/api";
 import { expect, layoutProblems, open, test } from "./fixtures";
 
 // #419: a second PV inverter that the inverter measures with a meter (SAJ Meter B)
@@ -76,4 +76,27 @@ test("the connection test mentions the meter for a second inverter", async ({ pa
   await page.getByPlaceholder(/192\.168\.178\.50/).fill("192.168.178.50");
   await page.getByRole("button", { name: "Verbindung testen" }).click();
   await expect(page.locator(".notice", { hasText: "Meter B" })).toContainText("Modulfelder benennen");
+});
+
+test("the report shows the part of the second inverter in the generation", async ({ page, api }) => {
+  await page.clock.install({ time: new Date("2026-10-07T12:00:00") });
+  const day = (d: number) => new Date(2026, 9, d).getTime() / 1000;
+  const entry = (d: number, pv: number, external: number) => ({ ts: day(d), pv, pv_external: external, load: 12000,
+    grid_import: 2000, grid_export: 0, battery_charge: 0, battery_discharge: 0, soc: null });
+  api.override("/api/settings", await settings({ "pv.external": true, "pv.external_name": "Garage" }));
+  api.override("/api/energy/timeline", { entries: [entry(5, 10000, 2000), entry(6, 20000, 5000), entry(7, 15000, 3000)] });
+  const summary = await demoRequest<Summary>("GET", "/api/energy/summary?period=week&date=2026-10-07");
+  api.override("/api/energy/summary", { ...summary, energy_wh: { ...summary.energy_wh, pv: 45000, pv_external: 10000 } });
+  await open(page, "report");
+  await page.getByRole("button", { name: "Woche" }).click();
+  const legend = page.locator(".legend").first();
+  await expect(legend.getByRole("button", { name: "davon Garage" })).toBeVisible();
+  const chart = page.getByRole("img", { name: /^Diagramm Energie/ });
+  await expect(chart.locator("canvas")).toBeVisible();
+  await legend.getByRole("button", { name: "davon Garage" }).click();
+  await expect(legend.getByRole("button", { name: "davon Garage" })).toHaveAttribute("aria-pressed", "false");
+  await page.locator(".key-details summary").first().click();
+  await expect(page.locator(".key-details").first()).toContainText("davon Garage");
+  await expect(page.locator(".key-details").first()).toContainText("10,00 kWh");
+  expect(await layoutProblems(page)).toEqual([]);
 });

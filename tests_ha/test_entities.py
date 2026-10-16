@@ -283,3 +283,34 @@ async def test_no_new_setup_when_inputs_are_hidden(hass: HomeAssistant, entry, c
                     "devices": first.data["devices"]})
     await hass.async_block_till_done()
     assert entry.runtime_data is first
+
+
+async def test_a_counted_second_pv_inverter_gets_its_own_sensors(hass: HomeAssistant, entry, client) -> None:
+    """#419: power and the energy OpenAmpere integrated, named like in OpenAmpere; none without it."""
+    await setup(hass, entry)
+    assert entity_id(hass, "sensor", "_pv_external_power") is None
+    await hass.config_entries.async_unload(entry.entry_id)
+    client.info.return_value = {**info(), "pv_external": {"name": "Garage"}}
+    with_external = state()
+    with_external["live"] = {**with_external["live"], "pv_power": 6400.0, "pv_external_power": 1200.0,
+                             "totals": {**with_external["live"]["totals"], "pv_external": 98765.0}}
+    with_external["status"] = {**with_external["status"], "pv_external": {"name": "Garage"}}
+    client.state.return_value = with_external
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    power = hass.states.get(entity_id(hass, "sensor", "_pv_external_power"))
+    assert power.state == "1200.0" and power.attributes["friendly_name"].endswith("Garage")
+    energy = hass.states.get(entity_id(hass, "sensor", "_pv_external_energy"))
+    assert float(energy.state) == pytest.approx(98.765) and energy.attributes["state_class"] == "total_increasing"
+    assert energy.attributes["friendly_name"].endswith("Garage production")
+
+
+def test_switching_the_second_inverter_sets_up_again() -> None:
+    from custom_components.openampere.coordinator import needs_reload
+    live = state()["live"]
+    assert not needs_reload(info(), live, status={"pv_external": None})  # an older integration's info: no key
+    with_key = {**info(), "pv_external": None}
+    assert not needs_reload(with_key, live, status={"pv_external": None})
+    assert needs_reload(with_key, live, status={"pv_external": {"name": "Garage"}})
+    assert needs_reload({**info(), "pv_external": {"name": "Garage"}}, live, status={"pv_external": {"name": "Dach"}})
+    assert not needs_reload(with_key, live, status={})  # an older OpenAmpere sends no flag

@@ -154,6 +154,14 @@ class Collector:
         sent as a notification instead (#170); the log gets them once and then only every hour, not every poll."""
         try:
             await asyncio.to_thread(self.storage.add_snapshot, snap)
+            # the second PV inverter (#419): a lifetime counter of its own for Home Assistant's energy dashboard, and
+            # part of the consumption like in the app. Switched off, the integral stays as it is, so the consumption
+            # counter never goes back (Home Assistant would count that as a meter reset).
+            external = self.storage.external_total()
+            if external and snap.totals.consumption is not None:
+                snap.totals.consumption += external
+            if snap.pv_external_power is not None:
+                snap.totals.pv_external = external
         except Exception as err:  # noqa: BLE001
             now = time.time()
             self.storage_error = storage_problem(err)

@@ -3,6 +3,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import pytest
 from fastapi.testclient import TestClient
 
 from openampere.api import create_app, ratios
@@ -32,6 +33,32 @@ def test_counter_deltas_become_quarter_rows(tmp_path):
     rows = storage.energy(base, base + 3600)
     assert len(rows) == 1
     assert rows[0]["ts"] == base and rows[0]["pv"] == 260 and rows[0]["load"] == 130
+
+
+def test_a_counted_second_inverter_is_part_of_the_solar_energy(tmp_path):
+    """#419: it has no counter; its power is integrated, added to pv (and so to the consumption) and kept apart."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i in range(10):  # 1200 W from the second inverter, readings a minute apart
+        storage.add_snapshot(snap(base + 10 + 60 * i, 1000 + 20 * i, 400 + 10 * i, pv_external_power=1200))
+    # switched off: no more integration after this reading; 1200 W from base + 10 to base + 600 = 590 s
+    storage.add_snapshot(snap(base + 600, 1200, 500, pv_external_power=None))
+    wh = 1200 * 590 / 3600
+    running = storage.running_quarter(snap(base + 700, 1220, 510))
+    assert running["pv_external"] == pytest.approx(wh) and running["pv"] == pytest.approx(220 + wh)
+    storage.add_snapshot(snap(base + 905, 1260, 530))
+    row = storage.energy(base, base + 900)[0]
+    assert (row["pv"], row["pv_external"]) == (pytest.approx(260 + wh), pytest.approx(wh))
+    assert row["load"] == pytest.approx(130 + wh)  # the house used what the second inverter produced
+    assert storage.energy_sum(base, base + 900)["pv_external"] == pytest.approx(wh)
+    storage.add_snapshot(snap(base + 1805, 1300, 550))
+    assert storage.energy(base + 900, base + 1800)[0]["pv_external"] is None  # not counted in this quarter
+    sample = storage.samples(base, base + 20)[0]
+    assert (sample["pv"], sample["pv_external"]) == (1000, 1200)
+    storage.close()
+    reopened = Storage(tmp_path / "t.db")  # the integrated energy survives a restart
+    assert reopened._external["total"] == pytest.approx(wh)
+    reopened.close()
 
 
 def counters(pv, load, grid_import, grid_export, charge, discharge) -> EnergyCounters:
@@ -172,6 +199,30 @@ def test_periods():
     assert (start.isoformat(), end.isoformat()) == ("2026-02-01", "2026-03-01")
     start, end = period_bounds("week", parse_anchor("day", "2026-10-02", TZ))
     assert start.isoformat() == "2026-09-28" and end.isoformat() == "2026-10-05"
+
+
+def test_api_endpoints_carry_the_second_inverter(tmp_path):
+    """#419: summary, timelines and the CSV export show the second PV inverter as part of the solar energy."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    for i in range(16):  # 600 W for 15 minutes = 150 Wh
+        storage.add_snapshot(snap(base + 60 * i, 1000 + 10 * i, 400 + 5 * i, pv_external_power=600))
+    storage.add_snapshot(snap(base + 960, 1160, 480, pv_external_power=600))
+    runtime = Runtime({}, storage)
+    runtime.collector.latest = snap(base + 1000, 1170, 485, pv_external_power=600)
+    client = TestClient(create_app(runtime))
+    params = {"period": "day", "date": "2026-06-01"}
+    energy = client.get("/api/energy/summary", params=params).json()["energy_wh"]
+    assert energy["pv_external"] == pytest.approx(160)  # 150 Wh stored quarter + 10 Wh of the running one
+    assert energy["pv"] == pytest.approx(170 + energy["pv_external"])
+    entry = client.get("/api/energy/timeline", params={**params, "resolution": "60m"}).json()["entries"][0]
+    assert entry["pv_external"] == pytest.approx(energy["pv_external"])
+    power = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+    assert power[0]["pv_external"] == 600
+    csv = client.get("/api/export/csv", params={"from": "2026-06-01", "to": "2026-06-01", "resolution": "15m"})
+    lines = csv.text.lstrip("\ufeff").splitlines()
+    assert lines[0].endswith(";Quelle;davon zweiter Wechselrichter (kWh)")
+    assert lines[1].split(";")[1:2] == ["0,300"] and lines[1].endswith(";OpenAmpere;0,150")
 
 
 def test_api_endpoints(tmp_path):

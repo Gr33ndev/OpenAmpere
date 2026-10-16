@@ -28,6 +28,9 @@ log = logging.getLogger(__name__)
 FLOWS = ("pv", "load", "grid_import", "grid_export", "battery_charge", "battery_discharge")
 # the counters the quarter hours come from; "load" is their balance, not the inverter's load counter (#346)
 COUNTERS = tuple(f for f in FLOWS if f != "load")
+# a second PV inverter the inverter measures (SAJ Meter B, #419): energy_15m.pv and samples.pv include it, this column
+# says how much of it came from there (the report shows it on its own). Not in FLOWS: SCHEMA (version 1) uses FLOWS.
+EXTERNAL = "pv_external"
 MAX_CARRY_WH = 1000  # deficit of the balance carried into the next quarters, see _consumption
 QUARTER = 900
 MAX_PV_INPUTS = 4
@@ -96,14 +99,21 @@ def _consumption_from_balance(db: sqlite3.Connection) -> None:
     db.executemany("UPDATE energy_15m SET load = ? WHERE ts = ?", updates)
 
 
+def _external_pv_columns(db: sqlite3.Connection) -> None:
+    """Version 2 -> 3: the energy and power of a second PV inverter as their own columns (#419)."""
+    for table in ("energy_15m", "samples"):
+        if EXTERNAL not in {row[1] for row in db.execute(f"PRAGMA table_info({table})")}:
+            db.execute(f"ALTER TABLE {table} ADD COLUMN {EXTERNAL} REAL")
+
+
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
 # database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database. The access
 # and device state (KEEP_ON_RESTORE) in the copy is kept that of the running installation: the older version takes
 # the copy as it is, and an old password, sessions or revoked app tokens must not become valid again with it.
-MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance}
-SCHEMA_VERSION = 2
+MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance, 2: _external_pv_columns}
+SCHEMA_VERSION = 3
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
 NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
 COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
@@ -263,6 +273,13 @@ def _apply_pending_restore(path: Path) -> Path | None:
     os.replace(pending, path)
     log.warning("restored a backup; the previous database is kept as %s", kept.name)
     return kept
+
+
+def _external_delta(total: float, state: dict, snap: Snapshot) -> float | None:
+    """Energy of the second PV inverter since the base of the quarter (#419); None while it is not counted and
+    nothing was integrated, so quarters without it stay empty in the report."""
+    part = max(0.0, total - state.get("external", total))
+    return part if part or snap.pv_external_power is not None else None
 
 
 def _create_version_1(db: sqlite3.Connection) -> None:
@@ -425,6 +442,8 @@ class Storage:
         # per-input energy of the running quarter; persisted so a restart does not lose it
         self._pv_acc: dict | None = self._get_meta("pv_input_state")
         self._quarter: dict | None = self._get_meta("quarter_state")
+        # the second PV inverter has no energy counter: its power is integrated into one of OpenAmpere's own (#419)
+        self._external: dict = self._get_meta("pv_external_state") or {"total": 0.0, "ts": None, "w": None}
         row = self._db.execute("SELECT MAX(ts) FROM samples").fetchone()
         self._last_sample_ts: float = row[0] or 0.0
         self._clock_warned = False
@@ -733,11 +752,12 @@ class Storage:
         temps = snap.temperatures
         with self._lock, self._db:
             self._db.execute(
-                f"INSERT OR REPLACE INTO samples(ts, pv, house, grid, battery, soc, {', '.join(SAMPLE_EXTRA_COLUMNS)}) "
-                f"VALUES ({', '.join('?' * (6 + len(SAMPLE_EXTRA_COLUMNS)))})",
+                f"INSERT OR REPLACE INTO samples(ts, pv, house, grid, battery, soc, {', '.join(SAMPLE_EXTRA_COLUMNS)}, "
+                f"{EXTERNAL}) VALUES ({', '.join('?' * (7 + len(SAMPLE_EXTRA_COLUMNS)))})",
                 (snap.timestamp, snap.pv_power, snap.house_power, snap.grid_power, snap.battery_power,
                  snap.battery_soc, *inputs, temps.get("inverter"), temps.get("battery"),
-                 temps.get("battery_cell_max"), temps.get("battery_cell_min")))
+                 temps.get("battery_cell_max"), temps.get("battery_cell_min"), snap.pv_external_power))
+            self._integrate_external(snap)
             self._accumulate(snap)
             self._accumulate_pv_inputs(snap.timestamp, [i or 0.0 for i in inputs[:len(snap.pv_inputs)]])
 
@@ -760,6 +780,23 @@ class Storage:
         self._pv_acc = acc
         self._set_meta("pv_input_state", acc)
 
+    def _integrate_external(self, snap: Snapshot) -> None:
+        """Integrates the power of the second PV inverter (left Riemann sum, not across outages) into a lifetime counter
+        of OpenAmpere's own, which the quarter hours then treat like the inverter's counters (#419). It only grows
+        while the second inverter is counted."""
+        state = self._external
+        if state["ts"] is not None and state["w"] is not None:
+            dt = snap.timestamp - state["ts"]
+            if 0 < dt <= MAX_INTEGRATION_GAP_S:
+                state["total"] += max(0.0, state["w"]) * dt / 3600
+        state["ts"], state["w"] = snap.timestamp, snap.pv_external_power
+        self._set_meta("pv_external_state", state)
+
+    def external_total(self) -> float:
+        """Energy of the second PV inverter OpenAmpere has integrated so far, in Wh (#419)."""
+        with self._lock:
+            return round(self._external["total"], 1)
+
     def _accumulate(self, snap: Snapshot) -> None:
         """Turn monotonic counters into per-quarter energy rows.
 
@@ -781,8 +818,9 @@ class Storage:
             return
         quarter = int(snap.timestamp // QUARTER * QUARTER)
         carry = 0.0  # re-basing drops the deficit of the balance with the energy it belonged to
+        external = self._external["total"]
         if state is None or quarter < state["ts"]:
-            self._quarter = {"ts": quarter, "totals": totals, "carry": carry}
+            self._quarter = {"ts": quarter, "totals": totals, "carry": carry, "external": external}
         elif quarter > state["ts"]:
             span = quarter - state["ts"]
             delta = {f: totals[f] - state["totals"][f] for f in COUNTERS}
@@ -796,14 +834,18 @@ class Storage:
             elif span > MAX_GAP_S:
                 log.warning("gap of %.1f h is too long to fill - re-basing", span / 3600)
             else:
+                # the second PV inverter is part of the solar energy, and so of the consumption (#419)
+                part = _external_delta(external, state, snap)
+                delta["pv"] += part or 0.0
                 delta["load"], carry = _consumption(delta, state.get("carry", 0.0))
                 quarters = span // QUARTER  # spread the energy evenly over the quarters without readings
                 rows = [(state["ts"] + i * QUARTER, *(delta[f] / quarters for f in FLOWS),
-                         snap.battery_soc if i == quarters - 1 else None) for i in range(quarters)]
+                         snap.battery_soc if i == quarters - 1 else None, None if part is None else part / quarters)
+                        for i in range(quarters)]
                 self._db.executemany(
-                    f"INSERT OR REPLACE INTO energy_15m(ts, {', '.join(FLOWS)}, soc, source) "
-                    f"VALUES (?, {', '.join('?' * len(FLOWS))}, ?, 'local')", rows)
-            self._quarter = {"ts": quarter, "totals": totals, "carry": carry}
+                    f"INSERT OR REPLACE INTO energy_15m(ts, {', '.join(FLOWS)}, soc, {EXTERNAL}, source) "
+                    f"VALUES (?, {', '.join('?' * len(FLOWS))}, ?, ?, 'local')", rows)
+            self._quarter = {"ts": quarter, "totals": totals, "carry": carry, "external": external}
         else:
             return
         self._set_meta("quarter_state", self._quarter)
@@ -820,8 +862,11 @@ class Storage:
         delta = {f: totals[f] - state["totals"][f] for f in COUNTERS}
         if any(v < 0 or v > MAX_POWER_W * QUARTER / 3600 * 1.5 for v in delta.values()):
             return None
+        with self._lock:
+            part = _external_delta(self._external["total"], state, snap)
+        delta["pv"] += part or 0.0
         delta["load"], _ = _consumption(delta, state.get("carry", 0.0))
-        return {"ts": state["ts"], **delta, "soc": snap.battery_soc}
+        return {"ts": state["ts"], **delta, EXTERNAL: part, "soc": snap.battery_soc}
 
     def days_with_energy(self, start: float, end: float) -> int:
         """Number of days with at least one stored quarter hour (also for coarser imported history)."""
@@ -1036,6 +1081,6 @@ class Storage:
     def energy_sum(self, start: float, end: float) -> dict:
         with self._lock:
             row = self._db.execute(
-                f"SELECT {', '.join(f'SUM({f}) AS {f}' for f in FLOWS)}, COUNT(*) AS quarters "
+                f"SELECT {', '.join(f'SUM({f}) AS {f}' for f in (*FLOWS, EXTERNAL))}, COUNT(*) AS quarters "
                 "FROM energy_15m WHERE ts >= ? AND ts < ?", (start, end)).fetchone()
         return dict(row)

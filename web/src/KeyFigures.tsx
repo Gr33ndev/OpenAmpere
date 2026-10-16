@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
-import type { Summary } from "./api";
+import type { Settings, Summary } from "./api";
+import { useResource } from "./api";
 import { energyKwh, percent } from "./format";
 import { LOCALE, t, tx } from "./i18n";
 
@@ -10,6 +11,8 @@ const euro = (v: number | null | undefined) =>
 /** The few numbers that matter for a period, details on request. Used on the start page and in the analysis. */
 export function KeyFigures({ summary, title }: { summary: Summary | null; title?: string }) {
   const e = summary?.energy_wh;
+  const { data: settings } = useResource<Settings>("/api/settings");
+  const external = settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter");
   return (
     <div className="card key-figures">
       {title && <div className="key-title">{title}</div>}
@@ -25,6 +28,7 @@ export function KeyFigures({ summary, title }: { summary: Summary | null; title?
       <details className="key-details">
         <summary>{t("report.keyFigures.allValues")}</summary>
         <dl className="facts">
+          {!!e?.pv_external && <><dt>{t("report.report.externalPart", { name: external })}</dt><dd>{energyKwh(e.pv_external)}</dd></>}
           <dt>{t("report.keyFigures.toGrid")}</dt><dd>{energyKwh(e?.grid_export)}</dd>
           <dt>{t("report.keyFigures.fromGrid")}</dt><dd>{energyKwh(e?.grid_import)}</dd>
           <dt>{t("report.keyFigures.intoBattery")}</dt><dd>{energyKwh(e?.battery_charge)}</dd>

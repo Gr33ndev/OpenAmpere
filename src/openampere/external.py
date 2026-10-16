@@ -132,6 +132,10 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         if not runtime.config.control.enabled:
             raise HTTPException(403, "Die Steuerung ist in OpenAmpere ausgeschaltet (Mehr → Steuerung und Protokoll).")
 
+    def pv_external() -> dict | None:
+        pv = runtime.config.pv
+        return {"name": pv.external_name or "Zweiter Wechselrichter"} if pv.external else None
+
     def status() -> dict:
         latest = collector.latest
         control = runtime.config.control
@@ -140,7 +144,8 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
                 "off_grid": collector.outages.current is not None,  # confirmed, not the flag of one reading (#89)
                 "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run},
                 # here and not only in /info: it changes with an update of the inverter, read at each new connection
-                "firmware": collector.device.firmware if collector.device else None}
+                "firmware": collector.device.firmware if collector.device else None,
+                "pv_external": pv_external()}  # the integration sets up again when it changes in the app
 
     def own_devices() -> list[dict]:
         keys = ("id", "name", "kind", "enabled", "power_w", "on", "temperature_c", "target_c", "status", "error")
@@ -220,6 +225,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "pv_inputs": [{"index": i, "name": names[i] if i < len(names) and names[i] else f"Modulfeld {i + 1}"}
                           for i in range(count) if str(i + 1) not in hidden],
             "pv_input_count": count,  # also the hidden ones: the integration sets up again when the number changes
+            "pv_external": pv_external(),  # a counted second PV inverter (#419): its sensors exist only then
             "devices": [{"id": d["id"], "name": d["name"], "kind": d["kind"]} for d in own_devices()],
             "wallboxes": [{"id": wb.id, "name": wb.name, "model": WALLBOX_MODELS[wb.model].label}
                           for wb in (wallboxes.wallboxes if wallboxes else [])],

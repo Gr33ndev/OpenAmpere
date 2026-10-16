@@ -205,5 +205,6 @@ async def test_the_collector_counts_meter_b_only_with_the_setting(tmp_path):
             while runtime.collector.latest is first:
                 await asyncio.sleep(0.05)
             assert runtime.collector.latest.pv_external_power == 700
+            assert runtime.collector.latest.totals.pv_external is not None  # OpenAmpere's integral (#419)
         finally:
             await runtime.collector.stop()
