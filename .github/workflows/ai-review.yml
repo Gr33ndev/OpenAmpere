@@ -88,9 +88,10 @@ jobs:
             ${{ steps.issues.outputs.text }}
             </linked-issues>
           # Read, Grep and Glob are not listed: without that they only work inside the checkout. The process of Claude
-          # itself still holds the OAuth token, hence no reading of /proc (or of .git).
+          # itself still holds the OAuth token, hence no reading of /proc (or of .git). The summary is written to one
+          # file and posted with --body-file: Markdown with backticks in --body counts as a command substitution.
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 40
             --disallowedTools "Read(//proc/**),Grep(//proc/**),Read(./.git/**),Grep(./.git/**)"
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Edit(./.ai-review-summary.md),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),mcp__github_inline_comment__create_inline_comment"

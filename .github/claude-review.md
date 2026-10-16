@@ -92,7 +92,9 @@ result.
 - **Inline comments** (`mcp__github_inline_comment__create_inline_comment`) for findings tied to a line, at most 10,
   the most important first. Each says what is wrong, why it matters and what to do. Prefix with `question:` if you
   are not sure. No comments on style, no praise, no summary of what the code does.
-- **One summary comment** with `gh pr comment <N> --edit-last --create-if-none --body "…"`, so a re-run updates it:
+- **One summary comment:** write it with the Write tool to `.ai-review-summary.md` (the only file you may write),
+  then post it with `gh pr comment <N> --edit-last --create-if-none --body-file .ai-review-summary.md`, so a re-run
+  updates it. Use exactly this form:
 
   ```markdown
   ## AI review
@@ -118,4 +120,4 @@ result.
   ```
 
   `–` means the area does not apply. Leave out empty sections.
-- Write in English. Never approve, request changes, push or edit files.
+- Write in English. Never approve, request changes, push or edit other files.
