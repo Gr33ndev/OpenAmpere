@@ -1,6 +1,48 @@
 {
   "versions": [
     {
+      "version": "0.32.0",
+      "date": "2026-10-16",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "saj",
+            "text": "Record the energy of a second PV inverter and show it in the report (#421)"
+          },
+          {
+            "scope": "saj",
+            "text": "Count a second PV inverter on Meter B and show it on its own (#420)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Show the FoxESS charger as the wallbox of EKD systems (#415)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "evcc",
+            "text": "Count a second PV inverter in the PV counter for evcc (#422)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Refuse only the inverter's own port in the wallbox check (#418)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Show an export limit above the rated power as no limit (#416)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Name the inverter's address in the wallbox check (#414)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.31.0",
       "date": "2026-10-16",
       "first": false,

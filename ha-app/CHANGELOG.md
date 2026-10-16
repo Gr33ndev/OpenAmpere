@@ -4,6 +4,21 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.32.0 (2026-10-16)
+
+### Neu
+
+- **saj:** Record the energy of a second PV inverter and show it in the report (#421)
+- **saj:** Count a second PV inverter on Meter B and show it on its own (#420)
+- **wallbox:** Show the FoxESS charger as the wallbox of EKD systems (#415)
+
+### Behoben
+
+- **evcc:** Count a second PV inverter in the PV counter for evcc (#422)
+- **wallbox:** Refuse only the inverter's own port in the wallbox check (#418)
+- **diagnostics:** Show an export limit above the rated power as no limit (#416)
+- **wallbox:** Name the inverter's address in the wallbox check (#414)
+
 ## 0.31.0 (2026-10-16)
 
 ### Neu
@@ -112,14 +127,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **homeassistant:** Show a battery setting change right away (#343)
-
-## 0.26.1 (2026-10-13)
-
-### Behoben
-
-- **diagnostics:** Leave raw modbus frames out of the report log (#341)
-- **homeassistant:** Keep the entities when the inverter answers slowly (#340)
-
-### Weitere Änderungen
-
-- **saj:** Record the battery limits confirmed on a device (#337)
