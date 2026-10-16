@@ -312,6 +312,7 @@ class Diagnostics:
         if getattr(driver, "KEY", None) == "saj":
             checks.append(await self._saj_limits())
             checks.append(await self._saj_control())
+            checks.append(await self._saj_meter_b())
 
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
@@ -382,6 +383,29 @@ class Diagnostics:
                      {"0x3644": depths.get("words"), "0x3651": backup.get("words"), "0x4029": read_back.get("words")},
                      hint="Vergleiche die Werte mit der Hersteller-App: Notstrom-Reserve im Netzbetrieb und "
                           "Entladegrenze im Notstrombetrieb. Weichen sie ab, schreib uns die Werte aus der App dazu.")
+
+    async def _saj_meter_b(self) -> Check:
+        """Meter B (0x40A3): a second PV inverter the SAJ measures, counted only with the setting (#419). 0x4030 is the
+        meter setting ("Meter Mode Set" at stanus74); its values are not known yet, the reports should tell."""
+        from .drivers.saj.registers import READ_FUNCTION
+        title = "Zweiter Wechselrichter an Meter B (0x40A3)"
+        power = await self._try(0x40A3, 1, READ_FUNCTION)
+        mode = await self._try(0x4030, 1, READ_FUNCTION)
+        counted = self.runtime.config.pv.external
+        details = {"0x4030": mode.get("words"), "counted": counted}
+        if not power["ok"]:
+            return Check("saj_meter_b", title, "info", f"0x40A3 {power['error']}", details)
+        raw = power["words"][0]
+        value = raw - 0x10000 if raw & 0x8000 else raw
+        details["rounded_w"] = rounded = round(value, -2)  # rounded like every power in the report
+        summary = (f"etwa {rounded} W, " + ("mitgezählt" if counted else "nicht mitgezählt")
+                   + (f"; Zähler-Einstellung 0x4030 = {mode['words'][0]}" if mode["ok"] else ""))
+        if counted or value <= 50:
+            return Check("saj_meter_b", title, "info", summary, details)
+        return Check("saj_meter_b", title, "warn", summary, details,
+                     hint="Meter B misst Leistung, OpenAmpere zählt sie aber nicht mit. Ist das ein zweiter "
+                          "PV-Wechselrichter, schalte ihn unter Mehr → Meine Anlage → Modulfelder benennen ein. Sonst "
+                          "fehlt seine Leistung bei Erzeugung und Verbrauch.")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

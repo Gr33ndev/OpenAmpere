@@ -93,7 +93,8 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
       </div>
       <PvInputsCard snap={snap} />
       <div className="card menu">
-        <MenuRow label={t("settings.installationPage.nameStrings")} hint={t("settings.installationPage.stringNamesHint")} onClick={() => onNavigate("pv")} />
+        <MenuRow label={t("settings.installationPage.nameStrings")} onClick={() => onNavigate("pv")}
+          hint={status?.external_pv_w != null ? t("settings.installationPage.stringNamesAndSecondHint") : t("settings.installationPage.stringNamesHint")} />
         <MenuRow label={t("common.exportLimit")} hint={t("settings.installationPage.pvCapacityAndRule")} onClick={() => onNavigate("export-limit")} />
       </div>
 

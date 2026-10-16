@@ -24,8 +24,10 @@
     "discharging": "discharging",
     "gridPower": "Grid {power}",
     "housePower": "House {power}",
+    "inverterPv": "Inverter",
     "noData": "Energy flow, no data",
     "outdated": "outdated",
+    "secondInverter": "Second inverter",
     "solarPower": "Solar {power}"
   },
   "importHint": {
@@ -47,6 +49,7 @@
     "title": "Power cut: running on backup power"
   },
   "pvInputsCard": {
+    "measuredByMeter": "own inverter, measured by the meter at the storage system",
     "title": "Solar by string"
   },
   "retro": {
@@ -76,5 +79,9 @@
     "importAndFeedIn": "“Import” means power comes from the grid. “Feed-in” means you are sending power to the grid.",
     "report": "The report shows days, weeks and years. Tap a chart for the exact values.",
     "title": "How to read the overview"
+  },
+  "secondInverterHint": {
+    "hint": "The meter “Meter B” at your storage system reads {power} right now. Usually this is a second PV inverter. OpenAmpere counts it only once you set it up; until then its power is missing from generation and consumption.",
+    "title": "Second inverter?"
   }
 }

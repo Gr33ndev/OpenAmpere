@@ -24,8 +24,10 @@
     "discharging": "entlädt",
     "gridPower": "Netz {power}",
     "housePower": "Haus {power}",
+    "inverterPv": "Wechselrichter",
     "noData": "Energiefluss, keine Daten",
     "outdated": "veraltet",
+    "secondInverter": "Zweiter Wechselrichter",
     "solarPower": "Solar {power}"
   },
   "importHint": {
@@ -47,6 +49,7 @@
     "title": "Stromausfall: Notstrombetrieb"
   },
   "pvInputsCard": {
+    "measuredByMeter": "eigener Wechselrichter, gemessen mit dem Zähler am Speicher",
     "title": "Solar nach Modulfeldern"
   },
   "retro": {
@@ -76,5 +79,9 @@
     "importAndFeedIn": "„Bezug“ heißt: Strom kommt aus dem Netz. „Einspeisung“: Du gibst Strom ab.",
     "report": "In der Auswertung siehst du Tage, Wochen und Jahre. Tippe auf ein Diagramm für die genauen Werte.",
     "title": "So liest du die Übersicht"
+  },
+  "secondInverterHint": {
+    "hint": "Der Zähler „Meter B“ an deinem Speicher misst gerade {power}. Meist ist das ein zweiter PV-Wechselrichter. OpenAmpere zählt ihn erst mit, wenn du ihn einrichtest; bis dahin fehlt seine Leistung bei Erzeugung und Verbrauch.",
+    "title": "Zweiter Wechselrichter?"
   }
 }

@@ -52,6 +52,8 @@ class Collector:
         self.storage_error: str | None = None  # full | read_only | other
         self._storage_logged = 0.0
         self._last_today_pv: float | None = None
+        self.external_pv = False  # count an extra PV inverter the inverter measures (setting pv.external, #419)
+        self.external_pv_w: float | None = None  # what that meter reads, also before the owner counts it
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
 
@@ -191,6 +193,8 @@ class Collector:
                     self.device = await self.driver.connect()
                 started = time.monotonic()
                 snap = (await self.driver.read()).sanitize()
+                self.external_pv_w = snap.pv_external_power
+                snap.count_external_pv(self.external_pv)
                 log.debug("reading took %.0f ms", (time.monotonic() - started) * 1000)
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:

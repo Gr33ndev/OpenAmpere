@@ -604,6 +604,7 @@
     "pvGeneration": "PV generation",
     "pvStrings": "PV strings",
     "serialNumber": "Serial no.",
+    "stringNamesAndSecondHint": "e.g. south roof, garage; second inverter on Meter B",
     "stringNamesHint": "e.g. south roof, garage",
     "temperature": "Temperature",
     "totalCharged": "Total charged",
@@ -847,5 +848,13 @@
     "peakShavingHint": "The battery only covers high consumption peaks.",
     "selfUseHint": "Use solar power in the house first and store the surplus. Recommended.",
     "backupKeepsReserveHint": "Keeps its own reserve for power cuts; above it the battery is used as usual."
+  },
+  "externalPv": {
+    "count": "Count the second inverter",
+    "intro": "Does your system have a second PV inverter without its own connection whose power a meter at the storage system measures (Meter B on SAJ)? Then OpenAmpere adds it to the solar power and shows it separately in the energy flow and the report. Without such a meter, leave the switch off.",
+    "meterNow": "The meter reads {power} right now.",
+    "name": "Name",
+    "nameHint": "For example “Garage”. Leave empty: “Second inverter”.",
+    "title": "Second inverter"
   }
 }

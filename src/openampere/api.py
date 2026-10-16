@@ -608,6 +608,9 @@ def create_app(runtime: Runtime) -> FastAPI:
             "poll_interval": collector.interval,
             "device": device,
             "energy_step_wh": collector.energy_step_wh(),
+            # what a meter at the inverter reads for a second PV inverter (SAJ Meter B), also before it is counted
+            # (#419); None if the inverter has no such meter
+            "external_pv_w": collector.external_pv_w,
             "firmware": {**firmware, "history": storage.get_meta("firmware_history") or []},
             "control": {"enabled": control.enabled, "dry_run": control.dry_run},
             "home_assistant": home_assistant.view(),  # only for the Home Assistant app (#300)

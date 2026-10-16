@@ -604,6 +604,7 @@
     "pvGeneration": "PV-Erzeugung",
     "pvStrings": "Modulfelder",
     "serialNumber": "Seriennr.",
+    "stringNamesAndSecondHint": "z. B. Süddach, Garage; zweiter Wechselrichter an Meter B",
     "stringNamesHint": "z. B. Süddach, Garage",
     "temperature": "Temperatur",
     "totalCharged": "Gesamt geladen",
@@ -847,5 +848,13 @@
     "peakShavingHint": "Speicher deckt nur hohe Verbrauchsspitzen.",
     "selfUseHint": "Solarstrom zuerst im Haus nutzen, Überschuss speichern. Empfohlen.",
     "backupKeepsReserveHint": "Hält eine eigene Reserve für Stromausfälle zurück, darüber wird der Speicher wie gewohnt genutzt."
+  },
+  "externalPv": {
+    "count": "Zweiten Wechselrichter mitzählen",
+    "intro": "Hängt an deiner Anlage ein zweiter PV-Wechselrichter ohne eigene Verbindung, dessen Leistung ein Zähler am Speicher misst (bei SAJ „Meter B“)? Dann zählt OpenAmpere ihn zur Solarleistung dazu und zeigt ihn im Energiefluss und in der Auswertung getrennt an. Ohne diesen Zähler bleibt der Schalter aus.",
+    "meterNow": "Der Zähler misst gerade {power}.",
+    "name": "Name",
+    "nameHint": "Zum Beispiel „Garage“. Leer lassen: „Zweiter Wechselrichter“.",
+    "title": "Zweiter Wechselrichter"
   }
 }

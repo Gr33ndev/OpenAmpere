@@ -67,6 +67,8 @@ VALUES = {
     "pv4_current": Reg(0x407B, Kind.U16, 0.01),
     "pv4_power": Reg(0x407C),
     "house_power": Reg(0x40A0, Kind.I16),
+    # "CT PV power": a second meter (Meter B) measuring an extra PV inverter, not part of 0x40A5 (#419)
+    "meter_b_pv_power": Reg(0x40A3, Kind.I16),
     "pv_power": Reg(0x40A5, Kind.I16),
     "battery_power": Reg(0x40A6, Kind.I16),  # + = discharge
     "grid_power": Reg(0x40AD, Kind.I16),  # + = import (system meter)

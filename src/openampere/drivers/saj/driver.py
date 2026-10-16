@@ -320,6 +320,8 @@ def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None
     return Snapshot(
         timestamp=timestamp,
         pv_power=pv_power,
+        # the meter's direction depends on how it is installed; at night the extra inverter draws a few watts
+        pv_external_power=None if g("meter_b_pv_power") is None else max(0.0, g("meter_b_pv_power")),
         house_power=g("house_power"),
         grid_power=g("grid_power"),
         battery_power=g("battery_power"),
