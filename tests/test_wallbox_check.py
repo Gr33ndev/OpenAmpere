@@ -119,7 +119,8 @@ async def test_unknown_wallbox(runtime):
 
 def test_endpoints(runtime, authed):
     client = TestClient(create_app(runtime))
-    assert client.get("/api/wallbox/models").json() == {"models": [{"key": "foxess_ac", "label": "FoxESS AC EV Charger"}]}
+    assert client.get("/api/wallbox/models").json() == {"models": [{"key": "foxess_ac", "label": "FoxESS AC EV Charger",
+                                                                   "sold_by": ["EKD"]}]}
     client.headers.update({"x-openampere": "1"})
     body = {"model": "foxess_ac", "host": "127.0.0.1", "port": 9}
     assert client.post("/api/wallbox/check", json=body).status_code == 401

@@ -5,7 +5,7 @@
 > legal advice. See [Device knowledge](../README.md).
 
 **Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** not stated in the
-sources · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup · **Support:** display
+sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup · **Support:** display
 only (read-only check, no control) · **Confirmed on a real device:** no
 
 ## Summary
@@ -62,6 +62,9 @@ None of these registers is confirmed on a device for OpenAmpere yet; the check e
 |---|---|---|
 | Modbus TCP over LAN or WLAN; port 502 according to the protocol, 1502 seen in at least one integration; unit id 1 by default; all registers are holding registers (FC03). | documented | FoxESS EV Charger Modbus TCP protocol V1.6; [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325) |
 | The charger announces Modbus TCP over mDNS as `EVC-<serial>._modbus._tcp`. | derived | [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325), [#327](https://github.com/Gr33ndev/OpenAmpere/issues/327), [probe.py](../../../src/openampere/probe.py) |
+| The wallbox that came with EKD (Ampere.IQ) systems is this charger: owners' wallboxes announce themselves as `EVC-<serial>` and are found by OpenAmpere's search; owners know it as "the EKD wallbox". | derived | owner reports, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
+| With evcc's `foxess-evc` template one owner's charger closed the connection at once (`connection reset by peer`). Likely causes: not in the Modbus TCP mode, or another client holds the connection. | open | owner report, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
+| Register lists of other charger families (e.g. holding registers 100, 300, 400) do not apply; an evcc `custom` charger built from them only timed out. | derived | owner report, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
 | Three communication modes, set in the Fox Switch app, one at a time: default (FoxESS app/cloud with PV linkage), Modbus TCP, OCPP. | documented | Fox Switch app manual V1.0.1; [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | In default mode the charger can be wired over RS485 to a FoxESS inverter (H3, H3 Pro, H3 Smart, see [h3.md](h3.md)) or a shared meter and charges from surplus by itself: Fast (full current), Economic (solar first, at least 6 A from the grid), Green (surplus only). FoxESS requires self-use mode, no export limit and the order house → car → battery (the home battery may discharge into the car). | documented | FoxESS energy management user manual; [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | In default mode Modbus TCP is read-only according to the Fox Switch app manual (section 8.6). | documented | Fox Switch app manual V1.0.1; [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
@@ -91,7 +94,10 @@ None of these registers is confirmed on a device for OpenAmpere yet; the check e
   some firmware refuses every read with exception 6 outside the Modbus TCP mode. Only a real device can settle whether
   reads work in default mode ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318),
   [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)).
-- Port (502 or 1502) and unit id on real devices.
+- Port (502 or 1502) and unit id on real devices (an owner of an EKD system reports unit id 1, not yet confirmed by a
+  check, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)).
+- Whether the Ampere.IQ smartbox of EKD systems talks to the charger, and over which protocol
+  ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)).
 - Number of simultaneous Modbus connections.
 - Real watchdog time and fallback (default current or full power); whether a stop holds after the link is lost;
   which configuration values are stored.

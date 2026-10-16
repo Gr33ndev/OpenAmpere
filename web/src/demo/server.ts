@@ -516,7 +516,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/evcc": evcc,
   "/api/wallbox/ocpp": () => ({ active: false, remaining_s: 0, connected: false, path: "/ocpp", charge_point: null, vendor: null,
     model: null, firmware: null, configuration_keys: 0, status: null, messages: 0 }),
-  "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger" }] }),
+  "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger", sold_by: ["EKD"] }] }),
   "/api/wallboxes": nativeWallboxes,
   "/api/devices": devices,
   "/api/surplus-order": () => ({ order: ["battery", "wallbox", "c:demo1"], battery_soc: 50, items: [

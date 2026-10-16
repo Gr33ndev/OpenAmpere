@@ -178,6 +178,7 @@
     "hintNow": "Lädt sofort mit dem Ladestrom unten. Den Strom liefern Sonne, Speicher oder Netz, der Speicher kann sich dabei ins Auto entladen.",
     "modeCurrent": "Höchster Ladestrom in diesem Modus",
     "amps": "{current} A",
+    "soldBy": "{label} (auch von {sellers} verkauft)",
     "stopAfter": "Solar-Laden pausieren nach (Minuten)",
     "stopAfterHint": "Kommt im Modus „Solar“ eine Wolke, lädt die Wallbox so lange mit der kleinsten Stufe weiter. Den Rest liefern Speicher oder Netz. Länger heißt seltener unterbrechen, kürzer heißt weniger Strom aus dem Netz. 1 bis 60 Minuten."
   },

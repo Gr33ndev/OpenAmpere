@@ -36,6 +36,7 @@ test("a wallbox found in the home network is taken over like in the device reade
   await open(page, "more/wallbox");
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  await expect(page.locator('option[value="foxess_ac"]')).toHaveText("FoxESS AC EV Charger (auch von EKD verkauft)"); // #412
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
   await page.getByRole("button", { name: "Wallbox im Heimnetz suchen" }).click();
   await page.getByRole("button", { name: "Übernehmen" }).click();

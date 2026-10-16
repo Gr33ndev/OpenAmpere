@@ -111,7 +111,8 @@ network of its own. Enter the IP address from your router by hand.
 
 ## Checking other wallboxes (read-only)
 
-For more wallboxes OpenAmpere is preparing the direct way, starting with the FoxESS AC EV Charger (#318). Under
+For more wallboxes OpenAmpere is preparing the direct way, starting with the FoxESS AC EV Charger (#318). This is
+also the wallbox EKD sold with its Ampere.IQ systems; in the router it shows up as `EVC-…`. Under
 **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose it under **Welche Wallbox hast du?**
 in "Nur prüfen (Vorschau)" (check only, preview). Then OpenAmpere checks the wallbox
 read-only, in the mode it is in, and shows what it answers. Nothing is changed on the wallbox. The result goes into

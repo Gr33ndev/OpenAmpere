@@ -235,7 +235,11 @@ function AddWallbox({ view, origin, busy, onSave, onCancel }: {
             {view.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
           </optgroup>
           <optgroup label={t("devices.nativeWallbox.groupChecked")}>
-            {checkable.models.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+            {checkable.models.map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.sold_by?.length ? t("devices.nativeWallbox.soldBy", { label: m.label, sellers: m.sold_by.join(", ") }) : m.label}
+              </option>
+            ))}
           </optgroup>
           <option value="other">{t("devices.wallboxDirect.modelOther")}</option>
         </select>

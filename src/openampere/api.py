@@ -1194,7 +1194,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.get("/api/wallbox/models")
     def wallbox_models():
-        return {"models": [{"key": w.key, "label": w.label} for w in WALLBOXES.values()]}
+        return {"models": [{"key": w.key, "label": w.label, "sold_by": list(w.sold_by)} for w in WALLBOXES.values()]}
 
     @app.post("/api/wallbox/check")
     async def wallbox_check(request: WallboxCheckRequest):

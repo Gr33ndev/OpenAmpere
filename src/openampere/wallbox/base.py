@@ -11,6 +11,7 @@ from ..drivers.modbus import ascii_text
 class Wallbox:
     key: str = ""
     label: str = ""
+    sold_by: tuple[str, ...] = ()  # other sellers owners know the wallbox by, so they find it in the list (#412)
     ports: tuple[int, ...] = (502,)  # tried in this order
     unit: int = 1
     function: int = 3
