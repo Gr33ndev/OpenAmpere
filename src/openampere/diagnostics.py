@@ -193,7 +193,8 @@ class Diagnostics:
         if not include_serial:
             info["serial"] = privacy.shorten(info.get("serial"))
         now = time.time()
-        report = self._pseudonymise({"created": now, "version": self._version(), "device": info,
+        report = self._pseudonymise({"created": now, "version": self._version(), "full_serial": include_serial,
+                                     "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
@@ -472,11 +473,18 @@ def plural(n: int, one: str, many: str) -> str:
     return f"{n} {one if n == 1 else many}"
 
 
+# the report is meant for public issues; with the full serial number it identifies the installation (#428)
+FULL_SERIAL_WARNING = ("> **Achtung:** Dieser Bericht enthält die vollständige Seriennummer. Bitte nicht öffentlich "
+                       "posten, nur in einer privaten Nachricht an die Entwickler weitergeben.")
+
+
 def report_markdown(report: dict) -> str:
     """Plain text for copying into an issue."""
     device = report.get("device") or {}
+    # stored reports from before #428 have no "full_serial": they count as masked
+    lines = [FULL_SERIAL_WARNING, ""] if report.get("full_serial") else []
     # no date and time: the report goes into public issues, and the time of an owner's action is personal (#149)
-    lines = ["## OpenAmpere-Diagnose", "",
+    lines += ["## OpenAmpere-Diagnose", "",
              f"- Version: {report.get('version')}",
              f"- Gerät: {device.get('manufacturer')} {device.get('model')} (Firmware {device.get('firmware')}, "
              f"Seriennr. {device.get('serial')})" if device.get("model") else "- Gerät: nicht erkannt",

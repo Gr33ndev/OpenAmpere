@@ -290,7 +290,7 @@
     "port": "Port",
     "portHint": "Leer lassen: OpenAmpere probiert die üblichen Ports dieser Wallbox (502 und 1502).",
     "preview": "Vorschau: OpenAmpere prüft deine Wallbox nur lesend und erstellt einen Bericht. Steuern kann es sie so noch nicht. Dafür braucht es erst Berichte von echten Geräten, die zeigen, dass alle Werte stimmen.",
-    "reportHint": "Bitte erstelle jetzt den Diagnosebericht und teile ihn. Er enthält das Ergebnis der Prüfung, aber keine Kartennummer, keine Zählerstände und keine Seriennummer.",
+    "reportHint": "Bitte erstelle jetzt den Diagnosebericht und teile ihn. Er enthält das Ergebnis der Prüfung, aber keine Kartennummer und keine Zählerstände. Die Seriennummer ist darin gekürzt, solange du sie in der Diagnose nicht ausdrücklich vollständig aufnimmst.",
     "result": "Ergebnis",
     "search": "Wallbox im Heimnetz suchen",
     "status": "Zustand",
