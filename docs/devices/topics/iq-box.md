@@ -19,6 +19,7 @@ without a manufacturer name.
 - Owners stop this by blocking the box's internet access in the router, or by disconnecting the box if nothing else
   needs it (for example control by the grid operator).
 - On a FoxESS H3 the box holds one of the very few Modbus TCP connections all the time.
+- While it is powered, OpenAmpere cannot read the FoxESS AC EV Charger that came with the system ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - On a FoxESS H3 it uses the inverter's remote control with its own values (enable 5, timeout 30 s), which is how
   OpenAmpere tells it apart from its own commands (1 and 180 s).
 - On an SAJ it writes the work mode and the reserve, and while charging from the grid an undocumented block at
@@ -50,7 +51,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | Blocking the box's internet access in the router stops the resets: an owner kept a changed backup reserve and a switch to price-based grid charging. | confirmed | [#25](https://github.com/Gr33ndev/OpenAmpere/issues/25), [#53](https://github.com/Gr33ndev/OpenAmpere/issues/53) |
 | With its internet access blocked, the box keeps reading along but gets no targets and no updates, and the manufacturer's app shows no current data. | derived | [#25](https://github.com/Gr33ndev/OpenAmpere/issues/25), [#53](https://github.com/Gr33ndev/OpenAmpere/issues/53) |
 | On a FoxESS H3 the box keeps its own Modbus TCP connection open all the time and does not release it, so it can take one of the inverter's very few connection slots. OpenAmpere's "per poll" connection mode does not help against it. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
-| The box is also configured as a Modbus TCP client of the FoxESS AC EV Charger ("Ampere.ChargePro Bridge", host `EVC-<serial>.local`, unit id 1, port 502, not configurable on its settings page), so it can hold the charger's connection as well; see [ac-charger.md](../foxess/ac-charger.md). | derived | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427) |
+| The box is also configured as a Modbus TCP client of the FoxESS AC EV Charger ("Ampere.ChargePro Bridge", host `EVC-<serial>.local`, unit id 1, port 502, not configurable on its settings page). While the box is powered, OpenAmpere cannot read the charger; with the box cut from power the wallbox check reads it at once. Whether the charger allows only one client or mishandles concurrent clients, and whether the box also controls the charger, is open; see [ac-charger.md](../foxess/ac-charger.md). | configured as a client: derived; blocks access: confirmed (one device) | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427); owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | Disconnecting the box from the network (its LAN cable or its power, not the inverter's) frees the slot. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311) |
 | At one installation that routed everything through a Modbus proxy, the box set itself back to the inverter's own address after a while and took a slot again. A proxy is no lasting way to share the inverter with the box. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
 | After the box is disconnected, the inverter keeps working with the settings stored last (including the export limit). | open (stated in the guide, not reported from a device) | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
@@ -99,6 +100,9 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
   balance, which the manufacturer's app showed. Possibly different devices or apps; see [modbus.md](modbus.md).
 - Whether and when the EKD cloud will be switched off ([#84](https://github.com/Gr33ndev/OpenAmpere/issues/84)).
 - The ZIP edge cases above come from reviews, not from a real export ([#288](https://github.com/Gr33ndev/OpenAmpere/issues/288)).
+- Whether the box only reads the FoxESS AC EV Charger or also controls it, and why the charger cannot be read while
+  the box is powered (only one client, or concurrent clients mishandled;
+  [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - Who made the box is not stated in OpenAmpere's sources.
 
 ## Sources
@@ -121,7 +125,9 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
   [#346](https://github.com/Gr33ndev/OpenAmpere/issues/346), [#373](https://github.com/Gr33ndev/OpenAmpere/issues/373),
   [#374](https://github.com/Gr33ndev/OpenAmpere/issues/374), [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377),
   [#378](https://github.com/Gr33ndev/OpenAmpere/issues/378), [#382](https://github.com/Gr33ndev/OpenAmpere/issues/382),
-  [#383](https://github.com/Gr33ndev/OpenAmpere/issues/383).
+  [#383](https://github.com/Gr33ndev/OpenAmpere/issues/383), [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427),
+  [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431); an owner's diagnostics report from the wallbox check (not
+  linked).
 - Device pages: [foxess/h3.md](../foxess/h3.md), [saj/h2-family.md](../saj/h2-family.md).
 - Code: `src/openampere/control.py`, `src/openampere/diagnostics.py`, `src/openampere/drivers/modbus.py`,
   `src/openampere/drivers/foxess/driver.py`, `src/openampere/drivers/saj/driver.py`, `src/openampere/cloud_import.py`.
