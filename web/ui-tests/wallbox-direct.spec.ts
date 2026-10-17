@@ -71,6 +71,16 @@ test("a refused connection and an unknown name get their own advice", async ({ p
   const refused = page.locator(".notice.warn", { hasText: "keine Modbus-Verbindung" });
   await expect(refused).toContainText("(Port 502)");
   await expect(refused).toContainText("bisherige Smartbox");
+  await expect(refused).toContainText("vom Strom");
+
+  // #431: an accepted connection without a proper answer, or one closed at once, names the smartbox as well
+  for (const [outcome, text] of [["no_answer", "nicht richtig"], ["connections_taken", "schon ein anderes Gerät"]]) {
+    api.override("/api/wallbox/check", { ...READABLE, outcome, findings: {} });
+    await page.getByRole("button", { name: "Wallbox prüfen" }).click();
+    const notice = page.locator(".notice", { hasText: text });
+    await expect(notice).toContainText("bisherige Smartbox");
+    await expect(notice).toContainText("vom Strom");
+  }
 
   api.override("/api/wallbox/check", { ...READABLE, host: "EVC-example.local", port: null, outcome: "unresolved",
     tried_ports: [], ports: {}, local_name_in_app: true, findings: {} });
