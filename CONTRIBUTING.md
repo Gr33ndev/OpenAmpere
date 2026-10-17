@@ -125,7 +125,7 @@ The review checks:
 
 An automatic review with Claude (`.github/workflows/ai-review.yml`, instructions in
 [.github/claude-review.md](.github/claude-review.md)) comments on pull requests from this repository once they are
-ready for review, and again on the label `ai-review`. It checks the points above, the issue against the change and
+ready for review, after every push and again on the label `ai-review`. It checks the points above, the issue against the change and
 the device knowledge in `docs/devices/`. Its comments are hints, not a decision; it does not replace the review of
 a maintainer. If the check `review` fails, the review wrote nothing: remove the label `ai-review` and add it again.
 
