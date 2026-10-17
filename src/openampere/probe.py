@@ -14,6 +14,7 @@ reads may refuse the connection or drop evcc's for a moment.
 from __future__ import annotations
 
 import asyncio
+import errno
 import html
 import ipaddress
 import json
@@ -57,8 +58,19 @@ class ProbeError(Exception):
         self.message = message
 
 
+class ProbeUnresolved(ProbeError):
+    """The host name cannot be resolved here (#427): e.g. a .local name in the Home Assistant app, which has no host
+    network."""
+
+
 class ProbeUnreachable(ProbeError):
-    """Nothing accepts a connection at host:port (another port may work)."""
+    """No Modbus connection at host:port (another port may work). .reason tells why (#427): "refused" (the host
+    answers, nothing takes the connection on that port), "timeout" (nothing answers at that address) or "open" (a
+    plain connection works, the Modbus client's did not)."""
+
+    def __init__(self, message: str, reason: str) -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class ProbeBusy(ProbeError):
@@ -97,8 +109,28 @@ def _valid_host(host: str) -> str:
     return host.strip("[]")
 
 
+def _resolves(host: str) -> bool:
+    try:
+        socket.getaddrinfo(host, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+    return True
+
+
+def is_local_name(host: str) -> bool:
+    """A multicast DNS name such as EVC-<serial>.local (the old smartbox shows the charger by such a name)."""
+    return host.lower().rstrip(".").endswith(".local")
+
+
 async def _check_home(host: str) -> str:
     host = _valid_host(host)
+    # resolved first: an unknown name would count as local and then fail like a device that does not answer (#427)
+    if not await asyncio.to_thread(_resolves, host):
+        if ha_app.active() and is_local_name(host):  # the app has no host network, so no multicast DNS
+            raise ProbeUnresolved("Namen, die auf .local enden, funktionieren in der Home-Assistant-App nicht. Bitte "
+                                  "gib die IP-Adresse des Geräts ein, du findest sie in der Geräteliste deines Routers.")
+        raise ProbeUnresolved(f"Den Namen {host} findet OpenAmpere im Heimnetz nicht. Bitte gib die IP-Adresse des "
+                              f"Geräts ein, du findest sie in der Geräteliste deines Routers.")
     if not await asyncio.to_thread(in_home_network, host):
         raise ProbeError("Bitte eine Adresse im Heimnetz angeben.")
     return host
@@ -177,7 +209,13 @@ class Probe:
         client = AsyncModbusTcpClient(host, port=port, timeout=TIMEOUT_S, retries=0, reconnect_delay=0)
         try:
             if not await client.connect():
-                raise ProbeUnreachable(f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?")
+                reason = await _connect_failure(host, port)
+                if reason == "timeout":
+                    raise ProbeUnreachable(f"Unter {host} antwortet kein Gerät auf Port {port}. Stimmt die Adresse, "
+                                           f"und ist das Gerät eingeschaltet und im Heimnetz?", reason)
+                raise ProbeUnreachable(f"{host} ist erreichbar, nimmt auf Port {port} aber keine Modbus-Verbindung "
+                                       f"an. Vielleicht ist der Port falsch, oder ein anderes Programm wie evcc hält "
+                                       f"die einzige Verbindung des Geräts.", reason)
             await asyncio.sleep(CONNECT_SETTLE_S)
             if not client.connected:
                 raise ProbeBusy("Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle "
@@ -292,6 +330,30 @@ async def _port_open(host: str, port: int, timeout: float = 1.5) -> bool:
         return True
     except (OSError, asyncio.TimeoutError):
         return False
+
+
+async def _connect_failure(host: str, port: int, timeout: float = TIMEOUT_S) -> str:
+    """Why the Modbus client could not connect, which pymodbus does not tell (#427): one plain connection, only after
+    the client failed, so a working device never gets an extra one. "refused": the host answered with a reset;
+    "timeout": nothing answered (or the address is not reachable at all); "open": this connection worked."""
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout)
+    except (OSError, asyncio.TimeoutError) as err:
+        return "refused" if _refused(err) else "timeout"
+    writer.close()
+    try:
+        await asyncio.wait_for(writer.wait_closed(), 1)
+    except (OSError, asyncio.TimeoutError):
+        pass
+    return "open"
+
+
+def _refused(err: Exception) -> bool:
+    if isinstance(err, ConnectionRefusedError) or getattr(err, "errno", None) == errno.ECONNREFUSED:
+        return True
+    # a name with several addresses (IPv4 and IPv6): asyncio joins their errors into one text without an errno
+    codes = re.findall(r"\[Errno (\d+)\]", str(err))
+    return bool(codes) and all(int(code) == errno.ECONNREFUSED for code in codes)
 
 
 def _url_host(host: str) -> str:

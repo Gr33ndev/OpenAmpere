@@ -12,20 +12,39 @@ import { Button, copyText, Field, HOST_INPUT, hostText, Notice, toast } from "./
  *  nothing is written to the wallbox, the result goes into the diagnostics report so the registers can be confirmed
  *  on real devices. */
 
-type Outcome = "readable" | "busy" | "rejected" | "no_answer" | "connections_taken" | "unreachable";
+type Outcome = "readable" | "busy" | "rejected" | "no_answer" | "connections_taken" | "unresolved" | "connection_refused"
+  | "unreachable";
 type Findings = { model?: string | null; firmware?: string | null; status?: string | null; max_power_kw?: number | null;
   min_current_a?: number | null; max_current_a?: number | null; work_mode?: string | null; fallback_current_a?: number | null;
   validity_s?: number | null; phase_switching?: boolean | null };
 export type WallboxCheckResult = { model: string; label: string; host: string; port: number | null; unit: number;
-  outcome: Outcome; tried_ports: number[]; findings: Findings };
+  outcome: Outcome; tried_ports: number[]; findings: Findings;
+  /** Why a port gave no Modbus connection (#427): refused, nothing answered, or a plain connection worked. */
+  ports?: Record<string, "refused" | "timeout" | "open">; local_name_in_app?: boolean };
 
-const OUTCOME: Record<Exclude<Outcome, "unreachable">, string> = {
+const OUTCOME: Record<Exclude<Outcome, "unresolved" | "connection_refused" | "unreachable">, string> = {
   readable: t("devices.wallboxDirect.outcomeReadable"),
   busy: t("devices.wallboxDirect.outcomeBusy"),
   rejected: t("devices.wallboxDirect.outcomeRejected"),
   no_answer: t("devices.wallboxDirect.outcomeNoAnswer"),
   connections_taken: t("devices.wallboxDirect.outcomeConnectionsTaken"),
 };
+function outcomeText(result: WallboxCheckResult): string {
+  switch (result.outcome) {
+    case "unresolved":
+      return result.local_name_in_app ? t("devices.wallboxDirect.outcomeUnresolvedLocalInApp")
+        : t("devices.wallboxDirect.outcomeUnresolved", { host: result.host });
+    case "connection_refused": {
+      const refused = Object.entries(result.ports ?? {}).filter(([, state]) => state !== "timeout").map(([port]) => port);
+      return t("devices.wallboxDirect.outcomeConnectionRefused", { ports: refused.join(", ") });
+    }
+    case "unreachable":
+      return t("devices.wallboxDirect.outcomeUnreachable", { ports: result.tried_ports.join(", ") });
+    default:
+      return OUTCOME[result.outcome];
+  }
+}
+
 const STATUS: Record<string, string> = {
   idle: t("devices.wallboxDirect.statusIdle"), connected: t("devices.wallboxDirect.statusConnected"),
   starting: t("devices.wallboxDirect.statusStarting"), charging: t("devices.wallboxDirect.statusCharging"),
@@ -193,10 +212,9 @@ export function WallboxCheck({ origin, model, onCancel }: { origin: string; mode
       {result && (
         <>
           <strong>{t("devices.wallboxDirect.result")}</strong>
-          <Notice kind={result.outcome === "readable" ? "ok" : result.outcome === "unreachable" ? "error" : "warn"}>
-            {result.outcome === "unreachable"
-              ? t("devices.wallboxDirect.outcomeUnreachable", { ports: result.tried_ports.join(", ") })
-              : OUTCOME[result.outcome]}
+          <Notice kind={result.outcome === "readable" ? "ok"
+            : result.outcome === "unreachable" || result.outcome === "unresolved" ? "error" : "warn"}>
+            {outcomeText(result)}
           </Notice>
           <Facts f={result.findings} />
           {result.findings.fallback_current_a != null && <p className="hint flush">{t("devices.wallboxDirect.fallbackHint")}</p>}

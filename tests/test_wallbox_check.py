@@ -5,6 +5,7 @@ card number, the energy counters and the serial number out of the report."""
 
 import asyncio
 import json
+import socket
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +17,7 @@ from openampere.probe import Probe
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedFoxCharger
 from openampere.storage import Storage
-from openampere.wallbox import WallboxCheck
+from openampere.wallbox import WallboxCheck, check_markdown
 from openampere.wallbox.foxess import FoxEssCharger
 
 
@@ -38,7 +39,17 @@ async def serve(charger):
     return server, server.sockets[0].getsockname()[1]
 
 
-async def test_reads_the_charger_in_its_current_mode(runtime):
+def free_port() -> int:
+    """A port nothing listens on: the host answers a connection with a reset."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+async def test_reads_the_charger_in_its_current_mode(runtime, monkeypatch):
+    async def no_extra_connection(host, port, timeout=probe.TIMEOUT_S):
+        raise AssertionError("only after the Modbus client failed")
+    monkeypatch.setattr(probe, "_connect_failure", no_extra_connection)
     charger = SimulatedFoxCharger()
     server, port = await serve(charger)
     async with server:
@@ -79,13 +90,68 @@ async def test_single_phase_model_without_phase_switching_registers(runtime):
 async def test_tries_the_usual_ports(runtime, monkeypatch):
     charger = SimulatedFoxCharger()
     server, port = await serve(charger)
-    monkeypatch.setattr(FoxEssCharger, "ports", (9, port))  # nothing listens on port 9
+    closed = free_port()
+    monkeypatch.setattr(FoxEssCharger, "ports", (closed, port))
     async with server:
         result = await WallboxCheck(Probe(runtime)).run("foxess_ac", "127.0.0.1", None, None)
-    assert result["tried_ports"] == [9, port] and result["outcome"] == "readable"
-    monkeypatch.setattr(FoxEssCharger, "ports", (9,))
-    result = await WallboxCheck(Probe(runtime)).run("foxess_ac", "127.0.0.1", None, None)
-    assert result["outcome"] == "unreachable" and result["blocks"] == []
+    assert result["tried_ports"] == [closed, port] and result["outcome"] == "readable"
+    assert result["ports"] == {str(closed): "refused"}
+
+
+async def test_a_refused_connection_points_to_another_client(runtime, monkeypatch):
+    """#427: the address answers, but no port takes a Modbus connection (another device, or the previous smartbox or
+    evcc holds the only one)."""
+    first, second = free_port(), free_port()
+    monkeypatch.setattr(FoxEssCharger, "ports", (first, second))
+    check = WallboxCheck(Probe(runtime))
+    result = await check.run("foxess_ac", "127.0.0.1", None, None)
+    assert result["outcome"] == "connection_refused" and result["blocks"] == []
+    assert result["ports"] == {str(first): "refused", str(second): "refused"}
+    text = "\n".join(check_markdown(result))
+    assert "nimmt aber keine Modbus-Verbindung an" in text
+    assert f"Verbindung je Port: {first} abgelehnt, {second} abgelehnt" in text
+
+    async def silent_on_second(host, port, timeout=probe.TIMEOUT_S):  # one refuses, nothing answers on the other
+        return "refused" if port == first else "timeout"
+    monkeypatch.setattr(probe, "_connect_failure", silent_on_second)
+    result = await check.run("foxess_ac", "127.0.0.1", None, None)
+    assert result["outcome"] == "connection_refused"
+    assert result["ports"] == {str(first): "refused", str(second): "timeout"}
+
+
+async def test_no_device_answers(runtime, monkeypatch):
+    """#427: only timeouts: nothing at this address."""
+    async def silent(host, port, timeout=probe.TIMEOUT_S):
+        return "timeout"
+    monkeypatch.setattr(probe, "_connect_failure", silent)
+    port = free_port()
+    check = WallboxCheck(Probe(runtime))
+    result = await check.run("foxess_ac", "127.0.0.1", port, None)
+    assert result["outcome"] == "unreachable" and result["ports"] == {str(port): "timeout"}
+    text = "\n".join(check_markdown(result))
+    assert "kein Gerät antwortet unter dieser Adresse" in text and f"Verbindung je Port: {port} keine Antwort" in text
+
+
+async def test_a_name_that_cannot_be_resolved(runtime, monkeypatch):
+    """#427: owners copy the charger's .local name from the previous smartbox; it never resolves in the Home
+    Assistant app, and before it failed like a device that does not answer."""
+    lookup = socket.getaddrinfo
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host == "EVC-example.local":
+            raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+        return lookup(host, *args, **kwargs)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+    monkeypatch.setattr(probe.ha_app, "active", lambda: False)
+    check = WallboxCheck(Probe(runtime))
+    result = await check.run("foxess_ac", "EVC-example.local", None, None)
+    assert result["outcome"] == "unresolved" and result["tried_ports"] == [] and result["ports"] == {}
+    assert result["local_name_in_app"] is False
+    assert "Name nicht auflösbar" in "\n".join(check_markdown(result))
+    monkeypatch.setattr(probe.ha_app, "active", lambda: True)
+    result = await check.run("foxess_ac", "EVC-example.local", None, None)
+    assert result["outcome"] == "unresolved" and result["local_name_in_app"] is True
+    assert "(Name auf .local in der Home-Assistant-App)" in "\n".join(check_markdown(result))
 
 
 async def test_all_connections_taken(runtime, monkeypatch):
@@ -146,10 +212,10 @@ def test_endpoints(runtime, authed):
     assert client.get("/api/wallbox/models").json() == {"models": [{"key": "foxess_ac", "label": "FoxESS AC EV Charger",
                                                                    "sold_by": ["EKD"]}]}
     client.headers.update({"x-openampere": "1"})
-    body = {"model": "foxess_ac", "host": "127.0.0.1", "port": 9}
+    body = {"model": "foxess_ac", "host": "127.0.0.1", "port": free_port()}
     assert client.post("/api/wallbox/check", json=body).status_code == 401
     authed(client)
-    assert client.post("/api/wallbox/check", json=body).json()["outcome"] == "unreachable"
+    assert client.post("/api/wallbox/check", json=body).json()["outcome"] == "connection_refused"
     assert client.post("/api/wallbox/check", json={**body, "model": "other"}).status_code == 400
     assert client.post("/api/wallbox/check", json={**body, "app_mode": "anything"}).status_code == 422
     assert client.post("/api/wallbox/check", json={**body, "host": "8.8.8.8"}).status_code == 400

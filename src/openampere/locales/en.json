@@ -268,7 +268,10 @@
     "alreadyRunning": "A query is already running. Please wait a moment.",
     "connectionClosed": "The device closed the connection right away. Probably all connections are taken, for example by evcc or another program.",
     "inverterOwnConnection": "On the inverter, OpenAmpere reads only over its existing connection, with the device address {own_unit}.",
-    "noConnection": "No connection to {host}:{port}. Is the address correct, and is the port right?",
+    "localNameInApp": "Names ending in .local do not work in the Home Assistant app. Please enter the IP address of the device, you find it in the device list of your router.",
+    "nameNotFound": "OpenAmpere cannot find the name {host} in your home network. Please enter the IP address of the device, you find it in the device list of your router.",
+    "noDeviceAnswers": "No device answers at {host} on port {port}. Is the address right, and is the device switched on and in your home network?",
+    "noModbusConnection": "{host} is reachable but does not accept a Modbus connection on port {port}. Maybe the port is wrong, or another program such as evcc holds the only connection of the device.",
     "onlyReadFunctions": "Only the function codes 3 and 4 (read) are possible.",
     "tooManyRegisters": "Please read at most {MAX_REGISTERS} registers between 0 and 65535."
   },
