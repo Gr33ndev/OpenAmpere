@@ -89,7 +89,7 @@ async def _reconnect_and_control(runtime, sim, port):
     assert switches == [{"control.dry_run": False}, {"control.enabled": True}]  # newest first
 
 
-async def test_setup_endpoints(tmp_path):
+async def test_setup_endpoints(tmp_path, monkeypatch):
     sim, server, port = await start_sim()
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
@@ -98,6 +98,7 @@ async def test_setup_endpoints(tmp_path):
         assert ok["ok"] and ok["device"]["model"] == "H3-10.0-Smart"
         bad = await discovery.test_connection(runtime, "127.0.0.1", 1, 247)
         assert not bad["ok"] and "Keine Verbindung" in bad["error"]
+        monkeypatch.setattr(discovery.probe, "browse", lambda services, seconds: [])  # no multicast from tests
         found = await discovery.scan(runtime, "127.0.0", port=port)
         hit = next(d for d in found if d["host"] == "127.0.0.1")
         assert (hit["model"], hit["driver"], hit["unit"]) == ("H3-10.0-Smart", "foxess", 247)

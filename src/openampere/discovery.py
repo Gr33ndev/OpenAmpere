@@ -9,7 +9,7 @@ import ipaddress
 import logging
 import socket
 
-from . import ha_app
+from . import ha_app, probe
 from .drivers import registry
 from .drivers.modbus import DeviceUnreachable, InverterBusy, friendly_error
 from .outbound import in_home_network
@@ -69,30 +69,50 @@ async def _port_open(host: str, port: int, timeout: float) -> bool:
         return False
 
 
+async def _announced_wallboxes() -> set[str]:
+    """Addresses of FoxESS wallboxes that announce Modbus TCP over mDNS as EVC-<serial> (#433). Empty in the Home
+    Assistant app, where multicast does not reach the home network."""
+    if ha_app.active():
+        return set()
+    try:
+        devices = await asyncio.to_thread(probe.browse, probe.MDNS_SERVICES, probe.SEARCH_S)
+    except OSError as err:
+        log.warning("mDNS search during the network search failed: %s", err)
+        return set()
+    return {d["host"] for d in devices if d["name"].upper().startswith("EVC-")}
+
+
 async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) -> list[dict]:
     hosts = parse_prefix(prefix)
     semaphore = asyncio.Semaphore(128)
 
-    async def probe(host: str) -> str | None:
+    async def check(host: str) -> str | None:
         async with semaphore:
             return host if await _port_open(host, port, 0.7) else None
 
-    found = [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]
+    async def open_hosts() -> list[str]:
+        return [h for h in await asyncio.gather(*(check(h) for h in hosts)) if h]
+
+    found, wallboxes = await asyncio.gather(open_hosts(), _announced_wallboxes())
     collector, current = runtime.collector, runtime.config.inverter
     results = []
     for host in found:
-        busy = False
+        busy = wallbox = False
         if collector.connected and collector.device and host == current.host and port == current.port:
             device = collector.device  # already connected: do not open a second connection
+        elif host in wallboxes:
+            # a FoxESS wallbox, not an inverter: no connection, it may allow a single client only. On EKD systems the
+            # old smartbox holds it and it closes every other connection at once, which looked like a busy inverter
+            device, wallbox = None, True
         else:
             try:
                 device = await registry.detect(host, port, unit)
-            except InverterBusy:  # an inverter whose only connection is taken, e.g. by the old IQ box (#311)
+            except InverterBusy:  # only connection taken, e.g. by the old IQ box (#311): inverter or wallbox (#433)
                 device, busy = None, True
             except ConnectionError:
                 device = None
-        results.append({"host": host, "port": port, "busy": busy, "model": device.model if device else None,
-                        "manufacturer": device.manufacturer if device else None,
+        results.append({"host": host, "port": port, "busy": busy, "wallbox": wallbox,
+                        "model": device.model if device else None, "manufacturer": device.manufacturer if device else None,
                         "driver": device.driver if device else None, "unit": device.unit if device else None,
                         # the same inverter answers twice when a Modbus proxy or data logger forwards it
                         "serial": device.serial if device else None})

@@ -382,6 +382,8 @@ Weitere Möglichkeiten:
 - **Pro Abfrage** (siehe nächster Abschnitt) hilft nur, wenn das andere Gerät oder Programm seine Verbindung zwischendurch freigibt. Die IQ-Box tut das nicht.
 - **Modbus-Proxy**, nur für Fortgeschrittene: Ein Proxy hält eine Verbindung zum Wechselrichter, alle anderen verbinden sich mit dem Proxy (siehe [Betrieb hinter einem Modbus-Proxy](#betrieb-hinter-einem-modbus-proxy)). Die IQ-Box kann sich aber von selbst wieder auf die Adresse des Wechselrichters zurückstellen; dann ist der Platz wieder belegt.
 
+Zeigt die Suche im Netzwerk den Wechselrichter mit Modell und Seriennummer und unter einer zweiten Adresse ein „Modbus-Gerät, gerade belegt“, ist das zweite Gerät bei Anlagen von EKD meist die Wallbox: Die IQ-Box hält auch deren Verbindung, solange sie Strom hat. Meldet sich die Wallbox im Netzwerk selbst an, zeigt die Suche sie als „FoxESS-Wallbox“.
+
 ### Ein anderer Energiemanager nutzt die Verbindung
 
 Der Wechselrichter erlaubt nur wenige gleichzeitige Modbus-Verbindungen. Hängt noch ein anderer Energiemanager am Wechselrichter, zum Beispiel die bisherige Smartbox, sind eventuell alle belegt. Dann bricht die Verbindung von OpenAmpere oder vom anderen Gerät immer wieder ab. Abhilfe: In der App unter **Mehr → Verbindung → Erweitert** bei **Verbindung** die Einstellung **Pro Abfrage** wählen und speichern. OpenAmpere verbindet sich dann für jede Abfrage neu und gibt den Zugang danach wieder frei. Mehr dazu unter [Betrieb hinter einem Modbus-Proxy](#betrieb-hinter-einem-modbus-proxy).

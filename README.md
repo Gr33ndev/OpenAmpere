@@ -382,6 +382,8 @@ Other options:
 - **Pro Abfrage** (per poll, see the next section) only helps if the other device or program releases its connection now and then. The IQ box does not.
 - **Modbus proxy**, for advanced users only: a proxy holds one connection to the inverter, and all others connect to the proxy (see [Running behind a Modbus proxy](#running-behind-a-modbus-proxy)). The IQ box may set itself back to the inverter's address, though; then the slot is taken again.
 
+If the network search shows the inverter with its model and serial number and, at a second address, "Modbus-Gerät, gerade belegt" (Modbus device, currently busy), the second device is usually the wallbox on systems from EKD: the IQ box holds its connection as well while it has power. A wallbox that announces itself in the network is shown as "FoxESS-Wallbox".
+
 ### Another energy manager uses the connection
 
 The inverter allows only a few Modbus connections at the same time. If another energy manager is connected to the inverter, for example the previous Smartbox, all of them may be in use. Then the connection of OpenAmpere or of the other device keeps dropping. Fix: in the app under **Mehr → Verbindung → Erweitert** (More → Connection → Advanced), choose **Pro Abfrage** (Per poll) for **Verbindung** (Connection) and save. OpenAmpere then connects anew for every poll and releases the connection afterwards. More on this under [Running behind a Modbus proxy](#running-behind-a-modbus-proxy).
