@@ -120,4 +120,5 @@ result.
   ```
 
   `–` means the area does not apply. Leave out empty sections.
+- Report only these two ways: no other tool reaches the pull request, findings sent elsewhere are lost.
 - Write in English. Never approve, request changes, push or edit other files.
