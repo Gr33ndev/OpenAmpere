@@ -287,7 +287,7 @@
     "port": "Port",
     "portHint": "Leave empty: OpenAmpere tries this wallbox's usual ports (502 and 1502).",
     "preview": "Preview: OpenAmpere checks your wallbox read-only and creates a report. It cannot control it this way yet. That first needs reports from real devices showing that all values are right.",
-    "reportHint": "Please create the diagnostics report now and share it. It contains the result of the check, but no card number, no meter readings and no serial number.",
+    "reportHint": "Please create the diagnostics report now and share it. It contains the result of the check, but no card number and no meter readings. The serial number is shortened in it unless you explicitly include it in full in the diagnostics.",
     "result": "Result",
     "search": "Search the home network for the wallbox",
     "status": "State",

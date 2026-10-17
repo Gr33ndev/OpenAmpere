@@ -56,3 +56,24 @@ def test_raw_modbus_frames_are_not_in_the_report(tmp_path):
     assert "No response received after 0 retries" in text and "<Modbus-Rohdaten entfernt>" in text
     assert "0x53" not in text and "send:" not in text and "recv:" not in text
     runtime.storage.close()
+
+
+async def test_a_report_with_the_full_serial_number_warns_at_the_top(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    diagnostics = Diagnostics(runtime)
+    try:  # owners post reports in public issues; one with the full serial number must say it is not for that (#428)
+        full = await diagnostics.run(include_serial=True)
+        assert full["full_serial"] is True
+        assert report_markdown(full).startswith("> **Achtung:** Dieser Bericht enthält die vollständige Seriennummer.")
+        masked = await diagnostics.run()
+        assert masked["full_serial"] is False
+        assert "vollständige Seriennummer" not in report_markdown(masked)
+        assert report_markdown(masked).startswith("## OpenAmpere-Diagnose")
+    finally:
+        runtime.storage.close()
+
+
+def test_a_stored_report_from_before_the_warning_counts_as_masked():
+    report = {"created": time.time(), "version": "dev", "device": {}, "checks": [], "log": [],
+              "connection": {"mode": "persistent", "timeout_s": 3}}
+    assert report_markdown(report).startswith("## OpenAmpere-Diagnose")

@@ -12,7 +12,7 @@ import { Button, Checkbox, copyText, Field, LearnMore, LoadState, MenuRow, Notic
 
 type Check = { id: string; title: string; status: "ok" | "warn" | "error" | "info" | "skipped"; summary: string; hint?: string };
 type DiagnosticsData = { running: boolean; markdown: string | null;
-  report: { created: number; checks: Check[] } | null };
+  report: { created: number; checks: Check[]; full_serial?: boolean } | null };
 
 type LogLevel = Settings["values"]["log.level"];
 const LOG_LEVELS: [LogLevel, string][] = [
@@ -64,6 +64,7 @@ export function DiagnosticsPage({ onBack, onNavigate }: PageProps) {
           {t("settings.diagnosticsPage.testConnections")}
         </Checkbox>
         <Checkbox checked={serial} onChange={setSerial}>{t("settings.diagnosticsPage.fullSerial")}</Checkbox>
+        <p className="hint">{t("settings.diagnosticsPage.fullSerialHint")}</p>
         <Button busy={busy} onClick={() => void run()}>{t("settings.diagnosticsPage.start")}</Button>
         {busy && <p className="hint">{t("settings.diagnosticsPage.takesHalfMinute")}</p>}
       </div>
@@ -83,6 +84,7 @@ export function DiagnosticsPage({ onBack, onNavigate }: PageProps) {
             </ul>
           </div>
           <div className="card form">
+            {data.report.full_serial && <Notice kind="warn">{t("settings.diagnosticsPage.fullSerialWarning")}</Notice>}
             <p className="hint">{t("settings.diagnosticsPage.shareHint")}</p>
             <Button variant="secondary" onClick={() => void copy()}>{t("settings.diagnosticsPage.copyReport")}</Button>
             <a className="btn secondary" href={`${ISSUES_URL}/new?template=device_report.yml`}

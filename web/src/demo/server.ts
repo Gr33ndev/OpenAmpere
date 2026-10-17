@@ -451,7 +451,7 @@ function diagnostics() {
     ["daily_reset", "Tageszähler-Rücksetzung", "ok", "Beobachtet um 00:00 Uhr"],
     ["night", "Verbindungsabbrüche und Zähler", "ok", "0 Abbrüche, 0 Zählerauffälligkeiten gespeichert"],
   ].map(([id, title, s, summary]) => ({ id, title, status: s, summary, details: {} }));
-  return { running: false, report: { created: now() - 3600, checks }, markdown: "Beispielbericht aus der Demo" };
+  return { running: false, report: { created: now() - 3600, checks, full_serial: false }, markdown: "Beispielbericht aus der Demo" };
 }
 
 const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
