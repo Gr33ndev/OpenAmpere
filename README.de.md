@@ -371,7 +371,7 @@ Hängt ein Modbus-Proxy dazwischen, gilt die Geräteadresse, die im Proxy einges
 
 ### „Der Wechselrichter lässt gerade keine weitere Verbindung zu“
 
-Ein FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft) erlaubt nur sehr wenige Modbus-TCP-Verbindungen gleichzeitig. Sind alle belegt, nimmt er die Verbindung von OpenAmpere an und schließt sie sofort wieder. Belegt werden sie meist von einem anderen Programm, das den Wechselrichter abfragt (Home Assistant oder einem anderen Smart-Home-System mit einer eigenen Modbus-Einbindung, einem Dashboard mit eigenem Datensammler wie Grafana, einem eigenen Script oder einer zweiten OpenAmpere-Installation), oder von der bisherigen IQ-Box. Die Netzwerksuche zeigt das Gerät dann als „Wechselrichter, gerade belegt“, der Verbindungstest und **Mehr → Verbindung** zeigen diese Meldung.
+Ein FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft) erlaubt nur sehr wenige Modbus-TCP-Verbindungen gleichzeitig. Sind alle belegt, nimmt er die Verbindung von OpenAmpere an und schließt sie sofort wieder. Belegt werden sie meist von einem anderen Programm, das den Wechselrichter abfragt (Home Assistant oder einem anderen Smart-Home-System mit einer eigenen Modbus-Einbindung, einem Dashboard mit eigenem Datensammler wie Grafana, einem eigenen Script oder einer zweiten OpenAmpere-Installation), oder von der bisherigen IQ-Box. Die Netzwerksuche zeigt das Gerät dann als „Modbus-Gerät, gerade belegt“, weil ein belegtes Gerät auch eine Wallbox sein kann. Der Verbindungstest und **Mehr → Verbindung** zeigen diese Meldung.
 
 Geh in dieser Reihenfolge vor:
 

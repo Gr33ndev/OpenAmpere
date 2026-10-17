@@ -371,7 +371,7 @@ If a Modbus proxy sits in between, the device address set in the proxy applies.
 
 ### "Der Wechselrichter lässt gerade keine weitere Verbindung zu" (the inverter does not allow another connection)
 
-A FoxESS H3 (also sold as "Ampere.StoragePro E3") allows only very few Modbus TCP connections at a time. When all are taken, it accepts OpenAmpere's connection and closes it right away. Usually they are taken by another program that reads the inverter (Home Assistant or another smart home system with a Modbus setup of its own, a dashboard with its own collector such as Grafana, a script of your own or a second OpenAmpere installation) or by the previous IQ box. The network search then shows the device as "Wechselrichter, gerade belegt" (inverter, currently busy); the connection test and **Mehr → Verbindung** (More → Connection) show this message.
+A FoxESS H3 (also sold as "Ampere.StoragePro E3") allows only very few Modbus TCP connections at a time. When all are taken, it accepts OpenAmpere's connection and closes it right away. Usually they are taken by another program that reads the inverter (Home Assistant or another smart home system with a Modbus setup of its own, a dashboard with its own collector such as Grafana, a script of your own or a second OpenAmpere installation) or by the previous IQ box. The network search then shows the device as "Modbus-Gerät, gerade belegt" (Modbus device, currently busy), because a busy device can also be a wallbox; the connection test and **Mehr → Verbindung** (More → Connection) show this message.
 
 Go in this order:
 
