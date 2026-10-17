@@ -1,6 +1,48 @@
 {
   "versions": [
     {
+      "version": "0.32.1",
+      "date": "2026-10-17",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "setup",
+            "text": "Tell a busy wallbox apart from a busy inverter in the network search (#434)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Name the old smartbox as the usual reason the wallbox check cannot connect (#432)"
+          },
+          {
+            "scope": "diagnostics",
+            "text": "Warn that a report with the full serial number must not be posted publicly (#430)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Tell unresolvable names, refused connections and silent hosts apart (#429)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Post the ai review summary from the workflow and retry a silent run (#436)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump vite from 8.3.3 to 8.3.4 in /web in the vite group (#425)"
+          },
+          {
+            "scope": null,
+            "text": "Review pull requests automatically with claude (#424)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.32.0",
       "date": "2026-10-16",
       "first": false,

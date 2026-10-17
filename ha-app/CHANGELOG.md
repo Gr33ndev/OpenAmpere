@@ -4,6 +4,21 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.32.1 (2026-10-17)
+
+### Behoben
+
+- **setup:** Tell a busy wallbox apart from a busy inverter in the network search (#434)
+- **wallbox:** Name the old smartbox as the usual reason the wallbox check cannot connect (#432)
+- **diagnostics:** Warn that a report with the full serial number must not be posted publicly (#430)
+- **wallbox:** Tell unresolvable names, refused connections and silent hosts apart (#429)
+
+### Weitere Änderungen
+
+- Post the ai review summary from the workflow and retry a silent run (#436)
+- **deps-web:** Bump vite from 8.3.3 to 8.3.4 in /web in the vite group (#425)
+- Review pull requests automatically with claude (#424)
+
 ## 0.32.0 (2026-10-16)
 
 ### Neu
@@ -121,9 +136,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **homeassistant:** Show live values when home assistant is opened by a remote address (#345)
-
-## 0.26.2 (2026-10-13)
-
-### Behoben
-
-- **homeassistant:** Show a battery setting change right away (#343)
