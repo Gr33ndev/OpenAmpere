@@ -114,7 +114,7 @@ jobs:
         id: summary
         if: ${{ !cancelled() }}
         run: |
-          if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | grep -qx '## AI review'; then
+          if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::The review wrote no summary, it runs once more."
@@ -136,7 +136,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          if ! { [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | grep -qx '## AI review'; }; then
+          if ! { [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; }; then
             echo "::error::The review wrote no summary. Remove the label ai-review and add it again to run it once more."
             exit 1
           fi
