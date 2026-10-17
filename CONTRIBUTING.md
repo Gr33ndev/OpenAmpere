@@ -127,7 +127,7 @@ An automatic review with Claude (`.github/workflows/ai-review.yml`, instructions
 [.github/claude-review.md](.github/claude-review.md)) comments on pull requests from this repository once they are
 ready for review, and again on the label `ai-review`. It checks the points above, the issue against the change and
 the device knowledge in `docs/devices/`. Its comments are hints, not a decision; it does not replace the review of
-a maintainer.
+a maintainer. If the check `review` fails, the review wrote nothing: remove the label `ai-review` and add it again.
 
 A pull request is accepted when all CI checks pass, every review comment is resolved and a maintainer has approved
 it. It is then squash-merged with the PR title as the commit title.

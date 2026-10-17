@@ -92,9 +92,9 @@ result.
 - **Inline comments** (`mcp__github_inline_comment__create_inline_comment`) for findings tied to a line, at most 10,
   the most important first. Each says what is wrong, why it matters and what to do. Prefix with `question:` if you
   are not sure. No comments on style, no praise, no summary of what the code does.
-- **One summary comment:** write it with the Write tool to `.ai-review-summary.md` (the only file you may write),
-  then post it with `gh pr comment <N> --edit-last --create-if-none --body-file .ai-review-summary.md`, so a re-run
-  updates it. Use exactly this form:
+- **One summary:** write it with the Write tool to `.ai-review-summary.md` (the only file you may write). Do not
+  post it: the workflow posts it after you are done and a re-run updates it. Without this file the pull request gets
+  no review, so always write it, also when you found nothing. Use exactly this form, starting with the first line:
 
   ```markdown
   ## AI review
