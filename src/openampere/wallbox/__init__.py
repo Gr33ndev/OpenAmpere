@@ -14,7 +14,8 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from ..privacy import masked_block
-from ..probe import Probe, ProbeBusy, ProbeError, ProbeUnreachable, blocks_markdown
+from .. import ha_app
+from ..probe import Probe, ProbeBusy, ProbeError, ProbeUnreachable, ProbeUnresolved, blocks_markdown, is_local_name
 from .base import Wallbox
 from .foxess import FoxEssCharger
 
@@ -43,7 +44,8 @@ class WallboxCheck:
                              "findest sie zum Beispiel in der Geräteliste deines Routers.")
         unit = unit or wallbox.unit
         result = {"model": key, "label": wallbox.label, "host": host.strip(), "port": None, "unit": unit,
-                  "outcome": "unreachable", "tried_ports": [], "blocks": [], "findings": {},
+                  "outcome": "unreachable", "tried_ports": [], "ports": {}, "local_name_in_app": False,
+                  "blocks": [], "findings": {},
                   "answers": {"app_mode": app_mode if app_mode in APP_MODES else "unknown",
                               "wired": wired if wired in WIRED else "unknown"}}
         read = None
@@ -51,13 +53,23 @@ class WallboxCheck:
             result["tried_ports"].append(candidate)
             try:
                 read = await self.probe.read_ranges(host, candidate, unit, wallbox.function, list(wallbox.ranges))
-            except ProbeUnreachable:
+            except ProbeUnresolved:  # before any connection: no port was tried (#427)
+                result["tried_ports"].clear()
+                result["outcome"] = "unresolved"
+                result["local_name_in_app"] = ha_app.active() and is_local_name(host.strip())
+                break
+            except ProbeUnreachable as err:  # "refused" | "timeout" | "open", per port for the report (#427)
+                result["ports"][str(candidate)] = err.reason
                 continue
             except ProbeBusy:
                 result["port"], result["outcome"] = candidate, "connections_taken"
                 break
             result["port"] = candidate
             break
+        if read is None and result["outcome"] == "unreachable" and set(result["ports"].values()) - {"timeout"}:
+            # the address answers, but no port takes a Modbus connection: wrong device, or another client (the
+            # previous smartbox, evcc) holds the only one (#427)
+            result["outcome"] = "connection_refused"
         if read is not None:
             first = read.blocks[0]
             result["outcome"] = ("readable" if first.ok else "busy" if first.exception == 6
@@ -83,18 +95,30 @@ OUTCOME = {
     "rejected": "Anfrage abgelehnt: andere Registerkarte oder Firmware",
     "no_answer": "keine Antwort auf die Anfrage",
     "connections_taken": "Verbindung sofort wieder geschlossen: alle Verbindungen belegt",
-    "unreachable": "keine Verbindung",
+    "unresolved": "Name nicht auflösbar, keine Verbindung versucht",
+    "connection_refused": "Gerät erreichbar, nimmt aber keine Modbus-Verbindung an",
+    "unreachable": "keine Verbindung: kein Gerät antwortet unter dieser Adresse",
+}
+PORT_STATE = {  # why a port gave no Modbus connection (#427)
+    "refused": "abgelehnt",
+    "timeout": "keine Antwort",
+    "open": "Verbindung angenommen, Modbus-Verbindung aber nicht",
 }
 
 
 def check_markdown(check: dict) -> list[str]:
     """The check's part of the diagnostics report as text for an issue (German, like the rest of the report)."""
     answers = check["answers"]
-    lines = [f"- Gewählt: {check['label']}, Adresse {check['host']}, Ports {', '.join(map(str, check['tried_ports']))}"
+    lines = [f"- Gewählt: {check['label']}, Adresse {check['host']}, Ports {', '.join(map(str, check['tried_ports'])) or '–'}"
              f", Geräteadresse {check['unit']}",
-             f"- Ergebnis: {OUTCOME.get(check['outcome'], check['outcome'])}",
+             f"- Ergebnis: {OUTCOME.get(check['outcome'], check['outcome'])}"
+             + (" (Name auf .local in der Home-Assistant-App)" if check.get("local_name_in_app") else ""),
              f"- Angaben des Besitzers: Steuerungsart in der App: {answers['app_mode']}; mit dem Wechselrichter "
              f"verkabelt: {answers['wired']}"]
+    ports = check.get("ports") or {}
+    if ports:
+        lines.append("- Verbindung je Port: " + ", ".join(f"{port} {PORT_STATE.get(state, state)}"
+                                                         for port, state in ports.items()))
     findings = {k: v for k, v in check["findings"].items() if v is not None}
     if findings:
         lines.append("- Erkannt: " + ", ".join(f"{k} {v}" for k, v in findings.items()))

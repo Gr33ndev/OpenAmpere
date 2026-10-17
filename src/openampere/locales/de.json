@@ -268,7 +268,10 @@
     "alreadyRunning": "Es läuft schon eine Abfrage. Bitte kurz warten.",
     "connectionClosed": "Das Gerät hat die Verbindung sofort wieder geschlossen. Vermutlich sind alle Verbindungen belegt, zum Beispiel durch evcc oder ein anderes Programm.",
     "inverterOwnConnection": "Am Wechselrichter liest OpenAmpere nur über die bestehende Verbindung, mit der Geräteadresse {own_unit}.",
-    "noConnection": "Keine Verbindung zu {host}:{port}. Stimmt die Adresse, und ist der Port richtig?",
+    "localNameInApp": "Namen, die auf .local enden, funktionieren in der Home-Assistant-App nicht. Bitte gib die IP-Adresse des Geräts ein, du findest sie in der Geräteliste deines Routers.",
+    "nameNotFound": "Den Namen {host} findet OpenAmpere im Heimnetz nicht. Bitte gib die IP-Adresse des Geräts ein, du findest sie in der Geräteliste deines Routers.",
+    "noDeviceAnswers": "Unter {host} antwortet kein Gerät auf Port {port}. Stimmt die Adresse, und ist das Gerät eingeschaltet und im Heimnetz?",
+    "noModbusConnection": "{host} ist erreichbar, nimmt auf Port {port} aber keine Modbus-Verbindung an. Vielleicht ist der Port falsch, oder ein anderes Programm wie evcc hält die einzige Verbindung des Geräts.",
     "onlyReadFunctions": "Nur die Funktionscodes 3 und 4 (lesen) sind möglich.",
     "tooManyRegisters": "Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen."
   },

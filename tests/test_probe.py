@@ -3,6 +3,7 @@
 """Reading any device in the home network (#324): only reads, stays within its limits, keeps the report private."""
 
 import asyncio
+import errno
 import json
 import socket
 import struct
@@ -19,7 +20,7 @@ from openampere.diagnostics import Diagnostics, report_markdown
 from openampere.drivers.foxess.registers import H3_NEW, MODEL_ADDRESS
 from openampere.drivers.modbus import ModbusIllegalError
 from openampere.privacy import text_runs
-from openampere.probe import Probe, ProbeError, parse_mdns
+from openampere.probe import Probe, ProbeError, ProbeUnreachable, ProbeUnresolved, parse_mdns
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedInverter
 from openampere.storage import Storage
@@ -96,9 +97,67 @@ async def test_one_run_at_a_time(runtime):
             await p.read("127.0.0.1", 9, 1, 3, 0, 1)
 
 
-async def test_unreachable_device(runtime):
-    with pytest.raises(ProbeError, match="Keine Verbindung zu 127.0.0.1:9"):
-        await Probe(runtime).read("127.0.0.1", 9, 1, 3, 0, 1)
+def free_port() -> int:
+    """A port nothing listens on: the host answers a connection with a reset."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def unresolvable(monkeypatch, name: str) -> None:
+    lookup = socket.getaddrinfo
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host == name:
+            raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+        return lookup(host, *args, **kwargs)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+
+async def test_a_refused_connection_is_told_apart_from_no_answer(runtime, monkeypatch):
+    """#427: a reset means the host is there but takes no Modbus connection; a timeout means nothing answers."""
+    port = free_port()
+    with pytest.raises(ProbeUnreachable, match=f"127.0.0.1 ist erreichbar, nimmt auf Port {port} aber keine") as err:
+        await Probe(runtime).read("127.0.0.1", port, 1, 3, 0, 1)
+    assert err.value.reason == "refused"
+
+    async def silent(host, port, timeout=probe.TIMEOUT_S):
+        return "timeout"
+    monkeypatch.setattr(probe, "_connect_failure", silent)
+    with pytest.raises(ProbeUnreachable, match=f"Unter 127.0.0.1 antwortet kein Gerät auf Port {port}") as err:
+        await Probe(runtime).read("127.0.0.1", port, 1, 3, 0, 1)
+    assert err.value.reason == "timeout"
+
+
+async def test_the_reason_of_a_failed_connection(monkeypatch):
+    """The plain connection after the Modbus client failed: refused, timed out, or accepted after all."""
+    assert await probe._connect_failure("127.0.0.1", free_port()) == "refused"
+    server = await asyncio.start_server(lambda reader, writer: writer.close(), "127.0.0.1", 0)
+    async with server:
+        assert await probe._connect_failure("127.0.0.1", server.sockets[0].getsockname()[1]) == "open"
+
+    refused = f"[Errno {errno.ECONNREFUSED}] Connect call failed"
+    assert probe._refused(OSError(f"Multiple exceptions: {refused} ('::1', 502), {refused} ('127.0.0.1', 502)"))
+    assert not probe._refused(OSError(f"Multiple exceptions: {refused} ('::1', 502), [Errno {errno.EHOSTUNREACH}] x"))
+    assert not probe._refused(TimeoutError())
+
+    async def hanging(host, port):
+        await asyncio.sleep(10)
+    monkeypatch.setattr(probe.asyncio, "open_connection", hanging)
+    assert await probe._connect_failure("127.0.0.1", 502, timeout=0.05) == "timeout"
+
+
+async def test_a_name_that_cannot_be_resolved(runtime, monkeypatch):
+    """#427: an unknown name used to count as local and then failed like a device that does not answer."""
+    unresolvable(monkeypatch, "evc-example.local")
+    monkeypatch.setattr(probe.ha_app, "active", lambda: False)
+    with pytest.raises(ProbeUnresolved, match="Den Namen evc-example.local findet OpenAmpere im Heimnetz nicht"):
+        await Probe(runtime).read("evc-example.local", 502, 1, 3, 0, 1)
+    with pytest.raises(ProbeUnresolved, match="Den Namen"):
+        await Probe(runtime).identify("evc-example.local")
+    monkeypatch.setattr(probe.ha_app, "active", lambda: True)  # no host network, so no multicast DNS
+    with pytest.raises(ProbeUnresolved, match="Namen, die auf .local enden, funktionieren in der Home-Assistant-App"):
+        await Probe(runtime).read("evc-example.local", 502, 1, 3, 0, 1)
 
 
 async def test_the_inverter_is_read_over_the_existing_connection(runtime):

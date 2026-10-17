@@ -58,6 +58,26 @@ test("an unreachable wallbox names the ports that were tried", async ({ page, ap
   await expect(page.locator(".notice.error")).toContainText("502, 1502");
 });
 
+// #427: a refused connection points to another client, a name that cannot be resolved asks for the IP address
+test("a refused connection and an unknown name get their own advice", async ({ page, api }) => {
+  api.override("/api/wallbox/check", { ...READABLE, port: null, outcome: "connection_refused", tried_ports: [502, 1502],
+    ports: { "502": "refused", "1502": "timeout" }, findings: {} });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
+  await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
+  await page.getByRole("button", { name: "Wallbox prüfen" }).click();
+  const refused = page.locator(".notice.warn", { hasText: "keine Modbus-Verbindung" });
+  await expect(refused).toContainText("(Port 502)");
+  await expect(refused).toContainText("bisherige Smartbox");
+
+  api.override("/api/wallbox/check", { ...READABLE, host: "EVC-example.local", port: null, outcome: "unresolved",
+    tried_ports: [], ports: {}, local_name_in_app: true, findings: {} });
+  await page.getByRole("button", { name: "Wallbox prüfen" }).click();
+  await expect(page.locator(".notice.error")).toContainText("Namen, die auf .local enden");
+});
+
 test("another wallbox is pointed to the device reader", async ({ page }) => {
   await open(page, "more/wallbox");
   await page.getByRole("button", { name: "direkt", exact: true }).click();
