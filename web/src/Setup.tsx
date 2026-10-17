@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getJson, postJson, putJson } from "./api";
 import { kw, percent } from "./format";
-import { InverterIcon } from "./icons";
+import { CarIcon, InverterIcon } from "./icons";
 import { Button, Field, HOST_INPUT, hostText, Notice } from "./ui";
 import { SMARTBOX_GUIDE } from "./links";
 import { navigate } from "./route";
@@ -15,7 +15,7 @@ type TestResult = { ok: boolean; error?: string; device?: Device; label?: string
   sample?: { pv_power: number | null; battery_soc: number | null; pv_external_power?: number | null } | null };
 
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
-  serial?: string | null; busy?: boolean };
+  serial?: string | null; busy?: boolean; wallbox?: boolean };
 type DriverOption = { key: string; label: string };
 
 /** Find / enter the inverter address, detect the device type, test and save.
@@ -113,19 +113,29 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
           <Notice kind="warn">{t("setup.connectionForm.noDeviceFound")}</Notice>
         ) : (
           <div className="choices">
-            {found.map((d) => (
+            {found.map((d) => d.wallbox ? (
+              // announces itself as a FoxESS wallbox (#433): shown, so the owner knows which address it is, not offered
+              <button type="button" key={d.host} className="choice" disabled>
+                <CarIcon size={36} />
+                <span>
+                  <strong>{t("setup.connectionForm.foxessWallbox")}</strong>
+                  <span className="meta">{d.host} · {t("setup.connectionForm.notAnInverter")}</span>
+                </span>
+              </button>
+            ) : (
               <button type="button" key={d.host} className={`choice ${d.host === host ? "active" : ""}`}
                 onClick={() => { setHost(d.host); reset(); void test(d.host); }}>
                 <InverterIcon size={36} />
                 <span>
                   <strong>{d.model ? `${d.manufacturer ?? ""} ${d.model}`.trim()
-                    : d.busy ? t("setup.connectionForm.busyInverter") : t("setup.connectionForm.unknownModbusDevice")}</strong>
+                    : d.busy ? t("setup.connectionForm.busyDevice") : t("setup.connectionForm.unknownModbusDevice")}</strong>
                   <span className="meta">{d.host}{d.serial ? ` · ${t("setup.connectionForm.serialEnd", { end: d.serial.slice(-4) })}` : ""}</span>
                 </span>
               </button>
             ))}
           </div>
         ))}
+        {found?.some((d) => d.wallbox) && <p className="hint">{t("setup.connectionForm.wallboxHint")}</p>}
         {found?.some((d) => d.busy) && (
           <p className="hint">{tx("setup.connectionForm.busyHint", {
             guide: <a href={SMARTBOX_GUIDE()} target="_blank" rel="noopener">{t("setup.connectionForm.busyGuide")}</a> })}</p>

@@ -26,9 +26,12 @@
     "testConnection": "Verbindung testen",
     "testFirst": "Bitte zuerst die Verbindung testen.",
     "unknownModbusDevice": "Unbekanntes Modbus-Gerät",
-    "busyInverter": "Wechselrichter, gerade belegt",
-    "busyHint": "„Gerade belegt“: Das Gerät lässt keine weitere Verbindung zu, ein Wechselrichter erlaubt nur sehr wenige. Prüfe zuerst, ob noch ein anderes Programm den Wechselrichter abfragt, zum Beispiel Home Assistant mit einer eigenen Modbus-Einbindung, ein Dashboard, ein eigenes Script oder eine zweite OpenAmpere-Installation, und beende es oder entferne dort die Verbindung zum Wechselrichter. Ist noch die bisherige IQ-Box verbunden und wird sie nicht mehr gebraucht, trenne sie danach vom Netzwerk (LAN-Kabel ziehen oder Box ausschalten). Dann noch einmal suchen. Eine verbundene IQ-Box überschreibt außerdem Einstellungen, die du in OpenAmpere änderst ({guide}).",
+    "busyDevice": "Modbus-Gerät, gerade belegt",
+    "busyHint": "„Gerade belegt“: Das Gerät lässt keine weitere Verbindung zu. Das kann der Wechselrichter sein oder eine Wallbox, beide erlauben nur sehr wenige Verbindungen. Steht der Wechselrichter schon mit Modell und Seriennummer in der Liste, ist das belegte Gerät vermutlich die Wallbox: Bei Anlagen von EKD hält die bisherige IQ-Box auch die Verbindung zur Wallbox, solange sie Strom hat. Ist der Wechselrichter belegt, prüfe zuerst, ob noch ein anderes Programm ihn abfragt, zum Beispiel Home Assistant mit einer eigenen Modbus-Einbindung, ein Dashboard, ein eigenes Script oder eine zweite OpenAmpere-Installation, und beende es oder entferne dort die Verbindung zum Wechselrichter. Ist noch die bisherige IQ-Box verbunden und wird sie nicht mehr gebraucht, trenne sie danach vom Netzwerk (LAN-Kabel ziehen oder Box ausschalten). Dann noch einmal suchen. Eine verbundene IQ-Box überschreibt außerdem Einstellungen, die du in OpenAmpere änderst ({guide}).",
     "busyGuide": "mehr dazu in der Anleitung",
+    "foxessWallbox": "FoxESS-Wallbox",
+    "notAnInverter": "kein Wechselrichter",
+    "wallboxHint": "„FoxESS-Wallbox“: Dieses Gerät meldet sich im Netzwerk selbst als Wallbox von FoxESS. Es ist nicht der Wechselrichter und lässt sich hier deshalb nicht auswählen.",
     "secondInverterHint": "Hast du einen zweiten PV-Wechselrichter, dessen Leistung ein Zähler am Speicher misst („Meter B“)? Dann kannst du ihn nach dem Speichern unter Mehr → Meine Anlage → Modulfelder benennen mitzählen lassen. Der Zähler misst gerade {power}."
   },
   "setup": {

@@ -22,6 +22,12 @@ def runtime(tmp_path):
     return Runtime({}, Storage(tmp_path / "t.db"))
 
 
+@pytest.fixture(autouse=True)
+def no_mdns(monkeypatch):
+    """No multicast from the tests: nothing announces itself unless a test says so."""
+    monkeypatch.setattr(discovery.probe, "browse", lambda services, seconds: [])
+
+
 def open_ports(monkeypatch, *hosts):
     async def port_open(host, port, timeout):
         return host in hosts
@@ -83,8 +89,59 @@ async def test_scan_lists_hosts_that_do_not_answer_as_inverter(monkeypatch, runt
         raise ConnectionError("no Modbus answer")
     monkeypatch.setattr(registry, "detect", detect)
     found = await discovery.scan(runtime, "10.0.0")
-    assert found == [{"host": "10.0.0.5", "port": 502, "busy": False, "model": None, "manufacturer": None,
-                      "driver": None, "unit": None, "serial": None}]
+    assert found == [{"host": "10.0.0.5", "port": 502, "busy": False, "wallbox": False, "model": None,
+                      "manufacturer": None, "driver": None, "unit": None, "serial": None}]
+
+
+async def test_scan_marks_an_announced_foxess_wallbox_without_connecting_to_it(monkeypatch, runtime):
+    """On EKD systems the old smartbox holds the wallbox, which then looked like a busy inverter (#433)."""
+    monkeypatch.setattr(discovery.ha_app, "active", lambda: False)
+    monkeypatch.setattr(discovery.probe, "browse", lambda services, seconds: [
+        {"service": "_modbus._tcp", "name": "evc-1", "host": "10.0.0.7", "port": 502},
+        {"service": "_modbus._tcp", "name": "Inverter", "host": "10.0.0.5", "port": 502}])
+    open_ports(monkeypatch, "10.0.0.5", "10.0.0.7", "10.0.0.9")
+    asked = []
+
+    async def detect(host, port, unit):
+        asked.append(host)
+        if host == "10.0.0.9":
+            raise InverterBusy(BUSY_MESSAGE)
+        return device()
+    monkeypatch.setattr(registry, "detect", detect)
+    found = {f["host"]: f for f in await discovery.scan(runtime, "10.0.0")}
+    assert sorted(asked) == ["10.0.0.5", "10.0.0.9"]  # no connection to the wallbox
+    assert (found["10.0.0.7"]["wallbox"], found["10.0.0.7"]["busy"], found["10.0.0.7"]["model"]) == (True, False, None)
+    assert (found["10.0.0.5"]["wallbox"], found["10.0.0.5"]["model"]) == (False, "H3-10.0")
+    assert (found["10.0.0.9"]["wallbox"], found["10.0.0.9"]["busy"]) == (False, True)  # not announced: neutral
+
+
+async def test_scan_without_mdns_in_the_home_assistant_app(monkeypatch, runtime):
+    monkeypatch.setattr(discovery.ha_app, "active", lambda: True)
+
+    def browse(services, seconds):
+        raise AssertionError("multicast does not reach the home network from the app")
+    monkeypatch.setattr(discovery.probe, "browse", browse)
+    open_ports(monkeypatch, "10.0.0.7")
+
+    async def detect(host, port, unit):
+        raise InverterBusy(BUSY_MESSAGE)
+    monkeypatch.setattr(registry, "detect", detect)
+    found = await discovery.scan(runtime, "10.0.0")
+    assert [(f["busy"], f["wallbox"]) for f in found] == [(True, False)]
+
+
+async def test_scan_goes_on_when_the_mdns_search_fails(monkeypatch, runtime):
+    monkeypatch.setattr(discovery.ha_app, "active", lambda: False)
+
+    def browse(services, seconds):
+        raise OSError("no network card")
+    monkeypatch.setattr(discovery.probe, "browse", browse)
+    open_ports(monkeypatch, "10.0.0.5")
+
+    async def detect(host, port, unit):
+        return device()
+    monkeypatch.setattr(registry, "detect", detect)
+    assert [f["model"] for f in await discovery.scan(runtime, "10.0.0")] == ["H3-10.0"]
 
 
 async def test_scan_reuses_the_connected_device(monkeypatch, runtime):

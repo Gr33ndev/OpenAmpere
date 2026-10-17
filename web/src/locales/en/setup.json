@@ -26,9 +26,12 @@
     "testConnection": "Test connection",
     "testFirst": "Please test the connection first.",
     "unknownModbusDevice": "Unknown Modbus device",
-    "busyInverter": "Inverter, currently busy",
-    "busyHint": "“Currently busy”: the device does not allow another connection; an inverter allows only very few. First check whether another program still reads the inverter, for example Home Assistant with a Modbus setup of its own, a dashboard, a script of your own or a second OpenAmpere installation, and stop it or remove its connection to the inverter. If the old IQ box is still connected and you no longer need it, then disconnect it from the network (unplug its LAN cable or switch it off). Then search again. A connected IQ box also overwrites settings you change in OpenAmpere ({guide}).",
+    "busyDevice": "Modbus device, currently busy",
+    "busyHint": "“Currently busy”: the device does not allow another connection. This can be the inverter or a wallbox; both allow only very few connections. If the inverter is already in the list with its model and serial number, the busy device is probably the wallbox: on systems from EKD the old IQ box also holds the connection to the wallbox while it has power. If the inverter is busy, first check whether another program still reads it, for example Home Assistant with a Modbus setup of its own, a dashboard, a script of your own or a second OpenAmpere installation, and stop it or remove its connection to the inverter. If the old IQ box is still connected and you no longer need it, then disconnect it from the network (unplug its LAN cable or switch it off). Then search again. A connected IQ box also overwrites settings you change in OpenAmpere ({guide}).",
     "busyGuide": "more in the guide",
+    "foxessWallbox": "FoxESS wallbox",
+    "notAnInverter": "not an inverter",
+    "wallboxHint": "“FoxESS wallbox”: this device announces itself in the network as a FoxESS wallbox. It is not the inverter, so it cannot be selected here.",
     "secondInverterHint": "Do you have a second PV inverter whose power a meter at the storage system measures (“Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The meter reads {power} right now."
   },
   "setup": {
