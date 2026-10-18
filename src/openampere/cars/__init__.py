@@ -176,7 +176,10 @@ class Cars:
             try:
                 found += validate([self._opened(raw)], keyless=(str(raw.get("id")),))
             except (ValueError, AttributeError, TypeError) as err:
-                log.warning("stored car ignored: %s", err)
+                # the message starts with the car's name, which may name a person: the log is part of the report
+                car_id = raw.get("id") if isinstance(raw, dict) else None
+                reason = str(err).partition(": ")[2] if ": " in str(err) else str(err)
+                log.warning("stored car %s ignored: %s", car_id, reason)
         return found
 
     def enabled(self) -> list[Car]:

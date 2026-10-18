@@ -675,6 +675,13 @@ def test_the_log_in_a_report_has_no_name_login_or_vin_of_a_car(tmp_path):
     assert "Born" not in text and EMAIL not in text and VIN not in text and "<Fahrgestellnummer>" in text
 
 
+def test_a_stored_car_that_is_ignored_is_logged_without_its_name(tmp_path, caplog):
+    runtime, cars, _ = setup_cars(tmp_path)
+    runtime.storage.set_meta("cars", [{**GOOD, "id": "ab12cd34", "name": "Annas Auto", "brand": "tesla"}])
+    assert cars.cars == []
+    assert "Annas" not in caplog.text and "stored car ab12cd34 ignored: Diese Marke" in caplog.text
+
+
 def test_the_report_has_no_name_login_or_vin(tmp_path):
     runtime, cars, _ = setup_cars(tmp_path)
     cars.save([GOOD])
