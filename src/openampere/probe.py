@@ -14,6 +14,7 @@ reads may refuse the connection or drop evcc's for a moment.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import errno
 import html
 import ipaddress
@@ -136,7 +137,7 @@ async def _check_home(host: str) -> str:
     return host
 
 
-def _addresses(host: str) -> set[str]:
+def host_addresses(host: str) -> set[str]:
     try:
         return {info[4][0].split("%", 1)[0] for info in socket.getaddrinfo(host, None)}
     except (socket.gaierror, UnicodeError):
@@ -152,6 +153,9 @@ class Probe:
         self.last_read: ReadResult | None = None
         self.last_identify: dict | None = None
         self.last_search: dict | None = None
+        # (host, port) -> async context manager: set by the app to the poll lock of the wallboxes OpenAmpere reads
+        # itself (wallbox/native.py, #439), so a read here and their poll never connect to one device at the same time
+        self.exclusive = lambda host, port: contextlib.nullcontext()
 
     async def _exclusive(self, work):
         if self._lock.locked():
@@ -176,12 +180,15 @@ class Probe:
             raise ProbeError(f"Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.")
         host = await _check_home(host)
         blocks = [block for start, count in ranges for block in blocks_of(start, count)]
-        return await self._exclusive(lambda: self._read(host, port, unit, function, blocks))
+        async def read() -> ReadResult:
+            async with self.exclusive(host, port):
+                return await self._read(host, port, unit, function, blocks)
+        return await self._exclusive(read)
 
     async def is_inverter(self, host: str) -> bool:
         """Whether host is the address of the inverter OpenAmpere is set up for (any port)."""
         inverter = self.runtime.config.inverter.host
-        return bool(inverter) and await asyncio.to_thread(lambda: bool(_addresses(host) & _addresses(inverter)))
+        return bool(inverter) and await asyncio.to_thread(lambda: bool(host_addresses(host) & host_addresses(inverter)))
 
     async def _inverter_driver(self, host: str, port: int):
         """OpenAmpere's driver if host:port is the connected inverter: it allows only a few connections, so the
@@ -384,7 +391,7 @@ def _oui(host: str) -> str | None:
     """Vendor part of the device's MAC address (the first three bytes) from the neighbour table, Linux only. The full
     address identifies the device and never leaves this function."""
     try:
-        ips = {a for a in _addresses(host) if ipaddress.ip_address(a).version == 4}
+        ips = {a for a in host_addresses(host) if ipaddress.ip_address(a).version == 4}
         with open(ARP, encoding="ascii") as f:
             lines = f.read().splitlines()[1:]
     except (OSError, ValueError):

@@ -522,10 +522,12 @@ class SimulatedHeatingRod(SimulatedInverter):
 class SimulatedFoxCharger(SimulatedInverter):
     """FoxESS AC EV Charger for the read-only wallbox check (#325), with the register addresses OpenAmpere assumes
     (wallbox/foxess.py, not yet confirmed on a device). `busy`: like a charger outside the app's "Modbus TCP" mode
-    that refuses reads; `single_phase`: without the phase-switching registers 0x3008–0x300B."""
+    that refuses reads; `single_phase`: without the phase-switching registers 0x3008–0x300B; `charging`: a car
+    charges at 16 A on three phases (the live view, #439). Every function code is kept in `functions`: nothing may
+    write to it."""
 
     def __init__(self, *, unit: int = 1, busy: bool = False, single_phase: bool = False,
-                 model: str = "A022KP1", serial: str = "SIMULATEDCHARGER") -> None:
+                 model: str = "A022KP1", serial: str = "SIMULATEDCHARGER", charging: bool = False) -> None:
         self.unit, self.busy = unit, busy
         self.max_connections, self.connections, self.latency_s = 1, 0, 0.0
         self.map, self.model, self.serial = None, model, serial
@@ -538,6 +540,8 @@ class SimulatedFoxCharger(SimulatedInverter):
                      0x3006: 60}
         if not single_phase:
             self.regs.update({0x3007: 0, 0x3008: 0, 0x3009: 0, 0x300A: 1, 0x300B: 12})
+        if charging:
+            self.regs.update({0x1003: 3, 0x1005: 1, 0x100B: 160, 0x100C: 160, 0x100D: 160, 0x100E: 110})
         self._write_string(0x101E, model, 4)
         self._write_string(0x1022, serial, 16)
 
@@ -668,7 +672,7 @@ def main() -> None:
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
     parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
-    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected")
+    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger: a car charges at 16 A")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
     parser.add_argument("--model", default=None, help="model string at register 30000")
@@ -697,7 +701,7 @@ def main() -> None:
                                 latency_s=args.latency, read_only=args.read_only, unit=args.unit or 247)
     if args.vendor == "foxess-charger":
         async def run_charger() -> None:
-            charger = SimulatedFoxCharger(unit=args.unit or 1)
+            charger = SimulatedFoxCharger(unit=args.unit or 1, charging=args.plugged)
             server = await asyncio.start_server(charger.serve_client, args.host, args.port)
             log.info("simulating a FoxESS AC EV Charger (read-only) on %s:%d", args.host, args.port)
             async with server:

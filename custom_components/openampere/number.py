@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator
 from .const import WALLBOX_CHARGING_MODES
-from .entity import ControlEntity, WallboxEntity
+from .entity import ControlEntity, WallboxEntity, controllable_wallboxes
 from .helpers import send
 
 
@@ -57,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         return
     numbers = [*SOC_NUMBERS, *([BACKUP_SOC] if (coordinator.info.get("device") or {}).get("backup_reserve") else [])]
     async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator),
-                        *(WallboxModeCurrent(coordinator, w["id"]) for w in coordinator.info.get("wallboxes") or [])])
+                        *(WallboxModeCurrent(coordinator, w["id"]) for w in controllable_wallboxes(coordinator.info))])
 
 
 class SocNumber(ControlEntity, NumberEntity):

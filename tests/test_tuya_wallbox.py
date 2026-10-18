@@ -151,7 +151,9 @@ def test_the_local_key_is_stored_encrypted_and_never_shown(tmp_path):
     view = wallboxes.view(hide_device_id=True)["wallboxes"][0]
     assert "local_key" not in view and view["local_key_set"] and view["device_id"] is None
     # the app shows the key fields and the steps to the key for a Tuya wallbox only
-    assert wallboxes.view()["models"] == [{"key": "de_tuya", "label": "dé Mobile Wallbox 11 kW (Tuya)", "protocol": "tuya"}]
+    tuya_model = wallboxes.view()["models"][0]
+    assert {k: tuya_model[k] for k in ("key", "label", "protocol", "read_only")} == {
+        "key": "de_tuya", "label": "dé Mobile Wallbox 11 kW (Tuya)", "protocol": "tuya", "read_only": False}
     # the app sends the key empty: the stored one stays
     wallboxes.save([{"id": saved[0].id, "name": "Garage 2", "host": "192.168.1.20", "local_key": ""}])
     assert wallboxes.wallboxes[0].local_key == KEY and wallboxes.wallboxes[0].name == "Garage 2"

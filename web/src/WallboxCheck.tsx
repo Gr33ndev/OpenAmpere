@@ -141,8 +141,11 @@ function OcppListen({ origin }: { origin: string }) {
   );
 }
 
-/** The read-only check of a wallbox OpenAmpere cannot control yet (#325), chosen in the form "Wallbox hinzufügen". */
-export function WallboxCheck({ origin, model, onCancel }: { origin: string; model: string; onCancel: () => void }) {
+/** The read-only check of a wallbox OpenAmpere cannot control yet (#325), chosen in the form "Wallbox hinzufügen".
+ *  onShow: offered when the check could read the wallbox and OpenAmpere can show it (#439), with what it found. */
+export function WallboxCheck({ origin, model, onCancel, onShow }: { origin: string; model: string; onCancel: () => void;
+  onShow?: (found: { host: string; port: number | null; unit: number }) => void;
+}) {
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [unit, setUnit] = useState("1");
@@ -220,6 +223,11 @@ export function WallboxCheck({ origin, model, onCancel }: { origin: string; mode
           {result.findings.fallback_current_a != null && <p className="hint flush">{t("devices.wallboxDirect.fallbackHint")}</p>}
           <p className="hint flush">{t("devices.wallboxDirect.reportHint")}</p>
           <Button variant="secondary" onClick={() => navigate("more/diagnostics")}>{t("devices.wallboxDirect.toReport")}</Button>
+          {onShow && result.outcome === "readable" && <>
+            <p className="hint flush">{t("devices.wallboxDirect.showLiveHint")}</p>
+            <Button onClick={() => onShow({ host: result.host, port: result.port, unit: result.unit })}>
+              {t("devices.wallboxDirect.showLive")}</Button>
+          </>}
         </>
       )}
       <OcppListen origin={origin} />

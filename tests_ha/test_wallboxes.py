@@ -123,6 +123,29 @@ async def test_a_wallbox_added_or_removed_in_openampere_sets_up_again(hass: Home
     assert entry.runtime_data is second
 
 
+async def test_a_wallbox_openampere_only_shows_has_sensors_but_no_controls(hass: HomeAssistant, entry,
+                                                                           client) -> None:
+    """#439: the FoxESS AC EV Charger is only read: its values, no charging mode, no current to set or show."""
+    shown = {"id": "5e4d3c2b", "name": "Garage", "model": "FoxESS AC EV Charger", "read_only": True}
+    client.info.return_value = {**info(), "wallboxes": [*info()["wallboxes"], shown]}
+    reading = {"id": shown["id"], "name": "Garage", "enabled": True, "mode": "manual", "max_current_a": 16,
+               "mode_current_a": {"pv": 16, "minpv": 16, "now": 16}, "online": True, "state": "charging",
+               "connected": True, "charging": True, "power_w": 11050.0, "current_a": None}
+    client.state.return_value = {**state(), "wallboxes": [*state()["wallboxes"], reading]}
+    await setup(hass, entry)
+    assert hass.states.get(entity_id(hass, "sensor", "5e4d3c2b_wallbox_power")).state == "11050.0"
+    assert hass.states.get(entity_id(hass, "sensor", "5e4d3c2b_wallbox_state")).state == "charging"
+    for platform, key in (("binary_sensor", "_wallbox_plugged_in"), ("binary_sensor", "_wallbox_charging"),
+                          ("binary_sensor", "_wallbox_online")):
+        assert hass.states.get(entity_id(hass, platform, f"5e4d3c2b{key}")).state == "on", key
+    for platform, key in (("select", "_wallbox_mode"), ("number", "_wallbox_mode_current"),
+                          ("sensor", "_wallbox_current")):
+        assert entity_id(hass, platform, f"5e4d3c2b{key}") is None, key
+    # the wallbox OpenAmpere controls keeps its controls
+    assert entity_id(hass, "select", f"{WALLBOX}_wallbox_mode") is not None
+    assert entity_id(hass, "number", f"{WALLBOX}_wallbox_mode_current") is not None
+
+
 async def test_an_older_openampere_without_wallboxes(hass: HomeAssistant, entry, client) -> None:
     older_info, older_state = info(), state()
     del older_info["wallboxes"], older_state["wallboxes"]

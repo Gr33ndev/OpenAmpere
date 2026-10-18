@@ -14,6 +14,12 @@ from .const import DOMAIN
 from .coordinator import OpenAmpereCoordinator
 
 
+def controllable_wallboxes(info: dict[str, Any]) -> list[dict[str, Any]]:
+    """Wallboxes with a charging mode to choose: not the ones OpenAmpere only shows (#439, "read_only"; missing on
+    older OpenAmpere versions, which only had wallboxes it controls)."""
+    return [w for w in info.get("wallboxes") or [] if not w.get("read_only")]
+
+
 class OpenAmpereEntity(CoordinatorEntity[OpenAmpereCoordinator]):
     _attr_has_entity_name = True
 

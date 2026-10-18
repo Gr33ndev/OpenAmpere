@@ -345,6 +345,14 @@
     "unknownChargingModeNamed": "{name}: Unknown charging mode.",
     "unknownWallbox": "OpenAmpere does not know this wallbox yet.",
     "unknownWallboxNamed": "{name}: OpenAmpere does not know this wallbox yet.",
-    "wallboxDoesNotExist": "This wallbox does not exist."
+    "wallboxDoesNotExist": "This wallbox does not exist.",
+    "inverterAddressNamed": "{name}: This is the address of your inverter. Please enter the address of the wallbox; you can find it, for example, in the device list of your router.",
+    "portUnitRange": "{name}: The port must be between 1 and 65535, the unit ID between 1 and 255.",
+    "readOnly": "OpenAmpere only shows this wallbox, it cannot control it.",
+    "readOnlyNamed": "{name}: OpenAmpere only shows this wallbox, it cannot control it.",
+    "modbusNotConnected": "The wallbox at {host} does not answer or accepts no Modbus connection. On EKD systems this is usually caused by the previous smartbox: as long as it has power, it holds the connection to the wallbox. Disconnect it from power, and OpenAmpere will read the wallbox again by itself. If that does not help, check the address and whether evcc or another program reads the wallbox.",
+    "modbusNoAnswer": "The wallbox accepts the connection but does not answer properly. On EKD systems this is usually caused by the previous smartbox: as long as it has power, it holds the connection to the wallbox. Disconnect it from power, and OpenAmpere will read the wallbox again by itself. If that does not help, maybe evcc reads the wallbox, or the unit ID is wrong.",
+    "modbusBusy": "The wallbox refuses to be read (“server device busy”). It probably does not allow Modbus in its current control mode. You can see the mode in the manufacturer's app.",
+    "modbusRejected": "The wallbox answers but does not know these registers. Maybe it is another model or another firmware."
   }
 }

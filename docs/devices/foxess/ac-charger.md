@@ -5,17 +5,19 @@
 > legal advice. See [Device knowledge](../README.md).
 
 **Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** not stated in the
-sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup · **Support:** display
-only (read-only check, no control) · **Confirmed on a real device:** partly (connection and the read registers on one
+sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup and read-only live view
+(`wallbox/native.py`, [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)) · **Support:** display
+only (live view and check, read only, no control) · **Confirmed on a real device:** partly (connection and the read registers on one
 three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431))
 
 ## Summary
 
 - The charger has three communication modes, only one active at a time: default (FoxESS app and cloud, with PV
   linkage to the inverter), Modbus TCP and OCPP.
-- OpenAmpere only reads it, in a one-off check of the setup, to confirm the register addresses
-  ([#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)). Control comes only after owners' reports confirm them
-  ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
+- OpenAmpere only reads it: in a one-off check of the setup, to confirm the register addresses
+  ([#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)), and as a wallbox it shows live, never writing to it
+  ([#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)). Control comes only after owners' reports confirm the
+  registers ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - Modbus TCP: all registers are holding registers (FC03), unit id 1, port 502 (1502 also seen); port 502, unit id 1
   and FC03 confirmed on one charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - On EKD systems the previous smartbox blocks OpenAmpere's access to the charger while it is powered; with the box
@@ -29,6 +31,11 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
 Read by the check over one connection: 0x1000–0x1021, 0x3000–0x3006 and, separately, 0x3007–0x300B (missing on
 single-phase models). The raw words go into the report through OpenAmpere's masking (serial-like text shortened,
 private words removed). Nothing is written.
+
+Read by the live view ([#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)) every 10 s over one short
+connection, closed after reading: 0x1000–0x1015 and 0x3000–0x3006, then 0x3007–0x300B (skipped when the charger
+refuses it as unknown addresses, as single-phase models may). The energy counters, the card number, the model code
+and the serial number (0x1016–0x1031) are not read at all. Only function code 3; nothing is written.
 
 | Register | Meaning | Type, scale, sign | R/W | Status | Source |
 |---|---|---|---|---|---|
@@ -98,6 +105,11 @@ Values while charging and single-phase models are not confirmed yet.
 | The check's texts for a refused connection, a connection without a proper answer and a connection closed at once name the previous smartbox first (unplug it from power for the check), then evcc, then another device or a wrong unit id. | The box blocked the check on a real device. | [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | The setup's network search marks a host that announces `EVC-<serial>._modbus._tcp` as a FoxESS wallbox, does not open a Modbus connection to it and does not offer it as the inverter. A busy device it cannot identify is called "Modbus-Gerät, gerade belegt", and the hint names the wallbox held by the previous smartbox. In the Home Assistant app there is no mDNS, so only the neutral label applies. | While the box was powered, the charger showed up in the search as "Wechselrichter, gerade belegt" next to the real inverter, and the owner doubted which address is the wallbox. | [#433](https://github.com/Gr33ndev/OpenAmpere/issues/433) |
 | OpenAmpere assumes the charger allows one Modbus connection: never evcc and OpenAmpere on the same charger. | The number of connections is unknown. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
+| The charger is a wallbox OpenAmpere shows live, read only: a model in `wallbox/native.py` whose only mode is "manual". The other modes are refused when saved or chosen and offered neither in the app nor in Home Assistant (sensors only; no current sensor, the setpoint is not known). There is no write path: its Modbus connection can only read with FC03, and a test fails on any write request. Its power counts in the house load like any wallbox, but the surplus control never acts on it. | No write register is confirmed, the watchdog fails in the unsafe direction, and § 14a is not settled. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439), [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
+| The live view opens one short connection per poll (every 10 s; after a failure again after 15 s, 30 s, … up to 5 minutes) and closes it after reading. Values older than 35 s are not used. The wallbox check, the device reader and the connection test of the setup take turns with the poll of a charger set up at the same address and port, so OpenAmpere never holds two connections to it. A wallbox at the inverter's address and port is refused in the setup. | The number of connections the charger allows is unknown, and the previous smartbox holds it on EKD systems. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439), [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| In the live view the status, not 0x1005, tells whether a car is plugged in (status 1–5 and 9). Status 9 counts as charging, 8 (locked) as unknown with the work mode "locked". The power is the sum of voltage × current of the phases, the power register (0.1 kW) only without current; a charge counts from 100 W. | 0x1005 read 1 without a car; 0.1 kW steps are coarse. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439), [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| A charger that does not answer is shown as not reachable without old values; the app names the previous smartbox first (it must stay cut from power for the live view), then evcc or another program. | Like the check, where the box blocked the charger on a real device. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439), [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| The live view does not read the energy counters, the card number, the model code and the serial number (0x1016–0x1031). | Not needed for the display; they identify the owner. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439) |
 | Register addresses are used as facts only, nothing copied from the FoxESS document; evcc's FoxESS driver (not MIT) and two MIT Home Assistant integrations that derive from a project without a license are not used. | License and permission of the sources. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318), [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325), [#327](https://github.com/Gr33ndev/OpenAmpere/issues/327) |
 | Proposed, if OpenAmpere ever controls the charger over Modbus: a one-time default current of 6 A with the owner's consent, an explicit stop on planned shutdown, a heartbeat of 30 s or less, an explanation in the app and an exception noted in AGENTS.md. OpenAmpere would not take on the § 14a role and never raise a limit while the grid operator dims. Not decided. | Fail-safe behaviour despite the unsafe watchdog; legal topics are settled in the issue first. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 
