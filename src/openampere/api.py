@@ -52,7 +52,8 @@ from .wallbox import WALLBOXES
 from .outbound import in_home_network
 from .tuya import TuyaDevice, TuyaError
 from .tuya import search as tuya_search
-from .wallbox.de_tuya import MODELS as WALLBOX_MODELS
+from .wallbox.base import WallboxUnreachable
+from .wallbox.native import MODELS as WALLBOX_MODELS
 from .wallbox.native import NativeWallboxes
 from .diagnostics import Diagnostics, report_markdown
 
@@ -194,10 +195,12 @@ class WallboxCheckRequest(BaseModel):
 
 
 class WallboxTestRequest(BaseModel):
-    """A wallbox OpenAmpere controls itself, read once from the setup form."""
-    model: str = Field("de_tuya", pattern="^(de_tuya)$")
+    """A wallbox OpenAmpere reads itself, read once from the setup form."""
+    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac)$")
     host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
-    local_key: str = Field("", max_length=64)
+    local_key: str = Field("", max_length=64)  # Tuya
+    port: int | None = Field(None, ge=1, le=65535)  # Modbus; None: the model's usual port
+    unit: int | None = Field(None, ge=1, le=255)
     id: str | None = Field(None, max_length=16)
 
 
@@ -232,6 +235,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     diagnostics = Diagnostics(runtime)
     diagnostics.wallboxes = wallboxes
     diagnostics.cars = cars
+    diagnostics.probe.exclusive = wallboxes.exclusive  # the check and the poll of a wallbox never overlap (#439)
     updates = Updates(runtime, VERSION)
     remote = Remote(runtime)
     home_assistant = ha_app.HomeAssistant()
@@ -1226,7 +1230,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         except probe.ProbeError as err:
             raise HTTPException(400, err.message) from None
 
-    # ---- wallboxes OpenAmpere reads and controls itself (portable dé wallbox over Tuya) ------------
+    # ---- wallboxes OpenAmpere reads and controls itself (dé over Tuya; FoxESS read only, #439) ------
 
     @app.get("/api/wallboxes")
     def get_wallboxes(request: Request):
@@ -1252,7 +1256,14 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.post("/api/wallboxes/test")
     async def wallbox_test(request: WallboxTestRequest):
-        """Reads a wallbox once with the address and key from the form (a stored key if none is given)."""
+        """Reads a wallbox once with the address and key from the form (a stored key if none is given); a Modbus
+        wallbox with its port and unit id, only read (#439)."""
+        if WALLBOX_MODELS[request.model].protocol == "modbus":
+            try:
+                reading = await wallboxes.test(request.model, request.host, request.port, request.unit)
+            except WallboxUnreachable as err:
+                raise HTTPException(400, err.message) from None
+            return {"reading": {k: v for k, v in asdict(reading).items() if k != "lifetime_kwh"}}
         stored = next((wb for wb in wallboxes.wallboxes if wb.id == request.id), None)
         key = request.local_key or (stored.local_key if stored else "")
         try:

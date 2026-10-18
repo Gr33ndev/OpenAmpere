@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import OpenAmpereConfigEntry
 from .const import DEVICE_MODES, WALLBOX_MODES, WORK_MODES
 from .coordinator import OpenAmpereCoordinator
-from .entity import ControlEntity, WallboxEntity
+from .entity import ControlEntity, WallboxEntity, controllable_wallboxes
 from .helpers import send
 
 
@@ -23,7 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         return  # read-only access
     entities: list[SelectEntity] = [WorkModeSelect(coordinator)]
     entities += [DeviceModeSelect(coordinator, d["id"]) for d in coordinator.info["devices"]]
-    entities += [WallboxModeSelect(coordinator, w["id"]) for w in coordinator.info.get("wallboxes") or []]
+    entities += [WallboxModeSelect(coordinator, w["id"]) for w in controllable_wallboxes(coordinator.info)]
     async_add_entities(entities)
 
 

@@ -4,7 +4,8 @@ English: [wallbox-direct.md](wallbox-direct.md)
 
 Die meisten Wallboxen steuert OpenAmpere über [evcc](https://evcc.io), siehe [evcc.de.md](evcc.de.md). Einige
 Wallboxen spricht OpenAmpere selbst an, ohne evcc und ohne Cloud. Bisher ist das die **mobile 11-kW-Wallbox von
-„dé“** (mit Tuya-WLAN). Du kannst mehrere solche Wallboxen einrichten, auch zusätzlich zu einer Wallbox über evcc.
+„dé“** (mit Tuya-WLAN). Den **FoxESS AC EV Charger** zeigt OpenAmpere nur an, steuern kann es ihn noch nicht (siehe
+unten). Du kannst mehrere solche Wallboxen einrichten, auch zusätzlich zu einer Wallbox über evcc.
 
 > Das Auslesen ist an einem echten Gerät bestätigt, das Steuern (Laden starten und stoppen, Ladestrom setzen) noch
 > nicht. Stell die Wallbox zuerst auf **Von Hand** und prüfe die Anzeige, bevor du einen anderen Lademodus wählst.
@@ -108,15 +109,38 @@ Jede Änderung steht im Protokoll unter **Mehr → Steuerung und Protokoll**.
 Die Wallbox funktioniert in der App genauso. Nur die **Suche im Heimnetz** geht dort nicht, weil die App ein eigenes
 Netz hat. Trag die IP-Adresse aus dem Router von Hand ein.
 
+## FoxESS AC EV Charger anzeigen (nur lesen)
+
+Der FoxESS AC EV Charger ist auch die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat; im Router heißt sie
+`EVC-…`. OpenAmpere zeigt ihn an (#439): ob ein Auto angeschlossen ist, mit welcher Leistung es lädt und den Strom je
+Phase. Seine Leistung zählt im Hausverbrauch mit wie bei jeder Wallbox. Steuern kann OpenAmpere ihn noch nicht
+(#318): Es schreibt nichts an die Wallbox, sie lädt weiter so, wie sie in ihrer App eingestellt ist.
+
+1. Unter **direkt → Wallbox hinzufügen oder prüfen** bei **Welche Wallbox hast du?** den FoxESS AC EV Charger
+   wählen (unter „Nur anzeigen“) und **Anzeigen** lassen.
+2. Die IP-Adresse eintragen, oder **Wallbox im Heimnetz suchen**. Port (meist 502) und Geräteadresse (meist 1)
+   stehen unter **Erweitert**.
+3. **Verbindung prüfen**, dann **Speichern**.
+
+OpenAmpere fragt die Wallbox alle paar Sekunden ab, jedes Mal über eine kurze Verbindung, die es danach gleich wieder
+schließt.
+
+- **Bei Anlagen von EKD** hält die bisherige Smartbox die Verbindung zur Wallbox, solange sie Strom hat. Dann kann
+  OpenAmpere die Wallbox nicht lesen und zeigt „nicht erreichbar“. Soll OpenAmpere die Wallbox anzeigen, muss die
+  Smartbox vom Strom getrennt bleiben.
+- **Nie evcc und OpenAmpere an derselben Wallbox:** Vielleicht erlaubt sie nur eine Verbindung. Liest evcc sie schon,
+  richte sie hier nicht zusätzlich ein.
+- Zählerstand, Kartennummer und Seriennummer liest OpenAmpere dafür gar nicht erst.
+
 ## Andere Wallboxen prüfen (nur lesen)
 
-Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor, zuerst für den FoxESS AC EV Charger (#318). Das ist
-auch die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat; im Router heißt sie `EVC-…`. Unter
-**direkt → Wallbox hinzufügen oder prüfen** wählst du sie bei **Welche Wallbox hast du?** unter „Nur prüfen
-(Vorschau)“. Dann prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der
-sie gerade steht, und zeigt, was sie antwortet. An der Wallbox wird nichts geändert. Das Ergebnis kommt in den
-Diagnosebericht (**Mehr → Diagnose**); wenn du ihn teilst, hilft das, die Register an echten Geräten zu bestätigen.
-Für andere Wallboxen liest **Mehr → Diagnose → Gerät auslesen** beliebige Register.
+Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor. Unter **direkt → Wallbox hinzufügen oder prüfen**
+wählst du sie bei **Welche Wallbox hast du?**; beim FoxESS AC EV Charger wählst du dann **Nur prüfen (Bericht)**.
+Dann prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der sie gerade steht, und zeigt, was sie
+antwortet. An der Wallbox wird nichts geändert. Das Ergebnis kommt in den Diagnosebericht (**Mehr → Diagnose**); wenn
+du ihn teilst, hilft das, die Register an echten Geräten zu bestätigen und die Wallbox bald auch zu steuern. Konnte
+die Prüfung den FoxESS AC EV Charger lesen, übernimmt **Diese Wallbox in OpenAmpere anzeigen** Adresse, Port und
+Geräteadresse. Für andere Wallboxen liest **Mehr → Diagnose → Gerät auslesen** beliebige Register.
 
 Wahlweise kann die Prüfung auch per **OCPP 1.6J** zuhören (#328): Starte dort den Zuhörer und trage die angezeigte
 Adresse in der App des Herstellers als OCPP-Server ein. OpenAmpere antwortet der Wallbox mit „Pending“ und fragt nur

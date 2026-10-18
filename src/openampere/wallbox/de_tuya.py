@@ -19,7 +19,8 @@ charging. See docs/devices/tuya/de-portable.md for what is confirmed and what is
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+
+from .base import Reading
 
 STATES = {"SLEEP": "idle", "IDLE": "idle", "IDLEINS": "plugged_in", "WORKING": "charging", "WAIT": "waiting",
           "ERRORPAUSE": "fault", "PAUSE": "paused", "STOP": "finished"}
@@ -28,34 +29,7 @@ CP_PLUGGED_V = 10.5  # below: a car is connected (9 V), or it charges (6 V)
 PHASE_ON_V = 100.0  # a phase with less is not connected
 PHASE_ACTIVE_A = 1.0  # a phase with more current takes part in charging
 CHARGING_W = 100.0  # WORKING can stay after a full car; power tells whether it really charges
-DEFAULT_STEPS = (6, 8, 10, 13, 16)
 MIN_CURRENT_A = 6  # the lowest current a car accepts (IEC 61851)
-
-
-@dataclass
-class Reading:
-    """What OpenAmpere knows about a wallbox after one read."""
-    state: str = "unknown"  # idle, plugged_in, charging, waiting, paused, finished, fault, unknown
-    connected: bool = False
-    charging: bool = False
-    power_w: float = 0.0
-    voltage_v: list[float | None] = field(default_factory=lambda: [None, None, None])
-    current_a: list[float | None] = field(default_factory=lambda: [None, None, None])
-    installed_phases: int = 3  # phases with voltage
-    active_phases: int = 0  # phases that charge now
-    session_kwh: float | None = None
-    session_s: int | None = None
-    temperature_c: float | None = None
-    set_current_a: int | None = None
-    max_current_a: int | None = None
-    steps_a: list[int] = field(default_factory=lambda: list(DEFAULT_STEPS))
-    firmware: str | None = None
-    cp_v: float | None = None
-    lifetime_kwh: float | None = None  # private: not in reports
-
-    def phases(self) -> int:
-        """Phases to calculate with: those that charge now, otherwise all that are connected."""
-        return self.active_phases or self.installed_phases or 1
 
 
 def _json(value) -> dict | list | None:
@@ -91,6 +65,8 @@ class DeTuyaCharger:
     key = "de_tuya"
     label = "dé Mobile Wallbox 11 kW (Tuya)"
     protocol = "tuya"  # the app shows the fields and the steps to the local key of a Tuya device
+    read_only = False
+    modes = ("manual", "off", "pv", "minpv", "now")  # native.MODES
     START, CURRENT = "140", "150"
 
     @classmethod
@@ -144,5 +120,3 @@ class DeTuyaCharger:
     def start(cls, on: bool) -> dict[str, object]:
         return {cls.START: bool(on)}
 
-
-MODELS = {m.key: m for m in (DeTuyaCharger,)}

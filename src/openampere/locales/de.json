@@ -383,6 +383,14 @@
     "unknownChargingModeNamed": "{name}: Unbekannter Lademodus.",
     "unknownWallbox": "Diese Wallbox kennt OpenAmpere noch nicht.",
     "unknownWallboxNamed": "{name}: Diese Wallbox kennt OpenAmpere noch nicht.",
-    "wallboxDoesNotExist": "Diese Wallbox gibt es nicht."
+    "wallboxDoesNotExist": "Diese Wallbox gibt es nicht.",
+    "inverterAddressNamed": "{name}: Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox ein, du findest sie zum Beispiel in der Geräteliste deines Routers.",
+    "portUnitRange": "{name}: Der Port muss zwischen 1 und 65535 liegen, die Geräteadresse zwischen 1 und 255.",
+    "readOnly": "Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.",
+    "readOnlyNamed": "{name}: Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.",
+    "modbusNotConnected": "Die Wallbox unter {host} antwortet nicht oder nimmt keine Modbus-Verbindung an. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox. Nimm sie vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, prüfe die Adresse und ob evcc oder ein anderes Programm die Wallbox liest.",
+    "modbusNoAnswer": "Die Wallbox nimmt die Verbindung an, antwortet aber nicht richtig. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox. Nimm sie vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, liest vielleicht evcc die Wallbox, oder die Geräteadresse stimmt nicht.",
+    "modbusBusy": "Die Wallbox lehnt das Lesen ab („Gerät beschäftigt“). Vermutlich erlaubt sie Modbus in ihrer jetzigen Steuerungsart nicht. Du siehst sie in der App des Herstellers.",
+    "modbusRejected": "Die Wallbox antwortet, kennt diese Register aber nicht. Vielleicht ist es ein anderes Modell oder eine andere Firmware."
   }
 }

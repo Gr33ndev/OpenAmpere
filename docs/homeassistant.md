@@ -70,6 +70,7 @@ one connection, and every command from Home Assistant goes through the same chec
 | Inverter connected, off-grid (power cut), charging from the grid, alarm | Yes/no |
 | Per immersion heater/switch: power, on, temperature | |
 | Per wallbox OpenAmpere controls itself: charging power, state, car plugged in, charging, reachable, set charging current | One device card per wallbox; a newly set up one appears by itself. While the wallbox is not reachable (e.g. unplugged), its values are "unavailable" and only "reachable" shows "off". |
+| Per wallbox OpenAmpere only shows (FoxESS AC EV Charger): charging power, state, car plugged in, charging, reachable | The same device card, but no charging mode, no charging current and no set charging current: OpenAmpere writes nothing to it (#439). |
 
 **Every minute:** current electricity price, battery settings, control (view only / test mode / active), firmware of
 the inverter (a diagnostic entity; it changes after an update of the inverter, so it can trigger an automation).

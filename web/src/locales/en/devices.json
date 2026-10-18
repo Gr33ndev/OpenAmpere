@@ -247,7 +247,20 @@
     "amps": "{current} A",
     "soldBy": "{label} (also sold by {sellers})",
     "stopAfter": "Pause solar charging after (minutes)",
-    "stopAfterHint": "When a cloud comes in “Solar” mode, the wallbox goes on with the lowest step for this long. The battery or the grid supply the rest. Longer means fewer interruptions, shorter means less power from the grid. 1 to 60 minutes."
+    "stopAfterHint": "When a cloud comes in “Solar” mode, the wallbox goes on with the lowest step for this long. The battery or the grid supply the rest. Longer means fewer interruptions, shorter means less power from the grid. 1 to 60 minutes.",
+    "awayHintModbus": "OpenAmpere cannot reach the wallbox right now and asks again from time to time. On EKD systems this is usually caused by the previous smartbox: as long as it has power, it holds the connection to the wallbox, and OpenAmpere cannot read it. If OpenAmpere should show the wallbox, disconnect the smartbox from power. If you have no smartbox, check that the wallbox is switched on and whether evcc or another program reads it.",
+    "hintReadOnly": "OpenAmpere only shows this wallbox and changes nothing on it. It charges as it is set in its own app.",
+    "maxOfWallbox": "Highest current of the wallbox",
+    "locked": "locked",
+    "defaultNameFixed": "Wallbox",
+    "whichShown": "OpenAmpere shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it yet, it goes on charging as it is set in its own app. With “Check only” you create a report instead, which helps to control it soon.",
+    "groupShown": "Show only",
+    "way": "What should OpenAmpere do?",
+    "wayShow": "Show",
+    "wayCheck": "Check only (report)",
+    "readOnlyIntro": "OpenAmpere only reads the wallbox and changes nothing on it. On EKD systems the previous smartbox must stay disconnected from power for this, otherwise it holds the connection to the wallbox. If evcc already reads the wallbox, do not add it here as well: it may allow only one connection.",
+    "portHint": "Leave empty for the usual port {port}.",
+    "testOkReadOnly": "Connected. The wallbox reports {phases} phases and charges with at most {current} A (firmware {firmware})."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",
@@ -383,7 +396,9 @@
     "workModeControlled": "through the app or a card",
     "workModeLocked": "locked",
     "workModePlugAndCharge": "when plugged in",
-    "yes": "yes"
+    "yes": "yes",
+    "showLive": "Show this wallbox in OpenAmpere",
+    "showLiveHint": "OpenAmpere can also show this wallbox permanently, read only. Address, port and unit ID are taken over from the check."
   },
   "wallboxPage": {
     "addressHint": "On the same computer {local}, otherwise e.g. {example}",

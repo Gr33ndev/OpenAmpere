@@ -430,7 +430,8 @@ def test_wallboxes_for_other_apps_without_address_or_key_and_their_mode_through_
     client = app_client(web, new_token(web, "control"))
 
     info = client.get(f"{V1}/info").json()
-    assert info["wallboxes"] == [{"id": wb.id, "name": "Carport", "model": "dé Mobile Wallbox 11 kW (Tuya)"}]
+    assert info["wallboxes"] == [{"id": wb.id, "name": "Carport", "model": "dé Mobile Wallbox 11 kW (Tuya)",
+                                  "read_only": False}]
     state = client.get(f"{V1}/state").json()
     assert state["wallboxes"] == [{"id": wb.id, "name": "Carport", "enabled": True, "mode": "pv", "max_current_a": 16,
                                    "mode_current_a": {"pv": 16, "minpv": 16, "now": 16}, "online": True,

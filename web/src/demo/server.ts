@@ -370,15 +370,30 @@ function consumers() {
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
 }
 
-/** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. */
+/** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. And a FoxESS charger
+ *  OpenAmpere only shows (#439): idle, no car plugged in. */
 function nativeWallboxes() {
   const away = Math.floor(Date.now() / 1000) - 3 * 3600;
-  return { max: 4, search: true, models: [{ key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya" }],
+  const updated = Math.floor(Date.now() / 1000) - 5;
+  return { max: 4, search: true, models: [
+    { key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya", read_only: false,
+      modes: ["manual", "off", "pv", "minpv", "now"], sold_by: [] },
+    { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, modes: ["manual"],
+      sold_by: ["EKD"], port: 502, unit: 1 }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
-      mode_current_a: { now: 8 }, stop_after_min: 10,
+      mode_current_a: { now: 8 }, stop_after_min: 10, port: null, unit: null, read_only: false,
+      modes: ["manual", "off", "pv", "minpv", "now"],
       online: false, offline_since: away, updated: away, error: "Das Gerät ist unter 192.168.178.60 nicht erreichbar.",
-      reading: null, controlled: false }] };
+      reading: null, controlled: false },
+    { id: "demo0003", name: "Garage", model: "foxess_ac", label: "FoxESS AC EV Charger", host: "192.168.178.61",
+      device_id: "", local_key_set: true, max_current_a: 16, mode: "manual", enabled: true, mode_current_a: {},
+      stop_after_min: 10, port: 502, unit: 1, read_only: true, modes: ["manual"],
+      online: true, offline_since: null, updated, error: null, controlled: false,
+      reading: { state: "idle", connected: false, charging: false, power_w: 0, voltage_v: [230.1, 230.2, 230.3],
+        current_a: [0, 0, 0], installed_phases: 3, active_phases: 0, session_kwh: null, session_s: null,
+        temperature_c: null, set_current_a: null, max_current_a: 32, steps_a: [6, 32], firmware: null, cp_v: null,
+        work_mode: "plug_and_charge", phase_switching: true } }] };
 }
 
 /** A car whose data OpenAmpere reads from its manufacturer (#401), linked to the portable wallbox. The portal's values

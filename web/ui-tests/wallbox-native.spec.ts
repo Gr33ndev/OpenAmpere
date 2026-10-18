@@ -70,7 +70,7 @@ test("the waiting time before solar charging pauses is set in the wallbox settin
   await field.fill("20");
   const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes") && r.method() === "PUT");
   await page.getByRole("button", { name: "Speichern" }).click();
-  const item = (await sent).postDataJSON().wallboxes[0];
+  const item = (await sent).postDataJSON().wallboxes.find((w: { id: string }) => w.id === "demo0001");
   expect(item).toMatchObject({ stop_after_min: 20, mode_current_a: { now: 8 } });
 });
 
@@ -135,9 +135,73 @@ test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in 
   expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
   await expect(page.getByLabel("Local Key")).toHaveCount(0);
   await expect(page.getByText("So bekommst du den Local Key")).toHaveCount(0);
+  // the FoxESS charger is shown read only (#439), the check is the other way
+  await expect(page.getByLabel("Port")).toHaveValue("502");
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();
+  expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
   await expect(page.locator(".notice", { hasText: "Vorschau" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Wallbox prüfen" })).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
+});
+
+// #439: the FoxESS AC EV Charger is only shown: no charging mode, nothing it could be told
+test("a FoxESS charger is shown read only on the devices tab", async ({ page, api }) => {
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Garage" });
+  await expect(card).toContainText("kein Fahrzeug angeschlossen");
+  await expect(card).toContainText("zeigt diese Wallbox nur an");
+  await expect(card.getByRole("button")).toHaveCount(0);  // no mode, no current
+  await expect(card.locator(".facts")).toContainText("beim Einstecken");
+  await expect(card.locator(".facts")).toContainText("32 A");
+  expect(await layoutProblems(page)).toEqual([]);
+
+  const base = await view();
+  const fox = base.wallboxes.find((w) => w.model === "foxess_ac") as NativeWallbox;
+  const charging: NativeWallbox = { ...fox, reading: { ...fox.reading, state: "charging", connected: true, charging: true,
+    power_w: 11050, current_a: [16, 16, 16], active_phases: 3 } as NativeWallbox["reading"] };
+  const away: NativeWallbox = { ...fox, online: false, offline_since: Math.floor(Date.now() / 1000) - 600,
+    reading: null, error: "Die Wallbox unter 192.168.178.61 antwortet nicht." };
+  api.override("/api/wallboxes", { ...base, wallboxes: [charging] });
+  await page.reload();
+  await expect(card).toContainText("lädt mit 11,05 kW");
+  await expect(card.locator(".facts")).toContainText("16,0 / 16,0 / 16,0 A");
+  api.override("/api/wallboxes", { ...base, wallboxes: [away] });
+  await page.reload();
+  await expect(card).toContainText("nicht erreichbar seit");
+  await expect(card).toContainText("bisherige Smartbox");
+  await expect(card.locator(".facts")).toHaveCount(0);  // no old values
+});
+
+test("a FoxESS charger is added with port and unit id, without a current or mode", async ({ page, api }) => {
+  const base = await view();
+  api.override("/api/wallboxes/test", { reading: { ...READING, state: "idle", connected: false, charging: false,
+    power_w: 0, set_current_a: null, max_current_a: 32, firmware: "1.16" } });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
+  await expect(page.locator(".notice", { hasText: "liest die Wallbox nur" })).toContainText("bisherige Smartbox");
+  await expect(page.getByLabel("Höchster Ladestrom (A)")).toHaveCount(0);
+  await expect(page.getByLabel("Solar-Laden pausieren nach (Minuten)")).toHaveCount(0);
+  await expect(page.getByLabel("Name")).toHaveValue("Wallbox");
+  await page.getByLabel("IP-Adresse der Wallbox").fill("192.168.178.61");
+  await page.getByText("Erweitert").click();
+  await page.getByLabel("Port").fill("1502");
+  const tested = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/test"));
+  await page.getByRole("button", { name: "Verbindung prüfen" }).click();
+  expect((await tested).postDataJSON()).toEqual({ model: "foxess_ac", host: "192.168.178.61", port: 1502, unit: 1, id: null });
+  await expect(page.locator(".notice.ok")).toContainText("höchstens 32 A");
+  expect(await layoutProblems(page)).toEqual([]);
+  await page.getByLabel("Geräteadresse (Unit-ID)").fill("x");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("Bitte Port und Geräteadresse als Zahlen angeben.")).toBeVisible();
+  await page.getByLabel("Geräteadresse (Unit-ID)").fill("1");
+  api.override("/api/wallboxes", base);
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes") && r.method() === "PUT");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  const item = (await sent).postDataJSON().wallboxes.at(-1);
+  expect(item).toMatchObject({ model: "foxess_ac", host: "192.168.178.61", port: 1502, unit: 1, mode: "manual",
+    local_key: "" });
 });
 
 // a backup restored on another server: the stored local key cannot be read, the wallbox waits for a new one (#391)

@@ -3,7 +3,8 @@
 """Wallboxes OpenAmpere talks to itself, without evcc (#318).
 
 Every wallbox is a module (see base.Wallbox) listed in WALLBOXES, the same way as the grid operators in gridmeter/.
-So far there is only a read-only check for the setup (#325): it reads in the wallbox's current mode, never writes, and
+This is the read-only check for the setup (#325); the wallboxes OpenAmpere reads (and maybe controls) all the time are
+in native.py. The check reads in the wallbox's current mode, never writes, and
 its last result goes into the diagnostics report, so the registers can be confirmed on real devices before OpenAmpere
 controls anything. Adding a wallbox: a module with its blocks and interpret(), an entry here, simulator answers and a
 test.
