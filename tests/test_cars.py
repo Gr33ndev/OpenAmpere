@@ -24,6 +24,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from openampere import cars as cars_module
+from openampere import privacy
 from openampere.api import create_app
 from openampere.cars import Cars, CarData, Delivery, Source, SourceAuthError, SourceSetupError, validate
 from openampere.cars.vw_euda import VwEuDataAct, credentials_page, interpret, points, read_dataset
@@ -578,6 +579,14 @@ def test_the_api_needs_a_login_for_changes_and_the_charges(tmp_path, monkeypatch
     assert client.get("/api/cars/sessions").status_code == 401
     assert client.put("/api/cars", json={"cars": []}).status_code == 401
     assert "username" not in client.get("/api/cars").json()["cars"][0]
+
+
+def test_the_log_in_a_report_has_no_name_login_or_vin_of_a_car(tmp_path):
+    runtime, cars, _ = setup_cars(tmp_path)
+    cars.save([GOOD])
+    pseudonyms = privacy.for_report(runtime)
+    text = pseudonyms.text(f"car Born: login {EMAIL} for /vehicles/{VIN}/list refused")
+    assert "Born" not in text and EMAIL not in text and VIN not in text and "<Fahrgestellnummer>" in text
 
 
 def test_the_report_has_no_name_login_or_vin(tmp_path):

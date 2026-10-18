@@ -161,7 +161,7 @@ class Cars:
         opened = self.runtime.secrets.decrypt("car.password", password)
         if not opened:
             self._unreadable.add(password)
-            log.warning("car %s: the password cannot be read, it has to be entered again", car.get("name"))
+            log.warning("car %s: the password cannot be read, it has to be entered again", car.get("id"))
         return {**car, "password": opened}
 
     @property
@@ -296,7 +296,7 @@ class Cars:
             self._failed(car, live, "error", err.message, time.time())
             return live
         except Exception as err:  # noqa: BLE001 - an unexpected answer: shown, and tried again later
-            log.warning("car %s: reading the data failed: %r", car.name, err)
+            log.warning("car %s: reading the data failed: %s", car.id, type(err).__name__)
             self._failed(car, live, "error", "Unerwartete Antwort der Datenquelle. Bitte später nochmal versuchen.",
                          time.time())
             return live
@@ -307,7 +307,7 @@ class Cars:
         if delivery.data:
             live.after = max(live.after or 0.0, *(d.ts for d in delivery.data))
         if live.status in ("auth", "setup", "error"):
-            log.info("car %s: data from the source again", car.name)
+            log.info("car %s: data from the source again", car.id)
         has_data = bool(rows) or self.runtime.storage.car_last_ts(car.id) is not None
         live.status, live.error, live.failures, live.checked = ("ok" if has_data else "waiting"), None, 0, now
         if delivery.newest is None:
@@ -319,7 +319,7 @@ class Cars:
 
     def _failed(self, car: Car, live: Live, status: str, message: str, now: float) -> None:
         if live.status != status or live.error != message:
-            log.info("car %s: %s", car.name, message)
+            log.info("car %s: %s", car.id, message)
         live.failures += 1
         live.status, live.error, live.checked = status, message, now
         live.next_at = now + min(RETRY_MAX_S, RETRY_S * 2 ** (live.failures - 1))
@@ -365,7 +365,7 @@ class Cars:
             if charge is None:
                 charge = running[car.id] = Charge(self.runtime.storage.open_car_session(car.id, wb.id, now), wb.id,
                                                   0.0, 0.0)
-                log.info("car %s plugged in at wallbox %s", car.name, wb.name)
+                log.info("car %s plugged in at wallbox %s", car.id, wb.id)
             counter = reading.lifetime_kwh if reading.lifetime_kwh is not None else reading.session_kwh
             if counter is not None:
                 if charge.counter is not None:

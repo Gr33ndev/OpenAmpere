@@ -54,6 +54,8 @@ von selbst noch einmal (dein Konto könnte sonst gesperrt werden). Ändere dann 
 - **Ladestand beim Einstecken:** Das Portal liefert spät. OpenAmpere nimmt deshalb den letzten Wert vor dem
   Einstecken (ein geparktes Auto behält seinen Ladestand), sonst den ersten danach.
 - **Verbrauch:** Lädst du auch unterwegs, fehlt diese Energie, und der Verbrauch wirkt zu niedrig.
+- **Was gespeichert bleibt:** Die Werte vom Hersteller und die Ladevorgänge behält OpenAmpere, bis du das Auto
+  entfernst. Die Auswertung braucht sie für den Ladestand beim Einstecken und die gefahrenen Kilometer.
 - **Das Portal ist keine offizielle Schnittstelle für Apps.** Ändert der Hersteller die Anmeldung, kann der Abruf
   ausfallen, bis OpenAmpere angepasst ist. Dann bitte ein Issue öffnen, mit dem Bericht aus **Mehr → Diagnose**
   (er enthält keine Anmeldung und keine Fahrgestellnummer).

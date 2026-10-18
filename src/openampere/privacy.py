@@ -105,7 +105,8 @@ def log_for_report(lines: list[str] | None) -> list[str] | None:
 
 def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
     """Pseudonyms that also know the installation's own private values: the addresses of the inverter, ntfy, evcc, the
-    surplus devices and the wallboxes (with their device IDs and local keys), the meter user name and numbers and, unless the owner includes it, the serial number."""
+    surplus devices and the wallboxes (with their device IDs and local keys), the meter user name and numbers, the names,
+    logins and VINs of the cars and, unless the owner includes it, the serial number."""
     config = runtime.config
     known = {config.notify.ntfy_url: "<ntfy-Adresse>", config.evcc.url: "<evcc-Adresse>",
              config.meter.username: "<Benutzername>"}
@@ -137,6 +138,13 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
         key = runtime.secrets.decrypt("wallbox.local_key", wallbox.get("local_key") or "")
         if key:
             known[key] = "<Local Key>"
+    for car in runtime.storage.get_meta("cars") or []:  # cars and their brand account (#401)
+        if not isinstance(car, dict):
+            continue
+        for field, name in (("name", "<Auto>"), ("username", "<Benutzername>"), ("vin", "<Fahrgestellnummer>")):
+            value = str(car.get(field) or "").strip()
+            if len(value) >= 3:  # a name like "ID" would replace every such word in the log
+                known[value] = name
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")
