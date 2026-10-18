@@ -329,12 +329,12 @@ def test_a_backup_from_before_schema_versions_is_still_restored(tmp_path):
 
 
 def test_settings_the_app_cannot_change_are_ignored_at_the_start(tmp_path):
-    """Restored by an older version: the next start does not apply them."""
+    """Restored by an older version: the next start does not apply them (server.allowed_hosts, which the app can
+    change since #437, is removed by the upgrade: test_own_addresses)."""
     storage = Storage(tmp_path / "t.db")
-    storage.save_settings({"server.allowed_hosts": ["*"], "cloud.base_url": "https://attacker.example",
-                           "tariff.feed_in_ct": 9.5})
+    storage.save_settings({"cloud.base_url": "https://attacker.example", "tariff.feed_in_ct": 9.5})
     runtime = Runtime({}, storage)
-    assert runtime.config.server.allowed_hosts == [] and runtime.config.cloud.base_url != "https://attacker.example"
+    assert runtime.config.cloud.base_url != "https://attacker.example"
     assert runtime.config.tariff.feed_in_ct == 9.5
     storage.close()
 

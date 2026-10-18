@@ -82,6 +82,15 @@
     "understood": "Got it",
     "what": "Shortly after your change, another device wrote the old values back to the inverter: {settings}."
   },
+  "ownAddresses": {
+    "title": "Own addresses",
+    "intro": "Only needed if you open OpenAmpere under a name of your own, for example through a reverse proxy with your domain. IP addresses, names like openampere.fritz.box or openampere.local and Tailscale addresses always work.",
+    "label": "Allowed names",
+    "hint": "One name per line, without https://, port or path.",
+    "placeholder": "solar.example.com",
+    "proxyHint": "Only enter names that belong to you: any website under one of these names can open OpenAmpere on your home network. The reverse proxy must pass on the name (Host header) and WebSocket connections, otherwise the live values stay empty.",
+    "wildcard": "“*” is currently set (in config.yaml or as an environment variable). This turns off the protection against DNS rebinding: any website a browser on your home network opens can read OpenAmpere. Remove the line with “*” and enter the names one by one."
+  },
   "passwordSetup": {
     "continue": "Continue",
     "intro": "The password protects all settings of your system. In your home network anyone can view most values without a password – but only people who know it can change anything. Login details and the address of your push messages are only shown after logging in.",

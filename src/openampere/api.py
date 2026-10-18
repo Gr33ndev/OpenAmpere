@@ -334,7 +334,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             if len(host or "") > MAX_HOST_SHOWN:
                 host = f"{host[:MAX_HOST_SHOWN]}…"
             return JSONResponse({"detail": f"Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die "
-                                           "IP-Adresse oder trage den Namen unter server.allowed_hosts ein."}, 421)
+                                           "IP-Adresse und trage den Namen unter Mehr → Zugriffsschutz → Eigene "
+                                           "Adressen ein."}, 421)
         path = request.scope["path"]  # the path the routes see, not one read from the URL with the Host in it
         writing = request.method not in ("GET", "HEAD", "OPTIONS")
         if path.startswith(external.PREFIX + "/") or path == external.PREFIX:

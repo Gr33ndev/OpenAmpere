@@ -3,7 +3,7 @@
     "accessInvalidRevoked": "Zugang ungültig oder widerrufen.",
     "accessNotFound": "Zugang nicht gefunden.",
     "accessReadOnly": "Dieser Zugang darf nur lesen.",
-    "accessViaNotAllowed": "Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse oder trage den Namen unter server.allowed_hosts ein.",
+    "accessViaNotAllowed": "Zugriff über „{host}“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse und trage den Namen unter Mehr → Zugriffsschutz → Eigene Adressen ein.",
     "backupCouldNotBeStored": "Die Sicherung ließ sich nicht speichern. Bitte prüfen, ob genug freier Speicherplatz da ist.",
     "consumerNotFound": "Verbraucher nicht gefunden",
     "controlDisabled": "Steuerung ist deaktiviert",
@@ -112,6 +112,8 @@
   "config": {
     "credentialsNotInAddress": "Benutzername und Passwort gehören nicht in die {label}. Bitte die Adresse ohne sie eintragen.",
     "encryptedPrefixNotAllowed": "{label}: Der Wert beginnt mit „{ENCRYPTED_PREFIX}“. So beginnen nur verschlüsselt gespeicherte Werte, deshalb kann OpenAmpere ihn nicht speichern. Bitte den Wert so eintragen, wie du ihn bekommen hast.",
+    "hostWildcardNotAllowed": "„*“ schaltet den Schutz gegen DNS-Rebinding ab und lässt sich deshalb in der App nicht eintragen. Bitte jeden Namen einzeln eintragen, zum Beispiel solar.example.de.",
+    "notAHostName": "„{name}“ ist kein Hostname. Bitte nur den Namen eintragen, ohne https://, Port oder Pfad, zum Beispiel solar.example.de.",
     "ntfyCredentialsNotInAddress": "Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.",
     "settingTChangedApp": "Die Einstellung {key} kann in der App nicht geändert werden."
   },

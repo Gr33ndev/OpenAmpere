@@ -254,4 +254,4 @@ def test_version_3_adds_the_columns_of_a_second_pv_inverter(tmp_path):
         assert storage.energy_sum(0, 900)["pv_external"] is None
     finally:
         storage.close()
-    assert version_of(tmp_path / "t.db") == 3
+    assert version_of(tmp_path / "t.db") == storage_module.SCHEMA_VERSION

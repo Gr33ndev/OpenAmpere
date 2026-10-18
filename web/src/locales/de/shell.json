@@ -82,6 +82,15 @@
     "understood": "Verstanden",
     "what": "Kurz nach deiner Änderung hat ein anderes Gerät die alten Werte zurück in den Wechselrichter geschrieben: {settings}."
   },
+  "ownAddresses": {
+    "title": "Eigene Adressen",
+    "intro": "Nur nötig, wenn du OpenAmpere unter einem eigenen Namen öffnest, zum Beispiel über einen Reverse-Proxy mit deiner Domain. IP-Adressen, Namen wie openampere.fritz.box oder openampere.local und Tailscale-Adressen gehen immer.",
+    "label": "Erlaubte Namen",
+    "hint": "Ein Name pro Zeile, ohne https://, Port oder Pfad.",
+    "placeholder": "solar.example.de",
+    "proxyHint": "Trag nur Namen ein, die dir gehören: Jede Website unter einem dieser Namen kann OpenAmpere in deinem Heimnetz öffnen. Der Reverse-Proxy muss den Namen (Host-Header) und WebSocket-Verbindungen weiterreichen, sonst bleiben die Live-Werte leer.",
+    "wildcard": "Zurzeit ist „*“ eingetragen (in der config.yaml oder als Umgebungsvariable). Damit ist der Schutz gegen DNS-Rebinding aus: Jede Website, die ein Browser in deinem Heimnetz öffnet, kann OpenAmpere lesen. Entferne die Zeile mit „*“ und trag die Namen einzeln ein."
+  },
   "passwordSetup": {
     "continue": "Weiter",
     "intro": "Das Passwort schützt alle Einstellungen deiner Anlage. Ansehen kann man die meisten Werte im Heimnetz auch ohne Passwort – ändern aber nur, wer es kennt. Zugangsdaten und die Adresse deiner Push-Nachrichten siehst du nur nach der Anmeldung.",
