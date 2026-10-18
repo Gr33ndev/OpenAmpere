@@ -26,6 +26,13 @@ the login flow are based on facts from ha-netze-bw (https://github.com/cygnusb/h
 cygnusb, MIT License. The CSV format of the quarter-hour values is based on facts from a working importer a
 user shared in issue #67. OpenAmpere is not affiliated with Netze BW.
 
+The data of cars of the Volkswagen group (state of charge, range, odometer) is read from the group's EU Data Act
+portal eu-data-act.drivesomethinggreater.com with the owner's login. The login flow, the client ids per brand and the
+names of the data points are based on facts from evcc's vehicle/vw/eudataact (https://github.com/evcc-io/evcc, MIT
+License), which is itself based on ioBroker.vw-connect (https://github.com/TA2k/ioBroker.vw-connect, MIT License);
+OpenAmpere has its own implementation and contains no code of either. OpenAmpere is not affiliated with the
+Volkswagen group or its brands.
+
 my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
 
 The Home Assistant buttons on the website (site/badges/*.svg) are the badges of My Home Assistant

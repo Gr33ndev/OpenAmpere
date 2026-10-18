@@ -120,6 +120,19 @@ def _allowed_hosts_from_the_app_only(db: sqlite3.Connection) -> None:
         db.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
 
 
+def _car_tables(db: sqlite3.Connection) -> None:
+    """Version 4 -> 5: the data of a car from its manufacturer (#401) and its charges at a wallbox OpenAmpere
+    controls. The manufacturer keeps the data only for a while, so OpenAmpere keeps its own history."""
+    db.execute("""CREATE TABLE IF NOT EXISTS car_points (
+        car TEXT NOT NULL, ts REAL NOT NULL, soc REAL, range_km REAL, odometer_km REAL, plugged INTEGER,
+        charging INTEGER, target_soc REAL, PRIMARY KEY (car, ts))""")
+    db.execute("""CREATE TABLE IF NOT EXISTS car_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, car TEXT NOT NULL, wallbox TEXT NOT NULL, start REAL NOT NULL,
+        end REAL, kwh REAL NOT NULL DEFAULT 0, counter REAL,
+        settled INTEGER NOT NULL DEFAULT 0, soc_start REAL, soc_end REAL, odometer_km REAL)""")
+    db.execute("CREATE INDEX IF NOT EXISTS car_sessions_car ON car_sessions (car, start)")
+
+
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
@@ -127,8 +140,8 @@ def _allowed_hosts_from_the_app_only(db: sqlite3.Connection) -> None:
 # and device state (KEEP_ON_RESTORE) in the copy is kept that of the running installation: the older version takes
 # the copy as it is, and an old password, sessions or revoked app tokens must not become valid again with it.
 MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance, 2: _external_pv_columns,
-                                                               3: _allowed_hosts_from_the_app_only}
-SCHEMA_VERSION = 4
+                                                               3: _allowed_hosts_from_the_app_only, 4: _car_tables}
+SCHEMA_VERSION = 5
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
 NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
 COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
@@ -1074,6 +1087,85 @@ class Storage:
     def device_power(self, start: float, end: float) -> list[dict]:
         return self._fetchall("SELECT ts, device, w FROM device_power WHERE ts >= ? AND ts < ? ORDER BY ts",
                               (start, end))
+
+    # ---- cars (#401) -----------------------------------------------------
+
+    CAR_FIELDS = ("soc", "range_km", "odometer_km", "plugged", "charging", "target_soc")
+
+    def add_car_points(self, car: str, rows: list[dict]) -> None:
+        """Data of a car as its manufacturer delivered it; the same delivery again replaces the first."""
+        with self._lock, self._db:
+            self._db.executemany(
+                f"INSERT OR REPLACE INTO car_points(car, ts, {', '.join(self.CAR_FIELDS)}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [(car, row["ts"], *(row.get(f) for f in self.CAR_FIELDS)) for row in rows])
+
+    def car_last_ts(self, car: str) -> float | None:
+        return self._fetchall("SELECT MAX(ts) AS ts FROM car_points WHERE car = ?", (car,))[0]["ts"]
+
+    def car_value(self, car: str, field: str, *, before: float | None = None, after: float | None = None,
+                  newest: bool = True) -> dict | None:
+        """The newest (or oldest) delivery of one value in a time range: {"ts": …, "value": …}."""
+        if field not in self.CAR_FIELDS:
+            raise ValueError(field)
+        sql = f"SELECT ts, {field} AS value FROM car_points WHERE car = ? AND {field} IS NOT NULL"
+        params: list = [car]
+        if after is not None:
+            sql += " AND ts >= ?"
+            params.append(after)
+        if before is not None:
+            sql += " AND ts <= ?"
+            params.append(before)
+        rows = self._fetchall(sql + f" ORDER BY ts {'DESC' if newest else 'ASC'} LIMIT 1", tuple(params))
+        return rows[0] if rows else None
+
+    def car_points(self, car: str, start: float, end: float) -> list[dict]:
+        return self._fetchall(f"SELECT ts, {', '.join(self.CAR_FIELDS)} FROM car_points WHERE car = ? AND ts >= ? "
+                              "AND ts < ? ORDER BY ts", (car, start, end))
+
+    def open_car_session(self, car: str, wallbox: str, start: float) -> int:
+        with self._lock, self._db:
+            return self._db.execute("INSERT INTO car_sessions(car, wallbox, start) VALUES (?, ?, ?)",
+                                    (car, wallbox, start)).lastrowid
+
+    def update_car_session(self, session_id: int, kwh: float, end: float | None = None, *,
+                           counter: float | None = None) -> None:
+        """counter: the wallbox's energy counter that goes with kwh, to go on counting after a restart."""
+        with self._lock, self._db:
+            self._db.execute("UPDATE car_sessions SET kwh = ?, end = COALESCE(?, end), counter = COALESCE(?, counter) "
+                             "WHERE id = ?", (kwh, end, counter, session_id))
+
+    def car_sessions(self, car: str | None = None, *, open_only: bool = False, limit: int = 500) -> list[dict]:
+        sql, params = ("SELECT id, car, wallbox, start, end, kwh, counter, settled, soc_start, soc_end, odometer_km "
+                       "FROM car_sessions WHERE 1 = 1"), []
+        if car is not None:
+            sql += " AND car = ?"
+            params.append(car)
+        if open_only:
+            sql += " AND end IS NULL"
+        return self._fetchall(sql + " ORDER BY start DESC LIMIT ?", (*params, limit))
+
+    def settle_car_session(self, session_id: int, soc_start: float | None, soc_end: float | None,
+                           odometer_km: float | None) -> None:
+        """The values of an ended charge, kept with it: the deliveries they come from are pruned later."""
+        with self._lock, self._db:
+            self._db.execute("UPDATE car_sessions SET settled = 1, soc_start = ?, soc_end = ?, odometer_km = ? "
+                             "WHERE id = ?", (soc_start, soc_end, odometer_km, session_id))
+
+    def prune_car_points(self, before: float) -> None:
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM car_points WHERE ts < ?", (before,))
+
+    def delete_car(self, car: str) -> None:
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM car_points WHERE car = ?", (car,))
+            self._db.execute("DELETE FROM car_sessions WHERE car = ?", (car,))
+
+    def delete_cars_except(self, keep: list[str]) -> None:
+        """Data of cars that are no longer set up, also of entries the settings could not read."""
+        marks = ", ".join("?" * len(keep)) or "''"
+        with self._lock, self._db:
+            for table in ("car_points", "car_sessions"):
+                self._db.execute(f"DELETE FROM {table} WHERE car NOT IN ({marks})", tuple(keep))
 
     # ---- reading ---------------------------------------------------------
 

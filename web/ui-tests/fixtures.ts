@@ -67,7 +67,7 @@ export async function screenshot(locator: Locator, consoleErrors: string[]): Pro
 /** Every page of the app, as hash routes. */
 export const PAGES = [
   "", "devices", "devices/battery", "devices/charging", "report", "more",
-  ...["installation", "pv", "export-limit", "connection", "device-setup", "wallbox", "gridmeter", "control", "notify",
+  ...["installation", "pv", "export-limit", "connection", "device-setup", "wallbox", "cars", "gridmeter", "control", "notify",
     "tariff", "billing", "remote", "apps", "security", "appearance", "data", "diagnostics", "device-reader", "about", "changelog", "licenses"]
     .map((page) => `more/${page}`),
 ];

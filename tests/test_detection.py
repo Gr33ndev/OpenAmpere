@@ -208,3 +208,11 @@ async def test_the_collector_counts_meter_b_only_with_the_setting(tmp_path):
             assert runtime.collector.latest.totals.pv_external is not None  # OpenAmpere's integral (#419)
         finally:
             await runtime.collector.stop()
+
+
+async def test_a_reading_is_shown_only_once_it_is_stored(tmp_path, monkeypatch):
+    """Storing adds the second PV inverter's counter to the totals (#419): on a slow disk a reading shown before that
+    lacked it (a flaky CI run)."""
+    stored = Storage.add_snapshot
+    monkeypatch.setattr(Storage, "add_snapshot", lambda self, snap: (time.sleep(0.4), stored(self, snap))[1])
+    await test_the_collector_counts_meter_b_only_with_the_setting(tmp_path)

@@ -43,7 +43,7 @@
     "heatingTitle": "Immersion heater and heat pump",
     "heatingText": "An immersion heater from my-PV takes exactly as much power as is left over. The app switches a heat pump or other devices via a Shelly relay.",
     "wallboxTitle": "Wallbox with evcc or directly",
-    "wallboxText": "Charge your car with solar power. <a href=\"https://evcc.io\">evcc</a> controls most wallboxes, and you can operate them directly in OpenAmpere. For many wallboxes evcc requires a sponsor token, which costs money (<a href=\"https://docs.evcc.io/en/chargers\">list</a>). The portable dé wallbox OpenAmpere controls itself, without evcc and without a cloud.",
+    "wallboxText": "Charge your car with solar power. <a href=\"https://evcc.io\">evcc</a> controls most wallboxes, and you can operate them directly in OpenAmpere. For many wallboxes evcc requires a sponsor token, which costs money (<a href=\"https://docs.evcc.io/en/chargers\">list</a>). The portable dé wallbox OpenAmpere controls itself, without evcc and without a cloud. For cars from Volkswagen, Audi, Škoda, SEAT and CUPRA, OpenAmpere can also show state of charge, range and odometer, fetched from the manufacturer through the EU Data Act portal.",
     "homeAssistantTitle": "Home Assistant",
     "homeAssistantText": "All values live in Home Assistant, including the energy dashboard, and control of the battery from there if you want. <a href=\"#installation\">Learn more</a>",
     "notificationsTitle": "Alerts, diagnostics, export",

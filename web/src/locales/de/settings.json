@@ -166,6 +166,8 @@
     "tryAgain": "Erneut versuchen"
   },
   "connectionPage": {
+    "car": "Auto",
+    "carHint": "Ladestand und Kilometerstand vom Hersteller",
     "checkConnection": "Verbindung prüfen oder einrichten",
     "connectedTo": "Verbunden mit {manufacturer} {model}",
     "expertHint": "Nur ändern, wenn die automatische Erkennung falsch liegt. Beim Speichern wird neu verbunden.",

@@ -16,8 +16,8 @@ device's limits.
 
 1. **The inverter and the battery:** settings, control commands, the export limit. Wrong writes can affect the device,
    the warranty or the grid connection rules. This is the most important asset.
-2. **Credentials:** the access password, passwords for grid operator portals and evcc, the ntfy token, cloud API keys,
-   tokens of other apps.
+2. **Credentials:** the access password, passwords for grid operator portals and evcc, the password of a car's brand
+   account (EU Data Act portal, #401), the ntfy token, cloud API keys, tokens of other apps.
 3. **Personal data:** energy history, readings and settings that identify a household (e.g. meter numbers).
 4. **The server:** the machine OpenAmpere runs on, and the update path to it.
 
@@ -41,7 +41,8 @@ does not make this worse and cannot prevent it.
 ```
  internet ─────────────┬────────────────────────────────────────────────────────────────
                        │ VPN (Tailscale)        outbound HTTPS: grid operator, aWATTar,
-                       │                        ntfy, cloud import, update check
+                       │                        ntfy, cloud import, update check,
+                       │                        car manufacturer (EU Data Act portal)
  home network ─────────┼────────────────────────────────────────────────────────────────
    browser ── HTTP ──▶ [1] web app API ─┐
    other app ─ HTTPS ─▶ [2] external API ┤   OpenAmpere container (non-root)
@@ -114,7 +115,7 @@ Based on the OWASP Top 10 (2021) and the CWE Top 25.
 | Authentication failures (A07, CWE-307) | Lockout after 5 failed logins, minimum password length, sessions expire, password stored as scrypt hash. |
 | Software and data integrity failures (A08, CWE-494) | Hash-pinned dependencies and actions, signed build provenance, the updater verifies images, backups are checked before restoring. |
 | Logging and monitoring failures (A09) | Control log of every write; diagnostics reports pseudonymise addresses and serial numbers; credentials are never returned by the API. |
-| Server-side request forgery (A10, CWE-918) | Outgoing addresses (Shelly, evcc, my-PV) can only be set by a logged-in user. |
+| Server-side request forgery (A10, CWE-918) | Outgoing addresses (Shelly, evcc, my-PV) can only be set by a logged-in user. The car portal and its login service are fixed in the code; the login follows redirects only between these two hosts, so the brand password and its cookies go nowhere else. |
 | Path traversal (CWE-22) | Storage paths are validated; uploads are size-limited and checked before use. |
 | Unrestricted upload / resource exhaustion (CWE-400/434) | Size limits for imports and backups; a restored database is checked with SQLite before it is used. |
 

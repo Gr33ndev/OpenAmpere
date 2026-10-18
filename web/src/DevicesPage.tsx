@@ -12,6 +12,7 @@ import { goBack, navigate } from "./route";
 import { Button, Notice, Segmented, Slider, toast } from "./ui";
 import { EVCC_URL, SponsorNotice, WallboxCard, type EvccView } from "./WallboxPage";
 import { NativeWallboxCard, type WallboxesView } from "./NativeWallbox";
+import { CarCards } from "./CarsPage";
 
 const COLORS: Record<Device["kind"], string[]> = {
   wallbox: ["var(--wallbox)", "var(--wallbox-2)"],
@@ -243,6 +244,7 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
       )}
       {evcc?.configured && evcc.error && <Notice kind="error">{evcc.error}</Notice>}
       <SponsorNotice sponsor={evcc?.state?.sponsor} />
+      <CarCards />
       {!!own.length && (
         <>
           <div className="section-title">{t("devices.devicesTab.otherDevicesTitle")}</div>

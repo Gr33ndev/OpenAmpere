@@ -92,6 +92,12 @@ deinstallierst, stelle diese Geräte auf der Seite **Geräte** auf **Aus**.
 | Mobile 11-kW-Wallbox von „dé“ (Tuya-WLAN) | Lokales Tuya-Protokoll 3.5 im Heimnetz (TCP 6668); braucht den Local Key des Geräts von der Tuya-Entwicklerplattform, danach keine Cloud | Zustand, Ladeleistung, Strom je Phase, eingestellter Ladestrom, Energie des Ladevorgangs | Lademodus (von Hand, Aus, Solar, Min + Solar, Sofort), Ladestrom in den Stufen der Wallbox; mehrere Wallboxen | Anzeige ja, Steuerung noch nicht | Ohne evcc. Oft ausgesteckt: wird als nicht erreichbar gezeigt und verbindet sich von selbst wieder. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/tuya/de-portable.md](devices/tuya/de-portable.md). |
 | FoxESS AC EV Charger (auch die Wallbox der EKD-Anlagen) | Modbus TCP im Heimnetz (Port 502, Geräteadresse 1), nur lesend; je Abfrage eine kurze Verbindung | Zustand, Ladeleistung, Strom je Phase, höchster Ladestrom, wie sie Ladevorgänge startet | keine: OpenAmpere zeigt sie nur an | Anzeige teilweise (ohne Auto, eine Wallbox) | Ohne evcc, nie zusammen mit evcc. Bei Anlagen von EKD muss die bisherige Smartbox vom Strom getrennt bleiben. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/foxess/ac-charger.md](devices/foxess/ac-charger.md). |
 
+## Autos
+
+| Auto | Verbindung | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
+|---|---|---|---|---|---|
+| Volkswagen, Audi, Škoda, SEAT, CUPRA | EU-Data-Act-Portal des Volkswagen-Konzerns mit dem Konto der Marke (Cloud, freiwillig); muss einmal im Browser eingerichtet werden | Ladestand, Reichweite, Kilometerstand, eingesteckt und lädt, alle 15 Minuten und mindestens 15 Minuten alt; Ladevorgänge an einer Wallbox, die OpenAmpere steuert | keine (nur lesen) | noch nicht bestätigt | Einrichtung: [car.de.md](car.de.md). Details (englisch): [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+
 ## Dein Gerät fehlt oder verhält sich anders?
 
 1. Öffne in der App **Mehr → Diagnose → Diagnose starten**. Die Diagnose liest nur und ändert nichts.

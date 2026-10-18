@@ -486,6 +486,7 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
       <div className="card menu">
         <MenuRow label={t("settings.connectionPage.otherDevices")} hint={t("settings.connectionPage.otherDevicesHint")} onClick={() => onNavigate?.("device-setup")} />
         <MenuRow label={t("common.wallbox")} hint={t("settings.connectionPage.wallboxWays")} onClick={() => onNavigate?.("wallbox")} />
+        <MenuRow label={t("settings.connectionPage.car")} hint={t("settings.connectionPage.carHint")} onClick={() => onNavigate?.("cars")} />
       </div>
       <div className="section-title">{t("settings.connectionPage.smartHome")}</div>
       <div className="card menu">

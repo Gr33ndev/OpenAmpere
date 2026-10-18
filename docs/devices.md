@@ -85,6 +85,12 @@ devices to **Aus** (Off) on the **Geräte** (Devices) page.
 | Portable 11 kW wallbox sold as "dé" (Tuya Wi-Fi) | Local Tuya protocol 3.5 in the home network (TCP 6668); needs the device's local key from Tuya's developer platform, no cloud afterwards | State, charging power, current per phase, set current, energy of the session | Charging mode (manual, off, solar, minimum + solar, fast), current in the wallbox's steps; several wallboxes | reading yes, control not yet | Without evcc. Often unplugged: shown as not reachable, reconnects by itself. Setup: [wallbox-direct.md](wallbox-direct.md). Details: [devices/tuya/de-portable.md](devices/tuya/de-portable.md). |
 | FoxESS AC EV Charger (also the wallbox of EKD systems) | Modbus TCP in the home network (port 502, unit ID 1), read only; one short connection per read | State, charging power, current per phase, highest current, how it starts charging | none: OpenAmpere only shows it | reading partly (idle, one charger) | Without evcc, never together with evcc. On EKD systems the previous smartbox must stay cut from power. Setup: [wallbox-direct.md](wallbox-direct.md). Details: [devices/foxess/ac-charger.md](devices/foxess/ac-charger.md). |
 
+## Cars
+
+| Car | Connection | Read | Control | Tested on real hardware | Notes |
+|---|---|---|---|---|---|
+| Volkswagen, Audi, Škoda, SEAT, CUPRA | The Volkswagen group's EU Data Act portal with the owner's brand account (cloud, optional); needs a one-time setup in a browser | State of charge, range, odometer, plug and charging state, every 15 minutes and at least 15 minutes late; charges at a wallbox OpenAmpere controls | none (read-only) | not yet confirmed | Setup: [car.md](car.md). Details: [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+
 ## Your device is missing or behaves differently?
 
 1. In the app, open **Mehr → Diagnose → Diagnose starten** (More → Diagnostics → Start diagnostics). The diagnostics

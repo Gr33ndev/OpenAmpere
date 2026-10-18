@@ -421,6 +421,7 @@ export type Device = {
   override: { mode: "off" | "boost"; until: number | null } | null;
   connected: boolean | null; // wallbox: car plugged in
   soc?: number | null; range_km?: number | null; // wallbox: battery and range of the plugged-in car
+  soc_ts?: number | null; // wallbox OpenAmpere controls: when the car's manufacturer delivered the state of charge (#401)
   addresses_lost?: boolean; // own switch addresses that cannot be read (#392): not switched until entered again
 };
 export type DevicesView = { devices: Device[]; today_wh: Record<string, number>;

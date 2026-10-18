@@ -430,6 +430,44 @@ function nativeWallboxes() {
         firmware: null, cp_v: null, work_mode: "controlled", phase_switching: true, phase_switch_min: 12 } }] };
 }
 
+/** A car whose data OpenAmpere reads from its manufacturer (#401), linked to the portable wallbox. The portal's values
+ *  are some 15 minutes old; the car was charged yesterday and driven a bit since. */
+function cars() {
+  const t = now();
+  const yesterday = t - 86_400 - 5 * 3600;
+  const values = { soc: 64, soc_ts: t - 1260, range_km: 281, range_km_ts: t - 1260, odometer_km: 18_437,
+    odometer_km_ts: t - 1260, plugged: false, plugged_ts: t - 1260, charging: false, charging_ts: t - 1260,
+    target_soc: 80, target_soc_ts: t - 1260, ts: t - 1260 };
+  return { max: 3, sources: [{ key: "vw_euda", label: "EU-Data-Act-Portal (Volkswagen-Konzern)", brands: [
+    { key: "volkswagen", label: "Volkswagen" }, { key: "audi", label: "Audi" }, { key: "skoda", label: "Škoda" },
+    { key: "seat", label: "SEAT" }, { key: "cupra", label: "CUPRA" }] }],
+  cars: [{ id: "democar1", name: "CUPRA Born", source: "vw_euda", brand: "cupra", enabled: true, wallbox_id: "demo0001",
+    wallbox: "Mobile Wallbox", password_set: true, vin_set: true, username: "demo@example.org", vin_end: "0001",
+    status: "ok", error: null, checked: t - 300, values,
+    charge: { start: yesterday, end: yesterday + 4 * 3600, kwh: 26.4, soc_start: 31, soc_end: 80, odometer_km: 18_399,
+      km_before: 152, km_since: 38 } }] };
+}
+
+/** The charges of the demo car: one every few days, with the state of charge and odometer from the portal. */
+function carSessions(params: URLSearchParams) {
+  const limit = Number(params.get("limit") ?? 50);
+  const t = now();
+  const found = [];
+  let odometer = 18_399, soc = 31;
+  for (let n = 0; n < 40 && found.length < limit; n++) {
+    const start = t - 86_400 - 5 * 3600 - n * 3 * 86_400;
+    const kwh = Math.round((80 - soc) * 0.58 * 10) / 10; // a battery of about 58 kWh, charged to 80 %
+    found.push({ created: new Date(start * 1000).toISOString(), finished: new Date((start + 4 * 3600) * 1000).toISOString(),
+      loadpoint: "Mobile Wallbox", vehicle: "CUPRA Born", car_id: "democar1", energy_kwh: kwh, duration_s: 4 * 3600,
+      solar_pct: null, price: null, odometer_km: odometer, soc_start: soc, soc_end: 80, added_range_km: null, cost_eur: null,
+      grid_cost_eur: null });
+    const driven = Math.round(kwh / 0.168);  // what this charge put back was driven before it
+    odometer -= driven;
+    soc = 25 + ((n * 7) % 20);
+  }
+  return { sessions: found };
+}
+
 function evcc() {
   return { configured: true, url: "http://evcc.local:7070", error: null, updated: now(), priority: "wallbox_first",
     state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()],
@@ -567,6 +605,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
     model: null, firmware: null, configuration_keys: 0, status: null, messages: 0 }),
   "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger", sold_by: ["EKD"] }] }),
   "/api/wallboxes": nativeWallboxes,
+  "/api/cars": cars,
+  "/api/cars/sessions": carSessions,
   "/api/devices": devices,
   "/api/surplus-order": () => ({ order: ["battery", "wallbox", "c:demo1"], battery_soc: 50, items: [
     { key: "battery", name: "Speicher", kind: "battery" }, { key: "wallbox", name: "Carport", kind: "wallbox" },
@@ -581,7 +621,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
 export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
   "/api/database/damaged", "/api/database/ha-backup", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
-  "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
+  "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test",
+  "/api/cars/", "/api/cars/vehicles", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
   "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];
