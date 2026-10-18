@@ -26,7 +26,7 @@ test("own addresses can be entered after login", async ({ page, api }) => {
 test("a wildcard from the config file is explained", async ({ page, api }) => {
   await withHosts(api, ["*"]);
   await open(page, "more/security");
-  await expect(page.getByText("Damit ist der Schutz gegen DNS-Rebinding aus")).toBeVisible();
+  await expect(page.getByText("Vorher lässt sich hier nichts speichern")).toBeVisible();
 });
 
 test("own addresses set by an environment variable are read-only", async ({ page, api }) => {

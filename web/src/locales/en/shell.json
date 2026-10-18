@@ -89,7 +89,7 @@
     "hint": "One name per line, without https://, port or path.",
     "placeholder": "solar.example.com",
     "proxyHint": "Only enter names that belong to you: any website under one of these names can open OpenAmpere on your home network. The reverse proxy must pass on the name (Host header) and WebSocket connections, otherwise the live values stay empty.",
-    "wildcard": "“*” is currently set (in config.yaml or as an environment variable). This turns off the protection against DNS rebinding: any website a browser on your home network opens can read OpenAmpere. Remove the line with “*” and enter the names one by one."
+    "wildcard": "“*” is currently set (in config.yaml or as an environment variable). This turns off the protection against DNS rebinding: any website a browser on your home network opens can read OpenAmpere. Remove the line with “*” and enter the names one by one. Until then, nothing can be saved here."
   },
   "passwordSetup": {
     "continue": "Continue",
