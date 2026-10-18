@@ -4,6 +4,23 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.33.0 (2026-10-18)
+
+### Neu
+
+- **cars:** Read the state of charge of vw group cars from the eu data act portal (#441)
+- **wallbox:** Simulate the surplus control for the foxess ac ev charger without writing (#443)
+- **wallbox:** Show the foxess ac ev charger live in the app, read only (#442)
+- **security:** Set own host names for the access check in the app (#438)
+
+### Behoben
+
+- **wallbox:** End the simulation when manual is saved with the setup (#446)
+
+### Weitere Änderungen
+
+- Run the ai review with opus 5.5 (#447)
+
 ## 0.32.1 (2026-10-17)
 
 ### Behoben
@@ -130,9 +147,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - Bring the issue templates in line with the app (#348)
-
-## 0.26.3 (2026-10-13)
-
-### Behoben
-
-- **homeassistant:** Show live values when home assistant is opened by a remote address (#345)

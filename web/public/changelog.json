@@ -1,6 +1,45 @@
 {
   "versions": [
     {
+      "version": "0.33.0",
+      "date": "2026-10-18",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "cars",
+            "text": "Read the state of charge of vw group cars from the eu data act portal (#441)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Simulate the surplus control for the foxess ac ev charger without writing (#443)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Show the foxess ac ev charger live in the app, read only (#442)"
+          },
+          {
+            "scope": "security",
+            "text": "Set own host names for the access check in the app (#438)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "wallbox",
+            "text": "End the simulation when manual is saved with the setup (#446)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Run the ai review with opus 5.5 (#447)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.32.1",
       "date": "2026-10-17",
       "first": false,
