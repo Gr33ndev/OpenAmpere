@@ -187,7 +187,11 @@ class Cars:
         for item in raw:
             if isinstance(item, dict) and item.get("id") in stored:
                 old = stored[item["id"]]
-                item = {**item, "password": item.get("password") or old.password, "vin": item.get("vin") or old.vin}
+                # another account: its car has to be chosen again, the old one's VIN is not kept
+                same = (item.get("source", old.source), item.get("brand", old.brand),
+                        str(item.get("username", old.username)).strip()) == (old.source, old.brand, old.username)
+                item = {**item, "password": item.get("password") or old.password,
+                        "vin": item.get("vin") or (old.vin if same else "")}
             items.append(item)
         cars = validate(items, keyless={car.id for car in stored.values() if not car.password})
         wallboxes = {wb.id for wb in self.wallboxes.wallboxes} if self.wallboxes else set()
@@ -401,9 +405,13 @@ class Cars:
         return found["value"] if found else None
 
     def _at_end(self, car_id: str, start: float, end: float | None, name: str) -> float | None:
+        """The last value up to the unplugging; only without one the first after it (the car may drive away and a
+        later value be lower)."""
         if end is None:
             return None
-        found = self.runtime.storage.car_value(car_id, name, after=start, before=end + PLUG_IN_AFTER_S)
+        storage = self.runtime.storage
+        found = storage.car_value(car_id, name, after=start, before=end) \
+            or storage.car_value(car_id, name, after=end, before=end + PLUG_IN_AFTER_S, newest=False)
         return found["value"] if found else None
 
     def for_wallbox(self, wallbox_id: str, now: float | None = None) -> dict | None:

@@ -270,7 +270,9 @@ function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
   };
   const taken = new Set(view.cars.filter((c) => c.id !== d.id).map((c) => c.wallbox_id));
   const free = (wallboxes?.wallboxes ?? []).filter((w) => !taken.has(w.id));
-  const vinChosen = !!d.vin || (!!stored?.vin_set && !vehicles);
+  // another account: its car has to be chosen again (the server forgets the old one's VIN)
+  const loginChanged = !!stored && (d.brand !== stored.brand || d.username.trim() !== (stored.username ?? ""));
+  const vinChosen = !!d.vin || (!!stored?.vin_set && !vehicles && !loginChanged);
 
   return (
     <>
@@ -298,7 +300,7 @@ function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
           </select>
         </Field>
       )}
-      {!vehicles && stored?.vin_set && <p className="hint">{t("devices.cars.vehicleChosen", { end: stored.vin_end ?? "" })}</p>}
+      {!vehicles && stored?.vin_set && !loginChanged && <p className="hint">{t("devices.cars.vehicleChosen", { end: stored.vin_end ?? "" })}</p>}
       <Field label={t("devices.cars.wallbox")} hint={free.length ? t("devices.cars.wallboxHint") : t("devices.cars.noFreeWallbox")}>
         <select className="input" value={d.wallbox_id} onChange={(e) => set({ wallbox_id: e.target.value })}>
           <option value="">{t("devices.cars.noWallbox")}</option>

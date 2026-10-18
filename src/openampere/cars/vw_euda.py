@@ -250,6 +250,17 @@ class VwEuDataAct(Source):
     def marketing_page(self, url) -> bool:
         return url.hostname == urlparse(self.identity_url).hostname and "/consent/marketing/" in url.path
 
+    def identity_address(self, url: str) -> str:
+        """An address built from values of the login page: only on the identity service, so e-mail and password go
+        nowhere else (an action like "@other.example/x" would otherwise name another host)."""
+        target = urlparse(url)
+        if (target.scheme != self.scheme or target.hostname != urlparse(self.identity_url).hostname
+                or target.username is not None or target.password is not None
+                or target.netloc != urlparse(self.identity_url).netloc):
+            log.info("EU Data Act login: the login page names an unexpected address")
+            raise SourceError("Die Anmeldung leitet an eine unerwartete Adresse weiter. Bitte ein Issue öffnen.")
+        return url
+
     # ---- HTTP ----------------------------------------------------------------
 
     def _open(self, url: str, data: dict | None = None, headers: dict | None = None, *, follow: bool = False,
@@ -292,7 +303,9 @@ class VwEuDataAct(Source):
         if status >= 400 or not form.action:
             log.info("EU Data Act login: HTTP %s without the login form", status)
             raise SourceError("Die Anmeldeseite hat sich geändert. Bitte ein Issue öffnen.")
-        identifier = self.identity_url + form.action
+        if not form.action.startswith("/") or form.action.startswith("//"):
+            raise SourceError("Die Anmeldung leitet an eine unerwartete Adresse weiter. Bitte ein Issue öffnen.")
+        identifier = self.identity_address(self.identity_url + form.action)
         status, _, page = self._open(identifier, {
             "_csrf": form.fields.get("_csrf", ""), "relayState": form.fields.get("relayState", ""),
             "hmac": form.fields.get("hmac", ""), "email": self.username}, follow=True)
@@ -306,7 +319,8 @@ class VwEuDataAct(Source):
             raise SourceAuthError("Die Anmeldung wurde abgelehnt. Bitte die E-Mail-Adresse prüfen.")
         if not model.get("identifierUrl") or not model.get("postAction"):
             raise SourceError("Die Anmeldeseite hat sich geändert. Bitte ein Issue öffnen.")
-        status, final, _ = self._open(identifier.replace(model["identifierUrl"], model["postAction"]), {
+        status, final, _ = self._open(self.identity_address(identifier.replace(str(model["identifierUrl"]),
+                                                                               str(model["postAction"]))), {
             "_csrf": idk.get("csrf_token", ""), "relayState": model.get("relayState", ""),
             "hmac": model.get("hmac", ""), "email": self.username, "password": self.password}, follow=True)
         target = urlparse(final)

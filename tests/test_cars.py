@@ -67,6 +67,9 @@ class Portal:
         self.downloads: list[str] = []
         self.requested: list[str] = []
         self.foreign_redirect = False
+        self.form_action = "/signin-service/v1/c1/login/identifier"
+        self.post_action = "login/authenticate"
+        self.identifier_url = "login/identifier"
         portal = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -101,7 +104,7 @@ class Portal:
                         return self._send(302, headers={"Location": f"{portal.identity}/signin-service/v1/signin/c1"})
                     if url.path == "/signin-service/v1/signin/c1":
                         return self._send(200, '<html><form id="other" action="/x"></form>'
-                                               '<form id="emailPasswordForm" action="/signin-service/v1/c1/login/identifier">'
+                                               f'<form id="emailPasswordForm" action="{portal.form_action}">'
                                                '<input type="hidden" name="_csrf" value="CSRF1">'
                                                '<input type="hidden" name="relayState" value="R1">'
                                                '<input type="hidden" name="hmac" value="H1">'
@@ -152,7 +155,7 @@ class Portal:
                     assert form == {"_csrf": "CSRF1", "relayState": "R1", "hmac": "H1", "email": EMAIL}
                     error = "" if form["email"] == EMAIL else "unknown"
                     return self._send(200, "<script>window._IDK = {\n  csrf_token: 'CSRF2',\n  templateModel: "
-                                           "{identifierUrl: 'login/identifier', postAction: 'login/authenticate', "
+                                           f"{{identifierUrl: '{portal.identifier_url}', postAction: '{portal.post_action}', "
                                            f"relayState: 'R2', hmac: 'H2', error: '{error}',}},\n}};</script>")
                 if host == "localhost" and url.path == "/signin-service/v1/c1/login/authenticate":
                     assert form["_csrf"] == "CSRF2" and form["relayState"] == "R2" and form["hmac"] == "H2"
@@ -222,6 +225,17 @@ def test_a_redirect_to_another_host_is_refused(portal):
     portal.foreign_redirect = True
     with pytest.raises(cars_module.SourceError, match="unerwartete Adresse"):
         portal.client().vehicles()
+
+
+@pytest.mark.parametrize("changes", [{"form_action": "@example.invalid/x"}, {"form_action": "//example.invalid/x"},
+                                     # the password step replaces a part of the address: here the host
+                                     {"identifier_url": "localhost", "post_action": "example.invalid"}])
+def test_an_address_on_the_login_page_that_names_another_host_is_refused(portal, changes):
+    for field, value in changes.items():
+        setattr(portal, field, value)
+    with pytest.raises(cars_module.SourceError, match="unerwartete Adresse"):
+        portal.client().vehicles()
+    assert portal.logins == 0  # the password was never sent
 
 
 def test_fetch_reads_only_new_datasets_and_skips_the_placeholders(portal):
@@ -340,6 +354,15 @@ def test_the_password_is_stored_encrypted_and_never_shown(tmp_path):
     # the app sends password and VIN empty: the stored ones stay
     cars.save([{**GOOD, "id": saved[0].id, "name": "Born 2", "password": "", "vin": ""}])
     assert (cars.cars[0].password, cars.cars[0].vin, cars.cars[0].name) == (PASSWORD, VIN, "Born 2")
+
+
+def test_another_account_has_to_choose_its_car_again(tmp_path):
+    _, cars, _ = setup_cars(tmp_path)
+    car = cars.save([GOOD])[0]
+    cars.save([{**GOOD, "id": car.id, "password": "", "vin": ""}])
+    assert cars.cars[0].vin == VIN  # same account: the car stays
+    cars.save([{**GOOD, "id": car.id, "username": "other@example.org", "password": "", "vin": ""}])
+    assert cars.cars[0].vin == "" and cars.view()["cars"][0]["vin_set"] is False
 
 
 def test_one_car_per_wallbox_and_only_wallboxes_that_exist(tmp_path):
@@ -493,6 +516,18 @@ def test_a_charge_with_the_state_of_charge_at_plug_in_and_the_distance(tmp_path)
     assert sessions[0]["soc_start"] == 42 and sessions[0]["odometer_km"] == 1180 and sessions[0]["vehicle"] == "Born"
     assert sessions[0]["created"].endswith("Z") and sessions[0]["duration_s"] == 3 * 3600
     assert sessions[1]["energy_kwh"] == 20.0 and sessions[1]["odometer_km"] == 1000
+
+
+def test_the_state_of_charge_at_the_end_is_the_last_one_before_unplugging(tmp_path):
+    runtime, cars, wallboxes = setup_cars(tmp_path)
+    car = cars.save([{**GOOD, "wallbox_id": "aa11bb22"}])[0]
+    wallboxes.reading = reading(True, 0.0)
+    cars.track(T0)
+    wallboxes.reading = reading(False, 10.0)
+    cars.track(T0 + 3600)
+    # 80 % just before unplugging, then the car drives away and a later delivery says 77 %
+    runtime.storage.add_car_points(car.id, [{"ts": T0 + 3000, "soc": 80}, {"ts": T0 + 3600 + 900, "soc": 77}])
+    assert cars.view()["cars"][0]["charge"]["soc_end"] == 80
 
 
 def test_a_charge_ends_when_the_wallbox_stays_away(tmp_path):
