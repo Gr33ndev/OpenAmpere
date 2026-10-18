@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 """The FoxESS AC EV Charger as a wallbox OpenAmpere reads itself, read only (#439): polling with one short connection
-per read, back-off, unreachable with the previous smartbox named, only the mode "manual", no write request ever, and
-no energy counter, card number or serial number read, shown or exported."""
+per read, back-off, unreachable with the previous smartbox named, no write request ever, and no energy counter, card
+number or serial number read, shown or exported. Its other modes are a simulation (#440): decided like a real control,
+logged as "would set", never written, and never taking surplus from other devices."""
 
 import asyncio
 import contextlib
@@ -31,12 +32,15 @@ PRIVATE = range(0x1016, 0x1032)  # energy counters, card number, model code, ser
 
 @pytest.fixture(autouse=True)
 def no_write_ever(monkeypatch):
-    """Any write request through pymodbus fails the test, whatever would send it."""
+    """Any write request through pymodbus fails the test, whatever would send it, also in the simulated modes (#440):
+    neither the write path of native.py nor the Tuya connection that can write is ever reached."""
     def refuse(*_args, **_kwargs):
         raise AssertionError("a write request to a wallbox OpenAmpere only shows")
     for name in ("write_register", "write_registers", "write_coil", "write_coils", "mask_write_register",
                  "readwrite_registers"):
         monkeypatch.setattr(AsyncModbusTcpClient, name, refuse, raising=False)
+    for name in ("_write", "_set_current", "_start", "device"):
+        monkeypatch.setattr(NativeWallboxes, name, refuse)
     monkeypatch.setattr(modbus, "REQUEST_GAP_S", 0)
 
 
@@ -260,17 +264,17 @@ async def test_the_surplus_control_counts_its_power_but_never_writes(tmp_path, m
     assert set(charger.functions) == {3}
 
 
-def test_only_the_manual_mode_and_no_key_or_device_id(tmp_path):
+def test_the_modes_are_offered_as_a_simulation_and_no_key_or_device_id(tmp_path):
     good = {"name": "Garage", "model": "foxess_ac", "host": "192.168.1.30"}
     wb = validate([{**good, "local_key": "ab12cd34ef56gh78", "device_id": "abcdefghij12",
                     "mode_current_a": {"now": 16}}])[0]
-    assert (wb.port, wb.unit, wb.mode, wb.local_key, wb.device_id, wb.mode_current_a) == (502, 1, "manual", "", "", {})
+    assert (wb.port, wb.unit, wb.mode, wb.local_key, wb.device_id) == (502, 1, "manual", "", "")
+    assert wb.mode_current_a == {"now": 16}  # the highest current of a mode limits the simulation, too (#440)
     assert validate([{**good, "port": 0, "unit": 0}])[0].port == 502  # missing: the usual port and unit id
     assert validate([{**good, "port": 1502, "unit": 2}])[0].unit == 2
     for mode in ("off", "pv", "minpv", "now"):
-        with pytest.raises(ValueError, match="nur an"):
-            validate([{**good, "mode": mode}])
-    for bad in ({"port": 70000}, {"unit": 256}, {"port": "x"}):
+        assert validate([{**good, "mode": mode}])[0].mode == mode
+    for bad in ({"port": 70000}, {"unit": 256}, {"port": "x"}, {"mode": "fast"}):
         with pytest.raises(ValueError):
             validate([{**good, **bad}])
     assert validate([{**good, "model": "de_tuya", "local_key": "ab12cd34ef56gh78", "port": 502}])[0].port is None
@@ -278,20 +282,23 @@ def test_only_the_manual_mode_and_no_key_or_device_id(tmp_path):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     wallboxes = NativeWallboxes(runtime)
     wb = wallboxes.save([good])[0]
-    for mode in ("off", "pv", "minpv", "now"):
-        with pytest.raises(ValueError, match="nur an"):
-            wallboxes.set_mode(wb.id, mode)
     with pytest.raises(ValueError):
         wallboxes.set_mode(wb.id, "manual", current_a=10)
-    assert wallboxes.wallboxes[0].mode == "manual" and runtime.storage.control_log() == []
     view = wallboxes.view()
     item = view["wallboxes"][0]
-    assert item["read_only"] is True and item["modes"] == ["manual"] and item["local_key_set"]
+    assert item["read_only"] is True and item["simulated"] is True and item["local_key_set"]
+    assert item["modes"] == ["manual", "off", "pv", "minpv", "now"] and item["simulation"] is None  # "manual"
     model = next(m for m in view["models"] if m["key"] == "foxess_ac")
     assert model == {"key": "foxess_ac", "label": "FoxESS AC EV Charger", "protocol": "modbus", "read_only": True,
-                     "modes": ["manual"], "sold_by": ["EKD"], "port": 502, "unit": 1}
+                     "simulated": True, "modes": ["manual", "off", "pv", "minpv", "now"], "sold_by": ["EKD"],
+                     "port": 502, "unit": 1}
     tuya = next(m for m in view["models"] if m["key"] == "de_tuya")
-    assert tuya["read_only"] is False and "port" not in tuya
+    assert tuya["read_only"] is False and tuya["simulated"] is False and "port" not in tuya
+    wallboxes.set_mode(wb.id, "pv", current_a=10)
+    item = wallboxes.view()["wallboxes"][0]
+    assert item["mode"] == "pv" and item["mode_current_a"] == {"pv": 10} and item["controlled"] is False
+    assert item["simulation"] == {"state": "unknown", "current_a": None, "phases": None, "power_w": 0}
+    assert runtime.storage.get_meta(native_module.OWNED) is None  # never written, so never owned
 
 
 def test_the_inverters_address_is_refused(tmp_path):
@@ -317,10 +324,196 @@ async def test_view_and_report_have_no_address_counter_card_or_serial(tmp_path, 
         assert "lifetime_kwh" not in shown
 
 
+# ---- the simulated control (#440) ---------------------------------------------------------------------------------
+
+
+def plugged(charger) -> None:
+    """A car plugged in that does not charge: in the work mode "controlled" the charger waits for the app or a card."""
+    charger.regs.update({0x1003: 1, 0x3000: 0})
+
+
+def simulated_entries(runtime) -> list[tuple[str, object]]:
+    """The planned writes in the control log, oldest first; every one marked as a simulation and not sent."""
+    found = []
+    for entry in reversed(runtime.storage.control_log(0)):
+        if entry["action"] != "wallbox" or entry["details"]["to"]["action"] in ("mode", "mode_current"):
+            continue  # other devices, and the owner's choice in the app (a setting like any other)
+        assert entry["details"]["simulation"] is True and entry["dry_run"] is True, entry
+        assert entry["result"].startswith("Simulation, nicht gesendet: "), entry
+        found.append((entry["details"]["to"]["action"], entry["details"]["to"]["value"]))
+    return found
+
+
+async def check(wallboxes: NativeWallboxes, available: float, now: float) -> float:
+    """One check at `now` with the last read counting as fresh then."""
+    wb = wallboxes.wallboxes[0]
+    wallboxes.live[wb.id].updated = now
+    return await wallboxes.step(wb, available, now)
+
+
+async def test_a_simulated_solar_charge_starts_raises_lowers_switches_phases_and_stops(tmp_path, monkeypatch):
+    async with simulated() as (charger, port, _opened, _asked):
+        plugged(charger)
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)  # master switch on, test mode off: still no write
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "pv")
+        await poll(wallboxes)
+        t0 = time.time()
+        await check(wallboxes, 6000, t0)
+        assert simulated_entries(runtime) == [] and wallboxes.live[wb.id].plan.state == "waiting"  # clouds?
+        assert await check(wallboxes, 6000, t0 + 10) == 8 * 230 * 3  # confirmed: 8 A on three phases
+        await check(wallboxes, 6000, t0 + 15)  # nothing changed: nothing logged
+        await check(wallboxes, 9000, t0 + 20)  # up at most every 30 s
+        assert simulated_entries(runtime) == [("start", {"current_a": 8, "phases": 3})]
+        await check(wallboxes, 9000, t0 + 45)
+        await check(wallboxes, 7000, t0 + 50)  # down right away
+        await check(wallboxes, 3000, t0 + 60)  # too little for three phases, but they switch only every 12 minutes
+        await check(wallboxes, 3000, t0 + 10 + 12 * 60)  # one phase now
+        await check(wallboxes, 500, t0 + 740)  # a cloud: the lowest step through the waiting time
+        assert wallboxes.live[wb.id].plan.on
+        await check(wallboxes, 500, t0 + 740 + 10 * 60)  # the waiting time is over
+        await check(wallboxes, 500, t0 + 1350)
+        assert simulated_entries(runtime) == [
+            ("start", {"current_a": 8, "phases": 3}), ("current", {"current_a": 13, "phases": 3}),
+            ("current", {"current_a": 10, "phases": 3}), ("current", {"current_a": 6, "phases": 3}),
+            ("current", {"current_a": 13, "phases": 1}), ("current", {"current_a": 6, "phases": 1}),
+            ("stop", False)]
+        stop = runtime.storage.control_log(1)[0]
+        assert stop["result"] == "Simulation, nicht gesendet: zu wenig Überschuss (500 W)"
+        assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "no_surplus", "current_a": None,
+                                                                  "phases": None, "power_w": 0}
+        # sun again: two checks in a row, and the car's pause of 5 minutes after a stop
+        await check(wallboxes, 6000, t0 + 1360)
+        await check(wallboxes, 6000, t0 + 1370)
+        assert simulated_entries(runtime)[-1] == ("stop", False)
+        await check(wallboxes, 6000, t0 + 1340 + 300)
+        assert simulated_entries(runtime)[-1] == ("start", {"current_a": 8, "phases": 3})
+        # the charger itself was never changed: it still waits for its app, and OpenAmpere owns nothing
+        reading = wallboxes.fresh(wb)
+        assert reading.connected and not reading.charging and reading.set_current_a is None
+        assert runtime.storage.get_meta(native_module.OWNED) is None
+    assert set(charger.functions) == {3}
+
+
+async def test_minpv_and_now_and_a_charge_the_charger_started_by_itself(tmp_path, monkeypatch):
+    async with simulated(charging=True) as (charger, port, _opened, _asked):  # plug and charge: it charges by itself
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "pv")
+        await poll(wallboxes)
+        t0 = time.time()
+        await check(wallboxes, 1000, t0)  # not its own charge and no surplus: stopped at once
+        assert simulated_entries(runtime) == [("stop", False)]
+        wallboxes.set_mode(wb.id, "minpv")
+        await check(wallboxes, 1000, t0 + 10)  # at least the lowest step, on one phase
+        assert simulated_entries(runtime)[-1] == ("start", {"current_a": 6, "phases": 1})
+        assert "mindestens 1380 W" in runtime.storage.control_log(1)[0]["result"]
+        wallboxes.set_mode(wb.id, "now")
+        await check(wallboxes, 1000, t0 + 20)  # up at most every 30 s
+        await check(wallboxes, 1000, t0 + 45)  # the highest current on one phase: three only after 12 minutes
+        await check(wallboxes, 1000, t0 + 10 + 12 * 60)
+        assert simulated_entries(runtime)[-2:] == [("current", {"current_a": 16, "phases": 1}),
+                                                   ("current", {"current_a": 16, "phases": 3})]
+        assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "charging", "current_a": 16, "phases": 3,
+                                                                  "power_w": 16 * 230 * 3}
+
+        # back to "manual": the charge the simulation started would be stopped explicitly, and the plan is dropped
+        wallboxes.set_mode(wb.id, "manual")
+        assert await check(wallboxes, 1000, t0 + 800) == 11050  # only shown again
+        await check(wallboxes, 1000, t0 + 810)
+        assert simulated_entries(runtime)[-1] == ("stop", False)
+        assert runtime.storage.control_log(1)[0]["result"] == \
+            "Simulation, nicht gesendet: Lademodus „von Hand“, OpenAmpere gäbe die Wallbox ab"
+        assert wallboxes.live[wb.id].plan == native_module.Plan()
+        assert wallboxes.view()["wallboxes"][0]["simulation"] is None
+        count = len(simulated_entries(runtime))
+
+        # a new simulation starts from what the charger does: its own charge, which "off" would stop
+        wallboxes.set_mode(wb.id, "pv")
+        await check(wallboxes, 12000, t0 + 820)
+        assert simulated_entries(runtime)[count:] == [("current", {"current_a": 16, "phases": 3})]
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, 12000, t0 + 830)
+        await check(wallboxes, 12000, t0 + 840)
+        assert simulated_entries(runtime)[count:] == [("current", {"current_a": 16, "phases": 3}), ("stop", False)]
+        assert wallboxes.view()["wallboxes"][0]["simulation"]["state"] == "off"
+
+        # unplugged: the plan ends without a stop, the charge ends by itself
+        wallboxes.set_mode(wb.id, "now")
+        await check(wallboxes, 0, t0 + 850)
+        charger.regs.update({0x1003: 0, 0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})
+        await poll(wallboxes)
+        before = len(simulated_entries(runtime))
+        await check(wallboxes, 0, t0 + 860)
+        assert len(simulated_entries(runtime)) == before
+        assert wallboxes.view()["wallboxes"][0]["simulation"]["state"] == "no_car"
+        assert runtime.storage.get_meta(native_module.OWNED) is None
+    assert set(charger.functions) == {3}
+
+
+async def test_removing_the_charger_ends_the_simulation_with_a_planned_stop(tmp_path, monkeypatch):
+    async with simulated() as (charger, port, _opened, _asked):
+        plugged(charger)
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "now")
+        await poll(wallboxes)
+        await check(wallboxes, 0, time.time())
+        report = wallboxes.report()[0]
+        assert report["simulation"] == {"state": "charging", "current_a": 16, "phases": 3, "power_w": 11040}
+        assert "- Simulation (nichts geschrieben): state charging, current_a 16" in "\n".join(report_markdown(report))
+        wallboxes.save([])
+        assert simulated_entries(runtime)[-1] == ("stop", False)
+        assert runtime.storage.control_log(1)[0]["result"] == ("Simulation, nicht gesendet: Wallbox entfernt, "
+                                                               "ausgeschaltet oder geändert, OpenAmpere gäbe die "
+                                                               "Wallbox ab")
+    assert set(charger.functions) == {3}
+
+
+async def test_the_simulation_takes_no_surplus_from_other_devices_and_runs_with_the_master_switch_off(
+        tmp_path, monkeypatch):
+    from openampere import consumers as consumers_module
+
+    calls = []
+    monkeypatch.setattr(consumers_module, "_call", calls.append)
+    async with simulated() as (charger, port, _opened, _asked):
+        plugged(charger)
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "minpv")
+        control = SurplusControl(runtime, None, wallboxes)
+        rod = control.save([{"name": "Heizstab", "kind": "shelly1", "host": "rod.local", "power_w": 2000,
+                             "min_on_min": 0}])[0]
+        # the wallbox before the heating rod: a planned charge that took the surplus would leave it too little
+        runtime.storage.set_meta("surplus_order", {"order": ["wallbox", f"c:{rod.id}", "battery"], "battery_soc": 50})
+        t0 = time.time()
+
+        async def tick(now: float, grid: float) -> None:
+            runtime.collector.latest = Snapshot(timestamp=now, grid_power=grid, battery_power=0.0, battery_soc=90.0)
+            await poll(wallboxes)
+            wallboxes.live[wb.id].updated = now  # read just now
+            await control.tick(now)
+
+        await tick(t0, -2500.0)
+        await tick(t0 + 30, -2500.0)
+        assert simulated_entries(runtime) == [("start", {"current_a": 10, "phases": 1})]  # 2.3 kW planned
+        assert calls == ["http://rod.local/relay/0?turn=on"]  # the heating rod still gets the whole 2.5 kW
+        assert runtime.storage.get_meta(native_module.OWNED) is None
+
+        # master switch off: the heating rod is switched off, the simulation goes on (it writes nothing)
+        runtime.config.control.enabled = False
+        await tick(t0 + 60, -9000.0)
+        assert calls[-1] == "http://rod.local/relay/0?turn=off"
+        assert simulated_entries(runtime)[-1] == ("current", {"current_a": 16, "phases": 1})
+        await tick(t0 + 12 * 60, -9000.0)  # three phases after the charger's switch interval of 12 minutes
+        assert simulated_entries(runtime)[-1] == ("current", {"current_a": 13, "phases": 3})
+    assert set(charger.functions) == {3}
+
+
 # ---- the setup in the app -----------------------------------------------------------------------------------------
 
 
-def test_the_setup_reads_once_saves_and_refuses_the_controlled_modes(tmp_path, monkeypatch):
+def test_the_setup_reads_once_saves_and_offers_the_modes_as_a_simulation(tmp_path, monkeypatch):
     from openampere import api as api_module
     from openampere.api import create_app
 
@@ -351,12 +544,12 @@ def test_the_setup_reads_once_saves_and_refuses_the_controlled_modes(tmp_path, m
             assert saved.status_code == 200, saved.text
             wb = saved.json()["wallboxes"][0]
             assert (wb["port"], wb["unit"], wb["read_only"], wb["mode"]) == (port, 1, True, "manual")
-            refused = web.post(f"/api/wallboxes/{wb['id']}/mode", json={"mode": "pv"})
-            assert refused.status_code == 400 and "nur an" in refused.json()["detail"]
-            bad = web.put("/api/wallboxes", json={"wallboxes": [
-                {"name": "Garage", "model": "foxess_ac", "host": "127.0.0.1", "mode": "now"}]})
-            assert bad.status_code == 400
-            assert created[0].wallboxes[0].mode == "manual"
+            chosen = web.post(f"/api/wallboxes/{wb['id']}/mode", json={"mode": "pv", "current_a": 10})
+            assert chosen.status_code == 200, chosen.text
+            item = chosen.json()["wallboxes"][0]
+            assert (item["mode"], item["simulated"], item["read_only"]) == ("pv", True, True)
+            assert item["simulation"]["state"] in ("unknown", "no_car")  # the plan of the simulation, not written
+            assert created[0].wallboxes[0].mode == "pv"
         assert set(charger.functions) == {3}
     asyncio.run(run())
 
@@ -393,6 +586,8 @@ def test_home_assistant_gets_it_as_read_only_and_cannot_set_a_mode(tmp_path, mon
     state = client.get(f"{V1}/state").json()["wallboxes"][0]
     assert (state["mode"], state["power_w"], state["current_a"]) == ("manual", 11050.0, None)
     monkeypatch.setattr(runtime.config.control, "enabled", True)
-    response = client.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": "now"})
-    assert response.status_code == 400 and wallboxes.wallboxes[0].mode == "manual"
+    for mode in ("now", "pv", "manual"):  # its simulated modes are for the app alone (#440)
+        response = client.put(f"{V1}/wallboxes/{wb.id}/mode", json={"mode": mode})
+        assert response.status_code == 400 and "nur an" in response.json()["detail"]
+    assert wallboxes.wallboxes[0].mode == "manual"
     assert "192.168.0.51" not in str(info) + str(state)

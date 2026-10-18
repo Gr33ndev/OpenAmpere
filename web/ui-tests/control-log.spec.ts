@@ -86,3 +86,28 @@ test("control log entries read as sentences and can be exported", async ({ page,
   expect(csv).toContain('"Laden aus dem Netz ausgeschaltet.";"in der App";"Erledigt"');
   expect(csv.trim().split("\r\n")).toHaveLength(ENTRIES.length + 1);
 });
+
+// #440: the simulated control of the FoxESS charger, never written: its own sentences and status
+test("simulated wallbox entries say what OpenAmpere would have done", async ({ page, api }) => {
+  const simulated = (to: unknown, result: string, note: string) => ({ action: "wallbox", dry_run: true, result, note,
+    details: { from: { loadpoint: "Garage" }, to, simulation: true } });
+  const entries = [
+    simulated({ action: "start", value: { current_a: 8, phases: 3 } }, "Simulation, nicht gesendet: Überschuss 6000 W",
+      "Überschuss 6000 W"),
+    simulated({ action: "current", value: { current_a: 13, phases: 1 } }, "Simulation, nicht gesendet: Überschuss 3000 W",
+      "Überschuss 3000 W"),
+    simulated({ action: "stop", value: false }, "Simulation, nicht gesendet: zu wenig Überschuss (500 W)",
+      "zu wenig Überschuss (500 W)"),
+  ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
+  api.override("/api/control/log", { entries });
+  await open(page, "more/control");
+  for (const text of [
+    "Garage: Simulation – OpenAmpere würde das Laden mit 8 A auf 3 Phasen starten.",
+    "Garage: Simulation – OpenAmpere würde mit 13 A auf 1 Phase weiterladen.",
+    "Garage: Simulation – OpenAmpere würde das Laden stoppen.",
+    "zu wenig Überschuss (500 W)",
+  ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
+  await expect(page.getByText("Simulation – nichts an die Wallbox geschrieben", { exact: false })).toHaveCount(3);
+  await expect(page.getByText("Testmodus – nichts geändert", { exact: false })).toHaveCount(0);
+  expect(await layoutProblems(page)).toEqual([]);
+});

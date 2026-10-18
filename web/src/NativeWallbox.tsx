@@ -11,7 +11,8 @@ import { Button, Dialog, Field, HOST_INPUT, hostText, LoadState, Notice, Segment
 import { useCheckModels, WallboxCheck } from "./WallboxCheck";
 
 /** Wallboxes OpenAmpere reads and controls itself, without evcc: the portable dé wallbox over Tuya, and the FoxESS
- *  AC EV Charger over Modbus TCP, which OpenAmpere only shows (#439: no charging mode, nothing written). A portable
+ *  AC EV Charger over Modbus TCP, which OpenAmpere only shows (#439: nothing written); its charging modes are only a
+ *  simulation (#440), shown with what OpenAmpere would do next to what the charger really does. A portable
  *  wallbox is often unplugged: it is then shown as away, without old values, until it answers again. A wallbox whose
  *  stored key cannot be read (a backup restored on another server, #391) waits for a new key. */
 
@@ -24,6 +25,8 @@ export type WallboxReading = {
   firmware: string | null; cp_v: number | null;
   /** FoxESS: how it starts a charge by itself; null when the wallbox does not tell. */
   work_mode?: "controlled" | "plug_and_charge" | "locked" | null; phase_switching?: boolean | null;
+  /** FoxESS: the shortest time between two phase switches in minutes. */
+  phase_switch_min?: number | null;
 };
 export type NativeWallbox = {
   id: string; name: string; model: string; label: string; host: string; device_id: string | null;
@@ -33,17 +36,24 @@ export type NativeWallbox = {
   reading: WallboxReading | null; controlled: boolean;
   /** Modbus models: port and unit id; null for Tuya. */
   port?: number | null; unit?: number | null;
-  /** Only shown (#439): its only mode is "manual". */
+  /** Only shown (#439): nothing is written to it. */
   read_only?: boolean;
+  /** Its modes other than "manual" only simulate the control (#440); `simulation`: what it would do now. */
+  simulated?: boolean; simulation?: WallboxSimulation | null;
+};
+export type WallboxSimulation = {
+  state: "charging" | "waiting" | "no_surplus" | "off" | "finished" | "no_car" | "unknown";
+  current_a: number | null; phases: number | null; power_w: number;
 };
 export type WallboxModel = { key: string; label: string; protocol: "tuya" | "modbus"; read_only?: boolean;
-  modes?: WallboxMode[]; sold_by?: string[]; port?: number; unit?: number };
+  simulated?: boolean; modes?: WallboxMode[]; sold_by?: string[]; port?: number; unit?: number };
 export type WallboxesView = { wallboxes: NativeWallbox[]; models: WallboxModel[]; max: number; search: boolean };
 type Found = { device_id: string; host: string; product_key: string | null };
 
 const MODES: [WallboxMode, string][] = [["manual", t("devices.nativeWallbox.modeManual")], ["off", t("common.off")],
   ["pv", t("devices.modes.solar")], ["minpv", t("devices.modes.minSolar")], ["now", t("devices.modes.fast")]];
 function modeHint(wb: NativeWallbox): string {
+  if (wb.simulated) return simulationHint(wb);
   switch (wb.mode) {
     case "manual": return t("devices.nativeWallbox.hintManual");
     case "off": return t("devices.modeHint.off");
@@ -53,12 +63,40 @@ function modeHint(wb: NativeWallbox): string {
   }
 }
 
+/** A simulated control (#440): what OpenAmpere would do in this mode, never written. */
+function simulationHint(wb: NativeWallbox): string {
+  switch (wb.mode) {
+    case "manual": return t("devices.nativeWallbox.simHintManual");
+    case "off": return t("devices.nativeWallbox.simHintOff");
+    case "pv": return t("devices.nativeWallbox.simHintPv", { count: wb.stop_after_min });
+    case "minpv": return t("devices.nativeWallbox.simHintMinpv");
+    case "now": return t("devices.nativeWallbox.simHintNow");
+  }
+}
+
+/** What the simulated control would do now, as a sentence. */
+function planText(plan: WallboxSimulation): string {
+  switch (plan.state) {
+    case "charging": return t("devices.nativeWallbox.planCharging", { count: plan.phases ?? 0, current: plan.current_a ?? 0,
+      power: kw(plan.power_w) });
+    case "waiting": return t("devices.nativeWallbox.planWaiting");
+    case "no_surplus": return t("devices.nativeWallbox.planNoSurplus");
+    case "off": return t("devices.nativeWallbox.planOff");
+    case "finished": return t("devices.nativeWallbox.planFinished");
+    case "no_car": return t("devices.nativeWallbox.planNoCar");
+    default: return t("devices.nativeWallbox.planUnknown");
+  }
+}
+
 /** Steps a wallbox may offer, when it has not told its own yet (e.g. unplugged). */
 const STEPS = [6, 8, 10, 13, 16, 20, 25, 32];
 
 /** Currents to choose for a mode: the wallbox's steps up to the owner's highest current, the chosen one included. */
 function currentOptions(wb: NativeWallbox, chosen: number): [string, string][] {
-  const steps = wb.reading?.steps_a.length ? wb.reading.steps_a : STEPS;
+  const own = wb.reading?.steps_a ?? [];
+  // a wallbox that takes any whole ampere (the FoxESS charger: 6 to 32 A) gets the usual steps within its limits
+  const steps = !own.length ? STEPS : own.length > STEPS.length
+    ? STEPS.filter((s) => s >= own[0] && s <= own[own.length - 1]) : own;
   const shown = [...new Set([...steps.filter((s) => s <= wb.max_current_a), chosen])].sort((a, b) => a - b);
   return shown.map((s) => [String(s), t("devices.nativeWallbox.amps", { current: s })]);
 }
@@ -82,7 +120,7 @@ function status(wb: NativeWallbox): string {
   if (r.state === "finished") return t("devices.nativeWallbox.finished");
   if (r.work_mode === "locked") return t("devices.nativeWallbox.locked");
   if (!r.connected) return t("devices.status.noVehiclePlugged");
-  if (wb.mode === "pv") return t("devices.status.waitingSolarSurplus");
+  if (wb.mode === "pv" && !wb.simulated) return t("devices.status.waitingSolarSurplus");
   return t("devices.status.plugged");
 }
 
@@ -92,6 +130,19 @@ const WORK_MODE: Record<string, string> = {
   controlled: t("devices.wallboxDirect.workModeControlled"), plug_and_charge: t("devices.wallboxDirect.workModePlugAndCharge"),
   locked: t("devices.wallboxDirect.workModeLocked"),
 };
+
+/** What a wallbox OpenAmpere only reads tells about itself: its limit, how it starts and whether it switches phases. */
+function OwnSettings({ r }: { r: WallboxReading }) {
+  return (
+    <>
+      {r.max_current_a != null && <><dt>{t("devices.nativeWallbox.maxOfWallbox")}</dt>
+        <dd>{t("devices.nativeWallbox.amps", { current: r.max_current_a })}</dd></>}
+      {r.work_mode && <><dt>{t("devices.wallboxDirect.workMode")}</dt><dd>{WORK_MODE[r.work_mode] ?? r.work_mode}</dd></>}
+      {r.phase_switching != null && <><dt>{t("devices.wallboxDirect.phaseSwitching")}</dt>
+        <dd>{r.phase_switching ? t("common.on") : t("common.off")}</dd></>}
+    </>
+  );
+}
 
 /** A wallbox OpenAmpere only shows (#439): what it does by itself, no charging mode. */
 function ReadOnlyCard({ wb }: { wb: NativeWallbox }) {
@@ -110,26 +161,23 @@ function ReadOnlyCard({ wb }: { wb: NativeWallbox }) {
         <dl className="facts">
           {r.charging && <><dt>{t("devices.nativeWallbox.phaseCurrents")}</dt><dd>{amps(r.current_a)} A</dd></>}
           <dt>{t("devices.nativeWallbox.phases")}</dt><dd>{r.active_phases || r.installed_phases}</dd>
-          {r.max_current_a != null && <><dt>{t("devices.nativeWallbox.maxOfWallbox")}</dt>
-            <dd>{t("devices.nativeWallbox.amps", { current: r.max_current_a })}</dd></>}
-          {r.work_mode && <><dt>{t("devices.wallboxDirect.workMode")}</dt><dd>{WORK_MODE[r.work_mode] ?? r.work_mode}</dd></>}
-          {r.phase_switching != null && <><dt>{t("devices.wallboxDirect.phaseSwitching")}</dt>
-            <dd>{r.phase_switching ? t("common.on") : t("common.off")}</dd></>}
+          <OwnSettings r={r} />
         </dl>
       )}
     </div>
   );
 }
 
-/** One wallbox on the devices tab: what it does now and the charging mode. */
+/** One wallbox on the devices tab: what it does now and the charging mode (for the FoxESS charger a simulation). */
 export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
-  if (wb.read_only) return <ReadOnlyCard wb={wb} />;
+  if (wb.read_only && !wb.simulated) return <ReadOnlyCard wb={wb} />;
   return <ControlledCard wb={wb} onChange={onChange} />;
 }
 
 function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
   const [busy, setBusy] = useState(false);
   const r = wb.online ? wb.reading : null; // no old values of a wallbox that is away
+  const sim = !!wb.simulated; // only a simulation (#440): nothing is written, the charger charges as it is set
   const chosen = wb.mode_current_a?.[wb.mode] ?? wb.max_current_a;
   const setMode = async (mode: WallboxMode, current_a?: number) => {
     setBusy(true);
@@ -149,8 +197,10 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           <div className="hint">{status(wb)}</div>
         </div>
       </div>
-      {wb.online === false && <p className="hint">{t("devices.nativeWallbox.awayHint")}</p>}
-      {r && !r.connected && wb.mode !== "manual" && <p className="hint">{t("devices.nativeWallbox.noCarHint")}</p>}
+      {wb.online === false && <p className="hint">{sim ? t("devices.nativeWallbox.awayHintModbus") : t("devices.nativeWallbox.awayHint")}</p>}
+      {sim && <Notice kind="info">{t("devices.nativeWallbox.simulationNotice")}</Notice>}
+      {r && !r.connected && wb.mode !== "manual" && <p className="hint">{sim ? t("devices.nativeWallbox.noCarHintSimulation")
+        : t("devices.nativeWallbox.noCarHint")}</p>}
       {!wb.local_key_set && <>
         <Notice kind="warn">{t("devices.nativeWallbox.keyLostHint")}</Notice>
         <Button variant="secondary" onClick={() => navigate("more/wallbox")}>{t("devices.nativeWallbox.keyLost")}</Button>
@@ -171,6 +221,8 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           {r.charging && <><dt>{t("devices.nativeWallbox.phaseCurrents")}</dt><dd>{amps(r.current_a)} A</dd></>}
           <dt>{t("devices.nativeWallbox.phases")}</dt><dd>{r.active_phases || r.installed_phases}</dd>
           {r.connected && !!r.session_kwh && <><dt>{t("devices.wallboxCard.chargedThisSession")}</dt><dd>{num(r.session_kwh, 1)} kWh</dd></>}
+          {sim && <OwnSettings r={r} />}
+          {sim && wb.simulation && <><dt>{t("devices.nativeWallbox.simulationPlan")}</dt><dd>{planText(wb.simulation)}</dd></>}
         </dl>
       )}
     </div>
@@ -371,6 +423,7 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
   const tuya = model?.protocol === "tuya";
   const modbus = model?.protocol === "modbus";
   const readOnly = !!model?.read_only;
+  const shownOnly = readOnly && !model?.simulated; // a simulated control (#440) uses the limit and the waiting time
   const keyMissing = tuya && !d.local_key && !stored?.local_key_set;
   // port and unit id: empty means the usual ones, anything else a whole number (the server checks the ranges)
   const numbersOk = () => {
@@ -423,8 +476,9 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
             onChange={(e) => set({ local_key: e.target.value })} />
         </Field>
       )}
-      {!readOnly && <>
-        <Field label={t("devices.nativeWallbox.maxCurrent")} hint={t("devices.nativeWallbox.maxCurrentHint")}>
+      {!shownOnly && <>
+        <Field label={t("devices.nativeWallbox.maxCurrent")}
+          hint={readOnly ? t("devices.nativeWallbox.maxCurrentHintSimulation") : t("devices.nativeWallbox.maxCurrentHint")}>
           <input className="input" value={d.max_current_a} inputMode="numeric" onChange={(e) => set({ max_current_a: e.target.value })} />
         </Field>
         <Field label={t("devices.nativeWallbox.stopAfter")} hint={t("devices.nativeWallbox.stopAfterHint")}>

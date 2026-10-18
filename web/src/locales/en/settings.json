@@ -338,7 +338,18 @@
     "wallboxStart": "{name}: charging started.",
     "wallboxStop": "{name}: charging paused.",
     "wallboxReleased": "{name}: OpenAmpere let go of the wallbox and set your charging current back.",
-    "wallboxModeCurrent": "{name}: at most {current} A in charging mode “{mode}”."
+    "wallboxModeCurrent": "{name}: at most {current} A in charging mode “{mode}”.",
+    "wallboxSimCurrent": {
+      "one": "{name}: simulation – OpenAmpere would go on charging with {current} A on 1 phase.",
+      "other": "{name}: simulation – OpenAmpere would go on charging with {current} A on {count} phases."
+    },
+    "wallboxSimStart": {
+      "one": "{name}: simulation – OpenAmpere would start charging with {current} A on 1 phase.",
+      "other": "{name}: simulation – OpenAmpere would start charging with {current} A on {count} phases."
+    },
+    "wallboxSimStop": "{name}: simulation – OpenAmpere would stop charging.",
+    "wallboxSimOther": "{name}: simulation – OpenAmpere would change a setting.",
+    "statusSimulation": "Simulation – nothing written to the wallbox"
   },
   "controlPage": {
     "emptyState": "No changes yet.",

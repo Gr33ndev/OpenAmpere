@@ -66,6 +66,7 @@ class DeTuyaCharger:
     label = "dé Mobile Wallbox 11 kW (Tuya)"
     protocol = "tuya"  # the app shows the fields and the steps to the local key of a Tuya device
     read_only = False
+    simulated = False  # its control is real (native.py)
     modes = ("manual", "off", "pv", "minpv", "now")  # native.MODES
     START, CURRENT = "140", "150"
 

@@ -9,7 +9,8 @@ firmware refuses reads with exception 6 ("server device busy"), which the check 
 
 FoxEssChargerLive is the same charger as a wallbox OpenAmpere shows itself (native.py): read over Modbus TCP with
 function code 3 only and never written (no write register is confirmed, and its watchdog fails in the unsafe
-direction, #318). Its only mode is "manual": it charges as it is set in its own app.
+direction, #318). It charges as it is set in its own app. Its modes other than "manual" are a simulation (#440):
+native.py decides as for a wallbox it controls, but only writes to the control log what it would have set.
 """
 
 from __future__ import annotations
@@ -87,7 +88,9 @@ class FoxEssChargerLive:
     sold_by = FoxEssCharger.sold_by
     protocol = "modbus"
     read_only = True  # never written: there is no write path for this model
-    modes = ("manual",)
+    # its other modes only simulate the control (#440): what OpenAmpere would set goes into the control log
+    simulated = True
+    modes = ("manual", "off", "pv", "minpv", "now")  # native.MODES
     port, unit = 502, 1  # confirmed on a real device (#431)
     # status, measurements and limits (0x1000–0x1015, without the energy counters, the card number, the model code
     # and the serial number: the live view needs none of them) and the configuration; the part single-phase models
@@ -122,4 +125,5 @@ class FoxEssChargerLive:
         r.firmware = f"{firmware >> 8}.{firmware & 0xFF}" if firmware is not None else None
         r.work_mode = WORK_MODE.get(values[0x3000]) if 0x3000 in values else None
         r.phase_switching = bool(values[0x300A]) if 0x300A in values else None
+        r.phase_switch_min = values.get(0x300B)
         return r

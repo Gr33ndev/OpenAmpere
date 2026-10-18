@@ -186,14 +186,36 @@
     "maxOfWallbox": "Highest current of the wallbox",
     "locked": "locked",
     "defaultNameFixed": "Wallbox",
-    "whichShown": "OpenAmpere shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it yet, it goes on charging as it is set in its own app. With “Check only” you create a report instead, which helps to control it soon.",
+    "whichShown": "OpenAmpere shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it yet, it goes on charging as it is set in its own app. You can try out the charging modes as a simulation: OpenAmpere then only works out what it would do. With “Check only” you create a report instead, which helps to control it soon.",
     "groupShown": "Show only",
     "way": "What should OpenAmpere do?",
     "wayShow": "Show",
     "wayCheck": "Check only (report)",
     "readOnlyIntro": "OpenAmpere only reads the wallbox and changes nothing on it. On EKD systems the previous smartbox must stay disconnected from power for this, otherwise it holds the connection to the wallbox. If evcc already reads the wallbox, do not add it here as well: it may allow only one connection.",
     "portHint": "Leave empty for the usual port {port}.",
-    "testOkReadOnly": "Connected. The wallbox reports {phases} phases and charges with at most {current} A (firmware {firmware})."
+    "testOkReadOnly": "Connected. The wallbox reports {phases} phases and charges with at most {current} A (firmware {firmware}).",
+    "simulationNotice": "Only a simulation: OpenAmpere writes nothing to this wallbox. It keeps charging as it is set in its own app, for example as soon as you plug in a car. In the charging modes other than “Manual”, OpenAmpere only works out when and with which current it would charge, and writes that into the log as a simulation.",
+    "simulationPlan": "Simulation",
+    "planCharging": {
+      "one": "OpenAmpere would now charge with {current} A on 1 phase, about {power}.",
+      "other": "OpenAmpere would now charge with {current} A on {count} phases, about {power}."
+    },
+    "planWaiting": "OpenAmpere would not charge yet: it waits to see whether the surplus stays.",
+    "planNoSurplus": "OpenAmpere would not charge now: there is too little solar surplus.",
+    "planOff": "OpenAmpere would not charge now: the charging mode is “Off”.",
+    "planFinished": "OpenAmpere would not charge now: the car takes no more power, it is probably full.",
+    "planNoCar": "OpenAmpere would not charge now: no car is plugged in.",
+    "planUnknown": "OpenAmpere has not worked anything out yet. It does so as soon as it reads the wallbox again.",
+    "noCarHintSimulation": "No car plugged in. The simulation works it out as soon as you plug in a car. The wallbox itself then charges as it is set in its own app.",
+    "simHintManual": "OpenAmpere only shows the wallbox. Choose another charging mode to try out how OpenAmpere would control it. Nothing is written.",
+    "simHintOff": "Simulation: OpenAmpere would stop charging and not start it again.",
+    "simHintPv": {
+      "one": "Simulation: OpenAmpere would charge with solar surplus only. If it is no longer enough, it would go on with the lowest step and only pause after 1 minute like that.",
+      "other": "Simulation: OpenAmpere would charge with solar surplus only. If it is no longer enough, it would go on with the lowest step and only pause after {count} minutes like that."
+    },
+    "simHintMinpv": "Simulation: OpenAmpere would always charge with at least the lowest step, faster in the sun, but at most with the current below.",
+    "simHintNow": "Simulation: OpenAmpere would charge right away with the current below.",
+    "maxCurrentHintSimulation": "The most OpenAmpere would set in the simulation. The wallbox also limits to its own highest current."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",
