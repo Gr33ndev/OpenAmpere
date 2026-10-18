@@ -351,6 +351,9 @@ class NativeWallboxes:
         live.plan.want_on, live.plan.short_since = 0, None
         if old != mode:
             self._log(wb, "mode", mode, False, "ok", source=source, before=old)
+            if mode == "manual" and MODELS[wb.model].simulated:
+                # ended here, not in step(): with the master switch off step() only runs in the simulated modes
+                self._sim_release(wb, live, "Lademodus „von Hand“")
         if current_a is not None and current != before:
             self._log(wb, "mode_current", {"mode": mode, "current_a": current}, False, "ok", source=source,
                       before=before)

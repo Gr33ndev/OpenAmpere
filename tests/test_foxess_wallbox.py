@@ -564,6 +564,16 @@ async def test_the_simulation_takes_no_surplus_from_other_devices_and_runs_with_
             "current", {"current_a": 16, "phases": 1, "low_a": 10, "high_a": 16, "minutes": 12})
         assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "charging", "current_a": 13, "phases": 3,
                                                                   "power_w": 13 * 230 * 3}
+
+        # still with the master switch off, back to "manual": the planned charge ends at once, not only when step()
+        # runs again (it does not for a wallbox in "manual" while the master switch is off)
+        wallboxes.set_mode(wb.id, "manual")
+        (action, value), stop = simulated_entries(runtime)[-2:]  # the held-back change first, then the stop
+        assert (action, value["current_a"], value["phases"], value["low_a"], value["high_a"]) == ("current", 13, 3, 13, 16)
+        assert stop == ("stop", False)
+        assert wallboxes.live[wb.id].plan.on is False
+        await tick(t0 + 13 * 60, -9000.0)
+        assert simulated_entries(runtime)[-1] == ("stop", False)  # nothing more
     assert set(charger.functions) == {3}
 
 
