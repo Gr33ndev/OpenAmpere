@@ -253,14 +253,36 @@
     "maxOfWallbox": "Höchster Ladestrom der Wallbox",
     "locked": "gesperrt",
     "defaultNameFixed": "Wallbox",
-    "whichShown": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie noch nicht, sie lädt weiter so, wie sie in ihrer App eingestellt ist. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht, der hilft, sie bald auch zu steuern.",
+    "whichShown": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie noch nicht, sie lädt weiter so, wie sie in ihrer App eingestellt ist. Die Lademodi kannst du als Simulation ausprobieren: OpenAmpere rechnet dann nur aus, was es tun würde. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht, der hilft, sie bald auch zu steuern.",
     "groupShown": "Nur anzeigen",
     "way": "Was soll OpenAmpere tun?",
     "wayShow": "Anzeigen",
     "wayCheck": "Nur prüfen (Bericht)",
     "readOnlyIntro": "OpenAmpere liest die Wallbox nur und ändert nichts an ihr. Bei Anlagen von EKD muss die bisherige Smartbox dafür vom Strom getrennt bleiben, sonst hält sie die Verbindung zur Wallbox. Liest evcc die Wallbox schon, richte sie hier nicht zusätzlich ein: Vielleicht erlaubt sie nur eine Verbindung.",
     "portHint": "Leer lassen für den üblichen Port {port}.",
-    "testOkReadOnly": "Verbunden. Die Wallbox meldet {phases} Phasen und lädt mit höchstens {current} A (Firmware {firmware})."
+    "testOkReadOnly": "Verbunden. Die Wallbox meldet {phases} Phasen und lädt mit höchstens {current} A (Firmware {firmware}).",
+    "simulationNotice": "Nur eine Simulation: OpenAmpere schreibt nichts an diese Wallbox. Sie lädt weiter so, wie sie in ihrer App eingestellt ist, zum Beispiel sobald du ein Auto einsteckst. In den Lademodi außer „Von Hand“ rechnet OpenAmpere nur aus, wann und mit welchem Ladestrom es laden würde, und schreibt das als Simulation ins Protokoll.",
+    "simulationPlan": "Simulation",
+    "planCharging": {
+      "one": "OpenAmpere würde jetzt mit {current} A auf 1 Phase laden, etwa {power}.",
+      "other": "OpenAmpere würde jetzt mit {current} A auf {count} Phasen laden, etwa {power}."
+    },
+    "planWaiting": "OpenAmpere würde noch nicht laden: Es wartet, ob der Überschuss bleibt.",
+    "planNoSurplus": "OpenAmpere würde jetzt nicht laden: Es gibt zu wenig Solarüberschuss.",
+    "planOff": "OpenAmpere würde jetzt nicht laden: Der Lademodus ist „Aus“.",
+    "planFinished": "OpenAmpere würde jetzt nicht laden: Das Auto nimmt keinen Strom mehr, vermutlich ist es voll.",
+    "planNoCar": "OpenAmpere würde jetzt nicht laden: Es ist kein Auto angeschlossen.",
+    "planUnknown": "OpenAmpere hat noch nichts ausgerechnet. Das geschieht, sobald es die Wallbox wieder liest.",
+    "noCarHintSimulation": "Kein Auto angeschlossen. Die Simulation rechnet, sobald du ein Auto einsteckst. Die Wallbox selbst lädt dann so, wie sie in ihrer App eingestellt ist.",
+    "simHintManual": "OpenAmpere zeigt die Wallbox nur an. Wähle einen anderen Lademodus, um auszuprobieren, wie OpenAmpere sie steuern würde. Geschrieben wird dabei nichts.",
+    "simHintOff": "Simulation: OpenAmpere würde das Laden stoppen und nicht wieder starten.",
+    "simHintPv": {
+      "one": "Simulation: OpenAmpere würde nur mit Solarüberschuss laden. Reicht er nicht mehr, würde es mit der kleinsten Stufe weiterladen und erst pausieren, wenn es 1 Minute so bleibt.",
+      "other": "Simulation: OpenAmpere würde nur mit Solarüberschuss laden. Reicht er nicht mehr, würde es mit der kleinsten Stufe weiterladen und erst pausieren, wenn es {count} Minuten so bleibt."
+    },
+    "simHintMinpv": "Simulation: OpenAmpere würde immer mindestens mit der kleinsten Stufe laden, bei Sonne schneller, aber höchstens mit dem Ladestrom unten.",
+    "simHintNow": "Simulation: OpenAmpere würde sofort mit dem Ladestrom unten laden.",
+    "maxCurrentHintSimulation": "So viel würde OpenAmpere in der Simulation höchstens einstellen. Die Wallbox begrenzt zusätzlich auf ihren eigenen höchsten Ladestrom."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

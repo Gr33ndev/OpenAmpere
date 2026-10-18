@@ -341,6 +341,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         require_control()
         if wallboxes is None or wallbox_id not in {wb.id for wb in wallboxes.wallboxes}:  # no limit entries either
             raise HTTPException(400, "Diese Wallbox gibt es nicht.")  # as from set_mode
+        wallbox = next(wb for wb in wallboxes.wallboxes if wb.id == wallbox_id)
+        if WALLBOX_MODELS[wallbox.model].read_only:  # only shown; its simulated modes are for the app alone (#440)
+            raise HTTPException(400, "Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.")
         try:
             with limits.counted([f"wallbox:{wallbox_id}"], OTHER_WRITES_PER_HOUR):
                 # logged there with the wallbox's name; the master switch and test mode apply to every write; the

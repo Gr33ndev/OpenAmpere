@@ -5,7 +5,8 @@ English: [wallbox-direct.md](wallbox-direct.md)
 Die meisten Wallboxen steuert OpenAmpere über [evcc](https://evcc.io), siehe [evcc.de.md](evcc.de.md). Einige
 Wallboxen spricht OpenAmpere selbst an, ohne evcc und ohne Cloud. Bisher ist das die **mobile 11-kW-Wallbox von
 „dé“** (mit Tuya-WLAN). Den **FoxESS AC EV Charger** zeigt OpenAmpere nur an, steuern kann es ihn noch nicht (siehe
-unten). Du kannst mehrere solche Wallboxen einrichten, auch zusätzlich zu einer Wallbox über evcc.
+unten; seine Lademodi gibt es als Simulation, die nichts schreibt). Du kannst mehrere solche Wallboxen einrichten,
+auch zusätzlich zu einer Wallbox über evcc.
 
 > Das Auslesen ist an einem echten Gerät bestätigt, das Steuern (Laden starten und stoppen, Ladestrom setzen) noch
 > nicht. Stell die Wallbox zuerst auf **Von Hand** und prüfe die Anzeige, bevor du einen anderen Lademodus wählst.
@@ -131,6 +132,35 @@ schließt.
 - **Nie evcc und OpenAmpere an derselben Wallbox:** Vielleicht erlaubt sie nur eine Verbindung. Liest evcc sie schon,
   richte sie hier nicht zusätzlich ein.
 - Zählerstand, Kartennummer und Seriennummer liest OpenAmpere dafür gar nicht erst.
+
+### Die Lademodi als Simulation ausprobieren
+
+Auf dem Reiter Geräte bietet der FoxESS AC EV Charger auch die Lademodi **Aus**, **Solar**, **Min + Solar** und
+**Sofort** an (#440). Bei dieser Wallbox sind sie **nur eine Simulation**: OpenAmpere rechnet aus, was es in diesem
+Modus tun würde, genau wie bei einer Wallbox, die es steuert. Es schreibt aber nichts an die Wallbox, egal wie
+Hauptschalter und Testmodus stehen. Die Wallbox lädt weiter so, wie sie in ihrer App eingestellt ist, zum Beispiel
+sobald du ein Auto einsteckst.
+
+- Die Karte zeigt neben den echten Werten, was OpenAmpere jetzt tun würde, zum Beispiel „OpenAmpere würde jetzt mit
+  10 A auf 1 Phase laden“ oder „OpenAmpere würde jetzt nicht laden: Es gibt zu wenig Solarüberschuss.“
+- Jeder Start und jeder Stopp, den OpenAmpere vorgenommen hätte, steht im Protokoll (**Mehr → Steuerung**), markiert
+  mit „Simulation – nichts an die Wallbox geschrieben“. Änderungen des Ladestroms sammelt OpenAmpere und schreibt sie
+  höchstens alle 5 Minuten als einen Eintrag: den Ladestrom zu diesem Zeitpunkt und den Bereich seit dem Eintrag
+  davor, zum Beispiel „zwischen 8 und 13 A“. So verdrängen Wolken keine echten Änderungen aus dem Protokoll. Solange
+  sich nichts ändert, steht nichts darin. Die Karte zeigt immer den neuesten Plan.
+- Die Simulation rechnet mit den Grenzen der Wallbox (kleinster und höchster Ladestrom) und ihrer automatischen
+  Umschaltung zwischen 1 und 3 Phasen: eine Phase unterhalb der kleinsten Leistung auf drei Phasen (6 A, etwa
+  4,1 kW), darüber drei Phasen, und umgeschaltet höchstens so oft, wie die Wallbox es erlaubt. Dein höchster
+  Ladestrom und die Wartezeit vor dem Pausieren (**Höchster Ladestrom**, **Solar-Laden pausieren nach**) gelten wie
+  bei der Wallbox von dé.
+- Startet die Wallbox ein Laden von selbst, zählt das als ihr eigenes: Im Modus **Solar** ohne genug Überschuss würde
+  die Simulation es gleich stoppen. Stellst du zurück auf **Von Hand** oder entfernst du die Wallbox, steht der Stopp
+  im Protokoll, den eine echte Steuerung für ein Laden senden würde, das die Simulation gestartet hat.
+- Das simulierte Laden zählt nirgends mit: Heizstab und andere Geräte bekommen den echten Überschuss, so wie er
+  gemessen wird. Das echte Laden der Wallbox bleibt im Hausverbrauch.
+- Die Simulation läuft, solange OpenAmpere läuft. Nach einem Neustart beginnt sie wieder bei dem, was die Wallbox
+  gerade tut.
+- Home Assistant zeigt die Wallbox nur an (kein Lademodus).
 
 ## Andere Wallboxen prüfen (nur lesen)
 

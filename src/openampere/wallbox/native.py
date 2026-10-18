@@ -8,9 +8,16 @@ FoxESS AC EV Charger over Modbus TCP, read only (#439).
   wallbox is read with (tuya.TuyaDevice, or modbus.ModbusWallbox with one short connection per read, closed
   afterwards); both read with status() and fail with an error that has a German message. Only a model that is not
   read_only has set_current() and start(), and only the Tuya connection (device()) can write.
-- A read-only model offers only the mode "manual": the other modes are refused when saved or chosen, nothing is ever
-  written to it, and its power is shown and counted in the house load like any wallbox, but OpenAmpere never acts
-  on it.
+- A read-only model is never written to; its power is shown and counted in the house load like any wallbox. Without
+  `simulated` it offers only the mode "manual" (the other modes are refused when saved or chosen).
+- A read-only model with `simulated` (the FoxESS charger, #440) offers all modes, but its control is only a simulation,
+  whatever the master switch and the test mode say: step() decides as for a wallbox OpenAmpere controls, with the
+  charger's own limits and its 1/3-phase switching, and writes what it would have set into the control log, marked as
+  a simulation: every planned start and stop, changes of the current at most every SIM_LOG_EVERY_S as one summary
+  (the current now and the range since the last entry), so they never bury real changes. The plan (Plan: on or off, current, phases, timers) is kept in memory and is the starting point of the
+  next check, not the charger's values; it is taken over from the charger once a car is plugged in and dropped with
+  the mode "manual". Letting go of a charge the simulation started is logged as the explicit stop real control would
+  send (#318). The plan never counts as load: the charger charges by itself as it is set (consumers.py).
 
 - Several wallboxes are fine (at most MAX_WALLBOXES). They share the place "wallbox" in the order of the solar surplus
   (consumers.py), in the order of their list, next to an evcc wallbox if there is one.
@@ -44,7 +51,7 @@ import re
 import secrets
 import time
 from collections.abc import Collection
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 
 from .. import ha_app, tuya
 from ..outbound import in_home_network
@@ -74,6 +81,8 @@ CONFIRM_TICKS = 2  # surplus must be there this many checks in a row before char
 STOP_AFTER_MIN = 10  # default: a solar charge goes on this long without enough surplus before it stops
 MIN_ON_S = MIN_OFF_S = 300.0  # the car's contactor should not switch every minute
 RAISE_EVERY_S = 30.0  # the current goes up at most this often, down right away
+SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log at most this often, collected
+PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
@@ -114,6 +123,33 @@ def _connection(wb: NativeWallbox) -> tuple:
 
 
 @dataclass
+class Plan:
+    """What the simulated control of a read-only wallbox would have set (#440), kept between the checks instead of the
+    charger's own values, which it does not change. Nothing of it is written anywhere but the control log."""
+    synced: bool = False  # taken over from the charger (charging or not) once a car is plugged in
+    on: bool = False
+    started: bool = False  # the simulation started this charge, not the charger by itself
+    current_a: int | None = None
+    phases: int | None = None
+    since: float = float("-inf")  # last planned start or stop
+    current_at: float = float("-inf")  # last planned change of the current
+    phases_at: float = float("-inf")  # last planned start or switch of the phases
+    want_on: int = 0
+    short_since: float | None = None
+    logged_at: float = float("-inf")  # last entry in the control log: start, stop or the summary of current changes
+    pending: dict | None = None  # current changes not logged yet: lowest and highest current, the last reason
+    state: str = "unknown"  # for the app: charging, waiting, no_surplus, off, finished, no_car, unknown
+
+    def reading(self, real: Reading) -> Reading:
+        """The charger as it would be under the planned control: charging as planned, with the planned current."""
+        return replace(real, charging=self.on, set_current_a=self.current_a,
+                       active_phases=(self.phases or 0) if self.on else 0)
+
+    def power_w(self) -> float:
+        return float(self.current_a * self.phases * VOLTAGE) if self.on and self.current_a and self.phases else 0.0
+
+
+@dataclass
 class Live:
     reading: Reading | None = None
     updated: float = 0.0
@@ -128,6 +164,7 @@ class Live:
     start_sent: float = float("-inf")
     stop_sent: float = float("-inf")
     planned: dict = field(default_factory=dict)  # test mode: what would have been written, logged once
+    plan: Plan = field(default_factory=Plan)  # a simulated control (#440)
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
@@ -185,7 +222,8 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
         if any(k not in CHARGING or not 6 <= v <= 32 for k, v in currents.items()):
             raise ValueError(f"{wb.name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.")
         # above a lowered highest current it is cut, not refused: the stored wallbox must stay valid
-        wb.mode_current_a = {} if model.read_only else {k: min(v, wb.max_current_a) for k, v in currents.items()}
+        wb.mode_current_a = {} if model.read_only and not model.simulated \
+            else {k: min(v, wb.max_current_a) for k, v in currents.items()}
         if not re.fullmatch(r"[0-9a-f]{8}", wb.id) or wb.id in ids:
             wb.id = secrets.token_hex(4)
         ids.add(wb.id)
@@ -267,6 +305,9 @@ class NativeWallboxes:
             elif now is None or not now.enabled or _connection(now) != _connection(old):
                 if old.id in self._owned():
                     self._retired[old.id] = old  # let go of it with the address it was controlled at
+            if now is None or not now.enabled or _connection(now) != _connection(old):
+                if MODELS[old.model].simulated and old.id in self.live:  # its simulation ends here (#440)
+                    self._sim_release(old, self.live[old.id], "Wallbox entfernt, ausgeschaltet oder geändert")
             if now is None or _connection(now) != _connection(old):
                 self.live.pop(old.id, None)
         self._store(wallboxes)
@@ -307,8 +348,12 @@ class NativeWallboxes:
         self._store(wallboxes)
         live = self.live.setdefault(wb.id, Live())
         live.want_on, live.short_since = 0, None
+        live.plan.want_on, live.plan.short_since = 0, None
         if old != mode:
             self._log(wb, "mode", mode, False, "ok", source=source, before=old)
+            if mode == "manual" and MODELS[wb.model].simulated:
+                # ended here, not in step(): with the master switch off step() only runs in the simulated modes
+                self._sim_release(wb, live, "Lademodus „von Hand“")
         if current_a is not None and current != before:
             self._log(wb, "mode_current", {"mode": mode, "current_a": current}, False, "ok", source=source,
                       before=before)
@@ -442,7 +487,13 @@ class NativeWallboxes:
 
     @staticmethod
     def controls(wb: NativeWallbox) -> bool:
-        return wb.mode in CONTROLLED
+        """OpenAmpere really controls it: its charging is surplus it may keep."""
+        return wb.mode in CONTROLLED and not MODELS[wb.model].read_only
+
+    @staticmethod
+    def simulates(wb: NativeWallbox) -> bool:
+        """Its control is only simulated (#440): nothing is written, its charging is not OpenAmpere's."""
+        return wb.mode in CONTROLLED and MODELS[wb.model].simulated
 
     # ---- control ---------------------------------------------------------------------
 
@@ -478,7 +529,7 @@ class NativeWallboxes:
                      *, safe: bool = False) -> bool:
         """Writes data points and reads them back. safe: letting go or stopping what OpenAmpere started, sent also
         in test mode."""
-        if MODELS[wb.model].read_only:  # never reached (its only mode is "manual"); a second guard all the same
+        if MODELS[wb.model].read_only:  # never reached (a simulation only logs, #440): a second guard
             raise RuntimeError(f"wallbox {wb.model} is read only")
         dry = self.runtime.config.control.dry_run
         if dry and not safe:
@@ -538,33 +589,68 @@ class NativeWallboxes:
 
     async def step(self, wb: NativeWallbox, available: float, now: float | None = None) -> float:
         """One check of a wallbox; available: surplus for it, its own charging included.
-        Returns the power it is meant to charge with."""
+        Returns the power it is meant to charge with (for a simulated control: the planned power, #440)."""
         now = time.time() if now is None else now
         if key_missing(wb):
             return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
         reading = self._fresh(live, now)
-        if MODELS[wb.model].read_only:
+        model = MODELS[wb.model]
+        if model.read_only and not model.simulated:
             return reading.power_w if reading else 0.0  # only shown: nothing to let go of, nothing to decide
         if wb.mode == "manual":
-            await self.release(wb, "Lademodus „von Hand“", stop_started=False)
+            if model.simulated:
+                self._sim_release(wb, live, "Lademodus „von Hand“", now)
+            else:
+                await self.release(wb, "Lademodus „von Hand“", stop_started=False)
             return reading.power_w if reading else 0.0
         if reading is None:
+            if model.simulated:
+                live.plan.state = "unknown"  # the plan stays: it goes on once the charger answers again
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
         if not reading.connected:
+            if model.simulated:
+                self._sim_flush(wb, live.plan, now, force=True)
+                live.plan = Plan(state="no_car")  # unplugged: a planned charge ends by itself, nothing to stop
+                return 0.0
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
             live.planned.pop("start", None)
             return 0.0
-        phases = reading.phases()
+        plan = live.plan if model.simulated else None
+        if plan is not None:
+            if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now
+                plan.synced, plan.on, plan.started = True, reading.charging, False
+                plan.current_a, plan.phases = None, (reading.active_phases or None) if reading.charging else None
+            if plan.on and reading.state == "finished":
+                self._sim_flush(wb, plan, now, force=True)
+                plan.on, plan.started = False, False  # the car is full: the charger stops by itself
+            self._sim_flush(wb, plan, now)  # changes collected earlier, once SIM_LOG_EVERY_S is over
+            reading = plan.reading(reading)
+        ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
+        phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
         limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
                     wb.mode_current_a.get(wb.mode, wb.max_current_a))
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
+        if plan is not None and phases < reading.installed_phases:
+            # one phase of a three-phase charger: only up to just below its lowest power on three phases, above that
+            # it would switch to three phases
+            three = min(reading.steps_a) * VOLTAGE * reading.installed_phases
+            steps = [s for s in steps if s * VOLTAGE * phases < three] or steps[:1]
         lowest = steps[0] * VOLTAGE * phases
         fits = [s for s in steps if s * VOLTAGE * phases <= available - (0 if reading.charging else MARGIN_W)]
+
+        async def start(on: bool, why: str) -> None:
+            if plan is not None:
+                self._sim_start(wb, plan, reading, on, phases, why, now)
+            else:
+                await self._start(wb, live, reading, on, why, now)
+
         if wb.mode == "off":
             if reading.charging:
-                await self._start(wb, live, reading, False, "Lademodus „Aus“", now)
+                await start(False, "Lademodus „Aus“")
+            if plan is not None:
+                plan.state = "off"
             return 0.0
         target = fits[-1] if fits else steps[0]  # without enough surplus: the lowest step
         if wb.mode == "now":
@@ -574,32 +660,128 @@ class NativeWallboxes:
         elif reading.charging:
             on, reason = True, f"Überschuss {available:.0f} W"
             if fits:
-                live.short_since = None
+                ctl.short_since = None
             else:
-                live.short_since = now if live.short_since is None else live.short_since
+                ctl.short_since = now if ctl.short_since is None else ctl.short_since
                 # a charge the wallbox started by itself (many start as soon as a car is plugged in) is stopped at
                 # once: the waiting and minimum time protect only a charge OpenAmpere started for the sun; that one
                 # goes on with the lowest step through clouds for the owner's waiting time (#402)
-                started = bool(self._owned().get(wb.id, {}).get("started"))
-                waited = now - live.short_since >= wb.stop_after_min * 60 and now - live.since >= MIN_ON_S
+                started = plan.started if plan is not None else bool(self._owned().get(wb.id, {}).get("started"))
+                waited = now - ctl.short_since >= wb.stop_after_min * 60 and now - ctl.since >= MIN_ON_S
                 if not started or waited:
                     on, reason = False, f"zu wenig Überschuss ({available:.0f} W)"
         else:
             on, reason = False, f"Überschuss {available:.0f} W"
             if fits:
-                live.want_on += 1
-                on = live.want_on >= CONFIRM_TICKS and now - live.since >= MIN_OFF_S
+                ctl.want_on += 1
+                on = ctl.want_on >= CONFIRM_TICKS and now - ctl.since >= MIN_OFF_S
             else:
-                live.want_on = 0
+                ctl.want_on = 0
         if not on:
             if reading.charging:
-                await self._start(wb, live, reading, False, reason, now)
+                await start(False, reason)
+            if plan is not None:
+                plan.state = "finished" if reading.state == "finished" else "waiting" if plan.want_on else "no_surplus"
             # a car about to start keeps its surplus, so a wallbox after it does not start at the same time
-            return target * VOLTAGE * phases if live.want_on else 0.0
-        await self._set_current(wb, live, reading, target, reason, now)
+            return target * VOLTAGE * phases if ctl.want_on else 0.0
+        if plan is not None:
+            self._sim_current(wb, plan, target, phases, reason, now)
+        else:
+            await self._set_current(wb, live, reading, target, reason, now)
         if not reading.charging:
-            await self._start(wb, live, reading, True, reason, now)
+            await start(True, reason)
+        if plan is not None:
+            plan.state = "charging" if plan.on else "finished" if reading.state == "finished" else "waiting"
+            return plan.power_w()
         return target * VOLTAGE * phases
+
+    # ---- simulated control (#440): decided like a real one, only logged ---------------------------------------------
+
+    @staticmethod
+    def _sim_phases(wb: NativeWallbox, plan: Plan, reading: Reading, available: float, now: float) -> int:
+        """The phases a simulated charge would use. A three-phase charger with automatic 1/3-phase switching follows
+        its power setpoint (docs/devices/foxess/ac-charger.md): one phase below its lowest power on three phases,
+        three from there, switched at most once per its own switch interval (0x300B)."""
+        installed = reading.installed_phases
+        if installed < 3 or not reading.phase_switching:
+            return installed
+        three = min(reading.steps_a) * VOLTAGE * installed
+        enough = wb.mode == "now" or available - (0 if plan.on else MARGIN_W) >= three
+        wanted = installed if enough else 1
+        if not plan.on or not plan.phases:
+            return wanted  # chosen with the start
+        interval = (reading.phase_switch_min or PHASE_SWITCH_MIN) * 60
+        if wanted != plan.phases and now - plan.phases_at >= interval:
+            return wanted
+        return plan.phases
+
+    def _sim_log(self, wb: NativeWallbox, action: str, value, reason: str, before=None) -> None:
+        """A simulated write: in the control log as not sent and marked as a simulation; never written."""
+        details = {"from": {"loadpoint": wb.name, **({"value": before} if before is not None else {})},
+                   "to": {"action": action, "value": value}, "simulation": True}
+        try:
+            self.runtime.storage.log_control("wallbox", details, True, f"Simulation, nicht gesendet: {reason}")
+        except Exception as err:  # noqa: BLE001 - the simulation must go on
+            log.warning("control log not written (simulation): %s", err)
+
+    def _sim_current(self, wb: NativeWallbox, plan: Plan, amps: int, phases: int, reason: str, now: float) -> None:
+        """Like _set_current(): up at most every RAISE_EVERY_S, down right away. While the plan charges a change is
+        collected and logged at most every SIM_LOG_EVERY_S (_sim_flush); a planned start says the current it starts
+        with."""
+        if plan.current_a == amps and plan.phases == phases:
+            return
+        if plan.on and plan.current_a is not None and plan.phases and amps * phases > plan.current_a * plan.phases \
+                and now - plan.current_at < RAISE_EVERY_S:
+            return
+        before = plan.current_a
+        if plan.on and plan.phases and phases != plan.phases:
+            plan.phases_at = now
+        plan.current_a, plan.phases, plan.current_at = amps, phases, now
+        if plan.on:
+            seen = [a for a in (before, amps) if a is not None]
+            if plan.pending:
+                seen += [plan.pending["low_a"], plan.pending["high_a"]]
+            plan.pending = {"low_a": min(seen), "high_a": max(seen), "reason": reason}
+            self._sim_flush(wb, plan, now)
+
+    def _sim_flush(self, wb: NativeWallbox, plan: Plan, now: float, *, force: bool = False) -> None:
+        """The collected changes of the current as one entry: the current now and the range since the last entry.
+        At most every SIM_LOG_EVERY_S, so that a simulation (which runs even with the master switch off) does not
+        bury real changes in the control log; force: before a planned stop or the end of the plan, so that no change
+        is lost. Nothing when nothing changed."""
+        pending = plan.pending
+        if not pending or not (force or now - plan.logged_at >= SIM_LOG_EVERY_S):
+            return
+        value = {"current_a": plan.current_a, "phases": plan.phases, "low_a": pending["low_a"],
+                 "high_a": pending["high_a"]}
+        if plan.logged_at != float("-inf"):  # since the last entry of this plan
+            value["minutes"] = max(1, round((now - plan.logged_at) / 60))
+        self._sim_log(wb, "current", value, pending["reason"])
+        plan.pending, plan.logged_at = None, now
+
+    def _sim_start(self, wb: NativeWallbox, plan: Plan, reading: Reading, on: bool, phases: int, reason: str,
+                   now: float) -> None:
+        """Like _start(): a planned start or stop, always logged (once); a stop after the changes collected so far."""
+        if plan.on == on or (on and reading.state == "finished"):
+            return  # a full car does not start
+        if not on:
+            self._sim_flush(wb, plan, now, force=True)
+        plan.on, plan.started = on, on
+        plan.since, plan.want_on, plan.short_since, plan.logged_at = now, 0, None, now
+        if on:
+            plan.phases, plan.phases_at = phases, now
+            self._sim_log(wb, "start", {"current_a": plan.current_a, "phases": phases}, reason)
+        else:
+            self._sim_log(wb, "stop", False, reason)
+
+    def _sim_release(self, wb: NativeWallbox, live: Live, reason: str, now: float | None = None) -> None:
+        """The simulation ends: a charge it started would be stopped explicitly, as real control would do when it lets
+        go (#318); a charge the charger started by itself would be left alone. The next simulation starts afresh."""
+        plan = live.plan
+        self._sim_flush(wb, plan, time.time() if now is None else now, force=True)
+        if plan.on and plan.started:
+            self._sim_log(wb, "stop", False, f"{reason}, OpenAmpere gäbe die Wallbox ab")
+        live.plan = Plan()
 
     async def release(self, wb: NativeWallbox, reason: str, *, stop_started: bool = True,
                       live: Live | None = None) -> bool:
@@ -692,6 +874,8 @@ class NativeWallboxes:
                 "reading": None if reading is None else {k: v for k, v in asdict(reading).items()
                                                          if k != "lifetime_kwh"},
                 "controlled": wb.id in self._owned(),
+                "simulated": MODELS[wb.model].simulated,
+                "simulation": self._plan_view(live.plan) if self.simulates(wb) else None,
             })
         return {"wallboxes": items, "models": [model_info(m) for m in MODELS.values()],
                 "max": MAX_WALLBOXES, "search": not ha_app.active()}
@@ -708,14 +892,21 @@ class NativeWallboxes:
                         "failures": live.failures, "with_device_id": bool(wb.device_id),
                         **({"port": wb.port, "unit": wb.unit} if wb.port is not None else {}),
                         "reading": None if reading is None else {
-                            k: v for k, v in asdict(reading).items() if k not in ("lifetime_kwh", "session_kwh")}})
+                            k: v for k, v in asdict(reading).items() if k not in ("lifetime_kwh", "session_kwh")},
+                        **({"simulation": self._plan_view(live.plan)} if self.simulates(wb) else {})})
         return out
+
+    @staticmethod
+    def _plan_view(plan: Plan) -> dict:
+        """What a simulated control would do now (#440), for the app and the report."""
+        return {"state": plan.state, "current_a": plan.current_a if plan.on else None,
+                "phases": plan.phases if plan.on else None, "power_w": round(plan.power_w())}
 
 
 def model_info(model) -> dict:
     """A model for the setup in the app: what it needs (a local key, or port and unit id) and what it offers."""
     return {"key": model.key, "label": model.label, "protocol": model.protocol, "read_only": model.read_only,
-            "modes": list(model.modes), "sold_by": list(getattr(model, "sold_by", ())),
+            "simulated": model.simulated, "modes": list(model.modes), "sold_by": list(getattr(model, "sold_by", ())),
             **({"port": model.port, "unit": model.unit} if model.protocol == "modbus" else {})}
 
 
@@ -731,4 +922,8 @@ def report_markdown(wallbox: dict) -> list[str]:
     reading = wallbox.get("reading")
     if reading:
         lines.append("- Zuletzt gelesen: " + ", ".join(f"{k} {v}" for k, v in reading.items() if v is not None))
+    plan = wallbox.get("simulation")
+    if plan:
+        lines.append("- Simulation (nichts geschrieben): " + ", ".join(f"{k} {v}" for k, v in plan.items()
+                                                                      if v is not None))
     return lines

@@ -99,7 +99,8 @@ LOG_SAID = {"ok", "manual", "auto"}
 LOG_SAID_KEYS = {"api.logNoPowerCut", "control.logOverwritten", "control.logNotDoneTestMode", "evcc.logNotSentTestMode",
                  "storage.logBackupRestored"}
 LOG_REASON_KEYS = {"charging.logStarted", "charging.logFinished", "charging.logWouldCharge", "charging.logRemoteReleased",
-                   "consumers.logNotSwitchedTestMode", "consumers.logNotSentTestMode"}
+                   "consumers.logNotSwitchedTestMode", "consumers.logNotSentTestMode",
+                   "wallbox.simulationNotSent"}  # the app says "simulation" in its own sentence (#440)
 
 
 def log_note(result: str, lang: str | None) -> str | None:

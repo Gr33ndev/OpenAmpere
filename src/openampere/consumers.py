@@ -607,6 +607,7 @@ class SurplusControl:
             await asyncio.gather(self._safe_off(consumers, "Steuerung ausgeschaltet", now),
                                  *([native.release_all("Steuerung ausgeschaltet")] if wallboxes else []))
             await self._read_rods(consumers)
+            await self._simulate(wallboxes, now)  # writes nothing: runs with the master switch off, too (#440)
             return
         snap = runtime.collector.latest
         if snap is None or runtime.collector.stale or snap.grid_power is None:
@@ -647,6 +648,14 @@ class SurplusControl:
         for key in self.order()["order"]:
             if key == "wallbox":
                 for wb in wallboxes:
+                    if native.simulates(wb):
+                        # a simulated control (#440) sees the surplus at its place in the order, as if the charger
+                        # were off (its real charging added back), but takes nothing: the charger charges by itself
+                        # as it is set, its real power stays in the measured house load, and what the simulation
+                        # plans never happens, so other devices must neither count on it nor give way to it
+                        battery_first = soc < self.evcc_priority_soc()
+                        await native.step(wb, free + native.power(wb, now) + (0.0 if battery_first else charge), now)
+                        continue
                     if not native.controls(wb):
                         await native.step(wb, 0.0, now)  # "manual": only lets go of it
                         continue
@@ -670,6 +679,21 @@ class SurplusControl:
             else:
                 used = await self._switch_step(c, state, available, cheap, now)
             take(used)
+
+    async def _simulate(self, wallboxes: list, now: float) -> None:
+        """With the master switch off nothing is controlled, but a simulated wallbox control (#440) goes on: it sees
+        the measured surplus as if the charger were off and takes nothing from it (see the order in _tick)."""
+        native = self.wallboxes
+        simulated = [wb for wb in wallboxes if native.simulates(wb)] if native is not None else []
+        if not simulated:
+            return
+        snap = self.runtime.collector.latest
+        fresh = snap is not None and not self.runtime.collector.stale and snap.grid_power is not None
+        battery = (snap.battery_power or 0) if fresh else 0.0
+        free = -snap.grid_power - max(0.0, battery) - self._wallbox_reserve() if fresh else 0.0
+        charge = 0.0 if not fresh or (snap.battery_soc or 0) < self.evcc_priority_soc() else max(0.0, -battery)
+        for wb in simulated:
+            await native.step(wb, free + native.power(wb, now) + charge if fresh else 0.0, now)
 
     async def _retire(self, now: float) -> None:
         """Devices that were disabled or removed: switched off if OpenAmpere switched them on, then forgotten (#217)."""

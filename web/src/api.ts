@@ -218,7 +218,7 @@ const LANGUAGE_HEADER: Record<string, string> = lang() === "de" ? {} : { "X-Open
 export const appUrl = (path: string) => (path.startsWith("/") ? `.${path}` : path);
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  if (DEMO && path.startsWith("/api/")) return demoRequest<T>(method, path);
+  if (DEMO && path.startsWith("/api/")) return demoRequest<T>(method, path, body);
   let response: Response;
   const headers: Record<string, string> = { ...LANGUAGE_HEADER };
   if (body !== undefined) headers["Content-Type"] = "application/json";

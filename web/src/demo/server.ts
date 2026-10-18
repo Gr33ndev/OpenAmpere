@@ -370,16 +370,50 @@ function consumers() {
       status: rod.on ? "heizt" : (rod.temperature ?? 0) >= 60 ? "Wasser hat Zieltemperatur" : "Bereitschaft", actual_w: rod.power } }] };
 }
 
+const FOX_MODES = ["manual", "off", "pv", "minpv", "now"] as const;
+type FoxMode = (typeof FOX_MODES)[number];
+/** The demo's FoxESS charger: its charging mode can be chosen, the control is only simulated anyway (#440). */
+const fox: { mode: FoxMode; currents: Partial<Record<FoxMode, number>> } = { mode: "manual", currents: {} };
+
+/** What the simulated control of the FoxESS charger would do with the demo's solar surplus, like native.py: the
+ *  lowest step on one phase up to below 6 A on three phases (about 4.1 kW), then three phases, at most the chosen
+ *  current; in solar mode only from 6 A on one phase plus a margin. */
+function foxPlan() {
+  if (fox.mode === "manual") return null;
+  const off = (state: string) => ({ state, current_a: null, phases: null, power_w: 0 });
+  if (fox.mode === "off") return off("off");
+  const limit = Math.min(16, fox.currents[fox.mode] ?? 16);
+  const s = snapshot();
+  const surplus = s ? Math.max(0, s.pv_power - s.house_power) : 0;
+  if (fox.mode === "pv" && surplus < 6 * 230 + 200) return off("no_surplus");
+  const phases = fox.mode === "now" || surplus >= 6 * 230 * 3 ? 3 : 1;
+  const current = fox.mode === "now" ? limit : Math.max(6, Math.min(limit, Math.floor(surplus / (230 * phases))));
+  return { state: "charging", current_a: current, phases, power_w: current * phases * 230 };
+}
+
+function setFoxMode(body: unknown) {
+  const { mode, current_a } = (body ?? {}) as { mode?: FoxMode; current_a?: number };
+  if (!mode || !FOX_MODES.includes(mode)) throw new Error("Unbekannter Lademodus.");
+  fox.mode = mode;
+  if (typeof current_a === "number") fox.currents = { ...fox.currents, [mode]: current_a };
+  return nativeWallboxes();
+}
+
+/** The few changes the demo takes: the simulated charging mode of the FoxESS charger (#440), which writes nothing in
+ *  a real installation either. */
+const CHANGES: Record<string, (body: unknown) => unknown> = { "/api/wallboxes/demo0003/mode": setFoxMode };
+
 /** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. And a FoxESS charger
- *  OpenAmpere only shows (#439): idle, no car plugged in. */
+ *  OpenAmpere only shows (#439), with a car plugged in that waits for the charger's app; its charging modes are a
+ *  simulation (#440). */
 function nativeWallboxes() {
   const away = Math.floor(Date.now() / 1000) - 3 * 3600;
   const updated = Math.floor(Date.now() / 1000) - 5;
   return { max: 4, search: true, models: [
     { key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya", read_only: false,
       modes: ["manual", "off", "pv", "minpv", "now"], sold_by: [] },
-    { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, modes: ["manual"],
-      sold_by: ["EKD"], port: 502, unit: 1 }],
+    { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, simulated: true,
+      modes: [...FOX_MODES], sold_by: ["EKD"], port: 502, unit: 1 }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
       mode_current_a: { now: 8 }, stop_after_min: 10, port: null, unit: null, read_only: false,
@@ -387,13 +421,13 @@ function nativeWallboxes() {
       online: false, offline_since: away, updated: away, error: "Das Gerät ist unter 192.168.178.60 nicht erreichbar.",
       reading: null, controlled: false },
     { id: "demo0003", name: "Garage", model: "foxess_ac", label: "FoxESS AC EV Charger", host: "192.168.178.61",
-      device_id: "", local_key_set: true, max_current_a: 16, mode: "manual", enabled: true, mode_current_a: {},
-      stop_after_min: 10, port: 502, unit: 1, read_only: true, modes: ["manual"],
+      device_id: "", local_key_set: true, max_current_a: 16, mode: fox.mode, enabled: true, mode_current_a: fox.currents,
+      stop_after_min: 10, port: 502, unit: 1, read_only: true, simulated: true, simulation: foxPlan(), modes: [...FOX_MODES],
       online: true, offline_since: null, updated, error: null, controlled: false,
-      reading: { state: "idle", connected: false, charging: false, power_w: 0, voltage_v: [230.1, 230.2, 230.3],
+      reading: { state: "plugged_in", connected: true, charging: false, power_w: 0, voltage_v: [230.1, 230.2, 230.3],
         current_a: [0, 0, 0], installed_phases: 3, active_phases: 0, session_kwh: null, session_s: null,
-        temperature_c: null, set_current_a: null, max_current_a: 32, steps_a: [6, 32], firmware: null, cp_v: null,
-        work_mode: "plug_and_charge", phase_switching: true } }] };
+        temperature_c: null, set_current_a: null, max_current_a: 32, steps_a: Array.from({ length: 27 }, (_, i) => 6 + i),
+        firmware: null, cp_v: null, work_mode: "controlled", phase_switching: true, phase_switch_min: 12 } }] };
 }
 
 /** A car whose data OpenAmpere reads from its manufacturer (#401), linked to the portable wallbox. The portal's values
@@ -601,10 +635,14 @@ export const DEMO_NOT_NEEDED = ["/api/backup", "/api/backup/link", "/api/export/
 /** Every endpoint the app reads needs an answer here. `npm run check:demo` (CI) fails otherwise. */
 export const DEMO_ROUTES = Object.keys(ROUTES);
 
-export async function demoRequest<T>(method: string, path: string): Promise<T> {
+export async function demoRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
   await new Promise((r) => setTimeout(r, 120)); // feels like a real server
-  if (method !== "GET") throw new Error(DEMO_WRITE_MESSAGE);
   const url = new URL(path, "http://demo");
+  if (method !== "GET") {
+    const change = method === "POST" ? CHANGES[url.pathname] : undefined;
+    if (!change) throw new Error(DEMO_WRITE_MESSAGE);
+    return change(body) as T;
+  }
   const handler = ROUTES[url.pathname];
   if (!handler) throw new Error("In der Demo nicht verfügbar.");
   return handler(url.searchParams) as T;

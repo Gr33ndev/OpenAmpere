@@ -376,6 +376,7 @@
     "modeCurrentRange": "Der Ladestrom muss zwischen 6 und {max_current_a} A liegen.",
     "modeCurrentRangeNamed": "{name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.",
     "modeFast": "Lademodus „Schnell“",
+    "modeManual": "Lademodus „von Hand“",
     "noCurrentInThisMode": "In diesem Lademodus lässt sich kein Ladestrom wählen.",
     "sentDespiteTestMode": "trotz Testmodus gesendet, OpenAmpere gibt die Wallbox ab: {reason}",
     "stopAfterRange": "{name}: Die Wartezeit vor dem Abbrechen muss zwischen 1 und 60 Minuten liegen.",
@@ -391,6 +392,9 @@
     "modbusNotConnected": "Die Wallbox unter {host} antwortet nicht oder nimmt keine Modbus-Verbindung an. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox. Nimm sie vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, prüfe die Adresse und ob evcc oder ein anderes Programm die Wallbox liest.",
     "modbusNoAnswer": "Die Wallbox nimmt die Verbindung an, antwortet aber nicht richtig. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox. Nimm sie vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, liest vielleicht evcc die Wallbox, oder die Geräteadresse stimmt nicht.",
     "modbusBusy": "Die Wallbox lehnt das Lesen ab („Gerät beschäftigt“). Vermutlich erlaubt sie Modbus in ihrer jetzigen Steuerungsart nicht. Du siehst sie in der App des Herstellers.",
-    "modbusRejected": "Die Wallbox antwortet, kennt diese Register aber nicht. Vielleicht ist es ein anderes Modell oder eine andere Firmware."
+    "modbusRejected": "Die Wallbox antwortet, kennt diese Register aber nicht. Vielleicht ist es ein anderes Modell oder eine andere Firmware.",
+    "simulationNotSent": "Simulation, nicht gesendet: {reason}",
+    "simulationReleased": "{reason}, OpenAmpere gäbe die Wallbox ab",
+    "removedSwitchedOffOrChanged": "Wallbox entfernt, ausgeschaltet oder geändert"
   }
 }
