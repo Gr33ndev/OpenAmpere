@@ -308,6 +308,10 @@ class NativeWallboxes:
             if now is None or not now.enabled or _connection(now) != _connection(old):
                 if MODELS[old.model].simulated and old.id in self.live:  # its simulation ends here (#440)
                     self._sim_release(old, self.live[old.id], "Wallbox entfernt, ausgeschaltet oder geändert")
+            elif now.mode == "manual" != old.mode and MODELS[old.model].simulated and old.id in self.live:
+                # "manual" saved with the list (a restored backup, another client): ended here as in set_mode(), since
+                # with the master switch off step() only runs in the simulated modes
+                self._sim_release(now, self.live[old.id], "Lademodus „von Hand“")
             if now is None or _connection(now) != _connection(old):
                 self.live.pop(old.id, None)
         self._store(wallboxes)
