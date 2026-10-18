@@ -9,6 +9,7 @@ agreed in a browser, 404 until a data request was started or a first dataset del
 sleeps, and zip archives with a JSON document of data points.
 """
 
+import asyncio
 import io
 import json
 import sqlite3
@@ -424,6 +425,25 @@ async def test_a_refused_login_is_not_tried_again_by_itself(tmp_path, fake):
     assert live.status == "waiting" and live.next_at > T0
 
 
+async def test_asking_now_while_the_background_look_runs_does_not_start_a_second_one(tmp_path, fake, monkeypatch):
+    _, cars, _ = setup_cars(tmp_path, {"vw_euda": fake})
+    car = cars.save([GOOD])[0]
+    release = asyncio.Event()
+    started = []
+
+    async def slow_poll(car, live, now=None):
+        started.append(car.id)
+        await release.wait()
+        return live
+    monkeypatch.setattr(cars, "poll", slow_poll)
+    refresh = asyncio.create_task(cars.refresh(car.id))
+    await asyncio.sleep(0)
+    cars.tick(T0)  # due, but the owner's look is running
+    release.set()
+    await refresh
+    assert started == [car.id]
+
+
 async def test_missing_setup_is_asked_again_less_often(tmp_path, fake, monkeypatch):
     _, cars, _ = setup_cars(tmp_path, {"vw_euda": fake})
     car = cars.save([GOOD])[0]
@@ -497,12 +517,12 @@ def test_a_running_charge_goes_on_after_a_restart(tmp_path):
     cars.track(T0)
     wallboxes.reading = reading(True, 2.0)
     cars.track(T0 + 60)
-    again = Cars(runtime, wallboxes)
+    again = Cars(runtime, wallboxes)  # a restart: what was charged meanwhile still counts
     wallboxes.reading = reading(True, 2.5)
     again.track(T0 + 120)
     again.track(T0 + 180)
     rows = runtime.storage.car_sessions(car.id)
-    assert len(rows) == 1 and rows[0]["end"] is None and rows[0]["kwh"] == 1.5
+    assert len(rows) == 1 and rows[0]["end"] is None and rows[0]["kwh"] == 2.0 and rows[0]["counter"] == 2.5
 
 
 def test_the_wallbox_shows_the_state_of_charge_only_while_the_car_is_plugged_in(tmp_path, monkeypatch):

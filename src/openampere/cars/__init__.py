@@ -85,12 +85,14 @@ class Live:
 
 @dataclass
 class Charge:
-    """A charge that is running: the stored row plus the wallbox counter it was last seen with."""
+    """A charge that is running: the stored row plus the wallbox counter it was last seen with. The counter is stored
+    with the energy, so after a restart the energy charged meanwhile is counted, too."""
     id: int
     wallbox: str
     kwh: float
     saved_kwh: float
     counter: float | None = None
+    saved_counter: float | None = None
 
 
 def validate(raw: list, keyless: Collection[str] = ()) -> list[Car]:
@@ -268,7 +270,9 @@ class Cars:
             await asyncio.gather(live.task, return_exceptions=True)
             return
         live.refused = None
-        await self.poll(car, live)
+        # a task like the background look, so a tick meanwhile does not start a second one
+        live.task = asyncio.create_task(self.poll(car, live))
+        await asyncio.gather(live.task, return_exceptions=True)
 
     async def poll(self, car: Car, live: Live, now: float | None = None) -> Live:
         if live.after is None:
@@ -329,7 +333,8 @@ class Cars:
                 if row["car"] in self._charges:  # only one can run: an older one is ended where it began
                     self.runtime.storage.update_car_session(row["id"], row["kwh"], row["start"])
                 else:
-                    self._charges[row["car"]] = Charge(row["id"], row["wallbox"], row["kwh"], row["kwh"])
+                    self._charges[row["car"]] = Charge(row["id"], row["wallbox"], row["kwh"], row["kwh"],
+                                                       row["counter"], row["counter"])
         return self._charges
 
     def track(self, now: float) -> None:
@@ -367,12 +372,13 @@ class Cars:
                     # a counter that went back started anew (the wallbox's session counter)
                     charge.kwh += counter - charge.counter if counter >= charge.counter else counter
                 charge.counter = counter
-            if charge.kwh - charge.saved_kwh >= SAVE_KWH_STEP:
-                self.runtime.storage.update_car_session(charge.id, round(charge.kwh, 3))
-                charge.saved_kwh = charge.kwh
+            if charge.kwh - charge.saved_kwh >= SAVE_KWH_STEP or (charge.saved_counter is None
+                                                                  and charge.counter is not None):
+                self.runtime.storage.update_car_session(charge.id, round(charge.kwh, 3), counter=charge.counter)
+                charge.saved_kwh, charge.saved_counter = charge.kwh, charge.counter
 
     def _end(self, car_id: str, charge: Charge, end: float) -> None:
-        self.runtime.storage.update_car_session(charge.id, round(charge.kwh, 3), end)
+        self.runtime.storage.update_car_session(charge.id, round(charge.kwh, 3), end, counter=charge.counter)
         (self._charges or {}).pop(car_id, None)
 
     # ---- values ----------------------------------------------------------------------

@@ -128,7 +128,7 @@ def _car_tables(db: sqlite3.Connection) -> None:
         charging INTEGER, target_soc REAL, PRIMARY KEY (car, ts))""")
     db.execute("""CREATE TABLE IF NOT EXISTS car_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT, car TEXT NOT NULL, wallbox TEXT NOT NULL, start REAL NOT NULL,
-        end REAL, kwh REAL NOT NULL DEFAULT 0)""")
+        end REAL, kwh REAL NOT NULL DEFAULT 0, counter REAL)""")
     db.execute("CREATE INDEX IF NOT EXISTS car_sessions_car ON car_sessions (car, start)")
 
 
@@ -1126,13 +1126,15 @@ class Storage:
             return self._db.execute("INSERT INTO car_sessions(car, wallbox, start) VALUES (?, ?, ?)",
                                     (car, wallbox, start)).lastrowid
 
-    def update_car_session(self, session_id: int, kwh: float, end: float | None = None) -> None:
+    def update_car_session(self, session_id: int, kwh: float, end: float | None = None, *,
+                           counter: float | None = None) -> None:
+        """counter: the wallbox's energy counter that goes with kwh, to go on counting after a restart."""
         with self._lock, self._db:
-            self._db.execute("UPDATE car_sessions SET kwh = ?, end = COALESCE(?, end) WHERE id = ?",
-                             (kwh, end, session_id))
+            self._db.execute("UPDATE car_sessions SET kwh = ?, end = COALESCE(?, end), counter = COALESCE(?, counter) "
+                             "WHERE id = ?", (kwh, end, counter, session_id))
 
     def car_sessions(self, car: str | None = None, *, open_only: bool = False, limit: int = 500) -> list[dict]:
-        sql, params = "SELECT id, car, wallbox, start, end, kwh FROM car_sessions WHERE 1 = 1", []
+        sql, params = "SELECT id, car, wallbox, start, end, kwh, counter FROM car_sessions WHERE 1 = 1", []
         if car is not None:
             sql += " AND car = ?"
             params.append(car)
