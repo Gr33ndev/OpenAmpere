@@ -52,8 +52,9 @@ locked otherwise). Change email or password then, or tap **Jetzt abrufen** (Fetc
 - **State of charge at plug-in:** the portal delivers late. OpenAmpere therefore takes the last value before the
   plug-in (a parked car keeps its state of charge), otherwise the first one after it.
 - **Consumption:** if you also charge away from home, that energy is missing and the consumption looks too low.
-- **What is kept:** OpenAmpere keeps the manufacturer's values and the charges until you remove the car. The
-  analysis needs them for the state of charge at plug-in and the kilometres driven.
+- **What is kept:** OpenAmpere keeps the single values from the manufacturer for 90 days. Every charge keeps its
+  state of charge at plug-in and at the end and the odometer until you remove the car; the analysis needs them for
+  the consumption.
 - **The portal is not an official interface for apps.** If the manufacturer changes the login, fetching can fail
   until OpenAmpere is adapted. Please open an issue then, with the report from **Mehr → Diagnose** (More →
   Diagnostics); it contains no login and no VIN.

@@ -128,7 +128,8 @@ def _car_tables(db: sqlite3.Connection) -> None:
         charging INTEGER, target_soc REAL, PRIMARY KEY (car, ts))""")
     db.execute("""CREATE TABLE IF NOT EXISTS car_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT, car TEXT NOT NULL, wallbox TEXT NOT NULL, start REAL NOT NULL,
-        end REAL, kwh REAL NOT NULL DEFAULT 0, counter REAL)""")
+        end REAL, kwh REAL NOT NULL DEFAULT 0, counter REAL,
+        settled INTEGER NOT NULL DEFAULT 0, soc_start REAL, soc_end REAL, odometer_km REAL)""")
     db.execute("CREATE INDEX IF NOT EXISTS car_sessions_car ON car_sessions (car, start)")
 
 
@@ -1134,7 +1135,8 @@ class Storage:
                              "WHERE id = ?", (kwh, end, counter, session_id))
 
     def car_sessions(self, car: str | None = None, *, open_only: bool = False, limit: int = 500) -> list[dict]:
-        sql, params = "SELECT id, car, wallbox, start, end, kwh, counter FROM car_sessions WHERE 1 = 1", []
+        sql, params = ("SELECT id, car, wallbox, start, end, kwh, counter, settled, soc_start, soc_end, odometer_km "
+                       "FROM car_sessions WHERE 1 = 1"), []
         if car is not None:
             sql += " AND car = ?"
             params.append(car)
@@ -1142,10 +1144,28 @@ class Storage:
             sql += " AND end IS NULL"
         return self._fetchall(sql + " ORDER BY start DESC LIMIT ?", (*params, limit))
 
+    def settle_car_session(self, session_id: int, soc_start: float | None, soc_end: float | None,
+                           odometer_km: float | None) -> None:
+        """The values of an ended charge, kept with it: the deliveries they come from are pruned later."""
+        with self._lock, self._db:
+            self._db.execute("UPDATE car_sessions SET settled = 1, soc_start = ?, soc_end = ?, odometer_km = ? "
+                             "WHERE id = ?", (soc_start, soc_end, odometer_km, session_id))
+
+    def prune_car_points(self, before: float) -> None:
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM car_points WHERE ts < ?", (before,))
+
     def delete_car(self, car: str) -> None:
         with self._lock, self._db:
             self._db.execute("DELETE FROM car_points WHERE car = ?", (car,))
             self._db.execute("DELETE FROM car_sessions WHERE car = ?", (car,))
+
+    def delete_cars_except(self, keep: list[str]) -> None:
+        """Data of cars that are no longer set up, also of entries the settings could not read."""
+        marks = ", ".join("?" * len(keep)) or "''"
+        with self._lock, self._db:
+            for table in ("car_points", "car_sessions"):
+                self._db.execute(f"DELETE FROM {table} WHERE car NOT IN ({marks})", tuple(keep))
 
     # ---- reading ---------------------------------------------------------
 

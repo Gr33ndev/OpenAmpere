@@ -51,6 +51,9 @@ PLUG_IN_BEFORE_S = 12 * 3600  # a parked car keeps its state of charge: the last
 PLUG_IN_AFTER_S = 45 * 60  # otherwise the first value after it (the portal delivers late)
 ODOMETER_BEFORE_S = 7 * 86400
 SAVE_KWH_STEP = 0.05
+SETTLE_AFTER_S = 86400  # an ended charge gets its values kept a day later: the late deliveries are there by then
+KEEP_POINTS_S = 90 * 86400  # the deliveries themselves are kept this long; the charges keep their values
+PRUNE_EVERY_S = 3600
 EMAIL = re.compile(r"[^@\s]{1,128}@[^@\s]{1,125}")
 VIN = re.compile(r"[A-Z0-9]{11,17}")
 
@@ -144,6 +147,7 @@ class Cars:
         self.live: dict[str, Live] = {}
         self._clients: dict[tuple, tuple[Source, threading.Lock]] = {}
         self._charges: dict[str, Charge] | None = None  # car id -> running charge; read from the database once
+        self._pruned = 0.0
         self._unreadable: set[str] = set()
 
     # ---- settings ------------------------------------------------------------------
@@ -205,10 +209,10 @@ class Cars:
         if len(linked) != len(set(linked)):
             raise ValueError("An einer Wallbox kann nur ein Auto eingetragen sein.")
         new = {car.id: car for car in cars}
+        # the data of removed cars, also of entries that could not be read (they are dropped from the list now)
+        self.runtime.storage.delete_cars_except(list(new))
         for old in stored.values():
             now = new.get(old.id)
-            if now is None:
-                self.runtime.storage.delete_car(old.id)
             if now is None or (now.source, now.brand, now.username, now.password, now.vin) != \
                     (old.source, old.brand, old.username, old.password, old.vin):
                 self.live.pop(old.id, None)  # asked afresh, also a login that was refused
@@ -247,6 +251,9 @@ class Cars:
         the background, a slow portal never holds up the loop)."""
         now = time.time() if now is None else now
         self.track(now)
+        if now - self._pruned >= PRUNE_EVERY_S:
+            self._pruned = now
+            self.prune(now)
         for car in self.enabled():
             live = self.live.setdefault(car.id, Live())
             if live.task and not live.task.done():
@@ -414,6 +421,24 @@ class Cars:
             or storage.car_value(car_id, name, after=end, before=end + PLUG_IN_AFTER_S, newest=False)
         return found["value"] if found else None
 
+    def _values(self, car_id: str, row: dict) -> dict:
+        """State of charge at plug-in and at the end and the odometer of a charge: kept with a settled charge, taken
+        from the deliveries before."""
+        if row.get("settled"):
+            return {"soc_start": row["soc_start"], "soc_end": row["soc_end"], "odometer_km": row["odometer_km"]}
+        start, end = row["start"], row["end"]
+        return {"soc_start": self._at_plug_in(car_id, start, "soc"), "soc_end": self._at_end(car_id, start, end, "soc"),
+                "odometer_km": self._at_plug_in(car_id, start, "odometer_km", ODOMETER_BEFORE_S)}
+
+    def prune(self, now: float) -> None:
+        """Ended charges keep their values; then the deliveries older than KEEP_POINTS_S go."""
+        storage = self.runtime.storage
+        for row in storage.car_sessions(limit=100_000):
+            if not row["settled"] and row["end"] is not None and now - row["end"] >= SETTLE_AFTER_S:
+                values = self._values(row["car"], row)
+                storage.settle_car_session(row["id"], values["soc_start"], values["soc_end"], values["odometer_km"])
+        storage.prune_car_points(now - KEEP_POINTS_S)
+
     def for_wallbox(self, wallbox_id: str, now: float | None = None) -> dict | None:
         """State of charge and range of the car linked to a wallbox, for the overview; None without one or without
         recent values."""
@@ -428,10 +453,11 @@ class Cars:
 
     def _charge_view(self, car: Car, row: dict, before: dict | None, odometer_now: float | None) -> dict:
         start, end = row["start"], row["end"]
-        odometer = self._at_plug_in(car.id, start, "odometer_km", ODOMETER_BEFORE_S)
-        previous = self._at_plug_in(car.id, before["start"], "odometer_km", ODOMETER_BEFORE_S) if before else None
-        return {"start": start, "end": end, "kwh": row["kwh"], "soc_start": self._at_plug_in(car.id, start, "soc"),
-                "soc_end": self._at_end(car.id, start, end, "soc"), "odometer_km": odometer,
+        values = self._values(car.id, row)
+        odometer = values["odometer_km"]
+        previous = self._values(car.id, before)["odometer_km"] if before else None
+        return {"start": start, "end": end, "kwh": row["kwh"], "soc_start": values["soc_start"],
+                "soc_end": values["soc_end"], "odometer_km": odometer,
                 # driven between the charge before and this one, and since this one
                 "km_before": odometer - previous if odometer is not None and previous is not None
                 and odometer >= previous else None,
@@ -462,21 +488,22 @@ class Cars:
         return {"cars": items, "sources": [s.info() for s in self.sources.values()], "max": MAX_CARS}
 
     def sessions(self, limit: int = 500) -> list[dict]:
-        """The charges in the form of evcc's sessions, so the analysis sums them up the same way."""
+        """The ended charges in the form of evcc's sessions, so the analysis sums them up the same way (evcc lists only
+        ended ones: a running charge would set its energy so far against the whole distance driven before it)."""
         cars = {car.id: car for car in self.cars}
         wallboxes = {wb.id: wb.name for wb in self.wallboxes.wallboxes} if self.wallboxes else {}
         out = []
         for row in self.runtime.storage.car_sessions(limit=limit):
             car = cars.get(row["car"])
-            if car is None:
+            if car is None or row["end"] is None:
                 continue
             start, end = row["start"], row["end"]
+            values = self._values(car.id, row)
             out.append({"created": _iso(start), "finished": _iso(end), "loadpoint": wallboxes.get(row["wallbox"]),
                         "vehicle": car.name, "car_id": car.id, "energy_kwh": row["kwh"],
-                        "duration_s": end - start if end is not None else None, "solar_pct": None, "price": None,
-                        "odometer_km": self._at_plug_in(car.id, start, "odometer_km", ODOMETER_BEFORE_S),
-                        "soc_start": self._at_plug_in(car.id, start, "soc"),
-                        "soc_end": self._at_end(car.id, start, end, "soc"), "added_range_km": None,
+                        "duration_s": end - start, "solar_pct": None, "price": None,
+                        "odometer_km": values["odometer_km"], "soc_start": values["soc_start"],
+                        "soc_end": values["soc_end"], "added_range_km": None,
                         "cost_eur": None, "grid_cost_eur": None})
         return out
 

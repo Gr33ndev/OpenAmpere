@@ -530,6 +530,46 @@ def test_the_state_of_charge_at_the_end_is_the_last_one_before_unplugging(tmp_pa
     assert cars.view()["cars"][0]["charge"]["soc_end"] == 80
 
 
+def test_a_running_charge_is_left_out_of_the_statistics(tmp_path):
+    runtime, cars, wallboxes = setup_cars(tmp_path)
+    car = cars.save([{**GOOD, "wallbox_id": "aa11bb22"}])[0]
+    ended = runtime.storage.open_car_session(car.id, "aa11bb22", T0 - 86400)
+    runtime.storage.update_car_session(ended, 20.0, T0 - 80000)
+    wallboxes.reading = reading(True, 0.0)
+    cars.track(T0)
+    wallboxes.reading = reading(True, 3.0)
+    cars.track(T0 + 600)
+    assert [s["energy_kwh"] for s in cars.sessions()] == [20.0]  # the running one only on the card
+    assert cars.view()["cars"][0]["charge"]["end"] is None
+
+
+def test_ended_charges_keep_their_values_when_old_deliveries_are_pruned(tmp_path):
+    runtime, cars, wallboxes = setup_cars(tmp_path)
+    car = cars.save([{**GOOD, "wallbox_id": "aa11bb22"}])[0]
+    storage = runtime.storage
+    storage.add_car_points(car.id, [{"ts": T0 - 3600, "soc": 40, "odometer_km": 5000},
+                                    {"ts": T0 + 3000, "soc": 80, "odometer_km": 5000}])
+    charge = storage.open_car_session(car.id, "aa11bb22", T0)
+    storage.update_car_session(charge, 23.0, T0 + 3600)
+    cars.prune(T0 + 3600 + 600)  # too early: late deliveries may still come
+    assert storage.car_sessions(car.id)[0]["settled"] == 0
+    later = T0 + cars_module.KEEP_POINTS_S + 86400
+    storage.add_car_points(car.id, [{"ts": later - 600, "soc": 61, "odometer_km": 7000}])
+    cars.prune(later)
+    assert storage.car_last_ts(car.id) == later - 600  # old deliveries gone, recent ones kept
+    session = cars.sessions()[0]
+    assert (session["soc_start"], session["soc_end"], session["odometer_km"]) == (40, 80, 5000)
+
+
+def test_data_of_cars_that_are_no_longer_set_up_is_removed(tmp_path):
+    runtime, cars, _ = setup_cars(tmp_path)
+    car = cars.save([GOOD])[0]
+    runtime.storage.add_car_points("dead0001", [{"ts": T0, "soc": 50}])  # an entry the settings could not read
+    runtime.storage.add_car_points(car.id, [{"ts": T0, "soc": 51}])
+    cars.save([{**GOOD, "id": car.id, "password": ""}])
+    assert runtime.storage.car_last_ts("dead0001") is None and runtime.storage.car_last_ts(car.id) == T0
+
+
 def test_a_charge_ends_when_the_wallbox_stays_away(tmp_path):
     runtime, cars, wallboxes = setup_cars(tmp_path)
     car = cars.save([{**GOOD, "wallbox_id": "aa11bb22"}])[0]
