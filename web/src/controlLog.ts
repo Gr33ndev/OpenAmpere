@@ -20,6 +20,8 @@ const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFin
 
 const unknown = () => t("settings.controlLog.unknownValue");
 const pct = (v: unknown) => (isNum(v) ? percent(v) : unknown());
+/** The own host names (#437): a list, empty when only the usual names are allowed. */
+const hosts = (v: unknown) => (Array.isArray(v) ? v.map(str).join(", ") || t("settings.controlLog.noOwnAddresses") : unknown());
 const watts = (v: unknown) => (isNum(v) ? `${v.toLocaleString(LOCALE)} W` : v === null ? t("common.noLimitValue") : unknown());
 const kwp = (v: unknown) => (isNum(v) ? `${v.toLocaleString(LOCALE, { maximumFractionDigits: 2 })} kWp` : unknown());
 
@@ -144,6 +146,7 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
         if (key === "control.dry_run") return to[key] ? t("settings.controlLog.testModeOn") : t("settings.controlLog.testModeOff");
         if (key === "grid.feed_in_rule") return t("settings.controlLog.feedInRule", { from: feedInRule(from[key]), to: feedInRule(to[key]) });
         if (key === "pv.installed_kwp") return t("settings.controlLog.pvCapacity", { from: kwp(from[key]), to: kwp(to[key]) });
+        if (key === "server.allowed_hosts") return t("settings.controlLog.ownAddresses", { from: hosts(from[key]), to: hosts(to[key]) });
         return t("settings.controlLog.setting", { name: key, from: str(from[key]) || unknown(), to: str(to[key]) || unknown() });
       })].join(" ") || t("settings.controlLog.unknown", { action: e.action });
     }

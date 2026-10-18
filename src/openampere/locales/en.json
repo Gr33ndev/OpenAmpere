@@ -3,7 +3,7 @@
     "accessInvalidRevoked": "Access invalid or revoked.",
     "accessNotFound": "Access not found.",
     "accessReadOnly": "This access is read-only.",
-    "accessViaNotAllowed": "Access via “{host}” is not allowed. Open OpenAmpere via its IP address or add the name to server.allowed_hosts.",
+    "accessViaNotAllowed": "Access via “{host}” is not allowed. Open OpenAmpere via its IP address and add the name under More → Access protection → Own addresses.",
     "backupCouldNotBeStored": "The backup could not be stored. Please check that there is enough free storage space.",
     "consumerNotFound": "Consumer not found",
     "controlDisabled": "Control is disabled",
@@ -112,6 +112,8 @@
   "config": {
     "credentialsNotInAddress": "User name and password don't belong in the {label}. Please enter the address without them.",
     "encryptedPrefixNotAllowed": "{label}: The value starts with “{ENCRYPTED_PREFIX}”. Only values stored encrypted start like this, so OpenAmpere can't save it. Please enter the value exactly as you received it.",
+    "hostWildcardNotAllowed": "“*” turns off the protection against DNS rebinding and therefore cannot be entered in the app. Please enter each name on its own, for example solar.example.com.",
+    "notAHostName": "“{name}” is not a host name. Please enter only the name, without https://, port or path, for example solar.example.com.",
     "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
     "settingTChangedApp": "The setting {key} can't be changed in the app."
   },

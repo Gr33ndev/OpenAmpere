@@ -106,14 +106,29 @@ def _external_pv_columns(db: sqlite3.Connection) -> None:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {EXTERNAL} REAL")
 
 
+def _allowed_hosts_from_the_app_only(db: sqlite3.Connection) -> None:
+    """Version 3 -> 4: the own host names can be set in the app now (#437). Before, the app could not set them, so a
+    value in the saved settings can only come from a crafted backup restored by an older version (before it took
+    only settings of the app); every start ignored it. It is removed, so it does not take effect now."""
+    row = db.execute("SELECT value FROM meta WHERE key='settings'").fetchone()
+    try:
+        settings = json.loads(row[0]) if row else None
+    except ValueError:
+        return  # the start reads it the same way and ignores it
+    if isinstance(settings, dict) and "server.allowed_hosts" in settings:
+        del settings["server.allowed_hosts"]
+        db.execute("UPDATE meta SET value=? WHERE key='settings'", (json.dumps(settings),))
+
+
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
 # database it cannot read. Only the copy of the newest upgrade is kept, each is as large as the database. The access
 # and device state (KEEP_ON_RESTORE) in the copy is kept that of the running installation: the older version takes
 # the copy as it is, and an old password, sessions or revoked app tokens must not become valid again with it.
-MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance, 2: _external_pv_columns}
-SCHEMA_VERSION = 3
+MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance, 2: _external_pv_columns,
+                                                               3: _allowed_hosts_from_the_app_only}
+SCHEMA_VERSION = 4
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
 NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
 COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
@@ -687,6 +702,9 @@ class Storage:
         try:
             _copy_backup(upload, staged)
             db = sqlite3.connect(str(staged))
+            # upgraded now, not at the next start: the settings written below are those of this version, and an
+            # upgrade step must not change them afterwards (e.g. remove the own host names kept from now, #437)
+            self._migrate(db, db.execute("PRAGMA user_version").fetchone()[0])
             with db:
                 row = db.execute("SELECT value FROM meta WHERE key='settings'").fetchone()
                 restored = json.loads(row[0]) if row else {}

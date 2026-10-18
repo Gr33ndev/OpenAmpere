@@ -89,7 +89,7 @@ SLOW = "Kein Schreibzugriff auf " + "a (Benutzer a). Bei Docker auf dem Server i
 def test_long_texts_are_not_matched_against_the_messages():
     start = time.monotonic()
     assert i18n.translate(f"Zugriff über „{SLOW}.example“ ist nicht erlaubt. Öffne OpenAmpere über die IP-Adresse "
-                          "oder trage den Namen unter server.allowed_hosts ein.", "en")
+                          "und trage den Namen unter Mehr → Zugriffsschutz → Eigene Adressen ein.", "en")
     assert time.monotonic() - start < 0.5
 
 

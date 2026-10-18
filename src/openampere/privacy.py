@@ -151,6 +151,7 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
 LOG_NAMES = {"source", "name", "consumer", "loadpoint", "vehicle"}
 LOG_TIMES = {"outage", "time"}
 LOG_LEFT_OUT = {"grid_operator_confirmation"}
+LOG_HOSTS = {"server.allowed_hosts"}  # the owner's own host names (#437), often a domain of theirs
 LOG_ROUNDED = {"export_limit_w": -2, "installed_kwp": 0, "battery_kwh": 0}
 HOME_ASSISTANT = " (Home Assistant)"
 
@@ -172,6 +173,8 @@ def control_log_for_report(runtime: Runtime, entries: list[dict], now: float) ->
             return "<Zeitpunkt>"
         if key in LOG_ROUNDED and isinstance(value, (int, float)) and not isinstance(value, bool):
             return round(value, LOG_ROUNDED[key])
+        if key in LOG_HOSTS and isinstance(value, str):
+            return pseudonyms.name(value, "Host")
         if key in LOG_NAMES and isinstance(value, str):
             suffix = HOME_ASSISTANT if value.endswith(HOME_ASSISTANT) else ""
             return pseudonyms.name(value.removesuffix(HOME_ASSISTANT), "Name") + suffix

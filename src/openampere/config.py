@@ -11,6 +11,7 @@ Values set through environment variables are reported as "locked" so the web app
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import date
 from pathlib import Path
@@ -48,7 +49,8 @@ class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8080
     # extra host names the web app may be opened with (besides IPs, localhost and typical home-network
-    # names such as *.local, *.fritz.box, *.ts.net); "*" disables the check (only behind a trusted proxy)
+    # names such as *.local, *.fritz.box, *.ts.net); "*" disables the check (only behind a trusted proxy, and only in
+    # config.yaml or the environment: the app refuses it, #437)
     allowed_hosts: list = field(default_factory=list)
     # HTTPS with an own certificate for other apps such as Home Assistant (#76); 0 = off
     tls_port: int = 8443
@@ -219,12 +221,14 @@ EDITABLE: dict[str, tuple] = {
     "meter.password": ("secret",),
     "meter.meter_ids": ("strlist", 10, 100),
     "log.level": ("choice", "debug", "info", "warning"),
+    "server.allowed_hosts": ("hosts", 20),
 }
 
 SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 # where a secret is sent: a secret kept on restore must keep going to the same place
 # changes that belong into the control log: switching control on/off and the declared feed-in rule
-AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp")
+# and the host names allowed besides the usual ones, which loosen the protection against DNS rebinding (#437)
+AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp", "server.allowed_hosts")
 SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
                   "meter.password": ("meter.provider", "meter.username")}
 
@@ -232,7 +236,15 @@ SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.
 # are only shown after login: the meter portal login and meter numbers, and the ntfy address (its topic is the only
 # protection of the push messages). Facts about the plant (size, battery, commissioning date) stay readable: whoever
 # is on the home network is at the house anyway, and the dashboard and the household need them.
-PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url"}
+# The own host names (#437) are a domain of the owner as often as not.
+PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "server.allowed_hosts"}
+
+# Never taken from a backup, the current value stays: a crafted backup could allow a name of an attacker and so open
+# the way for DNS rebinding (#437).
+KEPT_ON_RESTORE = {"server.allowed_hosts"}
+
+# a host name as the Host header has it (auth._HOST), without port; no "*", no URL, no path
+_HOST_NAME = re.compile(r"[a-z0-9_-]+(?:\.[a-z0-9_-]+)*")
 
 
 def _coerce(current, value):
@@ -324,6 +336,7 @@ LABELS = {
     "evcc.password": "Admin-Passwort von evcc", "notify.ntfy_token": "ntfy-Zugangs-Token",
     "meter.provider": "Netzbetreiber", "meter.username": "E-Mail für das Kundenportal",
     "meter.password": "Passwort für das Kundenportal",
+    "server.allowed_hosts": "Eigene Adressen",
 }
 
 
@@ -342,12 +355,14 @@ def restore_settings(backup: dict, current: dict, outside: Iterable[str] = ()) -
     or by an environment variable, which stay; their addresses are not taken from the backup."""
     restored: dict = {}
     for key, value in (backup if isinstance(backup, dict) else {}).items():
-        if key in SECRETS or key not in EDITABLE:
+        if key in SECRETS or key in KEPT_ON_RESTORE or key not in EDITABLE:
             continue
         try:
             restored.update(validate({key: value}))
         except Exception:  # noqa: BLE001 - an unusable value is left out, the default applies
             continue
+    for key in KEPT_ON_RESTORE & current.keys():
+        restored[key] = current[key]
     for key in outside:  # GHSA-8mjv-f2x6-2v3h
         for target in SECRET_TARGETS.get(key, ()):
             if target in current:
@@ -358,6 +373,23 @@ def restore_settings(backup: dict, current: dict, outside: Iterable[str] = ()) -
         if all(restored.get(target) == current.get(target) for target in SECRET_TARGETS.get(key, ())):
             restored[key] = current[key]
     return restored
+
+
+def _host_names(values: list) -> list[str]:
+    """The allowed host names (#437): lower case, each once, empty lines left out."""
+    names: list[str] = []
+    for value in values:
+        name = str(value).strip().lower()
+        if not name or name in names:
+            continue
+        if "*" in name:
+            raise ValueError("„*“ schaltet den Schutz gegen DNS-Rebinding ab und lässt sich deshalb in der App nicht "
+                             "eintragen. Bitte jeden Namen einzeln eintragen, zum Beispiel solar.example.de.")
+        if len(name) > 253 or not _HOST_NAME.fullmatch(name):
+            raise ValueError(f"„{name[:60]}“ ist kein Hostname. Bitte nur den Namen eintragen, ohne https://, "
+                             "Port oder Pfad, zum Beispiel solar.example.de.")
+        names.append(name)
+    return names
 
 
 def validate(changes: dict) -> dict:
@@ -391,6 +423,9 @@ def validate(changes: dict) -> dict:
                 from zoneinfo import ZoneInfo
                 value = str(value).strip()
                 ZoneInfo(value)  # raises for unknown names
+            elif kind == "hosts":
+                if not isinstance(value, list) or len(value) > rule[1]:
+                    raise ValueError
             elif kind == "strlist":
                 if not isinstance(value, list) or len(value) > rule[1]:
                     raise ValueError
@@ -399,6 +434,8 @@ def validate(changes: dict) -> dict:
                 value = str(value).strip()[: rule[1] if len(rule) > 1 else None]
         except (TypeError, ValueError, LookupError):
             raise ValueError(_invalid_message(key, rule)) from None
+        if kind == "hosts":
+            value = _host_names(value)  # with its own messages, not the general one
         if key == "notify.ntfy_url" and "@" in value:
             # a password in the address would be shown in the settings, kept in backups and quoted in errors
             raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "

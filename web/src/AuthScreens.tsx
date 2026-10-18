@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthStatus, Status } from "./api";
 import { directAddress, postJson, refreshAll, useResource } from "./api";
 import { t, tx } from "./i18n";
+import { OwnAddressesCard } from "./OwnAddresses";
 import { Button, Dialog, Field, Notice, SubPage, toast, useModal } from "./ui";
 
 const MIN_PASSWORD_LENGTH = 8; // as the server checks it (auth.py)
@@ -267,6 +268,7 @@ export function SecurityPage({ onBack }: { onBack: () => void }) {
             <Button variant="secondary" onClick={() => void logout(false)}>{t("shell.securityPage.logOutDevice")}</Button>
             <Button variant="secondary" onClick={() => setConfirmAll(true)}>{t("shell.securityPage.logOutAllDevices")}</Button>
           </div>
+          <OwnAddressesCard />
         </>
       )}
       <p className="hint">{status?.home_assistant ? t("shell.homeAssistant.forgotPassword") : tx("shell.securityPage.forgotPassword", {

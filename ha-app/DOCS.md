@@ -44,6 +44,9 @@ OpenAmpere by the IP address, or the other way round. In the sidebar this does n
   by another app, OpenAmpere does not start; choose another port there.
 - **Port 8743** is HTTPS for apps on other devices. The Home Assistant integration does not need it.
 - **Turn off direct access:** clear both ports there.
+- **A name of your own, for example through a reverse proxy:** open OpenAmpere by the IP address, log in and enter the
+  name under **More → Access protection → Own addresses**. The sidebar does not have this setting; it is not needed
+  there.
 
 ## Home Assistant integration
 

@@ -146,6 +146,7 @@ export type Settings = {
     "meter.username": string | null; // null without login (see hidden)
     "meter.meter_ids": string[] | null; // null without login (see hidden)
     "log.level": "debug" | "info" | "warning";
+    "server.allowed_hosts": string[] | null; // null without login (see hidden)
   };
   secrets: Record<SecretKey, { set: boolean; hint: string | null }>;
   locked: string[];
