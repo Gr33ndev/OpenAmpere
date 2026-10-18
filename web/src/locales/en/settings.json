@@ -349,7 +349,15 @@
     },
     "wallboxSimStop": "{name}: simulation – OpenAmpere would stop charging.",
     "wallboxSimOther": "{name}: simulation – OpenAmpere would change a setting.",
-    "statusSimulation": "Simulation – nothing written to the wallbox"
+    "statusSimulation": "Simulation – nothing written to the wallbox",
+    "wallboxSimCurrentRange": {
+      "one": "{name}: simulation – OpenAmpere would go on charging with {current} A on 1 phase (between {low} and {high} A in the last {minutes} minutes).",
+      "other": "{name}: simulation – OpenAmpere would go on charging with {current} A on {count} phases (between {low} and {high} A in the last {minutes} minutes)."
+    },
+    "wallboxSimCurrentRangeMinute": {
+      "one": "{name}: simulation – OpenAmpere would go on charging with {current} A on 1 phase (between {low} and {high} A in the last minute).",
+      "other": "{name}: simulation – OpenAmpere would go on charging with {current} A on {count} phases (between {low} and {high} A in the last minute)."
+    }
   },
   "controlPage": {
     "emptyState": "No changes yet.",

@@ -143,9 +143,11 @@ test mode say. The wallbox goes on charging as it is set in its own app, for exa
 - The card shows next to the real values what OpenAmpere would do now, for example "OpenAmpere würde jetzt mit 10 A
   auf 1 Phase laden" (would charge with 10 A on 1 phase now) or "würde jetzt nicht laden: Es gibt zu wenig
   Solarüberschuss" (would not charge: too little solar surplus).
-- Every start, stop and change of the current it would have made is in the control log (**Mehr → Steuerung**),
-  marked "Simulation – nichts an die Wallbox geschrieben" (nothing written to the wallbox). Unchanged checks are not
-  logged.
+- Every start and stop it would have made is in the control log (**Mehr → Steuerung**), marked "Simulation – nichts
+  an die Wallbox geschrieben" (nothing written to the wallbox). Changes of the current are collected and written at
+  most every 5 minutes as one entry: the current at that time and the range since the entry before, for example
+  "zwischen 8 und 13 A" (between 8 and 13 A). So clouds do not bury real changes in the log. Nothing is logged while
+  nothing changes. The card always shows the latest plan.
 - The simulation uses the wallbox's own limits (lowest and highest current) and its automatic 1/3-phase switching:
   one phase below the lowest power on three phases (6 A, about 4.1 kW), three phases above that, switched at most as
   often as the wallbox allows. Your highest current and the waiting time before solar charging pauses

@@ -98,6 +98,13 @@ test("simulated wallbox entries say what OpenAmpere would have done", async ({ p
       "Überschuss 3000 W"),
     simulated({ action: "stop", value: false }, "Simulation, nicht gesendet: zu wenig Überschuss (500 W)",
       "zu wenig Überschuss (500 W)"),
+    // changes of the current at most every 5 minutes, with the range since the entry before (review of #443)
+    simulated({ action: "current", value: { current_a: 10, phases: 3, low_a: 8, high_a: 13, minutes: 5 } },
+      "Simulation, nicht gesendet: Überschuss 7000 W", "Überschuss 7000 W"),
+    simulated({ action: "current", value: { current_a: 6, phases: 1, low_a: 6, high_a: 16, minutes: 1 } },
+      "Simulation, nicht gesendet: Überschuss 1400 W", "Überschuss 1400 W"),
+    simulated({ action: "current", value: { current_a: 16, phases: 3, low_a: 16, high_a: 16, minutes: 2 } },
+      "Simulation, nicht gesendet: Lademodus „Schnell“", "Lademodus „Schnell“"),
   ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
   api.override("/api/control/log", { entries });
   await open(page, "more/control");
@@ -106,8 +113,11 @@ test("simulated wallbox entries say what OpenAmpere would have done", async ({ p
     "Garage: Simulation – OpenAmpere würde mit 13 A auf 1 Phase weiterladen.",
     "Garage: Simulation – OpenAmpere würde das Laden stoppen.",
     "zu wenig Überschuss (500 W)",
+    "Garage: Simulation – OpenAmpere würde mit 10 A auf 3 Phasen weiterladen (in den letzten 5 Minuten zwischen 8 und 13 A).",
+    "Garage: Simulation – OpenAmpere würde mit 6 A auf 1 Phase weiterladen (in der letzten Minute zwischen 6 und 16 A).",
+    "Garage: Simulation – OpenAmpere würde mit 16 A auf 3 Phasen weiterladen.",  // one value: no range
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
-  await expect(page.getByText("Simulation – nichts an die Wallbox geschrieben", { exact: false })).toHaveCount(3);
+  await expect(page.getByText("Simulation – nichts an die Wallbox geschrieben", { exact: false })).toHaveCount(6);
   await expect(page.getByText("Testmodus – nichts geändert", { exact: false })).toHaveCount(0);
   expect(await layoutProblems(page)).toEqual([]);
 });

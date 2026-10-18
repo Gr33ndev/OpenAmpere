@@ -106,7 +106,15 @@ function simulatedWallboxText(name: string, action: unknown, value: unknown): st
   const current = isNum(planned.current_a) ? planned.current_a : 0;
   const count = isNum(planned.phases) ? planned.phases : 0;
   switch (action) {
-    case "current": return t("settings.controlLog.wallboxSimCurrent", { name, current, count });
+    case "current": {
+      // changes of the current are logged at most every 5 minutes, with the range since the entry before
+      const low = isNum(planned.low_a) ? planned.low_a : current;
+      const high = isNum(planned.high_a) ? planned.high_a : current;
+      const minutes = isNum(planned.minutes) ? planned.minutes : null;
+      if (minutes == null || low === high) return t("settings.controlLog.wallboxSimCurrent", { name, current, count });
+      return minutes === 1 ? t("settings.controlLog.wallboxSimCurrentRangeMinute", { name, current, count, low, high })
+        : t("settings.controlLog.wallboxSimCurrentRange", { name, current, count, minutes, low, high });
+    }
     case "start": return t("settings.controlLog.wallboxSimStart", { name, current, count });
     case "stop": return t("settings.controlLog.wallboxSimStop", { name });
     default: return t("settings.controlLog.wallboxSimOther", { name });

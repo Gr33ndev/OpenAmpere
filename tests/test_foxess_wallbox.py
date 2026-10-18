@@ -366,6 +366,9 @@ async def test_a_simulated_solar_charge_starts_raises_lowers_switches_phases_and
         await check(wallboxes, 9000, t0 + 20)  # up at most every 30 s
         assert simulated_entries(runtime) == [("start", {"current_a": 8, "phases": 3})]
         await check(wallboxes, 9000, t0 + 45)
+        # the plan follows at once, the control log only every 5 minutes
+        assert wallboxes.view()["wallboxes"][0]["simulation"]["current_a"] == 13
+        assert simulated_entries(runtime) == [("start", {"current_a": 8, "phases": 3})]
         await check(wallboxes, 7000, t0 + 50)  # down right away
         await check(wallboxes, 3000, t0 + 60)  # too little for three phases, but they switch only every 12 minutes
         await check(wallboxes, 3000, t0 + 10 + 12 * 60)  # one phase now
@@ -373,11 +376,14 @@ async def test_a_simulated_solar_charge_starts_raises_lowers_switches_phases_and
         assert wallboxes.live[wb.id].plan.on
         await check(wallboxes, 500, t0 + 740 + 10 * 60)  # the waiting time is over
         await check(wallboxes, 500, t0 + 1350)
+        # the changes of the current (13, 10, 6 A; then 13 and 6 A on one phase) at most every 5 minutes, each entry
+        # with the current at that time and the range since the entry before
         assert simulated_entries(runtime) == [
-            ("start", {"current_a": 8, "phases": 3}), ("current", {"current_a": 13, "phases": 3}),
-            ("current", {"current_a": 10, "phases": 3}), ("current", {"current_a": 6, "phases": 3}),
-            ("current", {"current_a": 13, "phases": 1}), ("current", {"current_a": 6, "phases": 1}),
+            ("start", {"current_a": 8, "phases": 3}),
+            ("current", {"current_a": 6, "phases": 3, "low_a": 6, "high_a": 13, "minutes": 12}),
+            ("current", {"current_a": 6, "phases": 1, "low_a": 6, "high_a": 13, "minutes": 10}),
             ("stop", False)]
+        assert wallboxes.live[wb.id].plan.pending is None
         stop = runtime.storage.control_log(1)[0]
         assert stop["result"] == "Simulation, nicht gesendet: zu wenig Überschuss (500 W)"
         assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "no_surplus", "current_a": None,
@@ -392,6 +398,49 @@ async def test_a_simulated_solar_charge_starts_raises_lowers_switches_phases_and
         reading = wallboxes.fresh(wb)
         assert reading.connected and not reading.charging and reading.set_current_a is None
         assert runtime.storage.get_meta(native_module.OWNED) is None
+    assert set(charger.functions) == {3}
+
+
+async def test_a_fluctuating_surplus_logs_the_current_at_most_every_five_minutes(tmp_path, monkeypatch):
+    """The simulation runs all day, also with the master switch off: clouds must not bury real changes in the control
+    log (review of #443). Start and stop are always logged, changes of the current as one summary per 5 minutes."""
+    async with simulated() as (charger, port, _opened, _asked):
+        plugged(charger)
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "pv")
+        await poll(wallboxes)
+        t0 = time.time()
+        await check(wallboxes, 6000, t0)
+        await check(wallboxes, 6000, t0 + 10)  # started with 8 A on three phases
+        planned = []
+        for k in range(120):  # 20 minutes, a cloud every 30 s: 6 kW and 9 kW in turn
+            await check(wallboxes, 9000.0 if k // 3 % 2 else 6000.0, t0 + 20 + 10 * k)
+            planned.append(wallboxes.live[wb.id].plan.current_a)
+        assert set(planned) == {8, 13} and planned.count(13) > 30  # the plan follows every change at once
+        entries = simulated_entries(runtime)
+        currents = [value for action, value in entries if action == "current"]
+        assert entries[0] == ("start", {"current_a": 8, "phases": 3}) and 3 <= len(currents) <= 4
+        assert all((v["low_a"], v["high_a"], v["minutes"]) == (8, 13, 5) for v in currents), currents
+
+        t = t0 + 1220
+        for k in range(40):  # no more clouds: the last change is logged once
+            await check(wallboxes, 6000.0, t + 10 * k)
+        count = len(simulated_entries(runtime))
+        for k in range(40, 100):  # 10 more minutes without a change: nothing is logged
+            await check(wallboxes, 6000.0, t + 10 * k)
+        assert len(simulated_entries(runtime)) == count
+
+        await check(wallboxes, 9000.0, t + 1000)  # up after a long quiet time: logged at once
+        assert simulated_entries(runtime)[count:] == [
+            ("current", {"current_a": 13, "phases": 3, "low_a": 8, "high_a": 13, "minutes": 12})]
+        await check(wallboxes, 6000.0, t + 1010)  # down again, 10 s later: collected
+        assert len(simulated_entries(runtime)) == count + 1
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, 6000.0, t + 1020)  # stopped: the collected change is logged first, then the stop
+        assert simulated_entries(runtime)[count + 1:] == [
+            ("current", {"current_a": 8, "phases": 3, "low_a": 8, "high_a": 13, "minutes": 1}), ("stop", False)]
+        assert runtime.storage.control_log(1)[0]["result"] == "Simulation, nicht gesendet: Lademodus „Aus“"
     assert set(charger.functions) == {3}
 
 
@@ -412,8 +461,9 @@ async def test_minpv_and_now_and_a_charge_the_charger_started_by_itself(tmp_path
         await check(wallboxes, 1000, t0 + 20)  # up at most every 30 s
         await check(wallboxes, 1000, t0 + 45)  # the highest current on one phase: three only after 12 minutes
         await check(wallboxes, 1000, t0 + 10 + 12 * 60)
-        assert simulated_entries(runtime)[-2:] == [("current", {"current_a": 16, "phases": 1}),
-                                                   ("current", {"current_a": 16, "phases": 3})]
+        # 16 A on one phase since 12 minutes logged now; the switch to three phases waits for the next entry
+        assert simulated_entries(runtime)[-1] == (
+            "current", {"current_a": 16, "phases": 1, "low_a": 6, "high_a": 16, "minutes": 12})
         assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "charging", "current_a": 16, "phases": 3,
                                                                   "power_w": 16 * 230 * 3}
 
@@ -421,7 +471,9 @@ async def test_minpv_and_now_and_a_charge_the_charger_started_by_itself(tmp_path
         wallboxes.set_mode(wb.id, "manual")
         assert await check(wallboxes, 1000, t0 + 800) == 11050  # only shown again
         await check(wallboxes, 1000, t0 + 810)
-        assert simulated_entries(runtime)[-1] == ("stop", False)
+        # the switch to three phases is not lost: logged with the stop, before it
+        assert simulated_entries(runtime)[-2:] == [
+            ("current", {"current_a": 16, "phases": 3, "low_a": 16, "high_a": 16, "minutes": 1}), ("stop", False)]
         assert runtime.storage.control_log(1)[0]["result"] == \
             "Simulation, nicht gesendet: Lademodus „von Hand“, OpenAmpere gäbe die Wallbox ab"
         assert wallboxes.live[wb.id].plan == native_module.Plan()
@@ -431,11 +483,12 @@ async def test_minpv_and_now_and_a_charge_the_charger_started_by_itself(tmp_path
         # a new simulation starts from what the charger does: its own charge, which "off" would stop
         wallboxes.set_mode(wb.id, "pv")
         await check(wallboxes, 12000, t0 + 820)
-        assert simulated_entries(runtime)[count:] == [("current", {"current_a": 16, "phases": 3})]
+        own = ("current", {"current_a": 16, "phases": 3, "low_a": 16, "high_a": 16})  # the first entry of this plan
+        assert simulated_entries(runtime)[count:] == [own]
         wallboxes.set_mode(wb.id, "off")
         await check(wallboxes, 12000, t0 + 830)
         await check(wallboxes, 12000, t0 + 840)
-        assert simulated_entries(runtime)[count:] == [("current", {"current_a": 16, "phases": 3}), ("stop", False)]
+        assert simulated_entries(runtime)[count:] == [own, ("stop", False)]
         assert wallboxes.view()["wallboxes"][0]["simulation"]["state"] == "off"
 
         # unplugged: the plan ends without a stop, the charge ends by itself
@@ -504,9 +557,13 @@ async def test_the_simulation_takes_no_surplus_from_other_devices_and_runs_with_
         runtime.config.control.enabled = False
         await tick(t0 + 60, -9000.0)
         assert calls[-1] == "http://rod.local/relay/0?turn=off"
-        assert simulated_entries(runtime)[-1] == ("current", {"current_a": 16, "phases": 1})
+        assert wallboxes.view()["wallboxes"][0]["simulation"]["current_a"] == 16  # planned, logged later
+        assert simulated_entries(runtime) == [("start", {"current_a": 10, "phases": 1})]
         await tick(t0 + 12 * 60, -9000.0)  # three phases after the charger's switch interval of 12 minutes
-        assert simulated_entries(runtime)[-1] == ("current", {"current_a": 13, "phases": 3})
+        assert simulated_entries(runtime)[-1] == (
+            "current", {"current_a": 16, "phases": 1, "low_a": 10, "high_a": 16, "minutes": 12})
+        assert wallboxes.view()["wallboxes"][0]["simulation"] == {"state": "charging", "current_a": 13, "phases": 3,
+                                                                  "power_w": 13 * 230 * 3}
     assert set(charger.functions) == {3}
 
 

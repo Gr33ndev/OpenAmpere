@@ -13,7 +13,8 @@ FoxESS AC EV Charger over Modbus TCP, read only (#439).
 - A read-only model with `simulated` (the FoxESS charger, #440) offers all modes, but its control is only a simulation,
   whatever the master switch and the test mode say: step() decides as for a wallbox OpenAmpere controls, with the
   charger's own limits and its 1/3-phase switching, and writes what it would have set into the control log, marked as
-  a simulation. The plan (Plan: on or off, current, phases, timers) is kept in memory and is the starting point of the
+  a simulation: every planned start and stop, changes of the current at most every SIM_LOG_EVERY_S as one summary
+  (the current now and the range since the last entry), so they never bury real changes. The plan (Plan: on or off, current, phases, timers) is kept in memory and is the starting point of the
   next check, not the charger's values; it is taken over from the charger once a car is plugged in and dropped with
   the mode "manual". Letting go of a charge the simulation started is logged as the explicit stop real control would
   send (#318). The plan never counts as load: the charger charges by itself as it is set (consumers.py).
@@ -80,6 +81,7 @@ CONFIRM_TICKS = 2  # surplus must be there this many checks in a row before char
 STOP_AFTER_MIN = 10  # default: a solar charge goes on this long without enough surplus before it stops
 MIN_ON_S = MIN_OFF_S = 300.0  # the car's contactor should not switch every minute
 RAISE_EVERY_S = 30.0  # the current goes up at most this often, down right away
+SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log at most this often, collected
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
@@ -134,6 +136,8 @@ class Plan:
     phases_at: float = float("-inf")  # last planned start or switch of the phases
     want_on: int = 0
     short_since: float | None = None
+    logged_at: float = float("-inf")  # last entry in the control log: start, stop or the summary of current changes
+    pending: dict | None = None  # current changes not logged yet: lowest and highest current, the last reason
     state: str = "unknown"  # for the app: charging, waiting, no_surplus, off, finished, no_car, unknown
 
     def reading(self, real: Reading) -> Reading:
@@ -593,7 +597,7 @@ class NativeWallboxes:
             return reading.power_w if reading else 0.0  # only shown: nothing to let go of, nothing to decide
         if wb.mode == "manual":
             if model.simulated:
-                self._sim_release(wb, live, "Lademodus „von Hand“")
+                self._sim_release(wb, live, "Lademodus „von Hand“", now)
             else:
                 await self.release(wb, "Lademodus „von Hand“", stop_started=False)
             return reading.power_w if reading else 0.0
@@ -603,6 +607,7 @@ class NativeWallboxes:
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
         if not reading.connected:
             if model.simulated:
+                self._sim_flush(wb, live.plan, now, force=True)
                 live.plan = Plan(state="no_car")  # unplugged: a planned charge ends by itself, nothing to stop
                 return 0.0
             live.want_on, live.short_since = 0, None
@@ -615,7 +620,9 @@ class NativeWallboxes:
                 plan.synced, plan.on, plan.started = True, reading.charging, False
                 plan.current_a, plan.phases = None, (reading.active_phases or None) if reading.charging else None
             if plan.on and reading.state == "finished":
+                self._sim_flush(wb, plan, now, force=True)
                 plan.on, plan.started = False, False  # the car is full: the charger stops by itself
+            self._sim_flush(wb, plan, now)  # changes collected earlier, once SIM_LOG_EVERY_S is over
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
@@ -715,8 +722,9 @@ class NativeWallboxes:
             log.warning("control log not written (simulation): %s", err)
 
     def _sim_current(self, wb: NativeWallbox, plan: Plan, amps: int, phases: int, reason: str, now: float) -> None:
-        """Like _set_current(): up at most every RAISE_EVERY_S, down right away. Logged only while the plan charges;
-        a planned start says the current it starts with."""
+        """Like _set_current(): up at most every RAISE_EVERY_S, down right away. While the plan charges a change is
+        collected and logged at most every SIM_LOG_EVERY_S (_sim_flush); a planned start says the current it starts
+        with."""
         if plan.current_a == amps and plan.phases == phases:
             return
         if plan.on and plan.current_a is not None and plan.phases and amps * phases > plan.current_a * plan.phases \
@@ -727,25 +735,47 @@ class NativeWallboxes:
             plan.phases_at = now
         plan.current_a, plan.phases, plan.current_at = amps, phases, now
         if plan.on:
-            self._sim_log(wb, "current", {"current_a": amps, "phases": phases}, reason, before=before)
+            seen = [a for a in (before, amps) if a is not None]
+            if plan.pending:
+                seen += [plan.pending["low_a"], plan.pending["high_a"]]
+            plan.pending = {"low_a": min(seen), "high_a": max(seen), "reason": reason}
+            self._sim_flush(wb, plan, now)
+
+    def _sim_flush(self, wb: NativeWallbox, plan: Plan, now: float, *, force: bool = False) -> None:
+        """The collected changes of the current as one entry: the current now and the range since the last entry.
+        At most every SIM_LOG_EVERY_S, so that a simulation (which runs even with the master switch off) does not
+        bury real changes in the control log; force: before a planned stop or the end of the plan, so that no change
+        is lost. Nothing when nothing changed."""
+        pending = plan.pending
+        if not pending or not (force or now - plan.logged_at >= SIM_LOG_EVERY_S):
+            return
+        value = {"current_a": plan.current_a, "phases": plan.phases, "low_a": pending["low_a"],
+                 "high_a": pending["high_a"]}
+        if plan.logged_at != float("-inf"):  # since the last entry of this plan
+            value["minutes"] = max(1, round((now - plan.logged_at) / 60))
+        self._sim_log(wb, "current", value, pending["reason"])
+        plan.pending, plan.logged_at = None, now
 
     def _sim_start(self, wb: NativeWallbox, plan: Plan, reading: Reading, on: bool, phases: int, reason: str,
                    now: float) -> None:
-        """Like _start(): a planned start or stop, logged once."""
+        """Like _start(): a planned start or stop, always logged (once); a stop after the changes collected so far."""
         if plan.on == on or (on and reading.state == "finished"):
             return  # a full car does not start
+        if not on:
+            self._sim_flush(wb, plan, now, force=True)
         plan.on, plan.started = on, on
-        plan.since, plan.want_on, plan.short_since = now, 0, None
+        plan.since, plan.want_on, plan.short_since, plan.logged_at = now, 0, None, now
         if on:
             plan.phases, plan.phases_at = phases, now
             self._sim_log(wb, "start", {"current_a": plan.current_a, "phases": phases}, reason)
         else:
             self._sim_log(wb, "stop", False, reason)
 
-    def _sim_release(self, wb: NativeWallbox, live: Live, reason: str) -> None:
+    def _sim_release(self, wb: NativeWallbox, live: Live, reason: str, now: float | None = None) -> None:
         """The simulation ends: a charge it started would be stopped explicitly, as real control would do when it lets
         go (#318); a charge the charger started by itself would be left alone. The next simulation starts afresh."""
         plan = live.plan
+        self._sim_flush(wb, plan, time.time() if now is None else now, force=True)
         if plan.on and plan.started:
             self._sim_log(wb, "stop", False, f"{reason}, OpenAmpere gäbe die Wallbox ab")
         live.plan = Plan()

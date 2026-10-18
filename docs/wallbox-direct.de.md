@@ -143,9 +143,11 @@ sobald du ein Auto einsteckst.
 
 - Die Karte zeigt neben den echten Werten, was OpenAmpere jetzt tun würde, zum Beispiel „OpenAmpere würde jetzt mit
   10 A auf 1 Phase laden“ oder „OpenAmpere würde jetzt nicht laden: Es gibt zu wenig Solarüberschuss.“
-- Jeder Start, jeder Stopp und jede Änderung des Ladestroms, die OpenAmpere vorgenommen hätte, steht im Protokoll
-  (**Mehr → Steuerung**), markiert mit „Simulation – nichts an die Wallbox geschrieben“. Prüfungen, bei denen sich
-  nichts ändert, stehen nicht darin.
+- Jeder Start und jeder Stopp, den OpenAmpere vorgenommen hätte, steht im Protokoll (**Mehr → Steuerung**), markiert
+  mit „Simulation – nichts an die Wallbox geschrieben“. Änderungen des Ladestroms sammelt OpenAmpere und schreibt sie
+  höchstens alle 5 Minuten als einen Eintrag: den Ladestrom zu diesem Zeitpunkt und den Bereich seit dem Eintrag
+  davor, zum Beispiel „zwischen 8 und 13 A“. So verdrängen Wolken keine echten Änderungen aus dem Protokoll. Solange
+  sich nichts ändert, steht nichts darin. Die Karte zeigt immer den neuesten Plan.
 - Die Simulation rechnet mit den Grenzen der Wallbox (kleinster und höchster Ladestrom) und ihrer automatischen
   Umschaltung zwischen 1 und 3 Phasen: eine Phase unterhalb der kleinsten Leistung auf drei Phasen (6 A, etwa
   4,1 kW), darüber drei Phasen, und umgeschaltet höchstens so oft, wie die Wallbox es erlaubt. Dein höchster
