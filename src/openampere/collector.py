@@ -220,10 +220,12 @@ class Collector:
                 self.last_error = None
                 backoff = 5.0
                 transient_failures = 0
-                self.latest = snap
                 if self.release_connection and hasattr(self.driver, "disconnect"):
                     await self.driver.disconnect()
                 await self._store(snap)
+                # shown only once stored: storing adds the second PV inverter's counter to the totals (#419), a
+                # reader in between would see the consumption without it
+                self.latest = snap
                 self._publish(snap)
                 if time.time() - last_prune > 3600:
                     try:
