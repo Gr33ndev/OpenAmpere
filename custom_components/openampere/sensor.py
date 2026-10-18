@@ -109,8 +109,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         if device["kind"] == "heating_rod":
             entities.append(DeviceTemperatureSensor(coordinator, device["id"]))
     for wallbox in coordinator.info.get("wallboxes") or []:  # missing on older OpenAmpere versions
-        entities += [WallboxPowerSensor(coordinator, wallbox["id"]), WallboxStateSensor(coordinator, wallbox["id"]),
-                     WallboxCurrentSensor(coordinator, wallbox["id"])]
+        entities += [WallboxPowerSensor(coordinator, wallbox["id"]), WallboxStateSensor(coordinator, wallbox["id"])]
+        if not wallbox.get("read_only"):  # one OpenAmpere only shows does not tell the current set in it (#439)
+            entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
     entities.append(FirmwareSensor(coordinator))
     async_add_entities(entities)
 

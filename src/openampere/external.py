@@ -25,8 +25,8 @@ from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketD
 from .apitokens import ApiTokens, Pairing
 from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
 from .runtime import Runtime
-from .wallbox.de_tuya import MODELS as WALLBOX_MODELS
 from .wallbox.native import CHARGING as WALLBOX_CHARGING
+from .wallbox.native import MODELS as WALLBOX_MODELS
 
 log = logging.getLogger(__name__)
 
@@ -227,7 +227,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "pv_input_count": count,  # also the hidden ones: the integration sets up again when the number changes
             "pv_external": pv_external(),  # a counted second PV inverter (#419): its sensors exist only then
             "devices": [{"id": d["id"], "name": d["name"], "kind": d["kind"]} for d in own_devices()],
-            "wallboxes": [{"id": wb.id, "name": wb.name, "model": WALLBOX_MODELS[wb.model].label}
+            "wallboxes": [{"id": wb.id, "name": wb.name, "model": WALLBOX_MODELS[wb.model].label,
+                           # only shown (#439): no mode or current to set, the integration offers no controls
+                           "read_only": WALLBOX_MODELS[wb.model].read_only}
                           for wb in (wallboxes.wallboxes if wallboxes else [])],
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }

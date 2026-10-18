@@ -4,7 +4,8 @@ Deutsch: [wallbox-direct.de.md](wallbox-direct.de.md)
 
 Most wallboxes are controlled by OpenAmpere through [evcc](https://evcc.io), see [evcc.md](evcc.md). A few wallboxes
 OpenAmpere talks to itself, without evcc and without a cloud. So far this is the **portable 11 kW wallbox sold as
-"dé"** (with Tuya Wi-Fi). You can set up several of them, also next to a wallbox through evcc.
+"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere only shows, it cannot control it yet (see below).
+You can set up several of them, also next to a wallbox through evcc.
 
 > Reading is confirmed on a real device, control (starting and stopping charging, setting the current) not yet. Set
 > the wallbox to **Von Hand** (manual) first and check what is shown before you choose another charging mode.
@@ -109,15 +110,37 @@ Every change is in the log under **Mehr → Steuerung und Protokoll** (More → 
 The wallbox works the same in the app. Only the **search in the home network** does not, because the app has a
 network of its own. Enter the IP address from your router by hand.
 
+## Showing the FoxESS AC EV Charger (read-only)
+
+The FoxESS AC EV Charger is also the wallbox EKD sold with its Ampere.IQ systems; in the router it shows up as
+`EVC-…`. OpenAmpere shows it (#439): whether a car is plugged in, the charging power and the current per phase. Its
+power counts in the house load like any wallbox. OpenAmpere cannot control it yet (#318): it writes nothing to the
+wallbox, which goes on charging as it is set in its own app.
+
+1. Under **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose the FoxESS AC EV Charger at
+   **Welche Wallbox hast du?** (under "Nur anzeigen", show only) and keep **Anzeigen** (show).
+2. Enter its IP address, or use **Wallbox im Heimnetz suchen** (search the home network). Port (usually 502) and unit
+   ID (usually 1) are under **Erweitert** (advanced).
+3. **Verbindung prüfen** (check the connection), then **Speichern** (save).
+
+OpenAmpere asks the wallbox every few seconds, each time over a short connection it closes right afterwards.
+
+- **On EKD systems** the previous smartbox holds the connection to the wallbox as long as it has power. OpenAmpere
+  then cannot read the wallbox and shows it as not reachable. For OpenAmpere to show the wallbox, the smartbox has to
+  stay disconnected from power.
+- **Never evcc and OpenAmpere on the same wallbox:** it may allow only one connection. If evcc already reads it, do
+  not add it here as well.
+- OpenAmpere does not even read the energy counter, the card number or the serial number for this.
+
 ## Checking other wallboxes (read-only)
 
-For more wallboxes OpenAmpere is preparing the direct way, starting with the FoxESS AC EV Charger (#318). This is
-also the wallbox EKD sold with its Ampere.IQ systems; in the router it shows up as `EVC-…`. Under
-**direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose it under **Welche Wallbox hast du?**
-in "Nur prüfen (Vorschau)" (check only, preview). Then OpenAmpere checks the wallbox
-read-only, in the mode it is in, and shows what it answers. Nothing is changed on the wallbox. The result goes into
-the diagnostics report (**Mehr → Diagnose**); sharing it helps to confirm the registers on real devices. For other
-wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads any registers.
+For more wallboxes OpenAmpere is preparing the direct way. Under **direkt → Wallbox hinzufügen oder prüfen**, choose
+the wallbox at **Welche Wallbox hast du?**; for the FoxESS AC EV Charger then choose **Nur prüfen (Bericht)** (check
+only, report). Then OpenAmpere checks the wallbox read-only, in the mode it is in, and shows what it answers. Nothing
+is changed on the wallbox. The result goes into the diagnostics report (**Mehr → Diagnose**); sharing it helps to
+confirm the registers on real devices and to control the wallbox soon. If the check could read the FoxESS AC EV
+Charger, **Diese Wallbox in OpenAmpere anzeigen** (show this wallbox in OpenAmpere) takes over address, port and unit
+ID. For other wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads any registers.
 
 Optionally the check can also listen over **OCPP 1.6J** (#328): start the listener there and enter the address shown
 as OCPP server in the manufacturer's app. OpenAmpere answers the wallbox with "Pending" and only asks for its settings;

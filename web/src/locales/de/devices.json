@@ -180,7 +180,20 @@
     "amps": "{current} A",
     "soldBy": "{label} (auch von {sellers} verkauft)",
     "stopAfter": "Solar-Laden pausieren nach (Minuten)",
-    "stopAfterHint": "Kommt im Modus „Solar“ eine Wolke, lädt die Wallbox so lange mit der kleinsten Stufe weiter. Den Rest liefern Speicher oder Netz. Länger heißt seltener unterbrechen, kürzer heißt weniger Strom aus dem Netz. 1 bis 60 Minuten."
+    "stopAfterHint": "Kommt im Modus „Solar“ eine Wolke, lädt die Wallbox so lange mit der kleinsten Stufe weiter. Den Rest liefern Speicher oder Netz. Länger heißt seltener unterbrechen, kürzer heißt weniger Strom aus dem Netz. 1 bis 60 Minuten.",
+    "awayHintModbus": "OpenAmpere erreicht die Wallbox gerade nicht und fragt in Abständen nach. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox, und OpenAmpere kann sie nicht lesen. Soll OpenAmpere die Wallbox anzeigen, nimm die Smartbox vom Strom. Hast du keine Smartbox, prüfe, ob die Wallbox eingeschaltet ist und ob evcc oder ein anderes Programm sie liest.",
+    "hintReadOnly": "OpenAmpere zeigt diese Wallbox nur an und verändert nichts an ihr. Sie lädt so, wie sie in ihrer App eingestellt ist.",
+    "maxOfWallbox": "Höchster Ladestrom der Wallbox",
+    "locked": "gesperrt",
+    "defaultNameFixed": "Wallbox",
+    "whichShown": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie noch nicht, sie lädt weiter so, wie sie in ihrer App eingestellt ist. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht, der hilft, sie bald auch zu steuern.",
+    "groupShown": "Nur anzeigen",
+    "way": "Was soll OpenAmpere tun?",
+    "wayShow": "Anzeigen",
+    "wayCheck": "Nur prüfen (Bericht)",
+    "readOnlyIntro": "OpenAmpere liest die Wallbox nur und ändert nichts an ihr. Bei Anlagen von EKD muss die bisherige Smartbox dafür vom Strom getrennt bleiben, sonst hält sie die Verbindung zur Wallbox. Liest evcc die Wallbox schon, richte sie hier nicht zusätzlich ein: Vielleicht erlaubt sie nur eine Verbindung.",
+    "portHint": "Leer lassen für den üblichen Port {port}.",
+    "testOkReadOnly": "Verbunden. Die Wallbox meldet {phases} Phasen und lädt mit höchstens {current} A (Firmware {firmware})."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",
@@ -316,7 +329,9 @@
     "workModeControlled": "über App oder Karte",
     "workModeLocked": "gesperrt",
     "workModePlugAndCharge": "beim Einstecken",
-    "yes": "ja"
+    "yes": "ja",
+    "showLive": "Diese Wallbox in OpenAmpere anzeigen",
+    "showLiveHint": "OpenAmpere kann diese Wallbox auch dauerhaft anzeigen, nur lesend. Adresse, Port und Geräteadresse aus der Prüfung werden übernommen."
   },
   "wallboxPage": {
     "addressHint": "Auf demselben Rechner {local}, sonst z. B. {example}",

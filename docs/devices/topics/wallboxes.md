@@ -11,9 +11,11 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
 
 - Most wallboxes are controlled through evcc. OpenAmpere gives evcc the site meters (grid, PV, battery), so evcc needs
   no Modbus connection of its own to the inverter.
-- A few wallboxes OpenAmpere controls itself, without evcc: so far the portable dé wallbox over Tuya LAN, see
-  [tuya/de-portable.md](../tuya/de-portable.md). Several of them, and an evcc wallbox next to them, share the place
-  "wallbox" in the order of the solar surplus.
+- A few wallboxes OpenAmpere reads itself, without evcc: it controls the portable dé wallbox over Tuya LAN, see
+  [tuya/de-portable.md](../tuya/de-portable.md), and only shows the FoxESS AC EV Charger over Modbus TCP, never writing
+  to it ([foxess/ac-charger.md](../foxess/ac-charger.md), [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)).
+  Several of them, and an evcc wallbox next to them, share the place "wallbox" in the order of the solar surplus; one
+  OpenAmpere only shows counts in the house load but is never acted on.
 - Which wallboxes work is decided by evcc. Many need a paid evcc sponsor token; the public trial token runs out after
   some days, and evcc then no longer starts the wallbox.
 - In evcc a loadpoint with the heating feature is a heat pump or heating rod; its "SoC" values are temperatures.
@@ -39,6 +41,7 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
 |---|---|---|
 | Wallboxes OpenAmpere does not know itself are controlled through evcc's REST API (until [#386](https://github.com/Gr33ndev/OpenAmpere/issues/386) the only way); OpenAmpere serves evcc the site meters at `/api/evcc/site`. | evcc supports many wallboxes; the inverter keeps a free connection slot. | [docs/devices.md](../../devices.md), [evcc.md](../../evcc.md) |
 | Wallboxes OpenAmpere knows itself are controlled without evcc (`wallbox/native.py`), so far the portable dé wallbox; evcc stays the way for all others. | No sponsor token, no second program for a single wallbox. | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318), [#386](https://github.com/Gr33ndev/OpenAmpere/issues/386), [tuya/de-portable.md](../tuya/de-portable.md) |
+| `wallbox/native.py` has one model per wallbox with the same reading for all (`base.Reading`); a model can be read only (only the mode "manual", no write path at all): so far the FoxESS AC EV Charger. Its power is shown and counted in the house load, but the surplus control never acts on it. | Show a wallbox before its write registers and watchdog are confirmed, without any risk. | [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439), [foxess/ac-charger.md](../foxess/ac-charger.md) |
 | The sponsor token's state is shown in the app; a missing or expired token gets its own message. | An expired token stops the wallbox. | [#317](https://github.com/Gr33ndev/OpenAmpere/issues/317), [#319](https://github.com/Gr33ndev/OpenAmpere/issues/319) |
 | The limit of a heating loadpoint is a temperature capped at 20–90 °C; a car loadpoint uses 20–100 %. | evcc uses the same field for both. | [#245](https://github.com/Gr33ndev/OpenAmpere/issues/245), [#249](https://github.com/Gr33ndev/OpenAmpere/issues/249) |
 | evcc's battery priority (`priority_soc`) is sent only with control switched on and outside test mode, and it is logged. | Same rules as every other control. | [#219](https://github.com/Gr33ndev/OpenAmpere/issues/219), [#226](https://github.com/Gr33ndev/OpenAmpere/issues/226) |

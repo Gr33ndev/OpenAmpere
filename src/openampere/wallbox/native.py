@@ -1,6 +1,16 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Wallboxes OpenAmpere reads and controls itself, without evcc (#318), so far the portable dé wallbox over Tuya.
+"""Wallboxes OpenAmpere reads and controls itself, without evcc (#318): the portable dé wallbox over Tuya, and the
+FoxESS AC EV Charger over Modbus TCP, read only (#439).
+
+- Every model is a class in MODELS with the same face: key, label, protocol ("tuya" or "modbus"), the modes it
+  offers, read_only, and interpret() that turns what the wallbox answered into a base.Reading. reader() gives what a
+  wallbox is read with (tuya.TuyaDevice, or modbus.ModbusWallbox with one short connection per read, closed
+  afterwards); both read with status() and fail with an error that has a German message. Only a model that is not
+  read_only has set_current() and start(), and only the Tuya connection (device()) can write.
+- A read-only model offers only the mode "manual": the other modes are refused when saved or chosen, nothing is ever
+  written to it, and its power is shown and counted in the house load like any wallbox, but OpenAmpere never acts
+  on it.
 
 - Several wallboxes are fine (at most MAX_WALLBOXES). They share the place "wallbox" in the order of the solar surplus
   (consumers.py), in the order of their list, next to an evcc wallbox if there is one.
@@ -28,6 +38,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import re
 import secrets
@@ -37,10 +48,17 @@ from dataclasses import asdict, dataclass, field
 
 from .. import ha_app, tuya
 from ..outbound import in_home_network
+from ..probe import host_addresses
 from ..runtime import Runtime
-from .de_tuya import MODELS, Reading
+from .base import Reading, WallboxUnreachable
+from .de_tuya import DeTuyaCharger
+from .foxess import FoxEssChargerLive
+from .modbus import ModbusWallbox
 
 log = logging.getLogger(__name__)
+
+MODELS = {m.key: m for m in (DeTuyaCharger, FoxEssChargerLive)}
+UNREACHABLE = (tuya.TuyaError, WallboxUnreachable)  # both carry a German .message for the owner
 
 MAX_WALLBOXES = 4
 MODES = ("manual", "off", "pv", "minpv", "now")
@@ -76,6 +94,23 @@ class NativeWallbox:
     stop_after_min: int = STOP_AFTER_MIN  # solar mode: minutes without enough surplus before a charge stops
     enabled: bool = True
     id: str = field(default_factory=lambda: secrets.token_hex(4))
+    port: int | None = None  # Modbus models only (None for Tuya): missing means the model's usual port
+    unit: int | None = None  # Modbus models only: the unit id
+
+
+def needs_key(wb: NativeWallbox) -> bool:
+    """A Tuya wallbox talks encrypted with its local key; a Modbus one needs none."""
+    return MODELS[wb.model].protocol == "tuya"
+
+
+def key_missing(wb: NativeWallbox) -> bool:
+    """Its stored key could not be read (#391): neither read nor controlled until it is entered again."""
+    return needs_key(wb) and not wb.local_key
+
+
+def _connection(wb: NativeWallbox) -> tuple:
+    """What a wallbox is reached with: a change means another device, or the same one at another address."""
+    return wb.host, wb.local_key, wb.port, wb.unit
 
 
 @dataclass
@@ -114,18 +149,32 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
             raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
         if not wb.name:
             raise ValueError("Bitte jeder Wallbox einen Namen geben.")
-        if wb.model not in MODELS:
+        model = MODELS.get(wb.model)
+        if model is None:
             raise ValueError(f"{wb.name}: Diese Wallbox kennt OpenAmpere noch nicht.")
         if not HOST.fullmatch(wb.host):
             raise ValueError(f"{wb.name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
+        if model.protocol == "modbus":
+            try:  # missing or 0: the model's usual port and unit id
+                wb.port, wb.unit = int(wb.port or model.port), int(wb.unit or model.unit)
+            except (TypeError, ValueError, OverflowError):
+                raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
+            if not 1 <= wb.port <= 65535 or not 1 <= wb.unit <= 255:
+                raise ValueError(f"{wb.name}: Der Port muss zwischen 1 und 65535 liegen, die Geräteadresse "
+                                 "zwischen 1 und 255.")
+            wb.local_key, wb.device_id = "", ""  # neither is used: nothing stored that is not needed
+        else:
+            wb.port = wb.unit = None
         if wb.device_id and not DEVICE_ID.fullmatch(wb.device_id):
             raise ValueError(f"{wb.name}: Die Geräte-ID besteht aus 10 bis 40 Buchstaben und Ziffern.")
-        if len(wb.local_key.encode()) != 16 and not (not wb.local_key and wb.id in keyless):
+        if needs_key(wb) and len(wb.local_key.encode()) != 16 and not (not wb.local_key and wb.id in keyless):
             raise ValueError(f"{wb.name}: Der Local Key muss genau 16 Zeichen lang sein.")
         if not 6 <= wb.max_current_a <= 32:
             raise ValueError(f"{wb.name}: Der höchste Ladestrom muss zwischen 6 und 32 A liegen.")
         if wb.mode not in MODES:
             raise ValueError(f"{wb.name}: Unbekannter Lademodus.")
+        if wb.mode not in model.modes:
+            raise ValueError(f"{wb.name}: Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.")
         try:
             wb.stop_after_min = int(wb.stop_after_min)
             currents = {str(k): int(v) for k, v in dict(wb.mode_current_a or {}).items()}
@@ -136,7 +185,7 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
         if any(k not in CHARGING or not 6 <= v <= 32 for k, v in currents.items()):
             raise ValueError(f"{wb.name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.")
         # above a lowered highest current it is cut, not refused: the stored wallbox must stay valid
-        wb.mode_current_a = {k: min(v, wb.max_current_a) for k, v in currents.items()}
+        wb.mode_current_a = {} if model.read_only else {k: min(v, wb.max_current_a) for k, v in currents.items()}
         if not re.fullmatch(r"[0-9a-f]{8}", wb.id) or wb.id in ids:
             wb.id = secrets.token_hex(4)
         ids.add(wb.id)
@@ -203,22 +252,34 @@ class NativeWallboxes:
         for wb in wallboxes:
             if not in_home_network(wb.host):
                 raise ValueError(f"{wb.name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
+            if wb.port is not None and self.is_inverter(wb.host, wb.port):
+                raise ValueError(f"{wb.name}: Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der "
+                                 "Wallbox ein, du findest sie zum Beispiel in der Geräteliste deines Routers.")
         new = {wb.id: wb for wb in wallboxes}
         for old in stored.values():
             now = new.get(old.id)
-            if old.id in self._owned() and not old.local_key:
+            if old.id in self._owned() and key_missing(old):
                 # without its key it cannot be reached: with a new key it goes on under its id, or is let go of
                 if now is None or not now.enabled:
                     self._retired[old.id] = now or old
                 else:
                     self._retired.pop(old.id, None)
-            elif now is None or not now.enabled or (now.host, now.local_key) != (old.host, old.local_key):
+            elif now is None or not now.enabled or _connection(now) != _connection(old):
                 if old.id in self._owned():
                     self._retired[old.id] = old  # let go of it with the address it was controlled at
-            if now is None or (now.host, now.local_key) != (old.host, old.local_key):
+            if now is None or _connection(now) != _connection(old):
                 self.live.pop(old.id, None)
         self._store(wallboxes)
         return wallboxes
+
+    def is_inverter(self, host: str, port: int) -> bool:
+        """A Modbus wallbox at the inverter's address and port: most likely the wrong address, and reading it would
+        open another connection to the inverter, which allows only a few (#411). Another port of the same address
+        can be another device, e.g. behind a Modbus gateway (#417)."""
+        inverter = self.runtime.config.inverter
+        if not inverter.host or port != inverter.port:
+            return False
+        return bool(host_addresses(host.strip()) & host_addresses(inverter.host))
 
     def set_mode(self, wallbox_id: str, mode: str, source: str | None = None, current_a=None) -> NativeWallbox:
         """current_a: the highest current for this mode, chosen together with it (#402)."""
@@ -228,6 +289,8 @@ class NativeWallboxes:
         wb = next((w for w in wallboxes if w.id == wallbox_id), None)
         if wb is None:
             raise ValueError("Diese Wallbox gibt es nicht.")
+        if mode not in MODELS[wb.model].modes:
+            raise ValueError("Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.")
         if current_a is not None:
             try:
                 current = int(current_a)
@@ -254,13 +317,55 @@ class NativeWallboxes:
     # ---- reading, in the background --------------------------------------------------
 
     def device(self, wb: NativeWallbox) -> tuya.TuyaDevice:
+        """The Tuya connection, the only one that can write (to a model that is not read only)."""
         return tuya.TuyaDevice(wb.host, wb.local_key)
+
+    def reader(self, wb: NativeWallbox) -> tuya.TuyaDevice | ModbusWallbox:
+        """What a wallbox is read with: status() of either. A Modbus wallbox gets a connection that cannot write."""
+        model = MODELS[wb.model]
+        if model.protocol == "modbus":
+            return ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional)
+        return self.device(wb)
+
+    @contextlib.asynccontextmanager
+    async def exclusive(self, host: str, port: int):
+        """Holds the poll of every Modbus wallbox set up at host:port while another reader (the wallbox check, the
+        test in the setup) uses it: the charger may allow only one connection, so both never connect at the same
+        time. A poll that is running is waited for; the next one waits until the other reader is done."""
+        wanted = await asyncio.to_thread(host_addresses, host.strip())
+        locks = []
+        for wb in self.wallboxes:
+            model = MODELS[wb.model]
+            if model.protocol != "modbus" or (wb.port or model.port) != port:
+                continue
+            if await asyncio.to_thread(host_addresses, wb.host) & wanted:
+                locks.append((wb.id, self.live.setdefault(wb.id, Live()).lock))
+        async with contextlib.AsyncExitStack() as stack:
+            for _id, lock in sorted(locks, key=lambda item: item[0]):  # always the same order: no deadlock
+                await stack.enter_async_context(lock)
+            yield
+
+    async def test(self, model_key: str, host: str, port: int | None, unit: int | None) -> Reading:
+        """Reads a Modbus wallbox once with the details from the setup form (the Tuya one is read in api.py)."""
+        model = MODELS.get(model_key)
+        if model is None or model.protocol != "modbus":
+            raise WallboxUnreachable("Diese Wallbox kennt OpenAmpere noch nicht.")
+        host, port, unit = host.strip(), port or model.port, unit or model.unit
+        if not HOST.fullmatch(host) or not in_home_network(host):
+            raise WallboxUnreachable("Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
+        if self.is_inverter(host, port):
+            raise WallboxUnreachable("Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox "
+                                     "ein, du findest sie zum Beispiel in der Geräteliste deines Routers.")
+        # a wallbox set up at this address is not read twice at the same time: it may allow only one connection
+        async with self.exclusive(host, port):
+            values = await ModbusWallbox(host, port, unit, model.ranges, model.optional).status()
+        return model.interpret(values)
 
     def refresh(self, now: float | None = None) -> None:
         """Starts a read of every wallbox that is due; never waits for one (a wallbox may be unplugged)."""
         now = time.time() if now is None else now
         for wb in self.enabled():
-            if not wb.local_key:
+            if key_missing(wb):
                 continue  # its key has to be entered again
             live = self.live.setdefault(wb.id, Live())
             if live.task and not live.task.done():
@@ -279,8 +384,8 @@ class NativeWallboxes:
         live = live or self.live.setdefault(wb.id, Live())
         try:
             async with live.lock:
-                dps = await self.device(wb).status()
-        except tuya.TuyaError as err:
+                dps = await self.reader(wb).status()
+        except UNREACHABLE as err:
             self._failed(wb, live, err, time.time())
             if wb.device_id:
                 await self._search(wb, live, time.time())
@@ -295,7 +400,7 @@ class NativeWallboxes:
         live.online, live.error, live.failures, live.retry_at = True, None, 0, 0.0
         return live
 
-    def _failed(self, wb: NativeWallbox, live: Live, err: tuya.TuyaError, now: float) -> None:
+    def _failed(self, wb: NativeWallbox, live: Live, err: tuya.TuyaError | WallboxUnreachable, now: float) -> None:
         live.failures += 1
         live.retry_at = now + min(RETRY_MAX_S, RETRY_S * 2 ** (live.failures - 1))
         live.error = err.message
@@ -373,6 +478,8 @@ class NativeWallboxes:
                      *, safe: bool = False) -> bool:
         """Writes data points and reads them back. safe: letting go or stopping what OpenAmpere started, sent also
         in test mode."""
+        if MODELS[wb.model].read_only:  # never reached (its only mode is "manual"); a second guard all the same
+            raise RuntimeError(f"wallbox {wb.model} is read only")
         dry = self.runtime.config.control.dry_run
         if dry and not safe:
             self._log(wb, action, value, True, f"nicht gesendet (Testmodus): {reason}")
@@ -433,10 +540,12 @@ class NativeWallboxes:
         """One check of a wallbox; available: surplus for it, its own charging included.
         Returns the power it is meant to charge with."""
         now = time.time() if now is None else now
-        if not wb.local_key:
+        if key_missing(wb):
             return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
         reading = self._fresh(live, now)
+        if MODELS[wb.model].read_only:
+            return reading.power_w if reading else 0.0  # only shown: nothing to let go of, nothing to decide
         if wb.mode == "manual":
             await self.release(wb, "Lademodus „von Hand“", stop_started=False)
             return reading.power_w if reading else 0.0
@@ -499,6 +608,9 @@ class NativeWallboxes:
         entry = self._owned().get(wb.id)
         if not entry:
             return True
+        if MODELS[wb.model].read_only:  # never written, so never owned: nothing to put back
+            self._disown(wb.id)
+            return True
         live = live or self.live.setdefault(wb.id, Live())
         reading = self._fresh(live, time.time())
         if reading is None:
@@ -532,7 +644,7 @@ class NativeWallboxes:
                 self._retired.pop(wb_id, None)
                 self._retired_live.pop(wb_id, None)
                 continue
-            if self._fresh(live, now) is None and now >= live.retry_at and wb.local_key:
+            if self._fresh(live, now) is None and now >= live.retry_at and not key_missing(wb):
                 await self.read(wb, live)
             if self._fresh(live, now) is not None:
                 done = await self.release(wb, "Wallbox entfernt, ausgeschaltet oder geändert", live=live)
@@ -571,16 +683,17 @@ class NativeWallboxes:
             live = self.live.get(wb.id) or Live()
             reading = self.fresh(wb, now)
             items.append({
-                **{k: v for k, v in asdict(wb).items() if k != "local_key"}, "local_key_set": bool(wb.local_key),
+                **{k: v for k, v in asdict(wb).items() if k != "local_key"}, "local_key_set": not key_missing(wb),
                 **({"device_id": None} if hide_device_id else {}),
-                "label": MODELS[wb.model].label,
+                "label": MODELS[wb.model].label, "read_only": MODELS[wb.model].read_only,
+                "modes": list(MODELS[wb.model].modes),
                 "online": live.online, "offline_since": live.offline_since if live.online is False else None,
                 "updated": live.updated or None, "error": live.error,
                 "reading": None if reading is None else {k: v for k, v in asdict(reading).items()
                                                          if k != "lifetime_kwh"},
                 "controlled": wb.id in self._owned(),
             })
-        return {"wallboxes": items, "models": [{"key": m.key, "label": m.label, "protocol": m.protocol} for m in MODELS.values()],
+        return {"wallboxes": items, "models": [model_info(m) for m in MODELS.values()],
                 "max": MAX_WALLBOXES, "search": not ha_app.active()}
 
     def report(self) -> list[dict]:
@@ -589,13 +702,21 @@ class NativeWallboxes:
         for wb in self.wallboxes:
             live = self.live.get(wb.id) or Live()
             reading = live.reading
-            out.append({"model": wb.model, "mode": wb.mode, "enabled": wb.enabled, "local_key_set": bool(wb.local_key),
+            out.append({"model": wb.model, "mode": wb.mode, "enabled": wb.enabled, "local_key_set": not key_missing(wb),
                         "online": live.online,
                         "offline_min": round((time.time() - live.offline_since) / 60) if live.online is False else None,
                         "failures": live.failures, "with_device_id": bool(wb.device_id),
+                        **({"port": wb.port, "unit": wb.unit} if wb.port is not None else {}),
                         "reading": None if reading is None else {
                             k: v for k, v in asdict(reading).items() if k not in ("lifetime_kwh", "session_kwh")}})
         return out
+
+
+def model_info(model) -> dict:
+    """A model for the setup in the app: what it needs (a local key, or port and unit id) and what it offers."""
+    return {"key": model.key, "label": model.label, "protocol": model.protocol, "read_only": model.read_only,
+            "modes": list(model.modes), "sold_by": list(getattr(model, "sold_by", ())),
+            **({"port": model.port, "unit": model.unit} if model.protocol == "modbus" else {})}
 
 
 def report_markdown(wallbox: dict) -> list[str]:
@@ -604,6 +725,7 @@ def report_markdown(wallbox: dict) -> list[str]:
     lines = [f"- Modell: {wallbox['model']}, Lademodus: {wallbox['mode']}, eingeschaltet: "
              f"{'ja' if wallbox['enabled'] else 'nein'}, Geräte-ID eingetragen: "
              f"{'ja' if wallbox['with_device_id'] else 'nein'}"
+             + (f", Port {wallbox['port']}, Geräteadresse {wallbox['unit']}" if wallbox.get("port") else "")
              + ("" if wallbox.get("local_key_set", True) else ", Local Key: nicht lesbar, neu eintragen"),
              f"- Erreichbar: {reachable.get(wallbox['online'], wallbox['online'])}, Fehlversuche: {wallbox['failures']}"]
     reading = wallbox.get("reading")

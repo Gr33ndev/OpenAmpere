@@ -1,11 +1,53 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""What a wallbox module provides (#318). So far only a read-only check (#325): which blocks to read and what the
-values mean. Control comes later and only after reports from real devices confirm the registers."""
+"""What a wallbox module provides (#318): for the read-only check (#325) which blocks to read and what the values
+mean; for a wallbox OpenAmpere reads itself (native.py) the Reading it is shown with. Control comes only after
+reports from real devices confirm the registers."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from ..drivers.modbus import ascii_text
+
+DEFAULT_STEPS = (6, 8, 10, 13, 16)
+
+
+class WallboxUnreachable(Exception):
+    """A wallbox that gave no usable answer; message: German, for the owner (with a key in locales/de.json)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+@dataclass
+class Reading:
+    """What OpenAmpere knows about a wallbox after one read, the same for every model (native.py)."""
+    state: str = "unknown"  # idle, plugged_in, charging, waiting, paused, finished, fault, unknown
+    connected: bool = False
+    charging: bool = False
+    power_w: float = 0.0
+    voltage_v: list[float | None] = field(default_factory=lambda: [None, None, None])
+    current_a: list[float | None] = field(default_factory=lambda: [None, None, None])
+    installed_phases: int = 3  # phases with voltage
+    active_phases: int = 0  # phases that charge now
+    session_kwh: float | None = None
+    session_s: int | None = None
+    temperature_c: float | None = None
+    set_current_a: int | None = None  # None: the wallbox does not tell (or OpenAmpere only shows it)
+    max_current_a: int | None = None
+    steps_a: list[int] = field(default_factory=lambda: list(DEFAULT_STEPS))
+    firmware: str | None = None
+    cp_v: float | None = None
+    lifetime_kwh: float | None = None  # private: not in reports
+    # how the wallbox starts a charge by itself (FoxESS: controlled, plug_and_charge, locked), None: not told
+    work_mode: str | None = None
+    phase_switching: bool | None = None  # automatic 1/3-phase switching, None: not told
+
+    def phases(self) -> int:
+        """Phases to calculate with: those that charge now, otherwise all that are connected."""
+        return self.active_phases or self.installed_phases or 1
 
 
 class Wallbox:
