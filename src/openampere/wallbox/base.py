@@ -44,6 +44,7 @@ class Reading:
     # how the wallbox starts a charge by itself (FoxESS: controlled, plug_and_charge, locked), None: not told
     work_mode: str | None = None
     phase_switching: bool | None = None  # automatic 1/3-phase switching, None: not told
+    phase_switch_min: int | None = None  # the shortest time between two phase switches, None: not told
 
     def phases(self) -> int:
         """Phases to calculate with: those that charge now, otherwise all that are connected."""

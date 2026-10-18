@@ -8,7 +8,7 @@ import { LOCALE, list, t } from "./i18n";
  * German text, `note` the reason or error from it in the app's language (#153). */
 export type LogEntry = { ts: number; action: string; details: unknown; dry_run: boolean; result: string; note?: string | null };
 
-export type LogStatus = "ok" | "test" | "warning" | "error";
+export type LogStatus = "ok" | "test" | "simulation" | "warning" | "error";
 
 /** An entry in words: what happened, who or what caused it, how it ended and the server's reason, if any. */
 export type DescribedEntry = { text: string; by: string; status: LogStatus; note: string | null };
@@ -98,6 +98,27 @@ function modeText(name: string, mode: unknown, duration: unknown): string {
   if (mode === "boost") return h ? t("settings.controlLog.modeOnFor", { name, hours: h }) : t("settings.controlLog.modeOn", { name });
   if (mode === "off") return h ? t("settings.controlLog.modeOffFor", { name, hours: h }) : t("settings.controlLog.modeOff", { name });
   return t("settings.controlLog.modeAuto", { name });
+}
+
+/** What a simulated control of a wallbox (#440) would have done: never written. */
+function simulatedWallboxText(name: string, action: unknown, value: unknown): string {
+  const planned = obj(value);
+  const current = isNum(planned.current_a) ? planned.current_a : 0;
+  const count = isNum(planned.phases) ? planned.phases : 0;
+  switch (action) {
+    case "current": {
+      // changes of the current are logged at most every 5 minutes, with the range since the entry before
+      const low = isNum(planned.low_a) ? planned.low_a : current;
+      const high = isNum(planned.high_a) ? planned.high_a : current;
+      const minutes = isNum(planned.minutes) ? planned.minutes : null;
+      if (minutes == null || low === high) return t("settings.controlLog.wallboxSimCurrent", { name, current, count });
+      return minutes === 1 ? t("settings.controlLog.wallboxSimCurrentRangeMinute", { name, current, count, low, high })
+        : t("settings.controlLog.wallboxSimCurrentRange", { name, current, count, minutes, low, high });
+    }
+    case "start": return t("settings.controlLog.wallboxSimStart", { name, current, count });
+    case "stop": return t("settings.controlLog.wallboxSimStop", { name });
+    default: return t("settings.controlLog.wallboxSimOther", { name });
+  }
 }
 
 function wallboxText(name: string, action: unknown, value: unknown): string {
@@ -197,8 +218,9 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
     case "device_mode":
       return modeText(str(details.device) || t("common.device"), to.mode, to.hours);
     case "evcc":
-    case "wallbox": // a wallbox OpenAmpere controls itself
-      return wallboxText(str(from.loadpoint) || t("settings.controlLog.wallbox"), to.action, to.value);
+    case "wallbox": // a wallbox OpenAmpere controls itself, or only simulates the control of (#440)
+      return (details.simulation === true ? simulatedWallboxText : wallboxText)(
+        str(from.loadpoint) || t("settings.controlLog.wallbox"), to.action, to.value);
     case "remote_access":
       return ({
         login: t("settings.controlLog.remoteLogin"), logout: t("settings.controlLog.remoteLogout"),
@@ -239,6 +261,7 @@ function by(e: LogEntry, details: Values): string {
 }
 
 function status(e: LogEntry): LogStatus {
+  if (obj(e.details).simulation === true) return "simulation"; // a simulated wallbox control: never written (#440)
   if (e.dry_run) return "test";
   if (/^Fehler|fehlgeschlagen/.test(e.result)) return "error";
   // inverter_relocated: worth a look, OpenAmpere now talks to another address (#351)
@@ -262,6 +285,7 @@ export function describe(e: LogEntry): DescribedEntry {
 
 export function statusLabel(s: LogStatus): string {
   return { ok: t("settings.controlLog.statusOk"), test: t("settings.controlLog.statusTest"),
+    simulation: t("settings.controlLog.statusSimulation"),
     warning: t("settings.controlLog.statusWarning"), error: t("settings.controlLog.statusError") }[s];
 }
 

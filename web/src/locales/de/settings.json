@@ -338,7 +338,26 @@
     "wallboxStart": "{name}: Laden gestartet.",
     "wallboxStop": "{name}: Laden pausiert.",
     "wallboxReleased": "{name}: OpenAmpere hat die Wallbox abgegeben und deinen Ladestrom wieder eingestellt.",
-    "wallboxModeCurrent": "{name}: im Lademodus „{mode}“ höchstens {current} A."
+    "wallboxModeCurrent": "{name}: im Lademodus „{mode}“ höchstens {current} A.",
+    "wallboxSimCurrent": {
+      "one": "{name}: Simulation – OpenAmpere würde mit {current} A auf 1 Phase weiterladen.",
+      "other": "{name}: Simulation – OpenAmpere würde mit {current} A auf {count} Phasen weiterladen."
+    },
+    "wallboxSimStart": {
+      "one": "{name}: Simulation – OpenAmpere würde das Laden mit {current} A auf 1 Phase starten.",
+      "other": "{name}: Simulation – OpenAmpere würde das Laden mit {current} A auf {count} Phasen starten."
+    },
+    "wallboxSimStop": "{name}: Simulation – OpenAmpere würde das Laden stoppen.",
+    "wallboxSimOther": "{name}: Simulation – OpenAmpere würde eine Einstellung ändern.",
+    "statusSimulation": "Simulation – nichts an die Wallbox geschrieben",
+    "wallboxSimCurrentRange": {
+      "one": "{name}: Simulation – OpenAmpere würde mit {current} A auf 1 Phase weiterladen (in den letzten {minutes} Minuten zwischen {low} und {high} A).",
+      "other": "{name}: Simulation – OpenAmpere würde mit {current} A auf {count} Phasen weiterladen (in den letzten {minutes} Minuten zwischen {low} und {high} A)."
+    },
+    "wallboxSimCurrentRangeMinute": {
+      "one": "{name}: Simulation – OpenAmpere würde mit {current} A auf 1 Phase weiterladen (in der letzten Minute zwischen {low} und {high} A).",
+      "other": "{name}: Simulation – OpenAmpere würde mit {current} A auf {count} Phasen weiterladen (in der letzten Minute zwischen {low} und {high} A)."
+    }
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

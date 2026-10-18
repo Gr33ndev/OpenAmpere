@@ -144,27 +144,54 @@ test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in 
   expect(await layoutProblems(page)).toEqual([]);
 });
 
-// #439: the FoxESS AC EV Charger is only shown: no charging mode, nothing it could be told
-test("a FoxESS charger is shown read only on the devices tab", async ({ page, api }) => {
+// #439: the FoxESS AC EV Charger is only read; #440: its charging modes are a simulation, shown with what OpenAmpere
+// would do next to what the charger really does
+test("a FoxESS charger offers its modes as a simulation and shows the plan next to its real values", async ({ page, api }) => {
   await open(page, "devices");
   const card = page.locator(".card.wallbox", { hasText: "Garage" });
-  await expect(card).toContainText("kein Fahrzeug angeschlossen");
-  await expect(card).toContainText("zeigt diese Wallbox nur an");
-  await expect(card.getByRole("button")).toHaveCount(0);  // no mode, no current
-  await expect(card.locator(".facts")).toContainText("beim Einstecken");
+  await expect(card.locator(".notice")).toContainText("Nur eine Simulation: OpenAmpere schreibt nichts an diese Wallbox.");
+  await expect(card.locator(".notice")).toContainText("zum Beispiel sobald du ein Auto einsteckst");
+  await expect(card.getByRole("button", { name: "Von Hand" })).toHaveAttribute("aria-pressed", "true");
+  await expect(card).toContainText("Wähle einen anderen Lademodus, um auszuprobieren, wie OpenAmpere sie steuern würde.");
+  await expect(card.locator(".facts")).toContainText("über App oder Karte");
   await expect(card.locator(".facts")).toContainText("32 A");
+  await expect(card.locator(".facts")).not.toContainText("Simulation");  // "manual": nothing simulated
   expect(await layoutProblems(page)).toEqual([]);
 
   const base = await view();
   const fox = base.wallboxes.find((w) => w.model === "foxess_ac") as NativeWallbox;
-  const charging: NativeWallbox = { ...fox, reading: { ...fox.reading, state: "charging", connected: true, charging: true,
-    power_w: 11050, current_a: [16, 16, 16], active_phases: 3 } as NativeWallbox["reading"] };
-  const away: NativeWallbox = { ...fox, online: false, offline_since: Math.floor(Date.now() / 1000) - 600,
-    reading: null, error: "Die Wallbox unter 192.168.178.61 antwortet nicht." };
+  const planned: NativeWallbox = { ...fox, mode: "pv",
+    simulation: { state: "charging", current_a: 10, phases: 1, power_w: 2300 } };
+  api.override("/api/wallboxes/demo0003/mode", { ...base, wallboxes: [base.wallboxes[0], planned] });
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0003/mode"));
+  await card.getByRole("button", { name: "Solar", exact: true }).click();
+  expect((await sent).postDataJSON()).toEqual({ mode: "pv" });
+  await expect(card).toContainText("Simulation: OpenAmpere würde nur mit Solarüberschuss laden.");
+  await expect(card.locator(".facts")).toContainText("OpenAmpere würde jetzt mit 10 A auf 1 Phase laden, etwa 2,30 kW.");
+  // the highest current of the mode: the usual steps up to the owner's limit, not every whole ampere of the charger
+  const current = card.getByRole("group", { name: "Höchster Ladestrom in diesem Modus" });
+  await expect(current.getByRole("button")).toHaveText(["6 A", "8 A", "10 A", "13 A", "16 A"]);
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // the charger charges by itself as it is set; the simulation would have stopped it
+  const charging: NativeWallbox = { ...planned, reading: { ...fox.reading, state: "charging", connected: true,
+    charging: true, power_w: 11050, current_a: [16, 16, 16], active_phases: 3 } as NativeWallbox["reading"],
+    simulation: { state: "no_surplus", current_a: null, phases: null, power_w: 0 } };
   api.override("/api/wallboxes", { ...base, wallboxes: [charging] });
   await page.reload();
   await expect(card).toContainText("lädt mit 11,05 kW");
   await expect(card.locator(".facts")).toContainText("16,0 / 16,0 / 16,0 A");
+  await expect(card.locator(".facts")).toContainText("OpenAmpere würde jetzt nicht laden: Es gibt zu wenig Solarüberschuss.");
+
+  const unplugged: NativeWallbox = { ...planned, reading: { ...fox.reading, state: "idle", connected: false } as
+    NativeWallbox["reading"], simulation: { state: "no_car", current_a: null, phases: null, power_w: 0 } };
+  api.override("/api/wallboxes", { ...base, wallboxes: [unplugged] });
+  await page.reload();
+  await expect(card).toContainText("Die Simulation rechnet, sobald du ein Auto einsteckst.");
+  await expect(card).not.toContainText("stoppt OpenAmpere das Laden");  // the hint of a wallbox it really controls
+
+  const away: NativeWallbox = { ...fox, online: false, offline_since: Math.floor(Date.now() / 1000) - 600,
+    reading: null, error: "Die Wallbox unter 192.168.178.61 antwortet nicht." };
   api.override("/api/wallboxes", { ...base, wallboxes: [away] });
   await page.reload();
   await expect(card).toContainText("nicht erreichbar seit");
@@ -172,7 +199,21 @@ test("a FoxESS charger is shown read only on the devices tab", async ({ page, ap
   await expect(card.locator(".facts")).toHaveCount(0);  // no old values
 });
 
-test("a FoxESS charger is added with port and unit id, without a current or mode", async ({ page, api }) => {
+test("the demo's FoxESS charger can be switched to a simulated mode, the other wallbox cannot", async () => {
+  const garage = (view: WallboxesView) => view.wallboxes.find((w) => w.id === "demo0003");
+  try {
+    const changed = await demoRequest<WallboxesView>("POST", "/api/wallboxes/demo0003/mode", { mode: "now" });
+    expect(garage(changed)).toMatchObject({ mode: "now", simulated: true,
+      simulation: { state: "charging", current_a: 16, phases: 3, power_w: 11040 } });
+    expect(garage(await view())?.mode).toBe("now");
+    await expect(demoRequest("POST", "/api/wallboxes/demo0001/mode", { mode: "now" })).rejects.toThrow("nur die Demo");
+  } finally {
+    await demoRequest("POST", "/api/wallboxes/demo0003/mode", { mode: "manual" });
+  }
+  expect(garage(await view())?.simulation).toBeNull();
+});
+
+test("a FoxESS charger is added with port and unit id; the limit and the waiting time are for its simulation", async ({ page, api }) => {
   const base = await view();
   api.override("/api/wallboxes/test", { reading: { ...READING, state: "idle", connected: false, charging: false,
     power_w: 0, set_current_a: null, max_current_a: 32, firmware: "1.16" } });
@@ -181,8 +222,9 @@ test("a FoxESS charger is added with port and unit id, without a current or mode
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
   await expect(page.locator(".notice", { hasText: "liest die Wallbox nur" })).toContainText("bisherige Smartbox");
-  await expect(page.getByLabel("Höchster Ladestrom (A)")).toHaveCount(0);
-  await expect(page.getByLabel("Solar-Laden pausieren nach (Minuten)")).toHaveCount(0);
+  await expect(page.getByLabel("Höchster Ladestrom (A)")).toHaveValue("16");
+  await expect(page.locator(".field", { hasText: "Höchster Ladestrom (A)" })).toContainText("in der Simulation");
+  await expect(page.getByLabel("Solar-Laden pausieren nach (Minuten)")).toHaveValue("10");
   await expect(page.getByLabel("Name")).toHaveValue("Wallbox");
   await page.getByLabel("IP-Adresse der Wallbox").fill("192.168.178.61");
   await page.getByText("Erweitert").click();

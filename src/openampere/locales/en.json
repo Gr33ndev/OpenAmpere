@@ -340,6 +340,7 @@
     "modeCurrentRange": "The charging current must be between 6 and {max_current_a} A.",
     "modeCurrentRangeNamed": "{name}: The charging current of a charging mode must be between 6 and 32 A.",
     "modeFast": "charging mode “fast”",
+    "modeManual": "charging mode “manual”",
     "noCurrentInThisMode": "A charging current cannot be chosen in this charging mode.",
     "sentDespiteTestMode": "sent despite test mode, OpenAmpere lets go of the wallbox: {reason}",
     "stopAfterRange": "{name}: The waiting time before stopping must be between 1 and 60 minutes.",
@@ -355,6 +356,9 @@
     "modbusNotConnected": "The wallbox at {host} does not answer or accepts no Modbus connection. On EKD systems this is usually caused by the previous smartbox: as long as it has power, it holds the connection to the wallbox. Disconnect it from power, and OpenAmpere will read the wallbox again by itself. If that does not help, check the address and whether evcc or another program reads the wallbox.",
     "modbusNoAnswer": "The wallbox accepts the connection but does not answer properly. On EKD systems this is usually caused by the previous smartbox: as long as it has power, it holds the connection to the wallbox. Disconnect it from power, and OpenAmpere will read the wallbox again by itself. If that does not help, maybe evcc reads the wallbox, or the unit ID is wrong.",
     "modbusBusy": "The wallbox refuses to be read (“server device busy”). It probably does not allow Modbus in its current control mode. You can see the mode in the manufacturer's app.",
-    "modbusRejected": "The wallbox answers but does not know these registers. Maybe it is another model or another firmware."
+    "modbusRejected": "The wallbox answers but does not know these registers. Maybe it is another model or another firmware.",
+    "simulationNotSent": "simulation, not sent: {reason}",
+    "simulationReleased": "{reason}, OpenAmpere would let go of the wallbox",
+    "removedSwitchedOffOrChanged": "wallbox removed, switched off or changed"
   }
 }

@@ -4,8 +4,9 @@ Deutsch: [wallbox-direct.de.md](wallbox-direct.de.md)
 
 Most wallboxes are controlled by OpenAmpere through [evcc](https://evcc.io), see [evcc.md](evcc.md). A few wallboxes
 OpenAmpere talks to itself, without evcc and without a cloud. So far this is the **portable 11 kW wallbox sold as
-"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere only shows, it cannot control it yet (see below).
-You can set up several of them, also next to a wallbox through evcc.
+"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere only shows, it cannot control it yet; its charging
+modes are a simulation that writes nothing (see below). You can set up several of them, also next to a wallbox
+through evcc.
 
 > Reading is confirmed on a real device, control (starting and stopping charging, setting the current) not yet. Set
 > the wallbox to **Von Hand** (manual) first and check what is shown before you choose another charging mode.
@@ -131,6 +132,33 @@ OpenAmpere asks the wallbox every few seconds, each time over a short connection
 - **Never evcc and OpenAmpere on the same wallbox:** it may allow only one connection. If evcc already reads it, do
   not add it here as well.
 - OpenAmpere does not even read the energy counter, the card number or the serial number for this.
+
+### Trying out the charging modes as a simulation
+
+On the devices tab the FoxESS AC EV Charger offers the charging modes **Aus** (off), **Solar**, **Min + Solar** and
+**Sofort** (fast) as well (#440). For this wallbox they are **only a simulation**: OpenAmpere works out what it would
+do in that mode, as for a wallbox it controls, but writes nothing to the wallbox, whatever the master switch and the
+test mode say. The wallbox goes on charging as it is set in its own app, for example as soon as you plug in a car.
+
+- The card shows next to the real values what OpenAmpere would do now, for example "OpenAmpere würde jetzt mit 10 A
+  auf 1 Phase laden" (would charge with 10 A on 1 phase now) or "würde jetzt nicht laden: Es gibt zu wenig
+  Solarüberschuss" (would not charge: too little solar surplus).
+- Every start and stop it would have made is in the control log (**Mehr → Steuerung**), marked "Simulation – nichts
+  an die Wallbox geschrieben" (nothing written to the wallbox). Changes of the current are collected and written at
+  most every 5 minutes as one entry: the current at that time and the range since the entry before, for example
+  "zwischen 8 und 13 A" (between 8 and 13 A). So clouds do not bury real changes in the log. Nothing is logged while
+  nothing changes. The card always shows the latest plan.
+- The simulation uses the wallbox's own limits (lowest and highest current) and its automatic 1/3-phase switching:
+  one phase below the lowest power on three phases (6 A, about 4.1 kW), three phases above that, switched at most as
+  often as the wallbox allows. Your highest current and the waiting time before solar charging pauses
+  (**Höchster Ladestrom**, **Solar-Laden pausieren nach**) count as for the dé wallbox.
+- A charge the wallbox starts by itself counts as the wallbox's own: in **Solar** without enough surplus the
+  simulation would stop it at once. Going back to **Von Hand**, or removing the wallbox, logs the stop that real
+  control would send for a charge the simulation started.
+- The simulated charging is not counted anywhere: your heating rod and other devices get the real surplus, as
+  measured. The wallbox's real charging stays in the house load.
+- The simulation runs as long as OpenAmpere runs; after a restart it starts again from what the wallbox does.
+- Home Assistant only shows the wallbox (no charging mode).
 
 ## Checking other wallboxes (read-only)
 
