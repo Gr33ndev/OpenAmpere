@@ -43,7 +43,8 @@ immer wieder nach.
 5. **Speichern**. Das Auto erscheint unter **Geräte**.
 
 Dein Passwort speichert OpenAmpere verschlüsselt, weil das Portal keine dauerhafte Anmeldung kennt. Eine Sicherung
-enthält es nur verschlüsselt, ohne den Schlüssel dazu, und die App zeigt es nie an. Lehnt das Portal die Anmeldung ab, versucht OpenAmpere es nicht
+enthält es nur verschlüsselt, ohne `secret.key` nicht lesbar (der Schlüssel steht nicht in den Sicherungen von OpenAmpere; eine Sicherung von Home Assistant enthält beides), und die App
+zeigt es nie an. Lehnt das Portal die Anmeldung ab, versucht OpenAmpere es nicht
 von selbst noch einmal (dein Konto könnte sonst gesperrt werden). Ändere dann E-Mail oder Passwort oder tippe
 **Jetzt abrufen**.
 

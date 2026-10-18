@@ -253,6 +253,17 @@ def test_fetch_reads_only_new_datasets_and_skips_the_placeholders(portal):
     assert [d.soc for d in later.data] == [60] and len(portal.downloads) == 1
 
 
+def test_a_dataset_that_cannot_be_read_is_skipped_and_does_not_hold_up_the_next(portal):
+    client = portal.client()
+    portal.add(T0, {"state_of_charge": 40})
+    portal.files.append((T0 + 900, f"{stamp(T0 + 900)}_{VIN}.zip", b"truncated"))
+    portal.add(T0 + 1800, {"state_of_charge": 45})
+    delivery = client.fetch(VIN, T0)
+    assert [(d.ts, d.soc) for d in delivery.data] == [(T0 + 900, None), (T0 + 1800, 45)]
+    portal.downloads.clear()
+    assert client.fetch(VIN, delivery.data[-1].ts).data == [] and portal.downloads == []  # not tried again
+
+
 def test_an_ended_session_logs_in_again_once(portal):
     client = portal.client()
     client.vehicles()

@@ -42,7 +42,7 @@ It can take a few hours until the first data arrives in the portal. Until then O
 5. **Speichern** (Save). The car shows up under **Geräte** (Devices).
 
 OpenAmpere stores your password encrypted because the portal has no lasting login. A backup holds it only encrypted,
-without the key, and the app never shows it. If the portal refuses the login, OpenAmpere does not try again by itself (your account could be
+unreadable without `secret.key` (not part of OpenAmpere's backups; a Home Assistant backup of the app has both), and the app never shows it. If the portal refuses the login, OpenAmpere does not try again by itself (your account could be
 locked otherwise). Change email or password then, or tap **Jetzt abrufen** (Fetch now).
 
 ## Good to know

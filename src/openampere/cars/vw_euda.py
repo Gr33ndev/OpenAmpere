@@ -430,7 +430,13 @@ class VwEuDataAct(Source):
                 continue  # gone in the meantime
             if status >= 400:
                 raise SourceError(f"Das EU-Data-Act-Portal meldet einen Fehler ({status}).")
-            if len(archive) > MAX_DATASET_BYTES:
-                raise SourceError("Ein Datensatz des Portals ist unerwartet groß.")
-            data.append(interpret(read_dataset(archive), ts))
+            try:
+                if len(archive) > MAX_DATASET_BYTES:
+                    raise SourceError("Ein Datensatz des Portals ist unerwartet groß.")
+                data.append(interpret(read_dataset(archive), ts))
+            except SourceError as err:
+                # one broken dataset must not hold up the ones after it: skipped, and passed as empty so the next
+                # look starts after it
+                log.info("EU Data Act portal: a dataset was skipped: %s", err.message)
+                data.append(CarData(ts=ts))
         return Delivery(data=data, newest=newest)
