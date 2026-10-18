@@ -523,6 +523,30 @@ async def test_removing_the_charger_ends_the_simulation_with_a_planned_stop(tmp_
     assert set(charger.functions) == {3}
 
 
+async def test_manual_saved_with_the_setup_ends_the_simulation_with_the_master_switch_off(tmp_path, monkeypatch):
+    """Not only set_mode(): "manual" saved with the whole list (a restored backup, another client of PUT
+    /api/wallboxes) ends the plan at once, as step() does not run for a wallbox in "manual" with the master switch
+    off, and a later simulated mode starts afresh from what the charger does."""
+    async with simulated() as (charger, port, _opened, _asked):
+        plugged(charger)
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        wb = wallboxes.wallboxes[0]
+        wallboxes.set_mode(wb.id, "now")
+        await poll(wallboxes)
+        await check(wallboxes, 0, time.time())
+        assert wallboxes.live[wb.id].plan.started is True
+        runtime.config.control.enabled = False
+        wallboxes.save([{**wallboxes.view()["wallboxes"][0], "mode": "manual"}])
+        assert wallboxes.wallboxes[0].mode == "manual"
+        assert simulated_entries(runtime)[-1] == ("stop", False)
+        assert runtime.storage.control_log(1)[0]["result"] == ("Simulation, nicht gesendet: Lademodus „von Hand“, "
+                                                               "OpenAmpere gäbe die Wallbox ab")
+        assert wallboxes.live[wb.id].plan == native_module.Plan()
+        wallboxes.save([{**wallboxes.view()["wallboxes"][0], "name": "Carport"}])  # nothing more to end
+        assert simulated_entries(runtime)[-1] == ("stop", False) and len(simulated_entries(runtime)) == 2
+    assert set(charger.functions) == {3}
+
+
 async def test_the_simulation_takes_no_surplus_from_other_devices_and_runs_with_the_master_switch_off(
         tmp_path, monkeypatch):
     from openampere import consumers as consumers_module
