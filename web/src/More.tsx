@@ -22,6 +22,7 @@ import { ConsumersPage } from "./ConsumersPage";
 import { WallboxPage } from "./WallboxPage";
 import { BillingPage } from "./BillingPage";
 import { GridMeterPage } from "./GridMeterPage";
+import { CarsPage } from "./CarsPage";
 import { BatteryHealthCard, FirmwareFacts } from "./BatteryHealth";
 
 function StatusPill({ ok, text }: { ok: boolean; text: string }) {
@@ -151,6 +152,7 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
     // devices are set up under "Verbindung"
     case "device-setup": return <ConsumersPage onBack={() => goBack("more/connection")} />;
     case "wallbox": return <WallboxPage onBack={() => goBack("more/connection")} />;
+    case "cars": return <CarsPage onBack={() => goBack("more/connection")} />;
     // moved to "Geräte"; old links still work
     case "battery": navigate("devices/battery"); return null;
     case "charging": navigate("devices/charging"); return null;

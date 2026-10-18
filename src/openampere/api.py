@@ -39,6 +39,7 @@ from .runtime import Runtime
 from .storage import EXTERNAL, FLOWS, InvalidBackup, Storage
 from .discovery import Rediscovery
 from .billing import Billing
+from .cars import Cars, SourceError
 from .gridmeter import GridMeter
 from .charging import GridCharging
 from .consumers import SurplusControl
@@ -145,7 +146,8 @@ INGRESS_HEADERS = {"Content-Security-Policy": f"{CONTENT_POLICY}; frame-ancestor
 MAX_HOST_SHOWN = 64  # the Host header comes from the client
 OVERWRITE_SHOWN_S = 7 * 86400  # the app explains a setting another device overwrote for this long
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/wallbox/ocpp", "/api/gridmeter", "/api/remote",
-                   "/api/tokens", "/api/evcc/sessions")  # last: when and how far the car was driven
+                   "/api/tokens", "/api/evcc/sessions",  # last two: when and how far the car was driven
+                   "/api/cars/sessions")
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -224,10 +226,12 @@ def create_app(runtime: Runtime) -> FastAPI:
     evcc = Evcc(runtime)
     wallboxes = NativeWallboxes(runtime)
     surplus = SurplusControl(runtime, evcc, wallboxes)
-    devices = Devices(runtime, surplus, evcc, wallboxes)
+    cars = Cars(runtime, wallboxes)
+    devices = Devices(runtime, surplus, evcc, wallboxes, cars)
     notifier = Notifier(runtime)
     diagnostics = Diagnostics(runtime)
     diagnostics.wallboxes = wallboxes
+    diagnostics.cars = cars
     updates = Updates(runtime, VERSION)
     remote = Remote(runtime)
     home_assistant = ha_app.HomeAssistant()
@@ -250,12 +254,15 @@ def create_app(runtime: Runtime) -> FastAPI:
     async def refresh_wallboxes() -> None:
         wallboxes.refresh()  # in the background: an unplugged wallbox must not hold up the loop
 
+    async def refresh_cars() -> None:
+        cars.tick()  # the charges at the wallboxes; the manufacturer's data in the background (#401)
+
     async def fast_loop() -> None:
         """Every few seconds: read evcc and the wallboxes and share the solar surplus (the heating rod follows the
         sun)."""
         while True:
             await asyncio.sleep(max(5.0, min(runtime.config.inverter.poll_interval, 15.0)))
-            for job in (evcc.refresh, refresh_wallboxes, surplus.tick, devices.record_async):
+            for job in (evcc.refresh, refresh_wallboxes, surplus.tick, refresh_cars, devices.record_async):
                 try:
                     await job()
                 except asyncio.CancelledError:
@@ -1266,6 +1273,45 @@ def create_app(runtime: Runtime) -> FastAPI:
         except OSError as err:  # no network for broadcasts
             log.warning("Tuya search failed: %s", err)
             return {"available": False, "devices": []}
+
+    # ---- cars and their manufacturer's data (#401), read-only ----------------
+
+    @app.get("/api/cars")
+    def get_cars(request: Request):
+        return cars.view(logged_in=logged_in(request))
+
+    @app.put("/api/cars")
+    def put_cars(body: dict = Body(...)):
+        try:
+            cars.save(body.get("cars"))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        return cars.view()
+
+    @app.post("/api/cars/vehicles")
+    async def car_vehicles(body: dict = Body(...)):
+        """Logs in with the account from the form (a stored password if none is given) and lists its cars."""
+        try:
+            found = await cars.vehicles(str(body.get("source") or ""), str(body.get("brand") or ""),
+                                        str(body.get("username") or "").strip(), str(body.get("password") or ""),
+                                        str(body.get("id") or "") or None)
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        except SourceError as err:
+            raise HTTPException(400, err.message) from None
+        return {"vehicles": found}
+
+    @app.post("/api/cars/{car_id}/refresh")
+    async def car_refresh(car_id: str):
+        try:
+            await cars.refresh(car_id)
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        return cars.view()
+
+    @app.get("/api/cars/sessions")
+    def car_sessions(limit: int = Query(50, ge=1, le=500)):
+        return {"sessions": cars.sessions(limit)}
 
     # ---- listening to a wallbox over OCPP (#328), read-only ------------------
 

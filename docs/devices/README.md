@@ -23,6 +23,7 @@ through hundreds of issues again.
 | SAJ type code 0x005E, "3P-X E2" | [saj/0x005e-3p-x-e2.md](saj/0x005e-3p-x-e2.md) |
 | my-PV AC ELWA heating rod | [mypv/elwa.md](mypv/elwa.md) |
 | Netze BW meter portal | [gridmeter/netze-bw.md](gridmeter/netze-bw.md) |
+| Cars of the Volkswagen group through the EU Data Act portal | [cars/vw-eu-data-act.md](cars/vw-eu-data-act.md) |
 | Previous EKD smartbox ("IQ box") and the EKD cloud | [topics/iq-box.md](topics/iq-box.md) |
 | Sales names and manufacturer models | [topics/names.md](topics/names.md) |
 | Modbus connections, proxies and what all inverters share | [topics/modbus.md](topics/modbus.md) |

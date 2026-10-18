@@ -185,7 +185,7 @@
   "vehicleStats": {
     "cost": "Cost",
     "costPer100Km": "{cost} per 100 km, from the grid alone it would be {gridCost}",
-    "distanceHint": "Distance and consumption appear once the car is set up in evcc and evcc knows the odometer reading for at least two charging sessions.",
+    "distanceHint": "Distance and consumption appear as soon as the odometer is known for at least two charges: from evcc or from the car's manufacturer (More → Connection → Car).",
     "driven": "Driven",
     "emptyState": "No charging in this period.",
     "energySessions": {

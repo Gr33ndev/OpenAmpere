@@ -24,6 +24,7 @@ from .ocpp import OcppListener, ocpp_markdown
 from .probe import Probe, section_markdown
 from .runtime import Runtime
 from .wallbox import WallboxCheck, check_markdown
+from .cars import report_markdown as car_markdown
 from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
@@ -72,6 +73,7 @@ class Diagnostics:
         self.wallbox = WallboxCheck(self.probe)
         self.ocpp = OcppListener(runtime)  # listening to a wallbox over OCPP (#328), likewise  # the read-only wallbox check of the setup (#325), likewise
         self.wallboxes = None  # wallbox.native.NativeWallboxes, set by the app: their state goes into the report
+        self.cars = None  # cars.Cars, set by the app, likewise (#401)
         last = runtime.storage.get_meta("diagnostics_report")
         self.last: dict | None = self._pseudonymise(last) if last else None  # stored by an older version (#149)
 
@@ -201,7 +203,8 @@ class Diagnostics:
                                      "probe": self.probe.section(include_text=include_serial),
                                      "wallbox": self.wallbox.section(include_text=include_serial),
                                      "ocpp": privacy.ocpp_for_report(self.ocpp.record, include_serial),
-                                     "wallboxes": self.wallboxes.report() if self.wallboxes else []},
+                                     "wallboxes": self.wallboxes.report() if self.wallboxes else [],
+                                     "cars": self.cars.report() if self.cars else []},
                                     include_serial)
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
@@ -223,7 +226,7 @@ class Diagnostics:
         pseudonyms = privacy.for_report(self.runtime, include_serial)
         report = {**report, "log": privacy.log_for_report(report.get("log"))}
         return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp",
-                                                                          "wallboxes")}}
+                                                                          "wallboxes", "cars")}}
 
     @staticmethod
     def _version() -> str:
@@ -506,6 +509,8 @@ def report_markdown(report: dict) -> str:
         lines += ["", "### Wallbox-Prüfung", "", *check_markdown(report["wallbox"])]
     for i, wallbox in enumerate(report.get("wallboxes") or [], 1):  # wallboxes OpenAmpere controls itself
         lines += ["", f"### Wallbox {i} (direkt)", "", *native_markdown(wallbox)]
+    for i, car in enumerate(report.get("cars") or [], 1):  # cars and their manufacturer's data (#401)
+        lines += ["", f"### Auto {i}", "", *car_markdown(car)]
     if report.get("ocpp"):  # listening to a wallbox over OCPP (#328)
         lines += ["", "### Wallbox über OCPP", "", *ocpp_markdown(report["ocpp"])]
     log = report.get("log") or []

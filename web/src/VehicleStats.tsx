@@ -6,6 +6,7 @@ import { useResource } from "./api";
 import { num } from "./format";
 import { LOCALE, t, tx } from "./i18n";
 import { Segmented } from "./ui";
+import type { CarsView } from "./CarsPage";
 import type { EvccSession, EvccView } from "./WallboxPage";
 
 export type VehicleStat = {
@@ -46,7 +47,8 @@ export function vehicleStats(sessions: EvccSession[], since: number): VehicleSta
       if (km > 0 && used > 0) {
         stat.km = km;
         stat.consumption_kwh_100km = (used / km) * 100;
-        stat.solar_km = km * (sum(driven, solarKwh) / used);
+        // the charges of a car OpenAmpere reads itself have no solar share yet (#401)
+        stat.solar_km = driven.every((s) => s.solar_pct != null) ? km * (sum(driven, solarKwh) / used) : null;
         if (driven.every((s) => s.cost_eur != null && s.grid_cost_eur != null)) {
           stat.cost_100km_eur = (sum(driven, (s) => s.cost_eur ?? 0) / km) * 100;
           stat.grid_cost_100km_eur = (sum(driven, (s) => s.grid_cost_eur ?? 0) / km) * 100;
@@ -60,15 +62,19 @@ export function vehicleStats(sessions: EvccSession[], since: number): VehicleSta
 const euro = (v: number) => v.toLocaleString(LOCALE, { style: "currency", currency: "EUR" });
 const PERIODS: ["30" | "365" | "all", string][] = [["30", t("report.periods.thirtyDays")], ["365", t("report.periods.twelveMonths")], ["all", t("report.periods.allTime")]];
 
-/** Driving with the sun: distance, consumption and cost per 100 km from the evcc sessions, for the analysis page. */
+/** Driving with the sun: distance, consumption and cost per 100 km from the evcc sessions and the charges of the cars
+ *  OpenAmpere reads itself (#401), for the analysis page. */
 export function VehicleStats() {
   const { data: view } = useResource<EvccView>("/api/evcc");
+  const { data: cars } = useResource<CarsView>("/api/cars");
   const { data: auth } = useResource<AuthStatus>("/api/auth/status");
   // the sessions show when and how far the car was driven: only after login
   const { data } = useResource<{ sessions: EvccSession[] }>(view?.state && auth?.authenticated ? "/api/evcc/sessions?limit=500" : null);
+  const { data: own } = useResource<{ sessions: EvccSession[] }>(cars?.cars.length && auth?.authenticated ? "/api/cars/sessions?limit=500" : null);
   const [period, setPeriod] = useState<"30" | "365" | "all">("30");
-  if (!data?.sessions.length) return null;
-  const stats = vehicleStats(data.sessions, period === "all" ? 0 : Date.now() - Number(period) * 86_400_000);
+  const sessions = [...(data?.sessions ?? []), ...(own?.sessions ?? [])];
+  if (!sessions.length) return null;
+  const stats = vehicleStats(sessions, period === "all" ? 0 : Date.now() - Number(period) * 86_400_000);
   return (
     <>
       <div className="section-title">{t("report.vehicleStats.title")}</div>
@@ -80,8 +86,8 @@ export function VehicleStats() {
           {st.km != null ? (
             <div className="key-row">
               <div><span className="key-label">{t("report.vehicleStats.driven")}</span><strong>{num(st.km, 0)} km</strong></div>
-              <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarDistance")}</span>
-                <strong>{num(st.solar_km, 0)} km</strong></div>
+              {st.solar_km != null && <div><span className="key-label"><i className="dot" style={{ background: "var(--pv)" }} />{t("report.vehicleStats.solarDistance")}</span>
+                <strong>{num(st.solar_km, 0)} km</strong></div>}
               <div><span className="key-label">{t("common.consumption")}</span><strong>{num(st.consumption_kwh_100km, 2)}</strong>
                 <span className="key-unit"> kWh/100 km</span></div>
             </div>

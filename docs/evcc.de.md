@@ -52,7 +52,10 @@ Wechselrichter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ─�
 
 Viele Autos lassen sich in evcc als Fahrzeug einrichten, zum Beispiel VW, Cupra, Skoda, Tesla, BMW oder Renault
 ([Liste bei evcc](https://docs.evcc.io/de/vehicles), manche nur mit Sponsoring). evcc fragt dann über die Cloud des
-Herstellers den Ladestand ab, meist nur solange das Auto angesteckt ist. Damit kann OpenAmpere mehr:
+Herstellers den Ladestand ab, meist nur solange das Auto angesteckt ist. Für Autos des Volkswagen-Konzerns (VW, Audi,
+Skoda, SEAT, CUPRA) geht das jetzt über das EU-Data-Act-Portal des Konzerns. Es muss einmal im Browser eingerichtet
+werden und liefert Werte, die mindestens 15 Minuten alt sind; OpenAmpere kann dieses Portal auch selbst lesen, siehe
+[car.de.md](car.de.md). Damit kann OpenAmpere mehr:
 
 - **Ladestand und Reichweite** im Energiefluss und auf der Wallbox-Karte, dazu „Ziel erreicht um 15:40 Uhr“.
 - **Laden bis 80 %** und Ladepläne wie „bis 7:00 Uhr auf 80 %“. Ohne Fahrzeug kennt evcc nur die geladenen kWh.

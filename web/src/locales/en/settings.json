@@ -166,6 +166,8 @@
     "tryAgain": "Try again"
   },
   "connectionPage": {
+    "car": "Car",
+    "carHint": "State of charge and odometer from the manufacturer",
     "checkConnection": "Check or set up the connection",
     "connectedTo": "Connected to {manufacturer} {model}",
     "expertHint": "Only change this if automatic detection gets it wrong. Saving reconnects.",

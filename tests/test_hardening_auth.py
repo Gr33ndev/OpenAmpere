@@ -38,6 +38,7 @@ PUBLIC_READS = {
     "/api/tariffs", "/api/update", "/api/billing", "/api/charging", "/api/devices", "/api/devices/energy",
     "/api/devices/power", "/api/surplus-order", "/api/consumers",  # consumers: switch addresses hidden without login
     "/api/wallbox/models", "/api/wallboxes",  # wallboxes: local key never sent, device ID hidden without login
+    "/api/cars",  # cars (#401): password never sent; login, VIN end and odometer only with login
     "/api/evcc", "/api/evcc/site", "/api/prices", "/api/export/csv", "/api/energy/timeline",
     "/api/power/timeline", "/api/pv/inputs", "/api/temperatures/timeline",
     "/api/v1/customer/installation", "/api/v1/installation/{installation}/now/all/power",  # cloud-compatible API

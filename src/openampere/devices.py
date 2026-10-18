@@ -19,8 +19,8 @@ from .periods import bucket_start
 from .runtime import Runtime
 
 class Devices:
-    def __init__(self, runtime: Runtime, surplus: SurplusControl, evcc: Evcc, wallboxes=None) -> None:
-        self.runtime, self.surplus, self.evcc, self.wallboxes = runtime, surplus, evcc, wallboxes
+    def __init__(self, runtime: Runtime, surplus: SurplusControl, evcc: Evcc, wallboxes=None, cars=None) -> None:
+        self.runtime, self.surplus, self.evcc, self.wallboxes, self.cars = runtime, surplus, evcc, wallboxes, cars
 
     # ---- live --------------------------------------------------------------------
 
@@ -53,6 +53,8 @@ class Devices:
             })
         for wb in self.wallboxes.wallboxes if self.wallboxes else []:
             reading, live = self.wallboxes.fresh(wb), self.wallboxes.live.get(wb.id)
+            # the car linked to it, while it is plugged in: its values come from the manufacturer, late (#401)
+            car = self.cars.for_wallbox(wb.id) if self.cars and reading and reading.connected else None
             devices.append({
                 "key": f"w:{wb.id}", "id": wb.id, "source": "wallbox", "name": wb.name, "kind": "wallbox",
                 "enabled": wb.enabled, "power_w": reading.power_w if reading else 0.0,
@@ -60,7 +62,9 @@ class Devices:
                 "temperature_c": None, "target_c": None, "status": None,
                 # a portable wallbox is often unplugged: no old values, only since when it is away
                 "error": live.error if live and live.online is False else None, "override": None,
-                "connected": reading.connected if reading else None, "soc": None, "range_km": None,
+                "connected": reading.connected if reading else None,
+                "soc": car["soc"] if car else None, "range_km": car["range_km"] if car else None,
+                "soc_ts": car["soc_ts"] if car else None,
             })
         return devices
 

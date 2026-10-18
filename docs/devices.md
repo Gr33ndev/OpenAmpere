@@ -84,6 +84,12 @@ devices to **Aus** (Off) on the **Geräte** (Devices) page.
 | Wallboxes and vehicles supported by [evcc](https://evcc.io) | evcc's REST API; evcc gets grid, solar and battery readings from OpenAmpere (`/api/evcc/site`) | Charge points, charging power, sessions; state of charge and range if the car is set up in evcc | Charging mode, charging target, minimum charge, charging plan, home battery priority | not yet confirmed | Which wallboxes work is decided by evcc, see the [evcc documentation](https://docs.evcc.io). Setup: [evcc.md](evcc.md). |
 | Portable 11 kW wallbox sold as "dé" (Tuya Wi-Fi) | Local Tuya protocol 3.5 in the home network (TCP 6668); needs the device's local key from Tuya's developer platform, no cloud afterwards | State, charging power, current per phase, set current, energy of the session | Charging mode (manual, off, solar, minimum + solar, fast), current in the wallbox's steps; several wallboxes | reading yes, control not yet | Without evcc. Often unplugged: shown as not reachable, reconnects by itself. Setup: [wallbox-direct.md](wallbox-direct.md). Details: [devices/tuya/de-portable.md](devices/tuya/de-portable.md). |
 
+## Cars
+
+| Car | Connection | Read | Control | Tested on real hardware | Notes |
+|---|---|---|---|---|---|
+| Volkswagen, Audi, Škoda, SEAT, CUPRA | The Volkswagen group's EU Data Act portal with the owner's brand account (cloud, optional); needs a one-time setup in a browser | State of charge, range, odometer, plug and charging state, every 15 minutes and at least 15 minutes late; charges at a wallbox OpenAmpere controls | none (read-only) | not yet confirmed | Setup: [car.md](car.md). Details: [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+
 ## Your device is missing or behaves differently?
 
 1. In the app, open **Mehr → Diagnose → Diagnose starten** (More → Diagnostics → Start diagnostics). The diagnostics

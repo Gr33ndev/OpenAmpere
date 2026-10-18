@@ -50,7 +50,10 @@ Inverter ── Modbus TCP ──▶ OpenAmpere ── /api/evcc/site ──▶ 
 
 Many cars can be set up as a vehicle in evcc, for example VW, Cupra, Skoda, Tesla, BMW or Renault
 ([list at evcc](https://docs.evcc.io/de/vehicles), some only with sponsorship). evcc then queries the state of
-charge through the manufacturer's cloud, usually only while the car is plugged in. This lets OpenAmpere do more:
+charge through the manufacturer's cloud, usually only while the car is plugged in. For cars of the Volkswagen group
+(VW, Audi, Skoda, SEAT, CUPRA) this now goes through the group's EU Data Act portal, which needs a one-time setup in a
+browser and delivers values at least 15 minutes old; OpenAmpere can also read that portal itself, see
+[car.md](car.md). This lets OpenAmpere do more:
 
 - **State of charge and range** in the energy flow and on the wallbox card, plus **Ziel erreicht um 15:40 Uhr**
   (target reached at 15:40).

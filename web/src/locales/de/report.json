@@ -185,7 +185,7 @@
   "vehicleStats": {
     "cost": "Kosten",
     "costPer100Km": "{cost} pro 100 km, nur aus dem Netz wären es {gridCost}",
-    "distanceHint": "Kilometer und Verbrauch erscheinen, sobald das Auto in evcc eingerichtet ist und evcc bei mindestens zwei Ladevorgängen den Kilometerstand kennt.",
+    "distanceHint": "Kilometer und Verbrauch erscheinen, sobald bei mindestens zwei Ladevorgängen der Kilometerstand bekannt ist: aus evcc oder vom Hersteller des Autos (Mehr → Verbindung → Auto).",
     "driven": "Gefahren",
     "emptyState": "In diesem Zeitraum wurde nicht geladen.",
     "energySessions": {
