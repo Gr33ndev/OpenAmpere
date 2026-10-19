@@ -128,6 +128,7 @@ An automatic review with Claude (`.github/workflows/ai-review.yml`, instructions
 ready for review, after every push and again on the label `ai-review`. It checks the points above, the issue against the change and
 the device knowledge in `docs/devices/`. Its comments are hints, not a decision; it does not replace the review of
 a maintainer. If the check `review` fails, the review wrote nothing: remove the label `ai-review` and add it again.
+Pull requests of the dependency workflow are skipped; the label `ai-review` starts a review for them.
 
 A pull request is accepted when all CI checks pass, every review comment is resolved and a maintainer has approved
 it. It is then squash-merged with the PR title as the commit title.
