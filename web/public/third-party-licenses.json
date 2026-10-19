@@ -127,7 +127,7 @@
     },
     {
      "name": "fastapi",
-     "version": "0.143.0",
+     "version": "0.147.0",
      "license": "MIT",
      "url": "https://github.com/fastapi/fastapi",
      "texts": [
@@ -209,7 +209,7 @@
     },
     {
      "name": "starlette",
-     "version": "1.7.0",
+     "version": "1.9.0",
      "license": "BSD-3-Clause",
      "url": "https://github.com/Kludex/starlette",
      "texts": [
