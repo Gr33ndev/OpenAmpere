@@ -457,3 +457,26 @@ async def test_wallbox_gone_between_two_charges_takes_no_old_baseline(tmp_path, 
     wallboxes.reading = Reading(state="idle", connected=False)
     assert await notifier.check(now=day + 8730) == ["Laden beendet"]
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 25,0 kWh in 2 Std. 30 Min."
+
+
+async def test_wallbox_gone_for_a_moment_during_a_long_pause_keeps_the_baseline(tmp_path, monkeypatch):
+    """10 kWh, a long pause with a short Wi-Fi drop, 2 kWh more: the second charge is 2 kWh, not 12."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    wallboxes.reading = charging(0.1, 60)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(10.0, 3600)
+    assert await notifier.check(now=3600) == []
+    wallboxes.reading = Reading(state="waiting", connected=True, session_kwh=10.0, session_s=3600)
+    assert await notifier.check(now=3600 + 16 * 60) == ["Laden beendet"]
+    wallboxes.reading = None
+    assert await notifier.check(now=6000) == []
+    wallboxes.reading = charging(10.1, 3660)  # back after minutes, already charging again
+    assert await notifier.check(now=6200) == ["Auto lädt"]
+    wallboxes.reading = charging(12.0, 4800)
+    assert await notifier.check(now=7400) == []
+    wallboxes.reading = Reading(state="idle", connected=False)
+    assert await notifier.check(now=7430) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 2,0 kWh in 20 Min."

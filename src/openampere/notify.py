@@ -30,8 +30,6 @@ ALARM_AFTER_S = 30 * 60
 # surplus charging stops with every cloud and a car pauses on its own near the end: a pause this long while the car
 # stays plugged in counts as the end of the charge, a shorter one is no reason for a message (#451)
 CHARGE_PAUSE_S = 15 * 60
-# counters read longer before a start may belong to an earlier session: the wallbox was gone or evcc did not answer
-BASELINE_MAX_AGE_S = 2 * 60
 
 
 @dataclass
@@ -71,6 +69,13 @@ def charge_ended(point: ChargePoint) -> str:
         if point.solar_pct is not None:
             text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
     return text
+
+
+def _same_session(now: ChargePoint, before: ChargePoint) -> bool:
+    """The counters run from plugging in: a counter lower than before means the wallbox began a new session (the car
+    was unplugged unseen, e.g. together with a portable wallbox, or while evcc did not answer)."""
+    pairs = ((now.kwh, before.kwh), (now.duration_s, before.duration_s))
+    return all(value >= earlier for value, earlier in pairs if value is not None and earlier is not None)
 
 
 def _since_start(value: float | None, at_start: float | None) -> float | None:
@@ -129,8 +134,8 @@ class Notifier:
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
-        self.last_idle: dict[str, tuple[float, ChargePoint]] = {}  # per charge point: when and as last seen plugged
-        # in and not charging, for the counters before a start
+        # per charge point: the counters last seen with the car plugged in and not charging, the baseline of a start
+        self.last_idle: dict[str, ChargePoint] = {}
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -299,22 +304,24 @@ class Notifier:
     async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
         """Once when a charge starts, once when it ends: unplugged, or not charging for CHARGE_PAUSE_S. "Complete"
         of a wallbox is no end of its own: the dé wallbox may report it also after a stop by OpenAmpere's solar
-        control (docs/devices/tuya/de-portable.md), and a car may charge on after it."""
+        control (docs/devices/tuya/de-portable.md), and a car may charge on after it. The baseline of a start is kept in
+        memory only: after a restart of OpenAmpere between two charges with the car still plugged in, the second one
+        counts from plugging in, with the first included (a rare case, not worth a database write every 30 s)."""
         started = self.sent.get(key)  # {"ts", "kwh", "s"}: the time and the counters just before the start
         if point.charging:
             self.charging_at[key] = now
             self.last_charge[key] = point
             if started is None:
-                seen_at, before = self.last_idle.get(key, (0.0, None))
-                if now - seen_at > BASELINE_MAX_AGE_S:
-                    before = None  # unknown: counted from plugging in, which then was this start
+                before = self.last_idle.get(key)
+                if before is not None and not _same_session(point, before):
+                    before = None  # counted from plugging in, which then was this start
                 await notify(key, {"ts": now, "kwh": before and before.kwh, "s": before and before.duration_s},
                              "Auto lädt", charge_started(point), "electric_plug")
             return
         if point.connected is False:  # counters of an earlier session (evcc keeps them until the next connect)
             self.last_idle.pop(key, None)
-        else:
-            self.last_idle[key] = (now, point)
+        elif point.kwh is not None or point.duration_s is not None:  # not a wallbox without a reading
+            self.last_idle[key] = point
         if not isinstance(started, dict):
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
