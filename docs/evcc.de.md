@@ -169,8 +169,8 @@ Ohne evcc kann OpenAmpere die Wallbox nur lesend prüfen, siehe
 ## Nachricht aufs Handy beim Laden
 
 Unter **Mehr → Benachrichtigungen** schickt dir **Laden der Wallbox** eine Nachricht, wenn an einem Ladepunkt von evcc
-ein Auto zu laden beginnt und wenn das Laden endet, mit geladener Energie, Dauer und dem Anteil Solarstrom. Eine Pause
-von weniger als 15 Minuten gilt nicht als Ende. Ladepunkte für eine Wärmepumpe oder einen Heizstab meldet OpenAmpere
+ein Auto zu laden beginnt und wenn das Laden endet, mit der Energie und dem Anteil Solarstrom seit dem Anstecken, wie
+evcc sie zählt. Eine Pause von weniger als 15 Minuten gilt nicht als Ende. Ladepunkte für eine Wärmepumpe oder einen Heizstab meldet OpenAmpere
 nicht.
 
 ## Grenzen
