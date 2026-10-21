@@ -97,11 +97,12 @@ search does that), OpenAmpere also finds the wallbox when the router gave it a n
 ## A message on your phone when charging
 
 Under **Mehr → Benachrichtigungen** (More → Notifications), **Laden der Wallbox** (Wallbox charging) sends a message
-when the car starts charging and when charging ends. The end message gives the energy since plugging in and the time
-since the first start, pauses included. This works for every wallbox OpenAmpere reads, also one it only shows. A pause
-of less than 15 minutes, for example while charging with surplus, does not count as the end. Without unplugging, the
-end message therefore comes only after 15 minutes. If the car charges on after that, the message is "Das Auto lädt
-wieder" (the car is charging again).
+when the car starts charging and when charging ends. The end message gives the energy since plugging in and the
+duration of the charge. This works for every wallbox OpenAmpere reads, also one it only shows. A pause of less than 15
+minutes, for example while charging with surplus, does not count as the end. Without unplugging, the end message
+therefore comes only after 15 minutes. If the car charges on later the same day, the message is "Das Auto lädt
+wieder" (the car is charging again). The next end message then gives all the energy since plugging in, without a
+duration.
 
 ## When OpenAmpere lets go
 

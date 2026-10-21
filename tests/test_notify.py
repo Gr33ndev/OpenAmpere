@@ -250,7 +250,7 @@ async def test_wallbox_complete_is_a_pause(tmp_path, monkeypatch):
 
 async def test_wallbox_charge_on_after_an_end_message_reports_the_total(tmp_path, monkeypatch):
     """10 kWh, a long pause (end message), 2 kWh more: "lädt wieder", and the end gives the 12 kWh since plugging
-    in, timed from the first start. A short Wi-Fi drop in between changes nothing."""
+    in, without a duration, which would span the pause. A short Wi-Fi drop in between changes nothing."""
     notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
     wallboxes.reading = charging(0.1)
     assert await notifier.check(now=0) == ["Auto lädt"]
@@ -269,7 +269,7 @@ async def test_wallbox_charge_on_after_an_end_message_reports_the_total(tmp_path
     assert await notifier.check(now=7200) == []
     wallboxes.reading = UNPLUGGED
     assert await notifier.check(now=7230) == ["Laden beendet"]
-    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 12,0 kWh in 2 Std."
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 12,0 kWh."
 
 
 async def test_wallbox_unplugged_unseen_starts_a_new_session(tmp_path, monkeypatch):
@@ -451,3 +451,41 @@ async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monke
     finally:
         server.close()
         await server.wait_closed()
+
+
+async def test_wallbox_short_charge_then_unplugged_unseen_is_no_charge_on(tmp_path, monkeypatch):
+    """A minute of solar charging at sunset (end counter 0.0), the portable wallbox unplugged unseen with the car,
+    the next day a new session whose first reading also shows 0.0: "hat begonnen", timed from today."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.0)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = paused(0.0)
+    assert await notifier.check(now=16 * 60) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet."
+    wallboxes.reading = None
+    assert await notifier.check(now=17 * 60) == []
+
+    day = 86400
+    wallboxes.reading = charging(0.0)
+    assert await notifier.check(now=day) == ["Auto lädt"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 7,2 kW."
+    wallboxes.reading = charging(8.0)
+    assert await notifier.check(now=day + 3600) == []
+    wallboxes.reading = UNPLUGGED
+    assert await notifier.check(now=day + 3630) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 8,0 kWh in 1 Std."
+
+
+async def test_wallbox_charge_on_the_next_day_is_a_new_charge(tmp_path, monkeypatch):
+    """Plugged in overnight: a charge the next morning is no "lädt wieder" of the evening's one."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.1)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(6.0)
+    assert await notifier.check(now=3600) == []
+    wallboxes.reading = paused(6.0)
+    assert await notifier.check(now=3630) == []
+    assert await notifier.check(now=3600 + 15 * 60) == ["Laden beendet"]
+    wallboxes.reading = charging(6.1)
+    assert await notifier.check(now=3600 + 14 * 3600) == ["Auto lädt"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 7,2 kW."
