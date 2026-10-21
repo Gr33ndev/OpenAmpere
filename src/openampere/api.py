@@ -231,7 +231,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     surplus = SurplusControl(runtime, evcc, wallboxes)
     cars = Cars(runtime, wallboxes)
     devices = Devices(runtime, surplus, evcc, wallboxes, cars)
-    notifier = Notifier(runtime)
+    notifier = Notifier(runtime, evcc, wallboxes)
     diagnostics = Diagnostics(runtime)
     diagnostics.wallboxes = wallboxes
     diagnostics.cars = cars

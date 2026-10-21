@@ -12,6 +12,7 @@ import logging
 import time
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from .collector import LOW_DISK_BYTES
@@ -26,6 +27,47 @@ STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database bri
 # a fault that is gone by itself within this time is no reason to wake anyone, e.g. the about ten minutes of fault
 # every night of SAJ E2 inverters (#404); a fault that lasts is still reported
 ALARM_AFTER_S = 30 * 60
+# surplus charging stops with every cloud and a car pauses on its own near the end: a pause this long while the car
+# stays plugged in counts as the end of the charge, a shorter one is no reason for a message (#451)
+CHARGE_PAUSE_S = 15 * 60
+
+
+@dataclass
+class ChargePoint:
+    """A wallbox or an evcc loadpoint, as the charge notifications see it."""
+    name: str
+    charging: bool
+    connected: bool | None  # None: the wallbox does not tell
+    finished: bool = False  # the wallbox reports the charge as complete
+    power_w: float = 0.0
+    kwh: float | None = None
+    duration_s: float | None = None
+    solar_pct: float | None = None
+
+
+def _decimal(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",")  # German notation
+
+
+def _duration(seconds: float) -> str:
+    minutes = round(seconds / 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours} Std. {minutes} Min" if hours else f"{minutes} Min"  # the sentence's full stop ends "Min."
+
+
+def charge_started(point: ChargePoint) -> str:
+    power = f", mit etwa {_decimal(point.power_w / 1000)} kW" if point.power_w >= 100 else ""
+    return f"{point.name}: Das Laden hat begonnen{power}."
+
+
+def charge_ended(point: ChargePoint) -> str:
+    text = f"{point.name}: Das Laden ist beendet."
+    if point.kwh:
+        during = f" in {_duration(point.duration_s)}" if point.duration_s and point.duration_s >= 60 else ""
+        text += f" Geladen: {_decimal(point.kwh)} kWh{during}."
+    if point.solar_pct is not None and point.kwh:
+        text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
+    return text
 
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
@@ -67,11 +109,15 @@ def battery_problem(temperatures: dict) -> str | None:
 
 
 class Notifier:
-    def __init__(self, runtime: Runtime) -> None:
+    def __init__(self, runtime: Runtime, evcc=None, wallboxes=None) -> None:
         self.runtime = runtime
+        self.evcc = evcc  # evcc.Evcc
+        self.wallboxes = wallboxes  # wallbox.native.NativeWallboxes
         self.sent: dict[str, object] = runtime.storage.get_meta("notify_state") or {}
         self.last_error: str | None = None
         self.fault_since: float | None = None  # first reading of the current fault, any code
+        self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
+        self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -199,7 +245,50 @@ class Notifier:
                              f"Am günstigsten: {datetime.fromtimestamp(best, tz):%H:%M}–"
                              f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price_text} ct/kWh.",
                              "zap")
+
+        if cfg.on_wallbox:
+            for key, point in self._charge_points(now):
+                await self._check_charge(notify, key, point, now)
         return sent
+
+    def _charge_points(self, now: float) -> list[tuple[str, ChargePoint]]:
+        """Wallboxes and evcc loadpoints with a recent reading; one without is skipped, not taken as ended."""
+        points = []
+        for wb in self.wallboxes.enabled() if self.wallboxes else []:
+            reading = self.wallboxes.fresh(wb, now)  # the charger itself, also while its control is only simulated
+            if reading is not None:
+                points.append((f"charge_{wb.id}", ChargePoint(
+                    wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
+                    reading.state == "finished", reading.power_w, reading.session_kwh, reading.session_s)))
+        state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
+        for lp in (state or {}).get("loadpoints", []):
+            if not lp["heating"]:  # a heat pump in evcc is no car
+                kwh = lp["session_wh"] / 1000 if lp["session_wh"] is not None else None
+                points.append((f"charge_evcc_{lp['id']}", ChargePoint(
+                    lp["title"], lp["charging"], lp["connected"], power_w=lp["power_w"], kwh=kwh,
+                    solar_pct=lp["session_solar_pct"])))
+        return points
+
+    async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
+        """Once when a charge starts, once when it ends: unplugged, complete, or paused for CHARGE_PAUSE_S."""
+        started = self.sent.get(key)
+        if point.charging:
+            self.charging_at[key] = now
+            self.last_charge[key] = point
+            if started is None:
+                await notify(key, now, "Auto lädt", charge_started(point), "electric_plug")
+            return
+        if started is None:
+            return
+        last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
+        if point.connected is not False and not point.finished and now - last < CHARGE_PAUSE_S:
+            return
+        summary = self.last_charge.get(key) or point  # the counters of some wallboxes go back to 0 when unplugged
+        if summary.duration_s is None and isinstance(started, (int, float)):
+            summary = replace(summary, duration_s=last - started)
+        await notify(key, None, "Laden beendet", charge_ended(summary), "white_check_mark")
+        self.charging_at.pop(key, None)
+        self.last_charge.pop(key, None)
 
     async def _check_storage(self, notify, now: float) -> None:
         """Once when readings cannot be stored or the disk is nearly full, once when it is fine again (#170)."""

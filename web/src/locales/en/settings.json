@@ -522,7 +522,9 @@
     "settingOverwritten": "Setting overwritten",
     "storage": "Disk space and readings",
     "storageHint": "When readings cannot be stored or disk space runs low, and when it works again.",
-    "unreachableHint": "After 15 minutes without a connection, when it is back and when OpenAmpere has found the inverter at a new address."
+    "unreachableHint": "After 15 minutes without a connection, when it is back and when OpenAmpere has found the inverter at a new address.",
+    "wallbox": "Wallbox charging",
+    "wallboxHint": "When a car starts charging at a wallbox or an evcc loadpoint and when charging ends, with the energy charged and the duration. A pause while charging with surplus is reported as the end only after 15 minutes."
   },
   "exportLimitPage": {
     "aboveRule": "The current value is higher than the chosen rule allows ({max}).",

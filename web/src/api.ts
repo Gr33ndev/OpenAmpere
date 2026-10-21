@@ -140,6 +140,7 @@ export type Settings = {
     "notify.on_battery_health": boolean;
     "notify.on_off_grid": boolean;
     "notify.on_storage": boolean;
+    "notify.on_wallbox": boolean;
     "evcc.url": string;
     "evcc.priority": "wallbox_first" | "devices_first";
     "meter.provider": string;

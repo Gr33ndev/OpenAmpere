@@ -190,7 +190,7 @@ const settings = {
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.external": false, "pv.external_name": "", "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
     "notify.ntfy_url": "https://ntfy.sh/openampere-demo4xk7qm2p", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
-    "notify.on_battery_health": true, "notify.on_off_grid": true, "notify.on_storage": true, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
+    "notify.on_battery_health": true, "notify.on_off_grid": true, "notify.on_storage": true, "notify.on_wallbox": false, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
     "evcc.url": "http://evcc.local:7070", "evcc.priority": "wallbox_first",
     "meter.provider": "netze_bw", "meter.username": "demo@example.org", "meter.meter_ids": [],
     "log.level": "info", "server.allowed_hosts": [],

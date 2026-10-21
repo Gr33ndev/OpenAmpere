@@ -124,6 +124,7 @@ class NotifyConfig:
     on_battery_health: bool = True  # battery cells unusually warm or far apart in temperature
     on_off_grid: bool = True  # power cut: the house runs on the battery (backup / off-grid mode)
     on_storage: bool = True  # readings cannot be stored (e.g. disk full) or little free space left (#170)
+    on_wallbox: bool = False  # a car starts and ends charging at a wallbox or an evcc loadpoint (#451)
 
 
 @dataclass
@@ -213,6 +214,7 @@ EDITABLE: dict[str, tuple] = {
     "notify.on_battery_health": ("bool",),
     "notify.on_off_grid": ("bool",),
     "notify.on_storage": ("bool",),
+    "notify.on_wallbox": ("bool",),
     "evcc.url": ("url",),
     "evcc.password": ("secret",),
     "evcc.priority": ("choice", "wallbox_first", "devices_first"),

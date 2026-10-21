@@ -7,6 +7,8 @@ from openampere.drivers.base import Snapshot
 from openampere.notify import Notifier
 from openampere.runtime import Runtime
 from openampere.storage import Storage
+from openampere.wallbox.base import Reading
+from openampere.wallbox.native import NativeWallbox
 
 TOPIC_URL = "https://ntfy.example/openampere-test"
 
@@ -163,3 +165,120 @@ async def test_storage_message_is_not_repeated_when_its_state_cannot_be_saved(tm
     notifier = Notifier(runtime)
     assert await notifier.check(now=10) == ["Wenig Speicherplatz"]
     assert await notifier.check(now=40) == []
+
+
+class FakeWallboxes:
+    """Stands in for wallbox.native.NativeWallboxes: one wallbox with the reading set by the test."""
+
+    def __init__(self):
+        self.box = NativeWallbox(name="Garage", id="wb1")
+        self.reading: Reading | None = Reading(state="idle")
+
+    def enabled(self):
+        return [self.box]
+
+    def fresh(self, wb, now=None):
+        return self.reading
+
+
+def charging(kwh: float, seconds: int) -> Reading:
+    return Reading(state="charging", connected=True, charging=True, power_w=7200, session_kwh=kwh, session_s=seconds)
+
+
+async def test_wallbox_charge_start_and_end_once_each(tmp_path, monkeypatch):
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    assert await notifier.check(now=0) == []
+
+    wallboxes.reading = charging(0.1, 60)
+    assert await notifier.check(now=60) == ["Auto lädt"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 7,2 kW."
+    wallboxes.reading = charging(18.24, 3 * 3600 + 600)
+    assert await notifier.check(now=120) == []  # only once per charge
+
+    # the counters go back to 0 when the car is unplugged: the summary is the last one seen while charging
+    wallboxes.reading = Reading(state="idle", connected=False, session_kwh=0, session_s=0)
+    assert await notifier.check(now=180) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 18,2 kWh in 3 Std. 10 Min."
+    assert await notifier.check(now=240) == []
+
+
+async def test_wallbox_short_pause_is_no_end(tmp_path, monkeypatch):
+    """Charging with surplus stops with every cloud (#451): only a pause of 15 minutes counts as the end."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    wallboxes.reading = charging(1.0, 600)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    paused = Reading(state="waiting", connected=True, session_kwh=1.0, session_s=600)
+    wallboxes.reading = paused
+    assert await notifier.check(now=10 * 60) == []
+    wallboxes.reading = None  # no recent reading: not taken as the end
+    assert await notifier.check(now=20 * 60) == []
+    wallboxes.reading = charging(2.0, 1200)
+    assert await notifier.check(now=21 * 60) == []  # the same charge goes on
+    wallboxes.reading = paused
+    assert await notifier.check(now=35 * 60) == []
+    assert await notifier.check(now=36 * 60) == ["Laden beendet"]
+    assert len(posts) == 2
+
+
+async def test_wallbox_complete_charge_ends_at_once(tmp_path, monkeypatch):
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    wallboxes.reading = charging(5.0, 3000)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = Reading(state="finished", connected=True, session_kwh=5.0, session_s=3000)
+    assert await notifier.check(now=60) == ["Laden beendet"]
+
+
+async def test_wallbox_restart_during_a_charge_sends_no_second_start(tmp_path, monkeypatch):
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    wallboxes.reading = charging(1.0, 600)
+    assert await Notifier(runtime, wallboxes=wallboxes).check(now=0) == ["Auto lädt"]
+
+    restarted = Notifier(runtime, wallboxes=wallboxes)
+    assert await restarted.check(now=60) == []
+    wallboxes.reading = Reading(state="unknown", connected=False)  # unknown state: no proof the car is unplugged
+    assert await restarted.check(now=120) == []
+    assert await restarted.check(now=120 + 15 * 60) == ["Laden beendet"]
+
+
+async def test_wallbox_off_by_default(tmp_path, monkeypatch):
+    runtime, posts = make(tmp_path, monkeypatch)
+    wallboxes = FakeWallboxes()
+    wallboxes.reading = charging(1.0, 600)
+    assert await Notifier(runtime, wallboxes=wallboxes).check(now=0) == []
+
+
+async def test_evcc_loadpoint_charge_with_solar_share(tmp_path, monkeypatch):
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+
+    class FakeEvcc:
+        configured = True
+        loadpoints = [{"id": 1, "title": "Carport", "heating": False, "connected": True, "charging": True,
+                       "power_w": 11000.0, "session_wh": 500.0, "session_solar_pct": None},
+                      {"id": 2, "title": "Wärmepumpe", "heating": True, "connected": True, "charging": True,
+                       "power_w": 2000.0, "session_wh": None, "session_solar_pct": None}]
+
+        def fresh(self):
+            return {"loadpoints": self.loadpoints}
+
+    evcc = FakeEvcc()
+    notifier = Notifier(runtime, evcc=evcc)
+    assert await notifier.check(now=0) == ["Auto lädt"]  # not for the heat pump
+    assert posts[-1][1]["message"] == "Carport: Das Laden hat begonnen, mit etwa 11,0 kW."
+    evcc.loadpoints[0] |= {"session_wh": 12_000.0, "session_solar_pct": 81.6}
+    assert await notifier.check(now=45 * 60) == []
+    evcc.loadpoints[0] |= {"charging": False, "connected": False, "power_w": 0.0, "session_wh": None}
+    assert await notifier.check(now=46 * 60) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == ("Carport: Das Laden ist beendet. Geladen: 12,0 kWh in 45 Min. "
+                                       "Davon etwa 82 % Solarstrom.")
