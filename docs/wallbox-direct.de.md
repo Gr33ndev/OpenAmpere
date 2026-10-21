@@ -93,6 +93,13 @@ Werte, und fragt in immer längeren Abständen nach (bis alle 5 Minuten). Sobald
 OpenAmpere von selbst und steuert sie im gewählten Modus weiter. Hast du die Geräte-ID eingetragen (die Suche macht
 das), findet OpenAmpere die Wallbox auch, wenn der Router ihr eine neue Adresse gegeben hat.
 
+## Nachricht aufs Handy beim Laden
+
+Unter **Mehr → Benachrichtigungen** schickt dir **Laden der Wallbox** eine Nachricht, wenn das Auto zu laden beginnt
+und wenn das Laden endet, mit geladener Energie und Dauer. Das gilt für jede Wallbox, die OpenAmpere ausliest, auch
+wenn es sie nur anzeigt. Eine Pause von weniger als 15 Minuten, etwa beim Laden mit Überschuss, gilt nicht als Ende.
+Ohne Abstecken kommt die Meldung zum Ende deshalb erst nach 15 Minuten.
+
 ## Wenn OpenAmpere loslässt
 
 Die Wallbox hat keine eigene Sicherung, die eingreift, wenn OpenAmpere nicht mehr antwortet. Deshalb merkt sich

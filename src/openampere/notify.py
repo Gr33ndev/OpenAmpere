@@ -38,10 +38,9 @@ class ChargePoint:
     name: str
     charging: bool
     connected: bool | None  # None: the wallbox does not tell
-    finished: bool = False  # the wallbox reports the charge as complete
     power_w: float = 0.0
-    kwh: float | None = None
-    duration_s: float | None = None
+    kwh: float | None = None  # counted by the wallbox or evcc since the car was plugged in
+    duration_s: float | None = None  # the same
     solar_pct: float | None = None
 
 
@@ -52,7 +51,9 @@ def _decimal(value: float) -> str:
 def _duration(seconds: float) -> str:
     minutes = round(seconds / 60)
     hours, minutes = divmod(minutes, 60)
-    return f"{hours} Std. {minutes} Min" if hours else f"{minutes} Min"  # the sentence's full stop ends "Min."
+    if not hours:
+        return f"{minutes} Min"  # the sentence's full stop ends "Min."
+    return f"{hours} Std. {minutes} Min" if minutes else f"{hours} Std"
 
 
 def charge_started(point: ChargePoint) -> str:
@@ -62,12 +63,20 @@ def charge_started(point: ChargePoint) -> str:
 
 def charge_ended(point: ChargePoint) -> str:
     text = f"{point.name}: Das Laden ist beendet."
-    if point.kwh:
+    if point.kwh is not None and point.kwh >= 0.05:
         during = f" in {_duration(point.duration_s)}" if point.duration_s and point.duration_s >= 60 else ""
         text += f" Geladen: {_decimal(point.kwh)} kWh{during}."
-    if point.solar_pct is not None and point.kwh:
-        text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
+        if point.solar_pct is not None:
+            text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
     return text
+
+
+def _since_start(value: float | None, at_start: float | None) -> float | None:
+    """A counter that runs from plugging in, from the start of this charge. Lower than at the start: the wallbox
+    began counting again, so all of it belongs to this charge."""
+    if value is None or at_start is None or value < at_start:
+        return value
+    return value - at_start
 
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
@@ -118,6 +127,7 @@ class Notifier:
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
+        self.last_idle: dict[str, ChargePoint] = {}  # per charge point: as last seen not charging, its counters
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -258,6 +268,7 @@ class Notifier:
             self._remember(key, None)
             self.charging_at.pop(key, None)
             self.last_charge.pop(key, None)
+            self.last_idle.pop(key, None)
         return sent
 
     def _charge_points(self, now: float) -> list[tuple[str, ChargePoint]]:
@@ -270,7 +281,7 @@ class Notifier:
             if reading is not None:
                 points.append((key, ChargePoint(
                     wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
-                    reading.state == "finished", reading.power_w, reading.session_kwh, reading.session_s)))
+                    reading.power_w, reading.session_kwh, reading.session_s)))
             elif self.sent.get(key) is not None:
                 points.append((key, ChargePoint(wb.name, charging=False, connected=None)))
         state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
@@ -283,23 +294,31 @@ class Notifier:
         return points
 
     async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
-        """Once when a charge starts, once when it ends: unplugged, complete, or paused for CHARGE_PAUSE_S."""
-        started = self.sent.get(key)
+        """Once when a charge starts, once when it ends: unplugged, or not charging for CHARGE_PAUSE_S. "Complete"
+        of a wallbox is no end of its own: the dé wallbox may report it also after a stop by OpenAmpere's solar
+        control (docs/devices/tuya/de-portable.md), and a car may charge on after it."""
+        started = self.sent.get(key)  # {"ts", "kwh", "s"}: the time and the counters just before the start
         if point.charging:
             self.charging_at[key] = now
             self.last_charge[key] = point
             if started is None:
-                await notify(key, now, "Auto lädt", charge_started(point), "electric_plug")
+                before = self.last_idle.get(key)  # unknown: counted from plugging in, which then was this start
+                await notify(key, {"ts": now, "kwh": before and before.kwh, "s": before and before.duration_s},
+                             "Auto lädt", charge_started(point), "electric_plug")
             return
-        if started is None:
+        self.last_idle[key] = point
+        if not isinstance(started, dict):
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
-        if point.connected is not False and not point.finished and now - last < CHARGE_PAUSE_S:
+        if point.connected is not False and now - last < CHARGE_PAUSE_S:
             return
         # as last seen charging: a wallbox gone or unplugged may report no counters or 0 (a precaution, not seen yet)
-        summary = self.last_charge.get(key) or point
-        if summary.duration_s is None and isinstance(started, (int, float)):
-            summary = replace(summary, duration_s=last - started)
+        seen = self.last_charge.get(key) or point
+        duration = _since_start(seen.duration_s, started.get("s"))
+        whole = (started.get("kwh") or 0) < 0.1  # the counters cover this charge only: so does evcc's solar share
+        summary = replace(seen, kwh=_since_start(seen.kwh, started.get("kwh")),
+                          duration_s=duration if duration is not None else last - started["ts"],
+                          solar_pct=seen.solar_pct if whole else None)
         await notify(key, None, "Laden beendet", charge_ended(summary), "white_check_mark")
         if self.sent.get(key) is None:  # kept for the next try when it could not be sent
             self.charging_at.pop(key, None)

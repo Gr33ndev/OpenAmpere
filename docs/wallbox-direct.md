@@ -94,6 +94,13 @@ A portable wallbox is often not there. OpenAmpere then shows it as **nicht errei
 Wi-Fi, OpenAmpere reconnects by itself and controls it in the chosen mode again. If you entered the device ID (the
 search does that), OpenAmpere also finds the wallbox when the router gave it a new address.
 
+## A message on your phone when charging
+
+Under **Mehr → Benachrichtigungen** (More → Notifications), **Laden der Wallbox** (Wallbox charging) sends a message
+when the car starts charging and when charging ends, with the energy charged and the duration. This works for every
+wallbox OpenAmpere reads, also one it only shows. A pause of less than 15 minutes, for example while charging with
+surplus, does not count as the end. Without unplugging, the end message therefore comes only after 15 minutes.
+
 ## When OpenAmpere lets go
 
 The wallbox has no safeguard of its own that steps in when OpenAmpere stops answering. So before its first change,
