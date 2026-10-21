@@ -306,7 +306,10 @@ class Notifier:
                 await notify(key, {"ts": now, "kwh": before and before.kwh, "s": before and before.duration_s},
                              "Auto lädt", charge_started(point), "electric_plug")
             return
-        self.last_idle[key] = point
+        if point.connected is False:  # counters of an earlier session (evcc keeps them until the next connect)
+            self.last_idle.pop(key, None)
+        else:
+            self.last_idle[key] = point
         if not isinstance(started, dict):
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now

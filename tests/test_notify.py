@@ -416,3 +416,20 @@ async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monke
     finally:
         server.close()
         await server.wait_closed()
+
+
+async def test_wallbox_charge_right_after_plugging_in_counts_from_zero(tmp_path, monkeypatch):
+    """Unplugged with yesterday's counters, then charging at the next check: those counters are no baseline."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    wallboxes.reading = Reading(state="idle", connected=False, session_kwh=20.0, session_s=7200)
+    assert await notifier.check(now=0) == []
+    wallboxes.reading = charging(0.2, 60)
+    assert await notifier.check(now=30) == ["Auto lädt"]
+    wallboxes.reading = charging(25.0, 9000)
+    assert await notifier.check(now=9000) == []
+    wallboxes.reading = Reading(state="idle", connected=False, session_kwh=25.0, session_s=9000)
+    assert await notifier.check(now=9030) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 25,0 kWh in 2 Std. 30 Min."
