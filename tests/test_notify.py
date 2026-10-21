@@ -1,16 +1,21 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
+import asyncio
 import json
+import time
 
 from openampere import notify as notify_module
+from openampere import tuya
 from openampere.drivers.base import Snapshot
 from openampere.notify import Notifier
 from openampere.runtime import Runtime
+from openampere.simulator import SimulatedTuyaCharger
 from openampere.storage import Storage
 from openampere.wallbox.base import Reading
-from openampere.wallbox.native import NativeWallbox
+from openampere.wallbox.native import NativeWallbox, NativeWallboxes
 
 TOPIC_URL = "https://ntfy.example/openampere-test"
+TUYA_KEY = "ab12cd34ef56gh78"
 
 
 def make(tmp_path, monkeypatch):
@@ -283,6 +288,16 @@ async def test_evcc_loadpoint_charge_with_solar_share(tmp_path, monkeypatch):
     assert posts[-1][1]["message"] == ("Carport: Das Laden ist beendet. Geladen: 12,0 kWh in 45 Min. "
                                        "Davon etwa 82 % Solarstrom.")
 
+    # a loadpoint removed from evcc during a charge: forgotten, so a new one at the same position starts fresh
+    evcc.loadpoints[0] |= {"charging": True, "connected": True}
+    assert await notifier.check(now=50 * 60) == ["Auto lädt"]
+    evcc.loadpoints = []
+    assert await notifier.check(now=51 * 60) == []
+    evcc.loadpoints = [{"id": 1, "title": "Neu", "heating": False, "connected": True, "charging": False,
+                        "power_w": 0.0, "session_wh": None, "session_solar_pct": None}]
+    assert await notifier.check(now=70 * 60) == []
+    assert await notifier.check(now=90 * 60) == []  # no end of a charge that never was at this loadpoint
+
 
 async def test_wallbox_charge_is_forgotten_when_the_switch_goes_off(tmp_path, monkeypatch):
     """Switched on again days later: no late end of the old charge, and the next charge gets its start."""
@@ -332,3 +347,36 @@ async def test_wallbox_end_message_keeps_its_summary_when_sending_fails(tmp_path
     del notifier.push  # ntfy answers again
     assert await notifier.check(now=90) == ["Laden beendet"]
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 9,5 kWh in 1 Std. 30 Min."
+
+
+async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monkeypatch):
+    """The whole way: Tuya protocol, the driver's reading and the notifications."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    charger = SimulatedTuyaCharger(TUYA_KEY, plugged=True)
+    server = await asyncio.start_server(charger.serve_client, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        wallboxes = NativeWallboxes(runtime)
+        monkeypatch.setattr(wallboxes, "device", lambda wb: tuya.TuyaDevice(wb.host, wb.local_key, port=port, timeout=1))
+        wallboxes.save([{"name": "Garage", "host": "127.0.0.1", "local_key": TUYA_KEY, "mode": "manual"}])
+        wb = wallboxes.enabled()[0]
+        notifier = Notifier(runtime, wallboxes=wallboxes)
+        await wallboxes.read(wb)
+        assert await notifier.check(now=time.time()) == []  # plugged in, not charging
+
+        charger.apply({"140": True})
+        await wallboxes.read(wb)
+        assert await notifier.check(now=time.time()) == ["Auto lädt"]
+        assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 11,0 kW."
+
+        charger.tick(3600)
+        await wallboxes.read(wb)
+        assert await notifier.check(now=time.time()) == []
+        charger.plugged = False
+        await wallboxes.read(wb)
+        assert await notifier.check(now=time.time()) == ["Laden beendet"]
+        assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 11,0 kWh in 1 Std. 0 Min."
+    finally:
+        server.close()
+        await server.wait_closed()

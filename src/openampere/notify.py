@@ -252,7 +252,8 @@ class Notifier:
         # a charge started while the switch was on, or at a wallbox removed since, ends without a late message
         checked = {key for key, _ in points}
         for key in [k for k, v in self.sent.items() if k.startswith("charge_") and v is not None and k not in checked]:
-            if cfg.on_wallbox and key.startswith("charge_evcc_") and self.evcc is not None and self.evcc.configured:
+            if (cfg.on_wallbox and key.startswith("charge_evcc_") and self.evcc is not None and self.evcc.configured
+                    and self.evcc.fresh() is None):
                 continue  # evcc not answering for a while is no reason to forget its charge
             self._remember(key, None)
             self.charging_at.pop(key, None)
@@ -295,7 +296,8 @@ class Notifier:
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
         if point.connected is not False and not point.finished and now - last < CHARGE_PAUSE_S:
             return
-        summary = self.last_charge.get(key) or point  # the counters of some wallboxes go back to 0 when unplugged
+        # as last seen charging: a wallbox gone or unplugged may report no counters or 0 (a precaution, not seen yet)
+        summary = self.last_charge.get(key) or point
         if summary.duration_s is None and isinstance(started, (int, float)):
             summary = replace(summary, duration_s=last - started)
         await notify(key, None, "Laden beendet", charge_ended(summary), "white_check_mark")
