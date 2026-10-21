@@ -246,20 +246,32 @@ class Notifier:
                              f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price_text} ct/kWh.",
                              "zap")
 
-        if cfg.on_wallbox:
-            for key, point in self._charge_points(now):
-                await self._check_charge(notify, key, point, now)
+        points = self._charge_points(now) if cfg.on_wallbox else []
+        for key, point in points:
+            await self._check_charge(notify, key, point, now)
+        # a charge started while the switch was on, or at a wallbox removed since, ends without a late message
+        checked = {key for key, _ in points}
+        for key in [k for k, v in self.sent.items() if k.startswith("charge_") and v is not None and k not in checked]:
+            if cfg.on_wallbox and key.startswith("charge_evcc_") and self.evcc is not None and self.evcc.configured:
+                continue  # evcc not answering for a while is no reason to forget its charge
+            self._remember(key, None)
+            self.charging_at.pop(key, None)
+            self.last_charge.pop(key, None)
         return sent
 
     def _charge_points(self, now: float) -> list[tuple[str, ChargePoint]]:
-        """Wallboxes and evcc loadpoints with a recent reading; one without is skipped, not taken as ended."""
+        """Wallboxes and evcc loadpoints with a recent reading. A wallbox without one during a charge counts as
+        pausing: a portable one is often unplugged together with the car. An evcc loadpoint without one is skipped."""
         points = []
         for wb in self.wallboxes.enabled() if self.wallboxes else []:
+            key = f"charge_{wb.id}"
             reading = self.wallboxes.fresh(wb, now)  # the charger itself, also while its control is only simulated
             if reading is not None:
-                points.append((f"charge_{wb.id}", ChargePoint(
+                points.append((key, ChargePoint(
                     wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
                     reading.state == "finished", reading.power_w, reading.session_kwh, reading.session_s)))
+            elif self.sent.get(key) is not None:
+                points.append((key, ChargePoint(wb.name, charging=False, connected=None)))
         state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
         for lp in (state or {}).get("loadpoints", []):
             if not lp["heating"]:  # a heat pump in evcc is no car
@@ -287,8 +299,9 @@ class Notifier:
         if summary.duration_s is None and isinstance(started, (int, float)):
             summary = replace(summary, duration_s=last - started)
         await notify(key, None, "Laden beendet", charge_ended(summary), "white_check_mark")
-        self.charging_at.pop(key, None)
-        self.last_charge.pop(key, None)
+        if self.sent.get(key) is None:  # kept for the next try when it could not be sent
+            self.charging_at.pop(key, None)
+            self.last_charge.pop(key, None)
 
     async def _check_storage(self, notify, now: float) -> None:
         """Once when readings cannot be stored or the disk is nearly full, once when it is fine again (#170)."""
