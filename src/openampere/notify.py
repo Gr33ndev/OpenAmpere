@@ -30,6 +30,8 @@ ALARM_AFTER_S = 30 * 60
 # surplus charging stops with every cloud and a car pauses on its own near the end: a pause this long while the car
 # stays plugged in counts as the end of the charge, a shorter one is no reason for a message (#451)
 CHARGE_PAUSE_S = 15 * 60
+# counters read longer before a start may belong to an earlier session: the wallbox was gone or evcc did not answer
+BASELINE_MAX_AGE_S = 2 * 60
 
 
 @dataclass
@@ -127,7 +129,8 @@ class Notifier:
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
-        self.last_idle: dict[str, ChargePoint] = {}  # per charge point: as last seen not charging, its counters
+        self.last_idle: dict[str, tuple[float, ChargePoint]] = {}  # per charge point: when and as last seen plugged
+        # in and not charging, for the counters before a start
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -302,14 +305,16 @@ class Notifier:
             self.charging_at[key] = now
             self.last_charge[key] = point
             if started is None:
-                before = self.last_idle.get(key)  # unknown: counted from plugging in, which then was this start
+                seen_at, before = self.last_idle.get(key, (0.0, None))
+                if now - seen_at > BASELINE_MAX_AGE_S:
+                    before = None  # unknown: counted from plugging in, which then was this start
                 await notify(key, {"ts": now, "kwh": before and before.kwh, "s": before and before.duration_s},
                              "Auto lädt", charge_started(point), "electric_plug")
             return
         if point.connected is False:  # counters of an earlier session (evcc keeps them until the next connect)
             self.last_idle.pop(key, None)
         else:
-            self.last_idle[key] = point
+            self.last_idle[key] = (now, point)
         if not isinstance(started, dict):
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now

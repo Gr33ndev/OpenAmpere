@@ -84,6 +84,7 @@ Numbers in the JSON texts are integers; "0.1 V" means 2300 is 230.0 V.
 - Scale of 102 `t`; meaning of 101 and of 155–157, 188, 189.
 - Whether other dé models (the wall-mounted one) use the same data points.
 - How the wallbox behaves when the car is full while OpenAmpere sends a start (STOP state), and after a power cut.
+- Whether 102 `d` and `e` count from plugging in and start again at 0 with the next car (assumed by the charge notifications, which report the difference to the values just before a charge starts and take a lower value as a new start, [#451](https://github.com/Gr33ndev/OpenAmpere/issues/451)).
 - Whether DP 109 shows PAUSE or STOP after a stop by OpenAmpere (DP 140 false). Until this is known, the charge notifications treat STOP like a pause and end a charge only on unplugging or after 15 minutes ([#451](https://github.com/Gr33ndev/OpenAmpere/issues/451)).
 
 ## Sources

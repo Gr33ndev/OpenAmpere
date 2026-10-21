@@ -257,6 +257,7 @@ async def test_wallbox_second_charge_after_a_long_pause_counts_only_its_own_ener
     wallboxes.reading = Reading(state="waiting", connected=True, session_kwh=10.0, session_s=5400)
     assert await notifier.check(now=5400 + 16 * 60) == ["Laden beendet"]
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 10,0 kWh in 1 Std. 30 Min."
+    assert await notifier.check(now=6970) == []  # checked every 30 s, still plugged in and not charging
 
     wallboxes.reading = charging(10.1, 5460)
     assert await notifier.check(now=7000) == ["Auto lädt"]
@@ -432,4 +433,27 @@ async def test_wallbox_charge_right_after_plugging_in_counts_from_zero(tmp_path,
     assert await notifier.check(now=9000) == []
     wallboxes.reading = Reading(state="idle", connected=False, session_kwh=25.0, session_s=9000)
     assert await notifier.check(now=9030) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 25,0 kWh in 2 Std. 30 Min."
+
+
+async def test_wallbox_gone_between_two_charges_takes_no_old_baseline(tmp_path, monkeypatch):
+    """Pulled from the socket together with the car, back the next day and already charging at the first reading."""
+    runtime, posts = make(tmp_path, monkeypatch)
+    runtime.config.notify.on_wallbox = True
+    wallboxes = FakeWallboxes()
+    notifier = Notifier(runtime, wallboxes=wallboxes)
+    wallboxes.reading = charging(18.0, 7200)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = Reading(state="waiting", connected=True, session_kwh=18.0, session_s=7200)
+    assert await notifier.check(now=16 * 60) == ["Laden beendet"]
+    wallboxes.reading = None
+    assert await notifier.check(now=17 * 60) == []
+
+    day = 86400
+    wallboxes.reading = charging(0.5, 300)
+    assert await notifier.check(now=day) == ["Auto lädt"]
+    wallboxes.reading = charging(25.0, 9000)
+    assert await notifier.check(now=day + 8700) == []
+    wallboxes.reading = Reading(state="idle", connected=False)
+    assert await notifier.check(now=day + 8730) == ["Laden beendet"]
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Geladen: 25,0 kWh in 2 Std. 30 Min."
