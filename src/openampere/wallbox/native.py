@@ -84,6 +84,7 @@ RAISE_EVERY_S = 30.0  # the current goes up at most this often, down right away
 SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log at most this often, collected
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
+STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}")
@@ -642,8 +643,8 @@ class NativeWallboxes:
             live.planned.pop("start", None)
             self._note_stop(wb, False)
             return 0.0
-        if reading.charging and not model.simulated:
-            self._note_stop(wb, False)
+        if reading.charging and not model.simulated and now - live.stop_sent > STOP_SLACK_S:
+            self._note_stop(wb, False)  # charging again, not only a read from before the stop showed up
         plan = live.plan if model.simulated else None
         if plan is not None:
             if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now

@@ -381,6 +381,45 @@ async def test_a_stop_sent_in_test_mode_is_noted_too(tmp_path, monkeypatch):
         assert charger.charging and charger.writes.count({"140": True}) == 2
 
 
+async def test_a_read_from_before_the_stop_does_not_end_the_note(tmp_path, monkeypatch):
+    """Start and stop are not reported back at once: the read-back of the stop and the next read may still show the
+    car charging (#454). That is not the car charging again."""
+    async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        monkeypatch.setattr(native_module, "MIN_OFF_S", 0)
+        dps, apply, late = charger.dps, charger.apply, {"reads": 0, "before": None}
+
+        def lagging_dps():
+            if late["reads"]:
+                late["reads"] -= 1
+                return late["before"]
+            return dps()
+
+        def lagging_apply(values):
+            if values.get("140") is False:
+                late["reads"], late["before"] = 2, dps()  # the state from before the stop, twice
+            return apply(values)
+
+        charger.dps, charger.apply = lagging_dps, lagging_apply
+        site(runtime, grid=-6000)
+        for now in (1000, 1010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        site(runtime, grid=3000)
+        for now in (1020, 1030, 1640, 1650):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert not charger.charging and charger.dps()["109"] == "STOP"
+        assert runtime.storage.get_meta("wallbox_owned")[wb.id]["stopped"]
+        site(runtime, grid=-6000)
+        for now in (2000, 2010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging and charger.writes.count({"140": True}) == 2
+
+
 async def test_solar_mode_never_starts_a_full_car(tmp_path, monkeypatch):
     """A wallbox complete without a stop by OpenAmpere since the car last charged: the car is full."""
     async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
@@ -396,13 +435,13 @@ async def test_solar_mode_never_starts_a_full_car(tmp_path, monkeypatch):
         for now in (1020, 1030, 1640):  # stopped by OpenAmpere at a cloud ...
             await wallboxes.read(wb)
             await control.tick(now=now)
-        charger.apply({"140": True})  # ... started again by the owner, until the car is full
+        site(runtime, grid=-6000)
+        charger.apply({"140": True})  # ... started again by the owner a few minutes later, until the car is full
         await wallboxes.read(wb)
-        await control.tick(now=1650)
+        await control.tick(now=1800)
         charger.full = True
         starts = charger.writes.count({"140": True})
-        site(runtime, grid=-6000)
-        for now in range(1660, 3500, 10):
+        for now in range(1810, 3500, 10):
             await wallboxes.read(wb)
             await control.tick(now=now)
         assert charger.dps()["109"] == "STOP" and charger.writes.count({"140": True}) == starts
