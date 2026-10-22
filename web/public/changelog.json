@@ -1,6 +1,41 @@
 {
   "versions": [
     {
+      "version": "0.34.0",
+      "date": "2026-10-22",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "notify",
+            "text": "Tell when a car starts and ends charging at the wallbox (#453)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "wallbox",
+            "text": "Remember openampere's stop after letting go of the wallbox (#457)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Start a wallbox again that reports complete after openampere's stop (#455)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Put the review instructions into the ai review prompt and skip bot actors (#450)"
+          },
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#448)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.33.0",
       "date": "2026-10-18",
       "first": false,

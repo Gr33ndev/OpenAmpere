@@ -4,6 +4,22 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.34.0 (2026-10-22)
+
+### Neu
+
+- **notify:** Tell when a car starts and ends charging at the wallbox (#453)
+
+### Behoben
+
+- **wallbox:** Remember openampere's stop after letting go of the wallbox (#457)
+- **wallbox:** Start a wallbox again that reports complete after openampere's stop (#455)
+
+### Weitere Änderungen
+
+- Put the review instructions into the ai review prompt and skip bot actors (#450)
+- **deps:** Update Python dependencies (#448)
+
 ## 0.33.0 (2026-10-18)
 
 ### Neu
@@ -137,13 +153,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - Correct security notes on backups, home assistant control and relays (#365)
 - Check website texts for unsafe html and pin the release helper images (#360)
-
-## 0.26.4 (2026-10-13)
-
-### Behoben
-
-- Calculate consumption from the other energy values, not the inverter's load counter (#349)
-
-### Weitere Änderungen
-
-- Bring the issue templates in line with the app (#348)
