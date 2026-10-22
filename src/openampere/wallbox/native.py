@@ -87,6 +87,7 @@ START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
+STOPPED = "wallbox_stopped"  # meta: id -> time of OpenAmpere's stop, kept after letting go of the wallbox (#456)
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}")
 DEVICE_ID = re.compile(r"[A-Za-z0-9]{10,40}")
 
@@ -448,6 +449,10 @@ class NativeWallboxes:
             live.planned.clear()
         live.reading, live.updated = MODELS[wb.model].interpret(dps), now
         live.online, live.error, live.failures, live.retry_at = True, None, 0, 0.0
+        stopped = self._stopped()
+        if wb.id in stopped and (not live.reading.connected
+                                 or live.reading.charging and now - stopped[wb.id] > STOP_SLACK_S):
+            self._keep_stop(wb.id, None)  # unplugged or charging again while OpenAmpere did not control it
         return live
 
     def _failed(self, wb: NativeWallbox, live: Live, err: tuya.TuyaError | WallboxUnreachable, now: float) -> None:
@@ -509,12 +514,33 @@ class NativeWallboxes:
         """Before OpenAmpere writes for the first time: the owner's current, to put it back later. The wallbox is kept
         as it is written to now, e.g. with a key entered again after a restore."""
         owned = self._owned()
-        entry = owned.get(wb.id) or {"current_a": reading.set_current_a, "started": False}
+        entry = owned.get(wb.id)
+        if entry is None:  # a stop from the last time OpenAmpere controlled it still counts (#456)
+            entry = {"current_a": reading.set_current_a, "started": False, "stopped": wb.id in self._stopped()}
         owned[wb.id] = {**entry, "wallbox": self._sealed(asdict(wb)), **changes}
         try:
             self.runtime.storage.set_meta(OWNED, owned)
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
             log.warning("could not remember the wallbox %s: %s", wb.name, err)
+        self._keep_stop(wb.id, None)
+
+    def _stopped(self) -> dict:
+        return self.runtime.storage.get_meta(STOPPED) or {}
+
+    def _keep_stop(self, wallbox_id: str, at: float | None) -> None:
+        """A stop by OpenAmpere outlives letting go of the wallbox (at), until the car charges again, is unplugged or
+        OpenAmpere controls it again (None): a complete wallbox after it is no full car (#454, #456)."""
+        stopped = self._stopped()
+        if at is None and wallbox_id not in stopped:
+            return
+        if at is None:
+            stopped.pop(wallbox_id)
+        else:
+            stopped[wallbox_id] = at
+        try:
+            self.runtime.storage.set_meta(STOPPED, stopped)
+        except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
+            log.warning("could not remember the stop of a wallbox: %s", err)
 
     def _note_stop(self, wb: NativeWallbox, stopped: bool) -> None:
         """A stop by OpenAmpere reached the wallbox (True), or the car charged again or was unplugged since (False):
@@ -827,8 +853,10 @@ class NativeWallboxes:
             return False  # not reachable: again when it answers
         model = MODELS[wb.model]
         values: dict = {}
-        if stop_started and entry.get("started") and reading.charging:
+        stop = stop_started and entry.get("started") and reading.charging
+        if stop:
             values.update(model.start(False))
+            live.stop_sent = time.time()
         owner = entry.get("current_a")
         if isinstance(owner, int) and owner != reading.set_current_a:
             values.update(model.set_current(owner))
@@ -836,6 +864,8 @@ class NativeWallboxes:
                 and live.online is False:
             return False
         self._disown(wb.id)
+        if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.wallboxes}:
+            self._keep_stop(wb.id, max(live.stop_sent, 0.0))  # a removed wallbox needs no note
         live.want_on, live.short_since = 0, None
         live.planned.clear()
         return True

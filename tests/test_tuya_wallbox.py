@@ -420,6 +420,60 @@ async def test_a_read_from_before_the_stop_does_not_end_the_note(tmp_path, monke
         assert charger.charging and charger.writes.count({"140": True}) == 2
 
 
+async def test_the_stop_note_outlives_letting_go_of_the_wallbox(tmp_path, monkeypatch):
+    """Master switch off stops a charge OpenAmpere started and lets go of the wallbox; switched on again with the car
+    still plugged in, a STOP after that stop is no full car (#456)."""
+    async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        monkeypatch.setattr(native_module, "MIN_OFF_S", 0)
+        site(runtime, grid=-6000)
+        for now in (1000, 1010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging
+        runtime.config.control.enabled = False
+        await wallboxes.read(wb)
+        await control.tick(now=1020)
+        assert not charger.charging and charger.dps()["109"] == "STOP"
+        assert runtime.storage.get_meta("wallbox_owned") == {} and wb.id in runtime.storage.get_meta("wallbox_stopped")
+        runtime.config.control.enabled = True
+        for now in (2000, 2010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging and charger.writes.count({"140": True}) == 2
+        assert runtime.storage.get_meta("wallbox_stopped") == {}  # controlled again: the note is in its entry
+
+
+async def test_the_kept_stop_ends_when_the_car_is_unplugged_or_the_wallbox_removed(tmp_path, monkeypatch):
+    async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        site(runtime, grid=-6000)
+        for now in (1000, 1010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        runtime.config.control.enabled = False
+        await wallboxes.read(wb)
+        await control.tick(now=1020)
+        assert wb.id in runtime.storage.get_meta("wallbox_stopped")
+        charger.plugged = False  # unplugged while OpenAmpere does not control it: the next car starts afresh
+        await wallboxes.read(wb)
+        assert runtime.storage.get_meta("wallbox_stopped") == {}
+
+        charger.plugged = True
+        runtime.config.control.enabled = True
+        for now in (2000, 2010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging
+        wallboxes.save([])  # removed while charging: stopped when let go of, but nothing is kept for it
+        await wallboxes.retire()
+        assert not charger.charging and runtime.storage.get_meta("wallbox_stopped") == {}
+
+
 async def test_solar_mode_never_starts_a_full_car(tmp_path, monkeypatch):
     """A wallbox complete without a stop by OpenAmpere since the car last charged: the car is full."""
     async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
