@@ -32,6 +32,8 @@ ALARM_AFTER_S = 30 * 60
 CHARGE_PAUSE_S = 15 * 60
 # after an end message the car charges on in the same session ("lädt wieder") only if the counter went on from a
 # real figure within this time; otherwise the car may have been unplugged unseen, e.g. with a portable wallbox
+# a stop shows only with a later read of the wallbox, so a check may still see the car charging after it
+STOP_SLACK_S = 60
 AGAIN_MIN_KWH = 0.5
 SHOWN_MIN_KWH = 0.05  # less is "0,0 kWh": not shown, and not worth leaving out the duration of a later charge for
 AGAIN_WITHIN_S = 12 * 3600
@@ -281,11 +283,11 @@ class Notifier:
             key = f"charge_{wb.id}"
             reading = self.wallboxes.fresh(wb, now)  # the charger itself, also while its control is only simulated
             if reading is not None:
-                live = self.wallboxes.live.get(wb.id)
+                finished = reading.state == "finished"
                 points.append((key, ChargePoint(
                     wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
-                    reading.power_w, reading.session_kwh, finished=reading.state == "finished",
-                    stopped_at=live.stop_sent if live else float("-inf"))))
+                    reading.power_w, reading.session_kwh, finished=finished,
+                    stopped_at=self._last_stop(wb) if finished else float("-inf"))))
             elif self.sent.get(key) is not None:
                 points.append((key, ChargePoint(wb.name, charging=False, connected=None)))
         state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
@@ -296,6 +298,19 @@ class Notifier:
                     lp["title"], lp["charging"], lp["connected"], power_w=lp["power_w"], kwh=kwh,
                     solar_pct=lp["session_solar_pct"])))
         return points
+
+    def _last_stop(self, wb) -> float:
+        """OpenAmpere's last stop command to this wallbox: from the control log, which survives a restart and a
+        reconnect of the wallbox (both reset Live.stop_sent); simulated and test-mode stops were not sent."""
+        live = self.wallboxes.live.get(wb.id)
+        stopped = live.stop_sent if live else float("-inf")
+        for entry in self.runtime.storage.control_log(200):
+            details = entry["details"]
+            if (entry["action"] == "wallbox" and not entry["dry_run"]
+                    and details.get("from", {}).get("loadpoint") == wb.name
+                    and details.get("to", {}).get("action") == "stop"):
+                return max(stopped, entry["ts"])
+        return stopped
 
     async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
         """Once when a charge starts, once when it ends: unplugged, complete, or not charging for CHARGE_PAUSE_S.
@@ -328,7 +343,9 @@ class Notifier:
                 self._remember(key, None)
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
-        complete = point.finished and point.stopped_at < last  # not stopped by OpenAmpere since it last charged
+        # not stopped by OpenAmpere since the car last charged; after a restart that time is unknown: since the start
+        charged = last if key in self.last_charge else state["since"]
+        complete = point.finished and point.stopped_at < charged - STOP_SLACK_S
         if point.connected is not False and not complete and now - last < CHARGE_PAUSE_S:
             return
         # as last seen charging: a wallbox gone or unplugged may report no counters or 0 (a precaution, not seen yet)

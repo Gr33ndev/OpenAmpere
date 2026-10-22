@@ -264,6 +264,51 @@ async def test_wallbox_complete_after_a_stop_by_openampere_is_a_pause(tmp_path, 
     assert await notifier.check(now=11 * 60) == ["Laden beendet"]
 
 
+async def test_wallbox_complete_right_after_a_stop_still_read_as_charging_is_a_pause(tmp_path, monkeypatch):
+    """The stop shows only with the next read: a check between the two still sees the car charging."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(5.0)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.live["wb1"].stop_sent = 5
+    assert await notifier.check(now=8) == []  # the read-back before the stop shows
+    wallboxes.reading = paused(5.0, "finished")
+    assert await notifier.check(now=38) == []
+    assert await notifier.check(now=8 + 15 * 60) == ["Laden beendet"]
+
+
+def log_stop(runtime, name="Garage"):
+    runtime.storage.log_control("wallbox", {"from": {"loadpoint": name}, "to": {"action": "stop", "value": False}},
+                                False, "kein Überschuss")
+
+
+async def test_wallbox_stop_in_the_control_log_counts_after_a_reconnect_and_a_restart(tmp_path, monkeypatch):
+    """A reconnect of the wallbox resets Live.stop_sent and a restart loses it: the control log keeps the stop."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    start = time.time()
+    wallboxes.reading = charging(5.0)
+    assert await notifier.check(now=start) == ["Auto lädt"]
+    log_stop(notifier.runtime)  # stop_sent stays unset, as after a reconnect
+    wallboxes.reading = paused(5.0, "finished")
+    assert await notifier.check(now=start + 30) == []
+
+    restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
+    assert await restarted.check(now=start + 60) == []
+    log_stop(notifier.runtime, "Andere Wallbox")  # another wallbox's stop changes nothing here
+    assert await restarted.check(now=start + 60 + 15 * 60) == ["Laden beendet"]
+
+
+async def test_wallbox_complete_after_a_restart_without_a_stop_ends_at_once(tmp_path, monkeypatch):
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    start = time.time()
+    wallboxes.reading = charging(5.0)
+    assert await notifier.check(now=start) == ["Auto lädt"]
+    notifier.runtime.storage.log_control("wallbox", {"from": {"loadpoint": "Garage"},
+                                                     "to": {"action": "stop", "value": False}}, True, "Testmodus")
+    restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
+    wallboxes.reading = paused(9.0, "finished")
+    assert await restarted.check(now=start + 3600) == ["Laden beendet"]  # a test-mode stop was not sent
+
+
 async def test_wallbox_charge_on_after_an_end_message_reports_the_total(tmp_path, monkeypatch):
     """10 kWh, a long pause (end message), 2 kWh more: "lädt wieder", and the end gives the 12 kWh since plugging
     in, without a duration, which would span the pause. A short Wi-Fi drop in between changes nothing."""
