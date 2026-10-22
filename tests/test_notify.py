@@ -486,8 +486,8 @@ async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monke
         charger.charging = False
         assert await check(notifier, 83) == []
         assert await check(notifier, 98) == ["Laden beendet"]  # a long pause
-        assert posts[-1][1]["message"] == ("Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 12,8 kWh "
-                                           "in 1 Std. 21 Min.")
+        # no duration: the charge began before the restart
+        assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 12,8 kWh."
         charger.plugged = False
         assert await check(notifier, 99) == []
     finally:
@@ -549,3 +549,25 @@ async def test_wallbox_without_energy_counter_gives_the_duration(tmp_path, monke
     wallboxes.reading = Reading(state="idle", connected=False)
     assert await notifier.check(now=4230) == ["Laden beendet"]
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet, nach 1 Std. 10 Min."
+
+
+async def test_wallbox_restart_then_charging_again_gives_no_duration(tmp_path, monkeypatch):
+    """Down overnight with the full car plugged in, charging again within 15 minutes of the restart: the same charge,
+    but its duration would include the night."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.1)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(7.0)
+    assert await notifier.check(now=3600) == []
+
+    restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
+    morning = 15 * 3600
+    wallboxes.reading = paused(7.0)
+    assert await restarted.check(now=morning) == []
+    wallboxes.reading = charging(7.5)
+    assert await restarted.check(now=morning + 300) == []  # no second start
+    wallboxes.reading = charging(9.0)
+    assert await restarted.check(now=morning + 3600) == []
+    wallboxes.reading = UNPLUGGED
+    assert await restarted.check(now=morning + 3630) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 9,0 kWh."

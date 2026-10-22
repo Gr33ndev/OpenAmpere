@@ -127,6 +127,7 @@ class Notifier:
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
+        self.taken_over: set[str] = set()  # charges started before a restart: their duration includes the downtime
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -267,6 +268,7 @@ class Notifier:
             self._remember(key, None)
             self.charging_at.pop(key, None)
             self.last_charge.pop(key, None)
+            self.taken_over.discard(key)
         return sent
 
     def _charge_points(self, now: float) -> list[tuple[str, ChargePoint]]:
@@ -301,6 +303,8 @@ class Notifier:
         state = self.sent.get(key)
         state = state if isinstance(state, dict) and "since" in state else None
         running = state is not None and not state.get("ended")
+        if running and key not in self.charging_at:
+            self.taken_over.add(key)  # the first check of this run: the charge began before a restart
         if point.charging:
             self.charging_at[key] = now
             self.last_charge[key] = point
@@ -319,7 +323,6 @@ class Notifier:
             if point.connected is False:
                 self._remember(key, None)
             return
-        seen_charging = key in self.last_charge  # not after a restart: OpenAmpere may have been down for hours
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
         if point.connected is not False and now - last < CHARGE_PAUSE_S:
             return
@@ -327,11 +330,12 @@ class Notifier:
         seen = self.last_charge.get(key) or point
         ended = None if point.connected is False else {"since": state["since"], "ended": True, "kwh": seen.kwh,
                                                          "at": now}
-        seconds = last - state["since"] if seen_charging and not state.get("partial") else None
+        seconds = None if key in self.taken_over or state.get("partial") else last - state["since"]
         await notify(key, ended, "Laden beendet", charge_ended(seen, seconds), "white_check_mark")
         if self.sent.get(key) == ended:  # otherwise kept for the next try
             self.charging_at.pop(key, None)
             self.last_charge.pop(key, None)
+            self.taken_over.discard(key)
 
     async def _check_storage(self, notify, now: float) -> None:
         """Once when readings cannot be stored or the disk is nearly full, once when it is fine again (#170)."""
