@@ -316,6 +316,9 @@ class NativeWallboxes:
                 self._sim_release(now, self.live[old.id], "Lademodus „von Hand“")
             if now is None or _connection(now) != _connection(old):
                 self.live.pop(old.id, None)
+        for wb_id in self._stopped():
+            if wb_id not in new or not new[wb_id].enabled:
+                self._keep_stop(wb_id, None)  # removed or switched off: not read any more, so never cleared
         self._store(wallboxes)
         return wallboxes
 
@@ -612,11 +615,14 @@ class NativeWallboxes:
 
     async def _start(self, wb: NativeWallbox, live: Live, reading: Reading, on: bool, reason: str, now: float) -> None:
         dry = self.runtime.config.control.dry_run
-        owned = self._owned().get(wb.id, {})
+        entry = self._owned().get(wb.id)
+        owned = entry or {}
         started = bool(owned.get("started"))
         # the dé wallbox may report STOP ("complete") also after a stop by OpenAmpere (#454): only without such a stop
-        # is a complete wallbox a full car; otherwise it is asked to start again, until a start reached it
-        full = reading.state == "finished" and not owned.get("stopped")
+        # is a complete wallbox a full car; otherwise it is asked to start again, until a start reached it. Not
+        # controlled yet: a stop from the last time OpenAmpere controlled it (#456)
+        stopped = owned.get("stopped") if entry is not None else wb.id in self._stopped()
+        full = reading.state == "finished" and not stopped
         if dry and not (not on and started):
             if live.planned.get("start") == on:
                 return  # logged once
@@ -864,8 +870,9 @@ class NativeWallboxes:
                 and live.online is False:
             return False
         self._disown(wb.id)
-        if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.wallboxes}:
-            self._keep_stop(wb.id, max(live.stop_sent, 0.0))  # a removed wallbox needs no note
+        if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
+            # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
+            self._keep_stop(wb.id, max(live.stop_sent, 0.0))
         live.want_on, live.short_since = 0, None
         live.planned.clear()
         return True
