@@ -74,6 +74,8 @@ def charge_ended(point: ChargePoint, seconds: float | None) -> str:
         text += f" Seit dem Anstecken geladen: {_decimal(point.kwh)} kWh{during}."
         if point.solar_pct is not None:
             text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
+    elif point.kwh is None and seconds is not None and seconds >= 60:  # a wallbox that reports no energy
+        text = f"{point.name}: Das Laden ist beendet, nach {_duration(seconds)}."
     return text
 
 
@@ -317,7 +319,7 @@ class Notifier:
             if point.connected is False:
                 self._remember(key, None)
             return
-        seen_charging = key in self.charging_at  # not after a restart: OpenAmpere may have been down for hours
+        seen_charging = key in self.last_charge  # not after a restart: OpenAmpere may have been down for hours
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
         if point.connected is not False and now - last < CHARGE_PAUSE_S:
             return

@@ -96,8 +96,9 @@ das), findet OpenAmpere die Wallbox auch, wenn der Router ihr eine neue Adresse 
 ## Nachricht aufs Handy beim Laden
 
 Unter **Mehr → Benachrichtigungen** schickt dir **Laden der Wallbox** eine Nachricht, wenn das Auto zu laden beginnt
-und wenn das Laden endet. Die Meldung zum Ende nennt die Energie seit dem Anstecken und die Dauer der Ladung. Das gilt
-für jede Wallbox, die OpenAmpere ausliest, auch wenn es sie nur anzeigt. Eine Pause von weniger als 15 Minuten, etwa
+und wenn das Laden endet. Die Meldung zum Ende nennt die Energie seit dem Anstecken und die Dauer der Ladung. Eine
+Wallbox, die keine Energie meldet (wie der FoxESS AC EV Charger), bekommt nur die Dauer. Das gilt für jede Wallbox, die
+OpenAmpere ausliest, auch wenn es sie nur anzeigt. Eine Pause von weniger als 15 Minuten, etwa
 beim Laden mit Überschuss, gilt nicht als Ende. Ohne Abstecken kommt die Meldung zum Ende deshalb erst nach 15
 Minuten. Lädt das Auto danach innerhalb von 12 Stunden weiter, kommt „Das Auto lädt wieder“. Lädt es weiter, ohne
 dass es abgesteckt war, nennt die nächste Meldung zum Ende die ganze Energie seit dem Anstecken, ohne Dauer.

@@ -334,6 +334,20 @@ async def test_wallbox_restart_gives_no_duration_with_the_downtime(tmp_path, mon
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 7,0 kWh."
 
 
+async def test_wallbox_restart_gives_no_duration_also_with_the_car_plugged_in(tmp_path, monkeypatch):
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.1)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(7.0)
+    assert await notifier.check(now=3600) == []
+
+    restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
+    wallboxes.reading = paused(7.0)
+    assert await restarted.check(now=5 * 3600) == []
+    assert await restarted.check(now=5 * 3600 + 15 * 60) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 7,0 kWh."
+
+
 async def test_wallbox_off_by_default(tmp_path, monkeypatch):
     runtime, posts = make(tmp_path, monkeypatch)
     wallboxes = FakeWallboxes()
@@ -524,3 +538,14 @@ async def test_wallbox_charge_on_the_next_day_is_a_new_charge(tmp_path, monkeypa
     assert await notifier.check(now=morning + 3630) == ["Laden beendet"]
     # the evening's energy is in the counter: no duration, which would read like 11 kWh in one hour
     assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 11,0 kWh."
+
+
+async def test_wallbox_without_energy_counter_gives_the_duration(tmp_path, monkeypatch):
+    """The FoxESS AC EV Charger reports no energy of the session."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = Reading(state="charging", connected=True, charging=True, power_w=11000)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    assert await notifier.check(now=4200) == []
+    wallboxes.reading = Reading(state="idle", connected=False)
+    assert await notifier.check(now=4230) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet, nach 1 Std. 10 Min."
