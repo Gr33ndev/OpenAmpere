@@ -515,13 +515,14 @@ class NativeWallboxes:
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
             log.warning("could not remember the wallbox %s: %s", wb.name, err)
 
-    def _forget_stop(self, wb: NativeWallbox) -> None:
-        """The car charged again or was unplugged since OpenAmpere's stop: a complete wallbox means a full car again."""
+    def _note_stop(self, wb: NativeWallbox, stopped: bool) -> None:
+        """A stop by OpenAmpere reached the wallbox (True), or the car charged again or was unplugged since (False):
+        only without such a stop is a complete wallbox a full car (#454)."""
         owned = self._owned()
         entry = owned.get(wb.id)
-        if not entry or not entry.get("stopped"):
+        if not entry or bool(entry.get("stopped")) == stopped:
             return
-        owned[wb.id] = {**entry, "stopped": False}
+        owned[wb.id] = {**entry, "stopped": stopped}
         try:
             self.runtime.storage.set_meta(OWNED, owned)
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
@@ -599,7 +600,7 @@ class NativeWallboxes:
             return
         else:
             if not dry:
-                self._own(wb, reading, started=on, **({} if on else {"stopped": True}))
+                self._own(wb, reading, started=on)
             if on:
                 live.start_sent = now
             else:
@@ -607,8 +608,8 @@ class NativeWallboxes:
         live.since, live.want_on, live.short_since = now, 0, None
         sent = await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
                                  safe=not on and started)
-        if on and sent:
-            self._forget_stop(wb)  # a failed start keeps the note: the wallbox is asked again
+        if sent:  # also a stop sent in test mode (safe); a failed start keeps the note: the wallbox is asked again
+            self._note_stop(wb, not on)
 
     async def step(self, wb: NativeWallbox, available: float, now: float | None = None) -> float:
         """One check of a wallbox; available: surplus for it, its own charging included.
@@ -639,10 +640,10 @@ class NativeWallboxes:
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
             live.planned.pop("start", None)
-            self._forget_stop(wb)
+            self._note_stop(wb, False)
             return 0.0
         if reading.charging and not model.simulated:
-            self._forget_stop(wb)
+            self._note_stop(wb, False)
         plan = live.plan if model.simulated else None
         if plan is not None:
             if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now
