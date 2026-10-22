@@ -99,8 +99,8 @@ Unter **Mehr → Benachrichtigungen** schickt dir **Laden der Wallbox** eine Nac
 und wenn das Laden endet. Die Meldung zum Ende nennt die Energie seit dem Anstecken und die Dauer der Ladung. Das gilt
 für jede Wallbox, die OpenAmpere ausliest, auch wenn es sie nur anzeigt. Eine Pause von weniger als 15 Minuten, etwa
 beim Laden mit Überschuss, gilt nicht als Ende. Ohne Abstecken kommt die Meldung zum Ende deshalb erst nach 15
-Minuten. Lädt das Auto danach am selben Tag weiter, kommt „Das Auto lädt wieder“. Die nächste Meldung zum Ende nennt
-dann die ganze Energie seit dem Anstecken, ohne Dauer.
+Minuten. Lädt das Auto danach innerhalb von 12 Stunden weiter, kommt „Das Auto lädt wieder“. Lädt es weiter, ohne
+dass es abgesteckt war, nennt die nächste Meldung zum Ende die ganze Energie seit dem Anstecken, ohne Dauer.
 
 ## Wenn OpenAmpere loslässt
 

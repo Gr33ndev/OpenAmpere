@@ -486,6 +486,13 @@ async def test_wallbox_charge_on_the_next_day_is_a_new_charge(tmp_path, monkeypa
     wallboxes.reading = paused(6.0)
     assert await notifier.check(now=3630) == []
     assert await notifier.check(now=3600 + 15 * 60) == ["Laden beendet"]
+    morning = 3600 + 14 * 3600
     wallboxes.reading = charging(6.1)
-    assert await notifier.check(now=3600 + 14 * 3600) == ["Auto lädt"]
+    assert await notifier.check(now=morning) == ["Auto lädt"]
     assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 7,2 kW."
+    wallboxes.reading = charging(11.0)
+    assert await notifier.check(now=morning + 3600) == []
+    wallboxes.reading = UNPLUGGED
+    assert await notifier.check(now=morning + 3630) == ["Laden beendet"]
+    # the evening's energy is in the counter: no duration, which would read like 11 kWh in one hour
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 11,0 kWh."

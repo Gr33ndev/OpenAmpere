@@ -33,6 +33,7 @@ CHARGE_PAUSE_S = 15 * 60
 # after an end message the car charges on in the same session ("lädt wieder") only if the counter went on from a
 # real figure within this time; otherwise the car may have been unplugged unseen, e.g. with a portable wallbox
 AGAIN_MIN_KWH = 0.5
+SHOWN_MIN_KWH = 0.05  # less is "0,0 kWh": not shown, and not worth leaving out the duration of a later charge for
 AGAIN_WITHIN_S = 12 * 3600
 
 
@@ -65,10 +66,10 @@ def charge_started(point: ChargePoint, again: bool) -> str:
 
 
 def charge_ended(point: ChargePoint, seconds: float | None) -> str:
-    """seconds: from the start to the last check that saw the car charging; None after "lädt wieder", where the
-    energy since plugging in spans more than this charge."""
+    """seconds: from the start to the last check that saw the car charging; None when the energy since plugging in
+    includes an earlier charge."""
     text = f"{point.name}: Das Laden ist beendet."
-    if point.kwh is not None and point.kwh >= 0.05:
+    if point.kwh is not None and point.kwh >= SHOWN_MIN_KWH:
         during = f" in {_duration(seconds)}" if seconds is not None and seconds >= 60 else ""
         text += f" Seit dem Anstecken geladen: {_decimal(point.kwh)} kWh{during}."
         if point.solar_pct is not None:
@@ -293,8 +294,8 @@ class Notifier:
         of a wallbox is no end of its own: the dé wallbox may report it also after a stop by OpenAmpere's solar
         control (docs/devices/tuya/de-portable.md), and a car may charge on after it. The end message gives the energy
         the wallbox or evcc counted since plugging in, so a charge that goes on after an end message ("lädt wieder")
-        ends with the total of both, without a duration."""
-        # {"since", "again"}: a charge since this time; {"since", "ended", "kwh"}: over, the car still plugged in
+        ends with the total of both. Then and whenever the counter includes an earlier charge, it gives no duration."""
+        # {"since", "partial"}: a charge since this time; {"since", "ended", "kwh", "at"}: over, the car still plugged in
         state = self.sent.get(key)
         state = state if isinstance(state, dict) and "since" in state else None
         running = state is not None and not state.get("ended")
@@ -302,11 +303,12 @@ class Notifier:
             self.charging_at[key] = now
             self.last_charge[key] = point
             if not running:
-                # the same session if its counter went on from the end message; lower: the car was unplugged unseen
+                # the counter went on from the end message: it includes that charge (lower: unplugged unseen)
                 ended_kwh = state.get("kwh") if state is not None else None
-                again = (ended_kwh is not None and ended_kwh >= AGAIN_MIN_KWH and point.kwh is not None
-                         and point.kwh >= ended_kwh and now - state.get("at", 0) <= AGAIN_WITHIN_S)
-                await notify(key, {"since": now, "again": again}, "Auto lädt", charge_started(point, again),
+                partial = (ended_kwh is not None and ended_kwh >= SHOWN_MIN_KWH and point.kwh is not None
+                           and point.kwh >= ended_kwh)
+                again = partial and ended_kwh >= AGAIN_MIN_KWH and now - state.get("at", 0) <= AGAIN_WITHIN_S
+                await notify(key, {"since": now, "partial": partial}, "Auto lädt", charge_started(point, again),
                              "electric_plug")
             return
         if state is None:
@@ -322,7 +324,7 @@ class Notifier:
         seen = self.last_charge.get(key) or point
         ended = None if point.connected is False else {"since": state["since"], "ended": True, "kwh": seen.kwh,
                                                          "at": now}
-        seconds = None if state.get("again") else last - state["since"]
+        seconds = None if state.get("partial") else last - state["since"]
         await notify(key, ended, "Laden beendet", charge_ended(seen, seconds), "white_check_mark")
         if self.sent.get(key) == ended:  # otherwise kept for the next try
             self.charging_at.pop(key, None)

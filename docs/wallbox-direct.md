@@ -100,9 +100,9 @@ Under **Mehr → Benachrichtigungen** (More → Notifications), **Laden der Wall
 when the car starts charging and when charging ends. The end message gives the energy since plugging in and the
 duration of the charge. This works for every wallbox OpenAmpere reads, also one it only shows. A pause of less than 15
 minutes, for example while charging with surplus, does not count as the end. Without unplugging, the end message
-therefore comes only after 15 minutes. If the car charges on later the same day, the message is "Das Auto lädt
-wieder" (the car is charging again). The next end message then gives all the energy since plugging in, without a
-duration.
+therefore comes only after 15 minutes. If the car charges on within 12 hours, the message is "Das Auto lädt wieder"
+(the car is charging again). If it charges on without having been unplugged, the next end message gives all the
+energy since plugging in, without a duration.
 
 ## When OpenAmpere lets go
 
