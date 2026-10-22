@@ -46,6 +46,8 @@ class ChargePoint:
     power_w: float = 0.0
     kwh: float | None = None  # counted by the wallbox or evcc since the car was plugged in
     solar_pct: float | None = None  # evcc: the solar share of that energy
+    finished: bool = False  # the wallbox reports the charge as complete
+    stopped_at: float = float("-inf")  # OpenAmpere's last stop command to this wallbox (solar control)
 
 
 def _decimal(value: float) -> str:
@@ -279,9 +281,11 @@ class Notifier:
             key = f"charge_{wb.id}"
             reading = self.wallboxes.fresh(wb, now)  # the charger itself, also while its control is only simulated
             if reading is not None:
+                live = self.wallboxes.live.get(wb.id)
                 points.append((key, ChargePoint(
                     wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
-                    reading.power_w, reading.session_kwh)))
+                    reading.power_w, reading.session_kwh, finished=reading.state == "finished",
+                    stopped_at=live.stop_sent if live else float("-inf"))))
             elif self.sent.get(key) is not None:
                 points.append((key, ChargePoint(wb.name, charging=False, connected=None)))
         state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
@@ -294,9 +298,9 @@ class Notifier:
         return points
 
     async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
-        """Once when a charge starts, once when it ends: unplugged, or not charging for CHARGE_PAUSE_S. "Complete"
-        of a wallbox is no end of its own: the dé wallbox may report it also after a stop by OpenAmpere's solar
-        control (docs/devices/tuya/de-portable.md), and a car may charge on after it. The end message gives the energy
+        """Once when a charge starts, once when it ends: unplugged, complete, or not charging for CHARGE_PAUSE_S.
+        "Complete" right after a stop by OpenAmpere's solar control waits like a pause: the dé wallbox may report it
+        then as well (docs/devices/tuya/de-portable.md). The end message gives the energy
         the wallbox or evcc counted since plugging in, so a charge that goes on after an end message ("lädt wieder")
         ends with the total of both. Then and whenever the counter includes an earlier charge, it gives no duration."""
         # {"since", "partial"}: a charge since this time; {"since", "ended", "kwh", "at"}: over, the car still plugged in
@@ -324,7 +328,8 @@ class Notifier:
                 self._remember(key, None)
             return
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
-        if point.connected is not False and now - last < CHARGE_PAUSE_S:
+        complete = point.finished and point.stopped_at < last  # not stopped by OpenAmpere since it last charged
+        if point.connected is not False and not complete and now - last < CHARGE_PAUSE_S:
             return
         # as last seen charging: a wallbox gone or unplugged may report no counters or 0 (a precaution, not seen yet)
         seen = self.last_charge.get(key) or point

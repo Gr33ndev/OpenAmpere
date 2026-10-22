@@ -524,7 +524,7 @@
     "storageHint": "Wenn Messwerte nicht gespeichert werden können oder der Speicherplatz knapp wird, und wenn es wieder geht.",
     "unreachableHint": "Nach 15 Minuten ohne Verbindung, wenn sie wieder steht und wenn OpenAmpere den Wechselrichter unter einer neuen Adresse gefunden hat.",
     "wallbox": "Laden der Wallbox",
-    "wallboxHint": "Wenn ein Auto an einer Wallbox oder einem Ladepunkt von evcc zu laden beginnt und wenn das Laden endet, mit der Energie seit dem Anstecken. Endet das Laden ohne Abstecken, etwa bei einer Pause beim Laden mit Überschuss oder wenn das Auto voll ist, kommt die Meldung erst nach 15 Minuten."
+    "wallboxHint": "Wenn ein Auto an einer Wallbox oder einem Ladepunkt von evcc zu laden beginnt und wenn das Laden endet, mit der Energie seit dem Anstecken. Meldet die Wallbox das Auto als voll, kommt die Meldung sofort. Bei einer Pause, etwa beim Laden mit Überschuss, kommt sie erst nach 15 Minuten."
   },
   "exportLimitPage": {
     "aboveRule": "Der eingestellte Wert liegt über dem, was die gewählte Regel erlaubt ({max}).",

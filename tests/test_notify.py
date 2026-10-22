@@ -12,7 +12,7 @@ from openampere.runtime import Runtime
 from openampere.simulator import SimulatedTuyaCharger
 from openampere.storage import Storage
 from openampere.wallbox.base import Reading
-from openampere.wallbox.native import NativeWallbox, NativeWallboxes
+from openampere.wallbox.native import Live, NativeWallbox, NativeWallboxes
 
 TOPIC_URL = "https://ntfy.example/openampere-test"
 TUYA_KEY = "ab12cd34ef56gh78"
@@ -178,6 +178,7 @@ class FakeWallboxes:
     def __init__(self):
         self.box = NativeWallbox(name="Garage", id="wb1")
         self.reading: Reading | None = Reading(state="idle")
+        self.live = {"wb1": Live()}
 
     def enabled(self):
         return [self.box]
@@ -238,14 +239,29 @@ async def test_wallbox_short_pause_is_no_end(tmp_path, monkeypatch):
     assert len(posts) == 2
 
 
-async def test_wallbox_complete_is_a_pause(tmp_path, monkeypatch):
-    """The dé wallbox may report STOP also after a stop by the solar control: no end of its own (#451)."""
+async def test_wallbox_complete_ends_the_charge_at_once(tmp_path, monkeypatch):
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.1)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(5.0)
+    assert await notifier.check(now=3000) == []
+    wallboxes.reading = paused(5.0, "finished")
+    assert await notifier.check(now=3030) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 5,0 kWh in 50 Min."
+
+
+async def test_wallbox_complete_after_a_stop_by_openampere_is_a_pause(tmp_path, monkeypatch):
+    """The dé wallbox may report STOP also after a stop by the solar control (#451): then it waits like a pause."""
     notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
     wallboxes.reading = charging(5.0)
     assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.live["wb1"].stop_sent = 20  # the solar control stopped the charge: a cloud
     wallboxes.reading = paused(5.0, "finished")
-    assert await notifier.check(now=60) == []
-    assert await notifier.check(now=15 * 60) == ["Laden beendet"]
+    assert await notifier.check(now=30) == []
+    wallboxes.reading = charging(5.5)
+    assert await notifier.check(now=10 * 60) == []  # the same charge goes on
+    wallboxes.reading = paused(6.0, "finished")  # complete with no stop by OpenAmpere since: the car is full
+    assert await notifier.check(now=11 * 60) == ["Laden beendet"]
 
 
 async def test_wallbox_charge_on_after_an_end_message_reports_the_total(tmp_path, monkeypatch):
