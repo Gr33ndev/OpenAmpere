@@ -515,6 +515,18 @@ class NativeWallboxes:
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
             log.warning("could not remember the wallbox %s: %s", wb.name, err)
 
+    def _forget_stop(self, wb: NativeWallbox) -> None:
+        """The car charged again or was unplugged since OpenAmpere's stop: a complete wallbox means a full car again."""
+        owned = self._owned()
+        entry = owned.get(wb.id)
+        if not entry or not entry.get("stopped"):
+            return
+        owned[wb.id] = {**entry, "stopped": False}
+        try:
+            self.runtime.storage.set_meta(OWNED, owned)
+        except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
+            log.warning("could not remember the wallbox %s: %s", wb.name, err)
+
     def _disown(self, wallbox_id: str) -> None:
         owned = self._owned()
         if owned.pop(wallbox_id, None) is not None:
@@ -572,18 +584,22 @@ class NativeWallboxes:
 
     async def _start(self, wb: NativeWallbox, live: Live, reading: Reading, on: bool, reason: str, now: float) -> None:
         dry = self.runtime.config.control.dry_run
-        started = bool(self._owned().get(wb.id, {}).get("started"))
+        owned = self._owned().get(wb.id, {})
+        started = bool(owned.get("started"))
+        # the dé wallbox may report STOP ("complete") also after a stop by OpenAmpere (#454): only without such a stop
+        # is a complete wallbox a full car; otherwise it is asked once to start again
+        full = reading.state == "finished" and not owned.get("stopped")
         if dry and not (not on and started):
             if live.planned.get("start") == on:
                 return  # logged once
             live.planned["start"] = on
-        elif on and (reading.state == "finished" or now - live.start_sent < START_AGAIN_S):
+        elif on and (full or now - live.start_sent < START_AGAIN_S):
             return  # a full car, or one that waits for its own timer: asked again later
         elif not on and now - live.stop_sent < RAISE_EVERY_S:
             return
         else:
             if not dry:
-                self._own(wb, reading, started=on)
+                self._own(wb, reading, started=on, stopped=not on)
             if on:
                 live.start_sent = now
             else:
@@ -621,7 +637,10 @@ class NativeWallboxes:
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
             live.planned.pop("start", None)
+            self._forget_stop(wb)
             return 0.0
+        if reading.charging and not model.simulated:
+            self._forget_stop(wb)
         plan = live.plan if model.simulated else None
         if plan is not None:
             if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now

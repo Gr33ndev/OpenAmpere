@@ -311,6 +311,64 @@ async def test_solar_mode_starts_with_surplus_and_stops_without(tmp_path, monkey
         assert {e["action"] for e in log} == {"wallbox"} and not any(e["dry_run"] for e in log)
 
 
+async def test_solar_mode_starts_again_when_the_wallbox_shows_stop_after_its_own_stop(tmp_path, monkeypatch):
+    """The dé wallbox may report STOP ("complete") also after a stop by OpenAmpere (#454): that is no full car."""
+    async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        monkeypatch.setattr(native_module, "MIN_OFF_S", 0)
+        site(runtime, grid=-6000)
+        for now in (1000, 1010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging
+        site(runtime, grid=3000)  # a cloud: not even 6 A fit, stopped after the waiting time
+        for now in (1020, 1030, 1640):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert not charger.charging and charger.dps()["109"] == "STOP"
+
+        # a restart in between: the stop is remembered with the wallbox
+        wallboxes = NativeWallboxes(runtime)
+        monkeypatch.setattr(wallboxes, "device", lambda wb: tuya.TuyaDevice(wb.host, wb.local_key, port=port, timeout=1))
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        site(runtime, grid=-6000)  # the sun is back
+        for now in (2000, 2010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.charging and charger.writes[-1] == {"140": True}
+        assert not runtime.storage.get_meta("wallbox_owned")[wb.id]["stopped"]
+
+
+async def test_solar_mode_never_starts_a_full_car(tmp_path, monkeypatch):
+    """A wallbox complete without a stop by OpenAmpere since the car last charged: the car is full."""
+    async with simulated(plugged=True, stopped_shows="STOP") as (charger, port):
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port)
+        control = SurplusControl(runtime, None, wallboxes)
+        wb = wallboxes.wallboxes[0]
+        monkeypatch.setattr(native_module, "MIN_OFF_S", 0)
+        site(runtime, grid=-6000)
+        for now in (1000, 1010):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        site(runtime, grid=3000)  # a cloud: not even 6 A fit, stopped after the waiting time
+        for now in (1020, 1030, 1640):  # stopped by OpenAmpere at a cloud ...
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        charger.apply({"140": True})  # ... started again by the owner, until the car is full
+        await wallboxes.read(wb)
+        await control.tick(now=1650)
+        charger.full = True
+        starts = charger.writes.count({"140": True})
+        site(runtime, grid=-6000)
+        for now in range(1660, 3500, 10):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.dps()["109"] == "STOP" and charger.writes.count({"140": True}) == starts
+
+
 async def test_fast_mode_uses_the_owners_limit_and_the_steps_of_the_wallbox(tmp_path, monkeypatch):
     async with simulated(plugged=True, steps=(6, 8, 10, 13, 16)) as (charger, port):
         charger.current_a = 6
