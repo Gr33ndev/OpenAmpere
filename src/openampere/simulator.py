@@ -560,15 +560,17 @@ class SimulatedFoxCharger(SimulatedInverter):
 class SimulatedTuyaCharger:
     """The portable dé wallbox over Tuya LAN 3.5 (wallbox/de_tuya.py): data points like an owner's status reads,
     the session key exchange of tuya.py, and only one connection at a time like the real device. `plugged`: a car is
-    connected; it charges after a start (140) with the current of 150 on all `phases`."""
+    connected; it charges after a start (140) with the current of 150 on all `phases`. `stopped_shows`: the state
+    after a stop (140 false); not known from a device yet, the real one may show STOP as for a full car (#454)."""
 
     STATES = {"idle": "SLEEP", "plugged": "IDLEINS", "charging": "WORKING", "finished": "STOP"}
 
     def __init__(self, local_key: str = "0123456789abcdef", *, plugged: bool = False, phases: int = 3,
-                 steps: tuple[int, ...] = (6, 8, 10, 13, 16)) -> None:
+                 steps: tuple[int, ...] = (6, 8, 10, 13, 16), stopped_shows: str = "IDLEINS") -> None:
         self.local_key = local_key.encode()
         self.plugged, self.phases, self.steps = plugged, phases, steps
         self.charging, self.full = False, False
+        self.stopped, self.stopped_shows = False, stopped_shows  # stopped by 140 false since the car last charged
         self.current_a, self.max_current_a = 16, 16
         self.session_wh, self.session_s, self.lifetime_wh = 0.0, 0.0, 350_000.0
         self.busy = False  # a connection is open: the next one is closed right away
@@ -577,6 +579,7 @@ class SimulatedTuyaCharger:
 
     def dps(self) -> dict[str, object]:
         charging = self.charging and self.plugged and not self.full
+        self.stopped = self.stopped and self.plugged  # unplugged: the next car starts afresh
         amps = self.current_a if charging else 0
         phase = [[2300, amps * 10, round(amps * 230 / 100)] if i < self.phases else [0, 0, 0] for i in range(3)]
         state = ("charging" if charging else "finished" if self.full and self.plugged
@@ -588,7 +591,7 @@ class SimulatedTuyaCharger:
                 else "12.6", "t": "230", "e": str(int(self.lifetime_wh / 100))}
         return {"101": 300 if charging else 101, "102": json.dumps(metrics, separators=(",", ":")),
                 "106": json.dumps(info, separators=(",", ":")), "107": json.dumps(list(self.steps)),
-                "109": self.STATES[state], "150": self.current_a, "152": self.max_current_a, "155": False,
+                "109": self.stopped_shows if state == "plugged" and self.stopped else self.STATES[state], "150": self.current_a, "152": self.max_current_a, "155": False,
                 "156": False, "157": 1, "188": False, "189": 150}
 
     def apply(self, values: dict) -> dict:
@@ -598,6 +601,7 @@ class SimulatedTuyaCharger:
             self.current_a = changed["150"] = values["150"]
         if "140" in values:
             self.charging = bool(values["140"]) and self.plugged
+            self.stopped = self.plugged and not values["140"]
             if self.charging:
                 self.session_wh, self.session_s = 0.0, 0.0
         return changed

@@ -84,6 +84,7 @@ RAISE_EVERY_S = 30.0  # the current goes up at most this often, down right away
 SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log at most this often, collected
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
+STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}")
@@ -515,6 +516,19 @@ class NativeWallboxes:
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
             log.warning("could not remember the wallbox %s: %s", wb.name, err)
 
+    def _note_stop(self, wb: NativeWallbox, stopped: bool) -> None:
+        """A stop by OpenAmpere reached the wallbox (True), or the car charged again or was unplugged since (False):
+        only without such a stop is a complete wallbox a full car (#454)."""
+        owned = self._owned()
+        entry = owned.get(wb.id)
+        if not entry or bool(entry.get("stopped")) == stopped:
+            return
+        owned[wb.id] = {**entry, "stopped": stopped}
+        try:
+            self.runtime.storage.set_meta(OWNED, owned)
+        except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
+            log.warning("could not remember the wallbox %s: %s", wb.name, err)
+
     def _disown(self, wallbox_id: str) -> None:
         owned = self._owned()
         if owned.pop(wallbox_id, None) is not None:
@@ -572,12 +586,16 @@ class NativeWallboxes:
 
     async def _start(self, wb: NativeWallbox, live: Live, reading: Reading, on: bool, reason: str, now: float) -> None:
         dry = self.runtime.config.control.dry_run
-        started = bool(self._owned().get(wb.id, {}).get("started"))
+        owned = self._owned().get(wb.id, {})
+        started = bool(owned.get("started"))
+        # the dé wallbox may report STOP ("complete") also after a stop by OpenAmpere (#454): only without such a stop
+        # is a complete wallbox a full car; otherwise it is asked to start again, until a start reached it
+        full = reading.state == "finished" and not owned.get("stopped")
         if dry and not (not on and started):
             if live.planned.get("start") == on:
                 return  # logged once
             live.planned["start"] = on
-        elif on and (reading.state == "finished" or now - live.start_sent < START_AGAIN_S):
+        elif on and (full or now - live.start_sent < START_AGAIN_S):
             return  # a full car, or one that waits for its own timer: asked again later
         elif not on and now - live.stop_sent < RAISE_EVERY_S:
             return
@@ -589,8 +607,10 @@ class NativeWallboxes:
             else:
                 live.stop_sent = now
         live.since, live.want_on, live.short_since = now, 0, None
-        await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
-                          safe=not on and started)
+        sent = await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
+                                 safe=not on and started)
+        if sent:  # also a stop sent in test mode (safe); a failed start keeps the note: the wallbox is asked again
+            self._note_stop(wb, not on)
 
     async def step(self, wb: NativeWallbox, available: float, now: float | None = None) -> float:
         """One check of a wallbox; available: surplus for it, its own charging included.
@@ -621,7 +641,10 @@ class NativeWallboxes:
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
             live.planned.pop("start", None)
+            self._note_stop(wb, False)
             return 0.0
+        if reading.charging and not model.simulated and now - live.stop_sent > STOP_SLACK_S:
+            self._note_stop(wb, False)  # charging again, not only a read from before the stop showed up
         plan = live.plan if model.simulated else None
         if plan is not None:
             if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now
