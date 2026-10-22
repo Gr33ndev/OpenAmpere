@@ -49,7 +49,7 @@ OpenAmpere is a locally running, open-source app for solar systems with battery 
 | `cars/` | Cars and their manufacturer's data (#401), read-only: `__init__.py` keeps the cars (password encrypted), looks at the source in the background after each expected delivery, stores every delivery in `car_points` and counts a charge (`car_sessions`) while the car is plugged in at its wallbox from `wallbox/native.py`; `vw_euda.py` reads the Volkswagen group's EU Data Act portal. See [car.md](car.md) and [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
 | `tuya.py` | Local Tuya protocol 3.5 (AES-GCM, session key exchange), one connection per request; the search listens only on broadcast addresses and accepts an announcement only from the address it names. |
 | `diagnostics.py` | Read-only diagnostics: blocks with FC03/FC04, scaling, export limit, remote control, optionally the connection limit; plus passively collected connection drops, meter anomalies and reset times of the daily counters. |
-| `notify.py` | Notifications via ntfy, each event only once. |
+| `notify.py` | Notifications via ntfy, each event only once; reads the collector and, for the charge messages, the wallboxes and evcc. |
 | `cloud_import.py` | Imports the history from the previous manufacturer cloud via its customer API, alternatively via ZIP from `tools/cloud-export`. Own measurements are never overwritten. |
 | `simulator.py` | Modbus TCP simulator for FoxESS and SAJ, with PV strings, temperatures, export limit and proxy errors. This makes it possible to develop and test without a real system. |
 | `web/` | React PWA: dashboard, report, **Mehr** (More) with all settings, setup wizard. |

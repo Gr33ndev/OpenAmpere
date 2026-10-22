@@ -11,7 +11,7 @@ import { Button, copyText, Field, LearnMore, LoadState, Notice, SubPage, SwitchR
 
 type NotifyKey = "notify.on_unreachable" | "notify.on_alarm" | "notify.on_overwritten" | "notify.on_battery_full"
   | "notify.on_cheap_power" | "notify.on_firmware" | "notify.on_battery_health" | "notify.on_off_grid"
-  | "notify.on_storage";
+  | "notify.on_storage" | "notify.on_wallbox";
 
 const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_unreachable", label: t("settings.events.inverterUnreachable"), hint: t("settings.events.unreachableHint") },
@@ -19,6 +19,7 @@ const EVENTS: { key: NotifyKey; label: string; hint: string }[] = [
   { key: "notify.on_overwritten", label: t("settings.events.settingOverwritten"), hint: t("settings.events.overwrittenHint") },
   { key: "notify.on_battery_full", label: t("settings.events.batteryFull"), hint: t("settings.events.batteryFullHint") },
   { key: "notify.on_cheap_power", label: t("settings.events.cheapPower"), hint: t("settings.events.cheapPowerHint") },
+  { key: "notify.on_wallbox", label: t("settings.events.wallbox"), hint: t("settings.events.wallboxHint") },
   { key: "notify.on_off_grid", label: t("settings.events.powerOutage"), hint: t("settings.events.offGridHint") },
   { key: "notify.on_battery_health", label: t("settings.events.checkBattery"), hint: t("settings.events.batteryHealthHint") },
   { key: "notify.on_firmware", label: t("settings.events.newFirmware"), hint: t("settings.events.firmwareHint") },

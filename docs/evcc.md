@@ -162,6 +162,13 @@ shows up as `EVC-…`. In evcc it is set up with the template **FoxESS** (`foxes
 
 Without evcc, OpenAmpere can check the wallbox read-only, see [wallbox-direct.md](wallbox-direct.md#checking-other-wallboxes-read-only).
 
+## A message on your phone when charging
+
+Under **Mehr → Benachrichtigungen** (More → Notifications), **Laden der Wallbox** (Wallbox charging) sends a message
+when a car starts charging at an evcc loadpoint and when charging ends, with the energy and the solar share since
+plugging in, as evcc counts them. A pause of less than 15 minutes does not count as the end. Loadpoints for a heat pump or a heating rod
+are not reported.
+
 ## Limitations
 
 - Some devices can only be used in evcc with a [sponsorship](https://docs.evcc.io/docs/sponsorship). That is evcc's

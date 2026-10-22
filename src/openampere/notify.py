@@ -12,6 +12,7 @@ import logging
 import time
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .collector import LOW_DISK_BYTES
@@ -26,6 +27,60 @@ STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database bri
 # a fault that is gone by itself within this time is no reason to wake anyone, e.g. the about ten minutes of fault
 # every night of SAJ E2 inverters (#404); a fault that lasts is still reported
 ALARM_AFTER_S = 30 * 60
+# surplus charging stops with every cloud and a car pauses on its own near the end: a pause this long while the car
+# stays plugged in counts as the end of the charge, a shorter one is no reason for a message (#451)
+CHARGE_PAUSE_S = 15 * 60
+# after an end message the car charges on in the same session ("lädt wieder") only if the counter went on from a
+# real figure within this time; otherwise the car may have been unplugged unseen, e.g. with a portable wallbox
+AGAIN_MIN_KWH = 0.5
+SHOWN_MIN_KWH = 0.05  # less is "0,0 kWh": not shown, and not worth leaving out the duration of a later charge for
+AGAIN_WITHIN_S = 12 * 3600
+# a stop shows only with a later read of the wallbox, so a check may still see the car charging after it
+STOP_SLACK_S = 60
+
+
+@dataclass
+class ChargePoint:
+    """A wallbox or an evcc loadpoint, as the charge notifications see it."""
+    name: str
+    charging: bool
+    connected: bool | None  # None: the wallbox does not tell
+    power_w: float = 0.0
+    kwh: float | None = None  # counted by the wallbox or evcc since the car was plugged in
+    solar_pct: float | None = None  # evcc: the solar share of that energy
+    finished: bool = False  # the wallbox reports the charge as complete
+    stopped_at: float = float("-inf")  # OpenAmpere's last stop command to this wallbox (solar control)
+
+
+def _decimal(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",")  # German notation
+
+
+def _duration(seconds: float) -> str:
+    minutes = round(seconds / 60)
+    hours, minutes = divmod(minutes, 60)
+    if not hours:
+        return f"{minutes} Min"  # the sentence's full stop ends "Min."
+    return f"{hours} Std. {minutes} Min" if minutes else f"{hours} Std"
+
+
+def charge_started(point: ChargePoint, again: bool) -> str:
+    power = f", mit etwa {_decimal(point.power_w / 1000)} kW" if point.power_w >= 100 else ""
+    return f"{point.name}: Das Auto lädt wieder{power}." if again else f"{point.name}: Das Laden hat begonnen{power}."
+
+
+def charge_ended(point: ChargePoint, seconds: float | None) -> str:
+    """seconds: from the start to the last check that saw the car charging; None when the energy since plugging in
+    includes an earlier charge, or OpenAmpere was restarted during the charge."""
+    text = f"{point.name}: Das Laden ist beendet."
+    if point.kwh is not None and point.kwh >= SHOWN_MIN_KWH:
+        during = f" in {_duration(seconds)}" if seconds is not None and seconds >= 60 else ""
+        text += f" Seit dem Anstecken geladen: {_decimal(point.kwh)} kWh{during}."
+        if point.solar_pct is not None:
+            text += f" Davon etwa {point.solar_pct:.0f} % Solarstrom."
+    elif point.kwh is None and seconds is not None and seconds >= 60:  # a wallbox that reports no energy
+        text = f"{point.name}: Das Laden ist beendet, nach {_duration(seconds)}."
+    return text
 
 
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
@@ -67,11 +122,16 @@ def battery_problem(temperatures: dict) -> str | None:
 
 
 class Notifier:
-    def __init__(self, runtime: Runtime) -> None:
+    def __init__(self, runtime: Runtime, evcc=None, wallboxes=None) -> None:
         self.runtime = runtime
+        self.evcc = evcc  # evcc.Evcc
+        self.wallboxes = wallboxes  # wallbox.native.NativeWallboxes
         self.sent: dict[str, object] = runtime.storage.get_meta("notify_state") or {}
         self.last_error: str | None = None
         self.fault_since: float | None = None  # first reading of the current fault, any code
+        self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
+        self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
+        self.taken_over: set[str] = set()  # charges started before a restart: their duration includes the downtime
 
     def _remember(self, key: str, value: object) -> None:
         self.sent[key] = value
@@ -199,7 +259,106 @@ class Notifier:
                              f"Am günstigsten: {datetime.fromtimestamp(best, tz):%H:%M}–"
                              f"{datetime.fromtimestamp(best + 7200, tz):%H:%M} Uhr, etwa {price_text} ct/kWh.",
                              "zap")
+
+        points = self._charge_points(now) if cfg.on_wallbox else []
+        for key, point in points:
+            await self._check_charge(notify, key, point, now)
+        # a charge started while the switch was on, or at a wallbox removed since, ends without a late message
+        checked = {key for key, _ in points}
+        for key in [k for k, v in self.sent.items() if k.startswith("charge_") and v is not None and k not in checked]:
+            if (cfg.on_wallbox and key.startswith("charge_evcc_") and self.evcc is not None and self.evcc.configured
+                    and self.evcc.fresh() is None):
+                continue  # evcc not answering for a while is no reason to forget its charge
+            self._remember(key, None)
+            self.charging_at.pop(key, None)
+            self.last_charge.pop(key, None)
+            self.taken_over.discard(key)
         return sent
+
+    def _charge_points(self, now: float) -> list[tuple[str, ChargePoint]]:
+        """Wallboxes and evcc loadpoints with a recent reading. A wallbox without one during a charge counts as
+        pausing: a portable one is often unplugged together with the car. An evcc loadpoint without one is skipped."""
+        points = []
+        for wb in self.wallboxes.enabled() if self.wallboxes else []:
+            key = f"charge_{wb.id}"
+            reading = self.wallboxes.fresh(wb, now)  # the charger itself, also while its control is only simulated
+            if reading is not None:
+                finished = reading.state == "finished"
+                points.append((key, ChargePoint(
+                    wb.name, reading.charging, None if reading.state == "unknown" else reading.connected,
+                    reading.power_w, reading.session_kwh, finished=finished,
+                    stopped_at=self._last_stop(wb) if finished else float("-inf"))))
+            elif self.sent.get(key) is not None:
+                points.append((key, ChargePoint(wb.name, charging=False, connected=None)))
+        state = self.evcc.fresh() if self.evcc is not None and self.evcc.configured else None
+        for lp in (state or {}).get("loadpoints", []):
+            if not lp["heating"]:  # a heat pump in evcc is no car
+                kwh = lp["session_wh"] / 1000 if lp["session_wh"] is not None else None
+                points.append((f"charge_evcc_{lp['id']}", ChargePoint(
+                    lp["title"], lp["charging"], lp["connected"], power_w=lp["power_w"], kwh=kwh,
+                    solar_pct=lp["session_solar_pct"])))
+        return points
+
+    def _last_stop(self, wb) -> float:
+        """OpenAmpere's last stop command to this wallbox: from the control log, which survives a restart and a
+        reconnect of the wallbox (both reset Live.stop_sent); simulated and test-mode stops were not sent."""
+        live = self.wallboxes.live.get(wb.id)
+        stopped = live.stop_sent if live else float("-inf")
+        for entry in self.runtime.storage.control_log(200):
+            details = entry["details"]
+            source = details.get("from", {})
+            same = source["id"] == wb.id if "id" in source else source.get("loadpoint") == wb.name  # older: name only
+            if (entry["action"] == "wallbox" and not entry["dry_run"] and same
+                    and details.get("to", {}).get("action") == "stop"):
+                return max(stopped, entry["ts"])
+        return stopped
+
+    async def _check_charge(self, notify, key: str, point: ChargePoint, now: float) -> None:
+        """Once when a charge starts, once when it ends: unplugged, complete, or not charging for CHARGE_PAUSE_S.
+        "Complete" right after a stop by OpenAmpere's solar control waits like a pause: the dé wallbox may report it
+        then as well (docs/devices/tuya/de-portable.md). The end message gives the energy
+        the wallbox or evcc counted since plugging in, so a charge that goes on after an end message ("lädt wieder")
+        ends with the total of both. Then and whenever the counter includes an earlier charge, it gives no duration."""
+        # {"since", "partial"}: a charge since this time; {"since", "ended", "kwh", "at"}: over, the car still plugged in
+        state = self.sent.get(key)
+        state = state if isinstance(state, dict) and "since" in state else None
+        running = state is not None and not state.get("ended")
+        if running and key not in self.charging_at:
+            self.taken_over.add(key)  # the first check of this run: the charge began before a restart
+        if point.charging:
+            self.charging_at[key] = now
+            self.last_charge[key] = point
+            if not running:
+                # the counter went on from the end message: it includes that charge (lower: unplugged unseen)
+                ended_kwh = state.get("kwh") if state is not None else None
+                partial = (ended_kwh is not None and ended_kwh >= SHOWN_MIN_KWH and point.kwh is not None
+                           and point.kwh >= ended_kwh)
+                again = partial and ended_kwh >= AGAIN_MIN_KWH and now - state.get("at", 0) <= AGAIN_WITHIN_S
+                await notify(key, {"since": now, "partial": partial}, "Auto lädt", charge_started(point, again),
+                             "electric_plug")
+            return
+        if state is None:
+            return
+        if not running:
+            if point.connected is False:
+                self._remember(key, None)
+            return
+        last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
+        # not stopped by OpenAmpere since the car last charged; after a restart that time is unknown: since the start
+        charged = last if key in self.last_charge else state["since"]
+        complete = point.finished and point.stopped_at < charged - STOP_SLACK_S
+        if point.connected is not False and not complete and now - last < CHARGE_PAUSE_S:
+            return
+        # as last seen charging: a wallbox gone or unplugged may report no counters or 0 (a precaution, not seen yet)
+        seen = self.last_charge.get(key) or point
+        ended = None if point.connected is False else {"since": state["since"], "ended": True, "kwh": seen.kwh,
+                                                         "at": now}
+        seconds = None if key in self.taken_over or state.get("partial") else last - state["since"]
+        await notify(key, ended, "Laden beendet", charge_ended(seen, seconds), "white_check_mark")
+        if self.sent.get(key) == ended:  # otherwise kept for the next try
+            self.charging_at.pop(key, None)
+            self.last_charge.pop(key, None)
+            self.taken_over.discard(key)
 
     async def _check_storage(self, notify, now: float) -> None:
         """Once when readings cannot be stored or the disk is nearly full, once when it is fine again (#170)."""

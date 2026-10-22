@@ -522,7 +522,8 @@ class NativeWallboxes:
 
     def _log(self, wb: NativeWallbox, action: str, value, dry: bool, result: str, *, source: str | None = None,
              before=None) -> None:
-        details = {"from": {"loadpoint": wb.name, **({"value": before} if before is not None else {})},
+        # the id: a renamed wallbox is still the same one (the charge notifications look for its stops, #451)
+        details = {"from": {"loadpoint": wb.name, "id": wb.id, **({"value": before} if before is not None else {})},
                    "to": {"action": action, "value": value}, **({"source": source} if source else {})}
         try:
             self.runtime.storage.log_control("wallbox", details, dry, result)

@@ -166,6 +166,13 @@ braucht evcc ein Sponsor-Token.
 Ohne evcc kann OpenAmpere die Wallbox nur lesend prüfen, siehe
 [wallbox-direct.de.md](wallbox-direct.de.md#andere-wallboxen-prüfen-nur-lesen).
 
+## Nachricht aufs Handy beim Laden
+
+Unter **Mehr → Benachrichtigungen** schickt dir **Laden der Wallbox** eine Nachricht, wenn an einem Ladepunkt von evcc
+ein Auto zu laden beginnt und wenn das Laden endet, mit der Energie und dem Anteil Solarstrom seit dem Anstecken, wie
+evcc sie zählt. Eine Pause von weniger als 15 Minuten gilt nicht als Ende. Ladepunkte für eine Wärmepumpe oder einen Heizstab meldet OpenAmpere
+nicht.
+
 ## Grenzen
 
 - Manche Geräte sind in evcc nur mit einem [Sponsoring](https://docs.evcc.io/docs/sponsorship) nutzbar. Das ist
