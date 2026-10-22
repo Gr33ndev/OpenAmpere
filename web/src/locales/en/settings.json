@@ -524,7 +524,7 @@
     "storageHint": "When readings cannot be stored or disk space runs low, and when it works again.",
     "unreachableHint": "After 15 minutes without a connection, when it is back and when OpenAmpere has found the inverter at a new address.",
     "wallbox": "Wallbox charging",
-    "wallboxHint": "When a car starts charging at a wallbox or an evcc loadpoint and when charging ends, with the energy since plugging in. If the wallbox reports the car as full, the message comes at once. After a pause, for example while charging with surplus, it comes only after 15 minutes."
+    "wallboxHint": "When a car starts charging at a wallbox or an evcc loadpoint and when charging ends, with the energy since plugging in. If the wallbox reports the car as full, the message comes at once. After a pause, for example while charging with surplus, and when OpenAmpere has just stopped charging itself, it comes only after 15 minutes."
   },
   "exportLimitPage": {
     "aboveRule": "The current value is higher than the chosen rule allows ({max}).",

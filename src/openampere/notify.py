@@ -32,11 +32,11 @@ ALARM_AFTER_S = 30 * 60
 CHARGE_PAUSE_S = 15 * 60
 # after an end message the car charges on in the same session ("lädt wieder") only if the counter went on from a
 # real figure within this time; otherwise the car may have been unplugged unseen, e.g. with a portable wallbox
-# a stop shows only with a later read of the wallbox, so a check may still see the car charging after it
-STOP_SLACK_S = 60
 AGAIN_MIN_KWH = 0.5
 SHOWN_MIN_KWH = 0.05  # less is "0,0 kWh": not shown, and not worth leaving out the duration of a later charge for
 AGAIN_WITHIN_S = 12 * 3600
+# a stop shows only with a later read of the wallbox, so a check may still see the car charging after it
+STOP_SLACK_S = 60
 
 
 @dataclass
@@ -306,8 +306,9 @@ class Notifier:
         stopped = live.stop_sent if live else float("-inf")
         for entry in self.runtime.storage.control_log(200):
             details = entry["details"]
-            if (entry["action"] == "wallbox" and not entry["dry_run"]
-                    and details.get("from", {}).get("loadpoint") == wb.name
+            source = details.get("from", {})
+            same = source["id"] == wb.id if "id" in source else source.get("loadpoint") == wb.name  # older: name only
+            if (entry["action"] == "wallbox" and not entry["dry_run"] and same
                     and details.get("to", {}).get("action") == "stop"):
                 return max(stopped, entry["ts"])
         return stopped

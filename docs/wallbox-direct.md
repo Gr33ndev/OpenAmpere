@@ -101,7 +101,8 @@ when the car starts charging and when charging ends. The end message gives the e
 duration of the charge. A wallbox that reports no energy (like the FoxESS AC EV Charger) gets only the duration. This
 works for every wallbox OpenAmpere reads, also one it only shows. A pause of less than 15
 minutes, for example while charging with surplus, does not count as the end. If the wallbox reports the car as full,
-the end message comes at once, otherwise without unplugging only after 15 minutes. If the car charges on within 12 hours and the wallbox had counted at least
+the end message comes at once, otherwise without unplugging only after 15 minutes. If OpenAmpere has just stopped
+charging itself (charging with surplus), "full" waits 15 minutes as well: some wallboxes report "full" then too. If the car charges on within 12 hours and the wallbox had counted at least
 0.5 kWh by then, the message is "Das Auto lädt wieder" (the car is charging again), otherwise "Das Laden hat
 begonnen" (charging has started). If it charges on without having been unplugged, the next end message gives all the
 energy since plugging in, without a duration.

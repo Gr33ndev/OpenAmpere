@@ -276,9 +276,9 @@ async def test_wallbox_complete_right_after_a_stop_still_read_as_charging_is_a_p
     assert await notifier.check(now=8 + 15 * 60) == ["Laden beendet"]
 
 
-def log_stop(runtime, name="Garage"):
-    runtime.storage.log_control("wallbox", {"from": {"loadpoint": name}, "to": {"action": "stop", "value": False}},
-                                False, "kein Überschuss")
+def log_stop(runtime, name="Garage", wallbox_id="wb1"):
+    runtime.storage.log_control("wallbox", {"from": {"loadpoint": name, "id": wallbox_id},
+                                            "to": {"action": "stop", "value": False}}, False, "kein Überschuss")
 
 
 async def test_wallbox_stop_in_the_control_log_counts_after_a_reconnect_and_a_restart(tmp_path, monkeypatch):
@@ -293,8 +293,18 @@ async def test_wallbox_stop_in_the_control_log_counts_after_a_reconnect_and_a_re
 
     restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
     assert await restarted.check(now=start + 60) == []
-    log_stop(notifier.runtime, "Andere Wallbox")  # another wallbox's stop changes nothing here
+    log_stop(notifier.runtime, "Andere Wallbox", "wb2")  # another wallbox's stop changes nothing here
     assert await restarted.check(now=start + 60 + 15 * 60) == ["Laden beendet"]
+
+
+async def test_wallbox_stop_found_by_id_after_a_rename(tmp_path, monkeypatch):
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    start = time.time()
+    wallboxes.reading = charging(5.0)
+    assert await notifier.check(now=start) == ["Auto lädt"]
+    log_stop(notifier.runtime, "Alter Name")
+    wallboxes.reading = paused(5.0, "finished")
+    assert await notifier.check(now=start + 30) == []  # still OpenAmpere's stop
 
 
 async def test_wallbox_complete_after_a_restart_without_a_stop_ends_at_once(tmp_path, monkeypatch):
