@@ -320,6 +320,20 @@ async def test_wallbox_restart_during_a_charge_sends_no_second_start(tmp_path, m
     assert await restarted.check(now=120 + 15 * 60) == ["Laden beendet"]
 
 
+async def test_wallbox_restart_gives_no_duration_with_the_downtime(tmp_path, monkeypatch):
+    """Down for hours during a charge, the car unplugged meanwhile: the end message gives no duration."""
+    notifier, wallboxes, posts = wallbox_notifier(tmp_path, monkeypatch)
+    wallboxes.reading = charging(0.1)
+    assert await notifier.check(now=0) == ["Auto lädt"]
+    wallboxes.reading = charging(7.0)
+    assert await notifier.check(now=3600) == []
+
+    restarted = Notifier(notifier.runtime, wallboxes=wallboxes)
+    wallboxes.reading = Reading(state="idle", connected=False, session_kwh=7.0)
+    assert await restarted.check(now=5 * 3600) == ["Laden beendet"]
+    assert posts[-1][1]["message"] == "Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 7,0 kWh."
+
+
 async def test_wallbox_off_by_default(tmp_path, monkeypatch):
     runtime, posts = make(tmp_path, monkeypatch)
     wallboxes = FakeWallboxes()
@@ -420,7 +434,8 @@ async def test_evcc_loadpoint_charge_with_solar_share(tmp_path, monkeypatch):
 
 
 async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monkeypatch):
-    """The whole way: Tuya protocol, the driver's reading and the notifications."""
+    """The whole way: Tuya protocol, the driver's reading and the notifications, with a short pause, a restart of
+    OpenAmpere, a long pause and unplugging."""
     runtime, posts = make(tmp_path, monkeypatch)
     runtime.config.notify.on_wallbox = True
     charger = SimulatedTuyaCharger(TUYA_KEY, plugged=True)
@@ -431,23 +446,36 @@ async def test_wallbox_charge_read_from_the_simulated_de_wallbox(tmp_path, monke
         monkeypatch.setattr(wallboxes, "device", lambda wb: tuya.TuyaDevice(wb.host, wb.local_key, port=port, timeout=1))
         wallboxes.save([{"name": "Garage", "host": "127.0.0.1", "local_key": TUYA_KEY, "mode": "manual"}])
         wb = wallboxes.enabled()[0]
-        notifier = Notifier(runtime, wallboxes=wallboxes)
         start = time.time()
-        await wallboxes.read(wb)
-        assert await notifier.check(now=start) == []  # plugged in, not charging
 
+        async def check(notifier, minutes: float) -> list[str]:
+            await wallboxes.read(wb)
+            wallboxes.live[wb.id].updated = start + minutes * 60  # read "then", so it counts as recent
+            return await notifier.check(now=start + minutes * 60)
+
+        notifier = Notifier(runtime, wallboxes=wallboxes)
+        assert await check(notifier, 0) == []  # plugged in, not charging
         charger.apply({"140": True})
-        await wallboxes.read(wb)
-        assert await notifier.check(now=start) == ["Auto lädt"]
+        assert await check(notifier, 1) == ["Auto lädt"]
         assert posts[-1][1]["message"] == "Garage: Das Laden hat begonnen, mit etwa 11,0 kW."
 
         charger.tick(3600)
-        await wallboxes.read(wb)
-        assert await notifier.check(now=time.time()) == []
+        assert await check(notifier, 61) == []
+        charger.charging = False  # a short pause
+        assert await check(notifier, 70) == []
+        charger.charging = True
+        assert await check(notifier, 72) == []  # the same charge goes on
+
+        notifier = Notifier(runtime, wallboxes=wallboxes)  # restarted
+        charger.tick(600)
+        assert await check(notifier, 82) == []  # no second start
+        charger.charging = False
+        assert await check(notifier, 83) == []
+        assert await check(notifier, 98) == ["Laden beendet"]  # a long pause
+        assert posts[-1][1]["message"] == ("Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 12,8 kWh "
+                                           "in 1 Std. 21 Min.")
         charger.plugged = False
-        await wallboxes.read(wb)
-        assert await notifier.check(now=time.time()) == ["Laden beendet"]
-        assert posts[-1][1]["message"].startswith("Garage: Das Laden ist beendet. Seit dem Anstecken geladen: 11,0 kWh")
+        assert await check(notifier, 99) == []
     finally:
         server.close()
         await server.wait_closed()

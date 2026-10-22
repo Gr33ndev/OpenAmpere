@@ -67,7 +67,7 @@ def charge_started(point: ChargePoint, again: bool) -> str:
 
 def charge_ended(point: ChargePoint, seconds: float | None) -> str:
     """seconds: from the start to the last check that saw the car charging; None when the energy since plugging in
-    includes an earlier charge."""
+    includes an earlier charge, or OpenAmpere was restarted during the charge."""
     text = f"{point.name}: Das Laden ist beendet."
     if point.kwh is not None and point.kwh >= SHOWN_MIN_KWH:
         during = f" in {_duration(seconds)}" if seconds is not None and seconds >= 60 else ""
@@ -317,6 +317,7 @@ class Notifier:
             if point.connected is False:
                 self._remember(key, None)
             return
+        seen_charging = key in self.charging_at  # not after a restart: OpenAmpere may have been down for hours
         last = self.charging_at.setdefault(key, now)  # after a restart the pause counts from now
         if point.connected is not False and now - last < CHARGE_PAUSE_S:
             return
@@ -324,7 +325,7 @@ class Notifier:
         seen = self.last_charge.get(key) or point
         ended = None if point.connected is False else {"since": state["since"], "ended": True, "kwh": seen.kwh,
                                                          "at": now}
-        seconds = None if state.get("partial") else last - state["since"]
+        seconds = last - state["since"] if seen_charging and not state.get("partial") else None
         await notify(key, ended, "Laden beendet", charge_ended(seen, seconds), "white_check_mark")
         if self.sent.get(key) == ended:  # otherwise kept for the next try
             self.charging_at.pop(key, None)
