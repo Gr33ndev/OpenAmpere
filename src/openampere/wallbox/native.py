@@ -587,7 +587,7 @@ class NativeWallboxes:
         owned = self._owned().get(wb.id, {})
         started = bool(owned.get("started"))
         # the dé wallbox may report STOP ("complete") also after a stop by OpenAmpere (#454): only without such a stop
-        # is a complete wallbox a full car; otherwise it is asked once to start again
+        # is a complete wallbox a full car; otherwise it is asked to start again, until a start reached it
         full = reading.state == "finished" and not owned.get("stopped")
         if dry and not (not on and started):
             if live.planned.get("start") == on:
@@ -599,14 +599,16 @@ class NativeWallboxes:
             return
         else:
             if not dry:
-                self._own(wb, reading, started=on, stopped=not on)
+                self._own(wb, reading, started=on, **({} if on else {"stopped": True}))
             if on:
                 live.start_sent = now
             else:
                 live.stop_sent = now
         live.since, live.want_on, live.short_since = now, 0, None
-        await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
-                          safe=not on and started)
+        sent = await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
+                                 safe=not on and started)
+        if on and sent:
+            self._forget_stop(wb)  # a failed start keeps the note: the wallbox is asked again
 
     async def step(self, wb: NativeWallbox, available: float, now: float | None = None) -> float:
         """One check of a wallbox; available: surplus for it, its own charging included.

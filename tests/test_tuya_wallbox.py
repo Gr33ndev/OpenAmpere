@@ -335,10 +335,22 @@ async def test_solar_mode_starts_again_when_the_wallbox_shows_stop_after_its_own
         control = SurplusControl(runtime, None, wallboxes)
         wb = wallboxes.wallboxes[0]
         site(runtime, grid=-6000)  # the sun is back
-        for now in (2000, 2010):
+        await wallboxes.read(wb)
+        await control.tick(now=2000)
+        await wallboxes.read(wb)
+
+        class Busy:  # the dé app holds the only connection: the start does not reach the wallbox
+            async def set(self, values, read_back=True):
+                raise tuya.TuyaUnreachable("belegt")
+
+        monkeypatch.setattr(wallboxes, "device", lambda wb: Busy())
+        await control.tick(now=2010)
+        monkeypatch.setattr(wallboxes, "device", lambda wb: tuya.TuyaDevice(wb.host, wb.local_key, port=port, timeout=1))
+        assert not charger.charging and runtime.storage.get_meta("wallbox_owned")[wb.id]["stopped"]
+        for now in range(2020, 2400, 10):  # asked again after a while
             await wallboxes.read(wb)
             await control.tick(now=now)
-        assert charger.charging and charger.writes[-1] == {"140": True}
+        assert charger.charging and charger.writes.count({"140": True}) == 2
         assert not runtime.storage.get_meta("wallbox_owned")[wb.id]["stopped"]
 
 
