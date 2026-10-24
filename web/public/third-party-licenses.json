@@ -30,7 +30,7 @@
     },
     {
      "name": "react",
-     "version": "19.3.0",
+     "version": "19.3.1",
      "url": "https://github.com/react/react.git",
      "license": "MIT",
      "texts": [
@@ -39,7 +39,7 @@
     },
     {
      "name": "react-dom",
-     "version": "19.3.0",
+     "version": "19.3.1",
      "url": "https://github.com/react/react.git",
      "license": "MIT",
      "texts": [
