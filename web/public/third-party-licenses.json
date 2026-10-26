@@ -127,7 +127,7 @@
     },
     {
      "name": "fastapi",
-     "version": "0.147.0",
+     "version": "0.162.0",
      "license": "MIT",
      "url": "https://github.com/fastapi/fastapi",
      "texts": [
@@ -163,7 +163,7 @@
     },
     {
      "name": "pycparser",
-     "version": "3.11",
+     "version": "3.12",
      "license": "BSD-3-Clause",
      "url": "https://github.com/eliben/pycparser",
      "texts": [
@@ -209,7 +209,7 @@
     },
     {
      "name": "starlette",
-     "version": "1.9.0",
+     "version": "1.10.0",
      "license": "BSD-3-Clause",
      "url": "https://github.com/Kludex/starlette",
      "texts": [
@@ -245,7 +245,7 @@
     },
     {
      "name": "websockets",
-     "version": "17.2",
+     "version": "17.3",
      "license": "BSD-3-Clause",
      "url": "https://github.com/python-websockets/websockets",
      "texts": [
