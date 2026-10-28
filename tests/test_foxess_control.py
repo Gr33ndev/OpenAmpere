@@ -285,3 +285,23 @@ async def test_after_unplugging_the_current_is_written_again_before_the_next_sta
         written = len(charger.writes)
         await check(wallboxes, wb, t0 + 20)
         assert charger.writes[written:] == [(0x3001, 160), (0x4001, 1)]
+
+
+async def test_a_charge_openampere_started_is_stopped_when_the_fallback_fails_later(tmp_path, monkeypatch):
+    async with charger_with_car() as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        assert charger.regs[0x1003] == 3
+        handle = charger.handle
+
+        def keeps_its_fallback(pdu: bytes) -> bytes:
+            answer = handle(pdu)
+            charger.regs[0x3006] = 320  # after a reconnection the charger no longer takes 6 A
+            return answer
+        monkeypatch.setattr(charger, "handle", keeps_its_fallback)
+        wallboxes.live[wb.id].prepared = False  # it answered again after missing some polls
+        await check(wallboxes, wb, t0 + 30)  # the heartbeat finds the fallback not taken
+        await check(wallboxes, wb, t0 + 40)
+        assert charger.writes[-1] == (0x4001, 2) and charger.regs[0x1003] == 4
+        assert not wallboxes._owned() and charger.restarted_by_current == 0

@@ -847,7 +847,12 @@ class NativeWallboxes:
                                    "Wallbox ab.")
             return reading.power_w
         if real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S:
-            return reading.power_w  # it did not take the fallback current: not controlled for a while (#465)
+            # it did not take the fallback current: not controlled for a while (#465); a charge OpenAmpere started is
+            # stopped and let go of, since its watchdog would fall back to an unknown current (the stop skips the check)
+            if self._owned().get(wb.id, {}).get("started"):
+                await self.release(wb, "Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen, deshalb stoppt "
+                                       "OpenAmpere das Laden und gibt die Wallbox ab.")
+            return reading.power_w
         if real(wb) and reading.work_mode not in (None, "controlled"):
             # start and stop work only in the charger's work mode "controlled" (#465): the app asks for it
             return reading.power_w
