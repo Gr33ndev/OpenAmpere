@@ -19,7 +19,7 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
   ([#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)); its charging modes are a simulation that only logs
   what OpenAmpere would set ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)). Control comes only after
   owners' reports confirm the registers ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
-- Modbus TCP: all registers are holding registers (FC03), unit id 1, port 502 (1502 also seen); port 502, unit id 1
+- Modbus TCP: registers are holding registers read with FC03 (0x4000–0x4003 are write-only, FC06), unit id 1, port 502 (1502 also seen); port 502, unit id 1
   and FC03 confirmed on one charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - On EKD systems the previous smartbox blocks OpenAmpere's access to the charger while it is powered; with the box
   cut from power the check reads the charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
@@ -72,7 +72,7 @@ and the serial number (0x1016–0x1031) are not read at all. Only function code 
 | 0x300A | Automatic 1/3-phase switching | U16, 0/1 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x300B | Minimum interval between phase switches; the simulated control switches phases at most this often ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) | U16, minutes, 5–30 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x4000 | Electronic lock of the plug (not the work mode) | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
-| 0x4001 | Session control: 0 no action, 1 start, 2 stop | U16 | W FC06 | documented; used by evcc's driver on real devices | FoxESS EV Charger Modbus TCP protocol V1.6; [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) |
+| 0x4001 | Session control: 0 no action, 1 start, 2 stop | U16 | W FC06 | documented; used by evcc's driver on real devices | FoxESS EV Charger Modbus TCP protocol V1.6; [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218), [evcc-io/evcc#31412](https://github.com/evcc-io/evcc/pull/31412) |
 | 0x4002 | Phase sequence switching, only with an external phase switch box | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 | 0x4003 | Restart | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 
@@ -87,7 +87,7 @@ Values while charging and single-phase models are not confirmed yet.
 
 | Fact | Status | Source |
 |---|---|---|
-| Modbus TCP over LAN or WLAN; port 502 according to the protocol, 1502 seen in at least one integration; unit id 1 by default; all registers are holding registers (FC03). | documented | FoxESS EV Charger Modbus TCP protocol V1.6; [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325) |
+| Modbus TCP over LAN or WLAN; port 502 according to the protocol, 1502 seen in at least one integration; unit id 1 by default; registers are holding registers read with FC03; read/write registers are written with FC16, the write-only registers 0x4000–0x4003 with FC06. | documented | FoxESS EV Charger Modbus TCP protocol V1.6; [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325) |
 | The charger announces Modbus TCP over mDNS as `EVC-<serial>._modbus._tcp`. | derived | [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325), [#327](https://github.com/Gr33ndev/OpenAmpere/issues/327), [probe.py](../../../src/openampere/probe.py) |
 | The wallbox that came with EKD (Ampere.IQ) systems is this charger: owners' wallboxes announce themselves as `EVC-<serial>` and are found by OpenAmpere's search; owners know it as "the EKD wallbox". | derived | owner reports, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
 | With evcc's `foxess-evc` template one owner's charger closed the connection at once (`connection reset by peer`). Likely causes: not in the Modbus TCP mode, or another client holds the connection (on EKD systems probably the previous smartbox, see below). | open | owner report, [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
