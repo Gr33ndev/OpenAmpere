@@ -267,7 +267,22 @@ A previous Smartbox fetches its target settings from its manufacturer's cloud ro
 
 Remedies:
 - **Block the Smartbox's internet access**, e.g. on the FRITZ!Box under Internet → Filter → Kindersicherung (Internet → Filters → Parental Controls), access profile „gesperrt“ (blocked). One user successfully switched to price-based charging and changed the backup power reserve this way. The Smartbox then keeps reading along, but no longer receives target values or updates, and the manufacturer's app no longer shows current data.
-- **Disconnect the Smartbox** if it is no longer needed. Check beforehand whether it is required for anything else, such as control by the grid operator.
+- **Disconnect the Smartbox** if it is no longer needed. Check beforehand whether it is required for anything else, such as control by the grid operator (see [Before disconnecting](#before-disconnecting-does-the-grid-operator-need-the-box)).
+
+#### Before disconnecting: does the grid operator need the box?
+
+Whether a previous smartbox controls the system for your grid operator is not confirmed for any installation, but it
+is possible. Before disconnecting it, check:
+
+1. **Is there a smart metering system with a control box?** Next to the meter there is then a smart meter gateway and
+   a small control box. The letter of your metering operator or the type label says so as well.
+2. **Does a cable go from there to the smartbox**, or was an energy manager connected during installation?
+3. **Has your grid operator registered a controllable device**, for example a wallbox or heat pump with reduced grid
+   fees (§ 14a EnWG, module 1, 2 or 3), or is your PV system controllable under § 9 EEG? Your contract or the
+   registration documents say so.
+
+If one answer is "yes" or you are unsure, ask your grid operator or your installer before disconnecting the box. Until
+then it is safer to only block its internet access (see above). This is not legal advice.
 
 ## Backup and restore
 
@@ -379,7 +394,7 @@ On an SAJ (the older "Ampere.StoragePro"; seen on a "3P-X E2") too, the previous
 Go in this order:
 
 1. **First stop other programs** that read the inverter, or remove their connection to the inverter. Also think of setups you hardly use any more, such as an old Modbus configuration in Home Assistant. Such programs can also get the values through OpenAmpere, for example through the [connection to Home Assistant](#connect-home-assistant) or evcc, without a connection of their own to the inverter.
-2. **Then disconnect the IQ box from the network** if you no longer need it: unplug the box's LAN cable or switch the box off, not the inverter. First make sure the box is not needed for anything else, such as control by the grid operator. OpenAmpere then connects by itself. The inverter keeps working with its stored settings. Afterwards, check in OpenAmpere under **Mehr → Meine Anlage → Einspeisebegrenzung** (More → My system → Export limit) that the value shown is right. As long as the IQ box is connected, it also overwrites settings you change in OpenAmpere (see [The previous Smartbox resets settings](#the-previous-smartbox-resets-settings)).
+2. **Then disconnect the IQ box from the network** if you no longer need it: unplug the box's LAN cable or switch the box off, not the inverter. First make sure the box is not needed for anything else, such as control by the grid operator (see [Before disconnecting](#before-disconnecting-does-the-grid-operator-need-the-box)). OpenAmpere then connects by itself. The inverter keeps working with its stored settings. Afterwards, check in OpenAmpere under **Mehr → Meine Anlage → Einspeisebegrenzung** (More → My system → Export limit) that the value shown is right. As long as the IQ box is connected, it also overwrites settings you change in OpenAmpere (see [The previous Smartbox resets settings](#the-previous-smartbox-resets-settings)).
 
 Other options:
 - **Pro Abfrage** (per poll, see the next section) only helps if the other device or program releases its connection now and then. The IQ box does not.
