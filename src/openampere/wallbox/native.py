@@ -195,6 +195,7 @@ class Live:
     prepared: bool = False  # the model's `prepare` values written since it answers (#465)
     unprepared_at: float = float("-inf")  # they did not read back: not controlled for PREPARE_AGAIN_S
     verify: bool = False  # the current was written outside a charge: written and checked again once the car charges
+    limit_a: int | None = None  # a lower current the charger kept while charging: its highest one until unplugged
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
@@ -758,7 +759,11 @@ class NativeWallboxes:
             if address not in values:
                 continue
             live.setpoint = round(values[address] / 10)  # what OpenAmpere asked for, not what a resetting charger shows
-            if back.get(address) != values[address] and not charging:
+            if address in back and back[address] != values[address] and charging:
+                # while charging the charger keeps a lower limit of its own (e.g. set by the installer): taken as its
+                # highest current, so it is neither asked again nor logged every heartbeat
+                live.setpoint = live.limit_a = round(back[address] / 10)
+            elif back.get(address) != values[address] and not charging:
                 # outside a charge the charger may reset the current at once: not a failed write; it is written again
                 # and checked as soon as the car charges (verify)
                 back = {a: v for a, v in back.items() if a != address}
@@ -889,7 +894,7 @@ class NativeWallboxes:
                 return 0.0
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
-            live.setpoint = None  # unplugged: a charger that forgets its current gets it written again (#465)
+            live.setpoint = live.limit_a = None  # unplugged: written again, and a limit of the charger asked again (#465)
             live.planned.pop("start", None)
             self._note_stop(wb, False)
             return 0.0
@@ -908,7 +913,7 @@ class NativeWallboxes:
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
         limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
-                    wb.mode_current_a.get(wb.mode, wb.max_current_a))
+                    wb.mode_current_a.get(wb.mode, wb.max_current_a), live.limit_a or wb.max_current_a)
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
         if plan is not None and phases < reading.installed_phases:
             # one phase of a three-phase charger: only up to just below its lowest power on three phases, above that

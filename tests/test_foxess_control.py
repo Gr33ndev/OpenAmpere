@@ -374,3 +374,16 @@ async def test_a_work_mode_change_during_a_charge_openampere_started_lets_go(tmp
         charger.regs[0x3000] = 1  # changed in the FoxESS app
         await check(wallboxes, wb, t0 + 10)
         assert charger.writes[-1] == (0x4001, 2) and not wallboxes._owned()
+
+
+async def test_a_charger_with_a_lower_limit_of_its_own_is_not_asked_again_and_again(tmp_path):
+    async with charger_with_car() as (charger, port):
+        charger.limit = 100  # the installer limited it to 10 A
+        runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)  # asks for 16 A before the start
+        for i in range(1, 9):  # four minutes of charging
+            await check(wallboxes, wb, t0 + 30 * i)
+        differing = [e for e in runtime.storage.control_log(100) if e["result"].startswith("Rücklesen abweichend")]
+        assert len(differing) <= 1  # said once, not every heartbeat
+        assert charger.writes[-1] == (0x3001, 100) and wallboxes.live[wb.id].limit_a == 10

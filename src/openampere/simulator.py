@@ -539,6 +539,7 @@ class SimulatedFoxCharger(SimulatedInverter):
         self.stopped = False  # the last session command was a stop
         self.restarted_by_current = 0  # charges started by a current written after a stop (a controller's mistake)
         self.resets_current = False  # like a charger that resets 0x3001 at once outside a charge (open, #465)
+        self.limit = None  # 0.1 A: a lower limit of its own (e.g. set by the installer) it clamps 0x3001 to
         self.regs = {0x1000: unit, 0x1001: 0x0110, 0x1002: 0, 0x1003: 0, 0x1004: 1, 0x1005: 0, 0x1006: 700,
                      0x1007: 700, 0x1008: 2301, 0x1009: 2302, 0x100A: 2303, 0x100B: 0, 0x100C: 0, 0x100D: 0,
                      0x100E: 0, 0x100F: 0, 0x1010: 0, 0x1011: 220, 0x1012: 42, 0x1013: 320, 0x1014: 60, 0x1015: 0,
@@ -570,6 +571,8 @@ class SimulatedFoxCharger(SimulatedInverter):
             for offset, value in enumerate(values):
                 self.regs[address + offset] = value
                 self.writes.append((address + offset, value))
+            if self.limit is not None and address <= 0x3001 < address + count:
+                self.regs[0x3001] = min(self.regs[0x3001], self.limit)
             if address <= 0x3001 < address + count and self.resets_current and self.regs[0x1003] != 3:
                 self.regs[0x3001] = self.regs[0x1013]  # back to its highest current
             elif address <= 0x3001 < address + count:
