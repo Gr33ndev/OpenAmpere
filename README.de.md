@@ -267,7 +267,22 @@ Eine bisherige Smartbox holt sich etwa alle 100 Sekunden ihre Soll-Einstellungen
 
 Abhilfe:
 - **Internetzugang der Smartbox sperren**, z. B. in der FRITZ!Box unter Internet → Filter → Kindersicherung (Zugangsprofil „gesperrt“). Ein Nutzer hat so erfolgreich auf preisbasiertes Laden umgeschaltet und die Notstrom-Reserve geändert. Die Smartbox liest dann weiter mit, bekommt aber keine Soll-Werte und keine Updates mehr, und die Hersteller-App zeigt keine aktuellen Daten.
-- **Smartbox abklemmen**, wenn sie nicht mehr gebraucht wird. Vorher klären, ob sie für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber.
+- **Smartbox abklemmen**, wenn sie nicht mehr gebraucht wird. Vorher klären, ob sie für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber (siehe [Vor dem Abklemmen](#vor-dem-abklemmen-braucht-der-netzbetreiber-die-box)).
+
+#### Vor dem Abklemmen: Braucht der Netzbetreiber die Box?
+
+Ob eine bisherige Smartbox für deinen Netzbetreiber steuert, ist bei keiner Anlage bestätigt, aber möglich. Prüfe vor
+dem Abklemmen:
+
+1. **Gibt es ein intelligentes Messsystem mit Steuerbox?** Am Zähler hängt dann neben dem Zähler ein Smart-Meter-Gateway
+   und eine kleine Steuerbox. Das steht auch im Schreiben deines Messstellenbetreibers oder auf dem Typenschild.
+2. **Führt von dort ein Kabel zur Smartbox**, oder wurde bei der Installation ein Energiemanager angeschlossen?
+3. **Ist bei deinem Netzbetreiber eine steuerbare Verbrauchseinrichtung angemeldet** (von dir oder deinem
+   Installateur), etwa eine Wallbox oder Wärmepumpe mit reduziertem Netzentgelt (§ 14a EnWG, Modul 1, 2 oder 3), oder
+   ist deine PV-Anlage nach § 9 EEG steuerbar? Das steht in deinem Vertrag oder in den Unterlagen zur Anmeldung.
+
+Ist eine Antwort „ja“ oder bist du unsicher, frag deinen Netzbetreiber oder deinen Installateur, bevor du die Box
+abklemmst. Bis dahin ist es sicherer, nur ihren Internetzugang zu sperren (siehe oben). Das ist keine Rechtsberatung.
 
 ## Sichern und Wiederherstellen
 
@@ -379,7 +394,7 @@ Auch bei einem SAJ (die älteren „Ampere.StoragePro“; beobachtet an einem �
 Geh in dieser Reihenfolge vor:
 
 1. **Zuerst andere Programme beenden**, die den Wechselrichter abfragen, oder dort die Verbindung zum Wechselrichter entfernen. Denk auch an Einbindungen, die du kaum noch nutzt, etwa eine alte Modbus-Konfiguration in Home Assistant. Solche Programme können auch über OpenAmpere an die Werte kommen, zum Beispiel über die [Verbindung zu Home Assistant](#home-assistant-verbinden) oder evcc, ohne eine eigene Verbindung zum Wechselrichter.
-2. **Dann die IQ-Box vom Netzwerk trennen**, wenn sie nicht mehr gebraucht wird: LAN-Kabel der Box ziehen oder die Box ausschalten, nicht den Wechselrichter. Vorher klären, ob die Box für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber. Danach verbindet sich OpenAmpere von selbst. Der Wechselrichter arbeitet mit seinen gespeicherten Einstellungen weiter. Prüfe danach in OpenAmpere unter **Mehr → Meine Anlage → Einspeisebegrenzung**, ob der angezeigte Wert stimmt. Solange die IQ-Box verbunden ist, überschreibt sie außerdem Einstellungen, die du in OpenAmpere änderst (siehe [Die bisherige Smartbox setzt Einstellungen zurück](#die-bisherige-smartbox-setzt-einstellungen-zurück)).
+2. **Dann die IQ-Box vom Netzwerk trennen**, wenn sie nicht mehr gebraucht wird: LAN-Kabel der Box ziehen oder die Box ausschalten, nicht den Wechselrichter. Vorher klären, ob die Box für etwas anderes nötig ist, etwa die Steuerung durch den Netzbetreiber (siehe [Vor dem Abklemmen](#vor-dem-abklemmen-braucht-der-netzbetreiber-die-box)). Danach verbindet sich OpenAmpere von selbst. Der Wechselrichter arbeitet mit seinen gespeicherten Einstellungen weiter. Prüfe danach in OpenAmpere unter **Mehr → Meine Anlage → Einspeisebegrenzung**, ob der angezeigte Wert stimmt. Solange die IQ-Box verbunden ist, überschreibt sie außerdem Einstellungen, die du in OpenAmpere änderst (siehe [Die bisherige Smartbox setzt Einstellungen zurück](#die-bisherige-smartbox-setzt-einstellungen-zurück)).
 
 Weitere Möglichkeiten:
 - **Pro Abfrage** (siehe nächster Abschnitt) hilft nur, wenn das andere Gerät oder Programm seine Verbindung zwischendurch freigibt. Die IQ-Box tut das nicht.

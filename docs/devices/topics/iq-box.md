@@ -55,7 +55,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | Disconnecting the box from the network (its LAN cable or its power, not the inverter's) frees the slot. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311) |
 | At one installation that routed everything through a Modbus proxy, the box set itself back to the inverter's own address after a while and took a slot again. A proxy is no lasting way to share the inverter with the box. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
 | After the box is disconnected, the inverter keeps working with the settings stored last (including the export limit). | open (stated in the guide, not reported from a device) | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
-| The box may be needed for something else, for example control by the grid operator. | open (depends on the installation) | [#25](https://github.com/Gr33ndev/OpenAmpere/issues/25), [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311) |
+| The box may be needed for something else, for example control by the grid operator (§ 14a EnWG for a controllable device such as a wallbox or heat pump, § 9 EEG for feed-in). It can only do that where a smart meter gateway with a control box at the meter exists and is connected to the box (a cable on its inputs, or EEBus in the home network). No installation has confirmed it either way; owners check it with the steps in the README before disconnecting the box. | open (depends on the installation) | [#25](https://github.com/Gr33ndev/OpenAmpere/issues/25), [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#452](https://github.com/Gr33ndev/OpenAmpere/issues/452) |
 | FoxESS: the box drives the remote control with 46001 = 5, 46002 = 30 s, its charge power in 46003–46004, and also writes 20162 = 1. | confirmed (owner's report) | [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
 | FoxESS: a remote control that is on with values other than OpenAmpere's usually means the box is following targets from its cloud; it can overwrite grid charging and battery settings. | derived | [#126](https://github.com/Gr33ndev/OpenAmpere/issues/126), [#127](https://github.com/Gr33ndev/OpenAmpere/issues/127), [#136](https://github.com/Gr33ndev/OpenAmpere/issues/136), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
 | SAJ: the box writes the work mode 0x3647 and the on-grid reserve 0x3644. It can switch an SAJ away from time-of-use mode while OpenAmpere charges through a charge slot. | derived | stanus74/home-assistant-saj-h2-modbus#18; [#382](https://github.com/Gr33ndev/OpenAmpere/issues/382), [#383](https://github.com/Gr33ndev/OpenAmpere/issues/383) |
@@ -98,6 +98,12 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
   balance was higher than the inverter's consumption counter, while
   [#346](https://github.com/Gr33ndev/OpenAmpere/issues/346) found the inverter's counter about 50 % higher than the
   balance, which the manufacturer's app showed. Possibly different devices or apps; see [modbus.md](modbus.md).
+- Whether the box acts as the energy manager (HEMS) for the grid operator: it would get "reduce power" from the smart
+  meter gateway through a control box at the meter, confirm it and limit the system until the end of the reduction.
+  Public sources describe this path (the signal goes from the gateway's CLS channel to a control box and from there to
+  an HEMS or straight to the device, today mostly through relay contacts, a digital interface such as EEBus or Modbus
+  as a next step), but nothing shows that the box does it. Hypothesis, status open
+  ([#452](https://github.com/Gr33ndev/OpenAmpere/issues/452)).
 - Whether and when the EKD cloud will be switched off ([#84](https://github.com/Gr33ndev/OpenAmpere/issues/84)).
 - The ZIP edge cases above come from reviews, not from a real export ([#288](https://github.com/Gr33ndev/OpenAmpere/issues/288)).
 - Whether the box only reads the FoxESS AC EV Charger or also controls it, and why the charger cannot be read while
@@ -109,6 +115,10 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 
 - stanus74/home-assistant-saj-h2-modbus (MIT), issue stanus74/home-assistant-saj-h2-modbus#18: recorded Modbus
   traffic of the box on an SAJ; credited in [NOTICE](../../../NOTICE).
+- On control by the grid operator: [a public video of a German grid operator (2025)](https://www.youtube.com/watch?v=bs27GahT8Sg) on how the § 14a signal gets
+  from the smart meter gateway to an energy manager or the device, and the public fact sheets of the German Energy
+  Agency (dena, 2025) on the CLS unit and on energy managers; summarised in own words
+  ([#452](https://github.com/Gr33ndev/OpenAmpere/issues/452)).
 - EKD's customer API documentation (developer.ekd-solar.de), as used by the cloud import. Nothing from the Ampere.IQ
   app or its code.
 - Issues and pull requests: [#15](https://github.com/Gr33ndev/OpenAmpere/issues/15),
