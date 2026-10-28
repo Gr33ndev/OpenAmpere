@@ -213,7 +213,32 @@ OpenAmpere ist fürs Heimnetz gebaut. Von unterwegs erreicht man es am sicherste
 
 **Niemals per Portfreigabe direkt ins Internet stellen.** Wer die App so erreicht, kann den Wechselrichter steuern, sobald das Passwort geknackt oder abgefangen ist (kein HTTPS).
 
-Eigene Hostnamen (z. B. ein Reverse-Proxy mit deiner Domain im Heimnetz) müssen erlaubt werden: OpenAmpere über die IP-Adresse öffnen und unter **Mehr → Zugriffsschutz → Eigene Adressen** eintragen, oder `server.allowed_hosts` in `data/config.yaml` setzen. Der Reverse-Proxy muss den Hostnamen (`proxy_set_header Host $host;` bei nginx) und WebSocket-Verbindungen weiterreichen. IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag. Trage in der `config.yaml` nicht `"*"` ein (die App lehnt es ab): Das schaltet den Schutz gegen DNS-Rebinding ab. Dann könnte jede Website, die ein Browser in deinem Heimnetz öffnet, alles lesen, was OpenAmpere ohne Anmeldung zeigt, auch die Live-Werte, und das Passwort festlegen, solange keines festgelegt ist. Trage stattdessen die Namen ein, die du brauchst.
+Eigene Hostnamen (z. B. ein Reverse-Proxy mit deiner Domain im Heimnetz) müssen erlaubt werden: OpenAmpere über die IP-Adresse öffnen und unter **Mehr → Zugriffsschutz → Eigene Adressen** eintragen, oder `server.allowed_hosts` in `data/config.yaml` setzen. Der Reverse-Proxy muss den Hostnamen und WebSocket-Verbindungen weiterreichen (siehe [Hinter einem Reverse-Proxy](#hinter-einem-reverse-proxy)). IP-Adressen, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` und Tailscale-Namen (`*.ts.net`) funktionieren ohne Eintrag. Trage in der `config.yaml` nicht `"*"` ein (die App lehnt es ab): Das schaltet den Schutz gegen DNS-Rebinding ab. Dann könnte jede Website, die ein Browser in deinem Heimnetz öffnet, alles lesen, was OpenAmpere ohne Anmeldung zeigt, auch die Live-Werte, und das Passwort festlegen, solange keines festgelegt ist. Trage stattdessen die Namen ein, die du brauchst.
+
+#### Hinter einem Reverse-Proxy
+
+Ein Reverse-Proxy (nginx, Caddy, Nginx Proxy Manager, Traefik …) muss zwei Dinge weiterreichen, sonst steht in der
+Übersicht dauerhaft „Verbinde …“ (seit #460 zeigt die App dann einen Hinweis und liest die Werte alle paar Sekunden
+neu) und das Speichern von Einstellungen scheitert mit „Anfrage abgelehnt (fremde Herkunft)“:
+
+- den **Hostnamen**, den der Browser benutzt hat (OpenAmpere vergleicht ihn mit der Herkunft der Seite), und
+- **WebSocket-Verbindungen** für die Live-Werte (`/api/live/ws`).
+
+Für nginx:
+
+```nginx
+location / {
+    proxy_pass http://192.168.1.50:8080;   # Adresse und Port von OpenAmpere
+    proxy_set_header Host $host;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+Im Nginx Proxy Manager schaltest du beim Host **Websockets Support** ein. Caddy reicht beides von selbst weiter. Trage
+die Domain wie oben beschrieben unter **Mehr → Zugriffsschutz → Eigene Adressen** ein. Klappt es dann noch nicht, steht
+im Diagnosebericht eine Log-Zeile „refused a request from origin …“ mit beiden Hostnamen.
 
 Für eine automatisierte Installation lassen sich alle Werte zusätzlich per `data/config.yaml` (siehe `config.example.yaml`) oder per Umgebungsvariable `OPENAMPERE_…` vorgeben. Umgebungsvariablen haben Vorrang und erscheinen in der App als „fest eingestellt“.
 

@@ -40,7 +40,7 @@
     "smartboxCaution": "Before you disconnect the Smartbox from the internet or unplug it: find out whether it belongs to you and whether it is needed for something else, such as control by the grid operator. How to check this is in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#before-disconnecting-does-the-grid-operator-need-the-box\">README</a>.",
     "remoteQ": "Can I access my data on the go?",
     "remoteA": "Yes. The easiest way is Tailscale: answer “yes” when the installer asks whether you want to use it on the go, then tap Set up under More → Remote access in the app and sign in to Tailscale. On your phone, sign in to the Tailscale app with the same account, and you're done. Tailscale is a service of a US company and free for personal use.",
-    "remoteVpn": "Without a third party, you can use the VPN of a FRITZ!Box. Please never expose the app directly to the internet through port forwarding. If you open OpenAmpere on your home network under a domain of your own, for example through a reverse proxy, enter the name in the app under More → Access protection → Own addresses."
+    "remoteVpn": "Without a third party, you can use the VPN of a FRITZ!Box. Please never expose the app directly to the internet through port forwarding. If you open OpenAmpere on your home network under a domain of your own, for example through a reverse proxy, enter the name in the app under More → Access protection → Own addresses. The proxy must pass on the host name and WebSocket connections; the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.md#behind-a-reverse-proxy\">guide</a> has an example for nginx."
   },
   "safety": {
     "title": "Safety",

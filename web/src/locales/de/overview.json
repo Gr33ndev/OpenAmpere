@@ -10,7 +10,9 @@
     "recordedSince": "Erfasst seit {time} Uhr (OpenAmpere läuft erst seit heute).",
     "stringsAndTemperaturesHint": "Leistung je Modulfeld und Temperaturen findest du unter {place}.",
     "toGrid": "Ins Netz",
-    "todayTitle": "Tageswerte"
+    "todayTitle": "Tageswerte",
+    "liveBlocked": "Die Live-Verbindung kommt nicht zustande. OpenAmpere liest die Werte deshalb alle paar Sekunden neu. Öffnest du OpenAmpere über einen Reverse-Proxy, muss er WebSocket-Verbindungen und den Hostnamen weiterreichen, sonst klappt auch das Speichern von Einstellungen nicht. Wie das geht: {link}.",
+    "liveBlockedLink": "Anleitung für Reverse-Proxys"
   },
   "devicesCard": {
     "batteryChargingFromGrid": "Speicher lädt aus dem Netz",

@@ -270,9 +270,17 @@ export const postJson = <T,>(path: string, body: unknown) => { invalidate(); ret
 export const deleteJson = <T,>(path: string) => { invalidate(); return request<T>("DELETE", path); };
 
 /** Live snapshots over WebSocket with automatic reconnect. */
-export function useLive(): { snap: Snapshot | null; online: boolean } {
+/** Failed attempts of the live connection in a row before the app says why and reads the values by polling (#460). */
+const LIVE_FAILURES = 3;
+const LIVE_POLL_MS = 5000;
+
+/** The live values over the WebSocket. If it does not open a few times in a row while the server answers (typically a
+ *  reverse proxy without WebSocket support or without the original host name, #460), `blocked` says so and the values
+ *  are read from GET /api/live every few seconds instead. */
+export function useLive(): { snap: Snapshot | null; online: boolean; blocked: boolean } {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [online, setOnline] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     if (DEMO) {
@@ -284,16 +292,50 @@ export function useLive(): { snap: Snapshot | null; online: boolean } {
     }
     let ws: WebSocket | null = null;
     let retry: number | undefined;
+    let poll: number | undefined;
     let closed = false;
+    let failures = 0;
 
+    // only while the WebSocket fails: the server answers a normal request, so the cause is the way to it
+    const read = async () => {
+      try {
+        const res = await fetch(appUrl("/api/live"), { credentials: "same-origin" });
+        if (closed || failures < LIVE_FAILURES) return;
+        if (res.ok) setSnap(await res.json());
+        setOnline(res.ok); // while polling, the values are as live as the poll
+        setBlocked(res.ok || res.status === 503); // 503: the server answers, it has no readings yet
+      } catch {
+        if (closed || failures < LIVE_FAILURES) return; // the socket opened meanwhile: it says what is live
+        // the server itself is not reachable (e.g. a restart for an update): no proxy hint, the overview says it is not
+        // connected. Polling stops and the count starts again, so the hint needs new failed attempts of the socket
+        // while the server answers, and does not flash up when the server is back before the socket
+        setOnline(false);
+        setBlocked(false);
+        window.clearInterval(poll);
+        poll = undefined;
+        failures = 0;
+      }
+    };
     const connect = () => {
       const url = new URL(appUrl("/api/live/ws"), location.href);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      let opened = false;
       ws = new WebSocket(url);
-      ws.onopen = () => setOnline(true);
+      ws.onopen = () => {
+        opened = true;
+        failures = 0;
+        window.clearInterval(poll);
+        poll = undefined;
+        setBlocked(false);
+        setOnline(true);
+      };
       ws.onmessage = (event) => setSnap(JSON.parse(event.data));
       ws.onclose = () => {
-        setOnline(false);
+        if (poll === undefined) setOnline(false); // while polling, read() says whether values arrive
+        if (!opened && ++failures >= LIVE_FAILURES && poll === undefined && !closed) {
+          void read();
+          poll = window.setInterval(() => void read(), LIVE_POLL_MS);
+        }
         if (!closed) retry = window.setTimeout(connect, 3000);
       };
     };
@@ -301,11 +343,12 @@ export function useLive(): { snap: Snapshot | null; online: boolean } {
     return () => {
       closed = true;
       window.clearTimeout(retry);
+      window.clearInterval(poll);
       ws?.close();
     };
   }, []);
 
-  return { snap, online };
+  return { snap, online, blocked };
 }
 
 const RETRY_MS = 5000;

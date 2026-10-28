@@ -46,7 +46,7 @@ function App() {
   const setTab = (next: Tab) => navigate(next);
   const { data: status, error, reload } = useResource<Status>("/api/status", 15_000);
   const { data: auth, reload: reloadAuth } = useResource<AuthStatus>("/api/auth/status");
-  const { snap, online } = useLive();
+  const { snap, online, blocked } = useLive();
   const login = useLoginPrompt(reloadAuth);
   setTimeZone(status?.timezone);
   setEnergyStep(status?.energy_step_wh);
@@ -117,7 +117,7 @@ function App() {
       )}
       <main>
         <DatabaseNotice status={status} auth={auth} />
-        {tab === "dashboard" && <Dashboard snap={snap} online={online} status={status} />}
+        {tab === "dashboard" && <Dashboard snap={snap} online={online} blocked={blocked} status={status} />}
         {tab === "devices" && <DevicesTab page={route[1] ?? null} snap={snap} />}
         {tab === "report" && <Report />}
         {tab === "more" && <More snap={snap} page={route[1] ?? null} />}

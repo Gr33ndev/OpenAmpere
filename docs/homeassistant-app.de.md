@@ -49,8 +49,9 @@ das keine Rolle.
 - **Port 8743** ist HTTPS für Apps auf anderen Geräten. Die Home-Assistant-Integration braucht ihn nicht.
 - **Direkten Zugriff ausschalten:** dort beide Ports leeren.
 - **Eigener Name, zum Beispiel über einen Reverse-Proxy:** OpenAmpere über die IP-Adresse öffnen, anmelden und den
-  Namen unter **Mehr → Zugriffsschutz → Eigene Adressen** eintragen. In der Seitenleiste gibt es diese Einstellung
-  nicht, dort wird sie nicht gebraucht.
+  Namen unter **Mehr → Zugriffsschutz → Eigene Adressen** eintragen. Der Proxy muss den Hostnamen und
+  WebSocket-Verbindungen weiterreichen, siehe [Hinter einem Reverse-Proxy](../README.de.md#hinter-einem-reverse-proxy).
+  In der Seitenleiste gibt es diese Einstellung nicht, dort wird sie nicht gebraucht.
 
 ## Home-Assistant-Integration
 

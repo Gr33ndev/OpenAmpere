@@ -214,7 +214,32 @@ OpenAmpere is built for the home network. The safest way to reach it on the go i
 
 **Never expose it directly to the internet via port forwarding.** Anyone who reaches the app that way can control the inverter as soon as the password is cracked or intercepted (no HTTPS).
 
-Custom hostnames (e.g. a reverse proxy with your own domain on the home network) must be allowed: open OpenAmpere by its IP address and enter them under **More → Access protection → Own addresses**, or set `server.allowed_hosts` in `data/config.yaml`. The reverse proxy must pass on the host name (`proxy_set_header Host $host;` in nginx) and WebSocket connections. IP addresses, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` and Tailscale names (`*.ts.net`) work without an entry. Do not use `"*"` in `config.yaml` (the app refuses it): it turns off the protection against DNS rebinding, so any website opened in a browser on your home network could read everything OpenAmpere shows without a login, including the live values, and set the password as long as none is set. Enter the names you need instead.
+Custom hostnames (e.g. a reverse proxy with your own domain on the home network) must be allowed: open OpenAmpere by its IP address and enter them under **More → Access protection → Own addresses**, or set `server.allowed_hosts` in `data/config.yaml`. The reverse proxy must pass on the host name and WebSocket connections (see [Behind a reverse proxy](#behind-a-reverse-proxy)). IP addresses, `localhost`, `*.local`, `*.fritz.box`, `*.home.arpa` and Tailscale names (`*.ts.net`) work without an entry. Do not use `"*"` in `config.yaml` (the app refuses it): it turns off the protection against DNS rebinding, so any website opened in a browser on your home network could read everything OpenAmpere shows without a login, including the live values, and set the password as long as none is set. Enter the names you need instead.
+
+#### Behind a reverse proxy
+
+A reverse proxy (nginx, Caddy, Nginx Proxy Manager, Traefik …) has to pass on two things, otherwise the overview keeps
+saying "Verbinde …" (since #460 the app shows a hint and reads the values every few seconds instead) and saving
+settings fails with "Anfrage abgelehnt (fremde Herkunft)":
+
+- the **host name** the browser used (OpenAmpere compares it with the origin of the page), and
+- **WebSocket connections** for the live values (`/api/live/ws`).
+
+For nginx:
+
+```nginx
+location / {
+    proxy_pass http://192.168.1.50:8080;   # the address and port of OpenAmpere
+    proxy_set_header Host $host;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+In Nginx Proxy Manager switch on **Websockets Support** for the host. Caddy passes both by itself. Enter the domain
+under **More → Access protection → Own addresses** as described above. If it still does not work, the diagnostics
+report shows a log line "refused a request from origin …" with both host names.
 
 For an automated installation, all values can additionally be preset via `data/config.yaml` (see `config.example.yaml`) or via `OPENAMPERE_…` environment variables. Environment variables take precedence and appear in the app as „fest eingestellt“ (fixed).
 

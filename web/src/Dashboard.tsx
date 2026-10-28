@@ -8,7 +8,8 @@ import { navigate } from "./route";
 import { Notice } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { energyKwh, kw, kwh, percent, time, updatedLabel, num } from "./format";
-import { t } from "./i18n";
+import { t, tx } from "./i18n";
+import { REVERSE_PROXY_GUIDE } from "./links";
 
 /** Readings that cannot be stored are lost for the history: say so and what to do (#170). */
 function StorageNotice({ storage }: { storage: Status["storage"] }) {
@@ -239,7 +240,9 @@ function DevicesCard({ devices, todayWh, gridCharging }: { devices: Device[]; to
   );
 }
 
-export function Dashboard({ snap, online, status }: { snap: Snapshot | null; online: boolean; status: Status | null }) {
+export function Dashboard({ snap, online, blocked, status }: {
+  snap: Snapshot | null; online: boolean; blocked?: boolean; status: Status | null;
+}) {
   const { data: today } = useResource<Summary>("/api/energy/summary?period=day", 60_000);
   const { data: devicesView } = useResource<DevicesView>("/api/devices", 30_000);
   const { data: settings } = useResource<Settings>("/api/settings");
@@ -257,6 +260,12 @@ export function Dashboard({ snap, online, status }: { snap: Snapshot | null; onl
             : t("overview.dashboard.lastUpdated", { time: updatedLabel(snap.timestamp) })}
         </div>
       </div>
+      {blocked && (
+        <Notice kind="warn">
+          {tx("overview.dashboard.liveBlocked", {
+            link: <a href={REVERSE_PROXY_GUIDE()} target="_blank" rel="noreferrer">{t("overview.dashboard.liveBlockedLink")}</a> })}
+        </Notice>
+      )}
       {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
 
       {status?.clock_wrong && (

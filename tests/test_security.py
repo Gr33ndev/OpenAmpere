@@ -301,3 +301,60 @@ def test_large_bodies_are_refused_before_they_fill_the_memory(tmp_path, chunked)
     assert response.status_code == 413
     assert client.post("/api/auth/login", json={"password": "wrong-one"}).status_code == 401  # normal sizes work
     runtime.storage.close()
+
+
+def test_a_mismatching_origin_is_refused_and_logged_once(tmp_path, caplog):
+    """#460: behind a reverse proxy that does not pass on the host name, the browser's domain does not match the Host.
+    The live socket and writes are refused as before; the log says why, once an hour."""
+    import logging
+
+    from starlette.websockets import WebSocketDisconnect
+    _, client = app_client(tmp_path)
+    caplog.set_level(logging.WARNING, logger="openampere.api")
+    for _ in range(2):
+        with pytest.raises(WebSocketDisconnect) as closed:
+            with client.websocket_connect("/api/live/ws", headers={"origin": "https://solar.example"}):
+                pass
+        assert closed.value.code == 1008
+    refused = client.put("/api/settings", json={}, headers={"x-openampere": "1", "origin": "https://solar.example"})
+    assert refused.status_code == 403
+    warnings = [r.getMessage() for r in caplog.records if "reverse proxy" in r.getMessage()]
+    assert len(warnings) == 1 and "solar.example" in warnings[0] and "testserver" in warnings[0]
+    for i in range(20):  # changing origins: at most a few lines an hour in all
+        client.put("/api/settings", json={}, headers={"x-openampere": "1", "origin": f"https://s{i}.example"})
+    assert len([r for r in caplog.records if "reverse proxy" in r.getMessage()]) == 5
+
+
+def test_the_refused_origin_is_masked_in_the_report(tmp_path):
+    """#460: the browser's domain in that log line is usually the owner's own; the report must not show it."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    runtime.config.server.allowed_hosts = ["solar.familie-beispiel.de"]
+    line = ("refused a request from origin https://pv.familie-beispiel.de to host 192.168.1.20:8080: a reverse proxy "
+            "probably does not pass on the original host name (nginx: proxy_set_header Host $host;)")
+    masked = privacy.for_report(runtime).text(line + " / solar.familie-beispiel.de")
+    assert "familie-beispiel" not in masked and "192.168.1.20" not in masked
+    assert "origin https://<Host-2>" in masked and "<Host-1>" in masked  # the own address first, then the origin
+
+
+def test_an_own_address_as_origin_keeps_its_pseudonym(tmp_path):
+    """#460: the usual case, an allowed own domain while the proxy does not pass on the host: one name, not two."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    runtime.config.server.allowed_hosts = ["solar.familie-beispiel.de"]
+    masked = privacy.for_report(runtime).text(
+        "refused a request from origin https://solar.familie-beispiel.de to host 192.168.1.20:8080 / "
+        "solar.familie-beispiel.de")
+    assert masked.count("<Host-1>") == 2 and "<Host-2>" not in masked and "familie-beispiel" not in masked
+
+
+def test_an_ip_address_as_origin_gets_its_ip_pseudonym(tmp_path):
+    """#460: an origin that is an IPv4 or IPv6 address is masked like any address: whole, and the same everywhere."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    masked = privacy.for_report(runtime).text(
+        "refused a request from origin http://192.168.1.10:8080 to host x / 192.168.1.10 / "
+        "refused a request from origin http://[2001:db8:abcd:12::5]:8443 to host [2001:db8:abcd:12::5]:8080 / "
+        "refused a request from origin http://[2a02:db8:1:2:3:4:5:6]:8443 to host z")
+    assert "192.168" not in masked and "db8" not in masked and "abcd" not in masked and "2a02" not in masked
+    assert masked.count("<IP-1>") == 2 and masked.count("<IP-2>") == 2 and "<Host-" not in masked

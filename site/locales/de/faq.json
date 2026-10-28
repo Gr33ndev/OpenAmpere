@@ -40,7 +40,7 @@
     "smartboxCaution": "Bevor du die Smartbox vom Internet trennst oder abklemmst: Kläre, ob sie dir gehört und ob sie für etwas anderes gebraucht wird, etwa für die Steuerung durch den Netzbetreiber. Wie du das prüfst, steht im <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#vor-dem-abklemmen-braucht-der-netzbetreiber-die-box\">README</a>.",
     "remoteQ": "Komme ich auch von unterwegs an meine Daten?",
     "remoteA": "Ja. Am einfachsten mit Tailscale: Beim Installieren die Frage „von unterwegs nutzen?“ mit Ja beantworten, dann in der App unter Mehr → Zugriff von unterwegs auf Einrichten tippen und bei Tailscale anmelden. Auf dem Handy die Tailscale-App mit demselben Konto anmelden, fertig. Tailscale ist ein Dienst eines US-Anbieters und für private Nutzung kostenlos.",
-    "remoteVpn": "Ohne Drittanbieter geht es über das VPN der FRITZ!Box. Bitte die App nie per Portfreigabe direkt ins Internet stellen. Öffnest du OpenAmpere im Heimnetz unter einer eigenen Domain, etwa über einen Reverse-Proxy, trägst du den Namen in der App unter Mehr → Zugriffsschutz → Eigene Adressen ein."
+    "remoteVpn": "Ohne Drittanbieter geht es über das VPN der FRITZ!Box. Bitte die App nie per Portfreigabe direkt ins Internet stellen. Öffnest du OpenAmpere im Heimnetz unter einer eigenen Domain, etwa über einen Reverse-Proxy, trägst du den Namen in der App unter Mehr → Zugriffsschutz → Eigene Adressen ein. Der Proxy muss dabei den Hostnamen und WebSocket-Verbindungen weiterreichen; ein Beispiel für nginx steht in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/README.de.md#hinter-einem-reverse-proxy\">Anleitung</a>."
   },
   "safety": {
     "title": "Sicherheit",

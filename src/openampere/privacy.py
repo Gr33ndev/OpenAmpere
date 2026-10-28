@@ -39,6 +39,8 @@ _MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])
 _STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
 _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
                    r"(?![\w-])", re.I)
+# the browser's address in the log line of a refused origin (#460): often the owner's own public domain
+_ORIGIN = re.compile(r"(\borigin [a-z][\w+.-]*://)(\[[0-9A-Fa-f:.]+\]|[^\s/:\[]+)", re.I)
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
 _FRAMES = re.compile(r"(?:\n>>>>> [^\n]*)+")  # raw Modbus frames pymodbus appends to its errors
@@ -76,9 +78,23 @@ class Pseudonyms:
             return match.group(0)
         return self.name(match.group(0), kind)
 
+    def _origin(self, match: re.Match) -> str:
+        """The browser's address in a refused origin (#460): a name gets a host pseudonym; an own address already
+        replaced keeps its own, and an IP address (also in brackets, with a port) is left unchanged to the IP masking
+        below, so it is masked whole and gets the same pseudonym as elsewhere in the report."""
+        host = match.group(2)
+        if host.startswith("<"):
+            return match.group(0)
+        try:
+            ipaddress.ip_address(host.strip("[]"))
+        except ValueError:
+            return match.group(1) + self.name(host, "Host")
+        return match.group(0)  # brackets and port stay: the IP masking finds the address inside them
+
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
+        text = _ORIGIN.sub(self._origin, text)
         text = _EMAIL.sub(lambda m: self.name(m.group(0), "E-Mail"), text)
         text = _HOME.sub(r"\1/<Benutzer>", text)
         text = _MAC.sub(lambda m: self.name(m.group(0), "MAC"), text)
@@ -151,7 +167,12 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
         for serial in {device.serial if device else None, stored}:
             if serial:
                 known[serial] = shorten(serial)
-    return Pseudonyms(config.inverter.host, known)
+    pseudonyms = Pseudonyms(config.inverter.host, known)
+    for host in config.server.allowed_hosts or []:  # the owner's own host names (#437, #460), often a domain of theirs
+        name = str(host).strip().removeprefix("*.")
+        if name:
+            pseudonyms.name(name, "Host")  # the same pseudonym in every part of the report
+    return pseudonyms
 
 
 # the control log (#329): what the owner named (a person, an app access, a device), when something happens in the
