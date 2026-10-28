@@ -330,13 +330,15 @@ def create_app(runtime: Runtime) -> FastAPI:
         return origin.split("://", 1)[-1].rstrip("/").lower() == (host or "").lower()
 
     origin_warned: dict[tuple[str, str], float] = {}
+    ORIGIN_WARNINGS_PER_HOUR = 5  # in all: foreign sites choose their Origin and must not fill the log
 
     def warn_origin(origin: str | None, host: str | None) -> None:
         """A refused Origin, at most once an hour per pair (#460): usually a reverse proxy that does not pass on the
         host name, so the browser's domain does not match the Host. In the log, so the diagnostics report shows it
         (host names pseudonymised there)."""
         key, now = (str(origin)[:MAX_HOST_SHOWN], str(host)[:MAX_HOST_SHOWN]), time.time()
-        if now - origin_warned.get(key, 0.0) < 3600:
+        if now - origin_warned.get(key, 0.0) < 3600 \
+                or sum(now - at < 3600 for at in origin_warned.values()) >= ORIGIN_WARNINGS_PER_HOUR:
             return
         if len(origin_warned) >= 50:  # foreign sites choose their Origin: never a growing list
             origin_warned.clear()

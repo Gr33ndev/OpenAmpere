@@ -320,6 +320,9 @@ def test_a_mismatching_origin_is_refused_and_logged_once(tmp_path, caplog):
     assert refused.status_code == 403
     warnings = [r.getMessage() for r in caplog.records if "reverse proxy" in r.getMessage()]
     assert len(warnings) == 1 and "solar.example" in warnings[0] and "testserver" in warnings[0]
+    for i in range(20):  # changing origins: at most a few lines an hour in all
+        client.put("/api/settings", json={}, headers={"x-openampere": "1", "origin": f"https://s{i}.example"})
+    assert len([r for r in caplog.records if "reverse proxy" in r.getMessage()]) == 5
 
 
 def test_the_refused_origin_is_masked_in_the_report(tmp_path):
@@ -331,4 +334,4 @@ def test_the_refused_origin_is_masked_in_the_report(tmp_path):
             "probably does not pass on the original host name (nginx: proxy_set_header Host $host;)")
     masked = privacy.for_report(runtime).text(line + " / solar.familie-beispiel.de")
     assert "familie-beispiel" not in masked and "192.168.1.20" not in masked
-    assert "origin https://<Host-1>" in masked and "<Eigene Adresse>" in masked
+    assert "origin https://<Host-2>" in masked and "<Host-1>" in masked  # the own address first, then the origin

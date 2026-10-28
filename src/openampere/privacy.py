@@ -148,17 +148,18 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
             value = str(car.get(field) or "").strip()
             if len(value) >= 3:  # a name like "ID" would replace every such word in the log
                 known[value] = name
-    for host in config.server.allowed_hosts or []:  # the owner's own host names (#437, #460), often a domain of theirs
-        name = str(host).strip().removeprefix("*.")
-        if name:
-            known[name] = "<Eigene Adresse>"
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")
         for serial in {device.serial if device else None, stored}:
             if serial:
                 known[serial] = shorten(serial)
-    return Pseudonyms(config.inverter.host, known)
+    pseudonyms = Pseudonyms(config.inverter.host, known)
+    for host in config.server.allowed_hosts or []:  # the owner's own host names (#437, #460), often a domain of theirs
+        name = str(host).strip().removeprefix("*.")
+        if name:
+            pseudonyms.name(name, "Host")  # the same pseudonym in every part of the report
+    return pseudonyms
 
 
 # the control log (#329): what the owner named (a person, an app access, a device), when something happens in the
