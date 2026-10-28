@@ -291,7 +291,7 @@
     "workModeLockedHint": "The wallbox is locked and does not charge. Choose “Controlled” or “Plug & charge” to release it again.",
     "workModeQuestion": "Set the work mode to “{mode}”?",
     "workModeConfirm": "Change",
-    "workModeExplainControlled": "The wallbox only charges once an app, a charging card or a controller starts the charge. OpenAmpere does not start charging on this wallbox yet: start it in the FoxESS app or with a charging card, or choose “Plug & charge”.",
+    "workModeExplainControlled": "The wallbox only charges once an app, a charging card or a controller starts the charge. OpenAmpere starts charging only with real control switched on; otherwise start it in the FoxESS app or with a charging card, or choose “Plug & charge”.",
     "workModeExplainPlugAndCharge": "The wallbox charges as soon as a car is plugged in.",
     "workModeExplainLocked": "The wallbox no longer charges at all until you release it again.",
     "workModeSmartbox": "OpenAmpere writes the setting into the wallbox once and reads it back to check. The previous EKD smartbox must be cut from power for this.",
