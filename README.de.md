@@ -277,9 +277,9 @@ dem Abklemmen:
 1. **Gibt es ein intelligentes Messsystem mit Steuerbox?** Am Zähler hängt dann neben dem Zähler ein Smart-Meter-Gateway
    und eine kleine Steuerbox. Das steht auch im Schreiben deines Messstellenbetreibers oder auf dem Typenschild.
 2. **Führt von dort ein Kabel zur Smartbox**, oder wurde bei der Installation ein Energiemanager angeschlossen?
-3. **Hat dein Netzbetreiber eine steuerbare Verbrauchseinrichtung angemeldet**, etwa eine Wallbox oder Wärmepumpe mit
-   reduziertem Netzentgelt (§ 14a EnWG, Modul 1, 2 oder 3), oder ist deine PV-Anlage nach § 9 EEG steuerbar? Das steht
-   in deinem Vertrag oder in den Unterlagen zur Anmeldung.
+3. **Ist bei deinem Netzbetreiber eine steuerbare Verbrauchseinrichtung angemeldet** (von dir oder deinem
+   Installateur), etwa eine Wallbox oder Wärmepumpe mit reduziertem Netzentgelt (§ 14a EnWG, Modul 1, 2 oder 3), oder
+   ist deine PV-Anlage nach § 9 EEG steuerbar? Das steht in deinem Vertrag oder in den Unterlagen zur Anmeldung.
 
 Ist eine Antwort „ja“ oder bist du unsicher, frag deinen Netzbetreiber oder deinen Installateur, bevor du die Box
 abklemmst. Bis dahin ist es sicherer, nur ihren Internetzugang zu sperren (siehe oben). Das ist keine Rechtsberatung.

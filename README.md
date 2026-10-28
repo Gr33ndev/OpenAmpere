@@ -277,9 +277,9 @@ is possible. Before disconnecting it, check:
 1. **Is there a smart metering system with a control box?** Next to the meter there is then a smart meter gateway and
    a small control box. The letter of your metering operator or the type label says so as well.
 2. **Does a cable go from there to the smartbox**, or was an energy manager connected during installation?
-3. **Has your grid operator registered a controllable device**, for example a wallbox or heat pump with reduced grid
-   fees (§ 14a EnWG, module 1, 2 or 3), or is your PV system controllable under § 9 EEG? Your contract or the
-   registration documents say so.
+3. **Is a controllable device registered with your grid operator** (by you or your installer), for example a wallbox
+   or heat pump with reduced grid fees (§ 14a EnWG, module 1, 2 or 3), or is your PV system controllable under § 9
+   EEG? Your contract or the registration documents say so.
 
 If one answer is "yes" or you are unsure, ask your grid operator or your installer before disconnecting the box. Until
 then it is safer to only block its internet access (see above). This is not legal advice.
