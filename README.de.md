@@ -374,6 +374,8 @@ Hängt ein Modbus-Proxy dazwischen, gilt die Geräteadresse, die im Proxy einges
 
 Ein FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft) erlaubt nur sehr wenige Modbus-TCP-Verbindungen gleichzeitig. Sind alle belegt, nimmt er die Verbindung von OpenAmpere an und schließt sie sofort wieder. Belegt werden sie meist von einem anderen Programm, das den Wechselrichter abfragt (Home Assistant oder einem anderen Smart-Home-System mit einer eigenen Modbus-Einbindung, einem Dashboard mit eigenem Datensammler wie Grafana, einem eigenen Script oder einer zweiten OpenAmpere-Installation), oder von der bisherigen IQ-Box. Die Netzwerksuche zeigt das Gerät dann als „Modbus-Gerät, gerade belegt“, weil ein belegtes Gerät auch eine Wallbox sein kann. Der Verbindungstest und **Mehr → Verbindung** zeigen diese Meldung.
 
+Auch bei einem SAJ H2 oder HS2 (die älteren „Ampere.StoragePro“) hält die bisherige IQ-Box die Verbindung dauerhaft belegt. Trenne die IQ-Box wie in Schritt 2 unten vom Netzwerk. Nach zwei bis drei Minuten verbindet sich OpenAmpere.
+
 Geh in dieser Reihenfolge vor:
 
 1. **Zuerst andere Programme beenden**, die den Wechselrichter abfragen, oder dort die Verbindung zum Wechselrichter entfernen. Denk auch an Einbindungen, die du kaum noch nutzt, etwa eine alte Modbus-Konfiguration in Home Assistant. Solche Programme können auch über OpenAmpere an die Werte kommen, zum Beispiel über die [Verbindung zu Home Assistant](#home-assistant-verbinden) oder evcc, ohne eine eigene Verbindung zum Wechselrichter.
