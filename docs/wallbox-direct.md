@@ -187,7 +187,8 @@ stops charging and sets the charging current. This is new and not yet tried on a
   update, a restart) it stops a charge it started itself.
 - Needed: the wallbox's **Betriebsmodus** (work mode) is **Gesteuert** (controlled, see below), the previous EKD
   smartbox is cut from power, and **Änderungen an Geräten** (changes to devices) is **Aktiv** (active). In test mode
-  the control log only shows what OpenAmpere would do.
+  the control log only shows what OpenAmpere would do; if you switch to test mode while a charge OpenAmpere started is
+  running, OpenAmpere stops it and lets go of the wallbox, since nothing would keep its watchdog alive.
 - While the car charges OpenAmpere writes the current again every 25 seconds; these writes are not in the control log.
   After a stop OpenAmpere writes nothing more to the wallbox until it starts it again (the wallbox would otherwise
   start by itself).

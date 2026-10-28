@@ -188,7 +188,8 @@ Laden und stellt den Ladestrom ein. Das ist neu und noch an keiner Wallbox mit O
   Update, ein Neustart) stoppt OpenAmpere ein Laden, das es selbst gestartet hat.
 - Voraussetzung: Der **Betriebsmodus** der Wallbox ist **Gesteuert** (siehe unten), die bisherige Smartbox von EKD ist
   vom Strom getrennt, und **Änderungen an Geräten** steht auf **Aktiv**. Im Testmodus steht im Steuerungsprotokoll nur,
-  was OpenAmpere tun würde.
+  was OpenAmpere tun würde. Schaltest du den Testmodus ein, während ein Laden läuft, das OpenAmpere gestartet hat,
+  stoppt OpenAmpere es und gibt die Wallbox ab, weil sonst niemand mehr ihre Überwachung am Leben hält.
 - Solange das Auto lädt, schreibt OpenAmpere den Ladestrom alle 25 Sekunden neu; das steht nicht im Protokoll. Nach
   einem Stopp schreibt OpenAmpere nichts mehr an die Wallbox, bis es sie wieder startet (sonst würde sie von selbst
   wieder laden).
