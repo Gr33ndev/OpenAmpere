@@ -4,8 +4,9 @@ Deutsch: [wallbox-direct.de.md](wallbox-direct.de.md)
 
 Most wallboxes are controlled by OpenAmpere through [evcc](https://evcc.io), see [evcc.md](evcc.md). A few wallboxes
 OpenAmpere talks to itself, without evcc and without a cloud. So far this is the **portable 11 kW wallbox sold as
-"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere shows and can set its work mode (e.g. to unlock it), but
-cannot control its charging yet; its charging modes are a simulation that writes nothing (see below). You can set up several of them, also next to a wallbox
+"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere shows and can set its work mode (e.g. to unlock it);
+its charging modes are a simulation that writes nothing, and its owner can switch on real control as a test (see
+below). You can set up several of them, also next to a wallbox
 through evcc.
 
 > Reading is confirmed on a real device, control (starting and stopping charging, setting the current) not yet. Set
@@ -172,7 +173,35 @@ test mode say. The wallbox goes on charging as it is set in its own app, for exa
 - The simulated charging is not counted anywhere: your heating rod and other devices get the real surplus, as
   measured. The wallbox's real charging stays in the house load.
 - The simulation runs as long as OpenAmpere runs; after a restart it starts again from what the wallbox does.
-- Home Assistant only shows the wallbox (no charging mode).
+- Home Assistant only shows the wallbox (no charging mode), unless real control is switched on (see below).
+
+### Real control (test)
+
+Below the charging modes the card offers **Echte Steuerung einschalten (Test)** (switch on real control, #465). After
+a question OpenAmpere then really controls this wallbox in the modes Aus, Solar, Min + Solar and Sofort: it starts and
+stops charging and sets the charging current. This is new and not yet tried on a wallbox with OpenAmpere.
+
+- **If OpenAmpere fails** (the computer crashes, the network is gone), the wallbox charges on after about a minute
+  with 6 A until the car is full, from the grid if needed. OpenAmpere sets this fallback current in the wallbox once.
+  The wallbox has no way to stop by itself when its controller is gone. When OpenAmpere is shut down as planned (an
+  update, a restart) it stops a charge it started itself.
+- Needed: the wallbox's **Betriebsmodus** (work mode) is **Gesteuert** (controlled, see below), the previous EKD
+  smartbox is cut from power, and **Änderungen an Geräten** (changes to devices) is **Aktiv** (active). In test mode
+  the control log only shows what OpenAmpere would do; if you switch to test mode while a charge OpenAmpere started is
+  running, OpenAmpere stops it and lets go of the wallbox, since nothing would keep its watchdog alive.
+- While the car charges OpenAmpere writes the current again every 25 seconds; these writes are not in the control log.
+  After a stop OpenAmpere writes nothing more to the wallbox until it starts it again (the wallbox would otherwise
+  start by itself).
+- OpenAmpere does not switch between one and three phases yet: solar charging needs enough surplus for 6 A on all
+  phases of the wallbox.
+- Under real control the work mode stays **Gesteuert**: OpenAmpere does not change it, and if it is changed in the
+  FoxESS app during a charge OpenAmpere started, OpenAmpere sends a stop and lets go of the wallbox. Whether the
+  wallbox follows a stop outside "Gesteuert" is not known yet; it may charge on as its new mode says.
+- If the wallbox does not take the fallback current of 6 A, the card says so and OpenAmpere does not control it for
+  15 minutes; a charge it started is stopped.
+- **Von Hand** (manual) under real control: OpenAmpere lets go of the wallbox and stops a charge it started, since
+  the wallbox would otherwise charge on unsupervised at 6 A. Start charging then in the FoxESS app or with a card.
+- **Zurück zur Simulation** (back to the simulation) lets go of the wallbox: a charge OpenAmpere started is stopped.
 
 ### Work mode of the wallbox
 

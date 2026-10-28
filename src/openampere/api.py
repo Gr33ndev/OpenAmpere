@@ -289,8 +289,10 @@ def create_app(runtime: Runtime) -> FastAPI:
         watchdog_task.cancel()
         fast_task.cancel()
         # each step on its own, the remote control of the inverter first: an error in one must not skip the others;
-        # a wallbox keeps charging as it is (it has no watchdog, and a restart for an update should not stop the car)
+        # a wallbox keeps charging as it is (it has no watchdog, and a restart for an update should not stop the car),
+        # except one whose watchdog would charge on with its fallback current: let go of, a charge started stopped (#465)
         steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop, wallboxes.wait,
+                 lambda: wallboxes.release_real("OpenAmpere wird beendet"),
                  lambda: runtime.cloud_import.stop(status="running"),  # keeps running after the next start
                  collector.stop)
         for step in steps:
@@ -1262,6 +1264,16 @@ def create_app(runtime: Runtime) -> FastAPI:
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         return {**result, **wallboxes.view()}
+
+    @app.post("/api/wallboxes/{wallbox_id}/control")
+    async def wallbox_control(wallbox_id: str, request: Request, body: dict = Body(...)):
+        """Real control of a FoxESS charger switched on or off by its owner, after the question in the app (#465)."""
+        try:
+            await wallboxes.set_control(wallbox_id, body.get("on") is True, source=actor(request))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        await surplus.tick()
+        return wallboxes.view()
 
     @app.post("/api/wallboxes/test")
     async def wallbox_test(request: WallboxTestRequest):

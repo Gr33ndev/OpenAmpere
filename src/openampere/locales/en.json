@@ -405,6 +405,9 @@
     "readBackFailed": "The wallbox accepted the setting, but OpenAmpere could not read it back. Whether it applies you see after the next read of the wallbox.",
     "workModeNotAnswering": "The wallbox does not answer right now. OpenAmpere can change its work mode only once it is reachable again.",
     "writeAnswerLost": "The wallbox did not answer the setting. It may apply anyway: you see this after the next read of the wallbox.",
-    "modbusWriteError": "The wallbox refused the setting with an error (error number {code}). Try again in a few minutes. If it still fails, create a report under More → Diagnostics."
+    "modbusWriteError": "The wallbox refused the setting with an error (error number {code}). Try again in a few minutes. If it still fails, create a report under More → Diagnostics.",
+    "realControlOn": "real control switched on",
+    "fallbackNotTaken": "The wallbox did not take the fallback current of 6 A. OpenAmpere therefore does not control it.",
+    "workModeKeepControlled": "Under real control the work mode must stay “Controlled”. Switch real control off first, then you can change it."
   }
 }

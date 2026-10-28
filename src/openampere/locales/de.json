@@ -405,6 +405,9 @@
     "readBackFailed": "Die Wallbox hat die Einstellung angenommen, OpenAmpere konnte sie aber nicht zurücklesen. Ob sie gilt, siehst du nach der nächsten Abfrage der Wallbox.",
     "workModeNotAnswering": "Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, wenn sie wieder erreichbar ist.",
     "writeAnswerLost": "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du nach der nächsten Abfrage der Wallbox.",
-    "modbusWriteError": "Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen Bericht."
+    "modbusWriteError": "Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen Bericht.",
+    "realControlOn": "echte Steuerung eingeschaltet",
+    "fallbackNotTaken": "Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert sie deshalb nicht.",
+    "workModeKeepControlled": "Unter echter Steuerung muss der Betriebsmodus „Gesteuert“ bleiben. Schalte zuerst die echte Steuerung aus, dann kannst du ihn ändern."
   }
 }

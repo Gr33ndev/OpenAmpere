@@ -27,6 +27,7 @@ from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequire
 from .runtime import Runtime
 from .wallbox.native import CHARGING as WALLBOX_CHARGING
 from .wallbox.native import MODELS as WALLBOX_MODELS
+from .wallbox.native import read_only as wallbox_read_only
 
 log = logging.getLogger(__name__)
 
@@ -228,8 +229,9 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
             "pv_external": pv_external(),  # a counted second PV inverter (#419): its sensors exist only then
             "devices": [{"id": d["id"], "name": d["name"], "kind": d["kind"]} for d in own_devices()],
             "wallboxes": [{"id": wb.id, "name": wb.name, "model": WALLBOX_MODELS[wb.model].label,
-                           # only shown (#439): no mode or current to set, the integration offers no controls
-                           "read_only": WALLBOX_MODELS[wb.model].read_only}
+                           # only shown (#439): no mode or current to set, the integration offers no controls; real
+                           # control of a FoxESS charger is switched on in the app only (#465)
+                           "read_only": wallbox_read_only(wb)}
                           for wb in (wallboxes.wallboxes if wallboxes else [])],
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
         }
@@ -342,7 +344,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         if wallboxes is None or wallbox_id not in {wb.id for wb in wallboxes.wallboxes}:  # no limit entries either
             raise HTTPException(400, "Diese Wallbox gibt es nicht.")  # as from set_mode
         wallbox = next(wb for wb in wallboxes.wallboxes if wb.id == wallbox_id)
-        if WALLBOX_MODELS[wallbox.model].read_only:  # only shown; its simulated modes are for the app alone (#440)
+        if wallbox_read_only(wallbox):  # only shown; its simulated modes are for the app alone (#440)
             raise HTTPException(400, "Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.")
         try:
             with limits.counted([f"wallbox:{wallbox_id}"], OTHER_WRITES_PER_HOUR):

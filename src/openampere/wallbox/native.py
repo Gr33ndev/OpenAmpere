@@ -1,13 +1,22 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 """Wallboxes OpenAmpere reads and controls itself, without evcc (#318): the portable dé wallbox over Tuya, and the
-FoxESS AC EV Charger over Modbus TCP, read only (#439).
+FoxESS AC EV Charger over Modbus TCP, shown (#439), simulated (#440) and, once its owner agrees, controlled (#465).
 
 - Every model is a class in MODELS with the same face: key, label, protocol ("tuya" or "modbus"), the modes it
   offers, read_only, and interpret() that turns what the wallbox answered into a base.Reading. reader() gives what a
   wallbox is read with (tuya.TuyaDevice, or modbus.ModbusWallbox with one short connection per read, closed
   afterwards); both read with status() and fail with an error that has a German message. Only a model that is not
-  read_only has set_current() and start(), and only the Tuya connection (device()) can write.
+  read_only, or is `controllable`, has set_current() and start(); only the Tuya connection (device()) and a
+  ModbusWallbox made with the model's `writable` registers in _write() can write.
+- A `controllable` model (the FoxESS charger, #465) is read only and simulated until the owner switches on real
+  control for that wallbox (NativeWallbox.control): read_only(), simulated() and real() say what a wallbox is now.
+  Real control of the charger: only in its work mode "controlled"; before the first write after a (re)connection the
+  model's `prepare` values (command validity, fallback current); the current written again every `heartbeat_s` while
+  the car charges, never after a stop (the charger would start again), silently unless it fails. When OpenAmpere lets
+  go (mode "manual", control switched off, wallbox removed, OpenAmpere shut down) the current goes back first and a
+  charge OpenAmpere started is stopped after it. If OpenAmpere fails, the charger charges on with its fallback
+  current: the owner agrees to this in the app before control is switched on (#318).
 - A read-only model is never written to; its power is shown and counted in the house load like any wallbox. Without
   `simulated` it offers only the mode "manual" (the other modes are refused when saved or chosen).
 - A read-only model with `simulated` (the FoxESS charger, #440) offers all modes, but its control is only a simulation,
@@ -57,7 +66,7 @@ from .. import ha_app, tuya
 from ..outbound import in_home_network
 from ..probe import host_addresses
 from ..runtime import Runtime
-from .base import ReadBackFailed, Reading, WallboxUnreachable
+from .base import NotPrepared, ReadBackFailed, Reading, WallboxUnreachable
 from .de_tuya import DeTuyaCharger
 from .foxess import FoxEssChargerLive
 from .modbus import ModbusWallbox
@@ -85,6 +94,8 @@ SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log a
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
+LIMIT_AGAIN_S = 900.0  # a lower current a charger kept (e.g. while dimmed) is asked again after this (#465)
+PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 STOPPED = "wallbox_stopped"  # meta: id -> time of OpenAmpere's stop, kept after letting go of the wallbox (#456)
@@ -107,6 +118,20 @@ class NativeWallbox:
     id: str = field(default_factory=lambda: secrets.token_hex(4))
     port: int | None = None  # Modbus models only (None for Tuya): missing means the model's usual port
     unit: int | None = None  # Modbus models only: the unit id
+    control: bool = False  # a controllable model: the owner switched on real control (#465)
+
+
+def real(wb: NativeWallbox) -> bool:
+    """A controllable model the owner lets OpenAmpere control (#465)."""
+    return bool(getattr(MODELS[wb.model], "controllable", False) and wb.control)
+
+
+def read_only(wb: NativeWallbox) -> bool:
+    return MODELS[wb.model].read_only and not real(wb)
+
+
+def simulated(wb: NativeWallbox) -> bool:
+    return MODELS[wb.model].simulated and not real(wb)
 
 
 def needs_key(wb: NativeWallbox) -> bool:
@@ -167,6 +192,12 @@ class Live:
     stop_sent: float = float("-inf")
     planned: dict = field(default_factory=dict)  # test mode: what would have been written, logged once
     plan: Plan = field(default_factory=Plan)  # a simulated control (#440)
+    setpoint: int | None = None  # a wallbox that does not report its current: the one OpenAmpere wrote (#465)
+    prepared: bool = False  # the model's `prepare` values written since it answers (#465)
+    unprepared_at: float = float("-inf")  # they did not read back: not controlled for PREPARE_AGAIN_S
+    verify: bool = False  # the current was written outside a charge: written and checked again once the car charges
+    limit_a: int | None = None  # a lower current the charger kept while charging: its highest one for a while
+    limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
@@ -183,7 +214,7 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
             wb = NativeWallbox(**{k: v for k, v in item.items() if k in NativeWallbox.__dataclass_fields__})
             wb.name, wb.host, wb.device_id = str(wb.name).strip()[:40], str(wb.host).strip(), str(wb.device_id).strip()
             wb.local_key, wb.max_current_a, wb.enabled = str(wb.local_key or ""), int(wb.max_current_a), bool(wb.enabled)
-            wb.id = str(wb.id)
+            wb.id, wb.control = str(wb.id), bool(wb.control) and bool(getattr(MODELS.get(wb.model), "controllable", 0))
         except (TypeError, ValueError, AttributeError, OverflowError):  # OverflowError: Infinity in the JSON
             raise ValueError("Ungültige Angaben bei einer Wallbox.") from None
         if not wb.name:
@@ -224,7 +255,7 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
         if any(k not in CHARGING or not 6 <= v <= 32 for k, v in currents.items()):
             raise ValueError(f"{wb.name}: Der Ladestrom eines Lademodus muss zwischen 6 und 32 A liegen.")
         # above a lowered highest current it is cut, not refused: the stored wallbox must stay valid
-        wb.mode_current_a = {} if model.read_only and not model.simulated \
+        wb.mode_current_a = {} if read_only(wb) and not simulated(wb) \
             else {k: min(v, wb.max_current_a) for k, v in currents.items()}
         if not re.fullmatch(r"[0-9a-f]{8}", wb.id) or wb.id in ids:
             wb.id = secrets.token_hex(4)
@@ -287,6 +318,11 @@ class NativeWallboxes:
         for item in raw:
             if isinstance(item, dict) and not item.get("local_key") and item.get("id") in stored:
                 item = {**item, "local_key": stored[item["id"]].local_key}
+            if isinstance(item, dict):
+                # real control only through set_control(), after the question in the app (#465): never switched on or
+                # off by saving the list
+                old = stored.get(item.get("id"))
+                item = {**item, "control": bool(old and old.control)}
             items.append(item)
         wallboxes = validate(items, keyless={wb.id for wb in stored.values() if not wb.local_key})
         for wb in wallboxes:
@@ -304,16 +340,19 @@ class NativeWallboxes:
                     self._retired[old.id] = now or old
                 else:
                     self._retired.pop(old.id, None)
-            elif now is None or not now.enabled or _connection(now) != _connection(old):
+            elif now is None or not now.enabled or _connection(now) != _connection(old) or real(old) and not real(now):
                 if old.id in self._owned():
-                    self._retired[old.id] = old  # let go of it with the address it was controlled at
+                    # let go of it with the address it was controlled at; real control switched off: as it was (#465)
+                    self._retired[old.id] = old
             if now is None or not now.enabled or _connection(now) != _connection(old):
-                if MODELS[old.model].simulated and old.id in self.live:  # its simulation ends here (#440)
+                if simulated(old) and old.id in self.live:  # its simulation ends here (#440)
                     self._sim_release(old, self.live[old.id], "Wallbox entfernt, ausgeschaltet oder geändert")
-            elif now.mode == "manual" != old.mode and MODELS[old.model].simulated and old.id in self.live:
+            elif now.mode == "manual" != old.mode and simulated(old) and old.id in self.live:
                 # "manual" saved with the list (a restored backup, another client): ended here as in set_mode(), since
                 # with the master switch off step() only runs in the simulated modes
                 self._sim_release(now, self.live[old.id], "Lademodus „von Hand“")
+            elif simulated(old) and not simulated(now) and old.id in self.live:  # real control from now on (#465)
+                self._sim_release(now, self.live[old.id], "echte Steuerung eingeschaltet")
             if now is None or _connection(now) != _connection(old):
                 self.live.pop(old.id, None)
         for wb_id in self._stopped():
@@ -357,10 +396,11 @@ class NativeWallboxes:
         self._store(wallboxes)
         live = self.live.setdefault(wb.id, Live())
         live.want_on, live.short_since = 0, None
+        live.limit_a = None  # another mode asks the charger afresh
         live.plan.want_on, live.plan.short_since = 0, None
         if old != mode:
             self._log(wb, "mode", mode, False, "ok", source=source, before=old)
-            if mode == "manual" and MODELS[wb.model].simulated:
+            if mode == "manual" and simulated(wb):
                 # ended here, not in step(): with the master switch off step() only runs in the simulated modes
                 self._sim_release(wb, live, "Lademodus „von Hand“")
         if current_a is not None and current != before:
@@ -393,6 +433,9 @@ class NativeWallboxes:
             raise ValueError("Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, "
                              "wenn sie wieder erreichbar ist.")
         before = reading.work_mode
+        if real(wb) and mode != "controlled":
+            raise ValueError("Unter echter Steuerung muss der Betriebsmodus „Gesteuert“ bleiben. Schalte zuerst die "
+                             "echte Steuerung aus, dann kannst du ihn ändern.")
         if control.dry_run:
             self._log(wb, "work_mode", mode, True, "nicht gesendet (Testmodus)", source=source, before=before)
             return {"dry_run": True, "work_mode": before}
@@ -418,6 +461,36 @@ class NativeWallboxes:
         self._log(wb, "work_mode", mode, False, "ok", source=source, before=before)
         live.updated = min(live.updated, time.time() - POLL_S)  # read again with the next poll: the status follows
         return {"dry_run": False, "work_mode": now_mode}
+
+    async def set_control(self, wallbox_id: str, on: bool, source: str | None = None) -> NativeWallbox:
+        """The owner switches real control of a controllable wallbox on or off (#465). Switched on, the simulation
+        ends and the next check controls it (with the master switch and the test mode as for every write). Switched
+        off, OpenAmpere lets go of it first, as it was controlled; then it is simulated again."""
+        wallboxes = self.wallboxes
+        wb = next((w for w in wallboxes if w.id == wallbox_id), None)
+        if wb is None:
+            raise ValueError("Diese Wallbox gibt es nicht.")
+        if not getattr(MODELS[wb.model], "controllable", False):
+            raise ValueError("Diese Wallbox zeigt OpenAmpere nur an, steuern kann es sie nicht.")
+        if wb.control == on:
+            return wb
+        live = self.live.setdefault(wb.id, Live())
+        if on:
+            self._sim_release(wb, live, "echte Steuerung eingeschaltet")
+        else:
+            await self.release(wb, "echte Steuerung ausgeschaltet")
+            if wb.id in self._owned():  # not reachable now: let go of it once it answers, as it was controlled
+                self._retired[wb.id] = replace(wb)
+            live.plan = Plan()
+        wb.control = on
+        self._store(wallboxes)
+        self._log(wb, "control", on, False, "ok", source=source, before=not on)
+        return wb
+
+    async def release_real(self, reason: str) -> None:
+        """On a planned shutdown (#465): a wallbox whose watchdog would let it charge on with its fallback current is
+        let go of, a charge OpenAmpere started stopped."""
+        await asyncio.gather(*(self.release(wb, reason) for wb in self.wallboxes if real(wb)))
 
     # ---- reading, in the background --------------------------------------------------
 
@@ -501,6 +574,7 @@ class NativeWallboxes:
             # plugged in again, maybe after a power cut: start, stop and test-mode notes count afresh
             live.start_sent = live.stop_sent = float("-inf")
             live.planned.clear()
+            live.setpoint, live.prepared = None, False
         live.reading, live.updated = MODELS[wb.model].interpret(dps), now
         live.online, live.error, live.failures, live.retry_at = True, None, 0, 0.0
         stopped = self._stopped()
@@ -552,12 +626,12 @@ class NativeWallboxes:
     @staticmethod
     def controls(wb: NativeWallbox) -> bool:
         """OpenAmpere really controls it: its charging is surplus it may keep."""
-        return wb.mode in CONTROLLED and not MODELS[wb.model].read_only
+        return wb.mode in CONTROLLED and not read_only(wb)
 
     @staticmethod
     def simulates(wb: NativeWallbox) -> bool:
         """Its control is only simulated (#440): nothing is written, its charging is not OpenAmpere's."""
-        return wb.mode in CONTROLLED and MODELS[wb.model].simulated
+        return wb.mode in CONTROLLED and simulated(wb)
 
     # ---- control ---------------------------------------------------------------------
 
@@ -628,20 +702,30 @@ class NativeWallboxes:
                      *, safe: bool = False) -> bool:
         """Writes data points and reads them back. safe: letting go or stopping what OpenAmpere started, sent also
         in test mode."""
-        if MODELS[wb.model].read_only:  # never reached (a simulation only logs, #440): a second guard
+        if read_only(wb):  # never reached (a simulation only logs, #440): a second guard
             raise RuntimeError(f"wallbox {wb.model} is read only")
+        model = MODELS[wb.model]
         dry = self.runtime.config.control.dry_run
         if dry and not safe:
             self._log(wb, action, value, True, f"nicht gesendet (Testmodus): {reason}")
             return False
         try:
-            async with live.lock:
-                back = await self.device(wb).set(values, read_back=True)
-        except tuya.TuyaError as err:
+            if model.protocol == "modbus":
+                back = await self._write_modbus(wb, live, values, safe=safe)
+            else:
+                async with live.lock:
+                    back = await self.device(wb).set(values, read_back=True)
+        except NotPrepared as err:  # it answers: not shown as away, the card says why it is not controlled
+            self._log(wb, action, value, False, f"Fehler: {err.message}")
+            return False
+        except UNREACHABLE as err:
             self._failed(wb, live, err, time.time())
             self._log(wb, action, value, False, f"Fehler: {err.message}")
             return False
-        live.reading, live.updated = MODELS[wb.model].interpret(back), time.time()
+        if model.protocol == "modbus":  # only what was written comes back: read the rest with the next poll
+            live.updated = min(live.updated, time.time() - POLL_S)
+        else:
+            live.reading, live.updated = model.interpret(back), time.time()
         # start and stop are not reported back, the state shows them with the next read
         differs = {k: back[k] for k in values if k in back and back[k] != values[k]}
         if dry:
@@ -649,12 +733,80 @@ class NativeWallboxes:
         self._log(wb, action, value, False, f"Rücklesen abweichend: {differs}" if differs else reason)
         return not differs
 
+    async def _write_modbus(self, wb: NativeWallbox, live: Live, values: dict, *, safe: bool = False) -> dict:
+        """A Modbus wallbox under real control (#465): the model's `prepare` values first after a (re)connection, then
+        the values; the read/write ones read back, start or stop last. Remembers the current it wrote."""
+        model = MODELS[wb.model]
+        # letting go or stopping (safe) never waits for the fallback current: a stop must always get through
+        prepare = {} if live.prepared or safe else dict(getattr(model, "prepare", {}))
+        writer = ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional,
+                               writable=model.writable)
+        if prepare and time.time() - live.unprepared_at < PREPARE_AGAIN_S:
+            raise NotPrepared("Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert sie deshalb "
+                              "nicht.")
+        if prepare:
+            # the fallback current the owner agreed to must hold before anything else is written
+            async with live.lock:
+                ready = await writer.set(prepare)
+            differs = {a: ready.get(a) for a, v in prepare.items() if ready.get(a) != v}
+            self._log(wb, "prepare", prepare, False, f"Rücklesen abweichend: {differs}" if differs else "ok")
+            if differs:
+                live.unprepared_at = time.time()
+                raise NotPrepared("Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert sie "
+                                  "deshalb nicht.")
+            live.prepared = True
+        async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
+            back = await writer.set(values, model.write_only)
+        charging = bool(live.reading and live.reading.charging)
+        for address in model.set_current(6):
+            if address not in values:
+                continue
+            live.setpoint = round(values[address] / 10)  # what OpenAmpere asked for, not what a resetting charger shows
+            if address in back and back[address] < values[address] and charging:
+                # while charging the charger keeps a lower limit of its own (installer, dimming): taken as its highest
+                # current for LIMIT_AGAIN_S, so it is neither asked again nor logged every heartbeat
+                live.setpoint = live.limit_a = round(back[address] / 10)
+                live.limit_at = time.time()
+            elif back.get(address) != values[address] and not charging:
+                # outside a charge the charger may reset the current at once: not a failed write; it is written again
+                # and checked as soon as the car charges (verify)
+                back = {a: v for a, v in back.items() if a != address}
+                live.verify = True
+        for address, value in values.items():
+            if address in model.write_only and value == model.start(False)[address]:
+                live.setpoint = None  # outside a charge the charger forgets the current
+        return back
+
+    async def _beat(self, wb: NativeWallbox, live: Live, amps: int, now: float) -> None:
+        """The watchdog of a controlled wallbox (#465): the current written again while the car charges, logged only
+        when it fails. Never after a stop: the charger would start again."""
+        live.current_at = now
+        values = MODELS[wb.model].set_current(amps)
+        try:
+            back = await self._write_modbus(wb, live, values)
+        except NotPrepared:
+            pass  # logged with the fallback check; step() stops a charge OpenAmpere started
+        except UNREACHABLE as err:
+            self._failed(wb, live, err, time.time())
+            self._log(wb, "current", amps, False, f"Fehler: {err.message}")
+        else:
+            differs = {a: back[a] for a in values if a in back and back[a] != values[a]}
+            if differs:  # while charging the charger must keep it
+                self._log(wb, "current", amps, False, f"Rücklesen abweichend: {differs}")
+            live.verify = False
+
     async def _set_current(self, wb: NativeWallbox, live: Live, reading: Reading, amps: int, reason: str,
                            now: float) -> None:
         dry = self.runtime.config.control.dry_run
-        if reading.set_current_a == amps or (dry and live.planned.get("current") == amps):
+        known = reading.set_current_a if reading.set_current_a is not None else live.setpoint
+        beat = getattr(MODELS[wb.model], "heartbeat_s", None) if real(wb) else None
+        if known == amps and beat and not dry and reading.charging and (now - live.current_at >= beat or live.verify) \
+                and now - live.stop_sent > STOP_SLACK_S:
+            await self._beat(wb, live, amps, now)
             return
-        if reading.set_current_a is not None and amps > reading.set_current_a and now - live.current_at < RAISE_EVERY_S:
+        if known == amps or (dry and live.planned.get("current") == amps):
+            return
+        if known is not None and amps > known and now - live.current_at < RAISE_EVERY_S:
             return
         if dry:
             live.planned["current"] = amps
@@ -703,32 +855,56 @@ class NativeWallboxes:
             return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
         reading = self._fresh(live, now)
-        model = MODELS[wb.model]
-        if model.read_only and not model.simulated:
+        sim = simulated(wb)
+        if read_only(wb) and not sim:
             return reading.power_w if reading else 0.0  # only shown: nothing to let go of, nothing to decide
         if wb.mode == "manual":
-            if model.simulated:
+            if sim:
                 self._sim_release(wb, live, "Lademodus „von Hand“", now)
             else:
-                await self.release(wb, "Lademodus „von Hand“", stop_started=False)
+                # the owner takes over; a charger whose watchdog would charge on unsupervised at its fallback current
+                # gets a charge OpenAmpere started stopped (#465)
+                await self.release(wb, "Lademodus „von Hand“", stop_started=real(wb))
             return reading.power_w if reading else 0.0
         if reading is None:
-            if model.simulated:
+            if sim:
                 live.plan.state = "unknown"  # the plan stays: it goes on once the charger answers again
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
+        if real(wb) and self.runtime.config.control.dry_run and self._owned().get(wb.id, {}).get("started"):
+            # test mode while a charge OpenAmpere started goes on: nothing keeps its watchdog alive, so it is stopped
+            # and let go of (the safe direction, sent in test mode too)
+            await self.release(wb, "Der Testmodus ist eingeschaltet, deshalb stoppt OpenAmpere das Laden und gibt die "
+                                   "Wallbox ab.")
+            return reading.power_w
+        if real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S:
+            # it did not take the fallback current: not controlled for a while (#465); a charge OpenAmpere started is
+            # stopped and let go of, since its watchdog would fall back to an unknown current (the stop skips the check)
+            if self._owned().get(wb.id, {}).get("started"):
+                await self.release(wb, "Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen, deshalb stoppt "
+                                       "OpenAmpere das Laden und gibt die Wallbox ab.")
+            return reading.power_w
+        if real(wb) and reading.work_mode not in (None, "controlled"):
+            # start and stop work only in the charger's work mode "controlled" (#465): the app asks for it. Changed
+            # (e.g. in the FoxESS app) during a charge OpenAmpere started: stopped and let go of, nothing would keep
+            # its watchdog alive
+            if self._owned().get(wb.id, {}).get("started"):
+                await self.release(wb, "Der Betriebsmodus der Wallbox ist nicht mehr „Gesteuert“, deshalb gibt "
+                                       "OpenAmpere die Wallbox ab.")
+            return reading.power_w
         if not reading.connected:
-            if model.simulated:
+            if sim:
                 self._sim_flush(wb, live.plan, now, force=True)
                 live.plan = Plan(state="no_car")  # unplugged: a planned charge ends by itself, nothing to stop
                 return 0.0
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
+            live.setpoint = live.limit_a = None  # unplugged: written again, and a limit of the charger asked again (#465)
             live.planned.pop("start", None)
             self._note_stop(wb, False)
             return 0.0
-        if reading.charging and not model.simulated and now - live.stop_sent > STOP_SLACK_S:
+        if reading.charging and not sim and now - live.stop_sent > STOP_SLACK_S:
             self._note_stop(wb, False)  # charging again, not only a read from before the stop showed up
-        plan = live.plan if model.simulated else None
+        plan = live.plan if sim else None
         if plan is not None:
             if not plan.synced:  # a car plugged in, or a simulated mode chosen: from what the charger does now
                 plan.synced, plan.on, plan.started = True, reading.charging, False
@@ -740,8 +916,10 @@ class NativeWallboxes:
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
+        if live.limit_a is not None and now - live.limit_at >= LIMIT_AGAIN_S:
+            live.limit_a = None  # ask again for the current the mode wants
         limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
-                    wb.mode_current_a.get(wb.mode, wb.max_current_a))
+                    wb.mode_current_a.get(wb.mode, wb.max_current_a), live.limit_a or wb.max_current_a)
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
         if plan is not None and phases < reading.installed_phases:
             # one phase of a three-phase charger: only up to just below its lowest power on three phases, above that
@@ -901,21 +1079,32 @@ class NativeWallboxes:
         entry = self._owned().get(wb.id)
         if not entry:
             return True
-        if MODELS[wb.model].read_only:  # never written, so never owned: nothing to put back
+        if read_only(wb):  # never written, so never owned: nothing to put back
             self._disown(wb.id)
             return True
         live = live or self.live.setdefault(wb.id, Live())
+        model = MODELS[wb.model]
+        now = time.time()
+        if model.protocol == "modbus" and now >= live.retry_at and now - live.updated > 3:
+            # whether it charges now: a start sent since the last poll counts (#465); not again right after a read, and
+            # not before its retry time when it does not answer
+            await self.read(wb, live)
         reading = self._fresh(live, time.time())
         if reading is None:
             return False  # not reachable: again when it answers
-        model = MODELS[wb.model]
         values: dict = {}
-        stop = stop_started and entry.get("started") and reading.charging
+        # a charger whose watchdog charges on unsupervised (#465) is stopped as soon as a car is connected: right after
+        # the start it may still report "starting" or less than the power that counts as charging
+        unsupervised = bool(getattr(model, "heartbeat_s", None))
+        stop = stop_started and entry.get("started") and (reading.charging or unsupervised and reading.connected)
         if stop:
             values.update(model.start(False))
             live.stop_sent = time.time()
         owner = entry.get("current_a")
-        if isinstance(owner, int) and owner != reading.set_current_a:
+        # a wallbox that does not report its current (FoxESS, #465) forgets it outside a charge, and a current written
+        # after a stop would start it again: only while it charges, and written before the stop (_write_modbus)
+        quiet = reading.set_current_a is None and model.protocol == "modbus"
+        if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
         if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
                 and live.online is False:
@@ -924,7 +1113,7 @@ class NativeWallboxes:
         if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
             # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
             self._keep_stop(wb.id, max(live.stop_sent, 0.0))
-        live.want_on, live.short_since = 0, None
+        live.want_on, live.short_since, live.limit_a = 0, None, None
         live.planned.clear()
         return True
 
@@ -983,14 +1172,17 @@ class NativeWallboxes:
             items.append({
                 **{k: v for k, v in asdict(wb).items() if k != "local_key"}, "local_key_set": not key_missing(wb),
                 **({"device_id": None} if hide_device_id else {}),
-                "label": MODELS[wb.model].label, "read_only": MODELS[wb.model].read_only,
+                "label": MODELS[wb.model].label, "read_only": read_only(wb),
                 "modes": list(MODELS[wb.model].modes),
                 "online": live.online, "offline_since": live.offline_since if live.online is False else None,
                 "updated": live.updated or None, "error": live.error,
                 "reading": None if reading is None else {k: v for k, v in asdict(reading).items()
                                                          if k != "lifetime_kwh"},
                 "controlled": wb.id in self._owned(),
-                "simulated": MODELS[wb.model].simulated,
+                "simulated": simulated(wb),
+                "controllable": bool(getattr(MODELS[wb.model], "controllable", False)),  # real control on request
+                # real control held back because the charger did not take the fallback current (#465)
+                "not_prepared": real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S,
                 "work_modes": list(getattr(MODELS[wb.model], "work_modes", None) or ()),  # settable (#464)
                 "simulation": self._plan_view(live.plan) if self.simulates(wb) else None,
             })

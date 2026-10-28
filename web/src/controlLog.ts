@@ -142,6 +142,10 @@ function wallboxText(name: string, action: unknown, value: unknown, before?: unk
     case "start": return t("settings.controlLog.wallboxStart", { name });
     case "stop": return t("settings.controlLog.wallboxStop", { name });
     case "release": return t("settings.controlLog.wallboxReleased", { name });
+    // real control of a FoxESS charger (#465): switched on or off, and the fallback set before the first write
+    case "control": return value === true ? t("settings.controlLog.wallboxControlOn", { name })
+      : t("settings.controlLog.wallboxControlOff", { name });
+    case "prepare": return t("settings.controlLog.wallboxPrepared", { name });
     case "work_mode": { // the work mode of the wallbox itself (#464), with the one it had before
       const names: Record<string, string> = { controlled: t("devices.nativeWallbox.workModeNameControlled"),
         plug_and_charge: t("devices.nativeWallbox.workModeNamePlugAndCharge"), locked: t("devices.nativeWallbox.workModeNameLocked") };
