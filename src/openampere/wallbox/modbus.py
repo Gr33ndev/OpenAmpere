@@ -79,11 +79,12 @@ class ModbusWallbox:
             if response.isError():
                 code = getattr(response, "exception_code", None)
                 raise WallboxUnreachable(
-                    "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich erlaubt sie das Schreiben in ihrer "
-                    "jetzigen Steuerungsart nicht: Stelle sie in der App „Fox Switch“ auf „Modbus TCP“."
+                    "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich lässt sie sich gerade nur über ihre "
+                    "eigene App steuern: Stelle in der App „Fox Switch“ die Verbindungsart „Modbus TCP“ ein."
                     if code in (1, 2, 3, 6) else
-                    f"Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Modbus-Code {code}). Versuche "
-                    "es später noch einmal.")
+                    f"Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche "
+                    "es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen "
+                    "Bericht.")
             await asyncio.sleep(REQUEST_GAP_S)
             try:
                 back = await self._block(client, address, 1, False)

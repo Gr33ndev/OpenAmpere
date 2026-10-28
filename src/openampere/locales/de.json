@@ -397,7 +397,7 @@
     "simulationReleased": "{reason}, OpenAmpere gäbe die Wallbox ab",
     "removedSwitchedOffOrChanged": "Wallbox entfernt, ausgeschaltet oder geändert",
     "modbusWriteNotConnected": "Die Wallbox unter {host} nimmt gerade keine Modbus-Verbindung an. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.",
-    "modbusWriteRejected": "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich erlaubt sie das Schreiben in ihrer jetzigen Steuerungsart nicht: Stelle sie in der App „Fox Switch“ auf „Modbus TCP“.",
+    "modbusWriteRejected": "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich lässt sie sich gerade nur über ihre eigene App steuern: Stelle in der App „Fox Switch“ die Verbindungsart „Modbus TCP“ ein.",
     "workModeNotSettable": "Bei dieser Wallbox kann OpenAmpere den Betriebsmodus nicht einstellen.",
     "unknownWorkMode": "Unbekannter Betriebsmodus.",
     "workModeControlOff": "Änderungen an Geräten sind ausgeschaltet. Stelle sie unter Geräte auf „Aktiv“, dann kann OpenAmpere den Betriebsmodus der Wallbox ändern.",
@@ -405,6 +405,6 @@
     "readBackFailed": "Die Wallbox hat die Einstellung angenommen, OpenAmpere konnte sie aber nicht zurücklesen. Ob sie gilt, siehst du nach der nächsten Abfrage der Wallbox.",
     "workModeNotAnswering": "Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, wenn sie wieder erreichbar ist.",
     "writeAnswerLost": "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du nach der nächsten Abfrage der Wallbox.",
-    "modbusWriteError": "Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Modbus-Code {code}). Versuche es später noch einmal."
+    "modbusWriteError": "Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen Bericht."
   }
 }
