@@ -22,7 +22,7 @@ support evcc, smart plugs and plugins work without a token.
 - **Paid token:** also has an expiry date inside; you get a new one on [sponsor.evcc.io](https://sponsor.evcc.io), and
   evcc warns 30 days ahead.
 - **In OpenAmpere:** under **Geräte** (Devices) and **Mehr → Verbindung → Wallbox** OpenAmpere warns while evcc runs
-  with the test token or the token expires soon, and says so when evcc does not start the wallbox because a valid
+  with the test token or the token expires soon, says when the token has expired (#462), and says so when evcc does not start the wallbox because a valid
   token is missing.
 
 We recommend supporting evcc. OpenAmpere uses only the open interface of evcc and has no influence on its terms.

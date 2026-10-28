@@ -23,7 +23,7 @@ die evcc unterstützen, Schaltsteckdosen und Plugins funktionieren ohne Token.
 - **Bezahltes Token:** hat ebenfalls ein Ablaufdatum; ein neues bekommst du auf
   [sponsor.evcc.io](https://sponsor.evcc.io), und evcc warnt 30 Tage vorher.
 - **In OpenAmpere:** Unter **Geräte** und **Mehr → Verbindung → Wallbox** warnt OpenAmpere, solange evcc mit dem
-  Testtoken läuft oder das Token bald abläuft, und sagt es, wenn evcc die Wallbox wegen eines fehlenden Tokens nicht
+  Testtoken läuft oder das Token bald abläuft, sagt, wenn das Token abgelaufen ist (#462), und sagt es, wenn evcc die Wallbox wegen eines fehlenden Tokens nicht
   startet.
 
 Wir empfehlen, evcc zu unterstützen. OpenAmpere nutzt nur die offene Schnittstelle von evcc und hat keinen Einfluss
