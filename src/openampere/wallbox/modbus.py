@@ -72,14 +72,18 @@ class ModbusWallbox:
                 raise ReadBackFailed(
                     "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du "
                     "nach der nächsten Abfrage der Wallbox.") from None
-            if response is None or response.isError():
-                code = getattr(response, "exception_code", None) if response is not None else None
+            if response is None:  # no exception, but no answer either: as lost
+                raise ReadBackFailed(
+                    "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du "
+                    "nach der nächsten Abfrage der Wallbox.")
+            if response.isError():
+                code = getattr(response, "exception_code", None)
                 raise WallboxUnreachable(
                     "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich erlaubt sie das Schreiben in ihrer "
                     "jetzigen Steuerungsart nicht: Stelle sie in der App „Fox Switch“ auf „Modbus TCP“."
                     if code in (1, 2, 3, 6) else
-                    "Die Wallbox hat auf die Einstellung nicht geantwortet. Bei Anlagen von EKD ist meist die "
-                    "bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.")
+                    f"Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Modbus-Code {code}). Versuche "
+                    "es später noch einmal.")
             await asyncio.sleep(REQUEST_GAP_S)
             try:
                 back = await self._block(client, address, 1, False)
