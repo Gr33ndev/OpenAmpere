@@ -25,7 +25,10 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
   cut from power the check reads the charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - In Modbus TCP mode the charger's watchdog fails in the unsafe direction: it keeps charging when the controller stops
   writing.
-- The register addresses come from a FoxESS document that is not public; they are used as facts only.
+- The register addresses come from FoxESS's protocol document V1.6, which FoxESS support gives to owners and an owner
+  posted in a public evcc discussion; it is marked "all rights reserved", so they are used as facts only. The
+  write registers (work mode, current and power setpoints, start/stop) are documented there, not yet tested by
+  OpenAmpere ([#463](https://github.com/Gr33ndev/OpenAmpere/issues/463)).
 
 ## Registers
 
@@ -42,7 +45,7 @@ and the serial number (0x1016–0x1031) are not read at all. Only function code 
 |---|---|---|---|---|---|
 | 0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010 | Read as part of the block, not interpreted by OpenAmpere | – | R FC03 | open | [foxess.py](../../../src/openampere/wallbox/foxess.py) |
 | 0x1001 | Firmware: high byte major, low byte minor | U16 | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x1003 | Status: 0 idle, 1 connected, 2 starting, 3 charging, 4 paused, 5 finished, 6 fault, 8 locked | U16 | R FC03 | documented; 0 (idle, no car) confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x1003 | Status: 0 idle, 1 connected (waiting for the start command), 2 starting (waiting for the car), 3 charging, 4 paused, 5 finished, 6 fault, 8 locked (no operation possible) | U16 | R FC03 | documented; 0 (idle, no car) confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1003 = 9 | Status "switching phases": not in the document, seen on real devices | U16 | R FC03 | derived | owner reports in public evcc discussions |
 | 0x1005 | Plug connected; read 1 on one device while idle with no car plugged in, so the meaning is doubtful (not shown in the app, only in the report) | U16, 0/1 | R FC03 | open (documented, contradicted on one device) | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1008–0x100A | Voltage L1, L2, L3 | U16, ×0.1 V | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
@@ -53,23 +56,30 @@ and the serial number (0x1016–0x1031) are not read at all. Only function code 
 | 0x1013 | Maximum current | U16, ×0.1 A | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1014 | Minimum current | U16, ×0.1 A | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1015 | Alarm bits; bit 1 was set on one device while idle, meaning unknown | U16, bit field | R FC03 | documented; bit 1: open | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x1016–0x1019 | Energy counters; OpenAmpere decodes 0x1016–0x1017 as the lifetime counter | U32, ×0.1 kWh | R FC03; removed from the report, only "plausible" yes/no | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
+| 0x1016–0x1019 | Energy counters: 0x1016–0x1017 lifetime, 0x1018–0x1019 the current session | U32, ×0.1 kWh | R FC03; removed from the report, only "plausible" yes/no | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 | 0x101A–0x101B | Fault bits | U32, bit field | R FC03 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 | 0x101C–0x101D | RFID card that started the session | U32 | R FC03; removed from the report, only "set / not set" | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 | 0x101E–0x1021 | Model code | ASCII, 4 registers | R FC03; kept in the report | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1022–0x1031 | Serial number | ASCII | not read | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
-| 0x3000 | Work mode: 0 controlled (start through the app or a card), 1 plug and charge (charges when plugged in), 2 locked | U16 | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x3001 | Probably the configured current limit: matched the maximum current (0x1013) on one device | U16, ×0.1 A | R FC03 | derived | owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x3002 | Probably the configured power limit: matched the maximum power (0x1011) on one device | U16, ×0.1 kW | R FC03 | derived | owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x3003–0x3004 | Read as part of the block, not interpreted by OpenAmpere; read as 0xFFFF (probably unset) on one device | – | R FC03 | open | [foxess.py](../../../src/openampere/wallbox/foxess.py), [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x3005 | Validity of the controller's setpoint | U16, s | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x3006 | Fallback current: the charger charges at this current when a Modbus controller stops writing | U16, ×0.1 A | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3000 | Work mode: 0 controlled (start through the app, a card or a Modbus controller), 1 plug and charge (charges when plugged in), 2 locked | U16 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3001 | Maximum charging current (the current setpoint); matched the maximum current (0x1013) on one idle device | U16, ×0.1 A | R FC03, W FC16 | documented; read plausible on one device | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3002 | Maximum charging power (the power setpoint); without a phase switch box it also selects the phases: below 1.4 kW paused, from 1.4 kW one phase, from 4.2 kW three phases. Matched the maximum power (0x1011) on one idle device | U16, ×0.1 kW | R FC03, W FC16 | documented; read plausible on one device | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3003–0x3004 | Allowed charging time (minutes) and energy (kWh); read as 0xFFFF (probably unset) on one device, not used by OpenAmpere | – | R FC03 | open | [foxess.py](../../../src/openampere/wallbox/foxess.py), [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3005 | Validity of a command: a setpoint must be written again within this time (the watchdog) | U16, s, 10–60 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3006 | Fallback current: the charger charges at this current when a Modbus controller stops writing | U16, ×0.1 A, 6–32 A | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x3007–0x3009 | Read in the separate block (missing on single-phase models), not interpreted | – | R FC03 | open | [foxess.py](../../../src/openampere/wallbox/foxess.py) |
-| 0x300A | Automatic 1/3-phase switching | U16, 0/1 | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| 0x300B | Minimum interval between phase switches; the simulated control switches phases at most this often ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) | U16, minutes | R FC03 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x300A | Automatic 1/3-phase switching | U16, 0/1 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x300B | Minimum interval between phase switches; the simulated control switches phases at most this often ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) | U16, minutes, 5–30 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x4000 | Electronic lock of the plug (not the work mode) | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
+| 0x4001 | Session control: 0 no action, 1 start, 2 stop | U16 | W FC06 | documented; used by evcc's driver on real devices | FoxESS EV Charger Modbus TCP protocol V1.6; [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) |
+| 0x4002 | Phase sequence switching, only with an external phase switch box | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
+| 0x4003 | Restart | U16 | W FC06 | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 
 The registers marked confirmed gave plausible values in the check on one three-phase charger of an EKD system, idle
 with no car plugged in ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
+According to the document, read/write registers are written with function code 16 and write-only registers with
+function code 6. OpenAmpere has not written any of them yet; evcc's driver (since July 2026) writes them on real
+devices ([evcc-io/evcc#31412](https://github.com/evcc-io/evcc/pull/31412)).
 Values while charging and single-phase models are not confirmed yet.
 
 ## Behaviour
@@ -86,6 +96,10 @@ Values while charging and single-phase models are not confirmed yet.
 | In default mode Modbus TCP is read-only according to the Fox Switch app manual (section 8.6). | documented | Fox Switch app manual V1.0.1; [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | Outside the "Modbus TCP" mode some firmware answers every read with exception 6 ("server device busy"). | derived | evcc discussions; [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318), [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325) |
 | In Modbus TCP mode the watchdog fails in the unsafe direction: when the controller stops writing, the charger does not stop; after about 60 s it charges at its stored default current or at full power. Only an explicit stop ends charging, and a power setpoint written after a stop can restart it. Cost risk only; the charger stays within its rated limits. | derived | owner reports from other projects, [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
+| A setpoint (0x3001/0x3002) must be written again within the validity (0x3005); otherwise the charger treats the controller as gone and charges with the fallback. | derived | owner reports in [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) |
+| A setpoint written after a stop (0x4001 = 2) starts charging again without a start command. A controller must not refresh a setpoint while it has stopped the charger. | derived | owner reports in [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) |
+| A current setpoint takes effect only while charging; outside a session the charger resets it. | derived | owner reports in [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) |
+| Some chargers suddenly report work mode 2 ("locked", status 8); the previous app then shows the wallbox as locked and cannot change it. | derived | owner report ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)) |
 | Current and power setpoints are held in RAM and lost on a power cut; configuration values are probably stored. Automatic 1/3-phase switching follows the power setpoint. | derived | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | The previous smartbox of EKD (Ampere.IQ) systems is a Modbus TCP client of the charger: its settings page lists the charger as "Ampere.ChargePro Bridge", Modbus TCP, host `EVC-<serial>.local`, unit id 1, port 502, marked as not configurable. So the box competes with OpenAmpere and evcc for the charger's connection(s). | derived | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427); [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
 | While the previous smartbox is powered, OpenAmpere cannot read the charger: the connection on port 502 is refused, or it is accepted but the answers carry foreign transaction ids and then time out. With the box cut from power the check reads all blocks at once on port 502, unit id 1, FC03; port 1502 refused. Whether the charger allows only one client or mishandles concurrent clients is open. | confirmed (one device) | owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
@@ -137,18 +151,24 @@ Values while charging and single-phase models are not confirmed yet.
   profile of 0 A or 6 A plus short-lived higher limits renewed by OpenAmpere) is not confirmed on any charger; renewing
   stored profiles may wear the charger's flash, a 0 A base profile blocks charging while OpenAmpere is down, and OCPP
   1.6 leaves expiry and reboot behaviour open.
-- Meaning of the read but uninterpreted words (0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010, 0x3003–0x3004,
-  0x3007–0x3009) and of 0x1018–0x1019; the meaning of 0x3001–0x3002 is only derived.
+- Meaning of the read but uninterpreted words (0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010, 0x3007–0x3009).
+- No write by OpenAmpere tested on a real device yet: work mode, setpoints, start and stop
+  ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464), [#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)).
+- Why a charger switches to "locked" by itself ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)).
 
 ## Sources
 
-- FoxESS EV Charger Modbus TCP protocol V1.6: given to owners by FoxESS support, not public, marked "all rights
+- FoxESS EV Charger Modbus TCP protocol V1.6: given to owners by FoxESS support; an owner posted it in a public evcc
+  discussion ([evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218)). Marked "all rights
   reserved". Following the [README](../README.md#sources), only facts (register addresses, meanings, units) are
   used, in own words; the document is not quoted, not added to the repository and not passed on
   ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - FoxESS Fox Switch app manual V1.0.1 and FoxESS energy management user manual (as summarised in
   [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
-- Owner reports in public evcc discussions (facts only; evcc's FoxESS driver is not used).
+- Owner reports in public evcc discussions, among them [evcc-io/evcc#26218](https://github.com/evcc-io/evcc/discussions/26218) (facts only).
+- evcc's Modbus driver `foxess-evc` ([evcc-io/evcc#31412](https://github.com/evcc-io/evcc/pull/31412)): not MIT
+  licensed ("all rights reserved"), its code is not used; it only shows that the write registers work on real
+  devices.
 - An owner's diagnostics report from the wallbox check ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)); not linked; only facts are used, nothing that
   identifies the device.
 - OpenAmpere issues and pull requests linked above; code: [wallbox/foxess.py](../../../src/openampere/wallbox/foxess.py),
