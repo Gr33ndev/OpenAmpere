@@ -94,6 +94,7 @@ SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log a
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
+PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 STOPPED = "wallbox_stopped"  # meta: id -> time of OpenAmpere's stop, kept after letting go of the wallbox (#456)
@@ -192,6 +193,7 @@ class Live:
     plan: Plan = field(default_factory=Plan)  # a simulated control (#440)
     setpoint: int | None = None  # a wallbox that does not report its current: the one OpenAmpere wrote (#465)
     prepared: bool = False  # the model's `prepare` values written since it answers (#465)
+    unprepared_at: float = float("-inf")  # they did not read back: not controlled for PREPARE_AGAIN_S
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
@@ -312,6 +314,11 @@ class NativeWallboxes:
         for item in raw:
             if isinstance(item, dict) and not item.get("local_key") and item.get("id") in stored:
                 item = {**item, "local_key": stored[item["id"]].local_key}
+            if isinstance(item, dict):
+                # real control only through set_control(), after the question in the app (#465): never switched on or
+                # off by saving the list
+                old = stored.get(item.get("id"))
+                item = {**item, "control": bool(old and old.control)}
             items.append(item)
         wallboxes = validate(items, keyless={wb.id for wb in stored.values() if not wb.local_key})
         for wb in wallboxes:
@@ -704,8 +711,8 @@ class NativeWallboxes:
             self._failed(wb, live, err, time.time())
             self._log(wb, action, value, False, f"Fehler: {err.message}")
             return False
-        if model.protocol == "modbus":  # only what was written comes back, the next poll reads the rest
-            live.updated = time.time()
+        if model.protocol == "modbus":  # only what was written comes back: read the rest with the next poll
+            live.updated = min(live.updated, time.time() - POLL_S)
         else:
             live.reading, live.updated = model.interpret(back), time.time()
         # start and stop are not reported back, the state shows them with the next read
@@ -722,13 +729,23 @@ class NativeWallboxes:
         prepare = {} if live.prepared else dict(getattr(model, "prepare", {}))
         writer = ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional,
                                writable=model.writable)
-        async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
-            back = await writer.set({**prepare, **values}, model.write_only)
+        if prepare and time.time() - live.unprepared_at < PREPARE_AGAIN_S:
+            raise WallboxUnreachable("Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert "
+                                     "sie deshalb nicht.")
         if prepare:
-            differs = {a: back.get(a) for a, v in prepare.items() if back.get(a) != v}
+            # the fallback current the owner agreed to must hold before anything else is written
+            async with live.lock:
+                ready = await writer.set(prepare)
+            differs = {a: ready.get(a) for a, v in prepare.items() if ready.get(a) != v}
             self._log(wb, "prepare", prepare, False, f"Rücklesen abweichend: {differs}" if differs else
                       "ok: Befehle gelten 60 s, ohne OpenAmpere lädt die Wallbox mit 6 A weiter")
-            live.prepared = not differs
+            if differs:
+                live.unprepared_at = time.time()
+                raise WallboxUnreachable("Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert "
+                                         "sie deshalb nicht.")
+            live.prepared = True
+        async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
+            back = await writer.set(values, model.write_only)
         current = model.set_current(6)
         for address in current:
             if address in back:
@@ -736,7 +753,7 @@ class NativeWallboxes:
         for address, value in values.items():
             if address in model.write_only and value == model.start(False)[address]:
                 live.setpoint = None  # outside a charge the charger forgets the current
-        return {a: v for a, v in back.items() if a not in prepare}
+        return back
 
     async def _beat(self, wb: NativeWallbox, live: Live, amps: int, now: float) -> None:
         """The watchdog of a controlled wallbox (#465): the current written again while the car charges, logged only
@@ -821,6 +838,13 @@ class NativeWallboxes:
             if sim:
                 live.plan.state = "unknown"  # the plan stays: it goes on once the charger answers again
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
+        if real(wb) and self.runtime.config.control.dry_run and self._owned().get(wb.id, {}).get("started"):
+            # test mode while a charge OpenAmpere started goes on: nothing keeps its watchdog alive, so it is stopped
+            # and let go of (the safe direction, sent in test mode too)
+            await self.release(wb, "Testmodus, OpenAmpere gibt die Wallbox ab")
+            return reading.power_w
+        if real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S:
+            return reading.power_w  # it did not take the fallback current: not controlled for a while (#465)
         if real(wb) and reading.work_mode not in (None, "controlled"):
             # start and stop work only in the charger's work mode "controlled" (#465): the app asks for it
             return reading.power_w

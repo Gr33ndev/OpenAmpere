@@ -341,7 +341,7 @@ const portNumber = (value: string | number | null | undefined) => (String(value 
 const toItem = (wb: NativeWallbox | Draft) => ({ id: wb.id, name: wb.name, model: wb.model, host: wb.host,
   device_id: wb.device_id ?? "", local_key: "local_key" in wb ? wb.local_key : "", max_current_a: Number(wb.max_current_a),
   mode: wb.mode, enabled: wb.enabled, mode_current_a: wb.mode_current_a ?? {}, stop_after_min: Number(wb.stop_after_min ?? 10),
-  port: portNumber(wb.port), unit: portNumber(wb.unit) });
+  port: portNumber(wb.port), unit: portNumber(wb.unit), control: "control" in wb ? !!wb.control : false });
 const toDraft = (wb: NativeWallbox): Draft => ({ ...toItem(wb), id: wb.id, device_id: wb.device_id ?? "", local_key: "",
   max_current_a: String(wb.max_current_a), stop_after_min: String(wb.stop_after_min ?? 10), port: String(wb.port ?? ""),
   unit: String(wb.unit ?? "") });

@@ -44,8 +44,10 @@ def setup(tmp_path, port: int, *, control: bool = True, mode: str = "now", dry_r
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     runtime.config.control.enabled, runtime.config.control.dry_run = True, dry_run
     wallboxes = NativeWallboxes(runtime)
-    wallboxes.save([{"name": "Garage", "model": "foxess_ac", "host": "127.0.0.1", "port": port, "mode": mode,
-                     "control": control}])
+    wallboxes.save([{"name": "Garage", "model": "foxess_ac", "host": "127.0.0.1", "port": port, "mode": mode}])
+    stored = wallboxes.wallboxes
+    stored[0].control = control  # as set_control() stores it after the question in the app
+    wallboxes._store(stored)
     return runtime, wallboxes, wallboxes.wallboxes[0]
 
 
@@ -200,3 +202,52 @@ def test_the_app_switches_it_on_only_when_logged_in(tmp_path, monkeypatch):
     fox = r.json()["wallboxes"][0]
     assert fox["control"] and not fox["simulated"] and not fox["read_only"]
     assert web.post("/api/wallboxes/nope/control", json={"on": True}).status_code == 400
+
+
+async def test_saving_the_list_neither_switches_control_off_nor_on(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        await check(wallboxes, wb, time.time())
+        item = {k: v for k, v in wallboxes.view()["wallboxes"][0].items() if k != "control"}  # the app before #465
+        wallboxes.save([{**item, "name": "Carport"}])
+        wb = wallboxes.wallboxes[0]
+        assert wb.control and wb.name == "Carport" and charger.regs[0x1003] == 3
+        assert charger.writes[-1] == (0x4001, 1)  # nothing stopped
+        wallboxes.save([{**item, "control": False}])
+        assert wallboxes.wallboxes[0].control  # only set_control() switches it off
+
+        runtime2 = Runtime({}, Storage(tmp_path / "u.db"))
+        fresh = NativeWallboxes(runtime2)
+        fresh.save([{"name": "Garage", "model": "foxess_ac", "host": "127.0.0.1", "port": port, "control": True}])
+        assert not fresh.wallboxes[0].control  # never switched on without the question
+
+
+async def test_nothing_is_written_when_the_fallback_current_does_not_read_back(tmp_path, monkeypatch):
+    async with charger_with_car() as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port)
+        handle = charger.handle
+
+        def keeps_its_fallback(pdu: bytes) -> bytes:
+            answer = handle(pdu)
+            charger.regs[0x3006] = 100  # 10 A, whatever is written
+            return answer
+        monkeypatch.setattr(charger, "handle", keeps_its_fallback)
+        await check(wallboxes, wb, time.time())
+        assert [a for a, _ in charger.writes] == [0x3005, 0x3006]  # no current, no start
+        assert charger.regs[0x1003] == 1
+        assert entries(runtime, "prepare")[0]["result"].startswith("Rücklesen abweichend")
+
+
+async def test_test_mode_during_a_charge_openampere_started_stops_it(tmp_path):
+    async with charger_with_car() as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        assert charger.regs[0x1003] == 3
+        runtime.config.control.dry_run = True
+        await check(wallboxes, wb, t0 + 10)
+        assert charger.writes[-1] == (0x4001, 2) and charger.regs[0x1003] == 4
+        assert not wallboxes._owned()
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 60)
+        assert len(charger.writes) == written  # test mode: nothing more

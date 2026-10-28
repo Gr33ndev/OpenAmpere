@@ -73,7 +73,8 @@ Do not report what CI already checks: ruff, Biome, TypeScript, the build, Conven
   `src/openampere/privacy.py`, no second masking.
 - **Writing to the inverter:** only through the control features; master switch and test mode respected;
   `supports_control` checked; limits checked before writing; value read back; every change in the control log;
-  continuous control only via remote control with watchdog; release only what OpenAmpere started; switching off still
+  continuous control only via remote control with watchdog (the one exception, the FoxESS charger whose watchdog
+  fails unsafe, only after the owner's yes, see AGENTS.md); release only what OpenAmpere started; switching off still
   written with the master switch off. A new register needs a source. Legal topics (export limit, § 14a EnWG, EEG)
   settled in the issue, which has the label `safety`.
 - **Security:** input from the network, files and devices is checked; no secrets in logs or API responses.
