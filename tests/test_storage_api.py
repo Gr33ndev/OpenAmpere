@@ -415,3 +415,22 @@ def test_retention_forever_and_storage_usage(tmp_path):
     usage = TestClient(create_app(runtime)).get("/api/storage").json()
     assert usage["db_bytes"] > 0 and usage["free_bytes"] > 0
     assert usage["bytes_per_year"] == round(86400 / 10 * 130 * 365)  # one reading every 10 s
+
+
+def test_power_timeline_shows_the_imported_state_of_charge(tmp_path):
+    """#468: a day imported from the cloud has no local readings; its state of charge per quarter hour is drawn in the
+    "Leistung" view too, and a quarter hour with local readings keeps them."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.import_energy([{"ts": int(base + i * 900), "pv_wh": 100.0} for i in range(3)], "cloud")
+    storage.import_soc([(int(base), 40.0), (int(base + 900), 42.0), (int(base + 1800), 44.0)])
+    storage.add_snapshot(snap(base + 1800 + 60, 1000, 400))  # local readings from the third quarter hour on
+    client = TestClient(create_app(Runtime({}, storage)))
+    entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+    imported = [e for e in entries if e["pv"] is None]
+    assert [(e["ts"], e["soc"]) for e in imported] == [(base, 40.0), (base + 900, 42.0)]
+    assert [e["ts"] for e in entries] == sorted(e["ts"] for e in entries)
+    assert all(e["ts"] >= base + 1800 for e in entries if e["pv"] is not None)  # the local quarter hour: readings only
+    # a step longer than a quarter hour: the quarter hours of an hour with readings get no empty entries
+    hourly = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 3600}).json()["entries"]
+    assert [(e["ts"], e["soc"]) for e in hourly if e["pv"] is None] == [(base, 40.0), (base + 900, 42.0)]

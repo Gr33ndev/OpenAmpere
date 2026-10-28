@@ -1485,6 +1485,14 @@ def create_app(runtime: Runtime) -> FastAPI:
                 values = [r[key] for r in rows if r[key] is not None]
                 entry[key] = sum(values) / len(values) if values else None
             entries.append(entry)
+        # a quarter hour without local readings, e.g. a day imported from the cloud (#468): the state of charge stored
+        # per quarter hour, so the line is drawn there as well; the power values stay empty
+        read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
+        for row in storage.energy(start, end):
+            if row.get("soc") is not None and row["ts"] // 900 * 900 not in read:
+                entries.append({"ts": row["ts"], **dict.fromkeys(("pv", "house", "grid", "battery", EXTERNAL)),
+                                "soc": row["soc"]})
+        entries.sort(key=lambda e: e["ts"])
         return {"from": start, "to": end, "step": step, "entries": entries}
 
     @app.get("/api/pv/inputs")

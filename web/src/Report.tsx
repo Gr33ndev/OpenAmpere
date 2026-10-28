@@ -314,6 +314,10 @@ export function Report() {
       <Legend items={legend} hidden={hidden} onToggle={toggle} />
       <p className="hint">{t("report.report.legendHint")}</p>
       {showPower && <p className="hint">{t("report.report.signHint")}</p>}
+      {/* a day with only quarter-hour values (imported, or older than the raw readings are kept): no power curve (#468) */}
+      {showPower && rows.length > 0 && rows.every((r) => (r as PowerEntry).pv == null && (r as PowerEntry).house == null) && (
+        <p className="hint">{t("report.report.onlyQuarterHours", { view: t("report.report.energyQuarterHours") })}</p>
+      )}
       {period === "day" && summary?.recorded_since && (
         <p className="hint">{t("report.report.recordingSince", {
           time: new Date(summary.recorded_since * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() }) })}</p>
