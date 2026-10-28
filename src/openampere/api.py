@@ -1487,7 +1487,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries.append(entry)
         # a quarter hour without local readings, e.g. a day imported from the cloud (#468): the state of charge stored
         # per quarter hour, so the line is drawn there as well; the power values stay empty
-        read = {ts // 900 * 900 for ts in buckets}
+        read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
         for row in storage.energy(start, end):
             if row.get("soc") is not None and row["ts"] // 900 * 900 not in read:
                 entries.append({"ts": row["ts"], **dict.fromkeys(("pv", "house", "grid", "battery", EXTERNAL)),

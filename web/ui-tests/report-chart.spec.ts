@@ -143,5 +143,7 @@ test("the power view of an imported day shows the state of charge", async ({ pag
   api.override("/api/power/timeline", { from: 0, to: 0, step: 300, entries: [quarter(8, 40), quarter(9, 45), quarter(10, 52)] });
   await open(page, "report");
   await expect(page.locator(".legend").first().getByRole("button", { name: "Ladestand (rechte Achse)" })).toBeVisible();
+  await expect(page.getByText("Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden.",
+    { exact: false })).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
 });

@@ -431,3 +431,6 @@ def test_power_timeline_shows_the_imported_state_of_charge(tmp_path):
     assert [(e["ts"], e["soc"]) for e in imported] == [(base, 40.0), (base + 900, 42.0)]
     assert [e["ts"] for e in entries] == sorted(e["ts"] for e in entries)
     assert all(e["ts"] >= base + 1800 for e in entries if e["pv"] is not None)  # the local quarter hour: readings only
+    # a step longer than a quarter hour: the quarter hours of an hour with readings get no empty entries
+    hourly = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 3600}).json()["entries"]
+    assert [(e["ts"], e["soc"]) for e in hourly if e["pv"] is None] == [(base, 40.0), (base + 900, 42.0)]

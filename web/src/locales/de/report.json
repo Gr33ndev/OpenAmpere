@@ -163,7 +163,8 @@
     "signHint": "Netz über null heißt Bezug, darunter Einspeisung. Speicher über null heißt Entladen, darunter Laden.",
     "socRightAxis": "Ladestand (rechte Achse)",
     "legendHint": "Tippe auf einen Eintrag, um seine Linie aus- oder wieder einzublenden.",
-    "externalPart": "davon {name}"
+    "externalPart": "davon {name}",
+    "onlyQuarterHours": "Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden. Die Energie siehst du unter „{view}“."
   },
   "temperatureSection": {
     "bms": "Speicher-Elektronik (BMS)",
