@@ -136,3 +136,18 @@ test("work mode entries say the old and the new mode", async ({ page, api }) => 
   await expect(page.getByText("Garage: Betriebsmodus „Gesteuert“ eingestellt.", { exact: true })).toBeVisible();
   await expect(page.getByText("Einstellung geändert")).toHaveCount(0);
 });
+
+// #465: real control switched on and the fallback current set, as sentences
+test("real control entries say what changed", async ({ page, api }) => {
+  const entry = (action: string, value: unknown) => ({ action: "wallbox", dry_run: false, result: "ok",
+    details: { from: { loadpoint: "Garage", id: "abcd1234" }, to: { action, value } } });
+  api.override("/api/control/log", { entries: [
+    { ts: NOW, ...entry("control", true) }, { ts: NOW - 60, ...entry("prepare", { 12293: 60, 12294: 60 }) },
+    { ts: NOW - 120, ...entry("control", false) },
+  ] });
+  await open(page, "more/control");
+  await expect(page.getByText("Garage: Echte Steuerung eingeschaltet.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Garage: Ersatzstrom eingestellt.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Garage: Echte Steuerung ausgeschaltet.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Einstellung geändert")).toHaveCount(0);
+});

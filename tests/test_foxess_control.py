@@ -83,7 +83,7 @@ async def test_now_prepares_once_sets_the_current_and_starts(tmp_path):
         await check(wallboxes, wb, t0)
         assert charger.writes == [*PREPARED, (0x3001, 160), (0x4001, 1)]  # 16 A, the owner's limit
         assert charger.regs[0x1003] == 3 and set(charger.functions) == {3, 6, 16}
-        assert entries(runtime, "prepare")[0]["result"].startswith("ok")
+        assert entries(runtime, "prepare")[0]["result"] == "ok"
         assert [e["dry_run"] for e in entries(runtime, "start")] == [False]
         await check(wallboxes, wb, t0 + 5)
         assert charger.writes[-1] == (0x4001, 1) and len(charger.writes) == 4  # charging: nothing to write

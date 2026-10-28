@@ -737,8 +737,7 @@ class NativeWallboxes:
             async with live.lock:
                 ready = await writer.set(prepare)
             differs = {a: ready.get(a) for a, v in prepare.items() if ready.get(a) != v}
-            self._log(wb, "prepare", prepare, False, f"Rücklesen abweichend: {differs}" if differs else
-                      "ok: Befehle gelten 60 s, ohne OpenAmpere lädt die Wallbox mit 6 A weiter")
+            self._log(wb, "prepare", prepare, False, f"Rücklesen abweichend: {differs}" if differs else "ok")
             if differs:
                 live.unprepared_at = time.time()
                 raise WallboxUnreachable("Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert "
@@ -841,7 +840,8 @@ class NativeWallboxes:
         if real(wb) and self.runtime.config.control.dry_run and self._owned().get(wb.id, {}).get("started"):
             # test mode while a charge OpenAmpere started goes on: nothing keeps its watchdog alive, so it is stopped
             # and let go of (the safe direction, sent in test mode too)
-            await self.release(wb, "Testmodus, OpenAmpere gibt die Wallbox ab")
+            await self.release(wb, "Der Testmodus ist eingeschaltet, deshalb stoppt OpenAmpere das Laden und gibt die "
+                                   "Wallbox ab.")
             return reading.power_w
         if real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S:
             return reading.power_w  # it did not take the fallback current: not controlled for a while (#465)
