@@ -354,6 +354,7 @@ def test_an_ip_address_as_origin_gets_its_ip_pseudonym(tmp_path):
     runtime, _ = app_client(tmp_path)
     masked = privacy.for_report(runtime).text(
         "refused a request from origin http://192.168.1.10:8080 to host x / 192.168.1.10 / "
-        "refused a request from origin http://[2001:db8:abcd:12::5]:8443 to host y")
-    assert "192.168" not in masked and "db8" not in masked and "abcd" not in masked
-    assert masked.count("<IP-1>") == 2 and "<Host-" not in masked
+        "refused a request from origin http://[2001:db8:abcd:12::5]:8443 to host [2001:db8:abcd:12::5]:8080 / "
+        "refused a request from origin http://[2a02:db8:1:2:3:4:5:6]:8443 to host z")
+    assert "192.168" not in masked and "db8" not in masked and "abcd" not in masked and "2a02" not in masked
+    assert masked.count("<IP-1>") == 2 and masked.count("<IP-2>") == 2 and "<Host-" not in masked

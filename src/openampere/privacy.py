@@ -80,8 +80,8 @@ class Pseudonyms:
 
     def _origin(self, match: re.Match) -> str:
         """The browser's address in a refused origin (#460): a name gets a host pseudonym; an own address already
-        replaced keeps its own, and an IP address (also in brackets) is left to the IP masking below, so it gets the
-        same pseudonym as elsewhere in the report."""
+        replaced keeps its own, and an IP address (also in brackets, with a port) is left unchanged to the IP masking
+        below, so it is masked whole and gets the same pseudonym as elsewhere in the report."""
         host = match.group(2)
         if host.startswith("<"):
             return match.group(0)
@@ -89,7 +89,7 @@ class Pseudonyms:
             ipaddress.ip_address(host.strip("[]"))
         except ValueError:
             return match.group(1) + self.name(host, "Host")
-        return match.group(1) + host.strip("[]") if host.startswith("[") else match.group(0)
+        return match.group(0)  # brackets and port stay: the IP masking finds the address inside them
 
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
