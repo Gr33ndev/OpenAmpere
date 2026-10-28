@@ -1047,13 +1047,19 @@ class NativeWallboxes:
             return True
         live = live or self.live.setdefault(wb.id, Live())
         model = MODELS[wb.model]
-        if model.protocol == "modbus":
-            await self.read(wb, live)  # whether it charges now: a start sent since the last poll counts (#465)
+        now = time.time()
+        if model.protocol == "modbus" and now >= live.retry_at and now - live.updated > 3:
+            # whether it charges now: a start sent since the last poll counts (#465); not again right after a read, and
+            # not before its retry time when it does not answer
+            await self.read(wb, live)
         reading = self._fresh(live, time.time())
         if reading is None:
             return False  # not reachable: again when it answers
         values: dict = {}
-        stop = stop_started and entry.get("started") and reading.charging
+        # a charger whose watchdog charges on unsupervised (#465) is stopped as soon as a car is connected: right after
+        # the start it may still report "starting" or less than the power that counts as charging
+        unsupervised = bool(getattr(model, "heartbeat_s", None))
+        stop = stop_started and entry.get("started") and (reading.charging or unsupervised and reading.connected)
         if stop:
             values.update(model.start(False))
             live.stop_sent = time.time()

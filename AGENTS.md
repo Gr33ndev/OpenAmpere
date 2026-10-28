@@ -143,8 +143,9 @@ Every change reaches owners in three ways, all built from the same release (#300
 - The FoxESS AC EV Charger (#465) is the exception to "watchdog fails safe": its watchdog charges on with a fallback
   current when the controller is gone. Real control only per wallbox after the owner agreed in the app (the question
   says so), in its work mode "controlled"; the fallback current set once to 6 A; the current written again every
-  `heartbeat_s` only while the car charges, never after a stop (a current after a stop starts it again); current
-  written before start or stop (a current after a stop would start it again); a charge OpenAmpere started stopped on a planned shutdown and when it lets go.
+  `heartbeat_s` only while the car charges, never after a stop (a current after a stop starts it again); the current
+  written before start or stop; a charge OpenAmpere started stopped on a planned shutdown and when it lets go, also
+  while the charger still reports "starting".
 - Switching off is the safe direction and is written even with the master switch off or in test mode: releasing the
   remote control, 0 W to a heating rod and "off" to a relay OpenAmpere switched on (#217, #243), and setting a backup
   reserve raised by 0.23.1 back to the owner's value (#320; only to a device with `supports_control` and within the

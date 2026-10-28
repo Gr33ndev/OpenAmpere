@@ -305,3 +305,23 @@ async def test_a_charge_openampere_started_is_stopped_when_the_fallback_fails_la
         await check(wallboxes, wb, t0 + 40)
         assert charger.writes[-1] == (0x4001, 2) and charger.regs[0x1003] == 4
         assert not wallboxes._owned() and charger.restarted_by_current == 0
+
+
+async def test_letting_go_right_after_the_start_stops_a_charger_that_is_still_starting(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        await check(wallboxes, wb, time.time())
+        charger.regs.update({0x1003: 2, 0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # start received, car not yet
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-1] == (0x4001, 2) and not wallboxes._owned()
+
+
+async def test_letting_go_does_not_read_a_charger_that_waits_for_its_retry(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        await check(wallboxes, wb, time.time())
+        live = wallboxes.live[wb.id]
+        live.retry_at, live.updated = time.time() + 60, time.time() - 600  # did not answer: asked again in a minute
+        reads = charger.functions.count(3)
+        assert not await wallboxes.release(wb, "Hauptschalter aus")  # nothing fresh to decide on: again later
+        assert charger.functions.count(3) == reads and wallboxes._owned()
