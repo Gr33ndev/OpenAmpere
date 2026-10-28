@@ -305,7 +305,8 @@
     "realControlNeeds": "For this the work mode of the wallbox must be “Controlled”, the previous EKD smartbox cut from power and “Changes to devices” set to “Active”. In test mode the log only shows what OpenAmpere would do.",
     "realControlOn": "Real control (test): OpenAmpere starts, stops and regulates this wallbox. If OpenAmpere fails, it charges on at 6 A.",
     "realControlNeedsControlled": "OpenAmpere controls the wallbox only in the work mode “Controlled”. Change it below.",
-    "realControlOff": "Back to the simulation"
+    "realControlOff": "Back to the simulation",
+    "realControlNotPrepared": "OpenAmpere is not controlling the wallbox right now: it did not take the fallback current of 6 A that applies if OpenAmpere fails. OpenAmpere tries again in 15 minutes. If this keeps happening, check the wallbox settings in the “Fox Switch” app or go back to the simulation."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

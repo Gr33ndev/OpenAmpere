@@ -194,6 +194,10 @@ stops charging and sets the charging current. This is new and not yet tried on a
   start by itself).
 - OpenAmpere does not switch between one and three phases yet: solar charging needs enough surplus for 6 A on all
   phases of the wallbox.
+- Under real control the work mode stays **Gesteuert**: OpenAmpere does not change it, and if it is changed in the
+  FoxESS app during a charge OpenAmpere started, OpenAmpere stops the charge and lets go of the wallbox.
+- If the wallbox does not take the fallback current of 6 A, the card says so and OpenAmpere does not control it for
+  15 minutes; a charge it started is stopped.
 - **Von Hand** (manual) under real control: OpenAmpere lets go of the wallbox and stops a charge it started, since
   the wallbox would otherwise charge on unsupervised at 6 A. Start charging then in the FoxESS app or with a card.
 - **Zurück zur Simulation** (back to the simulation) lets go of the wallbox: a charge OpenAmpere started is stopped.

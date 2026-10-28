@@ -21,6 +21,11 @@ class WallboxUnreachable(Exception):
         self.message = message
 
 
+class NotPrepared(WallboxUnreachable):
+    """A wallbox that answers but did not take the fallback current OpenAmpere must set before it controls it (#465):
+    not unreachable, so it is not shown as away."""
+
+
 class ReadBackFailed(WallboxUnreachable):
     """A write that may have reached the wallbox: its answer was lost, or reading it back failed (#464)."""
 

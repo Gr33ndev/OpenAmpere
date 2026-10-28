@@ -305,7 +305,8 @@
     "realControlNeeds": "Dafür muss der Betriebsmodus der Wallbox „Gesteuert“ sein, die bisherige Smartbox von EKD vom Strom getrennt und „Änderungen an Geräten“ auf „Aktiv“ stehen. Im Testmodus steht nur im Protokoll, was OpenAmpere tun würde.",
     "realControlOn": "Echte Steuerung (Test): OpenAmpere startet, stoppt und regelt diese Wallbox. Fällt OpenAmpere aus, lädt sie mit 6 A weiter.",
     "realControlNeedsControlled": "OpenAmpere steuert die Wallbox nur im Betriebsmodus „Gesteuert“. Stelle ihn unten um.",
-    "realControlOff": "Zurück zur Simulation"
+    "realControlOff": "Zurück zur Simulation",
+    "realControlNotPrepared": "OpenAmpere steuert die Wallbox gerade nicht: Sie hat den Ersatzstrom von 6 A nicht übernommen, der gilt, falls OpenAmpere ausfällt. OpenAmpere versucht es in 15 Minuten wieder. Bleibt es dabei, prüfe in der App „Fox Switch“ die Einstellungen der Wallbox oder schalte zurück zur Simulation."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

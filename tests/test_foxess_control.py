@@ -17,6 +17,7 @@ from openampere.runtime import Runtime
 from openampere.simulator import SimulatedFoxCharger
 from openampere.storage import Storage
 from openampere.wallbox import modbus
+from openampere.wallbox import native as native_module
 from openampere.wallbox.native import NativeWallboxes, read_only, real, simulated
 
 PREPARED = [(0x3005, 60), (0x3006, 60)]
@@ -325,3 +326,51 @@ async def test_letting_go_does_not_read_a_charger_that_waits_for_its_retry(tmp_p
         reads = charger.functions.count(3)
         assert not await wallboxes.release(wb, "Hauptschalter aus")  # nothing fresh to decide on: again later
         assert charger.functions.count(3) == reads and wallboxes._owned()
+
+
+async def test_a_charger_that_resets_the_current_outside_a_charge_gets_it_once_more_when_charging(tmp_path):
+    async with charger_with_car() as (charger, port):
+        charger.resets_current = True
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        t0 = time.time()
+        live = wallboxes.live.setdefault(wb.id, native_module.Live())
+        live.start_sent = t0  # the car waits for its own timer: no start for a while
+        await check(wallboxes, wb, t0, available=0)
+        await check(wallboxes, wb, t0 + 10, available=0)
+        await check(wallboxes, wb, t0 + 20, available=0)
+        assert [w for w in charger.writes if w[0] == 0x3001] == [(0x3001, 60)]  # written once, not on every check
+        assert not [e for e in entries(runtime, "current") if e["result"].startswith("Rücklesen")]
+        live.start_sent = float("-inf")
+        await check(wallboxes, wb, t0 + 30, available=0)  # started: at its own highest current for now
+        assert charger.regs[0x1003] == 3
+        await check(wallboxes, wb, t0 + 40, available=0)  # charging: the current written again at once and checked
+        assert charger.writes[-1] == (0x3001, 60) and charger.regs[0x100B] == 60
+
+
+async def test_a_charger_without_the_fallback_is_not_shown_as_away_and_says_why(tmp_path, monkeypatch):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        handle = charger.handle
+
+        def keeps_its_fallback(pdu: bytes) -> bytes:
+            answer = handle(pdu)
+            charger.regs[0x3006] = 100
+            return answer
+        monkeypatch.setattr(charger, "handle", keeps_its_fallback)
+        await check(wallboxes, wb, time.time())
+        live = wallboxes.live[wb.id]
+        assert live.online is True and live.error is None and wallboxes.fresh(wb) is not None
+        assert wallboxes.view()["wallboxes"][0]["not_prepared"] is True
+
+
+async def test_a_work_mode_change_during_a_charge_openampere_started_lets_go(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        with pytest.raises(ValueError, match="„Gesteuert“ bleiben"):
+            await wallboxes.set_work_mode(wb.id, "plug_and_charge")
+        assert charger.regs[0x3000] == 0
+        charger.regs[0x3000] = 1  # changed in the FoxESS app
+        await check(wallboxes, wb, t0 + 10)
+        assert charger.writes[-1] == (0x4001, 2) and not wallboxes._owned()

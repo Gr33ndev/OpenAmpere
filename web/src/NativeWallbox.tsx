@@ -44,6 +44,8 @@ export type NativeWallbox = {
   work_modes?: WorkMode[];
   /** FoxESS: real control can be switched on by the owner (#465); `control`: it is on. */
   controllable?: boolean; control?: boolean;
+  /** Real control held back: the charger did not take the fallback current of 6 A (#465). */
+  not_prepared?: boolean;
 };
 type WorkMode = "controlled" | "plug_and_charge" | "locked";
 export type WallboxSimulation = {
@@ -172,6 +174,7 @@ function RealControl({ wb, onChange }: { wb: NativeWallbox; onChange: (view: Wal
       <>
         <Notice kind="warn">{t("devices.nativeWallbox.realControlOn")}</Notice>
         {mode && mode !== "controlled" && <Notice kind="error">{t("devices.nativeWallbox.realControlNeedsControlled")}</Notice>}
+        {wb.not_prepared && <Notice kind="error">{t("devices.nativeWallbox.realControlNotPrepared")}</Notice>}
         <Button variant="secondary" disabled={busy} onClick={() => void set(false)}>{t("devices.nativeWallbox.realControlOff")}</Button>
       </>
     );
