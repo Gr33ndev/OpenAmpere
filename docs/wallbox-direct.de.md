@@ -5,8 +5,8 @@ English: [wallbox-direct.md](wallbox-direct.md)
 Die meisten Wallboxen steuert OpenAmpere über [evcc](https://evcc.io), siehe [evcc.de.md](evcc.de.md). Einige
 Wallboxen spricht OpenAmpere selbst an, ohne evcc und ohne Cloud. Bisher ist das die **mobile 11-kW-Wallbox von
 „dé“** (mit Tuya-WLAN). Den **FoxESS AC EV Charger** zeigt OpenAmpere an und kann seinen Betriebsmodus einstellen (z. B.
-zum Entsperren), das Laden steuert es noch nicht (siehe unten; seine Lademodi gibt es als Simulation, die nichts
-schreibt). Du kannst mehrere solche Wallboxen einrichten,
+zum Entsperren); seine Lademodi gibt es als Simulation, die nichts schreibt, und als Test lässt sich die echte
+Steuerung einschalten (siehe unten). Du kannst mehrere solche Wallboxen einrichten,
 auch zusätzlich zu einer Wallbox über evcc.
 
 > Das Auslesen ist an einem echten Gerät bestätigt, das Steuern (Laden starten und stoppen, Ladestrom setzen) noch
@@ -174,7 +174,27 @@ sobald du ein Auto einsteckst.
   gemessen wird. Das echte Laden der Wallbox bleibt im Hausverbrauch.
 - Die Simulation läuft, solange OpenAmpere läuft. Nach einem Neustart beginnt sie wieder bei dem, was die Wallbox
   gerade tut.
-- Home Assistant zeigt die Wallbox nur an (kein Lademodus).
+- Home Assistant zeigt die Wallbox nur an (kein Lademodus), außer die echte Steuerung ist eingeschaltet (siehe unten).
+
+### Echte Steuerung (Test)
+
+Unter den Lademodi bietet die Karte **Echte Steuerung einschalten (Test)** an (#465). Nach einer Rückfrage steuert
+OpenAmpere diese Wallbox dann wirklich in den Lademodi Aus, Solar, Min + Solar und Sofort: Es startet und stoppt das
+Laden und stellt den Ladestrom ein. Das ist neu und noch an keiner Wallbox mit OpenAmpere erprobt.
+
+- **Fällt OpenAmpere aus** (der Rechner stürzt ab, das Netzwerk ist weg), lädt die Wallbox nach etwa einer Minute mit
+  6 A weiter, bis das Auto voll ist, wenn nötig mit Strom aus dem Netz. OpenAmpere stellt diesen Ersatzstrom einmal in
+  der Wallbox ein. Von selbst stoppen kann die Wallbox nicht, wenn ihre Steuerung fehlt. Beim geplanten Beenden (ein
+  Update, ein Neustart) stoppt OpenAmpere ein Laden, das es selbst gestartet hat.
+- Voraussetzung: Der **Betriebsmodus** der Wallbox ist **Gesteuert** (siehe unten), die bisherige Smartbox von EKD ist
+  vom Strom getrennt, und **Änderungen an Geräten** steht auf **Aktiv**. Im Testmodus steht im Steuerungsprotokoll nur,
+  was OpenAmpere tun würde.
+- Solange das Auto lädt, schreibt OpenAmpere den Ladestrom alle 25 Sekunden neu; das steht nicht im Protokoll. Nach
+  einem Stopp schreibt OpenAmpere nichts mehr an die Wallbox, bis es sie wieder startet (sonst würde sie von selbst
+  wieder laden).
+- Zwischen einer und drei Phasen schaltet OpenAmpere noch nicht um: Solar-Laden braucht genug Überschuss für 6 A auf
+  allen Phasen der Wallbox.
+- **Zurück zur Simulation** gibt die Wallbox ab: Ein Laden, das OpenAmpere gestartet hat, wird gestoppt.
 
 ### Betriebsmodus der Wallbox
 

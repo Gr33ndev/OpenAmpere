@@ -296,7 +296,16 @@
     "workModeExplainLocked": "Die Wallbox lädt gar nicht mehr, bis du sie wieder freigibst.",
     "workModeSmartbox": "OpenAmpere schreibt die Einstellung einmal in die Wallbox und liest sie zur Kontrolle zurück. Die bisherige Smartbox von EKD muss dafür vom Strom getrennt sein.",
     "workModeSaved": "Der Betriebsmodus der Wallbox ist geändert.",
-    "workModeTestMode": "Testmodus: Die Änderung steht im Steuerungsprotokoll, an die Wallbox gesendet wurde nichts."
+    "workModeTestMode": "Testmodus: Die Änderung steht im Steuerungsprotokoll, an die Wallbox gesendet wurde nichts.",
+    "realControlStart": "Echte Steuerung einschalten (Test)",
+    "realControlQuestion": "Soll OpenAmpere diese Wallbox wirklich steuern?",
+    "realControlConfirm": "Einschalten",
+    "realControlExperimental": "Das ist neu und noch an keiner Wallbox mit OpenAmpere erprobt. OpenAmpere startet und stoppt dann das Laden und stellt den Ladestrom ein, so wie es die Lademodi beschreiben. Jede Änderung steht im Steuerungsprotokoll.",
+    "realControlFallback": "Wichtig: Fällt OpenAmpere aus, zum Beispiel weil der Rechner abstürzt, lädt die Wallbox nach etwa einer Minute mit 6 A weiter, bis das Auto voll ist, wenn nötig mit Strom aus dem Netz. OpenAmpere stellt diesen Ersatzstrom einmal in der Wallbox ein. Beim geplanten Beenden stoppt OpenAmpere ein Laden, das es selbst gestartet hat.",
+    "realControlNeeds": "Dafür muss der Betriebsmodus der Wallbox „Gesteuert“ sein, die bisherige Smartbox von EKD vom Strom getrennt und „Änderungen an Geräten“ auf „Aktiv“ stehen. Im Testmodus steht nur im Protokoll, was OpenAmpere tun würde.",
+    "realControlOn": "Echte Steuerung (Test): OpenAmpere startet, stoppt und regelt diese Wallbox. Fällt OpenAmpere aus, lädt sie mit 6 A weiter.",
+    "realControlNeedsControlled": "OpenAmpere steuert die Wallbox nur im Betriebsmodus „Gesteuert“. Stelle ihn unten um.",
+    "realControlOff": "Zurück zur Simulation"
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

@@ -42,6 +42,8 @@ export type NativeWallbox = {
   simulated?: boolean; simulation?: WallboxSimulation | null;
   /** The work modes OpenAmpere can set on the wallbox itself (#464), e.g. to unlock a FoxESS charger. */
   work_modes?: WorkMode[];
+  /** FoxESS: real control can be switched on by the owner (#465); `control`: it is on. */
+  controllable?: boolean; control?: boolean;
 };
 type WorkMode = "controlled" | "plug_and_charge" | "locked";
 export type WallboxSimulation = {
@@ -143,6 +145,48 @@ function OwnSettings({ r }: { r: WallboxReading }) {
       {r.work_mode && <><dt>{t("devices.wallboxDirect.workMode")}</dt><dd>{WORK_MODE[r.work_mode] ?? r.work_mode}</dd></>}
       {r.phase_switching != null && <><dt>{t("devices.wallboxDirect.phaseSwitching")}</dt>
         <dd>{r.phase_switching ? t("common.on") : t("common.off")}</dd></>}
+    </>
+  );
+}
+
+/** Real control of a FoxESS charger (#465): switched on after a question that says what happens if OpenAmpere fails,
+ *  switched off back to the simulation. */
+function RealControl({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!wb.controllable) return null;
+  const set = async (on: boolean) => {
+    setBusy(true);
+    try {
+      onChange(await postJson<WallboxesView>(`/api/wallboxes/${wb.id}/control`, { on }));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+      setAsking(false);
+    }
+  };
+  const mode = wb.online ? wb.reading?.work_mode : null;
+  if (wb.control) {
+    return (
+      <>
+        <Notice kind="warn">{t("devices.nativeWallbox.realControlOn")}</Notice>
+        {mode && mode !== "controlled" && <Notice kind="error">{t("devices.nativeWallbox.realControlNeedsControlled")}</Notice>}
+        <Button variant="secondary" disabled={busy} onClick={() => void set(false)}>{t("devices.nativeWallbox.realControlOff")}</Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <Button variant="secondary" disabled={busy} onClick={() => setAsking(true)}>{t("devices.nativeWallbox.realControlStart")}</Button>
+      {asking && (
+        <Dialog title={t("devices.nativeWallbox.realControlQuestion")} confirm={t("devices.nativeWallbox.realControlConfirm")}
+          disabled={busy} onCancel={() => setAsking(false)} onConfirm={() => void set(true)}>
+          <p>{t("devices.nativeWallbox.realControlExperimental")}</p>
+          <p>{t("devices.nativeWallbox.realControlFallback")}</p>
+          <p>{t("devices.nativeWallbox.realControlNeeds")}</p>
+        </Dialog>
+      )}
     </>
   );
 }
@@ -249,8 +293,9 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           <div className="hint">{status(wb)}</div>
         </div>
       </div>
-      {wb.online === false && <p className="hint">{sim ? t("devices.nativeWallbox.awayHintModbus") : t("devices.nativeWallbox.awayHint")}</p>}
+      {wb.online === false && <p className="hint">{wb.port != null ? t("devices.nativeWallbox.awayHintModbus") : t("devices.nativeWallbox.awayHint")}</p>}
       {sim && <Notice kind="info">{t("devices.nativeWallbox.simulationNotice")}</Notice>}
+      <RealControl wb={wb} onChange={onChange} />
       {r && !r.connected && wb.mode !== "manual" && <p className="hint">{sim ? t("devices.nativeWallbox.noCarHintSimulation")
         : t("devices.nativeWallbox.noCarHint")}</p>}
       {!wb.local_key_set && <>
@@ -273,7 +318,7 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           {r.charging && <><dt>{t("devices.nativeWallbox.phaseCurrents")}</dt><dd>{amps(r.current_a)} A</dd></>}
           <dt>{t("devices.nativeWallbox.phases")}</dt><dd>{r.active_phases || r.installed_phases}</dd>
           {r.connected && !!r.session_kwh && <><dt>{t("devices.wallboxCard.chargedThisSession")}</dt><dd>{num(r.session_kwh, 1)} kWh</dd></>}
-          {sim && <OwnSettings r={r} />}
+          {(sim || wb.controllable) && <OwnSettings r={r} />}
           {sim && wb.simulation && <><dt>{t("devices.nativeWallbox.simulationPlan")}</dt><dd>{planText(wb.simulation)}</dd></>}
         </dl>
       )}

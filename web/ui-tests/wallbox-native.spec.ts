@@ -310,3 +310,28 @@ test("a locked FoxESS charger can be released with its work mode", async ({ page
   await expect(page.getByText("Der Betriebsmodus der Wallbox ist geändert.")).toBeVisible();
   await expect(card).not.toContainText("Die Wallbox ist gesperrt");
 });
+
+// #465: real control of the FoxESS charger only after a question that says what happens if OpenAmpere fails
+test("real control of a FoxESS charger is switched on after a question and off again", async ({ page, api }) => {
+  const base = await view();
+  const garage = base.wallboxes.find((w) => w.id === "demo0003") as NativeWallbox;
+  const controlled: NativeWallbox = { ...garage, control: true, simulated: false, read_only: false, simulation: null };
+  api.override("/api/wallboxes/demo0003/control", { ...base, wallboxes: [base.wallboxes[0], controlled] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Garage" });
+  await card.getByRole("button", { name: "Echte Steuerung einschalten (Test)" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("mit 6 A weiter");
+  await expect(dialog).toContainText("„Gesteuert“");
+  expect(await layoutProblems(page)).toEqual([]);
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0003/control"));
+  await dialog.getByRole("button", { name: "Einschalten" }).click();
+  expect((await sent).postDataJSON()).toEqual({ on: true });
+  await expect(card).toContainText("Echte Steuerung (Test): OpenAmpere startet, stoppt und regelt diese Wallbox.");
+  await expect(card.locator(".notice", { hasText: "Nur eine Simulation" })).toHaveCount(0);
+  api.override("/api/wallboxes/demo0003/control", base);
+  const off = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0003/control"));
+  await card.getByRole("button", { name: "Zurück zur Simulation" }).click();
+  expect((await off).postDataJSON()).toEqual({ on: false });
+  await expect(card.locator(".notice", { hasText: "Nur eine Simulation" })).toBeVisible();
+});

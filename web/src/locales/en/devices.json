@@ -296,7 +296,16 @@
     "workModeExplainLocked": "The wallbox no longer charges at all until you release it again.",
     "workModeSmartbox": "OpenAmpere writes the setting into the wallbox once and reads it back to check. The previous EKD smartbox must be cut from power for this.",
     "workModeSaved": "The work mode of the wallbox has been changed.",
-    "workModeTestMode": "Test mode: the change is in the control log, nothing was sent to the wallbox."
+    "workModeTestMode": "Test mode: the change is in the control log, nothing was sent to the wallbox.",
+    "realControlStart": "Switch on real control (test)",
+    "realControlQuestion": "Should OpenAmpere really control this wallbox?",
+    "realControlConfirm": "Switch on",
+    "realControlExperimental": "This is new and not yet tried on any wallbox with OpenAmpere. OpenAmpere then starts and stops charging and sets the charging current as the charging modes describe. Every change is in the control log.",
+    "realControlFallback": "Important: if OpenAmpere fails, for example because the computer crashes, the wallbox charges on at 6 A after about a minute until the car is full, from the grid if needed. OpenAmpere sets this fallback current in the wallbox once. When OpenAmpere is shut down as planned, it stops a charge it started itself.",
+    "realControlNeeds": "For this the work mode of the wallbox must be “Controlled”, the previous EKD smartbox cut from power and “Changes to devices” set to “Active”. In test mode the log only shows what OpenAmpere would do.",
+    "realControlOn": "Real control (test): OpenAmpere starts, stops and regulates this wallbox. If OpenAmpere fails, it charges on at 6 A.",
+    "realControlNeedsControlled": "OpenAmpere controls the wallbox only in the work mode “Controlled”. Change it below.",
+    "realControlOff": "Back to the simulation"
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

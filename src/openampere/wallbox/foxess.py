@@ -7,10 +7,14 @@ gives to owners, and owner reports in public evcc discussions. The check exists 
 (#318, #431). In the FoxESS app's default mode Modbus TCP is said to be read-only; outside the "Modbus TCP" mode some
 firmware refuses reads with exception 6 ("server device busy"), which the check reports.
 
-FoxEssChargerLive is the same charger as a wallbox OpenAmpere shows itself (native.py): read over Modbus TCP with
-function code 3, its charging never written (its watchdog fails in the unsafe direction, #318). The one register it
-writes is the work mode (WORK_MODE_REGISTER, function code 16), a stored setting the owner changes in the app, e.g.
-to unlock a charger that went "locked" (#464). It charges as it is set in its own app. Its modes other than "manual" are a simulation (#440):
+FoxEssChargerLive is the same charger as a wallbox OpenAmpere shows itself (native.py), read over Modbus TCP with
+function code 3. Its work mode (WORK_MODE_REGISTER, function code 16) is a stored setting the owner changes in the app,
+e.g. to unlock a charger that went "locked" (#464). Its charging is a simulation (#440) until the owner switches on
+real control for this charger (`controllable`, #465): then OpenAmpere writes the current (0x3001, FC16) and start or
+stop (0x4001, FC06), sets the command validity to 60 s and the fallback current to 6 A once (PREPARE), and writes the
+current again at least every HEARTBEAT_S while the car charges. The charger's watchdog fails in the unsafe direction
+(#318): if OpenAmpere stops writing, it charges on with the fallback current. A current written after a stop starts
+charging again, so it is only refreshed while the car charges. It charges as it is set in its own app. Its modes other than "manual" are a simulation (#440):
 native.py decides as for a wallbox it controls, but only writes to the control log what it would have set.
 """
 
@@ -24,6 +28,10 @@ STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 
           8: "locked", 9: "switching_phases"}  # 9: seen on real devices, not in the protocol document
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
 WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (FoxESS EV Charger Modbus TCP protocol V1.6, #318, #463)
+MAX_CURRENT = 0x3001  # u16, 0.1 A: the current setpoint, read/write
+SESSION = 0x4001  # write only (function code 6): 1 start, 2 stop
+PREPARE = {0x3005: 60, 0x3006: 60}  # command validity 60 s (its maximum), fallback current 6.0 A (#318)
+HEARTBEAT_S = 25.0  # well within the validity of 60 s
 LIFETIME_ENERGY = 0x1016  # u32, 0.1 kWh
 RFID = 0x101C  # u32: the card that started the session
 MODEL = 0x101E  # ASCII, 4 registers
@@ -89,9 +97,14 @@ class FoxEssChargerLive:
     label = FoxEssCharger.label
     sold_by = FoxEssCharger.sold_by
     protocol = "modbus"
-    read_only = True  # its charging is never written
-    work_modes = {mode: value for value, mode in WORK_MODE.items()}  # the one setting it writes (#464)
+    read_only = True  # its charging is not written, unless the owner switches on real control (controllable)
+    work_modes = {mode: value for value, mode in WORK_MODE.items()}  # a setting the owner changes (#464)
     work_mode_register = WORK_MODE_REGISTER
+    controllable = True  # real control once the owner agrees, per wallbox (#465)
+    writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, *PREPARE})  # function code 16, read back
+    write_only = frozenset({SESSION})  # function code 6, written after the others
+    prepare = PREPARE
+    heartbeat_s = HEARTBEAT_S
     # its other modes only simulate the control (#440): what OpenAmpere would set goes into the control log
     simulated = True
     modes = ("manual", "off", "pv", "minpv", "now")  # native.MODES
@@ -101,6 +114,14 @@ class FoxEssChargerLive:
     # may not have is optional
     ranges = ((0x1000, 0x16), (0x3000, 7))
     optional = ((0x3007, 5),)
+
+    @staticmethod
+    def set_current(amps: int) -> dict[int, int]:
+        return {MAX_CURRENT: amps * 10}
+
+    @staticmethod
+    def start(on: bool) -> dict[int, int]:
+        return {SESSION: 1 if on else 2}
 
     @classmethod
     def interpret(cls, values: dict[int, int]) -> Reading:

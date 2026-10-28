@@ -525,7 +525,9 @@ class SimulatedFoxCharger(SimulatedInverter):
     that refuses reads; `single_phase`: without the phase-switching registers 0x3008–0x300B; `charging`: a car
     charges at 16 A on three phases (the live view, #439). Every function code is kept in `functions` (the check and
     the live view must only read); the read/write registers 0x3000–0x300B take function code 16, every accepted write
-    is kept in `writes` as (address, value). Work mode 2 ("locked") sets the status to 8, like a real charger (#464)."""
+    is kept in `writes` as (address, value). Work mode 2 ("locked") sets the status to 8, like a real charger (#464).
+    Session control 0x4001 (function code 6, #465): 1 starts a car that is plugged in at the current of 0x3001, 2
+    pauses it; like a real charger, a current written after a stop starts charging again (`restarted_by_current`)."""
 
     def __init__(self, *, unit: int = 1, busy: bool = False, single_phase: bool = False,
                  model: str = "A022KP1", serial: str = "SIMULATEDCHARGER", charging: bool = False) -> None:
@@ -534,6 +536,8 @@ class SimulatedFoxCharger(SimulatedInverter):
         self.map, self.model, self.serial = None, model, serial
         self.functions: list[int] = []  # every function code received: the check must only read
         self.writes: list[tuple[int, int]] = []
+        self.stopped = False  # the last session command was a stop
+        self.restarted_by_current = 0  # charges started by a current written after a stop (a controller's mistake)
         self.regs = {0x1000: unit, 0x1001: 0x0110, 0x1002: 0, 0x1003: 0, 0x1004: 1, 0x1005: 0, 0x1006: 700,
                      0x1007: 700, 0x1008: 2301, 0x1009: 2302, 0x100A: 2303, 0x100B: 0, 0x100C: 0, 0x100D: 0,
                      0x100E: 0, 0x100F: 0, 0x1010: 0, 0x1011: 220, 0x1012: 42, 0x1013: 320, 0x1014: 60, 0x1015: 0,
@@ -565,11 +569,38 @@ class SimulatedFoxCharger(SimulatedInverter):
             for offset, value in enumerate(values):
                 self.regs[address + offset] = value
                 self.writes.append((address + offset, value))
+            if address <= 0x3001 < address + count:
+                if self.regs[0x1003] == 4 and self.stopped:  # a setpoint after a stop starts it again
+                    self.restarted_by_current += 1
+                    self._session(True)
+                elif self.regs[0x1003] == 3:
+                    self._session(True)  # the new current
             if 0x3000 in range(address, address + count):
                 locked = self.regs[0x3000] == 2
                 self.regs[0x1003] = 8 if locked else (0 if self.regs[0x1003] == 8 else self.regs[0x1003])
             return pdu[:5]
+        if pdu[0] == 6:
+            address, value = struct.unpack(">HH", pdu[1:5])
+            if address != 0x4001 or value not in (0, 1, 2):
+                return bytes([6 | 0x80, ILLEGAL_ADDRESS])
+            self.writes.append((address, value))
+            if value == 1 and self.regs[0x3000] != 2 and self.regs[0x1003] in (1, 4, 5):
+                self.stopped = False
+                self._session(True)
+            elif value == 2 and self.regs[0x1003] == 3:
+                self.stopped = True
+                self._session(False)
+            return pdu[:5]
         return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
+
+    def plug(self) -> None:
+        """A car is plugged in and waits for the start command (work mode "controlled")."""
+        self.regs.update({0x1003: 1, 0x1005: 1})
+
+    def _session(self, charging: bool) -> None:
+        amps = self.regs[0x3001] if charging else 0
+        self.regs.update({0x1003: 3 if charging else 4, 0x100B: amps, 0x100C: amps, 0x100D: amps,
+                          0x100E: round(amps * 3 * 230 / 1000) if charging else 0})
 
 
 class SimulatedTuyaCharger:

@@ -433,7 +433,7 @@ function nativeWallboxes() {
     { id: "demo0003", name: "Garage", model: "foxess_ac", label: "FoxESS AC EV Charger", host: "192.168.178.61",
       device_id: "", local_key_set: true, max_current_a: 16, mode: fox.mode, enabled: true, mode_current_a: fox.currents,
       stop_after_min: 10, port: 502, unit: 1, read_only: true, simulated: true, simulation: foxPlan(), modes: [...FOX_MODES],
-      work_modes: ["controlled", "plug_and_charge", "locked"],
+      work_modes: ["controlled", "plug_and_charge", "locked"], controllable: true, control: false,
       online: true, offline_since: null, updated, error: null, controlled: false,
       reading: { state: "plugged_in", connected: true, charging: false, power_w: 0, voltage_v: [230.1, 230.2, 230.3],
         current_a: [0, 0, 0], installed_phases: 3, active_phases: 0, session_kwh: null, session_s: null,
