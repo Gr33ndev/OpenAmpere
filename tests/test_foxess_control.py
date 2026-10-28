@@ -387,3 +387,24 @@ async def test_a_charger_with_a_lower_limit_of_its_own_is_not_asked_again_and_ag
         differing = [e for e in runtime.storage.control_log(100) if e["result"].startswith("Rücklesen abweichend")]
         assert len(differing) <= 1  # said once, not every heartbeat
         assert charger.writes[-1] == (0x3001, 100) and wallboxes.live[wb.id].limit_a == 10
+
+
+
+async def test_the_limit_of_the_charger_is_asked_again_after_a_while_and_with_another_mode(tmp_path):
+    async with charger_with_car() as (charger, port):
+        charger.limit = 100
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        for i in range(4):
+            await check(wallboxes, wb, t0 + 30 * i)
+        live = wallboxes.live[wb.id]
+        assert live.limit_a == 10
+        charger.limit = None  # e.g. the dimming of the grid operator ended
+        live.limit_at = time.time() - native_module.LIMIT_AGAIN_S
+        await check(wallboxes, wb, t0 + 200)
+        assert charger.writes[-1] == (0x3001, 160) and live.limit_a is None
+        charger.limit = 100
+        await check(wallboxes, wb, t0 + 260)  # the heartbeat finds the lower current again
+        assert live.limit_a == 10
+        wallboxes.set_mode(wb.id, "minpv")
+        assert wallboxes.live[wb.id].limit_a is None

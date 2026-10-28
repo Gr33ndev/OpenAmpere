@@ -94,6 +94,7 @@ SIM_LOG_EVERY_S = 300.0  # simulation: current changes go into the control log a
 PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches when the charger does not tell its own
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
+LIMIT_AGAIN_S = 900.0  # a lower current a charger kept (e.g. while dimmed) is asked again after this (#465)
 PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
@@ -195,7 +196,8 @@ class Live:
     prepared: bool = False  # the model's `prepare` values written since it answers (#465)
     unprepared_at: float = float("-inf")  # they did not read back: not controlled for PREPARE_AGAIN_S
     verify: bool = False  # the current was written outside a charge: written and checked again once the car charges
-    limit_a: int | None = None  # a lower current the charger kept while charging: its highest one until unplugged
+    limit_a: int | None = None  # a lower current the charger kept while charging: its highest one for a while
+    limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
     task: asyncio.Task | None = None
@@ -394,6 +396,7 @@ class NativeWallboxes:
         self._store(wallboxes)
         live = self.live.setdefault(wb.id, Live())
         live.want_on, live.short_since = 0, None
+        live.limit_a = None  # another mode asks the charger afresh
         live.plan.want_on, live.plan.short_since = 0, None
         if old != mode:
             self._log(wb, "mode", mode, False, "ok", source=source, before=old)
@@ -759,10 +762,11 @@ class NativeWallboxes:
             if address not in values:
                 continue
             live.setpoint = round(values[address] / 10)  # what OpenAmpere asked for, not what a resetting charger shows
-            if address in back and back[address] != values[address] and charging:
-                # while charging the charger keeps a lower limit of its own (e.g. set by the installer): taken as its
-                # highest current, so it is neither asked again nor logged every heartbeat
+            if address in back and back[address] < values[address] and charging:
+                # while charging the charger keeps a lower limit of its own (installer, dimming): taken as its highest
+                # current for LIMIT_AGAIN_S, so it is neither asked again nor logged every heartbeat
                 live.setpoint = live.limit_a = round(back[address] / 10)
+                live.limit_at = time.time()
             elif back.get(address) != values[address] and not charging:
                 # outside a charge the charger may reset the current at once: not a failed write; it is written again
                 # and checked as soon as the car charges (verify)
@@ -912,6 +916,8 @@ class NativeWallboxes:
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
+        if live.limit_a is not None and now - live.limit_at >= LIMIT_AGAIN_S:
+            live.limit_a = None  # ask again for the current the mode wants
         limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
                     wb.mode_current_a.get(wb.mode, wb.max_current_a), live.limit_a or wb.max_current_a)
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
@@ -1107,7 +1113,7 @@ class NativeWallboxes:
         if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
             # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
             self._keep_stop(wb.id, max(live.stop_sent, 0.0))
-        live.want_on, live.short_since = 0, None
+        live.want_on, live.short_since, live.limit_a = 0, None, None
         live.planned.clear()
         return True
 
