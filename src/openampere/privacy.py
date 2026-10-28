@@ -81,7 +81,9 @@ class Pseudonyms:
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
-        text = _ORIGIN.sub(lambda m: m.group(1) + self.name(m.group(2), "Host"), text)
+        # an own address in the origin is already replaced by the loop above: it keeps its pseudonym
+        text = _ORIGIN.sub(lambda m: m.group(0) if m.group(2).startswith("<") else m.group(1) + self.name(m.group(2), "Host"),
+                           text)
         text = _EMAIL.sub(lambda m: self.name(m.group(0), "E-Mail"), text)
         text = _HOME.sub(r"\1/<Benutzer>", text)
         text = _MAC.sub(lambda m: self.name(m.group(0), "MAC"), text)

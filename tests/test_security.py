@@ -335,3 +335,14 @@ def test_the_refused_origin_is_masked_in_the_report(tmp_path):
     masked = privacy.for_report(runtime).text(line + " / solar.familie-beispiel.de")
     assert "familie-beispiel" not in masked and "192.168.1.20" not in masked
     assert "origin https://<Host-2>" in masked and "<Host-1>" in masked  # the own address first, then the origin
+
+
+def test_an_own_address_as_origin_keeps_its_pseudonym(tmp_path):
+    """#460: the usual case, an allowed own domain while the proxy does not pass on the host: one name, not two."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    runtime.config.server.allowed_hosts = ["solar.familie-beispiel.de"]
+    masked = privacy.for_report(runtime).text(
+        "refused a request from origin https://solar.familie-beispiel.de to host 192.168.1.20:8080 / "
+        "solar.familie-beispiel.de")
+    assert masked.count("<Host-1>") == 2 and "<Host-2>" not in masked and "familie-beispiel" not in masked
