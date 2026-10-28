@@ -320,3 +320,15 @@ def test_a_mismatching_origin_is_refused_and_logged_once(tmp_path, caplog):
     assert refused.status_code == 403
     warnings = [r.getMessage() for r in caplog.records if "reverse proxy" in r.getMessage()]
     assert len(warnings) == 1 and "solar.example" in warnings[0] and "testserver" in warnings[0]
+
+
+def test_the_refused_origin_is_masked_in_the_report(tmp_path):
+    """#460: the browser's domain in that log line is usually the owner's own; the report must not show it."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    runtime.config.server.allowed_hosts = ["solar.familie-beispiel.de"]
+    line = ("refused a request from origin https://pv.familie-beispiel.de to host 192.168.1.20:8080: a reverse proxy "
+            "probably does not pass on the original host name (nginx: proxy_set_header Host $host;)")
+    masked = privacy.for_report(runtime).text(line + " / solar.familie-beispiel.de")
+    assert "familie-beispiel" not in masked and "192.168.1.20" not in masked
+    assert "origin https://<Host-1>" in masked and "<Eigene Adresse>" in masked

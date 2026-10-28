@@ -39,6 +39,8 @@ _MAC = re.compile(r"(?<![\w:-])[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}(?![\w:-])
 _STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
 _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
                    r"(?![\w-])", re.I)
+# the browser's address in the log line of a refused origin (#460): often the owner's own public domain
+_ORIGIN = re.compile(r"(\borigin [a-z][\w+.-]*://)([^\s/:]+)", re.I)
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
 _FRAMES = re.compile(r"(?:\n>>>>> [^\n]*)+")  # raw Modbus frames pymodbus appends to its errors
@@ -79,6 +81,7 @@ class Pseudonyms:
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
+        text = _ORIGIN.sub(lambda m: m.group(1) + self.name(m.group(2), "Host"), text)
         text = _EMAIL.sub(lambda m: self.name(m.group(0), "E-Mail"), text)
         text = _HOME.sub(r"\1/<Benutzer>", text)
         text = _MAC.sub(lambda m: self.name(m.group(0), "MAC"), text)
@@ -145,6 +148,10 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
             value = str(car.get(field) or "").strip()
             if len(value) >= 3:  # a name like "ID" would replace every such word in the log
                 known[value] = name
+    for host in config.server.allowed_hosts or []:  # the owner's own host names (#437, #460), often a domain of theirs
+        name = str(host).strip().removeprefix("*.")
+        if name:
+            known[name] = "<Eigene Adresse>"
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")

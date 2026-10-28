@@ -305,7 +305,9 @@ export function useLive(): { snap: Snapshot | null; online: boolean; blocked: bo
         setOnline(res.ok); // while polling, the values are as live as the poll
         setBlocked(res.ok || res.status === 503); // 503: the server answers, it has no readings yet
       } catch {
-        // the server itself is not reachable: "Verbinde …" stays
+        // the server itself is not reachable: no proxy hint, the overview says it is not connected
+        setOnline(false);
+        setBlocked(false);
       }
     };
     const connect = () => {
