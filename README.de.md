@@ -26,7 +26,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 |---|---|---|
 | FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige und Steuerung bestätigt |
 | FoxESS H3, ältere Firmware / H3 Smart / H3 Pro | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
-| SAJ H2 / HS2 | Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet. | Noch nicht bestätigt |
+| SAJ H2 / HS2 | Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet. | Anzeige bestätigt bei einem „3P-X E2“ (ältere „Ampere.StoragePro“), Steuerung noch nicht |
 | Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
 | Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
 | Wallbox | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)). | Noch nicht bestätigt |
@@ -373,6 +373,8 @@ Hängt ein Modbus-Proxy dazwischen, gilt die Geräteadresse, die im Proxy einges
 ### „Der Wechselrichter lässt gerade keine weitere Verbindung zu“
 
 Ein FoxESS H3 (auch als „Ampere.StoragePro E3“ verkauft) erlaubt nur sehr wenige Modbus-TCP-Verbindungen gleichzeitig. Sind alle belegt, nimmt er die Verbindung von OpenAmpere an und schließt sie sofort wieder. Belegt werden sie meist von einem anderen Programm, das den Wechselrichter abfragt (Home Assistant oder einem anderen Smart-Home-System mit einer eigenen Modbus-Einbindung, einem Dashboard mit eigenem Datensammler wie Grafana, einem eigenen Script oder einer zweiten OpenAmpere-Installation), oder von der bisherigen IQ-Box. Die Netzwerksuche zeigt das Gerät dann als „Modbus-Gerät, gerade belegt“, weil ein belegtes Gerät auch eine Wallbox sein kann. Der Verbindungstest und **Mehr → Verbindung** zeigen diese Meldung.
+
+Auch bei einem SAJ (die älteren „Ampere.StoragePro“; beobachtet an einem „3P-X E2“) hält die bisherige IQ-Box die Verbindung dauerhaft belegt, und OpenAmpere kann sich nicht mit dem Wechselrichter verbinden. Die Meldung kann dabei auch anders lauten. Trenne die IQ-Box wie in Schritt 2 unten vom Netzwerk. Wenige Minuten später verbindet sich OpenAmpere.
 
 Geh in dieser Reihenfolge vor:
 
