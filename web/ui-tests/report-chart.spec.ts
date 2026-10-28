@@ -134,3 +134,14 @@ test("a PV input is hidden with the legend of its chart", async ({ page, api }) 
   expect((await bars(chart, "#eec91d")).length, "Süd hidden").toBe(0);
   expect((await bars(chart, "#a78bfa")).length, "West now from the axis").toBe(2);
 });
+
+// #468: a day imported from the cloud has no local readings; the "Leistung" view draws its state of charge
+test("the power view of an imported day shows the state of charge", async ({ page, api }) => {
+  await page.clock.install({ time: new Date("2026-10-07T12:00:00") });
+  const quarter = (h: number, soc: number) => ({ ts: new Date(2026, 9, 7, h).getTime() / 1000, pv: null, house: null,
+    grid: null, battery: null, soc });
+  api.override("/api/power/timeline", { from: 0, to: 0, step: 300, entries: [quarter(8, 40), quarter(9, 45), quarter(10, 52)] });
+  await open(page, "report");
+  await expect(page.locator(".legend").first().getByRole("button", { name: "Ladestand (rechte Achse)" })).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+});
