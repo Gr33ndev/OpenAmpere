@@ -291,7 +291,7 @@
     "workModeLockedHint": "Die Wallbox ist gesperrt und lädt nicht. Wähle „Gesteuert“ oder „Plug & Charge“, um sie wieder freizugeben.",
     "workModeQuestion": "Betriebsmodus auf „{mode}“ stellen?",
     "workModeConfirm": "Umstellen",
-    "workModeExplainControlled": "Die Wallbox lädt erst, wenn eine App, eine Ladekarte oder eine Steuerung den Ladevorgang startet.",
+    "workModeExplainControlled": "Die Wallbox lädt erst, wenn eine App, eine Ladekarte oder eine Steuerung den Ladevorgang startet. OpenAmpere startet das Laden bei dieser Wallbox noch nicht: Starte es dann in der App von FoxESS oder mit einer Ladekarte, oder wähle „Plug & Charge“.",
     "workModeExplainPlugAndCharge": "Die Wallbox lädt, sobald ein Auto eingesteckt ist.",
     "workModeExplainLocked": "Die Wallbox lädt gar nicht mehr, bis du sie wieder freigibst.",
     "workModeSmartbox": "OpenAmpere schreibt die Einstellung einmal in die Wallbox und liest sie zur Kontrolle zurück. Die bisherige Smartbox von EKD muss dafür vom Strom getrennt sein.",

@@ -22,7 +22,7 @@ class WallboxUnreachable(Exception):
 
 
 class ReadBackFailed(WallboxUnreachable):
-    """The wallbox accepted a write, but reading it back failed: the value may well be written (#464)."""
+    """A write that may have reached the wallbox: its answer was lost, or reading it back failed (#464)."""
 
 
 @dataclass

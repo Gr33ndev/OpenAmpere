@@ -402,8 +402,7 @@ class NativeWallboxes:
             async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
                 back = await writer.write(model.work_mode_register, work_modes[mode])
         except ReadBackFailed as err:
-            self._log(wb, "work_mode", mode, False, "geschrieben, Rücklesen fehlgeschlagen", source=source,
-                      before=before)
+            self._log(wb, "work_mode", mode, False, f"unbestätigt: {err.message}", source=source, before=before)
             live.updated = min(live.updated, time.time() - POLL_S)
             raise ValueError(err.message) from None
         except WallboxUnreachable as err:

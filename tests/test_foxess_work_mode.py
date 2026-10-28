@@ -146,7 +146,21 @@ async def test_a_write_whose_read_back_fails_says_it_may_be_written(tmp_path, mo
         with pytest.raises(ValueError, match="angenommen, OpenAmpere konnte sie aber nicht zurücklesen"):
             await wallboxes.set_work_mode(wb.id, "controlled")
         assert charger.writes == [(0x3000, 0)]
-        assert work_mode_entries(runtime)[0]["result"] == "geschrieben, Rücklesen fehlgeschlagen"
+        assert work_mode_entries(runtime)[0]["result"].startswith("unbestätigt: Die Wallbox hat die Einstellung angenommen")
+
+
+async def test_a_write_whose_answer_is_lost_says_it_may_be_written(tmp_path, monkeypatch):
+    async with simulated() as (charger, port):
+        runtime, wallboxes = setup(tmp_path, port)
+        wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
+
+        async def lost(*_args, **_kwargs):
+            raise TimeoutError
+        monkeypatch.setattr(modbus.AsyncModbusTcpClient, "write_registers", lost)
+        with pytest.raises(ValueError, match="nicht geantwortet. Vielleicht gilt sie trotzdem"):
+            await wallboxes.set_work_mode(wb.id, "controlled")
+        assert work_mode_entries(runtime)[0]["result"].startswith("unbestätigt: ")
 
 
 async def test_a_reader_cannot_write_and_a_writer_only_its_register():

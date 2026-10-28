@@ -68,7 +68,10 @@ class ModbusWallbox:
             try:
                 response = await client.write_registers(address, [value], device_id=self.unit)
             except (ModbusException, OSError, asyncio.TimeoutError):
-                response = None
+                # sent, but the answer is lost: the wallbox may well have taken it
+                raise ReadBackFailed(
+                    "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du "
+                    "nach der nächsten Abfrage der Wallbox.") from None
             if response is None or response.isError():
                 code = getattr(response, "exception_code", None) if response is not None else None
                 raise WallboxUnreachable(
