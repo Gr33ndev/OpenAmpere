@@ -329,6 +329,21 @@ def create_app(runtime: Runtime) -> FastAPI:
             return origin is None
         return origin.split("://", 1)[-1].rstrip("/").lower() == (host or "").lower()
 
+    origin_warned: dict[tuple[str, str], float] = {}
+
+    def warn_origin(origin: str | None, host: str | None) -> None:
+        """A refused Origin, at most once an hour per pair (#460): usually a reverse proxy that does not pass on the
+        host name, so the browser's domain does not match the Host. In the log, so the diagnostics report shows it
+        (host names pseudonymised there)."""
+        key, now = (str(origin)[:MAX_HOST_SHOWN], str(host)[:MAX_HOST_SHOWN]), time.time()
+        if now - origin_warned.get(key, 0.0) < 3600:
+            return
+        if len(origin_warned) >= 50:  # foreign sites choose their Origin: never a growing list
+            origin_warned.clear()
+        origin_warned[key] = now
+        log.warning("refused a request from origin %s to host %s: a reverse proxy probably does not pass on the "
+                    "original host name (nginx: proxy_set_header Host $host;)", *key)
+
     def host_ok(conn: HTTPConnection) -> bool:
         """Against DNS rebinding. Through the Home Assistant sidebar the Host is the address Home Assistant was opened
         with, also a remote one (#344): Home Assistant checked the login there. For requests and WebSockets alike."""
@@ -367,6 +382,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             return await call_next(request)
         if path.startswith("/api/") and (writing or path in PROTECTED_READS):
             if writing and (not origin_ok(request.headers.get("origin"), host) or request.headers.get(CSRF_HEADER) != "1"):
+                if request.headers.get("origin") and not origin_ok(request.headers.get("origin"), host):
+                    warn_origin(request.headers.get("origin"), host)
                 return JSONResponse({"detail": "Anfrage abgelehnt (fremde Herkunft)."}, 403)
             if ingress and path not in PUBLIC_WRITES:
                 if not request.state.ha_admin:
@@ -910,6 +927,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         host = ws.headers.get("host")
         origin = ws.headers.get("origin")
         if not host_ok(ws) or (origin is not None and not origin_ok(origin, host)):
+            if host_ok(ws):
+                warn_origin(origin, host)
             await ws.close(code=1008)
             return
         await ws.accept()

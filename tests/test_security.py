@@ -301,3 +301,22 @@ def test_large_bodies_are_refused_before_they_fill_the_memory(tmp_path, chunked)
     assert response.status_code == 413
     assert client.post("/api/auth/login", json={"password": "wrong-one"}).status_code == 401  # normal sizes work
     runtime.storage.close()
+
+
+def test_a_mismatching_origin_is_refused_and_logged_once(tmp_path, caplog):
+    """#460: behind a reverse proxy that does not pass on the host name, the browser's domain does not match the Host.
+    The live socket and writes are refused as before; the log says why, once an hour."""
+    import logging
+
+    from starlette.websockets import WebSocketDisconnect
+    _, client = app_client(tmp_path)
+    caplog.set_level(logging.WARNING, logger="openampere.api")
+    for _ in range(2):
+        with pytest.raises(WebSocketDisconnect) as closed:
+            with client.websocket_connect("/api/live/ws", headers={"origin": "https://solar.example"}):
+                pass
+        assert closed.value.code == 1008
+    refused = client.put("/api/settings", json={}, headers={"x-openampere": "1", "origin": "https://solar.example"})
+    assert refused.status_code == 403
+    warnings = [r.getMessage() for r in caplog.records if "reverse proxy" in r.getMessage()]
+    assert len(warnings) == 1 and "solar.example" in warnings[0] and "testserver" in warnings[0]

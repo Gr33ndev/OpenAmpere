@@ -10,7 +10,9 @@
     "recordedSince": "Recorded since {time} (OpenAmpere has only been running since today).",
     "stringsAndTemperaturesHint": "Power per string and temperatures are under {place}.",
     "toGrid": "To the grid",
-    "todayTitle": "Today's figures"
+    "todayTitle": "Today's figures",
+    "liveBlocked": "The live connection does not come up, so OpenAmpere reads the values again every few seconds. If you open OpenAmpere through a reverse proxy, it must pass on WebSocket connections and the host name, otherwise saving settings fails as well. How to do this: {link}.",
+    "liveBlockedLink": "guide for reverse proxies"
   },
   "devicesCard": {
     "batteryChargingFromGrid": "Battery is charging from the grid",
