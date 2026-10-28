@@ -703,7 +703,7 @@ class NativeWallboxes:
             return False
         try:
             if model.protocol == "modbus":
-                back = await self._write_modbus(wb, live, values)
+                back = await self._write_modbus(wb, live, values, safe=safe)
             else:
                 async with live.lock:
                     back = await self.device(wb).set(values, read_back=True)
@@ -722,11 +722,12 @@ class NativeWallboxes:
         self._log(wb, action, value, False, f"Rücklesen abweichend: {differs}" if differs else reason)
         return not differs
 
-    async def _write_modbus(self, wb: NativeWallbox, live: Live, values: dict) -> dict:
+    async def _write_modbus(self, wb: NativeWallbox, live: Live, values: dict, *, safe: bool = False) -> dict:
         """A Modbus wallbox under real control (#465): the model's `prepare` values first after a (re)connection, then
         the values; the read/write ones read back, start or stop last. Remembers the current it wrote."""
         model = MODELS[wb.model]
-        prepare = {} if live.prepared else dict(getattr(model, "prepare", {}))
+        # letting go or stopping (safe) never waits for the fallback current: a stop must always get through
+        prepare = {} if live.prepared or safe else dict(getattr(model, "prepare", {}))
         writer = ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional,
                                writable=model.writable)
         if prepare and time.time() - live.unprepared_at < PREPARE_AGAIN_S:
@@ -831,7 +832,9 @@ class NativeWallboxes:
             if sim:
                 self._sim_release(wb, live, "Lademodus „von Hand“", now)
             else:
-                await self.release(wb, "Lademodus „von Hand“", stop_started=False)
+                # the owner takes over; a charger whose watchdog would charge on unsupervised at its fallback current
+                # gets a charge OpenAmpere started stopped (#465)
+                await self.release(wb, "Lademodus „von Hand“", stop_started=real(wb))
             return reading.power_w if reading else 0.0
         if reading is None:
             if sim:
@@ -855,6 +858,7 @@ class NativeWallboxes:
                 return 0.0
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
+            live.setpoint = None  # unplugged: a charger that forgets its current gets it written again (#465)
             live.planned.pop("start", None)
             self._note_stop(wb, False)
             return 0.0

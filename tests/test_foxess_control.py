@@ -251,3 +251,37 @@ async def test_test_mode_during_a_charge_openampere_started_stops_it(tmp_path):
         written = len(charger.writes)
         await check(wallboxes, wb, t0 + 60)
         assert len(charger.writes) == written  # test mode: nothing more
+
+
+async def test_manual_stops_a_charge_openampere_started(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        wallboxes.set_mode(wb.id, "manual")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 10)
+        assert charger.writes[-1] == (0x4001, 2) and charger.regs[0x1003] == 4
+        assert not wallboxes._owned()
+
+
+async def test_a_stop_after_a_reconnection_does_not_wait_for_the_fallback(tmp_path, monkeypatch):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        await check(wallboxes, wb, time.time())
+        live = wallboxes.live[wb.id]
+        live.prepared, live.unprepared_at = False, time.time()  # back after an outage, the fallback not taken yet
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-1] == (0x4001, 2) and charger.regs[0x1003] == 4
+
+
+async def test_after_unplugging_the_current_is_written_again_before_the_next_start(tmp_path):
+    async with charger_with_car() as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        charger.regs.update({0x1003: 0, 0x1005: 0, 0x3001: 320})  # unplugged: the charger forgets the current
+        await check(wallboxes, wb, t0 + 10)
+        charger.plug()
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 20)
+        assert charger.writes[written:] == [(0x3001, 160), (0x4001, 1)]

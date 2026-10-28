@@ -194,6 +194,9 @@ Laden und stellt den Ladestrom ein. Das ist neu und noch an keiner Wallbox mit O
   wieder laden).
 - Zwischen einer und drei Phasen schaltet OpenAmpere noch nicht um: Solar-Laden braucht genug Überschuss für 6 A auf
   allen Phasen der Wallbox.
+- **Von Hand** bei echter Steuerung: OpenAmpere gibt die Wallbox ab und stoppt ein Laden, das es selbst gestartet
+  hat, weil die Wallbox sonst unbeaufsichtigt mit 6 A weiterladen würde. Starte das Laden dann in der App von FoxESS
+  oder mit einer Ladekarte.
 - **Zurück zur Simulation** gibt die Wallbox ab: Ein Laden, das OpenAmpere gestartet hat, wird gestoppt.
 
 ### Betriebsmodus der Wallbox
