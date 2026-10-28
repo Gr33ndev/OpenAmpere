@@ -317,10 +317,12 @@
     "title": "Charge by a set time"
   },
   "sponsor": {
+    "expired": "The evcc sponsor token expired on {date}. If your wallbox needs a sponsor token, it no longer charges through evcc. Get a new one on {link} and enter it in evcc under Configuration → Sponsorship, or connect a wallbox OpenAmpere knows itself under More → Connection → Wallbox (“direct”).",
     "expiresOn": "The evcc sponsor token expires on {date}. Get a new one on {link} and enter it in evcc under Configuration → Sponsorship.",
     "expiresSoon": "The evcc sponsor token expires soon. Get a new one on {link} and enter it in evcc under Configuration → Sponsorship.",
     "sponsorship": "evcc sponsorship",
     "trial": "evcc runs with the test token, which is valid for only a few days. If your wallbox needs a sponsor token, it will stop charging through evcc after that. More: {link}.",
+    "trialExpired": "The evcc test token expired on {date}. If your wallbox needs a sponsor token, it no longer charges through evcc. Enter a valid token in evcc under Configuration → Sponsorship, or connect a wallbox OpenAmpere knows itself under More → Connection → Wallbox (“direct”). More: {link}.",
     "trialUntil": "evcc runs with the test token, which is valid only until {date}. If your wallbox needs a sponsor token, it will stop charging through evcc after that. More: {link}."
   },
   "status": {
