@@ -40,7 +40,7 @@ _STAMP = re.compile(r"(?<!\d)\d{8}-\d{6}(?!\d)")
 _HOST = re.compile(r"(?<![\w.-])[\w-]+(?:\.[\w-]+)*\.(?:local|lan|home|internal|fritz\.box|home\.arpa|ts\.net)"
                    r"(?![\w-])", re.I)
 # the browser's address in the log line of a refused origin (#460): often the owner's own public domain
-_ORIGIN = re.compile(r"(\borigin [a-z][\w+.-]*://)([^\s/:]+)", re.I)
+_ORIGIN = re.compile(r"(\borigin [a-z][\w+.-]*://)(\[[0-9A-Fa-f:.]+\]|[^\s/:\[]+)", re.I)
 _EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HOME = re.compile(r"(?<=/)(home|Users)/[^/\s'\"]+")  # user name in file paths of a traceback
 _FRAMES = re.compile(r"(?:\n>>>>> [^\n]*)+")  # raw Modbus frames pymodbus appends to its errors
@@ -78,12 +78,23 @@ class Pseudonyms:
             return match.group(0)
         return self.name(match.group(0), kind)
 
+    def _origin(self, match: re.Match) -> str:
+        """The browser's address in a refused origin (#460): a name gets a host pseudonym; an own address already
+        replaced keeps its own, and an IP address (also in brackets) is left to the IP masking below, so it gets the
+        same pseudonym as elsewhere in the report."""
+        host = match.group(2)
+        if host.startswith("<"):
+            return match.group(0)
+        try:
+            ipaddress.ip_address(host.strip("[]"))
+        except ValueError:
+            return match.group(1) + self.name(host, "Host")
+        return match.group(1) + host.strip("[]") if host.startswith("[") else match.group(0)
+
     def text(self, text: str) -> str:
         for value, name in sorted(self.known.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", lambda _m, n=name: n, text, flags=re.I)
-        # an own address in the origin is already replaced by the loop above: it keeps its pseudonym
-        text = _ORIGIN.sub(lambda m: m.group(0) if m.group(2).startswith("<") else m.group(1) + self.name(m.group(2), "Host"),
-                           text)
+        text = _ORIGIN.sub(self._origin, text)
         text = _EMAIL.sub(lambda m: self.name(m.group(0), "E-Mail"), text)
         text = _HOME.sub(r"\1/<Benutzer>", text)
         text = _MAC.sub(lambda m: self.name(m.group(0), "MAC"), text)

@@ -346,3 +346,14 @@ def test_an_own_address_as_origin_keeps_its_pseudonym(tmp_path):
         "refused a request from origin https://solar.familie-beispiel.de to host 192.168.1.20:8080 / "
         "solar.familie-beispiel.de")
     assert masked.count("<Host-1>") == 2 and "<Host-2>" not in masked and "familie-beispiel" not in masked
+
+
+def test_an_ip_address_as_origin_gets_its_ip_pseudonym(tmp_path):
+    """#460: an origin that is an IPv4 or IPv6 address is masked like any address: whole, and the same everywhere."""
+    from openampere import privacy
+    runtime, _ = app_client(tmp_path)
+    masked = privacy.for_report(runtime).text(
+        "refused a request from origin http://192.168.1.10:8080 to host x / 192.168.1.10 / "
+        "refused a request from origin http://[2001:db8:abcd:12::5]:8443 to host y")
+    assert "192.168" not in masked and "db8" not in masked and "abcd" not in masked
+    assert masked.count("<IP-1>") == 2 and "<Host-" not in masked
