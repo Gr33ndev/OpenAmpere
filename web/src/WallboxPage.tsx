@@ -201,14 +201,19 @@ site:
 
 /** Warns before evcc stops the wallbox: the test token runs out after days, a paid one once a year (#317). */
 export function SponsorNotice({ sponsor }: { sponsor?: EvccSponsor | null }) {
-  if (!sponsor?.active || !(sponsor.trial || sponsor.expires_soon)) return null;
+  if (!sponsor?.active) return null;
+  // evcc keeps reporting a token after its date (#462): a date in the past says it has run out
+  const expired = sponsor.expires_at ? new Date(sponsor.expires_at).getTime() <= Date.now() : false;
+  if (!(sponsor.trial || sponsor.expires_soon || expired)) return null;
   const date = sponsor.expires_at ? new Date(sponsor.expires_at).toLocaleDateString(LOCALE, { day: "numeric",
     month: "long", timeZone: timeZone() }) : null;
   if (sponsor.trial) {
     const link = <a href={evccDocs("sponsorship")} target="_blank" rel="noreferrer">{t("devices.sponsor.sponsorship")}</a>;
+    if (expired) return <Notice kind="error">{tx("devices.sponsor.trialExpired", { date, link })}</Notice>;
     return <Notice kind="warn">{date ? tx("devices.sponsor.trialUntil", { date, link }) : tx("devices.sponsor.trial", { link })}</Notice>;
   }
   const link = <a href="https://sponsor.evcc.io" target="_blank" rel="noreferrer">sponsor.evcc.io</a>;
+  if (expired) return <Notice kind="error">{tx("devices.sponsor.expired", { date, link })}</Notice>;
   return <Notice kind="warn">{date ? tx("devices.sponsor.expiresOn", { date, link }) : tx("devices.sponsor.expiresSoon", { link })}</Notice>;
 }
 
