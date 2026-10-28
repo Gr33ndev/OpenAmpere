@@ -163,7 +163,9 @@
     "syncAgain": "Sync again",
     "timeLeft": "About {time} left",
     "title": "History from the EKD cloud",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "socFollows": "Then, in step 2, OpenAmpere fetches the battery's state of charge for each day. It shows in the report only after that.",
+    "socArriving": "The state of charge shows in the report day by day, the newest days first."
   },
   "connectionPage": {
     "car": "Car",

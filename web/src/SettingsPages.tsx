@@ -1054,6 +1054,9 @@ function CloudImportCard() {
               to: new Date(job.end ?? job.start).toLocaleDateString(LOCALE) })}
               {job.imported ? ` · ${t("settings.cloudImportCard.imported", { count: job.imported.toLocaleString(LOCALE) })}` : ""}</div>}
             {job.status === "running" && job.eta_seconds ? <div className="field-hint">{t("settings.cloudImportCard.timeLeft", { time: duration(job.eta_seconds) })}</div> : null}
+            {/* the state of charge comes in a second step: say so, owners miss it in the report meanwhile (#476) */}
+            {job.status === "running" && job.phase === "work" && <div className="field-hint">{t("settings.cloudImportCard.socFollows")}</div>}
+            {job.status === "running" && job.phase === "soc" && <div className="field-hint">{t("settings.cloudImportCard.socArriving")}</div>}
           </div>
         )}
         {job?.notice && job.status === "running" && <Notice kind="warn">{job.notice}</Notice>}

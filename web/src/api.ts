@@ -189,6 +189,8 @@ export type CloudImportState = {
   imported?: number;
   start?: string;
   end?: string;
+  /** The day the state-of-charge step imports next: days after it have their state of charge already (#476). */
+  soc_cursor?: string;
   error?: string | null;
   notice?: string | null;
   eta_seconds?: number | null;

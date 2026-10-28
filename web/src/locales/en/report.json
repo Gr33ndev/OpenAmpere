@@ -164,7 +164,8 @@
     "socRightAxis": "State of charge (right axis)",
     "legendHint": "Tap an entry to hide or show its line again.",
     "externalPart": "of which {name}",
-    "onlyQuarterHours": "There are no power values for this day, only the state of charge per quarter hour. Choose “{view}” to see the energy."
+    "onlyQuarterHours": "There are no power values for this day, only the state of charge per quarter hour. Choose “{view}” to see the energy.",
+    "socImportPending": "The running import from the EKD cloud has not fetched the state of charge of this day yet; it shows here later."
   },
   "temperatureSection": {
     "bms": "Battery electronics (BMS)",

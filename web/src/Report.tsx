@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useMemo, useState } from "react";
-import type { DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Settings, Summary } from "./api";
+import type { CloudImportState, DeviceSeries, EnergyEntry, Period, PowerEntry, PvInputsTimeline, Settings, Summary } from "./api";
 import { PV_INPUT_COLORS, useResource } from "./api";
 import { Chart, type Series } from "./Chart";
 import { energyDigits, energyKwh, isoDate, kw, kwh, percent, timeZone, todayIso } from "./format";
@@ -192,6 +192,7 @@ export function Report() {
   const { data: devPower } = useResource<DeviceSeries>(showPower ? `/api/devices/power?date=${day}&step=300` : null, refresh);
   const { data: devEnergy } = useResource<DeviceSeries>(
     `/api/devices/energy?period=${period}&date=${day}&resolution=${showPower ? "60m" : resolution}`, refresh);
+  const { data: importJob } = useResource<CloudImportState>(period === "day" ? "/api/import/cloud" : null, 30_000);
   const loaded = showPower ? power : energy;
   const loadError = showPower ? powerError : energyError;
 
@@ -216,6 +217,9 @@ export function Report() {
   };
 
   const hasSoc = rows.some((r) => r.soc != null) && (showPower || period === "day");
+  // a day whose state of charge the running cloud import has not fetched yet (#476): it comes later
+  const socPending = period === "day" && !hasSoc && rows.length > 0 && importJob?.status === "running"
+    && !!importJob.start && day >= importJob.start && day <= (importJob.soc_cursor ?? importJob.end ?? day);
   // a second PV inverter (#419): its part of the generation, drawn over the PV bar or as its own line
   const hasExternal = rows.some((r) => (r.pv_external ?? 0) > 0);
   const externalLabel = settings?.values["pv.external_name"] || t("overview.energyFlow.secondInverter");
@@ -314,6 +318,7 @@ export function Report() {
       <Legend items={legend} hidden={hidden} onToggle={toggle} />
       <p className="hint">{t("report.report.legendHint")}</p>
       {showPower && <p className="hint">{t("report.report.signHint")}</p>}
+      {socPending && <p className="hint">{t("report.report.socImportPending")}</p>}
       {/* a day with only quarter-hour values (imported, or older than the raw readings are kept): no power curve (#468) */}
       {showPower && rows.length > 0 && rows.every((r) => (r as PowerEntry).pv == null && (r as PowerEntry).house == null) && (
         <p className="hint">{t("report.report.onlyQuarterHours", { view: t("report.report.energyQuarterHours") })}</p>
