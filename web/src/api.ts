@@ -306,9 +306,14 @@ export function useLive(): { snap: Snapshot | null; online: boolean; blocked: bo
         setBlocked(res.ok || res.status === 503); // 503: the server answers, it has no readings yet
       } catch {
         if (closed || failures < LIVE_FAILURES) return; // the socket opened meanwhile: it says what is live
-        // the server itself is not reachable: no proxy hint, the overview says it is not connected
+        // the server itself is not reachable (e.g. a restart for an update): no proxy hint, the overview says it is not
+        // connected. Polling stops and the count starts again, so the hint needs new failed attempts of the socket
+        // while the server answers, and does not flash up when the server is back before the socket
         setOnline(false);
         setBlocked(false);
+        window.clearInterval(poll);
+        poll = undefined;
+        failures = 0;
       }
     };
     const connect = () => {
