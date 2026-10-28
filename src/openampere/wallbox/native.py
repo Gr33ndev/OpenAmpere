@@ -57,7 +57,7 @@ from .. import ha_app, tuya
 from ..outbound import in_home_network
 from ..probe import host_addresses
 from ..runtime import Runtime
-from .base import Reading, WallboxUnreachable
+from .base import ReadBackFailed, Reading, WallboxUnreachable
 from .de_tuya import DeTuyaCharger
 from .foxess import FoxEssChargerLive
 from .modbus import ModbusWallbox
@@ -386,7 +386,13 @@ class NativeWallboxes:
             raise ValueError("Änderungen an Geräten sind ausgeschaltet. Stelle sie unter Geräte auf „Aktiv“, dann "
                              "kann OpenAmpere den Betriebsmodus der Wallbox ändern.")
         live = self.live.setdefault(wb.id, Live())
-        before = live.reading.work_mode if live.reading else None
+        reading = self.fresh(wb)
+        if not wb.enabled or reading is None:
+            # only to the charger that answers at this address now: not to a switched-off wallbox, or a device the
+            # router has given its old address to
+            raise ValueError("Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, "
+                             "wenn sie wieder erreichbar ist.")
+        before = reading.work_mode
         if control.dry_run:
             self._log(wb, "work_mode", mode, True, "nicht gesendet (Testmodus)", source=source, before=before)
             return {"dry_run": True, "work_mode": before}
@@ -395,6 +401,11 @@ class NativeWallboxes:
         try:
             async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
                 back = await writer.write(model.work_mode_register, work_modes[mode])
+        except ReadBackFailed as err:
+            self._log(wb, "work_mode", mode, False, "geschrieben, Rücklesen fehlgeschlagen", source=source,
+                      before=before)
+            live.updated = min(live.updated, time.time() - POLL_S)
+            raise ValueError(err.message) from None
         except WallboxUnreachable as err:
             self._log(wb, "work_mode", mode, False, f"Fehler: {err.message}", source=source, before=before)
             raise ValueError(err.message) from None

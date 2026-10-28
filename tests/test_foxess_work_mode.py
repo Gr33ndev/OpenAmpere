@@ -69,6 +69,7 @@ async def test_test_mode_logs_without_sending_and_the_master_switch_off_refuses(
     async with simulated() as (charger, port):
         runtime, wallboxes = setup(tmp_path, port, dry_run=True)
         wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
         assert (await wallboxes.set_work_mode(wb.id, "locked"))["dry_run"] is True
         assert charger.writes == [] and 16 not in charger.functions
         assert work_mode_entries(runtime)[0]["result"] == "nicht gesendet (Testmodus)"
@@ -94,6 +95,7 @@ async def test_a_refused_write_is_logged_and_said(tmp_path, monkeypatch):
     async with simulated() as (charger, port):
         runtime, wallboxes = setup(tmp_path, port)
         wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
         monkeypatch.setattr(charger, "handle", lambda pdu: bytes([pdu[0] | 0x80, 1]))  # illegal function
         with pytest.raises(ValueError, match="nicht angenommen"):
             await wallboxes.set_work_mode(wb.id, "controlled")
@@ -104,6 +106,7 @@ async def test_a_value_that_does_not_read_back_is_reported(tmp_path, monkeypatch
     async with simulated() as (charger, port):
         runtime, wallboxes = setup(tmp_path, port)
         wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
         handle = charger.handle
 
         def ignore_writes(pdu: bytes) -> bytes:  # answers the write but keeps the old value
@@ -112,6 +115,38 @@ async def test_a_value_that_does_not_read_back_is_reported(tmp_path, monkeypatch
         with pytest.raises(ValueError, match="nicht übernommen"):
             await wallboxes.set_work_mode(wb.id, "controlled")
         assert work_mode_entries(runtime)[0]["result"] == "Rücklesen abweichend: 1"
+
+
+async def test_a_charger_that_does_not_answer_now_or_is_switched_off_gets_no_write(tmp_path):
+    async with simulated() as (charger, port):
+        runtime, wallboxes = setup(tmp_path, port)
+        wb = wallboxes.wallboxes[0]
+        with pytest.raises(ValueError, match="antwortet gerade nicht"):  # not read yet: no reading to trust
+            await wallboxes.set_work_mode(wb.id, "controlled")
+        await wallboxes.read(wb)
+        wallboxes.save([{**wallboxes.view()["wallboxes"][0], "enabled": False}])
+        with pytest.raises(ValueError, match="antwortet gerade nicht"):
+            await wallboxes.set_work_mode(wb.id, "controlled")
+        assert charger.writes == [] and 16 not in charger.functions
+        assert work_mode_entries(runtime) == []
+
+
+async def test_a_write_whose_read_back_fails_says_it_may_be_written(tmp_path, monkeypatch):
+    async with simulated() as (charger, port):
+        runtime, wallboxes = setup(tmp_path, port)
+        wb = wallboxes.wallboxes[0]
+        await wallboxes.read(wb)
+        handle = charger.handle
+
+        def no_read_after_write(pdu: bytes) -> bytes:
+            if pdu[0] == 3 and charger.writes:
+                return bytes([3 | 0x80, 4])  # server device failure
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", no_read_after_write)
+        with pytest.raises(ValueError, match="angenommen, OpenAmpere konnte sie aber nicht zurücklesen"):
+            await wallboxes.set_work_mode(wb.id, "controlled")
+        assert charger.writes == [(0x3000, 0)]
+        assert work_mode_entries(runtime)[0]["result"] == "geschrieben, Rücklesen fehlgeschlagen"
 
 
 async def test_a_reader_cannot_write_and_a_writer_only_its_register():
@@ -139,7 +174,13 @@ def test_the_app_sets_it_and_offers_it_only_for_the_foxess_charger(tmp_path, mon
     from openampere import api as api_module
     from openampere.api import create_app
 
+    created = []
+
     class Wallboxes(NativeWallboxes):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
         def refresh(self, now=None):  # no background reads from a test
             pass
     monkeypatch.setattr(api_module, "NativeWallboxes", Wallboxes)
@@ -153,6 +194,7 @@ def test_the_app_sets_it_and_offers_it_only_for_the_foxess_charger(tmp_path, mon
                 {"name": "Garage", "model": "foxess_ac", "host": "127.0.0.1", "port": port}]})
             wb = saved.json()["wallboxes"][0]
             assert wb["work_modes"] == ["controlled", "plug_and_charge", "locked"]
+            await created[0].read(created[0].wallboxes[0])  # what the poll does: the write needs a fresh reading
             r = await asyncio.to_thread(web.post, f"/api/wallboxes/{wb['id']}/work-mode", json={"mode": "locked"})
             assert r.status_code == 200, r.text
             assert r.json()["work_mode"] == "locked" and charger.regs[0x3000] == 2

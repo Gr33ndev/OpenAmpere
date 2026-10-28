@@ -23,7 +23,7 @@ from .base import Reading, Wallbox, scaled, text, u32
 STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 5: "finished", 6: "fault",
           8: "locked", 9: "switching_phases"}  # 9: seen on real devices, not in the protocol document
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
-WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (protocol V1.6, #463)
+WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (FoxESS EV Charger Modbus TCP protocol V1.6, #318, #463)
 LIFETIME_ENERGY = 0x1016  # u32, 0.1 kWh
 RFID = 0x101C  # u32: the card that started the session
 MODEL = 0x101E  # ASCII, 4 registers

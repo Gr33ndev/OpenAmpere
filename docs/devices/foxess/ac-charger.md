@@ -7,16 +7,18 @@
 **Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** not stated in the
 sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup and read-only live view
 (`wallbox/native.py`, [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)), its charging modes as a simulation without writing ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) · **Support:** display
-only (live view and check, read only, no control) · **Confirmed on a real device:** partly (connection and the read registers on one
+(live view and check) and the work mode on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)), no
+control of charging · **Confirmed on a real device:** partly (connection and the read registers on one
 three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431))
 
 ## Summary
 
 - The charger has three communication modes, only one active at a time: default (FoxESS app and cloud, with PV
   linkage to the inverter), Modbus TCP and OCPP.
-- OpenAmpere only reads it: in a one-off check of the setup, to confirm the register addresses
-  ([#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)), and as a wallbox it shows live, never writing to it
-  ([#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)); its charging modes are a simulation that only logs
+- OpenAmpere reads it: in a one-off check of the setup, to confirm the register addresses
+  ([#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)), and as a wallbox it shows live
+  ([#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)). The one register it writes, on the owner's request, is
+  the work mode 0x3000 ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)); its charging modes are a simulation that only logs
   what OpenAmpere would set ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)). Control comes only after
   owners' reports confirm the registers ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - Modbus TCP: all registers are holding registers (FC03), unit id 1, port 502 (1502 also seen); port 502, unit id 1
@@ -117,6 +119,11 @@ Values while charging and single-phase models are not confirmed yet.
 | The work mode (0x3000) is the one register OpenAmpere writes to the charger: chosen by the owner in the app after a question, with function code 16, only with the master switch on (logged, not sent in test mode), read back and logged. A ModbusWallbox writes only the registers it was made with (`writable`); the poll and the check get none. | A charger that went "locked" cannot be released with the previous app; a stored setting needs no watchdog. | [#464](https://github.com/Gr33ndev/OpenAmpere/issues/464) |
 
 ## Open questions
+
+- A write by OpenAmpere (work mode 0x3000, [#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)) is not yet
+  confirmed on a real device. Open with it: whether the status leaves 8 ("locked") as soon as the work mode is no
+  longer 2 (the simulator assumes so), and which exception a charger outside the "Modbus TCP" mode sends for a write
+  (the app's text assumes 1, 2, 3 or 6).
 
 - **Conflict, default mode:** the Fox Switch app manual says Modbus TCP is read-only in default mode; evcc reports that
   some firmware refuses every read with exception 6 outside the Modbus TCP mode. Only a real device can settle whether

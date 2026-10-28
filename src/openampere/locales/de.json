@@ -402,6 +402,8 @@
     "workModeNotSettable": "Bei dieser Wallbox kann OpenAmpere den Betriebsmodus nicht einstellen.",
     "unknownWorkMode": "Unbekannter Betriebsmodus.",
     "workModeControlOff": "Änderungen an Geräten sind ausgeschaltet. Stelle sie unter Geräte auf „Aktiv“, dann kann OpenAmpere den Betriebsmodus der Wallbox ändern.",
-    "workModeNotTaken": "Die Wallbox hat den Betriebsmodus nicht übernommen. Vielleicht erlaubt sie das in ihrer jetzigen Steuerungsart nicht."
+    "workModeNotTaken": "Die Wallbox hat den Betriebsmodus nicht übernommen. Vielleicht erlaubt sie das in ihrer jetzigen Steuerungsart nicht.",
+    "readBackFailed": "Die Wallbox hat die Einstellung angenommen, OpenAmpere konnte sie aber nicht zurücklesen. Ob sie gilt, siehst du nach der nächsten Abfrage der Wallbox.",
+    "workModeNotAnswering": "Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, wenn sie wieder erreichbar ist."
   }
 }

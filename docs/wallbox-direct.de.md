@@ -4,8 +4,9 @@ English: [wallbox-direct.md](wallbox-direct.md)
 
 Die meisten Wallboxen steuert OpenAmpere über [evcc](https://evcc.io), siehe [evcc.de.md](evcc.de.md). Einige
 Wallboxen spricht OpenAmpere selbst an, ohne evcc und ohne Cloud. Bisher ist das die **mobile 11-kW-Wallbox von
-„dé“** (mit Tuya-WLAN). Den **FoxESS AC EV Charger** zeigt OpenAmpere nur an, steuern kann es ihn noch nicht (siehe
-unten; seine Lademodi gibt es als Simulation, die nichts schreibt). Du kannst mehrere solche Wallboxen einrichten,
+„dé“** (mit Tuya-WLAN). Den **FoxESS AC EV Charger** zeigt OpenAmpere an und kann seinen Betriebsmodus einstellen (z. B.
+zum Entsperren), das Laden steuert es noch nicht (siehe unten; seine Lademodi gibt es als Simulation, die nichts
+schreibt). Du kannst mehrere solche Wallboxen einrichten,
 auch zusätzlich zu einer Wallbox über evcc.
 
 > Das Auslesen ist an einem echten Gerät bestätigt, das Steuern (Laden starten und stoppen, Ladestrom setzen) noch
@@ -126,8 +127,9 @@ Netz hat. Trag die IP-Adresse aus dem Router von Hand ein.
 
 Der FoxESS AC EV Charger ist auch die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat; im Router heißt sie
 `EVC-…`. OpenAmpere zeigt ihn an (#439): ob ein Auto angeschlossen ist, mit welcher Leistung es lädt und den Strom je
-Phase. Seine Leistung zählt im Hausverbrauch mit wie bei jeder Wallbox. Steuern kann OpenAmpere ihn noch nicht
-(#318): Es schreibt nichts an die Wallbox, sie lädt weiter so, wie sie in ihrer App eingestellt ist.
+Phase. Seine Leistung zählt im Hausverbrauch mit wie bei jeder Wallbox. Das Laden steuert OpenAmpere noch nicht
+(#318): Die Wallbox lädt weiter so, wie sie in ihrer App eingestellt ist. Das Einzige, was OpenAmpere schreibt, und
+nur auf deinen Wunsch, ist der Betriebsmodus der Wallbox (siehe unten).
 
 1. Unter **direkt → Wallbox hinzufügen oder prüfen** bei **Welche Wallbox hast du?** den FoxESS AC EV Charger
    wählen (unter „Nur anzeigen“) und **Anzeigen** lassen.
@@ -173,6 +175,15 @@ sobald du ein Auto einsteckst.
 - Die Simulation läuft, solange OpenAmpere läuft. Nach einem Neustart beginnt sie wieder bei dem, was die Wallbox
   gerade tut.
 - Home Assistant zeigt die Wallbox nur an (kein Lademodus).
+
+### Betriebsmodus der Wallbox
+
+Die Karte zeigt auch den **Betriebsmodus** der Wallbox selbst (#464): **Gesteuert** (lädt, wenn eine App, eine Karte
+oder eine Steuerung den Ladevorgang startet), **Plug & Charge** (lädt beim Einstecken) oder **Gesperrt** (lädt nicht).
+Eine Wallbox, die sich gesperrt hat, lässt sich hier wieder freigeben. OpenAmpere schreibt die Einstellung nach einer
+Rückfrage einmal und liest sie zurück. Dafür muss **Änderungen an Geräten** auf **Aktiv** stehen, die bisherige
+Smartbox vom Strom getrennt sein und die Wallbox gerade antworten. Im Testmodus steht die Änderung nur im
+Steuerungsprotokoll.
 
 ## Andere Wallboxen prüfen (nur lesen)
 

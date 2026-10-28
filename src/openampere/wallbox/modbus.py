@@ -18,7 +18,7 @@ import asyncio
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from .base import WallboxUnreachable
+from .base import ReadBackFailed, WallboxUnreachable
 
 TIMEOUT_S = 3.0
 REQUEST_GAP_S = 0.5  # between the blocks of one read, as in the check that read a real charger (#431)
@@ -78,7 +78,12 @@ class ModbusWallbox:
                     "Die Wallbox hat auf die Einstellung nicht geantwortet. Bei Anlagen von EKD ist meist die "
                     "bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.")
             await asyncio.sleep(REQUEST_GAP_S)
-            back = await self._block(client, address, 1, False)
+            try:
+                back = await self._block(client, address, 1, False)
+            except WallboxUnreachable:
+                raise ReadBackFailed(
+                    "Die Wallbox hat die Einstellung angenommen, OpenAmpere konnte sie aber nicht zurücklesen. Ob sie "
+                    "gilt, siehst du nach der nächsten Abfrage der Wallbox.") from None
             return back[address]
         finally:
             client.close()
