@@ -121,7 +121,7 @@ function simulatedWallboxText(name: string, action: unknown, value: unknown): st
   }
 }
 
-function wallboxText(name: string, action: unknown, value: unknown): string {
+function wallboxText(name: string, action: unknown, value: unknown, before?: unknown): string {
   switch (action) {
     case "mode": {
       const modes: Record<string, string> = { off: t("common.off"), pv: t("devices.modes.solar"), minpv: t("devices.modes.minSolar"),
@@ -142,6 +142,13 @@ function wallboxText(name: string, action: unknown, value: unknown): string {
     case "start": return t("settings.controlLog.wallboxStart", { name });
     case "stop": return t("settings.controlLog.wallboxStop", { name });
     case "release": return t("settings.controlLog.wallboxReleased", { name });
+    case "work_mode": { // the work mode of the wallbox itself (#464), with the one it had before
+      const names: Record<string, string> = { controlled: t("devices.nativeWallbox.workModeNameControlled"),
+        plug_and_charge: t("devices.nativeWallbox.workModeNamePlugAndCharge"), locked: t("devices.nativeWallbox.workModeNameLocked") };
+      const mode = names[str(value)] ?? str(value);
+      return before == null ? t("settings.controlLog.wallboxWorkMode", { name, mode })
+        : t("settings.controlLog.wallboxWorkModeFrom", { name, mode, before: names[str(before)] ?? str(before) });
+    }
     case "priority_soc": return t("settings.controlLog.wallboxBatteryPriority", { name, soc: pct(value) });
     case "plan": {
       const plan = obj(value);
@@ -220,7 +227,7 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
     case "evcc":
     case "wallbox": // a wallbox OpenAmpere controls itself, or only simulates the control of (#440)
       return (details.simulation === true ? simulatedWallboxText : wallboxText)(
-        str(from.loadpoint) || t("settings.controlLog.wallbox"), to.action, to.value);
+        str(from.loadpoint) || t("settings.controlLog.wallbox"), to.action, to.value, from.value);
     case "remote_access":
       return ({
         login: t("settings.controlLog.remoteLogin"), logout: t("settings.controlLog.remoteLogout"),
@@ -265,7 +272,8 @@ function status(e: LogEntry): LogStatus {
   if (e.dry_run) return "test";
   if (/^Fehler|fehlgeschlagen/.test(e.result)) return "error";
   // inverter_relocated: worth a look, OpenAmpere now talks to another address (#351)
-  if (e.action.endsWith("_check") || e.action === "inverter_relocated" || e.result.startsWith("Rücklesen abweichend")) return "warning";
+  if (e.action.endsWith("_check") || e.action === "inverter_relocated" || e.result.startsWith("Rücklesen abweichend")
+    || e.result.startsWith("unbestätigt")) return "warning"; // a write that may or may not have reached the device (#464)
   return "ok";
 }
 

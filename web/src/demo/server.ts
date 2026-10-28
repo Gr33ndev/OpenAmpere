@@ -399,13 +399,13 @@ function setFoxMode(body: unknown) {
   return nativeWallboxes();
 }
 
-/** The work mode of the FoxESS charger (#464): in the demo only remembered, like test mode. */
-let foxWorkMode = "controlled";
+/** The work mode of the FoxESS charger (#464): the demo answers as an installation in test mode, which logs the change
+ *  and keeps the charger's mode. */
+const foxWorkMode = "controlled";
 function setFoxWorkMode(body: unknown) {
   const { mode } = (body ?? {}) as { mode?: string };
   if (!mode || !["controlled", "plug_and_charge", "locked"].includes(mode)) throw new Error("Unbekannter Betriebsmodus.");
-  foxWorkMode = mode;
-  return { dry_run: true, work_mode: mode, ...nativeWallboxes() };
+  return { dry_run: true, work_mode: foxWorkMode, ...nativeWallboxes() };
 }
 
 /** The few changes the demo takes: the simulated charging mode of the FoxESS charger (#440), which writes nothing in
