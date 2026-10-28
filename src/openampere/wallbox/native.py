@@ -57,7 +57,7 @@ from .. import ha_app, tuya
 from ..outbound import in_home_network
 from ..probe import host_addresses
 from ..runtime import Runtime
-from .base import Reading, WallboxUnreachable
+from .base import ReadBackFailed, Reading, WallboxUnreachable
 from .de_tuya import DeTuyaCharger
 from .foxess import FoxEssChargerLive
 from .modbus import ModbusWallbox
@@ -367,6 +367,57 @@ class NativeWallboxes:
             self._log(wb, "mode_current", {"mode": mode, "current_a": current}, False, "ok", source=source,
                       before=before)
         return wb
+
+    async def set_work_mode(self, wallbox_id: str, mode: str, source: str | None = None) -> dict:
+        """A stored setting of the wallbox itself (#464): the work mode of the FoxESS charger, e.g. to unlock a charger
+        that went "locked". Like every write: only with the master switch on, logged and not sent in test mode,
+        read back, every change in the control log. Not continuous control, so no watchdog is needed."""
+        wb = next((w for w in self.wallboxes if w.id == wallbox_id), None)
+        if wb is None:
+            raise ValueError("Diese Wallbox gibt es nicht.")
+        model = MODELS[wb.model]
+        work_modes = getattr(model, "work_modes", None)
+        if not work_modes or model.protocol != "modbus":
+            raise ValueError("Bei dieser Wallbox kann OpenAmpere den Betriebsmodus nicht einstellen.")
+        if mode not in work_modes:
+            raise ValueError("Unbekannter Betriebsmodus.")
+        control = self.runtime.config.control
+        if not control.enabled:
+            raise ValueError("Änderungen an Geräten sind ausgeschaltet. Stelle sie unter Geräte auf „Aktiv“, dann "
+                             "kann OpenAmpere den Betriebsmodus der Wallbox ändern.")
+        live = self.live.setdefault(wb.id, Live())
+        reading = self.fresh(wb)
+        if not wb.enabled or reading is None:
+            # only to the charger that answers at this address now: not to a switched-off wallbox, or a device the
+            # router has given its old address to
+            raise ValueError("Die Wallbox antwortet gerade nicht. Ihren Betriebsmodus kann OpenAmpere erst ändern, "
+                             "wenn sie wieder erreichbar ist.")
+        before = reading.work_mode
+        if control.dry_run:
+            self._log(wb, "work_mode", mode, True, "nicht gesendet (Testmodus)", source=source, before=before)
+            return {"dry_run": True, "work_mode": before}
+        writer = ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional,
+                               writable=frozenset({model.work_mode_register}))
+        try:
+            async with live.lock:  # never at the same time as the poll: the charger may allow only one connection
+                back = await writer.write(model.work_mode_register, work_modes[mode])
+        except ReadBackFailed as err:
+            self._log(wb, "work_mode", mode, False, f"unbestätigt: {err.message}", source=source, before=before)
+            live.updated = min(live.updated, time.time() - POLL_S)
+            raise ValueError(err.message) from None
+        except WallboxUnreachable as err:
+            self._log(wb, "work_mode", mode, False, f"Fehler: {err.message}", source=source, before=before)
+            raise ValueError(err.message) from None
+        now_mode = next((m for m, v in work_modes.items() if v == back), None)
+        if live.reading is not None:
+            live.reading.work_mode = now_mode
+        if back != work_modes[mode]:
+            self._log(wb, "work_mode", mode, False, f"Rücklesen abweichend: {back}", source=source, before=before)
+            raise ValueError("Die Wallbox hat den Betriebsmodus nicht übernommen. Vielleicht erlaubt sie das in "
+                             "ihrer jetzigen Steuerungsart nicht.")
+        self._log(wb, "work_mode", mode, False, "ok", source=source, before=before)
+        live.updated = min(live.updated, time.time() - POLL_S)  # read again with the next poll: the status follows
+        return {"dry_run": False, "work_mode": now_mode}
 
     # ---- reading, in the background --------------------------------------------------
 
@@ -940,6 +991,7 @@ class NativeWallboxes:
                                                          if k != "lifetime_kwh"},
                 "controlled": wb.id in self._owned(),
                 "simulated": MODELS[wb.model].simulated,
+                "work_modes": list(getattr(MODELS[wb.model], "work_modes", None) or ()),  # settable (#464)
                 "simulation": self._plan_view(live.plan) if self.simulates(wb) else None,
             })
         return {"wallboxes": items, "models": [model_info(m) for m in MODELS.values()],

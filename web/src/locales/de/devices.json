@@ -282,7 +282,21 @@
     },
     "simHintMinpv": "Simulation: OpenAmpere würde immer mindestens mit der kleinsten Stufe laden, bei Sonne schneller, aber höchstens mit dem Ladestrom unten.",
     "simHintNow": "Simulation: OpenAmpere würde sofort mit dem Ladestrom unten laden.",
-    "maxCurrentHintSimulation": "So viel würde OpenAmpere in der Simulation höchstens einstellen. Die Wallbox begrenzt zusätzlich auf ihren eigenen höchsten Ladestrom."
+    "maxCurrentHintSimulation": "So viel würde OpenAmpere in der Simulation höchstens einstellen. Die Wallbox begrenzt zusätzlich auf ihren eigenen höchsten Ladestrom.",
+    "workModeTitle": "Betriebsmodus der Wallbox",
+    "workModeNameControlled": "Gesteuert",
+    "workModeNamePlugAndCharge": "Plug & Charge",
+    "workModeNameLocked": "Gesperrt",
+    "workModeHint": "Das ist eine Einstellung in der Wallbox selbst. Sie bleibt, auch wenn OpenAmpere aus ist.",
+    "workModeLockedHint": "Die Wallbox ist gesperrt und lädt nicht. Wähle „Gesteuert“ oder „Plug & Charge“, um sie wieder freizugeben.",
+    "workModeQuestion": "Betriebsmodus auf „{mode}“ stellen?",
+    "workModeConfirm": "Umstellen",
+    "workModeExplainControlled": "Die Wallbox lädt erst, wenn eine App, eine Ladekarte oder eine Steuerung den Ladevorgang startet. OpenAmpere startet das Laden bei dieser Wallbox noch nicht: Starte es dann in der App von FoxESS oder mit einer Ladekarte, oder wähle „Plug & Charge“.",
+    "workModeExplainPlugAndCharge": "Die Wallbox lädt, sobald ein Auto eingesteckt ist.",
+    "workModeExplainLocked": "Die Wallbox lädt gar nicht mehr, bis du sie wieder freigibst.",
+    "workModeSmartbox": "OpenAmpere schreibt die Einstellung einmal in die Wallbox und liest sie zur Kontrolle zurück. Die bisherige Smartbox von EKD muss dafür vom Strom getrennt sein.",
+    "workModeSaved": "Der Betriebsmodus der Wallbox ist geändert.",
+    "workModeTestMode": "Testmodus: Die Änderung steht im Steuerungsprotokoll, an die Wallbox gesendet wurde nichts."
   },
   "ownDeviceCard": {
     "autoHint": "Läuft mit Solarüberschuss nach deinen Einstellungen.",

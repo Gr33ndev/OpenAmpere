@@ -4,8 +4,9 @@
 
 - One short connection per read, closed right afterwards: the connection is never held between two reads, as the
   number of connections such a wallbox allows is unknown (the FoxESS charger may allow only one).
-- Holding registers only (function code 3). There is deliberately no function here that writes: a wallbox that
-  OpenAmpere only shows must never get a write request, whatever the settings say.
+- Holding registers are read with function code 3. Writing is possible only for the registers a ModbusWallbox was
+  made with in `writable` (#464): reader() in native.py gives none, so a read can never turn into a write, and a
+  wallbox that OpenAmpere only shows never gets a write request, whatever the settings say.
 - Every failure becomes a WallboxUnreachable with a German text for the owner. On EKD systems the previous smartbox
   holds the charger's connection while it is powered (#431): the texts name it first, like the wallbox check.
 """
@@ -17,7 +18,7 @@ import asyncio
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from .base import WallboxUnreachable
+from .base import ReadBackFailed, WallboxUnreachable
 
 TIMEOUT_S = 3.0
 REQUEST_GAP_S = 0.5  # between the blocks of one read, as in the check that read a real charger (#431)
@@ -28,9 +29,9 @@ class ModbusWallbox:
     may not have (e.g. single-phase chargers), skipped when the wallbox refuses them as unknown addresses."""
 
     def __init__(self, host: str, port: int, unit: int, ranges: tuple[tuple[int, int], ...],
-                 optional: tuple[tuple[int, int], ...] = ()) -> None:
+                 optional: tuple[tuple[int, int], ...] = (), writable: frozenset[int] = frozenset()) -> None:
         self.host, self.port, self.unit = host, port, unit
-        self.ranges, self.optional = ranges, optional
+        self.ranges, self.optional, self.writable = ranges, optional, writable
 
     async def status(self) -> dict[int, int]:
         """address -> word of every block that answered."""
@@ -49,6 +50,49 @@ class ModbusWallbox:
                     await asyncio.sleep(REQUEST_GAP_S)
                 values.update(await self._block(client, start, count, optional))
             return values
+        finally:
+            client.close()
+
+    async def write(self, address: int, value: int) -> int:
+        """Writes one read/write register with function code 16, as the FoxESS charger wants it, and reads it back
+        over the same short connection. Only a register in `writable`; the caller checks master switch, test mode and
+        value (native.py)."""
+        if address not in self.writable or not 0 <= value <= 0xFFFF:
+            raise ValueError(f"register {address:#06x} is not writable here")
+        client = AsyncModbusTcpClient(self.host, port=self.port, timeout=TIMEOUT_S, retries=0, reconnect_delay=0)
+        try:
+            if not await client.connect():
+                raise WallboxUnreachable(
+                    f"Die Wallbox unter {self.host} nimmt gerade keine Modbus-Verbindung an. Bei Anlagen von EKD ist "
+                    "meist die bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.")
+            try:
+                response = await client.write_registers(address, [value], device_id=self.unit)
+            except (ModbusException, OSError, asyncio.TimeoutError):
+                # sent, but the answer is lost: the wallbox may well have taken it
+                raise ReadBackFailed(
+                    "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du "
+                    "nach der nächsten Abfrage der Wallbox.") from None
+            if response is None:  # no exception, but no answer either: as lost
+                raise ReadBackFailed(
+                    "Die Wallbox hat auf die Einstellung nicht geantwortet. Vielleicht gilt sie trotzdem: Das siehst du "
+                    "nach der nächsten Abfrage der Wallbox.")
+            if response.isError():
+                code = getattr(response, "exception_code", None)
+                raise WallboxUnreachable(
+                    "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich lässt sie sich gerade nur über ihre "
+                    "eigene App steuern: Stelle in der App „Fox Switch“ die Verbindungsart „Modbus TCP“ ein."
+                    if code in (1, 2, 3, 6) else
+                    f"Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche "
+                    "es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen "
+                    "Bericht.")
+            await asyncio.sleep(REQUEST_GAP_S)
+            try:
+                back = await self._block(client, address, 1, False)
+            except WallboxUnreachable:
+                raise ReadBackFailed(
+                    "Die Wallbox hat die Einstellung angenommen, OpenAmpere konnte sie aber nicht zurücklesen. Ob sie "
+                    "gilt, siehst du nach der nächsten Abfrage der Wallbox.") from None
+            return back[address]
         finally:
             client.close()
 

@@ -21,6 +21,10 @@ class WallboxUnreachable(Exception):
         self.message = message
 
 
+class ReadBackFailed(WallboxUnreachable):
+    """A write that may have reached the wallbox: its answer was lost, or reading it back failed (#464)."""
+
+
 @dataclass
 class Reading:
     """What OpenAmpere knows about a wallbox after one read, the same for every model (native.py)."""

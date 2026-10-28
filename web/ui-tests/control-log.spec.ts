@@ -121,3 +121,18 @@ test("simulated wallbox entries say what OpenAmpere would have done", async ({ p
   await expect(page.getByText("Testmodus – nichts geändert", { exact: false })).toHaveCount(0);
   expect(await layoutProblems(page)).toEqual([]);
 });
+
+// #464: the work mode with the one before; a write that may not have reached the charger is a warning
+test("work mode entries say the old and the new mode", async ({ page, api }) => {
+  const entry = (result: string, before?: string) => ({ action: "wallbox", dry_run: false, result,
+    details: { from: { loadpoint: "Garage", id: "abcd1234", ...(before ? { value: before } : {}) },
+      to: { action: "work_mode", value: "controlled" } } });
+  api.override("/api/control/log", { entries: [
+    { ts: NOW, ...entry("ok", "locked") },
+    { ts: NOW - 600, ...entry("unbestätigt: Die Wallbox hat auf die Einstellung nicht geantwortet.") },
+  ] });
+  await open(page, "more/control");
+  await expect(page.getByText("Garage: Betriebsmodus von „Gesperrt“ auf „Gesteuert“ gestellt.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Garage: Betriebsmodus „Gesteuert“ eingestellt.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Einstellung geändert")).toHaveCount(0);
+});

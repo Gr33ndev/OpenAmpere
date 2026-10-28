@@ -359,7 +359,9 @@
     "wallboxSimCurrentRangeMinute": {
       "one": "{name}: simulation – OpenAmpere would go on charging with {current} A on 1 phase (between {low} and {high} A in the last minute).",
       "other": "{name}: simulation – OpenAmpere would go on charging with {current} A on {count} phases (between {low} and {high} A in the last minute)."
-    }
+    },
+    "wallboxWorkMode": "{name}: work mode set to “{mode}”.",
+    "wallboxWorkModeFrom": "{name}: work mode changed from “{before}” to “{mode}”."
   },
   "controlPage": {
     "emptyState": "No changes yet.",

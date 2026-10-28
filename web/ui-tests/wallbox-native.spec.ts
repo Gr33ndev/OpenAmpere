@@ -286,3 +286,27 @@ test("without a car the card says that the mode applies once one is plugged in",
   await expect(card).toContainText("kein Fahrzeug angeschlossen");
   await expect(card).toContainText("gilt, sobald du ein Auto einsteckst");
 });
+
+// #464: a FoxESS charger that went "locked" is released with its work mode, after a question
+test("a locked FoxESS charger can be released with its work mode", async ({ page, api }) => {
+  const base = await view();
+  const garage = base.wallboxes.find((w) => w.id === "demo0003") as NativeWallbox;
+  const locked: NativeWallbox = { ...garage, reading: { ...(garage.reading as NonNullable<NativeWallbox["reading"]>),
+    state: "unknown", connected: false, work_mode: "locked" } };
+  api.override("/api/wallboxes", { ...base, wallboxes: [locked] });
+  api.override("/api/wallboxes/demo0003/work-mode", { dry_run: false, work_mode: "controlled", ...base,
+    wallboxes: [{ ...locked, reading: { ...locked.reading, work_mode: "controlled" } }] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Garage" });
+  await expect(card).toContainText("Die Wallbox ist gesperrt und lädt nicht");
+  await card.getByRole("group", { name: "Betriebsmodus der Wallbox" }).getByRole("button", { name: "Gesteuert" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Betriebsmodus auf „Gesteuert“ stellen?");
+  await expect(dialog).toContainText("Smartbox");
+  expect(await layoutProblems(page)).toEqual([]);
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0003/work-mode"));
+  await dialog.getByRole("button", { name: "Umstellen" }).click();
+  expect((await sent).postDataJSON()).toEqual({ mode: "controlled" });
+  await expect(page.getByText("Der Betriebsmodus der Wallbox ist geändert.")).toBeVisible();
+  await expect(card).not.toContainText("Die Wallbox ist gesperrt");
+});

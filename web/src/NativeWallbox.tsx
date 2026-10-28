@@ -40,7 +40,10 @@ export type NativeWallbox = {
   read_only?: boolean;
   /** Its modes other than "manual" only simulate the control (#440); `simulation`: what it would do now. */
   simulated?: boolean; simulation?: WallboxSimulation | null;
+  /** The work modes OpenAmpere can set on the wallbox itself (#464), e.g. to unlock a FoxESS charger. */
+  work_modes?: WorkMode[];
 };
+type WorkMode = "controlled" | "plug_and_charge" | "locked";
 export type WallboxSimulation = {
   state: "charging" | "waiting" | "no_surplus" | "off" | "finished" | "no_car" | "unknown";
   current_a: number | null; phases: number | null; power_w: number;
@@ -144,8 +147,56 @@ function OwnSettings({ r }: { r: WallboxReading }) {
   );
 }
 
+/** The work mode of the wallbox itself (#464): a stored setting, written once after the owner confirms. */
+function WorkModeSetting({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
+  const [asked, setAsked] = useState<WorkMode | null>(null);
+  const [busy, setBusy] = useState(false);
+  const current = wb.online ? wb.reading?.work_mode : null;
+  if (!wb.work_modes?.length || !current) return null;
+  const write = async (mode: WorkMode) => {
+    setBusy(true);
+    try {
+      const result = await postJson<WallboxesView & { dry_run: boolean }>(`/api/wallboxes/${wb.id}/work-mode`, { mode });
+      onChange(result);
+      toast(result.dry_run ? t("devices.nativeWallbox.workModeTestMode") : t("devices.nativeWallbox.workModeSaved"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+      setAsked(null);
+    }
+  };
+  return (
+    <fieldset className="field field-group">
+      <legend className="field-label">{t("devices.nativeWallbox.workModeTitle")}</legend>
+      <Segmented value={current} disabled={busy} onChange={(m) => setAsked(m as WorkMode)}
+        options={wb.work_modes.map((m) => [m, WORK_MODE_NAME[m]] as [string, string])} />
+      <p className="hint">{current === "locked" ? t("devices.nativeWallbox.workModeLockedHint") : t("devices.nativeWallbox.workModeHint")}</p>
+      {asked && (
+        <Dialog title={t("devices.nativeWallbox.workModeQuestion", { mode: WORK_MODE_NAME[asked] })}
+          confirm={t("devices.nativeWallbox.workModeConfirm")} disabled={busy}
+          onCancel={() => setAsked(null)} onConfirm={() => void write(asked)}>
+          <p>{WORK_MODE_EXPLAIN[asked]}</p>
+          <p>{t("devices.nativeWallbox.workModeSmartbox")}</p>
+        </Dialog>
+      )}
+    </fieldset>
+  );
+}
+
+const WORK_MODE_NAME: Record<WorkMode, string> = {
+  controlled: t("devices.nativeWallbox.workModeNameControlled"),
+  plug_and_charge: t("devices.nativeWallbox.workModeNamePlugAndCharge"),
+  locked: t("devices.nativeWallbox.workModeNameLocked"),
+};
+const WORK_MODE_EXPLAIN: Record<WorkMode, string> = {
+  controlled: t("devices.nativeWallbox.workModeExplainControlled"),
+  plug_and_charge: t("devices.nativeWallbox.workModeExplainPlugAndCharge"),
+  locked: t("devices.nativeWallbox.workModeExplainLocked"),
+};
+
 /** A wallbox OpenAmpere only shows (#439): what it does by itself, no charging mode. */
-function ReadOnlyCard({ wb }: { wb: NativeWallbox }) {
+function ReadOnlyCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
   const r = wb.online ? wb.reading : null; // no old values of a wallbox that is away
   return (
     <div className="card wallbox">
@@ -164,13 +215,14 @@ function ReadOnlyCard({ wb }: { wb: NativeWallbox }) {
           <OwnSettings r={r} />
         </dl>
       )}
+      <WorkModeSetting wb={wb} onChange={onChange} />
     </div>
   );
 }
 
 /** One wallbox on the devices tab: what it does now and the charging mode (for the FoxESS charger a simulation). */
 export function NativeWallboxCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: WallboxesView) => void }) {
-  if (wb.read_only && !wb.simulated) return <ReadOnlyCard wb={wb} />;
+  if (wb.read_only && !wb.simulated) return <ReadOnlyCard wb={wb} onChange={onChange} />;
   return <ControlledCard wb={wb} onChange={onChange} />;
 }
 
@@ -225,6 +277,7 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           {sim && wb.simulation && <><dt>{t("devices.nativeWallbox.simulationPlan")}</dt><dd>{planText(wb.simulation)}</dd></>}
         </dl>
       )}
+      <WorkModeSetting wb={wb} onChange={onChange} />
     </div>
   );
 }

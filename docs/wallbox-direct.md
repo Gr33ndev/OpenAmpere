@@ -4,8 +4,8 @@ Deutsch: [wallbox-direct.de.md](wallbox-direct.de.md)
 
 Most wallboxes are controlled by OpenAmpere through [evcc](https://evcc.io), see [evcc.md](evcc.md). A few wallboxes
 OpenAmpere talks to itself, without evcc and without a cloud. So far this is the **portable 11 kW wallbox sold as
-"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere only shows, it cannot control it yet; its charging
-modes are a simulation that writes nothing (see below). You can set up several of them, also next to a wallbox
+"dé"** (with Tuya Wi-Fi). The **FoxESS AC EV Charger** OpenAmpere shows and can set its work mode (e.g. to unlock it), but
+cannot control its charging yet; its charging modes are a simulation that writes nothing (see below). You can set up several of them, also next to a wallbox
 through evcc.
 
 > Reading is confirmed on a real device, control (starting and stopping charging, setting the current) not yet. Set
@@ -128,8 +128,9 @@ network of its own. Enter the IP address from your router by hand.
 
 The FoxESS AC EV Charger is also the wallbox EKD sold with its Ampere.IQ systems; in the router it shows up as
 `EVC-…`. OpenAmpere shows it (#439): whether a car is plugged in, the charging power and the current per phase. Its
-power counts in the house load like any wallbox. OpenAmpere cannot control it yet (#318): it writes nothing to the
-wallbox, which goes on charging as it is set in its own app.
+power counts in the house load like any wallbox. OpenAmpere does not control its charging yet (#318): the wallbox goes
+on charging as it is set in its own app. The one thing OpenAmpere writes, only when you ask for it, is the wallbox's
+work mode (see below).
 
 1. Under **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose the FoxESS AC EV Charger at
    **Welche Wallbox hast du?** (under "Nur anzeigen", show only) and keep **Anzeigen** (show).
@@ -172,6 +173,14 @@ test mode say. The wallbox goes on charging as it is set in its own app, for exa
   measured. The wallbox's real charging stays in the house load.
 - The simulation runs as long as OpenAmpere runs; after a restart it starts again from what the wallbox does.
 - Home Assistant only shows the wallbox (no charging mode).
+
+### Work mode of the wallbox
+
+The card also shows the wallbox's own **Betriebsmodus** (work mode, #464): **Gesteuert** (charges when an app, a card
+or a controller starts it), **Plug & Charge** (charges when a car is plugged in) or **Gesperrt** (locked, does not
+charge). A wallbox that went "locked" can be released here. OpenAmpere writes the setting once, after a question, and
+reads it back. It needs **Aktiv** (active) under **Änderungen an Geräten** (changes to devices), the previous smartbox
+cut from power, and a wallbox that answers right now. In test mode the control log only shows the change.
 
 ## Checking other wallboxes (read-only)
 
