@@ -28,6 +28,23 @@ test("wallbox page says when the sponsor token expires soon", async ({ page, api
   await expect(page.getByRole("link", { name: "Wallbox-Liste von evcc" })).toBeVisible();
 });
 
+// #462: evcc still reports the test token after its date, and the page said it was valid until then
+test("wallbox page says when the test token has expired", async ({ page, api }) => {
+  api.override("/api/evcc", await evccWith(
+    { active: true, trial: true, expires_at: "2020-10-17T00:00:00Z", expires_soon: false }));
+  await open(page, "more/wallbox");
+  const notice = page.locator(".notice", { hasText: "Testtoken" });
+  await expect(notice).toContainText("am 17. Oktober abgelaufen");
+  await expect(notice).not.toContainText("gilt");
+});
+
+test("wallbox page says when the sponsor token has expired", async ({ page, api }) => {
+  api.override("/api/evcc", await evccWith(
+    { active: true, trial: false, expires_at: "2020-11-02T00:00:00Z", expires_soon: false }));
+  await open(page, "more/wallbox");
+  await expect(page.locator(".notice", { hasText: "Sponsortoken von evcc ist am 2. November abgelaufen" })).toBeVisible();
+});
+
 test("no sponsor warning with a token far from expiring", async ({ page }) => {
   await open(page, "devices");
   await expect(page.locator(".section-title", { hasText: "Wallbox" })).toBeVisible();

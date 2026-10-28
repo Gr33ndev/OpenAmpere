@@ -303,10 +303,12 @@
     "title": "Bis zu einer Uhrzeit laden"
   },
   "sponsor": {
+    "expired": "Das Sponsortoken von evcc ist am {date} abgelaufen. Braucht deine Wallbox ein Sponsortoken, lädt sie jetzt nicht mehr über evcc. Hol dir auf {link} ein neues und trage es in evcc unter Konfiguration → Sponsoring ein, oder verbinde unter Mehr → Verbindung → Wallbox („direkt“) eine Wallbox, die OpenAmpere selbst kennt.",
     "expiresOn": "Das Sponsortoken von evcc läuft am {date} ab. Hol dir auf {link} ein neues und trage es in evcc unter Konfiguration → Sponsoring ein.",
     "expiresSoon": "Das Sponsortoken von evcc läuft bald ab. Hol dir auf {link} ein neues und trage es in evcc unter Konfiguration → Sponsoring ein.",
     "sponsorship": "Sponsoring von evcc",
     "trial": "evcc läuft mit dem Testtoken, das nur wenige Tage gilt. Braucht deine Wallbox ein Sponsortoken, lädt sie danach nicht mehr über evcc. Mehr dazu: {link}.",
+    "trialExpired": "Das Testtoken von evcc ist am {date} abgelaufen. Braucht deine Wallbox ein Sponsortoken, lädt sie jetzt nicht mehr über evcc. Trage in evcc unter Konfiguration → Sponsoring ein gültiges Token ein, oder verbinde unter Mehr → Verbindung → Wallbox („direkt“) eine Wallbox, die OpenAmpere selbst kennt. Mehr dazu: {link}.",
     "trialUntil": "evcc läuft mit dem Testtoken, das nur bis {date} gilt. Braucht deine Wallbox ein Sponsortoken, lädt sie danach nicht mehr über evcc. Mehr dazu: {link}."
   },
   "status": {
