@@ -8,8 +8,9 @@ gives to owners, and owner reports in public evcc discussions. The check exists 
 firmware refuses reads with exception 6 ("server device busy"), which the check reports.
 
 FoxEssChargerLive is the same charger as a wallbox OpenAmpere shows itself (native.py): read over Modbus TCP with
-function code 3 only and never written (no write register is confirmed, and its watchdog fails in the unsafe
-direction, #318). It charges as it is set in its own app. Its modes other than "manual" are a simulation (#440):
+function code 3, its charging never written (its watchdog fails in the unsafe direction, #318). The one register it
+writes is the work mode (WORK_MODE_REGISTER, function code 16), a stored setting the owner changes in the app, e.g.
+to unlock a charger that went "locked" (#464). It charges as it is set in its own app. Its modes other than "manual" are a simulation (#440):
 native.py decides as for a wallbox it controls, but only writes to the control log what it would have set.
 """
 
@@ -22,6 +23,7 @@ from .base import Reading, Wallbox, scaled, text, u32
 STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 5: "finished", 6: "fault",
           8: "locked", 9: "switching_phases"}  # 9: seen on real devices, not in the protocol document
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
+WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (protocol V1.6, #463)
 LIFETIME_ENERGY = 0x1016  # u32, 0.1 kWh
 RFID = 0x101C  # u32: the card that started the session
 MODEL = 0x101E  # ASCII, 4 registers
@@ -87,7 +89,9 @@ class FoxEssChargerLive:
     label = FoxEssCharger.label
     sold_by = FoxEssCharger.sold_by
     protocol = "modbus"
-    read_only = True  # never written: there is no write path for this model
+    read_only = True  # its charging is never written
+    work_modes = {mode: value for value, mode in WORK_MODE.items()}  # the one setting it writes (#464)
+    work_mode_register = WORK_MODE_REGISTER
     # its other modes only simulate the control (#440): what OpenAmpere would set goes into the control log
     simulated = True
     modes = ("manual", "off", "pv", "minpv", "now")  # native.MODES

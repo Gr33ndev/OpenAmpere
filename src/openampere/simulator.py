@@ -523,8 +523,9 @@ class SimulatedFoxCharger(SimulatedInverter):
     """FoxESS AC EV Charger for the read-only wallbox check (#325), with the register addresses OpenAmpere assumes
     (wallbox/foxess.py, not yet confirmed on a device). `busy`: like a charger outside the app's "Modbus TCP" mode
     that refuses reads; `single_phase`: without the phase-switching registers 0x3008–0x300B; `charging`: a car
-    charges at 16 A on three phases (the live view, #439). Every function code is kept in `functions`: nothing may
-    write to it."""
+    charges at 16 A on three phases (the live view, #439). Every function code is kept in `functions` (the check and
+    the live view must only read); the read/write registers 0x3000–0x300B take function code 16, every accepted write
+    is kept in `writes` as (address, value). Work mode 2 ("locked") sets the status to 8, like a real charger (#464)."""
 
     def __init__(self, *, unit: int = 1, busy: bool = False, single_phase: bool = False,
                  model: str = "A022KP1", serial: str = "SIMULATEDCHARGER", charging: bool = False) -> None:
@@ -532,6 +533,7 @@ class SimulatedFoxCharger(SimulatedInverter):
         self.max_connections, self.connections, self.latency_s = 1, 0, 0.0
         self.map, self.model, self.serial = None, model, serial
         self.functions: list[int] = []  # every function code received: the check must only read
+        self.writes: list[tuple[int, int]] = []
         self.regs = {0x1000: unit, 0x1001: 0x0110, 0x1002: 0, 0x1003: 0, 0x1004: 1, 0x1005: 0, 0x1006: 700,
                      0x1007: 700, 0x1008: 2301, 0x1009: 2302, 0x100A: 2303, 0x100B: 0, 0x100C: 0, 0x100D: 0,
                      0x100E: 0, 0x100F: 0, 0x1010: 0, 0x1011: 220, 0x1012: 42, 0x1013: 320, 0x1014: 60, 0x1015: 0,
@@ -554,6 +556,19 @@ class SimulatedFoxCharger(SimulatedInverter):
             if not 1 <= count <= 125 or any(a not in self.regs for a in range(address, address + count)):
                 return bytes([3 | 0x80, ILLEGAL_ADDRESS])
             return struct.pack(">BB", 3, count * 2) + struct.pack(f">{count}H", *(self.regs[a] for a in range(address, address + count)))
+        if pdu[0] == 16:
+            address, count = struct.unpack(">HH", pdu[1:5])
+            values = struct.unpack(f">{count}H", pdu[6:6 + 2 * count]) if count else ()
+            if not 1 <= count <= 123 or len(values) != count \
+                    or any(not 0x3000 <= a <= 0x300B or a not in self.regs for a in range(address, address + count)):
+                return bytes([16 | 0x80, ILLEGAL_ADDRESS])
+            for offset, value in enumerate(values):
+                self.regs[address + offset] = value
+                self.writes.append((address + offset, value))
+            if 0x3000 in range(address, address + count):
+                locked = self.regs[0x3000] == 2
+                self.regs[0x1003] = 8 if locked else (0 if self.regs[0x1003] == 8 else self.regs[0x1003])
+            return pdu[:5]
         return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
 
 

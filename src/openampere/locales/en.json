@@ -395,6 +395,13 @@
     "modbusRejected": "The wallbox answers but does not know these registers. Maybe it is another model or another firmware.",
     "simulationNotSent": "simulation, not sent: {reason}",
     "simulationReleased": "{reason}, OpenAmpere would let go of the wallbox",
-    "removedSwitchedOffOrChanged": "wallbox removed, switched off or changed"
+    "removedSwitchedOffOrChanged": "wallbox removed, switched off or changed",
+    "modbusWriteNotConnected": "The wallbox at {host} does not accept a Modbus connection right now. On EKD systems the previous smartbox is usually the reason: cut it from power and try again.",
+    "modbusWriteRejected": "The wallbox did not accept the setting. It probably does not allow writing in its current control type: set it to “Modbus TCP” in the “Fox Switch” app.",
+    "modbusWriteNoAnswer": "The wallbox did not answer the setting. On EKD systems the previous smartbox is usually the reason: cut it from power and try again.",
+    "workModeNotSettable": "OpenAmpere cannot set the work mode of this wallbox.",
+    "unknownWorkMode": "Unknown work mode.",
+    "workModeControlOff": "Changes to devices are switched off. Set them to “Active” under Devices, then OpenAmpere can change the work mode of the wallbox.",
+    "workModeNotTaken": "The wallbox did not take the work mode. Maybe it does not allow this in its current control type."
   }
 }

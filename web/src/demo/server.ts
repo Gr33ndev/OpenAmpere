@@ -399,9 +399,19 @@ function setFoxMode(body: unknown) {
   return nativeWallboxes();
 }
 
+/** The work mode of the FoxESS charger (#464): in the demo only remembered, like test mode. */
+let foxWorkMode = "controlled";
+function setFoxWorkMode(body: unknown) {
+  const { mode } = (body ?? {}) as { mode?: string };
+  if (!mode || !["controlled", "plug_and_charge", "locked"].includes(mode)) throw new Error("Unbekannter Betriebsmodus.");
+  foxWorkMode = mode;
+  return { dry_run: true, work_mode: mode, ...nativeWallboxes() };
+}
+
 /** The few changes the demo takes: the simulated charging mode of the FoxESS charger (#440), which writes nothing in
- *  a real installation either. */
-const CHANGES: Record<string, (body: unknown) => unknown> = { "/api/wallboxes/demo0003/mode": setFoxMode };
+ *  a real installation either, and its work mode (#464), answered as in test mode. */
+const CHANGES: Record<string, (body: unknown) => unknown> = { "/api/wallboxes/demo0003/mode": setFoxMode,
+  "/api/wallboxes/demo0003/work-mode": setFoxWorkMode };
 
 /** A portable wallbox OpenAmpere controls itself: unplugged, as it is most of the time. And a FoxESS charger
  *  OpenAmpere only shows (#439), with a car plugged in that waits for the charger's app; its charging modes are a
@@ -423,11 +433,12 @@ function nativeWallboxes() {
     { id: "demo0003", name: "Garage", model: "foxess_ac", label: "FoxESS AC EV Charger", host: "192.168.178.61",
       device_id: "", local_key_set: true, max_current_a: 16, mode: fox.mode, enabled: true, mode_current_a: fox.currents,
       stop_after_min: 10, port: 502, unit: 1, read_only: true, simulated: true, simulation: foxPlan(), modes: [...FOX_MODES],
+      work_modes: ["controlled", "plug_and_charge", "locked"],
       online: true, offline_since: null, updated, error: null, controlled: false,
       reading: { state: "plugged_in", connected: true, charging: false, power_w: 0, voltage_v: [230.1, 230.2, 230.3],
         current_a: [0, 0, 0], installed_phases: 3, active_phases: 0, session_kwh: null, session_s: null,
         temperature_c: null, set_current_a: null, max_current_a: 32, steps_a: Array.from({ length: 27 }, (_, i) => 6 + i),
-        firmware: null, cp_v: null, work_mode: "controlled", phase_switching: true, phase_switch_min: 12 } }] };
+        firmware: null, cp_v: null, work_mode: foxWorkMode, phase_switching: true, phase_switch_min: 12 } }] };
 }
 
 /** A car whose data OpenAmpere reads from its manufacturer (#401), linked to the portable wallbox. The portal's values

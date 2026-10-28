@@ -282,7 +282,21 @@
     },
     "simHintMinpv": "Simulation: OpenAmpere would always charge with at least the lowest step, faster in the sun, but at most with the current below.",
     "simHintNow": "Simulation: OpenAmpere would charge right away with the current below.",
-    "maxCurrentHintSimulation": "The most OpenAmpere would set in the simulation. The wallbox also limits to its own highest current."
+    "maxCurrentHintSimulation": "The most OpenAmpere would set in the simulation. The wallbox also limits to its own highest current.",
+    "workModeTitle": "Work mode of the wallbox",
+    "workModeNameControlled": "Controlled",
+    "workModeNamePlugAndCharge": "Plug & charge",
+    "workModeNameLocked": "Locked",
+    "workModeHint": "This is a setting in the wallbox itself. It stays when OpenAmpere is off.",
+    "workModeLockedHint": "The wallbox is locked and does not charge. Choose “Controlled” or “Plug & charge” to release it again.",
+    "workModeQuestion": "Set the work mode to “{mode}”?",
+    "workModeConfirm": "Change",
+    "workModeExplainControlled": "The wallbox only charges once an app, a charging card or a controller starts the charge.",
+    "workModeExplainPlugAndCharge": "The wallbox charges as soon as a car is plugged in.",
+    "workModeExplainLocked": "The wallbox no longer charges at all until you release it again.",
+    "workModeSmartbox": "OpenAmpere writes the setting into the wallbox once and reads it back to check. The previous EKD smartbox must be cut from power for this.",
+    "workModeSaved": "The work mode of the wallbox has been changed.",
+    "workModeTestMode": "Test mode: the change is in the control log, nothing was sent to the wallbox."
   },
   "ownDeviceCard": {
     "autoHint": "Runs on solar surplus according to your settings.",

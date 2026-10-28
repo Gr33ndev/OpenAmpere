@@ -1254,6 +1254,15 @@ def create_app(runtime: Runtime) -> FastAPI:
         await surplus.tick()
         return wallboxes.view()
 
+    @app.post("/api/wallboxes/{wallbox_id}/work-mode")
+    async def wallbox_work_mode(wallbox_id: str, request: Request, body: dict = Body(...)):
+        """The work mode of a FoxESS charger, e.g. to unlock it (#464): a stored setting, written once."""
+        try:
+            result = await wallboxes.set_work_mode(wallbox_id, str(body.get("mode")), source=actor(request))
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        return {**result, **wallboxes.view()}
+
     @app.post("/api/wallboxes/test")
     async def wallbox_test(request: WallboxTestRequest):
         """Reads a wallbox once with the address and key from the form (a stored key if none is given); a Modbus

@@ -395,6 +395,13 @@
     "modbusRejected": "Die Wallbox antwortet, kennt diese Register aber nicht. Vielleicht ist es ein anderes Modell oder eine andere Firmware.",
     "simulationNotSent": "Simulation, nicht gesendet: {reason}",
     "simulationReleased": "{reason}, OpenAmpere gäbe die Wallbox ab",
-    "removedSwitchedOffOrChanged": "Wallbox entfernt, ausgeschaltet oder geändert"
+    "removedSwitchedOffOrChanged": "Wallbox entfernt, ausgeschaltet oder geändert",
+    "modbusWriteNotConnected": "Die Wallbox unter {host} nimmt gerade keine Modbus-Verbindung an. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.",
+    "modbusWriteRejected": "Die Wallbox hat die Einstellung nicht angenommen. Vermutlich erlaubt sie das Schreiben in ihrer jetzigen Steuerungsart nicht: Stelle sie in der App „Fox Switch“ auf „Modbus TCP“.",
+    "modbusWriteNoAnswer": "Die Wallbox hat auf die Einstellung nicht geantwortet. Bei Anlagen von EKD ist meist die bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.",
+    "workModeNotSettable": "Bei dieser Wallbox kann OpenAmpere den Betriebsmodus nicht einstellen.",
+    "unknownWorkMode": "Unbekannter Betriebsmodus.",
+    "workModeControlOff": "Änderungen an Geräten sind ausgeschaltet. Stelle sie unter Geräte auf „Aktiv“, dann kann OpenAmpere den Betriebsmodus der Wallbox ändern.",
+    "workModeNotTaken": "Die Wallbox hat den Betriebsmodus nicht übernommen. Vielleicht erlaubt sie das in ihrer jetzigen Steuerungsart nicht."
   }
 }
