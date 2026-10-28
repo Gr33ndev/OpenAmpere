@@ -69,7 +69,7 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 | Wechselrichter verbunden, Inselbetrieb (Stromausfall), Lädt aus dem Netz, Alarm | Ja/Nein |
 | Je Heizstab/Schalter: Leistung, Eingeschaltet, Temperatur | |
 | Je Wallbox, die OpenAmpere selbst steuert: Ladeleistung, Zustand, Auto eingesteckt, Lädt, Erreichbar, eingestellter Ladestrom | Eine eigene Geräte-Karte je Wallbox; eine neu eingerichtete erscheint von selbst. Ist die Wallbox nicht erreichbar (z. B. ausgesteckt), sind ihre Werte „nicht verfügbar“, nur „Erreichbar“ steht dann auf „Aus“. |
-| Je Wallbox, die OpenAmpere nur anzeigt (FoxESS AC EV Charger): Ladeleistung, Zustand, Auto eingesteckt, Lädt, Erreichbar | Dieselbe Geräte-Karte, aber ohne Lademodus, Ladestrom und eingestellten Ladestrom: OpenAmpere schreibt nichts an sie (#439). Ihre Lademodi gibt es nur als Simulation in der App von OpenAmpere (#440). |
+| Je Wallbox, die OpenAmpere nur anzeigt (FoxESS AC EV Charger): Ladeleistung, Zustand, Auto eingesteckt, Lädt, Erreichbar | Dieselbe Geräte-Karte, aber ohne Lademodus, Ladestrom und eingestellten Ladestrom: OpenAmpere schreibt nichts an sie (#439). Ihre Lademodi gibt es nur als Simulation in der App von OpenAmpere (#440). Ist in der App die echte Steuerung eingeschaltet (#465), bekommt sie den Lademodus wie jede Wallbox, die OpenAmpere steuert, sobald die Integration neu geladen ist. |
 
 **Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv), Firmware des
 Wechselrichters (eine Diagnose-Entität; sie ändert sich nach einem Update des Wechselrichters und kann so eine
