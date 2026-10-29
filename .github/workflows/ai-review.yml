@@ -157,11 +157,12 @@ jobs:
         run: |
           # Claude may write only the summary: anything else changed in the checkout fails the run before the retry or
           # another step uses it (scripts/ai-review-changed.sh)
-          changed=$("$RUNNER_TEMP/ai-review-changed.sh")
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh") || { echo "::error::The checkout could not be checked."; exit 1; }
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
           fi
+          rm -rf .claude-pr  # the action's folder, not checked above: a retry starts without what the first try left
           if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
@@ -184,7 +185,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          changed=$("$RUNNER_TEMP/ai-review-changed.sh")
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh") || { echo "::error::The checkout could not be checked."; exit 1; }
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
