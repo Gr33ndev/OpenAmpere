@@ -343,7 +343,7 @@ class SajSimulatedInverter(SimulatedInverter):
 
     def __init__(self, *, device_type: int = 0x005B, serial: str = "HST2103SIM00001", unit: int = 1,
                  max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
-                 depth_registers: bool = True, read_only: bool = False) -> None:
+                 depth_registers: bool = True, read_only: bool = False, rated_w: int = 10000) -> None:
         self.map = None
         self.depth_registers = depth_registers
         self.model = f"SAJ {saj.DEVICE_TYPES.get(device_type, hex(device_type))}"
@@ -352,7 +352,7 @@ class SajSimulatedInverter(SimulatedInverter):
         self.max_connections = max_connections
         self.connections = 0
         self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, read_only, unit
-        self.rated_w = 10000
+        self.rated_w = rated_w
         self.meter_b_w = 0.0  # an extra PV inverter measured by Meter B (#419); 0 = no such meter
         self.clock = datetime.now  # the inverter's clock, which the charge slots follow
         self.energy = EnergyModel()

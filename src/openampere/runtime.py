@@ -54,6 +54,7 @@ class Runtime:
                                    self.config.storage.raw_retention_days,
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
         self.collector.external_pv = self.config.pv.external
+        self.collector.rated_power = (self.config.grid.rated_power_reported_w, self.config.grid.rated_power_w)
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
         self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct),
                                self.eeg_rate)
@@ -194,6 +195,9 @@ class Runtime:
 
         self.collector.retention_days = new.storage.raw_retention_days
         self.collector.external_pv = new.pv.external
+        self.collector.rated_power = (new.grid.rated_power_reported_w, new.grid.rated_power_w)
+        if self.collector.device:
+            self.collector.device.confirm_rated_power(*self.collector.rated_power)
         if old.log.level != new.log.level:
             logs.apply_level(new.log.level)
         control_changes = {k: (get_value(old, k), get_value(new, k))

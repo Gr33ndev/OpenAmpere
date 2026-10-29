@@ -103,6 +103,10 @@ class GridConfig:
     #   operator  – fixed value from the grid connection approval (e.g. zero export); changes need consent
     #   none      – declared: neither the law nor the grid connection approval limits the feed-in
     feed_in_rule: str = "unknown"
+    # the rated power from the type plate, confirmed by the owner for a device whose reported one does not fit its
+    # type (#492), and the reported value it was confirmed for; 0 = not confirmed
+    rated_power_w: int = 0
+    rated_power_reported_w: int = 0
 
 
 @dataclass
@@ -172,6 +176,8 @@ class Config:
         return asdict(self)
 
 
+MIN_RATED_POWER_W = 1000  # smallest rated power the owner can confirm (grid.rated_power_w, #492); 0 = not confirmed
+
 # Settings the web app may change, with validation limits for numbers / allowed values for strings.
 EDITABLE: dict[str, tuple] = {
     "inverter.driver": ("choice", "auto", "foxess", "saj"),
@@ -203,6 +209,8 @@ EDITABLE: dict[str, tuple] = {
     "updates.check": ("bool",),
     "updates.auto": ("bool",),
     "grid.feed_in_rule": ("choice", "unknown", "limit_60", "limit_70", "operator", "none"),
+    "grid.rated_power_w": ("int", 0, 100_000),
+    "grid.rated_power_reported_w": ("int", 0, 65_535),
     "notify.ntfy_url": ("url",),
     "notify.ntfy_token": ("secret",),
     "notify.on_unreachable": ("bool",),
@@ -230,7 +238,8 @@ SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 # where a secret is sent: a secret kept on restore must keep going to the same place
 # changes that belong into the control log: switching control on/off and the declared feed-in rule
 # and the host names allowed besides the usual ones, which loosen the protection against DNS rebinding (#437)
-AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "pv.installed_kwp", "server.allowed_hosts")
+AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "grid.rated_power_w", "pv.installed_kwp",
+           "server.allowed_hosts")
 SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
                   "meter.password": ("meter.provider", "meter.username")}
 
@@ -330,7 +339,9 @@ LABELS = {
     "inverter.host": "IP-Adresse", "inverter.port": "Port", "inverter.unit": "Geräteadresse",
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
-    "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung", "pv.input_names": "Namen der Modulfelder",
+    "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung",
+    "grid.rated_power_w": "Nennleistung des Wechselrichters", "grid.rated_power_reported_w": "Gemeldete Nennleistung",
+    "pv.input_names": "Namen der Modulfelder",
     "pv.commissioning_date": "Inbetriebnahme", "pv.external": "Zweiter Wechselrichter",
     "pv.external_name": "Name des zweiten Wechselrichters",
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
@@ -438,6 +449,9 @@ def validate(changes: dict) -> dict:
             raise ValueError(_invalid_message(key, rule)) from None
         if kind == "hosts":
             value = _host_names(value)  # with its own messages, not the general one
+        if key == "grid.rated_power_w" and 0 < value < MIN_RATED_POWER_W:
+            # the base of the export limit in per mille (#492): a tiny one would turn a small limit into full feed-in
+            raise ValueError(f"Die Nennleistung vom Typenschild muss mindestens {MIN_RATED_POWER_W} W betragen.")
         if key == "notify.ntfy_url" and "@" in value:
             # a password in the address would be shown in the settings, kept in backups and quoted in errors
             raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "

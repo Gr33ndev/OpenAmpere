@@ -15,7 +15,8 @@ from ..regs import Reg, counter_step_wh, decode
 from .registers import (APP_MODE_ADDRESS, APP_MODE_TIME, APP_MODES, BACKUP_SOC_ADDRESS, BLOCKS, CHARGE_ENABLE_ADDRESS, CHARGE_SLOT,
                         CHARGE_SLOT_ADDRESS, CONTROL_TYPES, DEPTH_ADDRESS, DEVICE_TYPE_RANGE, DEVICE_TYPES,
                         EXPORT_LIMIT_ADDRESS, EXPORT_MODE_ADDRESS, EXPORT_POWER_MODES, INFO_ADDRESS, INFO_LENGTH,
-                        OFF_GRID_MODE, READ_FUNCTION, SOC_ADDRESSES, TIME_ADDRESS, TOU_OUTSIDE_ADDRESS, VALUES)
+                        OFF_GRID_MODE, POWER_CLASSES, READ_FUNCTION, SOC_ADDRESSES, TIME_ADDRESS, TOU_OUTSIDE_ADDRESS,
+                        VALUES)
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +62,12 @@ class SajDriver(ModbusDevice):
                                rated_power_w=rated_w or None, supports_control=device_type in CONTROL_TYPES,
                                energy_step_wh=counter_step_wh(VALUES), work_modes=tuple(APP_MODES.values()),
                                charging_continues_min=SLOT_MINUTES, backup_reserve=True)
+        low, high = POWER_CLASSES.get(device_type, (0, 0))
+        if rated_w and not low <= rated_w <= high:
+            # 0x8F01 as rated power in W has no source (#492): the export limit, in per mille of it, waits for the
+            # owner's confirmation unless it fits the power class of the type
+            log.warning("rated power %d W does not fit SAJ type 0x%04X", rated_w, device_type)
+            self.info.rated_power_unchecked_w = rated_w
         log.info("connected: %s", self.info)
         return self.info
 

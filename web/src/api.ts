@@ -130,6 +130,8 @@ export type Settings = {
     "updates.check": boolean;
     "updates.auto": boolean;
     "grid.feed_in_rule": FeedInRule;
+    "grid.rated_power_w": number;
+    "grid.rated_power_reported_w": number;
     "notify.ntfy_url": string | null; // null without login (see hidden)
     "notify.on_unreachable": boolean;
     "notify.on_alarm": boolean;
@@ -178,6 +180,8 @@ export type ExportLimit = {
   /** resolution in W (SAJ: per mille of the rated power); a limit is written rounded down to it */
   step_w?: number;
   rule: FeedInRule; installed_kwp: number; legal_max_w: number | null;
+  /** the rated power the inverter reports when it does not fit its type (#492): the owner confirms it first */
+  rated_power_reported_w?: number | null; rated_power_confirmed?: boolean;
 };
 
 export type CloudImportState = {

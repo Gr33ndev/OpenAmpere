@@ -151,6 +151,7 @@
     "hostWildcardNotAllowed": "“*” turns off the protection against DNS rebinding and therefore cannot be entered in the app. Please enter each name on its own, for example solar.example.com.",
     "notAHostName": "“{name}” is not a host name. Please enter only the name, without https://, port or path, for example solar.example.com.",
     "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
+    "ratedPowerAtLeast": "The rated power from the type plate must be at least {MIN_RATED_POWER_W} W.",
     "settingTChangedApp": "The setting {key} can't be changed in the app."
   },
   "consumers": {
@@ -201,6 +202,7 @@
     "backupReserveAboveChargeLimit": "The reserve in backup mode must not be above the charge limit",
     "backupReserveRange": "The reserve in backup mode must be between {BACKUP_SOC_MIN} and 100 %",
     "chargeLimitMustAbove": "The charge limit must be above the backup power reserve",
+    "confirmRatedPowerFirst": "OpenAmpere cannot check the rated power your inverter reports for its type. Please confirm the rated power from the type plate first, then you can change the export limit.",
     "controlDevicesNotEnabled": "Control of {manufacturer} devices is not enabled in OpenAmpere yet (display only).",
     "currentBatteryLimitsCouldn": "The current battery limits couldn't be read completely. Please try again later.",
     "exportLimitDeviceT": "The export limit of this device can't be changed via Modbus.",

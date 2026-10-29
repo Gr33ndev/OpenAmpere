@@ -8,9 +8,12 @@ from datetime import datetime
 
 import pytest
 
+from openampere import control as control_module
 from openampere.charging import REMOTE_COMMAND, GridCharging
+from openampere.config import validate
 from openampere.control import BatteryControl, ExportLimitControl
 from openampere.drivers import registry
+from openampere.drivers.base import DeviceInfo
 from openampere.drivers.modbus import ModbusTransientError
 from openampere.drivers.saj import registers as saj
 from openampere.drivers.saj.driver import NotSupported, charge_slot, minutes_left
@@ -96,6 +99,92 @@ async def test_export_limit_in_per_mille_of_the_rated_power(tmp_path):
             assert not (await control.read())["supported"]
         finally:
             control._verify_task and control._verify_task.cancel()
+            await runtime.collector.stop()
+
+
+@pytest.mark.parametrize(("device_type", "rated_w", "checked"), [
+    (0x005B, 10000, True), (0x005B, 5000, True), (0x005B, 800, False), (0x005A, 8000, False),
+    (0x005E, 10000, False),  # no power class in the name
+])
+async def test_a_rated_power_that_does_not_fit_the_type_is_unchecked(device_type, rated_w, checked):
+    """#492: 0x8F01 as rated power has no source; it counts only within the power class of the type."""
+    server, port = await serve(SajSimulatedInverter(device_type=device_type, rated_w=rated_w))
+    async with server:
+        info = await registry.detect("127.0.0.1", port, timeout=2)
+    assert info.rated_power_w == rated_w
+    assert info.rated_power_unchecked_w == (None if checked else rated_w)
+
+
+def test_a_confirmed_rated_power_counts_only_for_the_value_it_was_confirmed_for():
+    info = DeviceInfo(manufacturer="SAJ", model="H2", rated_power_w=800, rated_power_unchecked_w=800)
+    info.confirm_rated_power(800, 8000)
+    assert info.rated_power_w == 8000 and info.rated_power_confirmed
+    info.confirm_rated_power(900, 8000)  # the device reports another value now
+    assert info.rated_power_w == 800 and not info.rated_power_confirmed
+    checked = DeviceInfo(manufacturer="SAJ", model="H2", rated_power_w=8000)
+    checked.confirm_rated_power(8000, 6000)  # a rated power that fits its type is not replaced
+    assert checked.rated_power_w == 8000 and not checked.rated_power_confirmed
+
+
+async def test_a_new_rated_power_after_a_write_is_no_change_by_another_device(tmp_path, monkeypatch):
+    """#492: the same per-mille value is another limit with another base; the check after the write must not report
+    it as overwritten."""
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.5,))
+    sim = SajSimulatedInverter(max_connections=3, rated_w=800)
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            await runtime.update_settings({"grid.rated_power_w": 8000, "grid.rated_power_reported_w": 800})
+            control = ExportLimitControl(runtime)
+            assert (await control.write(4000))["result"] == "ok"
+            await runtime.update_settings({"grid.rated_power_w": 10000})  # corrected from the type plate
+            await control._verify_task
+            assert control.external_change is None
+            assert not [e for e in runtime.storage.control_log() if e["action"] == "export_limit_check"]
+        finally:
+            await runtime.collector.stop()
+
+
+def test_a_tiny_rated_power_is_not_accepted():
+    """#492: a tiny base would turn a small export limit into full feed-in, read back as "ok"."""
+    with pytest.raises(ValueError, match="mindestens 1000 W"):
+        validate({"grid.rated_power_w": 10, "grid.rated_power_reported_w": 800})
+    assert validate({"grid.rated_power_w": 0})["grid.rated_power_w"] == 0  # not confirmed
+    assert validate({"grid.rated_power_w": 1000})["grid.rated_power_w"] == 1000
+
+
+async def test_no_export_limit_before_an_unchecked_rated_power_is_confirmed(tmp_path):
+    """#492: the limit is written in per mille of the rated power; with a wrong one, also a lower limit is wrong."""
+    sim = SajSimulatedInverter(max_connections=3, rated_w=800)  # does not fit an H2 5-10K
+    sim.regs[saj.EXPORT_MODE_ADDRESS] = 0
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            control = ExportLimitControl(runtime)
+            with pytest.raises(ValueError, match="Typenschild"):
+                await control.write(500)
+            assert sim.regs[saj.EXPORT_LIMIT_ADDRESS] == 1000 and sim.regs[saj.EXPORT_MODE_ADDRESS] == 0  # untouched
+            current = await control.read(shared=True)  # the app's shared reading, kept for a few seconds
+            assert current["rated_power_reported_w"] == 800 and not current["rated_power_confirmed"]
+            await runtime.update_settings({"grid.rated_power_w": 8000, "grid.rated_power_reported_w": 800})
+            current = await control.read(shared=True)  # not the reading kept from before the confirmation
+            assert current["rated_power_confirmed"] and current["rated_power_w"] == 8000 and current["step_w"] == 8
+            assert (await control.write(4000))["result"] == "ok"
+            assert sim.regs[saj.EXPORT_LIMIT_ADDRESS] == 500  # per mille of the confirmed rated power
+            entry = runtime.storage.control_log(1)[0]
+            assert entry["action"] == "export_limit"
+            logged = [e for e in runtime.storage.control_log() if e["action"] == "control_switches"]
+            assert logged[0]["details"]["to"] == {"grid.rated_power_w": 8000}
+        finally:
+            control._verify_task and control._verify_task.cancel()
+            await runtime.collector.stop()
+            runtime.storage.close()
+    server, runtime = await connected_runtime(tmp_path, sim)  # restarted: the confirmation is kept
+    async with server:
+        try:
+            assert runtime.collector.device.rated_power_w == 8000
+            assert runtime.collector.device.rated_power_confirmed
+        finally:
             await runtime.collector.stop()
 
 

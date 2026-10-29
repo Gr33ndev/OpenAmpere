@@ -450,10 +450,21 @@ class ExportLimitControl:
     async def _read_limit(self) -> dict:
         return asdict(await self._driver().read_export_limit())
 
+    def _rated_power(self) -> dict:
+        """A rated power that does not fit the device type, and whether the owner confirmed it (#492)."""
+        device = self.runtime.collector.device
+        return {"rated_power_reported_w": device.rated_power_unchecked_w if device else None,
+                "rated_power_confirmed": bool(device and device.rated_power_confirmed)}
+
     async def read(self, shared: bool = False) -> dict:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
         limit = await self._shared.get(self._driver()) if shared else await self._read_limit()
-        return {**limit, **self._rule(), "external_change": self.external_change}
+        device = self.runtime.collector.device
+        if shared and device and device.rated_power_unchecked_w is not None and limit["rated_power_w"] != device.rated_power_w:
+            # the rated power was confirmed since (#492): the limit and its step were converted with the one before
+            self._shared.invalidate()
+            limit = await self._shared.get(self._driver())
+        return {**limit, **self._rule(), **self._rated_power(), "external_change": self.external_change}
 
     async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "", source: str | None = None) -> dict:
         """source: who asked for it if not the web app, e.g. an admin of Home Assistant through its sidebar (#305)."""
@@ -475,6 +486,11 @@ class ExportLimitControl:
             current = await self.read()
             if not current["supported"]:
                 raise ValueError("Die Einspeisebegrenzung lässt sich bei diesem Gerät nicht über Modbus ändern.")
+            if current["rated_power_reported_w"] is not None and not current["rated_power_confirmed"]:
+                # the limit is written as a share of the rated power: with a wrong one, also a lower limit is wrong
+                raise ValueError("OpenAmpere kann die Nennleistung, die dein Wechselrichter meldet, für seinen Typ "
+                                 "nicht prüfen. Bitte bestätige zuerst die Nennleistung vom Typenschild, dann kannst "
+                                 "du die Einspeisebegrenzung ändern.")
             limit_w = int(limit_w)
             maximum = current["rated_power_w"] or 99_999
             if not 0 <= limit_w <= maximum:
@@ -538,14 +554,19 @@ class ExportLimitControl:
     def _schedule_verify(self, limit_w: int, step: int = 1) -> None:
         if self._verify_task is not None:
             self._verify_task.cancel()
-        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w, step))
+        device = self.runtime.collector.device
+        rated = device.rated_power_w if device else None  # the base the limit was written with
+        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w, step, rated))
 
-    async def _verify(self, limit_w: int, step: int = 1) -> None:
+    async def _verify(self, limit_w: int, step: int, rated: int | None) -> None:
         async for _ in after_write():
             try:
-                now = (await self.read())["limit_w"]
+                current = await self.read()
             except Exception:  # noqa: BLE001
                 continue
+            if current["rated_power_w"] != rated:
+                return  # the owner confirmed another rated power (#492): the same register value is another limit now
+            now = current["limit_w"]
             if now is not None and not same_limit(now, limit_w, step):
                 self.external_change = {"expected": limit_w, "found": now}
                 self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},

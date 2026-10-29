@@ -208,6 +208,10 @@ Implement `_detect()`. It must only read, and it must raise `ConnectionError` wh
   `energy_step_wh`: the step of the lifetime energy counters in Wh (`counter_step_wh(VALUES)` from `regs.py` derives it
   from the `*_total` registers). The app shows counter-based energy with one decimal for 100 (0.1 kWh), otherwise two.
   The recorded quarter hours can override it when the firmware counts coarser than its unit.
+  If your export limit (or charging power) is written as a share of a rated power the device reports, and you cannot
+  check that value (for example against the power class of the type), set `rated_power_unchecked_w` to it: OpenAmpere
+  then writes no export limit until the owner confirmed the rated power from the type plate in the app, and puts the
+  confirmed value into `rated_power_w` (`DeviceInfo.confirm_rated_power`, see the SAJ driver and #492).
 - `ascii_text()` in `modbus.py` decodes ASCII strings stored two characters per register.
 
 ### Step 4: `read()`

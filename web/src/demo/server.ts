@@ -188,6 +188,7 @@ const settings = {
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
     "tariff.feed_in_auto": true, "tariff.feed_in_full": false, "pv.commissioning_date": COMMISSIONED,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.external": false, "pv.external_name": "", "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
+    "grid.rated_power_w": 0, "grid.rated_power_reported_w": 0,
     "notify.ntfy_url": "https://ntfy.sh/openampere-demo4xk7qm2p", "notify.on_unreachable": true, "notify.on_alarm": true, "notify.on_overwritten": true,
     "notify.on_battery_full": false, "notify.on_cheap_power": false, "notify.on_firmware": true,
     "notify.on_battery_health": true, "notify.on_off_grid": true, "notify.on_storage": true, "notify.on_wallbox": false, "battery.capacity_kwh": BATTERY_WH / 1000, "battery.max_charge_kw": 8.5, "updates.check": false, "updates.auto": false,
@@ -589,7 +590,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
     synced: now() - 2 * 3600, until: isoDay(-2), error: null, busy: false }),
   "/api/battery/settings": () => ({ work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
-    legal_max_w: 5880, external_change: null }),
+    legal_max_w: 5880, rated_power_reported_w: null, rated_power_confirmed: false, external_change: null }),
   "/api/control/log": controlLog,
   // the demo has no personal data: the same entries, with how long ago instead of the time (#329)
   "/api/control/log/report": () => ({ entries: controlLog().entries.map(({ ts, ...e }) => ({ ...e, ago_s: Math.round(now() - ts) })) }),

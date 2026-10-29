@@ -27,6 +27,9 @@ DEVICE_TYPES = {
     # not in SAJ's protocol: the model the manufacturer's app shows for this code, without its power class (#339)
     0x005E: "3P-X E2",
 }
+# power class in W per type code, from the names in SAJ's protocol; 0x005E has none (#492)
+POWER_CLASSES = {0x0055: (3000, 6000), 0x0056: (5000, 10000), 0x005A: (3000, 6000), 0x005B: (5000, 10000),
+                 0x005C: (3000, 6000), 0x005D: (5000, 10000)}
 DEVICE_TYPE_RANGE = range(0x0050, 0x0070)  # family range; unknown codes inside it are accepted with a warning
 
 BLOCKS = (

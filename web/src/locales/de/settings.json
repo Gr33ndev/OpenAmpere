@@ -372,7 +372,8 @@
       "one": "{name}: auf 1 Phase mit {current} A gestellt.",
       "other": "{name}: auf {count} Phasen mit {current} A gestellt."
     },
-    "wallboxPhasesBack": "{name}: Leistung der Wallbox zurückgestellt, sie wählt die Phasen wieder selbst."
+    "wallboxPhasesBack": "{name}: Leistung der Wallbox zurückgestellt, sie wählt die Phasen wieder selbst.",
+    "ratedPower": "Nennleistung des Wechselrichters von {from} auf {to} geändert (Typenschild)."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",
@@ -896,5 +897,16 @@
     "name": "Name",
     "nameHint": "Zum Beispiel „Garage“. Leer lassen: „Zweiter Wechselrichter“.",
     "title": "Zweiter Wechselrichter"
+  },
+  "ratedPowerCard": {
+    "title": "Nennleistung des Wechselrichters",
+    "unconfirmed": "Dein Wechselrichter meldet eine Nennleistung von {reported}. OpenAmpere kann diesen Wert für seinen Typ nicht prüfen. Weil OpenAmpere die Einspeisebegrenzung als Anteil der Nennleistung schreibt, wäre sie mit einem falschen Wert ebenfalls falsch. Bitte trage die Nennleistung vom Typenschild ein, dann kannst du die Begrenzung ändern.",
+    "confirmed": "Du hast die Nennleistung vom Typenschild bestätigt: {power}. Der Wechselrichter meldet {reported}; OpenAmpere rechnet mit deinem Wert.",
+    "label": "Nennleistung laut Typenschild",
+    "hint": "Das Typenschild klebt seitlich am Wechselrichter. Gesucht ist die Nennleistung (oft „Rated output power“), z. B. 8000 W.",
+    "placeholder": "z. B. 8000",
+    "range": "Bitte einen Wert zwischen 1000 und 100000 W eingeben.",
+    "confirm": "Nennleistung bestätigen",
+    "change": "Nennleistung ändern"
   }
 }
