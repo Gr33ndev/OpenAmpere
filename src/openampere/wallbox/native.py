@@ -832,12 +832,16 @@ class NativeWallboxes:
         if switch:
             # the owner's power setpoint, kept before OpenAmpere writes it the first time: put back when it lets go
             owner_w = self.owner_power(wb, reading)
-            self._own(wb, reading, phases=phases, power_w=owner_w)
+            # a one-phase cap is stored before it is written, its end only after: a restart in between still knows
+            # that the cap on the charger is OpenAmpere's
+            self._own(wb, reading, power_w=owner_w, **({"phases": 1} if phases == 1 else {}))
             live.current_at = live.phases_at = now
             before, live.phases_set = live.phases_set, phases
             values = {**model.set_current(amps), **model.phase_power(phases, reading, owner_w)}
             if not await self._write(wb, live, values, "phases", {"phases": phases, "current_a": amps}, reason):
                 live.phases_set = before
+            elif phases != 1:
+                self._own(wb, reading, phases=phases)
             return
         if known == amps or (dry and live.planned.get("current") == amps):
             return
@@ -1196,10 +1200,14 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
-        if self._capped_by_us(wb, live) and reading.charging and getattr(model, "phase_power", None):
-            # not left capped at one phase by OpenAmpere, also after a restart (stored): the owner's power back,
-            # written before a stop (#478); a power limit the owner set stays as it is
+        if self._capped_by_us(wb, live) and getattr(model, "phase_power", None):
+            # not left capped at one phase by OpenAmpere, also after a restart (stored): the owner's power back (#478),
+            # written before a stop; a power limit the owner set stays as it is. With a car connected that does not
+            # charge, a stop follows, so the setpoint cannot start a paused charge again; without a car nothing can
             values.update(model.phase_power(3, reading, entry.get("power_w")))
+            if reading.connected and not reading.charging:
+                values.update(model.start(False))
+                live.stop_sent = time.time()
         if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
                 and live.online is False:
             return False

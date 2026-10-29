@@ -575,3 +575,34 @@ async def test_the_switch_interval_holds_while_the_charger_switches(tmp_path):
         written = len(charger.writes)
         await check(wallboxes, wb, t0 + 40, available=4300)
         assert (0x3002, 41) not in charger.writes[written:]
+
+
+async def test_letting_go_without_a_charge_still_lifts_the_own_cap(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 70  # the owner's 7 kW
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        charger.regs.update({0x1003: 4, 0x100B: 0})  # the car paused by itself
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 70), (0x4001, 2)]  # the owner's power, then a stop: no restart
+        assert charger.restarted_by_current == 0 and not wallboxes._owned()
+
+
+async def test_a_failed_switch_to_three_phases_keeps_the_stored_cap(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def refuses_more_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return bytes([16 | 0x80, 4])
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", refuses_more_power)
+        await check(wallboxes, wb, t0 + 60 + 12 * 60, available=9000)  # wants three phases, the write fails
+        assert wallboxes._owned()[wb.id]["phases"] == 1  # a restart now still knows the cap is OpenAmpere's
