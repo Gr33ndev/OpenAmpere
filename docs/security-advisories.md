@@ -28,8 +28,8 @@ describes the process for reporters; this page has the steps and the things that
   with every other advisory.
 - **The commit message ends with the advisory id on a line of its own** (`GHSA-xxxx-xxxx-xxxx`). The merge arrives on
   `main` as one commit titled "Merge commit from fork", and `scripts/changelog.py` only lists it as a security fix
-  through that line. A fix merged without it needs an entry in `changelog/advisory-commits.json` (commit →
-  advisory), because a merged message cannot be changed.
+  through that line. A fix merged without it needs an entry in `changelog/advisory-commits.json` (full commit
+  hash → advisory, read by `scripts/changelog.py` since #487), because a merged message cannot be changed.
 - GitHub Actions do not run in private forks. Run everything CI runs locally before asking for the merge: `ruff`,
   `pytest`, and for changes in `web/` lint, build, `check:demo`, `check:i18n` and the Playwright tests.
 - The fork's `main` does not follow this repository. After other merges, rebase the branch on the current `main` here
