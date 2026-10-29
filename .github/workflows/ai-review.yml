@@ -95,8 +95,11 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
       - name: Remove a summary that came with the pull request
-        # the summary is posted by the workflow from this file: only what Claude writes in this run counts
-        run: rm -f .ai-review-summary.md
+        # the summary is posted by the workflow from this file: only what Claude writes in this run counts. The trace
+        # script is run from a copy: a file in the checkout may have been changed by the time it runs.
+        run: |
+          rm -f .ai-review-summary.md
+          install -m 0755 scripts/ai-review-trace.sh "$RUNNER_TEMP/ai-review-trace.sh"
       - id: review
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         # a failed first attempt gets a second one below, the check at the end decides
@@ -142,23 +145,28 @@ jobs:
             --model claude-opus-5-5
             --max-turns 40
             --disallowedTools "Read(//proc/**),Grep(//proc/**),Read(./.git/**),Grep(./.git/**),ReportFindings"
-            --allowedTools "Edit(./.ai-review-summary.md),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Edit(./.ai-review-summary.md),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),mcp__github_inline_comment__create_inline_comment"
       - name: Show what the review did
         if: ${{ !cancelled() && steps.review.outputs.execution_file != '' }}
         env:
           FILE: ${{ steps.review.outputs.execution_file }}
-        run: scripts/ai-review-trace.sh "$FILE"
+        run: '"$RUNNER_TEMP/ai-review-trace.sh" "$FILE"'
       - name: Check the summary
         id: summary
         if: ${{ !cancelled() }}
         run: |
+          # Claude may write only the summary: anything else changed in the checkout (also .git/config, hence no
+          # fsmonitor here) fails the run before the retry or another step uses it
+          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
+            echo "::error::The review changed files in the checkout."; exit 1
+          fi
           if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::The review wrote no summary, it runs once more."
           fi
       - id: retry
-        if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
+        if: ${{ !cancelled() && steps.summary.outcome == 'success' && steps.summary.outputs.ok != 'true' }}
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         continue-on-error: true
         with: *review
@@ -166,14 +174,17 @@ jobs:
         if: ${{ !cancelled() && steps.retry.outputs.execution_file != '' }}
         env:
           FILE: ${{ steps.retry.outputs.execution_file }}
-        run: scripts/ai-review-trace.sh "$FILE"
+        run: '"$RUNNER_TEMP/ai-review-trace.sh" "$FILE"'
       - name: Post the summary
         # fails when there is none, so a missing review shows as a failed check instead of a green one (#435)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.summary.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
+          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
+            echo "::error::The review changed files in the checkout."; exit 1
+          fi
           if ! { [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; }; then
             echo "::error::The review wrote no summary. Remove the label ai-review and add it again to run it once more."
             exit 1
