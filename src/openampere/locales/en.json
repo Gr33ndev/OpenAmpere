@@ -202,7 +202,7 @@
     "backupReserveAboveChargeLimit": "The reserve in backup mode must not be above the charge limit",
     "backupReserveRange": "The reserve in backup mode must be between {BACKUP_SOC_MIN} and 100 %",
     "chargeLimitMustAbove": "The charge limit must be above the backup power reserve",
-    "confirmRatedPowerFirst": "The rated power your inverter reports does not fit its type. Please confirm the rated power from the type plate first, then you can change the export limit.",
+    "confirmRatedPowerFirst": "OpenAmpere cannot check the rated power your inverter reports for its type. Please confirm the rated power from the type plate first, then you can change the export limit.",
     "controlDevicesNotEnabled": "Control of {manufacturer} devices is not enabled in OpenAmpere yet (display only).",
     "currentBatteryLimitsCouldn": "The current battery limits couldn't be read completely. Please try again later.",
     "exportLimitDeviceT": "The export limit of this device can't be changed via Modbus.",

@@ -900,7 +900,7 @@
   },
   "ratedPowerCard": {
     "title": "Rated power of the inverter",
-    "unconfirmed": "Your inverter reports a rated power of {reported}. That does not fit its type. Since OpenAmpere writes the export limit as a share of the rated power, a wrong value would make the limit wrong as well. Please enter the rated power from the type plate, then you can change the limit.",
+    "unconfirmed": "Your inverter reports a rated power of {reported}. OpenAmpere cannot check this value for its type. Since OpenAmpere writes the export limit as a share of the rated power, a wrong value would make the limit wrong as well. Please enter the rated power from the type plate, then you can change the limit.",
     "confirmed": "You confirmed the rated power from the type plate: {power}. The inverter reports {reported}; OpenAmpere uses your value.",
     "label": "Rated power on the type plate",
     "hint": "The type plate is on the side of the inverter. Look for the rated power (often “Rated output power”), e.g. 8000 W.",

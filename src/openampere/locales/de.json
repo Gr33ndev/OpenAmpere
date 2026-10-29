@@ -202,7 +202,7 @@
     "backupReserveAboveChargeLimit": "Die Reserve im Backup-Modus darf nicht über der Ladegrenze liegen",
     "backupReserveRange": "Die Reserve im Backup-Modus muss zwischen {BACKUP_SOC_MIN} und 100 % liegen",
     "chargeLimitMustAbove": "Die Ladegrenze muss über der Notstrom-Reserve liegen",
-    "confirmRatedPowerFirst": "Die Nennleistung, die dein Wechselrichter meldet, passt nicht zu seinem Typ. Bitte bestätige zuerst die Nennleistung vom Typenschild, dann kannst du die Einspeisebegrenzung ändern.",
+    "confirmRatedPowerFirst": "OpenAmpere kann die Nennleistung, die dein Wechselrichter meldet, für seinen Typ nicht prüfen. Bitte bestätige zuerst die Nennleistung vom Typenschild, dann kannst du die Einspeisebegrenzung ändern.",
     "controlDevicesNotEnabled": "Für {manufacturer}-Geräte ist die Steuerung in OpenAmpere noch nicht freigegeben (nur Anzeige).",
     "currentBatteryLimitsCouldn": "Die aktuellen Speicher-Grenzen konnten nicht vollständig gelesen werden. Bitte später erneut versuchen.",
     "exportLimitDeviceT": "Die Einspeisebegrenzung lässt sich bei diesem Gerät nicht über Modbus ändern.",

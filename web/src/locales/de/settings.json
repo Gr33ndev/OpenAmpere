@@ -900,7 +900,7 @@
   },
   "ratedPowerCard": {
     "title": "Nennleistung des Wechselrichters",
-    "unconfirmed": "Dein Wechselrichter meldet eine Nennleistung von {reported}. Das passt nicht zu seinem Typ. Weil OpenAmpere die Einspeisebegrenzung als Anteil der Nennleistung schreibt, wäre sie mit einem falschen Wert ebenfalls falsch. Bitte trage die Nennleistung vom Typenschild ein, dann kannst du die Begrenzung ändern.",
+    "unconfirmed": "Dein Wechselrichter meldet eine Nennleistung von {reported}. OpenAmpere kann diesen Wert für seinen Typ nicht prüfen. Weil OpenAmpere die Einspeisebegrenzung als Anteil der Nennleistung schreibt, wäre sie mit einem falschen Wert ebenfalls falsch. Bitte trage die Nennleistung vom Typenschild ein, dann kannst du die Begrenzung ändern.",
     "confirmed": "Du hast die Nennleistung vom Typenschild bestätigt: {power}. Der Wechselrichter meldet {reported}; OpenAmpere rechnet mit deinem Wert.",
     "label": "Nennleistung laut Typenschild",
     "hint": "Das Typenschild klebt seitlich am Wechselrichter. Gesucht ist die Nennleistung (oft „Rated output power“), z. B. 8000 W.",

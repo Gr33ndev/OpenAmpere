@@ -488,9 +488,9 @@ class ExportLimitControl:
                 raise ValueError("Die Einspeisebegrenzung lässt sich bei diesem Gerät nicht über Modbus ändern.")
             if current["rated_power_reported_w"] is not None and not current["rated_power_confirmed"]:
                 # the limit is written as a share of the rated power: with a wrong one, also a lower limit is wrong
-                raise ValueError("Die Nennleistung, die dein Wechselrichter meldet, passt nicht zu seinem Typ. Bitte "
-                                 "bestätige zuerst die Nennleistung vom Typenschild, dann kannst du die "
-                                 "Einspeisebegrenzung ändern.")
+                raise ValueError("OpenAmpere kann die Nennleistung, die dein Wechselrichter meldet, für seinen Typ "
+                                 "nicht prüfen. Bitte bestätige zuerst die Nennleistung vom Typenschild, dann kannst "
+                                 "du die Einspeisebegrenzung ändern.")
             limit_w = int(limit_w)
             maximum = current["rated_power_w"] or 99_999
             if not 0 <= limit_w <= maximum:
