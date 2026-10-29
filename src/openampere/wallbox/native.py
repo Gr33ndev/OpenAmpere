@@ -206,8 +206,9 @@ class Live:
     limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
-    # the wallbox's lowest step and the owner's highest current while no step fits it: not charged (#481)
-    above_limit: tuple[int, int] | None = None
+    # the wallbox's lowest step, the highest current and where it comes from ("app", "mode", "wallbox") while no step
+    # fits it: not charged (#481). Set by step() on every check that gets that far, cleared on all others
+    above_limit: tuple[int, int, str] | None = None
     task: asyncio.Task | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -393,6 +394,8 @@ class NativeWallboxes:
         for wb_id in self._stopped():
             if wb_id not in new or not new[wb_id].enabled:
                 self._keep_stop(wb_id, None)  # removed or switched off: not read any more, so never cleared
+        for live in self.live.values():
+            live.above_limit = None  # another highest current: the next check says whether it still holds
         self._store(wallboxes)
         return wallboxes
 
@@ -432,6 +435,7 @@ class NativeWallboxes:
         live = self.live.setdefault(wb.id, Live())
         live.want_on, live.short_since = 0, None
         live.limit_a = None  # another mode asks the charger afresh
+        live.above_limit = None  # another mode or current: the next check says whether it still holds
         live.plan.want_on, live.plan.short_since = 0, None
         if old != mode:
             self._log(wb, "mode", mode, False, "ok", source=source, before=old)
@@ -999,6 +1003,7 @@ class NativeWallboxes:
         if key_missing(wb):
             return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
+        live.above_limit = None  # set again below while it still holds: no note left over from an earlier check
         reading = self._fresh(live, now)
         sim = simulated(wb)
         if read_only(wb) and not sim:
@@ -1087,12 +1092,16 @@ class NativeWallboxes:
             phases = reading.phases()
         if live.limit_a is not None and now - live.limit_at >= LIMIT_AGAIN_S:
             live.limit_a = None  # ask again for the current the mode wants
-        owner = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
-                    wb.mode_current_a.get(wb.mode, wb.max_current_a))
+        mode_a = wb.mode_current_a.get(wb.mode, wb.max_current_a)
+        owner = min(wb.max_current_a, reading.max_current_a or wb.max_current_a, mode_a)
+        # what the owner has to change: the wallbox's own maximum (in the manufacturer's app), the mode's current or
+        # the highest current in OpenAmpere
+        source = "wallbox" if reading.max_current_a and reading.max_current_a < min(wb.max_current_a, mode_a) \
+            else "mode" if mode_a < wb.max_current_a else "app"
         limit = min(owner, live.limit_a or owner)
         # no step at or below the owner's highest current (the limit of the socket): no charge at all, never the
         # lowest step above it (#481). Only below the lower current the charger kept itself is its lowest step used
-        above = None if any(s <= owner for s in reading.steps_a) else (min(reading.steps_a), owner)
+        above = None if any(s <= owner for s in reading.steps_a) else (min(reading.steps_a), owner, source)
         live.above_limit = above if wb.mode != "off" else None
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
         if (plan is not None or switching) and phases < reading.installed_phases:
@@ -1117,7 +1126,7 @@ class NativeWallboxes:
             return 0.0
         if above is not None:
             # the safe direction: a running charge is stopped, none is started and no current is written (#481)
-            lowest_a, highest_a = above
+            lowest_a, highest_a, _ = above
             reason = f"niedrigster Ladestrom der Wallbox ({lowest_a} A) über dem höchsten Ladestrom ({highest_a} A)"
             if reading.charging:
                 await start(False, reason)
@@ -1436,7 +1445,7 @@ class NativeWallboxes:
                 "not_prepared": real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S,
                 # no current step fits the owner's highest current: not charged (#481)
                 "above_limit": None if live.above_limit is None or reading is None else {
-                    "lowest_a": live.above_limit[0], "limit_a": live.above_limit[1]},
+                    "lowest_a": live.above_limit[0], "limit_a": live.above_limit[1], "source": live.above_limit[2]},
                 "work_modes": list(getattr(MODELS[wb.model], "work_modes", None) or ()),  # settable (#464)
                 "simulation": self._plan_view(live.plan) if self.simulates(wb) else None,
             })

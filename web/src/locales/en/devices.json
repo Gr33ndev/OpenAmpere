@@ -271,6 +271,8 @@
     "planNoSurplus": "OpenAmpere would not charge now: there is too little solar surplus.",
     "planAboveLimit": "OpenAmpere would not charge now: the wallbox's lowest charging current is above your highest charging current.",
     "aboveLimit": "OpenAmpere is not charging: the wallbox charges with at least {lowest} A, but you set at most {limit} A. OpenAmpere never sets more than your highest charging current, so it starts no charge and stops a running one. If your socket can take more, set a higher charging current.",
+    "aboveLimitMode": "OpenAmpere is not charging: the wallbox charges with at least {lowest} A, but you chose at most {limit} A for this charging mode. OpenAmpere never sets more, so it starts no charge and stops a running one. If your socket can take more, choose a higher charging current for the mode below.",
+    "aboveLimitWallbox": "OpenAmpere is not charging: the wallbox charges with at least {lowest} A, but allows at most {limit} A itself. OpenAmpere never sets more, so it starts no charge and stops a running one. Check the highest charging current in the wallbox manufacturer's app.",
     "planOff": "OpenAmpere would not charge now: the charging mode is “Off”.",
     "planFinished": "OpenAmpere would not charge now: the car takes no more power, it is probably full.",
     "planNoCar": "OpenAmpere would not charge now: no car is plugged in.",

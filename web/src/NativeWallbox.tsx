@@ -47,7 +47,7 @@ export type NativeWallbox = {
   /** Real control held back: the charger did not take the fallback current of 6 A (#465). */
   not_prepared?: boolean;
   /** No current step of the wallbox is at or below the owner's highest current: not charged (#481). */
-  above_limit?: { lowest_a: number; limit_a: number } | null;
+  above_limit?: { lowest_a: number; limit_a: number; source: "app" | "mode" | "wallbox" } | null;
 };
 type WorkMode = "controlled" | "plug_and_charge" | "locked";
 export type WallboxSimulation = {
@@ -99,6 +99,14 @@ function planText(plan: WallboxSimulation): string {
 }
 
 /** Steps a wallbox may offer, when it has not told its own yet (e.g. unplugged). */
+// what the owner has to change depends on where the highest current comes from (#481)
+function aboveLimitText(above: NonNullable<NativeWallbox["above_limit"]>): string {
+  const values = { lowest: above.lowest_a, limit: above.limit_a };
+  if (above.source === "wallbox") return t("devices.nativeWallbox.aboveLimitWallbox", values);
+  if (above.source === "mode") return t("devices.nativeWallbox.aboveLimitMode", values);
+  return t("devices.nativeWallbox.aboveLimit", values);
+}
+
 const STEPS = [6, 8, 10, 13, 16, 20, 25, 32];
 
 /** Currents to choose for a mode: the wallbox's steps up to the owner's highest current, the chosen one included. */
@@ -310,8 +318,7 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
       </>}
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
       <p className="hint">{modeHint(wb)}</p>
-      {wb.above_limit && wb.mode !== "manual" && wb.mode !== "off" && <Notice kind="warn">{t("devices.nativeWallbox.aboveLimit",
-        { lowest: wb.above_limit.lowest_a, limit: wb.above_limit.limit_a })}</Notice>}
+      {wb.above_limit && wb.mode !== "manual" && wb.mode !== "off" && <Notice kind="warn">{aboveLimitText(wb.above_limit)}</Notice>}
       {(wb.mode === "pv" || wb.mode === "minpv" || wb.mode === "now") && (
         <fieldset className="field field-group">
           <legend className="field-label">{t("devices.nativeWallbox.modeCurrent")}</legend>

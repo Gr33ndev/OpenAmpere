@@ -534,12 +534,41 @@ async def test_no_charge_when_the_lowest_step_is_above_the_owners_limit(tmp_path
             await wallboxes.read(wb)
             await control.tick(now=now)
         assert charger.writes == [] and not charger.charging
-        assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6}
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6, "source": "app"}
 
         charger.charging = True  # a charge the wallbox started by itself is stopped (the safe direction)
         await wallboxes.read(wb)
         await control.tick(now=300)
         assert charger.writes == [{"140": False}] and not charger.charging
+
+
+async def test_the_note_on_the_lowest_step_names_its_limit_and_does_not_stay(tmp_path, monkeypatch):
+    # the note says what to change (here the current of the mode) and goes once it no longer holds (#481)
+    async with simulated(plugged=True, steps=(8, 10, 13, 16)) as (charger, port):
+        charger.current_a = 8
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="now")
+        wb = wallboxes.set_mode(wallboxes.wallboxes[0].id, "now", current_a=6)
+        control = SurplusControl(runtime, None, wallboxes)
+        site(runtime, grid=-8000)
+        await wallboxes.read(wb)
+        await control.tick(now=0)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6, "source": "mode"}
+
+        wallboxes.set_mode(wb.id, "now", current_a=10)  # a higher current: no note left over until the next check
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is None
+        wallboxes.set_mode(wb.id, "now", current_a=6)
+        await wallboxes.read(wb)
+        await control.tick(now=10)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is not None
+        wallboxes.save([{**vars(w)} for w in wallboxes.wallboxes])  # saving the list: asked again as well
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is None
+
+        await control.tick(now=20)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is not None
+        charger.plugged = False  # unplugged: the next check gets no further than that, the note goes
+        await wallboxes.read(wb)
+        await control.tick(now=30)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is None
 
 
 async def test_test_mode_only_logs_and_letting_go_restores_the_owners_current(tmp_path, monkeypatch):
