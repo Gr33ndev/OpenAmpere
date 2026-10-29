@@ -555,6 +555,11 @@ async def test_the_note_names_the_wallboxs_own_maximum(tmp_path, monkeypatch):
         assert charger.writes == []
         assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6, "source": "wallbox"}
 
+        wallboxes.set_mode(wb.id, "now", current_a=6)  # the same limit for the mode: the wallbox's comes first,
+        await wallboxes.read(wb)                         # it cannot be changed in OpenAmpere
+        await control.tick(now=10)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"]["source"] == "wallbox"
+
 
 async def test_the_note_on_the_lowest_step_names_its_limit_and_does_not_stay(tmp_path, monkeypatch):
     # the note says what to change (here the current of the mode) and goes once it no longer holds (#481)
