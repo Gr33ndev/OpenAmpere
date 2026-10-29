@@ -100,6 +100,7 @@ jobs:
         run: |
           rm -f .ai-review-summary.md
           install -m 0755 scripts/ai-review-trace.sh scripts/ai-review-changed.sh "$RUNNER_TEMP/"
+          "$RUNNER_TEMP/ai-review-changed.sh" --save "$RUNNER_TEMP/git-state"
       - id: review
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         # a failed first attempt gets a second one below, the check at the end decides
@@ -157,7 +158,7 @@ jobs:
         run: |
           # Claude may write only the summary: anything else changed in the checkout fails the run before the retry or
           # another step uses it (scripts/ai-review-changed.sh)
-          changed=$("$RUNNER_TEMP/ai-review-changed.sh") || { echo "::error::The checkout could not be checked."; exit 1; }
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh" "$RUNNER_TEMP/git-state") || { echo "::error::The checkout could not be checked."; exit 1; }
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
@@ -185,7 +186,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          changed=$("$RUNNER_TEMP/ai-review-changed.sh") || { echo "::error::The checkout could not be checked."; exit 1; }
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh" "$RUNNER_TEMP/git-state") || { echo "::error::The checkout could not be checked."; exit 1; }
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
