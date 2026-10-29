@@ -181,6 +181,17 @@ class Notifier:
                              "verbindet sich jetzt mit ihr. Das passiert, wenn der Router ihm eine neue Adresse gibt. "
                              "Die Adressen stehen in der App unter Mehr → Steuerung und Protokoll. Hast du nichts "
                              "geändert und kennst die neue Adresse nicht, schalte die Steuerung dort aus.", "warning")
+            # a wallbox found by its device ID at a new address, after it answered there with its local key
+            moved = self.runtime.storage.get_meta("wallbox_relocated")
+            ts = moved.get("ts") if isinstance(moved, dict) else None
+            if (isinstance(ts, (int, float)) and now - ts < RELOCATED_RECENT_S
+                    and ts > float(self.sent.get("wallbox_relocated_ts") or 0)):
+                await notify("wallbox_relocated_ts", ts, "Wallbox unter neuer Adresse",
+                             f"OpenAmpere hat die Wallbox {moved.get('name') or ''} unter einer neuen Adresse im "
+                             "Heimnetz gefunden und steuert sie jetzt dort. Das passiert, wenn der Router ihr eine "
+                             "neue Adresse gibt. Die Adressen stehen in der App unter Mehr → Steuerung und Protokoll. "
+                             "Hast du nichts geändert und kennst die neue Adresse nicht, stelle die Wallbox auf "
+                             "„von Hand“ und prüfe ihre Adresse.", "warning")
 
         if cfg.on_unreachable and collector.configured:
             since = collector.disconnected_since

@@ -342,6 +342,7 @@
     "wallboxStart": "{name}: Laden gestartet.",
     "wallboxStop": "{name}: Laden pausiert.",
     "wallboxReleased": "{name}: OpenAmpere hat die Wallbox abgegeben und deinen Ladestrom wieder eingestellt.",
+    "wallboxRelocated": "{name}: Wallbox unter einer neuen Adresse im Heimnetz gefunden: {to} statt {from}. Sie hat dort mit ihrem Local Key geantwortet, OpenAmpere steuert sie jetzt unter dieser Adresse.",
     "wallboxModeCurrent": "{name}: im Lademodus „{mode}“ höchstens {current} A.",
     "wallboxSimCurrent": {
       "one": "{name}: Simulation – OpenAmpere würde mit {current} A auf 1 Phase weiterladen.",

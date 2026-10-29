@@ -255,6 +255,10 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
       return t("settings.controlLog.update", { from: version(details.from), to: version(details.to) });
     case "inverter_relocated": // found by its serial number after an address change (#351)
       return t("settings.controlLog.inverterRelocated", { from: str(from.host) || unknown(), to: str(to.host) || unknown() });
+    case "wallbox_relocated": // found by its device ID, taken only after it answered there with its local key
+      return t("settings.controlLog.wallboxRelocated", {
+        name: str(details.name) || unknown(), from: str(from.host) || unknown(), to: str(to.host) || unknown(),
+      });
     default:
       return t("settings.controlLog.unknown", { action: e.action });
   }
@@ -269,7 +273,7 @@ function by(e: LogEntry, details: Values): string {
   }
   switch (e.action) {
     case "update": return (details.by ?? e.result) === "auto" ? t("settings.controlLog.byNight") : t("settings.controlLog.byApp");
-    case "grid_charging": case "grid_charging_reserve": case "inverter_relocated": return t("settings.controlLog.byAuto");
+    case "grid_charging": case "grid_charging_reserve": case "inverter_relocated": case "wallbox_relocated": return t("settings.controlLog.byAuto");
     case "consumer": return e.result.includes("von Hand") ? t("settings.controlLog.byApp") : t("settings.controlLog.byAuto");
     case "battery_settings_check": case "export_limit_check": return t("settings.controlLog.byOtherDevice");
     default: return t("settings.controlLog.byApp");
@@ -280,8 +284,8 @@ function status(e: LogEntry): LogStatus {
   if (obj(e.details).simulation === true) return "simulation"; // a simulated wallbox control: never written (#440)
   if (e.dry_run) return "test";
   if (/^Fehler|fehlgeschlagen/.test(e.result)) return "error";
-  // inverter_relocated: worth a look, OpenAmpere now talks to another address (#351)
-  if (e.action.endsWith("_check") || e.action === "inverter_relocated" || e.result.startsWith("Rücklesen abweichend")
+  // inverter_relocated, wallbox_relocated: worth a look, OpenAmpere now talks to another address (#351)
+  if (e.action.endsWith("_check") || e.action.endsWith("_relocated") || e.result.startsWith("Rücklesen abweichend")
     || e.result.startsWith("unbestätigt")) return "warning"; // a write that may or may not have reached the device (#464)
   return "ok";
 }

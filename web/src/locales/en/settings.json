@@ -342,6 +342,7 @@
     "wallboxStart": "{name}: charging started.",
     "wallboxStop": "{name}: charging paused.",
     "wallboxReleased": "{name}: OpenAmpere let go of the wallbox and set your charging current back.",
+    "wallboxRelocated": "{name}: wallbox found at a new address in the home network: {to} instead of {from}. It answered there with its local key, OpenAmpere now controls it at this address.",
     "wallboxModeCurrent": "{name}: at most {current} A in charging mode “{mode}”.",
     "wallboxSimCurrent": {
       "one": "{name}: simulation – OpenAmpere would go on charging with {current} A on 1 phase.",

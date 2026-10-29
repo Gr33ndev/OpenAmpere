@@ -101,6 +101,7 @@ GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up 
 ONE_PHASE_W = 4100.0  # OpenAmpere's one-phase cap (foxess.ONE_PHASE): never taken as the owner's power (#478)
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 STOPPED = "wallbox_stopped"  # meta: id -> time of OpenAmpere's stop, kept after letting go of the wallbox (#456)
+RELOCATED = "wallbox_relocated"  # meta: the last new address found by the search, for the notification
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}")
 DEVICE_ID = re.compile(r"[A-Za-z0-9]{10,40}")
 
@@ -606,14 +607,41 @@ class NativeWallboxes:
         except OSError:
             return
         match = next((d for d in found if d["device_id"] == wb.device_id), None)
-        if match and match["host"] != wb.host and HOST.fullmatch(match["host"]) and in_home_network(match["host"]):
-            wallboxes = self.wallboxes
-            for w in wallboxes:
-                if w.id == wb.id:
-                    w.host = match["host"]
-            self._store(wallboxes)
-            live.retry_at = 0.0
-            log.info("wallbox %s found at a new address", wb.name)
+        host = match["host"] if match else ""
+        if not host or host == wb.host or not self._may_move_to(host):
+            return
+        # the announcement is encrypted with a key every Tuya device shares and names a device ID the wallbox sends
+        # openly: anybody in the home network can forge one. Only the session handshake with the stored local key
+        # proves that the owner's wallbox is at the new address.
+        try:
+            async with live.lock:
+                await self.device(replace(wb, host=host)).status()
+        except UNREACHABLE as err:
+            log.warning("wallbox %s: a device announced itself with its device ID at another address, but did not "
+                        "answer with its local key there (%s); the address is kept", wb.name, err.message)
+            return
+        wallboxes = self.wallboxes
+        moved = False
+        for w in wallboxes:
+            if w.id == wb.id and w.host == wb.host:  # not changed by the owner in the meantime
+                w.host, moved = host, True
+        if not moved:
+            return
+        # told like a new address of the inverter (#351): in the control log and by a notification
+        self.runtime.storage.log_control("wallbox_relocated", {"id": wb.id, "name": wb.name, "from": {"host": wb.host},
+                                                               "to": {"host": host}}, False, "ok")
+        self.runtime.storage.set_meta(RELOCATED, {"id": wb.id, "name": wb.name, "from": wb.host, "to": host,
+                                                  "ts": time.time()})
+        self._store(wallboxes)
+        live.retry_at = 0.0
+        log.warning("wallbox %s found at a new address", wb.name)
+
+    def _may_move_to(self, host: str) -> bool:
+        """The checks of save() for a new address: in the home network and not the inverter's."""
+        if not HOST.fullmatch(host) or not in_home_network(host):
+            return False
+        inverter = self.runtime.config.inverter.host
+        return not (inverter and host_addresses(host) & host_addresses(inverter.strip()))
 
     @staticmethod
     def _fresh(live: Live | None, now: float) -> Reading | None:
