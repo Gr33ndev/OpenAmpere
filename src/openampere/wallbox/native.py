@@ -1178,7 +1178,7 @@ class NativeWallboxes:
             self._disown(wb.id)
             return True
         if entry.get("lift_tried") is not None and time.time() - entry["lift_tried"] < PREPARE_AGAIN_S:
-            return True  # only the note of a one-phase cap that did not go back (#478): tried again later
+            return False  # a one-phase cap that did not go back (#478): not done, the caller tries again later
         live = live or self.live.setdefault(wb.id, Live())
         model = MODELS[wb.model]
         now = time.time()
@@ -1221,9 +1221,13 @@ class NativeWallboxes:
             owned = self._owned()
             owned[wb.id] = {"current_a": None, "started": False, "phases": 1, "power_w": entry.get("power_w"),
                             "lift_tried": time.time(), "wallbox": entry.get("wallbox") or self._sealed(asdict(wb))}
-            self.runtime.storage.set_meta(OWNED, owned)
-        else:
-            self._disown(wb.id)
+            try:
+                self.runtime.storage.set_meta(OWNED, owned)
+            except Exception as err:  # noqa: BLE001 - e.g. a full disk: letting go (also on shutdown) goes on
+                log.warning("could not remember the power cap of the wallbox %s: %s", wb.name, err)
+            live.want_on, live.short_since, live.limit_a = 0, None, None
+            return False  # not done: retire() and the next release try again
+        self._disown(wb.id)
         if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
             # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
             self._keep_stop(wb.id, max(live.stop_sent, 0.0))
@@ -1292,7 +1296,8 @@ class NativeWallboxes:
                 "updated": live.updated or None, "error": live.error,
                 "reading": None if reading is None else {k: v for k, v in asdict(reading).items()
                                                          if k != "lifetime_kwh"},
-                "controlled": wb.id in self._owned(),
+                # not while only a note of a one-phase cap waits to be lifted (#478)
+                "controlled": wb.id in self._owned() and not self._owned()[wb.id].get("lift_tried"),
                 "simulated": simulated(wb),
                 "controllable": bool(getattr(MODELS[wb.model], "controllable", False)),  # real control on request
                 # real control held back because the charger did not take the fallback current (#465)

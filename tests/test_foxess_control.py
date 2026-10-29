@@ -632,3 +632,29 @@ async def test_a_cap_that_does_not_go_back_on_letting_go_is_kept_and_tried_again
         wallboxes.runtime.storage.set_meta(native_module.OWNED, {wb.id: note})
         await wallboxes.release(wb, "Lademodus „von Hand“")
         assert charger.regs[0x3002] == 220 and not wallboxes._owned()
+
+
+async def test_switching_control_off_keeps_trying_to_lift_the_cap(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        await wallboxes.set_control(wb.id, False, source="admin")
+        assert wb.id in wallboxes._retired and wallboxes._owned()[wb.id]["lift_tried"]
+        assert wallboxes.view()["wallboxes"][0]["controlled"] is False  # only the note waits
+        await wallboxes.retire()
+        assert wb.id in wallboxes._retired  # too soon: still waiting, not given up
+        monkeypatch.setattr(charger, "handle", handle)
+        owned = wallboxes._owned()
+        owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        wallboxes.runtime.storage.set_meta(native_module.OWNED, owned)
+        await wallboxes.retire()
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned() and wb.id not in wallboxes._retired
