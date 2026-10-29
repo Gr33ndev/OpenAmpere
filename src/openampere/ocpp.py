@@ -11,7 +11,8 @@ at OpenAmpere in the manufacturer's app. OpenAmpere then acts as the OCPP centra
 - anything else the wallbox sends is answered with a CALLERROR, not with a decision.
 
 The login middleware does not cover WebSocket routes, so the endpoint keeps its own rules: only while the listener
-runs (LISTEN_S at most), only from addresses in the home network, one connection, limited message size and count.
+runs (LISTEN_S at most), only from addresses in the home network, never from a web page (a browser sends an Origin,
+a wallbox none) and with an allowed Host like the rest of the app, one connection, limited message size and count.
 Security profile 0 (no password, no TLS) is acceptable because OpenAmpere only listens; control over OCPP (#318)
 would need more. A minimal OCPP-J layer (JSON arrays), no new dependency.
 """
@@ -28,6 +29,7 @@ from datetime import datetime, timezone
 from fastapi import WebSocket
 
 from . import ha_app
+from .auth import host_allowed
 from .outbound import in_home_network
 from .runtime import Runtime
 
@@ -41,6 +43,7 @@ KEEP = 20  # status notifications and meter values kept
 HEARTBEAT_S = 60  # the interval the wallbox is told in the Pending answer
 READ_REQUESTS = ("GetConfiguration", "GetCompositeSchedule")  # all OpenAmpere ever sends
 CALL, RESULT, ERROR = 2, 3, 4
+MAX_TEXT_SHOWN = 100  # per text of the wallbox in the report (OCPP allows at most 50 characters for these)
 
 
 def _now_iso() -> str:
@@ -64,7 +67,7 @@ class OcppListener:
 
     async def stop(self) -> dict:
         self.until = 0.0
-        if self._ws is not None:
+        if self._ws is not None and self.connected:  # a connection still being checked is refused by serve()
             await self._ws.close(code=1000)
         return self.view()
 
@@ -85,17 +88,27 @@ class OcppListener:
     # ---- the WebSocket ------------------------------------------------------------------
 
     async def refuse_reason(self, ws: WebSocket) -> str | None:
+        """None if the connection may go on; it then holds the only slot. The slot is taken before the first await,
+        so two connections arriving together cannot both pass the check."""
         if not self.active:
             return "listener not started"
         if self._ws is not None:
             return "already connected"
         if ha_app.via_ingress(ws):  # the wallbox connects directly, never through the Home Assistant sidebar
             return "through the Home Assistant sidebar"
-        client = ws.client.host if ws.client else ""
-        if not client or not await asyncio.to_thread(in_home_network, client):
-            return "not from the home network"
+        if "origin" in ws.headers:  # a browser always sends one, so any web page could connect otherwise
+            return "opened by a web page"
+        if not host_allowed(ws.headers.get("host"), self.runtime.config.server.allowed_hosts):  # DNS rebinding
+            return "host not allowed"
         if SUBPROTOCOL not in ws.scope.get("subprotocols", []):
             return "no ocpp1.6 subprotocol"
+        client = ws.client.host if ws.client else ""
+        if not client:
+            return "not from the home network"
+        self._ws = ws
+        if not await asyncio.to_thread(in_home_network, client):
+            self._ws = None
+            return "not from the home network"
         return None
 
     async def serve(self, ws: WebSocket, charge_point: str | None) -> None:
@@ -104,8 +117,12 @@ class OcppListener:
             log.info("OCPP connection refused: %s", reason)
             await ws.close(code=1008)
             return
-        await ws.accept(subprotocol=SUBPROTOCOL)
-        self._ws, self.connected, self._pending = ws, True, {}
+        try:
+            await ws.accept(subprotocol=SUBPROTOCOL)
+        except Exception:  # noqa: BLE001 - gone before it was accepted: free the slot
+            self._ws = None
+            raise
+        self.connected, self._pending = True, {}
         self.record = {"charge_point": charge_point, "boot": None, "configuration": None, "unknown_keys": None,
                        "schedule": None, "status": [], "meter_values": [], "refused": [], "errors": [], "messages": 0}
         log.info("OCPP: a wallbox connected (listening only)")
@@ -189,19 +206,25 @@ class OcppListener:
             self.record["schedule"] = payload
 
 
+def _md(value) -> str:
+    """Text the wallbox sent, as inline code in the report: no Markdown or HTML of its own (a report may be posted)."""
+    text = " ".join(str(value).replace("`", "'").split())[:MAX_TEXT_SHOWN]
+    return f"`{text}`" if text else "?"
+
+
 def ocpp_markdown(report: dict) -> list[str]:
     """The OCPP part of the diagnostics report (already masked by privacy.py), German like the rest of the report."""
     boot = report.get("boot") or {}
     status = [s.get("status") for s in report.get("status") or [] if isinstance(s, dict)]
-    lines = [f"- Wallbox {report.get('charge_point') or '?'}: {boot.get('chargePointVendor') or '?'} "
-             f"{boot.get('chargePointModel') or '?'}, Firmware {boot.get('firmwareVersion') or '?'}, "
-             f"{report.get('messages', 0)} Nachrichten",
-             f"- Zustand: {', '.join(dict.fromkeys(str(s) for s in status)) or 'nicht gemeldet'}",
+    lines = [f"- Wallbox {_md(report.get('charge_point') or '')}: {_md(boot.get('chargePointVendor') or '')} "
+             f"{_md(boot.get('chargePointModel') or '')}, Firmware {_md(boot.get('firmwareVersion') or '')}, "
+             f"{int(report.get('messages') or 0)} Nachrichten",
+             f"- Zustand: {', '.join(dict.fromkeys(_md(s) for s in status)) or 'nicht gemeldet'}",
              f"- Einstellungen gelesen: {len(report.get('configuration') or [])}"]
     if report.get("refused"):
-        lines.append(f"- Nicht beantwortet (OpenAmpere entscheidet nichts): {', '.join(report['refused'])}")
+        lines.append(f"- Nicht beantwortet (OpenAmpere entscheidet nichts): {', '.join(map(_md, report['refused']))}")
     if report.get("errors"):
-        lines.append(f"- Fehler: {'; '.join(report['errors'])}")
+        lines.append(f"- Fehler: {'; '.join(map(_md, report['errors']))}")
     details = {k: report.get(k) for k in ("boot", "configuration", "unknown_keys", "schedule", "status", "meter_values")}
     return lines + ["", "<details><summary>Meldungen der Wallbox</summary>", "", "```json",
                     json.dumps(details, ensure_ascii=False), "```", "", "</details>"]
