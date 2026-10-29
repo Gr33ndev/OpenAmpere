@@ -748,3 +748,26 @@ async def test_letting_go_of_a_paused_car_keeps_the_note_when_the_cap_does_not_g
         monkeypatch.setattr(charger, "handle", ignores_power)
         assert not await wallboxes.release(wb, "Lademodus „von Hand“")
         assert wallboxes._owned()[wb.id]["phases"] == 1 and wallboxes._owned()[wb.id]["lift_tried"]
+
+
+async def test_the_cap_note_keeps_openamperes_stop(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")  # the stop goes out, the power does not
+        assert charger.writes[-1] == (0x4001, 2) and wallboxes._owned()[wb.id]["stopped"] is True
+        charger.regs[0x1003] = 5  # "finished" after OpenAmpere's stop: not a full car
+        monkeypatch.setattr(charger, "handle", handle)
+        wallboxes.set_mode(wb.id, "now")
+        wallboxes.live[wb.id].start_sent = float("-inf")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 3600, available=0)
+        assert charger.writes[-1] == (0x4001, 1)  # started again

@@ -1236,7 +1236,10 @@ class NativeWallboxes:
             # the owner's power did not read back (e.g. the charger takes no setpoint outside "controlled"): a note of
             # the cap is kept, so the next release or control tries again; the rest is let go of
             owned = self._owned()
+            # OpenAmpere's own stop stays recorded with it (#454, #456): a "finished" charger after it is no full car
             owned[wb.id] = {"current_a": None, "started": False, "phases": 1, "power_w": entry.get("power_w"),
+                            "stopped": bool(stop or entry.get("stopped")
+                                            or model.start(False).items() <= values.items()),
                             "lift_tried": time.time(), "wallbox": entry.get("wallbox") or self._sealed(asdict(wb))}
             try:
                 self.runtime.storage.set_meta(OWNED, owned)
