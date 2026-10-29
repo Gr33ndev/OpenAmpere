@@ -173,6 +173,7 @@ class BatteryControl:
 
     async def read(self, shared: bool = False) -> dict:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
+        await self._take_over_charge()
         data = await self._shared.get(self._driver()) if shared else await self._read()
         device = self.runtime.collector.device
         has_backup = bool(device and device.backup_reserve)
@@ -243,6 +244,7 @@ class BatteryControl:
 
         async with control_lock(self.runtime):
             driver = self._driver()
+            await self._adopt_remote_restore(driver)  # the owner's work mode in current and the log, also as kept
             current = await self._read()
             merged = {**current, **changes}
             if any(merged.get(k) is None for k in SOC_FIELDS) and any(k in changes for k in SOC_FIELDS):
@@ -283,7 +285,6 @@ class BatteryControl:
             after: dict | None = None
             try:
                 if "work_mode" in diff:
-                    await self._adopt_remote_restore(driver)
                     await driver.write_work_mode(WorkMode(diff["work_mode"]))
                     self._keep_remote_restore(driver)
                 for key in write_order(current, diff):
@@ -333,6 +334,20 @@ class BatteryControl:
         except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
             return
         await adopt(restore)
+
+    async def _take_over_charge(self) -> None:
+        """Until the takeover the driver reads the time-of-use mode of OpenAmpere's charge after a restart, which is no
+        work mode: the app would show none (#500). Locked only in that window, so a reading does not wait for a write
+        otherwise."""
+        driver = self._driver()
+        try:
+            if driver.remote_restore() is not None:
+                return
+        except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
+            return
+        if self._pending_command().get("restore"):
+            async with control_lock(self.runtime):
+                await self._adopt_remote_restore(driver)
 
     def _keep_remote_restore(self, driver) -> None:
         """A driver that keeps a new work mode for the end of grid charging (SAJ) has it only in memory: stored with
