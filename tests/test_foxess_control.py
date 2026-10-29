@@ -730,3 +730,21 @@ async def test_letting_go_during_a_phase_switch_sends_no_stop_to_the_owners_char
         charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # switching right now
         await wallboxes.release(wb, "Lademodus „von Hand“")
         assert charger.writes[-1] == (0x3002, 220) and (0x4001, 2) not in charger.writes
+
+
+async def test_letting_go_of_a_paused_car_keeps_the_note_when_the_cap_does_not_go_back(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        charger.regs.update({0x1003: 4, 0x100B: 0})  # the car paused by itself
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wallboxes._owned()[wb.id]["phases"] == 1 and wallboxes._owned()[wb.id]["lift_tried"]

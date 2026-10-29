@@ -788,9 +788,10 @@ class NativeWallboxes:
                 live.verify = True
         power = getattr(model, "phase_power", None)
         for address in (power(1, live.reading) if power and live.reading else {}):
-            if address in values and back.get(address) != values[address] and not charging:
-                # the power setpoint outside a charge: like the current, maybe reset at once (open, #478); the phases
-                # stay chosen, and the heartbeat writes and checks it again once the car charges
+            if address in values and back.get(address) != values[address] and not charging and not safe:
+                # the power setpoint outside a charge under control: like the current, maybe reset at once (open,
+                # #478); the phases stay chosen, and the heartbeat writes and checks it again once the car charges.
+                # Not when letting go (safe): a cap that does not go back must stay known (release keeps a note)
                 back = {a: v for a, v in back.items() if a != address}
                 live.verify = True
         for address, value in values.items():

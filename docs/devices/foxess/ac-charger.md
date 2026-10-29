@@ -171,6 +171,9 @@ Values while charging and single-phase models are not confirmed yet.
 - Whether 0x3001/0x3002 can be written outside the work mode "controlled". If OpenAmpere's one-phase cap does not
   read back when it lets go, it keeps a note and tries again after 15 minutes
   ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
+- Whether the charger resets or refuses 0x3002 outside a charge. Under control OpenAmpere does not count a differing
+  read-back there as failed and checks it again once the car charges; when it lets go, it does
+  ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
 - Whether the charger keeps the power setpoint 0x3002 after a stop or when the car is unplugged. OpenAmpere writes its
   owner's power setpoint back with every stop of a charge it capped at one phase and when it lets go
   ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
