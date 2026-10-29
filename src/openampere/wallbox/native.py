@@ -923,9 +923,10 @@ class NativeWallboxes:
             if sim:
                 live.plan.state = "unknown"  # the plan stays: it goes on once the charger answers again
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
-        if real(wb) and reading.state == "charging" and not reading.charging:
-            # a charge the charger reports while it switches phases (status 9) or ramps up: running, so no start is
-            # sent in the middle of it and the heartbeat goes on (#478)
+        if real(wb) and reading.switching_phases and not reading.charging:
+            # a charge while the charger switches phases (status 9, little or no power for a moment): running, so no
+            # start is sent in the middle of it and the heartbeat goes on (#478). Only status 9: a car at 0 W on
+            # status 3 (full, its own timer) does not charge, and nothing is written to it
             reading = replace(reading, charging=True)
         if real(wb) and self.runtime.config.control.dry_run and self._owned().get(wb.id, {}).get("started"):
             # test mode while a charge OpenAmpere started goes on: nothing keeps its watchdog alive, so it is stopped

@@ -143,6 +143,7 @@ class FoxEssChargerLive:
         status = values.get(0x1003)
         r.state = LIVE_STATE.get(status, "unknown") if status is not None else "unknown"
         r.connected = status in PLUGGED
+        r.switching_phases = status == 9
         r.voltage_v = [scaled(values, a, 0.1) for a in (0x1008, 0x1009, 0x100A)]
         r.current_a = [scaled(values, a, 0.1) for a in (0x100B, 0x100C, 0x100D)]
         voltages = [v for v in r.voltage_v if v is not None]

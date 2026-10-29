@@ -694,3 +694,14 @@ async def test_a_phase_switch_in_progress_counts_as_a_running_charge(tmp_path):
         await check(wallboxes, wb, t0 + 400, available=0)  # long after the start: a start would be due
         assert (0x4001, 1) not in charger.writes[before:]
         assert [w for w in charger.writes[before:] if w[0] == 0x3001]  # the heartbeat goes on
+
+
+async def test_a_car_at_zero_watts_on_status_3_is_not_counted_as_charging(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=0)
+        charger.regs.update({0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # status 3, the car draws nothing
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 30, available=0)
+        assert not [w for w in charger.writes[before:] if w[0] in (0x3001, 0x3002)]  # no heartbeat to a car at 0 W

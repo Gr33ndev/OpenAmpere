@@ -56,6 +56,7 @@ class Reading:
     phase_switch_min: int | None = None  # the shortest time between two phase switches, None: not told
     max_power_w: float | None = None  # its highest charging power, None: not told
     power_setpoint_w: float | None = None  # the power it is set to (FoxESS 0x3002), None: not told
+    switching_phases: bool = False  # it is switching between one and three phases right now (FoxESS status 9)
 
     def phases(self) -> int:
         """Phases to calculate with: those that charge now, otherwise all that are connected."""
