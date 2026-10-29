@@ -162,4 +162,5 @@ class FoxEssChargerLive:
         r.phase_switching = bool(values[0x300A]) if 0x300A in values else None
         r.phase_switch_min = values.get(0x300B)
         r.max_power_w = scaled(values, 0x1011, 100.0)  # 0.1 kW
+        r.power_setpoint_w = scaled(values, MAX_POWER, 100.0)
         return r

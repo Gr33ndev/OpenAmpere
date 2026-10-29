@@ -55,6 +55,11 @@ class Reading:
     phase_switching: bool | None = None  # automatic 1/3-phase switching, None: not told
     phase_switch_min: int | None = None  # the shortest time between two phase switches, None: not told
     max_power_w: float | None = None  # its highest charging power, None: not told
+    power_setpoint_w: float | None = None  # the power it is set to (FoxESS 0x3002), None: not told
+
+    def capped(self) -> bool:
+        """Set to less than its highest power, e.g. to one phase by OpenAmpere (#478); also after a restart."""
+        return bool(self.power_setpoint_w and self.max_power_w and self.power_setpoint_w < self.max_power_w)
 
     def phases(self) -> int:
         """Phases to calculate with: those that charge now, otherwise all that are connected."""

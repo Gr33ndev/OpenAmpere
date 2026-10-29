@@ -816,7 +816,8 @@ class NativeWallboxes:
         if switch and dry:
             if live.planned.get("phases") != phases:
                 live.planned["phases"] = phases
-                self._log(wb, "phases", phases, True, f"nicht gesendet (Testmodus): {reason}", before=live.phases_set)
+                self._log(wb, "phases", {"phases": phases, "current_a": amps}, True,
+                          f"nicht gesendet (Testmodus): {reason}", before=live.phases_set)
             switch = False
         if switch:
             if not dry:
@@ -868,8 +869,12 @@ class NativeWallboxes:
             else:
                 live.stop_sent = now
         live.since, live.want_on, live.short_since = now, 0, None
-        sent = await self._write(wb, live, MODELS[wb.model].start(on), "start" if on else "stop", on, reason,
-                                 safe=not on and started)
+        values = MODELS[wb.model].start(on)
+        if not on and real(wb) and (live.phases_set == 1 or reading.capped()) and reading.charging:
+            # whether the charger keeps the power setpoint after a stop is open (#478): its highest power back with the
+            # stop, written before it while the car still charges, so a later charge is not capped at one phase
+            values = {**MODELS[wb.model].phase_power(3, reading), **values}
+        sent = await self._write(wb, live, values, "start" if on else "stop", on, reason, safe=not on and started)
         if sent:  # also a stop sent in test mode (safe); a failed start keeps the note: the wallbox is asked again
             self._note_stop(wb, not on)
 
@@ -1151,8 +1156,9 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
-        if live.phases_set == 1 and reading.charging and getattr(model, "phase_power", None):
-            # not left capped at one phase: its highest power back, written before a stop (#478)
+        if (live.phases_set == 1 or reading.capped()) and reading.charging and getattr(model, "phase_power", None):
+            # not left capped at one phase, also after a restart (read from the charger): its highest power back,
+            # written before a stop (#478)
             values.update(model.phase_power(3, reading))
         if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
                 and live.online is False:

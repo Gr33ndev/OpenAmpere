@@ -465,3 +465,40 @@ async def test_without_automatic_switching_the_power_setpoint_is_left_alone(tmp_
         for i in range(3):
             await check(wallboxes, wb, t0 + i * 10, available=9000)
         assert charger.regs[0x1003] == 3 and not [w for w in charger.writes if w[0] == 0x3002]
+
+
+async def test_test_mode_logs_a_planned_phase_switch_with_phases_and_current(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv", dry_run=True)
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        planned = entries(runtime, "phases")
+        assert planned and planned[0]["dry_run"] and planned[0]["details"]["to"]["value"] == {"phases": 1, "current_a": 7}  # 1.8 kW
+        assert charger.writes == []
+
+
+async def test_a_stop_of_a_one_phase_charge_writes_the_highest_power_back_first(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 60, available=0)
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)] and charger.restarted_by_current == 0
+
+
+async def test_after_a_restart_letting_go_still_lifts_the_one_phase_cap(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        restarted = NativeWallboxes(runtime)  # the same database, nothing in memory
+        rwb = restarted.wallboxes[0]
+        await restarted.read(rwb)
+        assert restarted.fresh(rwb).capped()
+        await restarted.release(rwb, "Lademodus „von Hand“")
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)]
