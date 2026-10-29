@@ -317,6 +317,35 @@ async def test_grid_charging_keeps_what_to_put_back(tmp_path):
             await runtime.collector.stop()
 
 
+async def test_a_work_mode_chosen_while_charging_survives_a_restart(tmp_path):
+    """#493: the new mode is kept for the end of charging; stored right away, a release after a restart puts it back."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            assert charging.active and runtime.storage.get_meta(REMOTE_COMMAND)["restore"]["app_mode"] == 0
+            battery = BatteryControl(runtime)
+            result = await battery.write({"work_mode": "backup"})
+            assert result["result"] == "ok" and sim.regs[saj.APP_MODE_ADDRESS] == saj.APP_MODE_TIME
+            kept = runtime.storage.get_meta(REMOTE_COMMAND)["restore"]
+            assert kept["app_mode"] == 2
+        finally:
+            battery._verify_task and battery._verify_task.cancel()
+            await runtime.collector.stop()
+    second, restarted = await driver_for(sim)  # OpenAmpere restarted before the next charging command
+    async with second:
+        try:
+            assert await restarted.release_remote_power(180, restore=kept)
+            assert sim.regs[saj.APP_MODE_ADDRESS] == 2 and sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0
+        finally:
+            await restarted.close()
+
+
 async def test_the_reserve_of_the_backup_mode(tmp_path):
     """#380: in backup mode an SAJ keeps its own reserve (0x3651), not the one of normal operation."""
     sim = SajSimulatedInverter(max_connections=3)

@@ -284,6 +284,7 @@ class BatteryControl:
             try:
                 if "work_mode" in diff:
                     await driver.write_work_mode(WorkMode(diff["work_mode"]))
+                    self._keep_remote_restore(driver)
                 for key in write_order(current, diff):
                     await driver.write_soc_limits(**{key: diff[key]})
                 if BACKUP_SOC in diff:
@@ -312,6 +313,21 @@ class BatteryControl:
             self._schedule_verify(diff)
             return {"dry_run": False, "written": diff, "settings": after or current, "result": result,
                     "warning": warning}
+
+    def _keep_remote_restore(self, driver) -> None:
+        """A driver that keeps a new work mode for the end of grid charging (SAJ) has it only in memory: stored with
+        the rest of what the release puts back right away, so a release after a restart puts back the mode chosen
+        last (#493)."""
+        from .charging import REMOTE_COMMAND  # charging imports this module
+
+        try:
+            kept = driver.remote_restore()
+        except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
+            return
+        storage = self.runtime.storage
+        command = storage.get_meta(REMOTE_COMMAND) or {}
+        if kept and command and not command.get("released"):
+            storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
 
     async def _read_back(self, written: dict) -> dict | None:
         """The values after writing. A value the inverter takes a few seconds later (while it is controlled remotely)
