@@ -584,6 +584,14 @@ async def test_the_note_on_the_lowest_step_names_its_limit_and_does_not_stay(tmp
         await control.tick(now=30)
         assert wallboxes.view()["wallboxes"][0]["above_limit"] is None
 
+        charger.plugged = True
+        await wallboxes.read(wb)
+        await control.tick(now=40)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is not None
+        runtime.config.control.enabled = False  # master switch off: nothing controlled, no note
+        await control.tick(now=50)
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] is None
+
 
 async def test_test_mode_only_logs_and_letting_go_restores_the_owners_current(tmp_path, monkeypatch):
     async with simulated(plugged=True) as (charger, port):

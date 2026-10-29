@@ -1001,6 +1001,8 @@ class NativeWallboxes:
         Returns the power it is meant to charge with (for a simulated control: the planned power, #440)."""
         now = time.time() if now is None else now
         if key_missing(wb):
+            if wb.id in self.live:
+                self.live[wb.id].above_limit = None
             return 0.0  # its key has to be entered again: neither read nor controlled
         live = self.live.setdefault(wb.id, Live())
         live.above_limit = None  # set again below while it still holds: no note left over from an earlier check
@@ -1377,6 +1379,8 @@ class NativeWallboxes:
         return True
 
     async def release_all(self, reason: str) -> None:
+        for live in self.live.values():
+            live.above_limit = None  # nothing controlled (e.g. the master switch off): step() does not run to clear it
         await asyncio.gather(*(self.release(wb, reason) for wb in self.wallboxes))
 
     async def retire(self, now: float | None = None) -> None:
