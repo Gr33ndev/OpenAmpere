@@ -151,6 +151,7 @@
     "hostWildcardNotAllowed": "„*“ schaltet den Schutz gegen DNS-Rebinding ab und lässt sich deshalb in der App nicht eintragen. Bitte jeden Namen einzeln eintragen, zum Beispiel solar.example.de.",
     "notAHostName": "„{name}“ ist kein Hostname. Bitte nur den Namen eintragen, ohne https://, Port oder Pfad, zum Beispiel solar.example.de.",
     "ntfyCredentialsNotInAddress": "Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.",
+    "ratedPowerAtLeast": "Die Nennleistung vom Typenschild muss mindestens {MIN_RATED_POWER_W} W betragen.",
     "settingTChangedApp": "Die Einstellung {key} kann in der App nicht geändert werden."
   },
   "consumers": {

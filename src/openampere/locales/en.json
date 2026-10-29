@@ -151,6 +151,7 @@
     "hostWildcardNotAllowed": "“*” turns off the protection against DNS rebinding and therefore cannot be entered in the app. Please enter each name on its own, for example solar.example.com.",
     "notAHostName": "“{name}” is not a host name. Please enter only the name, without https://, port or path, for example solar.example.com.",
     "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
+    "ratedPowerAtLeast": "The rated power from the type plate must be at least {MIN_RATED_POWER_W} W.",
     "settingTChangedApp": "The setting {key} can't be changed in the app."
   },
   "consumers": {

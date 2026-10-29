@@ -9,6 +9,7 @@ from datetime import datetime
 import pytest
 
 from openampere.charging import REMOTE_COMMAND, GridCharging
+from openampere.config import validate
 from openampere.control import BatteryControl, ExportLimitControl
 from openampere.drivers import registry
 from openampere.drivers.base import DeviceInfo
@@ -122,6 +123,14 @@ def test_a_confirmed_rated_power_counts_only_for_the_value_it_was_confirmed_for(
     checked = DeviceInfo(manufacturer="SAJ", model="H2", rated_power_w=8000)
     checked.confirm_rated_power(8000, 6000)  # a rated power that fits its type is not replaced
     assert checked.rated_power_w == 8000 and not checked.rated_power_confirmed
+
+
+def test_a_tiny_rated_power_is_not_accepted():
+    """#492: a tiny base would turn a small export limit into full feed-in, read back as "ok"."""
+    with pytest.raises(ValueError, match="mindestens 1000 W"):
+        validate({"grid.rated_power_w": 10, "grid.rated_power_reported_w": 800})
+    assert validate({"grid.rated_power_w": 0})["grid.rated_power_w"] == 0  # not confirmed
+    assert validate({"grid.rated_power_w": 1000})["grid.rated_power_w"] == 1000
 
 
 async def test_no_export_limit_before_an_unchecked_rated_power_is_confirmed(tmp_path):

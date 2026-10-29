@@ -176,6 +176,8 @@ class Config:
         return asdict(self)
 
 
+MIN_RATED_POWER_W = 1000  # smallest rated power the owner can confirm (grid.rated_power_w, #492); 0 = not confirmed
+
 # Settings the web app may change, with validation limits for numbers / allowed values for strings.
 EDITABLE: dict[str, tuple] = {
     "inverter.driver": ("choice", "auto", "foxess", "saj"),
@@ -447,6 +449,9 @@ def validate(changes: dict) -> dict:
             raise ValueError(_invalid_message(key, rule)) from None
         if kind == "hosts":
             value = _host_names(value)  # with its own messages, not the general one
+        if key == "grid.rated_power_w" and 0 < value < MIN_RATED_POWER_W:
+            # the base of the export limit in per mille (#492): a tiny one would turn a small limit into full feed-in
+            raise ValueError(f"Die Nennleistung vom Typenschild muss mindestens {MIN_RATED_POWER_W} W betragen.")
         if key == "notify.ntfy_url" and "@" in value:
             # a password in the address would be shown in the settings, kept in backups and quoted in errors
             raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "
