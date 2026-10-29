@@ -164,7 +164,8 @@
     "socRightAxis": "Ladestand (rechte Achse)",
     "legendHint": "Tippe auf einen Eintrag, um seine Linie aus- oder wieder einzublenden.",
     "externalPart": "davon {name}",
-    "onlyQuarterHours": "Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden. Die Arbeit siehst du unter „{view}“."
+    "onlyQuarterHours": "Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden. Die Arbeit siehst du unter „{view}“.",
+    "socImportPending": "Den Ladestand dieses Tages holt der laufende Import aus der EKD-Cloud noch, er erscheint hier später."
   },
   "temperatureSection": {
     "bms": "Speicher-Elektronik (BMS)",

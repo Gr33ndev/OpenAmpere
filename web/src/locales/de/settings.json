@@ -163,7 +163,9 @@
     "syncAgain": "Erneut abgleichen",
     "timeLeft": "Noch ca. {time}",
     "title": "Verlauf aus der EKD-Cloud",
-    "tryAgain": "Erneut versuchen"
+    "tryAgain": "Erneut versuchen",
+    "socFollows": "Danach holt OpenAmpere in Schritt 2 den Ladestand des Speichers für jeden Tag. In der Auswertung erscheint er erst dann.",
+    "socArriving": "Der Ladestand erscheint in der Auswertung nach und nach, zuerst für die neuesten Tage."
   },
   "connectionPage": {
     "car": "Auto",
