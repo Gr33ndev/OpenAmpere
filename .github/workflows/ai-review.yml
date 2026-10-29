@@ -166,18 +166,24 @@ jobs:
             echo "::warning::The review wrote no summary."
           fi
       - name: Start the second attempt from a new checkout
+        id: emptied
         if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
-        # the first attempt may have changed anything in the checkout, also .git/config, which git runs commands from
-        run: find . -mindepth 1 -delete
-      - if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
+        # the first attempt may have changed anything in the checkout, also .git/config, which git runs commands from;
+        # a .git left over would be reused by actions/checkout, so the steps below need it gone
+        run: |
+          chmod -R u+rwx . 2>/dev/null || true
+          find . -mindepth 1 -delete
+          [ -z "$(ls -A)" ]
+      - if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
+      - id: fresh
+        if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
         run: rm -f .ai-review-summary.md
       - id: retry
-        if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
+        if: ${{ !cancelled() && steps.fresh.outcome == 'success' }}
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         continue-on-error: true
         with: *review
