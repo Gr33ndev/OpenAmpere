@@ -346,6 +346,43 @@ async def test_a_work_mode_chosen_while_charging_survives_a_restart(tmp_path):
             await restarted.close()
 
 
+@pytest.mark.parametrize("still_charging", [True, False])
+async def test_a_work_mode_chosen_after_a_restart_before_the_next_command(tmp_path, still_charging):
+    """#497: after a restart the driver knows nothing of the charge until the next command. While OpenAmpere's slot
+    still charges, the new mode is kept for the end of charging; otherwise it is written right away."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            assert charging.active
+            charging.save({**charging.view()["settings"], "enabled": False})  # no command after the restart
+        finally:
+            await runtime.collector.stop()
+            runtime.storage.close()
+    if not still_charging:
+        sim.regs[saj.CHARGE_ENABLE_ADDRESS] = 0  # someone switched the slot off meanwhile
+    server, runtime = await connected_runtime(tmp_path, sim)  # restarted with the same database
+    async with server:
+        try:
+            battery = BatteryControl(runtime)
+            assert (await battery.write({"work_mode": "backup"}))["result"] == "ok"
+            if still_charging:
+                assert sim.regs[saj.APP_MODE_ADDRESS] == saj.APP_MODE_TIME  # charging goes on
+                assert runtime.storage.get_meta(REMOTE_COMMAND)["restore"]["app_mode"] == 2
+            else:
+                assert sim.regs[saj.APP_MODE_ADDRESS] == 2
+            await GridCharging(runtime).tick()  # charging is off: OpenAmpere lets go
+            assert sim.regs[saj.APP_MODE_ADDRESS] == 2 and sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0
+        finally:
+            battery._verify_task and battery._verify_task.cancel()
+            await runtime.collector.stop()
+
+
 async def test_a_work_mode_chosen_during_a_charging_command_is_kept(tmp_path):
     """#493: a mode chosen while a charging command writes is not overwritten by the values the command started with."""
     sim = SajSimulatedInverter(max_connections=3)
