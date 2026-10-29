@@ -206,6 +206,9 @@ class InverterDriver(Protocol):
         """End remote control if OpenAmpere started it (or it still shows OpenAmpere's timeout_s); True if ended."""
         ...
 
+    # only a driver whose set_remote_power returns something: def remote_restore(self) -> dict | None, what a release
+    # needs now, also after a command that failed half way
+
     async def read_export_limit(self) -> ExportLimit: ...
 
     async def write_export_limit(self, watts: int) -> None: ...
