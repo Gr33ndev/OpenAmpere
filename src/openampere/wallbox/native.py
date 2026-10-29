@@ -1096,9 +1096,9 @@ class NativeWallboxes:
             live.limit_a = None  # ask again for the current the mode wants
         mode_a = wb.mode_current_a.get(wb.mode, wb.max_current_a)
         owner = min(wb.max_current_a, reading.max_current_a or wb.max_current_a, mode_a)
-        # what the owner has to change: the wallbox's own maximum (in the manufacturer's app), the mode's current or
-        # the highest current in OpenAmpere
-        source = "wallbox" if reading.max_current_a and reading.max_current_a < min(wb.max_current_a, mode_a) \
+        # what the owner has to change: the wallbox's own maximum (in the manufacturer's app; first on a tie, it cannot
+        # be changed in OpenAmpere), the mode's current or the highest current in OpenAmpere
+        source = "wallbox" if reading.max_current_a and reading.max_current_a <= min(wb.max_current_a, mode_a) \
             else "mode" if mode_a < wb.max_current_a else "app"
         limit = min(owner, live.limit_a or owner)
         # no step at or below the owner's highest current (the limit of the socket): no charge at all, never the
