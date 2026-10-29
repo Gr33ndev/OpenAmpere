@@ -318,7 +318,7 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
       </>}
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
       <p className="hint">{modeHint(wb)}</p>
-      {wb.above_limit && wb.mode !== "manual" && wb.mode !== "off" && <Notice kind="warn">{aboveLimitText(wb.above_limit)}</Notice>}
+      {!sim && wb.above_limit && wb.mode !== "manual" && wb.mode !== "off" && <Notice kind="warn">{aboveLimitText(wb.above_limit)}</Notice>}
       {(wb.mode === "pv" || wb.mode === "minpv" || wb.mode === "now") && (
         <fieldset className="field field-group">
           <legend className="field-label">{t("devices.nativeWallbox.modeCurrent")}</legend>
