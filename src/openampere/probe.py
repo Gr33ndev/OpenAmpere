@@ -322,8 +322,11 @@ class Probe:
             read = asdict(self.last_read)
             read["blocks"] = [privacy.masked_block(b, include_text) for b in read["blocks"]]
             section["read"] = read
-        if self.last_identify:
-            section["identify"] = self.last_identify
+        if self.last_identify:  # the page title can hold a name or serial number like register text
+            identify = dict(self.last_identify)
+            if not include_text:
+                identify["title"] = privacy.shorten(identify.get("title"))
+            section["identify"] = identify
         if self.last_search:
             section["search"] = {**self.last_search, "devices": [
                 {**d, "name": d["name"] if include_text else privacy.shorten(d["name"])} for d in self.last_search["devices"]]}
@@ -510,7 +513,7 @@ def section_markdown(section: dict) -> list[str]:
     if identify:
         ports = ", ".join(str(p) for p in identify["open_ports"]) or "keine"
         lines.append(f"- Gerät {identify['host']}: offene Ports {ports}"
-                     + (f"; Titel der Webseite „{identify['title']}“" if identify.get("title") else "")
+                     + (f"; Titel der Webseite „{_markdown_text(identify['title'])}“" if identify.get("title") else "")
                      + (f"; Hersteller-Kennung der Netzwerkkarte {identify['mac_vendor']}"
                         if identify.get("mac_vendor") else ""))
     read = section.get("read")
@@ -520,6 +523,11 @@ def section_markdown(section: dict) -> list[str]:
                      f"Funktionscode {read['function']}{how}:")
         lines += blocks_markdown(read["blocks"], "Registerwerte")
     return lines
+
+
+def _markdown_text(text: str) -> str:
+    """Text a device chose (its page title) as plain text in the report: no links, images or formatting."""
+    return re.sub(r"([\\`*_{}\[\]()<>#+!|~])", r"\\\1", text)
 
 
 def blocks_markdown(blocks: list[dict], summary: str) -> list[str]:

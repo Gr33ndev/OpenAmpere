@@ -71,6 +71,18 @@ class Pseudonyms:
             self.known[key] = f"<{kind}-{self.counts[kind]}>"
         return self.known[key]
 
+    def hosts(self, *values: str | None) -> None:
+        """Host names the owner typed (device query, wallbox check): masked by value, also without one of the known
+        home-network endings (a name the router resolves). IP addresses are left to the IP masking below."""
+        for value in values:
+            host = str(value or "").strip()
+            if len(host) < 3 or host.startswith("<"):  # a very short name would replace such words everywhere
+                continue
+            try:
+                ipaddress.ip_address(host.strip("[]"))
+            except ValueError:
+                self.name(host, "Host")
+
     def _ip(self, match: re.Match, kind: str = "IP") -> str:
         try:
             ipaddress.ip_address(match.group(0))
