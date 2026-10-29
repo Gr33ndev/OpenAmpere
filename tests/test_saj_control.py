@@ -11,6 +11,7 @@ import pytest
 from openampere.charging import REMOTE_COMMAND, GridCharging
 from openampere.control import BatteryControl, ExportLimitControl
 from openampere.drivers import registry
+from openampere.drivers.modbus import ModbusTransientError
 from openampere.drivers.saj import registers as saj
 from openampere.drivers.saj.driver import NotSupported, charge_slot, minutes_left
 from openampere.runtime import Runtime
@@ -221,6 +222,75 @@ async def test_released_after_a_restart_with_what_was_kept():
             assert await restarted.set_remote_power(-2000, 180, restore=restore) == restore
             assert await restarted.release_remote_power(180, restore=restore)
             assert sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0 and sim.regs[saj.APP_MODE_ADDRESS] == 2
+        finally:
+            await restarted.close()
+
+
+def answer_times_out(driver, address: int) -> None:
+    """The write to address reaches the inverter, but its answer does not come back in time."""
+    write = driver._write
+
+    async def written_then_timeout(reg, value):
+        await write(reg, value)
+        if reg.address == address:
+            driver._write = write  # once: the next write is answered again
+            raise ModbusTransientError("no answer in time")
+
+    driver._write = written_then_timeout
+
+
+async def test_a_slot_write_that_applied_but_timed_out_is_still_released():
+    """#491: extending the slot reaches the inverter, the answer times out; the slot is still OpenAmpere's."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    sim.regs[saj.APP_MODE_ADDRESS] = 2
+    owner_slot = [hhmm(2, 0), hhmm(5, 0), 0x7F << 8 | 50]
+    for i, word in enumerate(owner_slot):
+        sim.regs[SLOT + i] = word
+    server, driver = await driver_for(sim)
+    async with server:
+        try:
+            restore = await driver.set_remote_power(-3000, 180)
+            sim.clock = lambda: MONDAY_10.replace(minute=6)
+            answer_times_out(driver, SLOT + 1)
+            with pytest.raises(ModbusTransientError):
+                await driver.set_remote_power(-3000, 180)
+            assert slot_words(sim)[1] == hhmm(10, 16)  # applied, but not confirmed
+            assert await driver.release_remote_power(180, restore=restore)
+            assert sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0 and slot_words(sim) == owner_slot
+            assert sim.regs[saj.APP_MODE_ADDRESS] == 2
+        finally:
+            await driver.close()
+
+
+async def test_a_first_slot_write_cut_off_is_put_back_after_a_restart(tmp_path):
+    """#491: the first slot write times out half way and OpenAmpere restarts before it lets go: the kept values put
+    the owner's slot back."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    owner_slot = [hhmm(2, 0), hhmm(5, 0), 0x7F << 8 | 50]
+    for i, word in enumerate(owner_slot):
+        sim.regs[SLOT + i] = word
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            driver = runtime.collector.driver._driver  # the detected driver behind the automatic detection
+            answer_times_out(driver, SLOT + 1)
+            driver.release_remote_power = None  # OpenAmpere stops before it can let go
+            await charging.tick()
+            assert slot_words(sim) != owner_slot  # half of OpenAmpere's slot is in the inverter
+            kept = runtime.storage.get_meta(REMOTE_COMMAND)["restore"]
+            assert kept["slot"] == owner_slot and kept["slot_before"] == owner_slot
+        finally:
+            await runtime.collector.stop()
+    second, restarted = await driver_for(sim)  # a new driver object knows only what was kept
+    async with second:
+        try:
+            assert not await restarted.release_remote_power(180, restore=kept)  # the slot was never switched on
+            assert slot_words(sim) == owner_slot and sim.regs[saj.CHARGE_ENABLE_ADDRESS] == 0
         finally:
             await restarted.close()
 

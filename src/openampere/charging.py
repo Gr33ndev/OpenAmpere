@@ -305,6 +305,13 @@ class GridCharging:
         except Exception as exc:  # noqa: BLE001
             err = friendly_error(exc)  # the technical text goes to the log, not into the app
             log.warning("grid charging command failed: %s", exc)
+            # what the half-written command changed, so a release after a restart puts it back as well (#491)
+            try:
+                kept = collector.driver.remote_restore()
+            except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
+                kept = None
+            if kept and kept != restore:
+                runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
             # a command that half worked (e.g. remote control switched on, the power refused) must not stay on with
             # whatever power is set in the inverter: switched off at once, logged, and not repeated this quarter
             self._refused_quarter = quarter

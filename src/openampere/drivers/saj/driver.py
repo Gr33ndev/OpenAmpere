@@ -147,14 +147,14 @@ class SajDriver(ModbusDevice):
         now = await self._clock()
         mask, slot, app_mode, outside = await self._charge_state()
         prior = self._remote or restore
-        if mask & SLOT_BIT and not (prior and slot == prior.get("slot_ours")):
+        if mask & SLOT_BIT and not (prior and holds_ours(slot, prior)):
             # the owner uses this slot (or someone switched on other values): never take it over
             raise NotSupported(f"Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der "
                                "SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden.")
         if prior:
             # a running session keeps the owner's values from its start, also when someone changed the slot or the
             # mode in between: otherwise these would be taken for the owner's and put back at the end (#382)
-            state = dict(prior)
+            state = {k: v for k, v in prior.items() if k != "slot_before"}
             if slot != state.get("slot_ours"):
                 state["slot_ours"] = None  # changed while switched off: written again
         else:
@@ -164,6 +164,9 @@ class SajDriver(ModbusDevice):
         if ours is not None and ours[2] == wanted[2]:
             wanted[0] = ours[0]  # the same day: only the end moves, one stored register every few minutes
         if ours is None or ours[2] != wanted[2] or minutes_left(now, ours) < EXTEND_BELOW_MIN:
+            # kept before writing: a write that reaches the inverter but whose answer times out leaves a mix of the
+            # words before and OpenAmpere's new ones, which the release must still take for OpenAmpere's (#491)
+            self._remote = {**state, "slot_ours": wanted, "slot_before": slot}
             for i, word in enumerate(wanted):
                 if ours is None or ours[i] != word:
                     await self._write(Reg(CHARGE_SLOT_ADDRESS + i), word)
@@ -187,7 +190,7 @@ class SajDriver(ModbusDevice):
             self._remote = None
             return False
         mask, slot, app_mode, outside = await self._charge_state()
-        if slot != state["slot_ours"]:
+        if not holds_ours(slot, state):
             self._remote = None  # changed by someone else (or put back already): left as it is
             return False
         switched_on = bool(mask & SLOT_BIT)  # off: a start that failed half way, the owner's values are put back
@@ -203,6 +206,10 @@ class SajDriver(ModbusDevice):
             raise ModbusReadError("the charge slot is still on after switching it off")
         self._remote = None
         return switched_on
+
+    def remote_restore(self) -> dict | None:
+        """What a release needs now, also after a command that failed half way (set_remote_power returned nothing)."""
+        return dict(self._remote) if self._remote else None
 
     async def remote_active(self) -> bool:
         """Another device controls the inverter: passive mode (only external controllers use it)."""
@@ -267,6 +274,15 @@ def charge_slot(now: datetime, percent: int) -> list[int]:
     start = now.hour * 60 + now.minute
     end = min(start + SLOT_MINUTES, 23 * 60 + 59)
     return [(start // 60) << 8 | start % 60, (end // 60) << 8 | end % 60, (1 << now.weekday()) << 8 | percent]
+
+
+def holds_ours(slot: list[int], state: dict) -> bool:
+    """The slot holds OpenAmpere's words, or while a write may have been cut off, each word either the one before or
+    OpenAmpere's."""
+    ours, before = state.get("slot_ours"), state.get("slot_before")
+    if slot == ours:
+        return True
+    return bool(ours and before) and all(word in (new, old) for word, new, old in zip(slot, ours, before, strict=True))
 
 
 def minutes_left(now: datetime, slot: list[int]) -> int:
