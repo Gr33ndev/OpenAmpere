@@ -157,6 +157,13 @@ Every change reaches owners in three ways, all built from the same release (#300
   device page in `docs/devices/`) or a diagnostics report from a real device.
 - Legal topics (export limit, § 14a EnWG, EEG) are settled in the issue before code. Label such issues `safety`.
 
+## Security advisories
+
+A vulnerability is fixed only in the private fork of its advisory and published after the release:
+[docs/security-advisories.md](docs/security-advisories.md). Easy to miss: one advisory and one fork per
+vulnerability, tests in a new file per advisory, and the fix commit's message ends with the advisory id on a line of
+its own (otherwise the changelog lists it as "Merge commit from fork").
+
 ## Things that are easy to get wrong
 
 - **Merging as admin skips the required checks.** The `main` ruleset has an admin bypass (needed by `release.sh`).

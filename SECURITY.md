@@ -20,9 +20,11 @@ details.
 3. **Fix:** the fix is developed privately (in the advisory's temporary private fork), with a test that fails without
    it. Fixes go into the next release; there are no fixes for older versions, because updating is one tap in the app
    (or happens at night with automatic updates).
-4. **Release and publish:** a new version is released, the advisory is published (with a CVE for medium or higher
-   severity) and the release notes point to it.
+4. **Release and publish:** a new version is released, the advisory is published (with a CVE, also for low
+   severity; not for a problem only in a CI workflow, which no installation runs) and the release notes point to it.
 5. **Credit:** the reporter is named in the advisory, unless they want to stay anonymous.
+
+The detailed steps for maintainers are in [docs/security-advisories.md](docs/security-advisories.md).
 
 ## What OpenAmpere protects
 

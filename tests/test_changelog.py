@@ -3,7 +3,9 @@
 """The changelog of app, website and release notes (#155)."""
 
 import json
+import re
 import runpy
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -105,6 +107,44 @@ def test_a_fix_merged_from_a_security_advisory_is_listed_with_the_advisory():
         {"scope": "security", "text": "Close security advisory GHSA-vrrc-53mr-hc3c"},
         {"scope": "security", "text": "Close security advisory GHSA-gfr8-g665-933w"}]
     assert groups["other"] == []
+
+
+def test_a_listed_fix_commit_without_the_id_is_listed_with_its_advisory():
+    """A fix merged without the advisory id on a line of its own: changelog/advisory-commits.json names it."""
+    raw = "aaa\x1fMerge commit from fork\x1fFix the search.\x1ebbb\x1ffix(web): other\x1f\x1e"
+    groups, _ = changelog["parse"](changelog["with_advisories"](raw, {"aaa": "GHSA-q7r4-hqhv-322x"}), title={}.get)
+    assert groups["fix"] == [{"scope": "security", "text": "Close security advisory GHSA-q7r4-hqhv-322x"},
+                             {"scope": "web", "text": "Other"}]
+    assert groups["other"] == []
+
+
+def test_a_listed_commit_that_does_not_exist_stops_the_release(tmp_path):
+    listed = tmp_path / "advisory-commits.json"
+    listed.write_text(json.dumps({"0" * 40: "GHSA-q7r4-hqhv-322x"}))
+    with pytest.raises(SystemExit, match="not in the history"):
+        changelog["advisory_commits"](listed)
+    head = subprocess.run(["git", "log", "-1", "--format=%H%x1f%s"], cwd=ROOT, capture_output=True, text=True)
+    commit, subject = head.stdout.strip().split("\x1f")
+    if subject != "Merge commit from fork":  # a normal commit listed by mistake
+        listed.write_text(json.dumps({commit: "GHSA-q7r4-hqhv-322x"}))
+        with pytest.raises(SystemExit, match="is not a"):
+            changelog["advisory_commits"](listed)
+
+
+def test_every_listed_advisory_commit_is_a_merge_from_a_fork():
+    # git log --format=%H gives full hashes: a shortened or mistyped one would never match
+    listed = json.loads((ROOT / "changelog" / "advisory-commits.json").read_text())
+    assert listed and all(re.fullmatch(r"[0-9a-f]{40}", commit) for commit in listed)
+    assert all(changelog["GHSA"].fullmatch(ghsa) for ghsa in listed.values())
+    missing = []
+    for commit in listed:
+        done = subprocess.run(["git", "log", "-1", "--format=%s", commit], cwd=ROOT, capture_output=True, text=True)
+        if done.returncode:
+            missing.append(commit)
+        else:
+            assert done.stdout.strip() == "Merge commit from fork", commit
+    if missing:  # the CI clone is shallow: these are checked where the history is there, e.g. by the release
+        pytest.skip(f"not in this clone: {', '.join(c[:7] for c in missing)}")
 
 
 def test_an_advisory_only_mentioned_in_the_text_is_not_listed():

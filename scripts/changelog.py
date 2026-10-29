@@ -22,6 +22,10 @@ changelog/<version>.json, German required, other languages optional:
 It goes into the version's entry as "summary": {"de": …, "en": …}, shown above the list. A blank line starts a new
 paragraph. A summary already in the file is kept when the version is built again and its summary file is gone.
 
+A fix merged from a security advisory is listed with the advisory's title through the line with its id at the end of
+the commit message (docs/security-advisories.md). A fix merged without that line is named in
+changelog/advisory-commits.json, {"<full commit hash>": "GHSA-…"}, since a merged message cannot be changed.
+
 Usage:
   scripts/changelog.py add 0.14.0   add the version with the commits since the last tag (scripts/release.sh does this)
   scripts/changelog.py rebuild      build the whole file again from the version tags
@@ -52,6 +56,9 @@ ADVISORY_MERGE = "Merge commit from fork"
 # only an id on a line of its own, as every advisory fix ends: a fix that mentions an earlier advisory in its text
 # ("the rest of GHSA-…") must not list that one again (#370)
 GHSA = re.compile(r"^\s*(GHSA(?:-[23456789cfghjmpqrvwx]{4}){3})\s*$", re.MULTILINE)
+# fix commits merged from an advisory without its id on a line of their own (the message cannot be changed after the
+# merge): commit -> advisory, read as if the message ended with the id
+ADVISORY_COMMITS = SUMMARIES / "advisory-commits.json"
 
 
 def git(*args: str) -> str:
@@ -95,9 +102,35 @@ def parse(log: str, title=advisory_title) -> tuple[dict[str, list[dict]], list[d
     return groups, breaking
 
 
+def with_advisories(log: str, advisories: dict[str, str]) -> str:
+    """`git log --format=%H%x1f%s%x1f%b%x1e` output as parse() reads it, with the id of a listed advisory added to the
+    message of its fix commit."""
+    entries = []
+    for e in filter(None, (e.strip() for e in log.split("\x1e"))):
+        commit, _, rest = e.partition("\x1f")
+        entries.append(f"{rest}\n\n{advisories[commit]}" if commit in advisories else rest)
+    return "".join(f"{e}\x1e" for e in entries)
+
+
+def advisory_commits(path: Path = ADVISORY_COMMITS) -> dict[str, str]:
+    """changelog/advisory-commits.json; stops the release when a listed commit is not in the history or is not a fix
+    merged from an advisory (a typo or a wrong line would leave the advisory out of the changelog without a word)."""
+    advisories = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    for commit in advisories:
+        done = subprocess.run(["git", "log", "-1", "--format=%s", f"{commit}^{{commit}}", "--"], cwd=ROOT,
+                              capture_output=True, text=True)
+        if done.returncode:
+            raise SystemExit(f"{path.name}: commit {commit} is not in the history")
+        if done.stdout.strip() != ADVISORY_MERGE:
+            raise SystemExit(f"{path.name}: commit {commit} is not a \"{ADVISORY_MERGE}\"")
+    return advisories
+
+
 def entry(version: str, date: str, prev: str | None, ref: str) -> dict:
     """One version: the commits after the previous tag up to ref."""
-    groups, breaking = parse(git("log", "--no-merges", "--format=%s%x1f%b%x1e", f"{prev}..{ref}" if prev else ref))
+    advisories = advisory_commits()
+    log = git("log", "--no-merges", "--format=%H%x1f%s%x1f%b%x1e", f"{prev}..{ref}" if prev else ref)
+    groups, breaking = parse(with_advisories(log, advisories))
     if not prev:  # the full history is too long for a first release
         groups = {g: items if g == "feat" else [] for g, items in groups.items()}
     return {"version": version, "date": date, "first": prev is None, "groups": groups, "breaking": breaking}
