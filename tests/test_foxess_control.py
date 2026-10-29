@@ -544,3 +544,34 @@ async def test_switching_turned_off_during_a_one_phase_charge_puts_the_power_bac
         for i in range(1, 4):
             await check(wallboxes, wb, t0 + 40 + 30 * i, available=2000)
         assert (0x3002, 41) not in charger.writes[written:] and not wallboxes._owned()[wb.id].get("phases")
+
+
+async def test_an_owner_limit_below_three_phases_means_no_switching(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 37  # 3.7 kW, set by the owner for a weak supply
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert not [w for w in charger.writes if w[0] == 0x3002] and charger.regs[0x3002] == 37
+
+
+async def test_a_leftover_one_phase_cap_is_not_taken_as_the_owners_power(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 41  # left from an earlier control
+        runtime, wallboxes, wb = setup(tmp_path, port)  # "Schnell": three phases
+        await check(wallboxes, wb, time.time())
+        assert (0x3002, 220) in charger.writes and wallboxes._owned()[wb.id]["power_w"] == 22000
+
+
+async def test_the_switch_interval_holds_while_the_charger_switches(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=9000)  # three phases
+        assert charger.regs[0x3002] == 220
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0})  # switching, no power for a moment
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 40, available=4300)
+        assert (0x3002, 41) not in charger.writes[written:]

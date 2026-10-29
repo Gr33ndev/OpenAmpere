@@ -97,6 +97,7 @@ STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging 
 LIMIT_AGAIN_S = 900.0  # a lower current a charger kept (e.g. while dimmed) is asked again after this (#465)
 PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
+ONE_PHASE_W = 4100.0  # OpenAmpere's one-phase cap (foxess.ONE_PHASE): never taken as the owner's power (#478)
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
 STOPPED = "wallbox_stopped"  # meta: id -> time of OpenAmpere's stop, kept after letting go of the wallbox (#456)
 HOST = re.compile(r"[A-Za-z0-9.-]{1,253}")
@@ -829,9 +830,8 @@ class NativeWallboxes:
                           f"nicht gesendet (Testmodus): {reason}", before=live.phases_set)
             switch = False
         if switch:
-            entry = self._owned().get(wb.id) or {}
             # the owner's power setpoint, kept before OpenAmpere writes it the first time: put back when it lets go
-            owner_w = entry.get("power_w") if "power_w" in entry else reading.power_setpoint_w
+            owner_w = self.owner_power(wb, reading)
             self._own(wb, reading, phases=phases, power_w=owner_w)
             live.current_at = live.phases_at = now
             before, live.phases_set = live.phases_set, phases
@@ -885,9 +885,12 @@ class NativeWallboxes:
             # whether the charger keeps the power setpoint after a stop is open (#478): the owner's power back with the
             # stop, written before it while the car still charges, so a later charge is not capped at one phase
             values = {**MODELS[wb.model].phase_power(3, reading, self._owner_power(wb)), **values}
-            if not dry:
-                self._own(wb, reading, phases=None)
+            restored = True
+        else:
+            restored = False
         sent = await self._write(wb, live, values, "start" if on else "stop", on, reason, safe=not on and started)
+        if sent and restored and not dry:
+            self._own(wb, reading, phases=None)  # only once the owner's power is back: else known after a restart
         if sent:  # also a stop sent in test mode (safe); a failed start keeps the note: the wallbox is asked again
             self._note_stop(wb, not on)
 
@@ -972,7 +975,9 @@ class NativeWallboxes:
         if plan is not None:
             phases = self._sim_phases(wb, plan, reading, available, now)
         elif switching:
-            phases = self._phases(wb, reading, available, now, reading.charging,
+            # "on" while OpenAmpere's phases hold (cleared with every stop and unplug): the switch interval also holds
+            # while the charger switches (status 9, low power)
+            phases = self._phases(wb, reading, available, now, live.phases_set is not None or reading.charging,
                                   live.phases_set or reading.active_phases or None, live.phases_at)
         else:
             phases = reading.phases()
@@ -1069,12 +1074,25 @@ class NativeWallboxes:
             return wanted
         return current
 
-    @staticmethod
-    def switches(wb: NativeWallbox, reading: Reading) -> bool:
-        """Real control chooses the phases of this charger through its power setpoint (#478)."""
+    def owner_power(self, wb: NativeWallbox, reading: Reading) -> float | None:
+        """The owner's power setpoint (#478): stored before OpenAmpere first wrote it; otherwise as the charger reads
+        now, unless that is exactly OpenAmpere's one-phase cap (a leftover of an earlier control), then its highest
+        power. A lower limit of the owner is kept."""
+        entry = self._owned().get(wb.id) or {}
+        if "power_w" in entry:
+            return entry["power_w"]
+        now = reading.power_setpoint_w
+        return now if now and now != ONE_PHASE_W else reading.max_power_w
+
+    def switches(self, wb: NativeWallbox, reading: Reading) -> bool:
+        """Real control chooses the phases of this charger through its power setpoint (#478): a three-phase charger with
+        automatic switching on, whose owner's power allows three phases at all (otherwise 0x3002 is left alone)."""
         model = MODELS[wb.model]
-        return bool(real(wb) and getattr(model, "phase_power", None) and reading.phase_switching
-                    and reading.installed_phases >= 3 and model.phase_power(3, reading))
+        if not (real(wb) and getattr(model, "phase_power", None) and reading.phase_switching
+                and reading.installed_phases >= 3):
+            return False
+        owner = self.owner_power(wb, reading)
+        return bool(owner and owner >= model.three_phases_w)
 
     def _sim_log(self, wb: NativeWallbox, action: str, value, reason: str, before=None) -> None:
         """A simulated write: in the control log as not sent and marked as a simulation; never written."""

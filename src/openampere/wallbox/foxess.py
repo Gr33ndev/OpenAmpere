@@ -31,6 +31,7 @@ WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (FoxESS EV Charger M
 MAX_CURRENT = 0x3001  # u16, 0.1 A: the current setpoint, read/write
 MAX_POWER = 0x3002  # u16, 0.1 kW: the power setpoint; with automatic switching it also selects the phases (#478)
 ONE_PHASE = 41  # 4.1 kW: below the 4.2 kW from which the charger charges on three phases
+THREE_PHASES_W = 4200.0  # from this power setpoint the charger charges on three phases (protocol V1.6)
 SESSION = 0x4001  # write only (function code 6): 1 start, 2 stop
 PREPARE = {0x3005: 60, 0x3006: 60}  # command validity 60 s (its maximum), fallback current 6.0 A (#318)
 HEARTBEAT_S = 25.0  # well within the validity of 60 s
@@ -106,6 +107,7 @@ class FoxEssChargerLive:
     writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, MAX_POWER, *PREPARE})  # function code 16, read back
     write_only = frozenset({SESSION})  # function code 6, written after the others
     prepare = PREPARE
+    three_phases_w = THREE_PHASES_W
     heartbeat_s = HEARTBEAT_S
     # its other modes only simulate the control (#440): what OpenAmpere would set goes into the control log
     simulated = True
@@ -126,8 +128,8 @@ class FoxEssChargerLive:
         """The power setpoint that makes a charger with automatic switching use these phases (#478): just below the
         three-phase threshold for one phase; for three the power the owner had set (owner_w, from before OpenAmpere
         wrote it) or else its highest power. Empty when neither is known."""
-        if phases == 1:
-            return {MAX_POWER: ONE_PHASE}
+        if phases == 1:  # never above a lower limit of the owner
+            return {MAX_POWER: min(ONE_PHASE, round(owner_w / 100)) if owner_w else ONE_PHASE}
         back = owner_w or reading.max_power_w
         return {MAX_POWER: round(back / 100)} if back else {}
 
