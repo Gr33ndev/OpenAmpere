@@ -383,6 +383,35 @@ async def test_a_work_mode_chosen_after_a_restart_before_the_next_command(tmp_pa
             await runtime.collector.stop()
 
 
+async def test_the_work_mode_is_shown_right_after_a_restart_while_charging(tmp_path):
+    """#500: before the next charging command the inverter is in OpenAmpere's time-of-use mode, which is no work mode;
+    the app and the control log show the owner's mode."""
+    sim = SajSimulatedInverter(max_connections=3)
+    sim.clock = lambda: MONDAY_10
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            before = (await BatteryControl(runtime).read())["work_mode"]
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            assert sim.regs[saj.APP_MODE_ADDRESS] == saj.APP_MODE_TIME
+        finally:
+            await runtime.collector.stop()
+            runtime.storage.close()
+    server, runtime = await connected_runtime(tmp_path, sim)  # restarted with the same database
+    async with server:
+        try:
+            battery = BatteryControl(runtime)
+            assert before and (await battery.read())["work_mode"] == before
+            await battery.write({"work_mode": "backup"})
+            assert runtime.storage.control_log(1)[0]["details"]["from"]["work_mode"] == before
+        finally:
+            battery._verify_task and battery._verify_task.cancel()
+            await runtime.collector.stop()
+
+
 async def test_a_work_mode_chosen_during_a_charging_command_is_kept(tmp_path):
     """#493: a mode chosen while a charging command writes is not overwritten by the values the command started with."""
     sim = SajSimulatedInverter(max_connections=3)
