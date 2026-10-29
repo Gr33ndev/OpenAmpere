@@ -292,26 +292,32 @@ class GridCharging:
                 return
         # remembered before writing: a command that half worked must be switched off as well. With it what a driver
         # needs to put the owner's settings back (SAJ charges through a stored time slot, #377), also after a restart
-        previous = runtime.storage.get_meta(REMOTE_COMMAND) or {}
-        restore = None if previous.get("released") else previous.get("restore")
-        command = {"ts": now, "power_w": CHARGE_SIGN * s.power_w, "timeout_s": REMOTE_TIMEOUT_S, "released": None,
-                   **({"restore": restore} if restore else {})}
-        runtime.storage.set_meta(REMOTE_COMMAND, command)
-        try:
-            restore_now = await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S,
-                                                                  restore=restore)
-            if restore_now and restore_now != restore:
-                runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": restore_now})
-        except Exception as exc:  # noqa: BLE001
-            err = friendly_error(exc)  # the technical text goes to the log, not into the app
-            log.warning("grid charging command failed: %s", exc)
-            # what the half-written command changed, so a release after a restart puts it back as well (#491)
+        # in the control lock: a work mode the owner chooses meanwhile goes into what is put back (SAJ, #493) and must
+        # not be overwritten by the values this command started with
+        failed: Exception | None = None
+        async with control_lock(runtime):
+            previous = runtime.storage.get_meta(REMOTE_COMMAND) or {}
+            restore = None if previous.get("released") else previous.get("restore")
+            command = {"ts": now, "power_w": CHARGE_SIGN * s.power_w, "timeout_s": REMOTE_TIMEOUT_S, "released": None,
+                       **({"restore": restore} if restore else {})}
+            runtime.storage.set_meta(REMOTE_COMMAND, command)
             try:
-                kept = collector.driver.remote_restore()
-            except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
-                kept = None
-            if kept and kept != restore:
-                runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
+                restore_now = await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S,
+                                                                      restore=restore)
+                if restore_now and restore_now != restore:
+                    runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": restore_now})
+            except Exception as exc:  # noqa: BLE001
+                failed = exc
+                # what the half-written command changed, so a release after a restart puts it back as well (#491)
+                try:
+                    kept = collector.driver.remote_restore()
+                except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
+                    kept = None
+                if kept and kept != restore:
+                    runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
+        if failed is not None:
+            err = friendly_error(failed)  # the technical text goes to the log, not into the app
+            log.warning("grid charging command failed: %s", failed)
             # a command that half worked (e.g. remote control switched on, the power refused) must not stay on with
             # whatever power is set in the inverter: switched off at once, logged, and not repeated this quarter
             self._refused_quarter = quarter
@@ -352,8 +358,9 @@ class GridCharging:
         if not was_active and not ((pending or reconnected) and collector.connected):
             return
         try:
-            switched_off = await collector.driver.release_remote_power(command.get("timeout_s", REMOTE_TIMEOUT_S),
-                                                                       restore=command.get("restore"))
+            async with control_lock(self.runtime):  # not while a work mode for the end of charging is being kept
+                switched_off = await collector.driver.release_remote_power(command.get("timeout_s", REMOTE_TIMEOUT_S),
+                                                                           restore=command.get("restore"))
         except ModbusIllegalError as err:  # cannot write at all (read-only proxy): trying again does not help
             switched_off, failed = False, err
         except Exception as err:  # noqa: BLE001 - tried again on the next tick
