@@ -366,9 +366,10 @@
     "wallboxControlOff": "{name}: Echte Steuerung ausgeschaltet. Die Lademodi sind wieder eine Simulation.",
     "wallboxPrepared": "{name}: Ersatzstrom eingestellt. Fällt OpenAmpere aus, lädt die Wallbox nach etwa einer Minute mit 6 A weiter.",
     "wallboxPhases": {
-      "one": "{name}: auf 1 Phase mit {current} A umgeschaltet.",
-      "other": "{name}: auf {count} Phasen mit {current} A umgeschaltet."
-    }
+      "one": "{name}: auf 1 Phase mit {current} A gestellt.",
+      "other": "{name}: auf {count} Phasen mit {current} A gestellt."
+    },
+    "wallboxPhasesBack": "{name}: Leistung der Wallbox zurückgestellt, sie wählt die Phasen wieder selbst."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

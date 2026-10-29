@@ -158,6 +158,6 @@ test("a phase switch says the phases and the current", async ({ page, api }) => 
     details: { from: { loadpoint: "Garage", id: "abcd1234" }, to: { action: "phases", value: { phases, current_a: current } } } });
   api.override("/api/control/log", { entries: [{ ts: NOW, ...entry(1, 8) }, { ts: NOW - 60, ...entry(3, 16) }] });
   await open(page, "more/control");
-  await expect(page.getByText("Garage: auf 1 Phase mit 8 A umgeschaltet.", { exact: true })).toBeVisible();
-  await expect(page.getByText("Garage: auf 3 Phasen mit 16 A umgeschaltet.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Garage: auf 1 Phase mit 8 A gestellt.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Garage: auf 3 Phasen mit 16 A gestellt.", { exact: true })).toBeVisible();
 });

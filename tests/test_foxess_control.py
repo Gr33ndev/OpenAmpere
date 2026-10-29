@@ -499,6 +499,48 @@ async def test_after_a_restart_letting_go_still_lifts_the_one_phase_cap(tmp_path
         restarted = NativeWallboxes(runtime)  # the same database, nothing in memory
         rwb = restarted.wallboxes[0]
         await restarted.read(rwb)
-        assert restarted.fresh(rwb).capped()
+        assert restarted._owned()[rwb.id]["phases"] == 1  # stored, so known after the restart
         await restarted.release(rwb, "Lademodus „von Hand“")
         assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)]
+
+
+
+async def test_a_power_limit_of_the_owner_is_kept(tmp_path):
+    """#478: the owner limited the charger to 7 kW: three phases use that, and letting go puts back exactly that."""
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 70
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 70), (0x4001, 2)]
+
+
+async def test_without_switching_an_owner_limit_survives_stop_and_letting_go(tmp_path):
+    async with charger_with_car(switching=False) as (charger, port):
+        charger.regs[0x3002] = 70
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 10)
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert not [w for w in charger.writes if w[0] == 0x3002] and charger.regs[0x3002] == 70
+
+
+async def test_switching_turned_off_during_a_one_phase_charge_puts_the_power_back_once(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        charger.regs[0x300A] = 0  # the owner turned automatic switching off in the FoxESS app
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 40, available=2000)
+        assert (0x3002, 220) in charger.writes[before:]
+        written = len(charger.writes)
+        for i in range(1, 4):
+            await check(wallboxes, wb, t0 + 40 + 30 * i, available=2000)
+        assert (0x3002, 41) not in charger.writes[written:] and not wallboxes._owned()[wb.id].get("phases")

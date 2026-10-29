@@ -685,6 +685,15 @@ class NativeWallboxes:
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
             log.warning("could not remember the wallbox %s: %s", wb.name, err)
 
+    def _owner_power(self, wb: NativeWallbox) -> float | None:
+        """The power setpoint the owner had before OpenAmpere chose the phases (#478); None: its highest power."""
+        return (self._owned().get(wb.id) or {}).get("power_w")
+
+    def _capped_by_us(self, wb: NativeWallbox, live: Live) -> bool:
+        """OpenAmpere set this charger to one phase (#478): from memory, or after a restart from the stored entry. A
+        power limit the owner set is never counted."""
+        return live.phases_set == 1 or (self._owned().get(wb.id) or {}).get("phases") == 1
+
     def _disown(self, wallbox_id: str) -> None:
         owned = self._owned()
         if owned.pop(wallbox_id, None) is not None:
@@ -786,7 +795,7 @@ class NativeWallboxes:
         model = MODELS[wb.model]
         values = model.set_current(amps)
         if live.phases_set and live.reading is not None:
-            values = {**values, **model.phase_power(live.phases_set, live.reading)}
+            values = {**values, **model.phase_power(live.phases_set, live.reading, self._owner_power(wb))}
         try:
             back = await self._write_modbus(wb, live, values)
         except NotPrepared:
@@ -820,11 +829,13 @@ class NativeWallboxes:
                           f"nicht gesendet (Testmodus): {reason}", before=live.phases_set)
             switch = False
         if switch:
-            if not dry:
-                self._own(wb, reading)
+            entry = self._owned().get(wb.id) or {}
+            # the owner's power setpoint, kept before OpenAmpere writes it the first time: put back when it lets go
+            owner_w = entry.get("power_w") if "power_w" in entry else reading.power_setpoint_w
+            self._own(wb, reading, phases=phases, power_w=owner_w)
             live.current_at = live.phases_at = now
             before, live.phases_set = live.phases_set, phases
-            values = {**model.set_current(amps), **model.phase_power(phases, reading)}
+            values = {**model.set_current(amps), **model.phase_power(phases, reading, owner_w)}
             if not await self._write(wb, live, values, "phases", {"phases": phases, "current_a": amps}, reason):
                 live.phases_set = before
             return
@@ -840,7 +851,7 @@ class NativeWallboxes:
         live.current_at = now
         values = MODELS[wb.model].set_current(amps)
         if live.phases_set and real(wb):  # keep the power setpoint with the current: both have the same validity
-            values = {**values, **model.phase_power(live.phases_set, reading)}
+            values = {**values, **model.phase_power(live.phases_set, reading, self._owner_power(wb))}
         await self._write(wb, live, values, "current", amps, reason)
 
     async def _start(self, wb: NativeWallbox, live: Live, reading: Reading, on: bool, reason: str, now: float) -> None:
@@ -870,10 +881,12 @@ class NativeWallboxes:
                 live.stop_sent = now
         live.since, live.want_on, live.short_since = now, 0, None
         values = MODELS[wb.model].start(on)
-        if not on and real(wb) and (live.phases_set == 1 or reading.capped()) and reading.charging:
-            # whether the charger keeps the power setpoint after a stop is open (#478): its highest power back with the
+        if not on and real(wb) and self._capped_by_us(wb, live) and reading.charging:
+            # whether the charger keeps the power setpoint after a stop is open (#478): the owner's power back with the
             # stop, written before it while the car still charges, so a later charge is not capped at one phase
-            values = {**MODELS[wb.model].phase_power(3, reading), **values}
+            values = {**MODELS[wb.model].phase_power(3, reading, self._owner_power(wb)), **values}
+            if not dry:
+                self._own(wb, reading, phases=None)
         sent = await self._write(wb, live, values, "start" if on else "stop", on, reason, safe=not on and started)
         if sent:  # also a stop sent in test mode (safe); a failed start keeps the note: the wallbox is asked again
             self._note_stop(wb, not on)
@@ -947,6 +960,15 @@ class NativeWallboxes:
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         switching = plan is None and self.switches(wb, reading)
+        if plan is None and not switching and real(wb) and self._capped_by_us(wb, live) and reading.charging \
+                and not self.runtime.config.control.dry_run:
+            # automatic switching was turned off during a charge OpenAmpere capped at one phase: the owner's power
+            # back once, then 0x3002 is left alone (#478)
+            restore = MODELS[wb.model].phase_power(3, reading, self._owner_power(wb))
+            if restore and await self._write(wb, live, restore, "phases", {"phases": reading.installed_phases},
+                                             "automatische Umschaltung der Wallbox ausgeschaltet"):
+                live.phases_set = None
+                self._own(wb, reading, phases=None)
         if plan is not None:
             phases = self._sim_phases(wb, plan, reading, available, now)
         elif switching:
@@ -1156,10 +1178,10 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
-        if (live.phases_set == 1 or reading.capped()) and reading.charging and getattr(model, "phase_power", None):
-            # not left capped at one phase, also after a restart (read from the charger): its highest power back,
-            # written before a stop (#478)
-            values.update(model.phase_power(3, reading))
+        if self._capped_by_us(wb, live) and reading.charging and getattr(model, "phase_power", None):
+            # not left capped at one phase by OpenAmpere, also after a restart (stored): the owner's power back,
+            # written before a stop (#478); a power limit the owner set stays as it is
+            values.update(model.phase_power(3, reading, entry.get("power_w")))
         if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
                 and live.online is False:
             return False

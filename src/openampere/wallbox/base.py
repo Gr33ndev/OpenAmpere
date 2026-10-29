@@ -57,10 +57,6 @@ class Reading:
     max_power_w: float | None = None  # its highest charging power, None: not told
     power_setpoint_w: float | None = None  # the power it is set to (FoxESS 0x3002), None: not told
 
-    def capped(self) -> bool:
-        """Set to less than its highest power, e.g. to one phase by OpenAmpere (#478); also after a restart."""
-        return bool(self.power_setpoint_w and self.max_power_w and self.power_setpoint_w < self.max_power_w)
-
     def phases(self) -> int:
         """Phases to calculate with: those that charge now, otherwise all that are connected."""
         return self.active_phases or self.installed_phases or 1

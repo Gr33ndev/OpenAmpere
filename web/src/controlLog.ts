@@ -148,6 +148,7 @@ function wallboxText(name: string, action: unknown, value: unknown, before?: unk
     case "prepare": return t("settings.controlLog.wallboxPrepared", { name });
     case "phases": { // the phases chosen through the power setpoint (#478), with the current
       const chosen = obj(value);
+      if (chosen.current_a == null) return t("settings.controlLog.wallboxPhasesBack", { name }); // the owner's power back
       return t("settings.controlLog.wallboxPhases", { name, count: Number(chosen.phases) || 0, current: str(chosen.current_a) });
     }
     case "work_mode": { // the work mode of the wallbox itself (#464), with the one it had before

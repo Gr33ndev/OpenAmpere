@@ -122,12 +122,14 @@ class FoxEssChargerLive:
         return {MAX_CURRENT: amps * 10}
 
     @staticmethod
-    def phase_power(phases: int, reading: Reading) -> dict[int, int]:
+    def phase_power(phases: int, reading: Reading, owner_w: float | None = None) -> dict[int, int]:
         """The power setpoint that makes a charger with automatic switching use these phases (#478): just below the
-        three-phase threshold for one phase, its highest power for three. Empty when its highest power is not known."""
+        three-phase threshold for one phase; for three the power the owner had set (owner_w, from before OpenAmpere
+        wrote it) or else its highest power. Empty when neither is known."""
         if phases == 1:
             return {MAX_POWER: ONE_PHASE}
-        return {MAX_POWER: round(reading.max_power_w / 100)} if reading.max_power_w else {}
+        back = owner_w or reading.max_power_w
+        return {MAX_POWER: round(back / 100)} if back else {}
 
     @staticmethod
     def start(on: bool) -> dict[int, int]:
