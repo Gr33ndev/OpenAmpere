@@ -649,6 +649,7 @@ class NativeWallboxes:
         if entry is None:  # a stop from the last time OpenAmpere controlled it still counts (#456)
             entry = {"current_a": reading.set_current_a, "started": False, "stopped": wb.id in self._stopped()}
         owned[wb.id] = {**entry, "wallbox": self._sealed(asdict(wb)), **changes}
+        owned[wb.id].pop("lift_tried", None)  # controlled again: a kept note of a cap counts as part of it (#478)
         try:
             self.runtime.storage.set_meta(OWNED, owned)
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
@@ -1176,6 +1177,8 @@ class NativeWallboxes:
         if read_only(wb):  # never written, so never owned: nothing to put back
             self._disown(wb.id)
             return True
+        if entry.get("lift_tried") is not None and time.time() - entry["lift_tried"] < PREPARE_AGAIN_S:
+            return True  # only the note of a one-phase cap that did not go back (#478): tried again later
         live = live or self.live.setdefault(wb.id, Live())
         model = MODELS[wb.model]
         now = time.time()
@@ -1200,7 +1203,8 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
-        if self._capped_by_us(wb, live) and getattr(model, "phase_power", None):
+        restore = self._capped_by_us(wb, live) and bool(getattr(model, "phase_power", None))
+        if restore:
             # not left capped at one phase by OpenAmpere, also after a restart (stored): the owner's power back (#478),
             # written before a stop; a power limit the owner set stays as it is. With a car connected that does not
             # charge, a stop follows, so the setpoint cannot start a paused charge again; without a car nothing can
@@ -1208,10 +1212,18 @@ class NativeWallboxes:
             if reading.connected and not reading.charging:
                 values.update(model.start(False))
                 live.stop_sent = time.time()
-        if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
-                and live.online is False:
+        written = not values or await self._write(wb, live, values, "release", owner, reason, safe=True)
+        if not written and live.online is False:
             return False
-        self._disown(wb.id)
+        if restore and not written:
+            # the owner's power did not read back (e.g. the charger takes no setpoint outside "controlled"): a note of
+            # the cap is kept, so the next release or control tries again; the rest is let go of
+            owned = self._owned()
+            owned[wb.id] = {"current_a": None, "started": False, "phases": 1, "power_w": entry.get("power_w"),
+                            "lift_tried": time.time(), "wallbox": entry.get("wallbox") or self._sealed(asdict(wb))}
+            self.runtime.storage.set_meta(OWNED, owned)
+        else:
+            self._disown(wb.id)
         if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
             # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
             self._keep_stop(wb.id, max(live.stop_sent, 0.0))

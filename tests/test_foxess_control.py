@@ -606,3 +606,29 @@ async def test_a_failed_switch_to_three_phases_keeps_the_stored_cap(tmp_path, mo
         monkeypatch.setattr(charger, "handle", refuses_more_power)
         await check(wallboxes, wb, t0 + 60 + 12 * 60, available=9000)  # wants three phases, the write fails
         assert wallboxes._owned()[wb.id]["phases"] == 1  # a restart now still knows the cap is OpenAmpere's
+
+
+async def test_a_cap_that_does_not_go_back_on_letting_go_is_kept_and_tried_again(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:  # answers the write but keeps 4.1 kW
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        note = wallboxes._owned()[wb.id]
+        assert note["phases"] == 1 and not note["started"] and charger.regs[0x3002] == 41
+        written = len(charger.writes)
+        await wallboxes.release(wb, "Lademodus „von Hand“")  # too soon: nothing written
+        assert len(charger.writes) == written
+        monkeypatch.setattr(charger, "handle", handle)
+        note["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        wallboxes.runtime.storage.set_meta(native_module.OWNED, {wb.id: note})
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned()

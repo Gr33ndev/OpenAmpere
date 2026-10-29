@@ -165,6 +165,9 @@ Values while charging and single-phase models are not confirmed yet.
 - Meaning of the read but uninterpreted words (0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010, 0x3007–0x3009).
 - No write by OpenAmpere tested on a real device yet: work mode, setpoints, start and stop
   ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464), [#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)).
+- Whether 0x3001/0x3002 can be written outside the work mode "controlled". If OpenAmpere's one-phase cap does not
+  read back when it lets go, it keeps a note and tries again after 15 minutes
+  ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
 - Whether the charger keeps the power setpoint 0x3002 after a stop or when the car is unplugged. OpenAmpere writes its
   owner's power setpoint back with every stop of a charge it capped at one phase and when it lets go
   ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
