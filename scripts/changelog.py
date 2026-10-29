@@ -22,6 +22,10 @@ changelog/<version>.json, German required, other languages optional:
 It goes into the version's entry as "summary": {"de": …, "en": …}, shown above the list. A blank line starts a new
 paragraph. A summary already in the file is kept when the version is built again and its summary file is gone.
 
+A fix merged from a security advisory is listed with the advisory's title through the line with its id at the end of
+the commit message (docs/security-advisories.md). A fix merged without that line is named in
+changelog/advisory-commits.json, {"<full commit hash>": "GHSA-…"}, since a merged message cannot be changed.
+
 Usage:
   scripts/changelog.py add 0.14.0   add the version with the commits since the last tag (scripts/release.sh does this)
   scripts/changelog.py rebuild      build the whole file again from the version tags
@@ -108,9 +112,19 @@ def with_advisories(log: str, advisories: dict[str, str]) -> str:
     return "".join(f"{e}\x1e" for e in entries)
 
 
+def advisory_commits(path: Path = ADVISORY_COMMITS) -> dict[str, str]:
+    """changelog/advisory-commits.json; stops the release when a listed commit is not in the history (a typo would
+    leave the advisory out of the changelog without a word)."""
+    advisories = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    for commit in advisories:
+        if subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=ROOT, capture_output=True).returncode:
+            raise SystemExit(f"{path.name}: commit {commit} is not in the history")
+    return advisories
+
+
 def entry(version: str, date: str, prev: str | None, ref: str) -> dict:
     """One version: the commits after the previous tag up to ref."""
-    advisories = json.loads(ADVISORY_COMMITS.read_text(encoding="utf-8")) if ADVISORY_COMMITS.exists() else {}
+    advisories = advisory_commits()
     log = git("log", "--no-merges", "--format=%H%x1f%s%x1f%b%x1e", f"{prev}..{ref}" if prev else ref)
     groups, breaking = parse(with_advisories(log, advisories))
     if not prev:  # the full history is too long for a first release

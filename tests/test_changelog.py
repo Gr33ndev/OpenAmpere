@@ -3,6 +3,7 @@
 """The changelog of app, website and release notes (#155)."""
 
 import json
+import re
 import runpy
 import subprocess
 import sys
@@ -117,13 +118,27 @@ def test_a_listed_fix_commit_without_the_id_is_listed_with_its_advisory():
     assert groups["other"] == []
 
 
+def test_a_listed_commit_that_does_not_exist_stops_the_release(tmp_path):
+    listed = tmp_path / "advisory-commits.json"
+    listed.write_text(json.dumps({"0" * 40: "GHSA-q7r4-hqhv-322x"}))
+    with pytest.raises(SystemExit, match="not in the history"):
+        changelog["advisory_commits"](listed)
+
+
 def test_every_listed_advisory_commit_is_a_merge_from_a_fork():
+    # git log --format=%H gives full hashes: a shortened or mistyped one would never match
     listed = json.loads((ROOT / "changelog" / "advisory-commits.json").read_text())
+    assert listed and all(re.fullmatch(r"[0-9a-f]{40}", commit) for commit in listed)
     assert all(changelog["GHSA"].fullmatch(ghsa) for ghsa in listed.values())
+    missing = []
     for commit in listed:
-        subject = subprocess.run(["git", "log", "-1", "--format=%s", commit], cwd=ROOT, capture_output=True,
-                                 text=True).stdout.strip()
-        assert subject in ("Merge commit from fork", ""), commit  # "" in a shallow clone without that commit
+        done = subprocess.run(["git", "log", "-1", "--format=%s", commit], cwd=ROOT, capture_output=True, text=True)
+        if done.returncode:
+            missing.append(commit)
+        else:
+            assert done.stdout.strip() == "Merge commit from fork", commit
+    if missing:  # the CI clone is shallow: these are checked where the history is there, e.g. by the release
+        pytest.skip(f"not in this clone: {', '.join(c[:7] for c in missing)}")
 
 
 def test_an_advisory_only_mentioned_in_the_text_is_not_listed():
