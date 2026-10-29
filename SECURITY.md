@@ -24,6 +24,8 @@ details.
    severity) and the release notes point to it.
 5. **Credit:** the reporter is named in the advisory, unless they want to stay anonymous.
 
+The detailed steps for maintainers are in [docs/security-advisories.md](docs/security-advisories.md).
+
 ## What OpenAmpere protects
 
 - Viewing on the home network is possible without logging in. Changing settings, control and backups require a
