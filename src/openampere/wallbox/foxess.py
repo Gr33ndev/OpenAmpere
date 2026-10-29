@@ -29,6 +29,8 @@ STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
 WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (FoxESS EV Charger Modbus TCP protocol V1.6, #318, #463)
 MAX_CURRENT = 0x3001  # u16, 0.1 A: the current setpoint, read/write
+MAX_POWER = 0x3002  # u16, 0.1 kW: the power setpoint; with automatic switching it also selects the phases (#478)
+ONE_PHASE = 41  # 4.1 kW: below the 4.2 kW from which the charger charges on three phases
 SESSION = 0x4001  # write only (function code 6): 1 start, 2 stop
 PREPARE = {0x3005: 60, 0x3006: 60}  # command validity 60 s (its maximum), fallback current 6.0 A (#318)
 HEARTBEAT_S = 25.0  # well within the validity of 60 s
@@ -101,7 +103,7 @@ class FoxEssChargerLive:
     work_modes = {mode: value for value, mode in WORK_MODE.items()}  # a setting the owner changes (#464)
     work_mode_register = WORK_MODE_REGISTER
     controllable = True  # real control once the owner agrees, per wallbox (#465)
-    writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, *PREPARE})  # function code 16, read back
+    writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, MAX_POWER, *PREPARE})  # function code 16, read back
     write_only = frozenset({SESSION})  # function code 6, written after the others
     prepare = PREPARE
     heartbeat_s = HEARTBEAT_S
@@ -118,6 +120,14 @@ class FoxEssChargerLive:
     @staticmethod
     def set_current(amps: int) -> dict[int, int]:
         return {MAX_CURRENT: amps * 10}
+
+    @staticmethod
+    def phase_power(phases: int, reading: Reading) -> dict[int, int]:
+        """The power setpoint that makes a charger with automatic switching use these phases (#478): just below the
+        three-phase threshold for one phase, its highest power for three. Empty when its highest power is not known."""
+        if phases == 1:
+            return {MAX_POWER: ONE_PHASE}
+        return {MAX_POWER: round(reading.max_power_w / 100)} if reading.max_power_w else {}
 
     @staticmethod
     def start(on: bool) -> dict[int, int]:
@@ -151,4 +161,5 @@ class FoxEssChargerLive:
         r.work_mode = WORK_MODE.get(values[0x3000]) if 0x3000 in values else None
         r.phase_switching = bool(values[0x300A]) if 0x300A in values else None
         r.phase_switch_min = values.get(0x300B)
+        r.max_power_w = scaled(values, 0x1011, 100.0)  # 0.1 kW
         return r

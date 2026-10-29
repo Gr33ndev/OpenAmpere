@@ -197,6 +197,8 @@ class Live:
     unprepared_at: float = float("-inf")  # they did not read back: not controlled for PREPARE_AGAIN_S
     verify: bool = False  # the current was written outside a charge: written and checked again once the car charges
     limit_a: int | None = None  # a lower current the charger kept while charging: its highest one for a while
+    phases_set: int | None = None  # the phases OpenAmpere set through the power setpoint (#478)
+    phases_at: float = float("-inf")  # when it set them
     limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
@@ -774,14 +776,17 @@ class NativeWallboxes:
                 live.verify = True
         for address, value in values.items():
             if address in model.write_only and value == model.start(False)[address]:
-                live.setpoint = None  # outside a charge the charger forgets the current
+                live.setpoint = live.phases_set = None  # outside a charge the charger forgets current and power
         return back
 
     async def _beat(self, wb: NativeWallbox, live: Live, amps: int, now: float) -> None:
         """The watchdog of a controlled wallbox (#465): the current written again while the car charges, logged only
         when it fails. Never after a stop: the charger would start again."""
         live.current_at = now
-        values = MODELS[wb.model].set_current(amps)
+        model = MODELS[wb.model]
+        values = model.set_current(amps)
+        if live.phases_set and live.reading is not None:
+            values = {**values, **model.phase_power(live.phases_set, live.reading)}
         try:
             back = await self._write_modbus(wb, live, values)
         except NotPrepared:
@@ -796,13 +801,31 @@ class NativeWallboxes:
             live.verify = False
 
     async def _set_current(self, wb: NativeWallbox, live: Live, reading: Reading, amps: int, reason: str,
-                           now: float) -> None:
+                           now: float, phases: int | None = None) -> None:
+        """phases: the phases real control chose for a charger that switches them through its power setpoint (#478),
+        written together with the current; None leaves them to the wallbox."""
         dry = self.runtime.config.control.dry_run
+        model = MODELS[wb.model]
         known = reading.set_current_a if reading.set_current_a is not None else live.setpoint
-        beat = getattr(MODELS[wb.model], "heartbeat_s", None) if real(wb) else None
-        if known == amps and beat and not dry and reading.charging and (now - live.current_at >= beat or live.verify) \
-                and now - live.stop_sent > STOP_SLACK_S:
+        switch = phases is not None and phases != live.phases_set
+        beat = getattr(model, "heartbeat_s", None) if real(wb) else None
+        if known == amps and not switch and beat and not dry and reading.charging \
+                and (now - live.current_at >= beat or live.verify) and now - live.stop_sent > STOP_SLACK_S:
             await self._beat(wb, live, amps, now)
+            return
+        if switch and dry:
+            if live.planned.get("phases") != phases:
+                live.planned["phases"] = phases
+                self._log(wb, "phases", phases, True, f"nicht gesendet (Testmodus): {reason}", before=live.phases_set)
+            switch = False
+        if switch:
+            if not dry:
+                self._own(wb, reading)
+            live.current_at = live.phases_at = now
+            before, live.phases_set = live.phases_set, phases
+            values = {**model.set_current(amps), **model.phase_power(phases, reading)}
+            if not await self._write(wb, live, values, "phases", {"phases": phases, "current_a": amps}, reason):
+                live.phases_set = before
             return
         if known == amps or (dry and live.planned.get("current") == amps):
             return
@@ -814,7 +837,10 @@ class NativeWallboxes:
             self._own(wb, reading)
             live.planned.clear()
         live.current_at = now
-        await self._write(wb, live, MODELS[wb.model].set_current(amps), "current", amps, reason)
+        values = MODELS[wb.model].set_current(amps)
+        if live.phases_set and real(wb):  # keep the power setpoint with the current: both have the same validity
+            values = {**values, **model.phase_power(live.phases_set, reading)}
+        await self._write(wb, live, values, "current", amps, reason)
 
     async def _start(self, wb: NativeWallbox, live: Live, reading: Reading, on: bool, reason: str, now: float) -> None:
         dry = self.runtime.config.control.dry_run
@@ -898,7 +924,7 @@ class NativeWallboxes:
                 return 0.0
             live.want_on, live.short_since = 0, None
             live.start_sent = float("-inf")
-            live.setpoint = live.limit_a = None  # unplugged: written again, and a limit of the charger asked again (#465)
+            live.setpoint = live.limit_a = live.phases_set = None  # unplugged: all asked again (#465, #478)
             live.planned.pop("start", None)
             self._note_stop(wb, False)
             return 0.0
@@ -915,13 +941,20 @@ class NativeWallboxes:
             self._sim_flush(wb, plan, now)  # changes collected earlier, once SIM_LOG_EVERY_S is over
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
-        phases = self._sim_phases(wb, plan, reading, available, now) if plan is not None else reading.phases()
+        switching = plan is None and self.switches(wb, reading)
+        if plan is not None:
+            phases = self._sim_phases(wb, plan, reading, available, now)
+        elif switching:
+            phases = self._phases(wb, reading, available, now, reading.charging,
+                                  live.phases_set or reading.active_phases or None, live.phases_at)
+        else:
+            phases = reading.phases()
         if live.limit_a is not None and now - live.limit_at >= LIMIT_AGAIN_S:
             live.limit_a = None  # ask again for the current the mode wants
         limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
                     wb.mode_current_a.get(wb.mode, wb.max_current_a), live.limit_a or wb.max_current_a)
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
-        if plan is not None and phases < reading.installed_phases:
+        if (plan is not None or switching) and phases < reading.installed_phases:
             # one phase of a three-phase charger: only up to just below its lowest power on three phases, above that
             # it would switch to three phases
             three = min(reading.steps_a) * VOLTAGE * reading.installed_phases
@@ -976,7 +1009,7 @@ class NativeWallboxes:
         if plan is not None:
             self._sim_current(wb, plan, target, phases, reason, now)
         else:
-            await self._set_current(wb, live, reading, target, reason, now)
+            await self._set_current(wb, live, reading, target, reason, now, phases if switching else None)
         if not reading.charging:
             await start(True, reason)
         if plan is not None:
@@ -988,21 +1021,33 @@ class NativeWallboxes:
 
     @staticmethod
     def _sim_phases(wb: NativeWallbox, plan: Plan, reading: Reading, available: float, now: float) -> int:
-        """The phases a simulated charge would use. A three-phase charger with automatic 1/3-phase switching follows
-        its power setpoint (docs/devices/foxess/ac-charger.md): one phase below its lowest power on three phases,
-        three from there, switched at most once per its own switch interval (0x300B)."""
+        return NativeWallboxes._phases(wb, reading, available, now, plan.on, plan.phases, plan.phases_at)
+
+    @staticmethod
+    def _phases(wb: NativeWallbox, reading: Reading, available: float, now: float, on: bool, current: int | None,
+                since: float) -> int:
+        """The phases a charge uses, simulated (#440) or real (#478). A three-phase charger with automatic 1/3-phase
+        switching follows its power setpoint (docs/devices/foxess/ac-charger.md): one phase below its lowest power on
+        three phases, three from there, switched at most once per its own switch interval (0x300B)."""
         installed = reading.installed_phases
         if installed < 3 or not reading.phase_switching:
             return installed
         three = min(reading.steps_a) * VOLTAGE * installed
-        enough = wb.mode == "now" or available - (0 if plan.on else MARGIN_W) >= three
+        enough = wb.mode == "now" or available - (0 if on else MARGIN_W) >= three
         wanted = installed if enough else 1
-        if not plan.on or not plan.phases:
+        if not on or not current:
             return wanted  # chosen with the start
         interval = (reading.phase_switch_min or PHASE_SWITCH_MIN) * 60
-        if wanted != plan.phases and now - plan.phases_at >= interval:
+        if wanted != current and now - since >= interval:
             return wanted
-        return plan.phases
+        return current
+
+    @staticmethod
+    def switches(wb: NativeWallbox, reading: Reading) -> bool:
+        """Real control chooses the phases of this charger through its power setpoint (#478)."""
+        model = MODELS[wb.model]
+        return bool(real(wb) and getattr(model, "phase_power", None) and reading.phase_switching
+                    and reading.installed_phases >= 3 and model.phase_power(3, reading))
 
     def _sim_log(self, wb: NativeWallbox, action: str, value, reason: str, before=None) -> None:
         """A simulated write: in the control log as not sent and marked as a simulation; never written."""
@@ -1106,6 +1151,9 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
+        if live.phases_set == 1 and reading.charging and getattr(model, "phase_power", None):
+            # not left capped at one phase: its highest power back, written before a stop (#478)
+            values.update(model.phase_power(3, reading))
         if values and not await self._write(wb, live, values, "release", owner, reason, safe=True) \
                 and live.online is False:
             return False
@@ -1113,7 +1161,7 @@ class NativeWallboxes:
         if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
             # a removed or switched-off wallbox is not read, so nothing would clear the note: it keeps none
             self._keep_stop(wb.id, max(live.stop_sent, 0.0))
-        live.want_on, live.short_since, live.limit_a = 0, None, None
+        live.want_on, live.short_since, live.limit_a, live.phases_set = 0, None, None, None
         live.planned.clear()
         return True
 

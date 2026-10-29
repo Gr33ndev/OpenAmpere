@@ -54,6 +54,7 @@ class Reading:
     work_mode: str | None = None
     phase_switching: bool | None = None  # automatic 1/3-phase switching, None: not told
     phase_switch_min: int | None = None  # the shortest time between two phase switches, None: not told
+    max_power_w: float | None = None  # its highest charging power, None: not told
 
     def phases(self) -> int:
         """Phases to calculate with: those that charge now, otherwise all that are connected."""

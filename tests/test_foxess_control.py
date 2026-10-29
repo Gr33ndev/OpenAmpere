@@ -29,9 +29,12 @@ def no_gap(monkeypatch):
 
 
 @contextlib.asynccontextmanager
-async def charger_with_car(work_mode: int = 0):
+async def charger_with_car(work_mode: int = 0, switching: bool = False):
+    """switching: automatic 1/3-phase switching on, so real control also writes the power setpoint (#478); off for
+    the tests of the current, start and stop."""
     charger = SimulatedFoxCharger()
     charger.regs[0x3000] = work_mode
+    charger.regs[0x300A] = int(switching)
     charger.plug()
     server = await asyncio.start_server(charger.serve_client, "127.0.0.1", 0)
     try:
@@ -408,3 +411,57 @@ async def test_the_limit_of_the_charger_is_asked_again_after_a_while_and_with_an
         assert live.limit_a == 10
         wallboxes.set_mode(wb.id, "minpv")
         assert wallboxes.live[wb.id].limit_a is None
+
+
+# ---- phases (#478) ------------------------------------------------------------------------------------------------
+
+
+async def test_solar_with_little_surplus_charges_on_one_phase_and_switches_after_the_interval(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):  # 2 kW: enough for one phase, not for three
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert (0x3002, 41) in charger.writes and charger.writes[-1] == (0x4001, 1)
+        assert charger.regs[0x100B] > 0 and charger.regs[0x100C] == 0  # one phase charges
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 60, available=9000)  # plenty, but within the switch interval (12 min)
+        assert (0x3002, 220) not in charger.writes[written:]  # the heartbeat keeps one phase (41), no switch
+        await check(wallboxes, wb, t0 + 60 + 12 * 60, available=9000)
+        assert (0x3002, 220) in charger.writes[written:] and charger.regs[0x100C] > 0  # three phases now
+        assert not [e for e in entries(runtime, "phases") if e["result"].startswith(("Fehler", "Rücklesen"))]
+        assert [e["details"]["to"]["value"]["phases"] for e in entries(runtime, "phases")] == [3, 1]
+
+
+async def test_fast_charges_on_three_phases_and_the_heartbeat_keeps_the_power(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        assert charger.writes[2:] == [(0x3001, 160), (0x3002, 220), (0x4001, 1)]
+        await check(wallboxes, wb, t0 + 30)
+        assert charger.writes[-2:] == [(0x3001, 160), (0x3002, 220)]  # both refreshed
+
+
+async def test_no_power_setpoint_after_a_stop_and_three_phases_back_on_letting_go(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)]  # not left capped, then the stop
+        written = len(charger.writes)
+        for minute in range(1, 4):
+            await check(wallboxes, wb, t0 + 30 + minute * 60, available=0)
+        assert len(charger.writes) == written and charger.restarted_by_current == 0
+
+
+async def test_without_automatic_switching_the_power_setpoint_is_left_alone(tmp_path):
+    async with charger_with_car(switching=False) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=9000)
+        assert charger.regs[0x1003] == 3 and not [w for w in charger.writes if w[0] == 0x3002]
