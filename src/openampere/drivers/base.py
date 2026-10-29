@@ -207,7 +207,8 @@ class InverterDriver(Protocol):
         ...
 
     # only a driver whose set_remote_power returns something: def remote_restore(self) -> dict | None, what a release
-    # needs now, also after a command that failed half way
+    # needs now, also after a command that failed half way; async def adopt_remote_restore(self, restore: dict), takes
+    # over what was kept after a restart while OpenAmpere still controls the device
 
     async def read_export_limit(self) -> ExportLimit: ...
 

@@ -211,6 +211,15 @@ class SajDriver(ModbusDevice):
         """What a release needs now, also after a command that failed half way (set_remote_power returned nothing)."""
         return dict(self._remote) if self._remote else None
 
+    async def adopt_remote_restore(self, restore: dict) -> None:
+        """After a restart, before the first charging command: takes over what was kept while OpenAmpere's slot still
+        charges, so a new work mode is kept for the end of charging as before the restart (#497)."""
+        if self._remote or not restore or not restore.get("slot_ours"):
+            return
+        mask, slot, app_mode, _ = await self._charge_state()
+        if mask & SLOT_BIT and app_mode == APP_MODE_TIME and holds_ours(slot, restore):
+            self._remote = dict(restore)
+
     async def remote_active(self) -> bool:
         """Another device controls the inverter: passive mode (only external controllers use it)."""
         try:
