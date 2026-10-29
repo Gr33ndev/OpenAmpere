@@ -786,6 +786,13 @@ class NativeWallboxes:
                 # and checked as soon as the car charges (verify)
                 back = {a: v for a, v in back.items() if a != address}
                 live.verify = True
+        power = getattr(model, "phase_power", None)
+        for address in (power(1, live.reading) if power and live.reading else {}):
+            if address in values and back.get(address) != values[address] and not charging:
+                # the power setpoint outside a charge: like the current, maybe reset at once (open, #478); the phases
+                # stay chosen, and the heartbeat writes and checks it again once the car charges
+                back = {a: v for a, v in back.items() if a != address}
+                live.verify = True
         for address, value in values.items():
             if address in model.write_only and value == model.start(False)[address]:
                 live.setpoint = live.phases_set = None  # outside a charge the charger forgets current and power
@@ -1216,7 +1223,9 @@ class NativeWallboxes:
             # written before a stop; a power limit the owner set stays as it is. With a car connected that does not
             # charge, a stop follows, so the setpoint cannot start a paused charge again; without a car nothing can
             values.update(model.phase_power(3, reading, entry.get("power_w")))
-            if reading.connected and not reading.charging:
+            # a charge switching phases (status 9) or just starting counts as running: no stop for it
+            running = reading.charging or reading.switching_phases or reading.state == "waiting"
+            if reading.connected and not running:
                 values.update(model.start(False))
                 live.stop_sent = time.time()
         written = not values or await self._write(wb, live, values, "release", owner, reason, safe=True)

@@ -705,3 +705,28 @@ async def test_a_car_at_zero_watts_on_status_3_is_not_counted_as_charging(tmp_pa
         before = len(charger.writes)
         await check(wallboxes, wb, t0 + 30, available=0)
         assert not [w for w in charger.writes[before:] if w[0] in (0x3001, 0x3002)]  # no heartbeat to a car at 0 W
+
+
+async def test_a_charger_that_resets_the_power_outside_a_charge_is_not_written_again_and_again(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.resets_power = True
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        live = wallboxes.live.setdefault(wb.id, native_module.Live())
+        t0 = time.time() - 7200
+        live.start_sent = t0 + 100  # the car waits for its own timer: no start for a while
+        for i in range(6):
+            await check(wallboxes, wb, t0 + 100 + i * 10, available=2000)
+        assert len([w for w in charger.writes if w[0] == 0x3002]) == 1  # once, not every poll
+        assert not [e for e in runtime.storage.control_log(100) if e["result"].startswith("Rücklesen")]
+
+
+async def test_letting_go_during_a_phase_switch_sends_no_stop_to_the_owners_charge(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs.update({0x1003: 3, 0x100B: 160, 0x100C: 160, 0x100D: 160, 0x100E: 110})  # it charges by itself
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=2000)  # too little for three phases: capped at one
+        assert charger.regs[0x3002] == 41 and not wallboxes._owned()[wb.id]["started"]
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # switching right now
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.writes[-1] == (0x3002, 220) and (0x4001, 2) not in charger.writes
