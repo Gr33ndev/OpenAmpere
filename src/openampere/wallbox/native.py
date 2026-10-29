@@ -95,8 +95,8 @@ PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches whe
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
 LIMIT_AGAIN_S = 900.0  # a lower current a charger kept (e.g. while dimmed) is asked again after this (#465)
-PREPARE_AGAIN_S = 900.0
-LIFT_TRIES = 4  # a one-phase cap that does not go back is tried this often on letting go, 15 minutes apart (#478)  # a wallbox that did not take the fallback current is tried again after this (#465)
+PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
+LIFT_TRIES = 4  # a one-phase cap that does not go back is tried this often on letting go, 15 minutes apart (#478)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 ONE_PHASE_W = 4100.0  # OpenAmpere's one-phase cap (foxess.ONE_PHASE): never taken as the owner's power (#478)
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
@@ -651,7 +651,8 @@ class NativeWallboxes:
         if entry is None:  # a stop from the last time OpenAmpere controlled it still counts (#456)
             entry = {"current_a": reading.set_current_a, "started": False, "stopped": wb.id in self._stopped()}
         owned[wb.id] = {**entry, "wallbox": self._sealed(asdict(wb)), **changes}
-        owned[wb.id].pop("lift_tried", None)  # controlled again: a kept note of a cap counts as part of it (#478)
+        for key in ("lift_tried", "lift_tries"):  # controlled again: a kept note of a cap starts afresh (#478)
+            owned[wb.id].pop(key, None)
         try:
             self.runtime.storage.set_meta(OWNED, owned)
         except Exception as err:  # noqa: BLE001 - e.g. a full disk: control goes on
@@ -1269,6 +1270,8 @@ class NativeWallboxes:
                 self._log(wb, "release", None, False, "Die Wallbox hat ihre frühere Ladeleistung nicht wieder "
                           "angenommen. Stelle sie in der App „Fox Switch“ selbst wieder ein.")
                 self._disown(wb.id)
+                if (stop or entry.get("stopped")) and wb.id in {w.id for w in self.enabled()}:
+                    self._keep_stop(wb.id, max(live.stop_sent, 0.0))  # OpenAmpere's stop still counts (#454, #456)
                 live.want_on, live.short_since, live.limit_a, live.phases_set = 0, None, None, None
                 return True
             owned = self._owned()

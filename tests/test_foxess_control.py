@@ -832,3 +832,30 @@ async def test_a_work_mode_change_lifts_a_cap_on_a_charge_openampere_did_not_sta
         charger.regs[0x3000] = 1  # plug and charge, set in the FoxESS app
         await check(wallboxes, wb, t0 + 10, available=2000)
         assert charger.regs[0x3002] == 220 and not wallboxes._owned()
+
+
+async def test_giving_up_a_cap_keeps_openamperes_stop_and_tries_start_afresh(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        for _ in range(native_module.LIFT_TRIES - 1):
+            await wallboxes.release(wb, "Lademodus „von Hand“")
+            owned = wallboxes._owned()
+            owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+            runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wb.id in wallboxes._stopped()  # the stop OpenAmpere sent still counts
+
+
+async def test_the_count_of_tries_starts_afresh_when_controlled_again(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wallboxes._owned()[wb.id]["lift_tries"] == 1
+        wallboxes._own(wb, wallboxes.fresh(wb), started=True)  # controlled again
+        assert "lift_tries" not in wallboxes._owned()[wb.id] and "lift_tried" not in wallboxes._owned()[wb.id]
