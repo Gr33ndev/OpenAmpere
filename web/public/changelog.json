@@ -1,6 +1,44 @@
 {
   "versions": [
     {
+      "version": "0.36.1",
+      "date": "2026-10-29",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "saj",
+            "text": "Change the export limit only with a rated power that fits the type (#502)"
+          },
+          {
+            "scope": "saj",
+            "text": "Show the owner's work mode right after a restart while charging (#501)"
+          },
+          {
+            "scope": "saj",
+            "text": "Keep a work mode chosen right after a restart while charging still runs (#499)"
+          },
+          {
+            "scope": "saj",
+            "text": "Keep a work mode chosen while grid charging across a restart (#495)"
+          },
+          {
+            "scope": "saj",
+            "text": "Switch off OpenAmpere's charge slot also when the inverter's answer timed out (#494)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "agents",
+            "text": "A pull request is done when the ai review finds nothing more (#496)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.36.0",
       "date": "2026-10-29",
       "first": false,

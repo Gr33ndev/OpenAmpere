@@ -4,6 +4,20 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.36.1 (2026-10-29)
+
+### Behoben
+
+- **saj:** Change the export limit only with a rated power that fits the type (#502)
+- **saj:** Show the owner's work mode right after a restart while charging (#501)
+- **saj:** Keep a work mode chosen right after a restart while charging still runs (#499)
+- **saj:** Keep a work mode chosen while grid charging across a restart (#495)
+- **saj:** Switch off OpenAmpere's charge slot also when the inverter's answer timed out (#494)
+
+### Weitere Änderungen
+
+- **agents:** A pull request is done when the ai review finds nothing more (#496)
+
 ## 0.36.0 (2026-10-29)
 
 ### Behoben
@@ -151,9 +165,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - **wallbox:** No longer say that wallboxes are controlled only through evcc (#395)
 - Collect what we know per device in docs/devices with status and source (#385)
-
-## 0.29.0 (2026-10-14)
-
-### Neu
-
-- **saj:** Control battery settings, export limit and grid charging of SAJ inverters (#378)
