@@ -174,13 +174,14 @@ jobs:
           chmod -R u+rwx . 2>/dev/null || true
           find . -mindepth 1 -delete
           [ -z "$(ls -A)" ]
-      - if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
+      - id: checkout
+        if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - id: fresh
-        if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: rm -f .ai-review-summary.md
       - id: retry
         if: ${{ !cancelled() && steps.fresh.outcome == 'success' }}
@@ -210,3 +211,10 @@ jobs:
           fi
           # a re-run updates the comment of the earlier run
           gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body-file ai-review-summary.md
+      - name: Empty the workspace
+        # the post step of actions/checkout runs git in .git to remove its settings, and the review may have changed
+        # .git/config (e.g. core.fsmonitor): without a .git it runs nothing
+        if: ${{ always() }}
+        run: |
+          chmod -R u+rwx . 2>/dev/null || true
+          find . -mindepth 1 -delete
