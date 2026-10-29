@@ -29,6 +29,9 @@ STATUS = {0: "idle", 1: "connected", 2: "starting", 3: "charging", 4: "paused", 
 WORK_MODE = {0: "controlled", 1: "plug_and_charge", 2: "locked"}
 WORK_MODE_REGISTER = 0x3000  # read/write, function code 16 (FoxESS EV Charger Modbus TCP protocol V1.6, #318, #463)
 MAX_CURRENT = 0x3001  # u16, 0.1 A: the current setpoint, read/write
+MAX_POWER = 0x3002  # u16, 0.1 kW: the power setpoint; with automatic switching it also selects the phases (#478)
+ONE_PHASE = 41  # 4.1 kW: below the 4.2 kW from which the charger charges on three phases
+THREE_PHASES_W = 4200.0  # from this power setpoint the charger charges on three phases (protocol V1.6)
 SESSION = 0x4001  # write only (function code 6): 1 start, 2 stop
 PREPARE = {0x3005: 60, 0x3006: 60}  # command validity 60 s (its maximum), fallback current 6.0 A (#318)
 HEARTBEAT_S = 25.0  # well within the validity of 60 s
@@ -101,9 +104,10 @@ class FoxEssChargerLive:
     work_modes = {mode: value for value, mode in WORK_MODE.items()}  # a setting the owner changes (#464)
     work_mode_register = WORK_MODE_REGISTER
     controllable = True  # real control once the owner agrees, per wallbox (#465)
-    writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, *PREPARE})  # function code 16, read back
+    writable = frozenset({WORK_MODE_REGISTER, MAX_CURRENT, MAX_POWER, *PREPARE})  # function code 16, read back
     write_only = frozenset({SESSION})  # function code 6, written after the others
     prepare = PREPARE
+    three_phases_w = THREE_PHASES_W
     heartbeat_s = HEARTBEAT_S
     # its other modes only simulate the control (#440): what OpenAmpere would set goes into the control log
     simulated = True
@@ -120,6 +124,16 @@ class FoxEssChargerLive:
         return {MAX_CURRENT: amps * 10}
 
     @staticmethod
+    def phase_power(phases: int, reading: Reading, owner_w: float | None = None) -> dict[int, int]:
+        """The power setpoint that makes a charger with automatic switching use these phases (#478): just below the
+        three-phase threshold for one phase; for three the power the owner had set (owner_w, from before OpenAmpere
+        wrote it) or else its highest power. Empty when neither is known."""
+        if phases == 1:  # never above a lower limit of the owner
+            return {MAX_POWER: min(ONE_PHASE, round(owner_w / 100)) if owner_w else ONE_PHASE}
+        back = owner_w or reading.max_power_w
+        return {MAX_POWER: round(back / 100)} if back else {}
+
+    @staticmethod
     def start(on: bool) -> dict[int, int]:
         return {SESSION: 1 if on else 2}
 
@@ -129,6 +143,7 @@ class FoxEssChargerLive:
         status = values.get(0x1003)
         r.state = LIVE_STATE.get(status, "unknown") if status is not None else "unknown"
         r.connected = status in PLUGGED
+        r.switching_phases = status == 9
         r.voltage_v = [scaled(values, a, 0.1) for a in (0x1008, 0x1009, 0x100A)]
         r.current_a = [scaled(values, a, 0.1) for a in (0x100B, 0x100C, 0x100D)]
         voltages = [v for v in r.voltage_v if v is not None]
@@ -151,4 +166,6 @@ class FoxEssChargerLive:
         r.work_mode = WORK_MODE.get(values[0x3000]) if 0x3000 in values else None
         r.phase_switching = bool(values[0x300A]) if 0x300A in values else None
         r.phase_switch_min = values.get(0x300B)
+        r.max_power_w = scaled(values, 0x1011, 100.0)  # 0.1 kW
+        r.power_setpoint_w = scaled(values, MAX_POWER, 100.0)
         return r

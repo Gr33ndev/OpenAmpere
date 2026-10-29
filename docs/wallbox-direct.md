@@ -192,8 +192,13 @@ stops charging and sets the charging current. This is new and not yet tried on a
 - While the car charges OpenAmpere writes the current again every 25 seconds; these writes are not in the control log.
   After a stop OpenAmpere writes nothing more to the wallbox until it starts it again (the wallbox would otherwise
   start by itself).
-- OpenAmpere does not switch between one and three phases yet: solar charging needs enough surplus for 6 A on all
-  phases of the wallbox.
+- On a three-phase wallbox with automatic 1/3-phase switching switched on, OpenAmpere chooses the phases (#478): with
+  little surplus one phase (from about 1.5 kW), from about 4.3 kW three phases, switched at most as often as the
+  wallbox allows; **Sofort** always uses three. A power limit you set in the FoxESS app stays: OpenAmpere puts it
+  back when it stops a charge or lets go, and below 4.2 kW it does not switch phases at all. While OpenAmpere
+  controls the wallbox it decides the phases: change the power in the FoxESS app only after **Zurück zur Simulation**. If the wallbox does not
+  take it back, the control log asks you to set the power in the Fox Switch app. Without automatic switching it charges on all its phases, so solar
+  charging needs enough surplus for 6 A on all of them.
 - Under real control the work mode stays **Gesteuert**: OpenAmpere does not change it, and if it is changed in the
   FoxESS app during a charge OpenAmpere started, OpenAmpere sends a stop and lets go of the wallbox. Whether the
   wallbox follows a stop outside "Gesteuert" is not known yet; it may charge on as its new mode says.

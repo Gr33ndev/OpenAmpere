@@ -29,9 +29,12 @@ def no_gap(monkeypatch):
 
 
 @contextlib.asynccontextmanager
-async def charger_with_car(work_mode: int = 0):
+async def charger_with_car(work_mode: int = 0, switching: bool = False):
+    """switching: automatic 1/3-phase switching on, so real control also writes the power setpoint (#478); off for
+    the tests of the current, start and stop."""
     charger = SimulatedFoxCharger()
     charger.regs[0x3000] = work_mode
+    charger.regs[0x300A] = int(switching)
     charger.plug()
     server = await asyncio.start_server(charger.serve_client, "127.0.0.1", 0)
     try:
@@ -408,3 +411,451 @@ async def test_the_limit_of_the_charger_is_asked_again_after_a_while_and_with_an
         assert live.limit_a == 10
         wallboxes.set_mode(wb.id, "minpv")
         assert wallboxes.live[wb.id].limit_a is None
+
+
+# ---- phases (#478) ------------------------------------------------------------------------------------------------
+
+
+async def test_solar_with_little_surplus_charges_on_one_phase_and_switches_after_the_interval(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):  # 2 kW: enough for one phase, not for three
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert (0x3002, 41) in charger.writes and charger.writes[-1] == (0x4001, 1)
+        assert charger.regs[0x100B] > 0 and charger.regs[0x100C] == 0  # one phase charges
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 60, available=9000)  # plenty, but within the switch interval (12 min)
+        assert (0x3002, 220) not in charger.writes[written:]  # the heartbeat keeps one phase (41), no switch
+        await check(wallboxes, wb, t0 + 60 + 12 * 60, available=9000)
+        assert (0x3002, 220) in charger.writes[written:] and charger.regs[0x100C] > 0  # three phases now
+        assert not [e for e in entries(runtime, "phases") if e["result"].startswith(("Fehler", "Rücklesen"))]
+        assert [e["details"]["to"]["value"]["phases"] for e in entries(runtime, "phases")] == [3, 1]
+
+
+async def test_fast_charges_on_three_phases_and_the_heartbeat_keeps_the_power(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        assert charger.writes[2:] == [(0x3001, 160), (0x3002, 220), (0x4001, 1)]
+        await check(wallboxes, wb, t0 + 30)
+        assert charger.writes[-2:] == [(0x3001, 160), (0x3002, 220)]  # both refreshed
+
+
+async def test_no_power_setpoint_after_a_stop_and_three_phases_back_on_letting_go(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)]  # not left capped, then the stop
+        written = len(charger.writes)
+        for minute in range(1, 4):
+            await check(wallboxes, wb, t0 + 30 + minute * 60, available=0)
+        assert len(charger.writes) == written and charger.restarted_by_current == 0
+
+
+async def test_without_automatic_switching_the_power_setpoint_is_left_alone(tmp_path):
+    async with charger_with_car(switching=False) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=9000)
+        assert charger.regs[0x1003] == 3 and not [w for w in charger.writes if w[0] == 0x3002]
+
+
+async def test_test_mode_logs_a_planned_phase_switch_with_phases_and_current(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv", dry_run=True)
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        planned = entries(runtime, "phases")
+        assert planned and planned[0]["dry_run"] and planned[0]["details"]["to"]["value"] == {"phases": 1, "current_a": 7}  # 1.8 kW
+        assert charger.writes == []
+
+
+async def test_a_stop_of_a_one_phase_charge_writes_the_highest_power_back_first(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 60, available=0)
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)] and charger.restarted_by_current == 0
+
+
+async def test_after_a_restart_letting_go_still_lifts_the_one_phase_cap(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        restarted = NativeWallboxes(runtime)  # the same database, nothing in memory
+        rwb = restarted.wallboxes[0]
+        await restarted.read(rwb)
+        assert restarted._owned()[rwb.id]["phases"] == 1  # stored, so known after the restart
+        await restarted.release(rwb, "Lademodus „von Hand“")
+        assert charger.writes[-2:] == [(0x3002, 220), (0x4001, 2)]
+
+
+
+async def test_a_power_limit_of_the_owner_is_kept(tmp_path):
+    """#478: the owner limited the charger to 7 kW: three phases use that, and letting go puts back exactly that."""
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 70
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 70), (0x4001, 2)]
+
+
+async def test_without_switching_an_owner_limit_survives_stop_and_letting_go(tmp_path):
+    async with charger_with_car(switching=False) as (charger, port):
+        charger.regs[0x3002] = 70
+        _runtime, wallboxes, wb = setup(tmp_path, port)
+        t0 = time.time()
+        await check(wallboxes, wb, t0)
+        wallboxes.set_mode(wb.id, "off")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 10)
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert not [w for w in charger.writes if w[0] == 0x3002] and charger.regs[0x3002] == 70
+
+
+async def test_switching_turned_off_during_a_one_phase_charge_puts_the_power_back_once(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        charger.regs[0x300A] = 0  # the owner turned automatic switching off in the FoxESS app
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 40, available=2000)
+        assert (0x3002, 220) in charger.writes[before:]
+        written = len(charger.writes)
+        for i in range(1, 4):
+            await check(wallboxes, wb, t0 + 40 + 30 * i, available=2000)
+        assert (0x3002, 41) not in charger.writes[written:] and not wallboxes._owned()[wb.id].get("phases")
+
+
+async def test_an_owner_limit_below_three_phases_means_no_switching(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 37  # 3.7 kW, set by the owner for a weak supply
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert not [w for w in charger.writes if w[0] == 0x3002] and charger.regs[0x3002] == 37
+
+
+async def test_a_leftover_one_phase_cap_is_not_taken_as_the_owners_power(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 41  # left from an earlier control
+        runtime, wallboxes, wb = setup(tmp_path, port)  # "Schnell": three phases
+        await check(wallboxes, wb, time.time())
+        assert (0x3002, 220) in charger.writes and wallboxes._owned()[wb.id]["power_w"] == 22000
+
+
+async def test_the_switch_interval_holds_while_the_charger_switches(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=9000)  # three phases
+        assert charger.regs[0x3002] == 220
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0})  # switching, no power for a moment
+        written = len(charger.writes)
+        await check(wallboxes, wb, t0 + 40, available=4300)
+        assert (0x3002, 41) not in charger.writes[written:]
+
+
+async def test_letting_go_without_a_charge_still_lifts_the_own_cap(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs[0x3002] = 70  # the owner's 7 kW
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        assert charger.regs[0x3002] == 41
+        charger.regs.update({0x1003: 4, 0x100B: 0})  # the car paused by itself
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        assert charger.writes[-2:] == [(0x3002, 70), (0x4001, 2)]  # the owner's power, then a stop: no restart
+        assert charger.restarted_by_current == 0 and not wallboxes._owned()
+
+
+async def test_a_failed_switch_to_three_phases_keeps_the_stored_cap(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def refuses_more_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return bytes([16 | 0x80, 4])
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", refuses_more_power)
+        await check(wallboxes, wb, t0 + 60 + 12 * 60, available=9000)  # wants three phases, the write fails
+        assert wallboxes._owned()[wb.id]["phases"] == 1  # a restart now still knows the cap is OpenAmpere's
+
+
+async def test_a_cap_that_does_not_go_back_on_letting_go_is_kept_and_tried_again(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:  # answers the write but keeps 4.1 kW
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        await wallboxes.release_real("OpenAmpere wird beendet")
+        note = wallboxes._owned()[wb.id]
+        assert note["phases"] == 1 and not note["started"] and charger.regs[0x3002] == 41
+        written = len(charger.writes)
+        await wallboxes.release(wb, "Lademodus „von Hand“")  # too soon: nothing written
+        assert len(charger.writes) == written
+        monkeypatch.setattr(charger, "handle", handle)
+        note["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        wallboxes.runtime.storage.set_meta(native_module.OWNED, {wb.id: note})
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned()
+
+
+async def test_switching_control_off_keeps_trying_to_lift_the_cap(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        await wallboxes.set_control(wb.id, False, source="admin")
+        assert wb.id in wallboxes._retired and wallboxes._owned()[wb.id]["lift_tried"]
+        assert wallboxes.view()["wallboxes"][0]["controlled"] is False  # only the note waits
+        await wallboxes.retire()
+        assert wb.id in wallboxes._retired  # too soon: still waiting, not given up
+        monkeypatch.setattr(charger, "handle", handle)
+        owned = wallboxes._owned()
+        owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        wallboxes.runtime.storage.set_meta(native_module.OWNED, owned)
+        await wallboxes.retire()
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned() and wb.id not in wallboxes._retired
+
+
+async def test_a_failed_restore_after_switching_was_turned_off_is_not_repeated_every_poll(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        tries = []
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                tries.append(int.from_bytes(pdu[6:8], "big"))
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        charger.regs[0x300A] = 0
+        for i in range(6):  # three minutes
+            await check(wallboxes, wb, t0 + 40 + 30 * i, available=2000)
+        assert tries == [220]  # once, and the heartbeat no longer writes the cap
+        assert wallboxes._owned()[wb.id]["phases"] == 1  # the release still lifts it later
+
+
+async def test_a_phase_switch_in_progress_counts_as_a_running_charge(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=0)
+        assert charger.regs[0x1003] == 3
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0})  # switching phases
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 400, available=0)  # long after the start: a start would be due
+        assert (0x4001, 1) not in charger.writes[before:]
+        assert [w for w in charger.writes[before:] if w[0] == 0x3001]  # the heartbeat goes on
+
+
+async def test_a_car_at_zero_watts_on_status_3_is_not_counted_as_charging(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=0)
+        charger.regs.update({0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # status 3, the car draws nothing
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 30, available=0)
+        assert not [w for w in charger.writes[before:] if w[0] in (0x3001, 0x3002)]  # no heartbeat to a car at 0 W
+
+
+async def test_a_charger_that_resets_the_power_outside_a_charge_is_not_written_again_and_again(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.resets_power = True
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        live = wallboxes.live.setdefault(wb.id, native_module.Live())
+        t0 = time.time() - 7200
+        live.start_sent = t0 + 100  # the car waits for its own timer: no start for a while
+        for i in range(6):
+            await check(wallboxes, wb, t0 + 100 + i * 10, available=2000)
+        assert len([w for w in charger.writes if w[0] == 0x3002]) == 1  # once, not every poll
+        assert not [e for e in runtime.storage.control_log(100) if e["result"].startswith("Rücklesen")]
+
+
+async def test_letting_go_during_a_phase_switch_sends_no_stop_to_the_owners_charge(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs.update({0x1003: 3, 0x100B: 160, 0x100C: 160, 0x100D: 160, 0x100E: 110})  # it charges by itself
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=2000)  # too little for three phases: capped at one
+        assert charger.regs[0x3002] == 41 and not wallboxes._owned()[wb.id]["started"]
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0, 0x100E: 0})  # switching right now
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.writes[-1] == (0x3002, 220) and (0x4001, 2) not in charger.writes
+
+
+async def test_letting_go_of_a_paused_car_keeps_the_note_when_the_cap_does_not_go_back(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        charger.regs.update({0x1003: 4, 0x100B: 0})  # the car paused by itself
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wallboxes._owned()[wb.id]["phases"] == 1 and wallboxes._owned()[wb.id]["lift_tried"]
+
+
+async def test_the_cap_note_keeps_openamperes_stop(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")  # the stop goes out, the power does not
+        assert charger.writes[-1] == (0x4001, 2) and wallboxes._owned()[wb.id]["stopped"] is True
+        charger.regs[0x1003] = 5  # "finished" after OpenAmpere's stop: not a full car
+        monkeypatch.setattr(charger, "handle", handle)
+        wallboxes.set_mode(wb.id, "now")
+        wallboxes.live[wb.id].start_sent = float("-inf")
+        await check(wallboxes, wallboxes.wallboxes[0], t0 + 3600, available=0)
+        assert charger.writes[-1] == (0x4001, 1)  # started again
+
+
+def ignoring_power(charger):
+    """A charger that answers a write of 0x3002 but keeps its value."""
+    handle = charger.handle
+
+    def ignores(pdu: bytes) -> bytes:
+        if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+            return pdu[:5]
+        return handle(pdu)
+    return ignores
+
+
+async def capped(wallboxes, wb, t0):
+    for i in range(3):
+        await check(wallboxes, wb, t0 + i * 10, available=2000)
+
+
+async def test_a_cap_that_never_goes_back_is_given_up_with_a_hint(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        for _ in range(native_module.LIFT_TRIES - 1):
+            assert not await wallboxes.release(wb, "Lademodus „von Hand“")
+            owned = wallboxes._owned()
+            owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+            runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")  # the last try: given up
+        assert not wallboxes._owned()
+        assert any("Fox Switch" in e["result"] for e in runtime.storage.control_log(50))
+
+
+async def test_a_power_the_owner_set_meanwhile_is_not_overwritten(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")  # a note waits
+        monkeypatch.undo()
+        monkeypatch.setattr(modbus, "REQUEST_GAP_S", 0)
+        charger.regs[0x3002] = 50  # the owner set 5 kW in the FoxESS app
+        owned = wallboxes._owned()
+        owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.regs[0x3002] == 50 and not wallboxes._owned()  # the cap is gone, the owner's value stays
+
+
+async def test_a_work_mode_change_lifts_a_cap_on_a_charge_openampere_did_not_start(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs.update({0x1003: 3, 0x100B: 160, 0x100C: 160, 0x100D: 160, 0x100E: 110})  # it charges by itself
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=2000)
+        assert charger.regs[0x3002] == 41 and not wallboxes._owned()[wb.id]["started"]
+        charger.regs[0x3000] = 1  # plug and charge, set in the FoxESS app
+        await check(wallboxes, wb, t0 + 10, available=2000)
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned()
+
+
+async def test_giving_up_a_cap_keeps_openamperes_stop_and_tries_start_afresh(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        for _ in range(native_module.LIFT_TRIES - 1):
+            await wallboxes.release(wb, "Lademodus „von Hand“")
+            owned = wallboxes._owned()
+            owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+            runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wb.id in wallboxes._stopped()  # the stop OpenAmpere sent still counts
+
+
+async def test_the_count_of_tries_starts_afresh_when_controlled_again(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert wallboxes._owned()[wb.id]["lift_tries"] == 1
+        wallboxes._own(wb, wallboxes.fresh(wb), started=True)  # controlled again
+        assert "lift_tries" not in wallboxes._owned()[wb.id] and "lift_tried" not in wallboxes._owned()[wb.id]

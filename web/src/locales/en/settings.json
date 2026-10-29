@@ -366,7 +366,12 @@
     "wallboxWorkModeFrom": "{name}: work mode changed from “{before}” to “{mode}”.",
     "wallboxControlOn": "{name}: real control switched on. OpenAmpere now starts, stops and regulates charging itself.",
     "wallboxControlOff": "{name}: real control switched off. The charging modes are a simulation again.",
-    "wallboxPrepared": "{name}: fallback current set. If OpenAmpere fails, the wallbox charges on at 6 A after about a minute."
+    "wallboxPrepared": "{name}: fallback current set. If OpenAmpere fails, the wallbox charges on at 6 A after about a minute.",
+    "wallboxPhases": {
+      "one": "{name}: set to 1 phase at {current} A.",
+      "other": "{name}: set to {count} phases at {current} A."
+    },
+    "wallboxPhasesBack": "{name}: power of the wallbox set back, it chooses the phases itself again."
   },
   "controlPage": {
     "emptyState": "No changes yet.",
