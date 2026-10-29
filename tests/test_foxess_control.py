@@ -658,3 +658,39 @@ async def test_switching_control_off_keeps_trying_to_lift_the_cap(tmp_path, monk
         wallboxes.runtime.storage.set_meta(native_module.OWNED, owned)
         await wallboxes.retire()
         assert charger.regs[0x3002] == 220 and not wallboxes._owned() and wb.id not in wallboxes._retired
+
+
+async def test_a_failed_restore_after_switching_was_turned_off_is_not_repeated_every_poll(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        for i in range(3):
+            await check(wallboxes, wb, t0 + i * 10, available=2000)
+        handle = charger.handle
+
+        tries = []
+
+        def ignores_power(pdu: bytes) -> bytes:
+            if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+                tries.append(int.from_bytes(pdu[6:8], "big"))
+                return pdu[:5]
+            return handle(pdu)
+        monkeypatch.setattr(charger, "handle", ignores_power)
+        charger.regs[0x300A] = 0
+        for i in range(6):  # three minutes
+            await check(wallboxes, wb, t0 + 40 + 30 * i, available=2000)
+        assert tries == [220]  # once, and the heartbeat no longer writes the cap
+        assert wallboxes._owned()[wb.id]["phases"] == 1  # the release still lifts it later
+
+
+async def test_a_phase_switch_in_progress_counts_as_a_running_charge(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="minpv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=0)
+        assert charger.regs[0x1003] == 3
+        charger.regs.update({0x1003: 9, 0x100B: 0, 0x100C: 0, 0x100D: 0})  # switching phases
+        before = len(charger.writes)
+        await check(wallboxes, wb, t0 + 400, available=0)  # long after the start: a start would be due
+        assert (0x4001, 1) not in charger.writes[before:]
+        assert [w for w in charger.writes[before:] if w[0] == 0x3001]  # the heartbeat goes on

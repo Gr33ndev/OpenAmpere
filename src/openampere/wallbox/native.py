@@ -200,6 +200,7 @@ class Live:
     limit_a: int | None = None  # a lower current the charger kept while charging: its highest one for a while
     phases_set: int | None = None  # the phases OpenAmpere set through the power setpoint (#478)
     phases_at: float = float("-inf")  # when it set them
+    restore_at: float = float("-inf")  # last try to put the owner's power back after switching was turned off
     limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
@@ -922,6 +923,10 @@ class NativeWallboxes:
             if sim:
                 live.plan.state = "unknown"  # the plan stays: it goes on once the charger answers again
             return 0.0  # not reachable: nothing to decide, the wallbox keeps what it does
+        if real(wb) and reading.state == "charging" and not reading.charging:
+            # a charge the charger reports while it switches phases (status 9) or ramps up: running, so no start is
+            # sent in the middle of it and the heartbeat goes on (#478)
+            reading = replace(reading, charging=True)
         if real(wb) and self.runtime.config.control.dry_run and self._owned().get(wb.id, {}).get("started"):
             # test mode while a charge OpenAmpere started goes on: nothing keeps its watchdog alive, so it is stopped
             # and let go of (the safe direction, sent in test mode too)
@@ -969,13 +974,14 @@ class NativeWallboxes:
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         switching = plan is None and self.switches(wb, reading)
         if plan is None and not switching and real(wb) and self._capped_by_us(wb, live) and reading.charging \
-                and not self.runtime.config.control.dry_run:
+                and not self.runtime.config.control.dry_run and now - live.restore_at >= PREPARE_AGAIN_S:
             # automatic switching was turned off during a charge OpenAmpere capped at one phase: the owner's power
-            # back once, then 0x3002 is left alone (#478)
+            # back, then 0x3002 is left alone (#478). The heartbeat stops writing the cap either way; if the charger
+            # does not take it, the stored cap stays (the release lifts it) and this is tried again after a while
+            live.restore_at, live.phases_set = now, None
             restore = MODELS[wb.model].phase_power(3, reading, self._owner_power(wb))
             if restore and await self._write(wb, live, restore, "phases", {"phases": reading.installed_phases},
                                              "automatische Umschaltung der Wallbox ausgeschaltet"):
-                live.phases_set = None
                 self._own(wb, reading, phases=None)
         if plan is not None:
             phases = self._sim_phases(wb, plan, reading, available, now)
