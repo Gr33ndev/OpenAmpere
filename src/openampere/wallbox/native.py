@@ -278,6 +278,7 @@ class NativeWallboxes:
         self._retired_live: dict[str, Live] = {}
         self._restored = False
         self._unreadable: set[str] = set()  # stored keys that cannot be decrypted: tried and logged once
+        self._checked: dict[tuple, str | None] = {}  # address -> why it is refused (None: fine), see _refused()
 
     # ---- settings ------------------------------------------------------------------
 
@@ -297,13 +298,39 @@ class NativeWallboxes:
             log.warning("wallbox %s: the local key cannot be read, it has to be entered again", wb.get("name"))
         return {**wb, "local_key": opened}
 
+    def _refused(self, wb: NativeWallbox) -> str | None:
+        """Why save() would refuse the wallbox's address (outside the home network, the inverter's), None if it
+        would not. Remembered per address: reading the list must not look up a name every time."""
+        inverter = self.runtime.config.inverter
+        key = (wb.host, wb.port, inverter.host, inverter.port)
+        if key not in self._checked:
+            if len(self._checked) > 64:
+                self._checked.clear()
+            if not in_home_network(wb.host):
+                self._checked[key] = f"{wb.name}: Bitte die IP-Adresse der Wallbox im Heimnetz angeben."
+            elif wb.port is not None and self.is_inverter(wb.host, wb.port):
+                self._checked[key] = (f"{wb.name}: Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse "
+                                      "der Wallbox ein, du findest sie zum Beispiel in der Geräteliste deines Routers.")
+            else:
+                self._checked[key] = None
+        return self._checked[key]
+
+    def _checked_wallbox(self, raw) -> NativeWallbox:
+        """A stored wallbox checked like a change in the app (validate() and the address checks of save()); raises
+        ValueError, AttributeError or TypeError."""
+        wb, = validate([self._opened(raw)], keyless=(str(raw.get("id")),))
+        refused = self._refused(wb)
+        if refused:
+            raise ValueError(refused)
+        return wb
+
     @property
     def wallboxes(self) -> list[NativeWallbox]:
         """Checked like a change in the app also when read: the list may come from a restored backup."""
         found = []
         for raw in self.runtime.storage.get_meta("wallboxes") or []:
             try:
-                found += validate([self._opened(raw)], keyless=(str(raw.get("id")),))
+                found.append(self._checked_wallbox(raw))
             except (ValueError, AttributeError, TypeError) as err:
                 log.warning("stored wallbox ignored: %s", err)
         return found
@@ -1361,10 +1388,10 @@ class NativeWallboxes:
         for wb_id, entry in self._owned().items():
             if wb_id in current or wb_id in self._retired or not isinstance(entry, dict):
                 continue
-            try:
-                self._retired[wb_id] = NativeWallbox(**self._opened(entry.get("wallbox") or {}))
-            except TypeError:
-                pass
+            try:  # checked like a stored wallbox: never written to at an address the app would refuse
+                self._retired[wb_id] = self._checked_wallbox({**(entry.get("wallbox") or {}), "id": wb_id})
+            except (ValueError, AttributeError, TypeError) as err:
+                log.warning("wallbox OpenAmpere controlled not let go of: %s", err)
 
     # ---- view --------------------------------------------------------------------
 

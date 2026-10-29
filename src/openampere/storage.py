@@ -160,9 +160,12 @@ SETUP_LOCKED = "setup_locked"
 # api_tokens: tokens revoked since the backup must stay revoked. remote_command: whether OpenAmpere still has to
 # switch off the inverter's remote control right now (#141). grid_charging_reserve(_stops_at_reserve): a backup reserve
 # 0.23.1 raised and that is still to be set back (charging.RAISED_RESERVE, #320); a backup must neither bring back an
-# old one nor drop one that is pending.
+# old one nor drop one that is pending. wallbox_owned / wallbox_stopped: which wallbox charges OpenAmpere started and
+# stopped (wallbox/native.py, #465, #456), the counterpart of remote_command: a backup must neither make OpenAmpere
+# stop a charge it did not start nor forget one it did.
 KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "consumer_switched_on",  # last: #243
-                   "known_devices", SETUP_LOCKED, "grid_charging_reserve", "grid_charging_stops_at_reserve")
+                   "known_devices", SETUP_LOCKED, "grid_charging_reserve", "grid_charging_stops_at_reserve",
+                   "wallbox_owned", "wallbox_stopped")
 SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26
 
 
@@ -373,6 +376,25 @@ def _audited_changes(current: dict, restored: dict) -> dict:
               for key in AUDITED}
     changed = {key: value for key, value in values.items() if value[0] != value[1]}
     return {"from": {k: v[0] for k, v in changed.items()}, "to": {k: v[1] for k, v in changed.items()}} if changed else {}
+
+
+def _kept_wallbox_control(restored, current) -> tuple[object, list[dict]]:
+    """Real control of a wallbox (#465) only after the owner agreed in the app: each restored wallbox keeps the
+    switch of the running installation's wallbox with the same id, off for one it does not have. Returns the
+    wallboxes to restore and the switches the backup had differently, for the control log."""
+    if not isinstance(restored, list):
+        return restored, []  # nothing the app reads as wallboxes (wallbox/native.py checks it when reading)
+    running = {str(wb.get("id")): bool(wb.get("control")) for wb in current or [] if isinstance(wb, dict)}
+    kept, changes = [], []
+    for wb in restored:
+        if isinstance(wb, dict):
+            control = running.get(str(wb.get("id")), False)
+            if bool(wb.get("control")) != control:
+                changes.append({"id": str(wb.get("id")), "name": str(wb.get("name"))[:40],
+                                "backup": bool(wb.get("control")), "kept": control})
+            wb = {**wb, "control": control}
+        kept.append(wb)
+    return kept, changes
 
 
 def check_backup(path: str | Path) -> None:
@@ -707,6 +729,7 @@ class Storage:
         with self._lock:
             keep = {key: self._get_meta(key) for key in KEEP_ON_RESTORE}
             current = self.get_settings()
+            current_wallboxes = self._get_meta("wallboxes")
             revision = int(self._get_meta("settings_revision") or 0)
         staged = upload.with_name(f"{upload.name}.copy")  # an upload's name: removed at the start if left over
         if upload.stat().st_size > shutil.disk_usage(upload.parent).free:
@@ -726,11 +749,19 @@ class Storage:
                                         "Bitte eine andere Sicherung wählen.")
                 if settings is not None:
                     restored = settings(restored, current)
+                row = db.execute("SELECT value FROM meta WHERE key='wallboxes'").fetchone()
+                wallboxes, wallbox_control = _kept_wallbox_control(json.loads(row[0]) if row else None,
+                                                                   current_wallboxes)
+                if wallbox_control:
+                    log.warning("restore: real control of %d wallbox(es) kept as it is, not taken from the backup",
+                                len(wallbox_control))
                 # update_latest: what the app shows as a new version, with a link, is looked up again
                 values = {**keep, "settings": restored, "settings_revision": revision + 1,
-                          "database_damaged": None, "database_restored": None, "update_latest": None}
+                          "database_damaged": None, "database_restored": None, "update_latest": None,
+                          **({"wallboxes": wallboxes} if row else {})}
                 # also control switched on or off by the restore
                 details = {"from": {}, "to": {}, **_audited_changes(current, restored),
+                           **({"wallbox_control_kept": wallbox_control} if wallbox_control else {}),
                            **({"source": source} if source else {})}
                 result = "Datensicherung wiederhergestellt"
                 db.execute("INSERT INTO control_log VALUES (?,?,?,?,?)",
