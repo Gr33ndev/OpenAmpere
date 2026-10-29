@@ -459,6 +459,11 @@ class ExportLimitControl:
     async def read(self, shared: bool = False) -> dict:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
         limit = await self._shared.get(self._driver()) if shared else await self._read_limit()
+        device = self.runtime.collector.device
+        if shared and device and device.rated_power_unchecked_w is not None and limit["rated_power_w"] != device.rated_power_w:
+            # the rated power was confirmed since (#492): the limit and its step were converted with the one before
+            self._shared.invalidate()
+            limit = await self._shared.get(self._driver())
         return {**limit, **self._rule(), **self._rated_power(), "external_change": self.external_change}
 
     async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "", source: str | None = None) -> dict:

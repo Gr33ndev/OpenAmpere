@@ -132,14 +132,14 @@ async def test_no_export_limit_before_an_unchecked_rated_power_is_confirmed(tmp_
     async with server:
         try:
             control = ExportLimitControl(runtime)
-            current = await control.read()
-            assert current["rated_power_reported_w"] == 800 and not current["rated_power_confirmed"]
             with pytest.raises(ValueError, match="Typenschild"):
                 await control.write(500)
             assert sim.regs[saj.EXPORT_LIMIT_ADDRESS] == 1000 and sim.regs[saj.EXPORT_MODE_ADDRESS] == 0  # untouched
+            current = await control.read(shared=True)  # the app's shared reading, kept for a few seconds
+            assert current["rated_power_reported_w"] == 800 and not current["rated_power_confirmed"]
             await runtime.update_settings({"grid.rated_power_w": 8000, "grid.rated_power_reported_w": 800})
-            current = await control.read()
-            assert current["rated_power_confirmed"] and current["rated_power_w"] == 8000
+            current = await control.read(shared=True)  # not the reading kept from before the confirmation
+            assert current["rated_power_confirmed"] and current["rated_power_w"] == 8000 and current["step_w"] == 8
             assert (await control.write(4000))["result"] == "ok"
             assert sim.regs[saj.EXPORT_LIMIT_ADDRESS] == 500  # per mille of the confirmed rated power
             entry = runtime.storage.control_log(1)[0]

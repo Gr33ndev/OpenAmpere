@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, useOnServerChange, useResource } from "./api";
+import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
@@ -1341,7 +1341,8 @@ export function ExportLimitPage({ onBack }: PageProps) {
         <p className="hint">{t("settings.exportLimitPage.legalHint")}</p>
       </LearnMore>
 
-      <FeedInRuleCard onSaved={reload} />
+      {/* refreshAll: both cards keep the settings, and a save with an old revision is refused */}
+      <FeedInRuleCard onSaved={refreshAll} />
 
       {!current ? <LoadState error={error} onRetry={reload} /> : (
         <>
@@ -1368,7 +1369,7 @@ export function ExportLimitPage({ onBack }: PageProps) {
             <>
               {current.rated_power_reported_w != null && (
                 <RatedPowerCard reported={current.rated_power_reported_w} confirmed={!!current.rated_power_confirmed}
-                  rated={rated} onSaved={reload} />
+                  rated={rated} onSaved={refreshAll} />
               )}
               <div className="section-title">{t("settings.exportLimitPage.newLimit")}</div>
               {(rule === "limit_60" || rule === "limit_70") && !kwp && (
