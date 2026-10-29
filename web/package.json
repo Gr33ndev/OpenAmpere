@@ -2,7 +2,7 @@
   "name": "openampere-web",
   "private": true,
   "license": "MIT",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

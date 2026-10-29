@@ -1,6 +1,69 @@
 {
   "versions": [
     {
+      "version": "0.35.0",
+      "date": "2026-10-29",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "wallbox",
+            "text": "Switch the foxess charger between one and three phases (#479)"
+          },
+          {
+            "scope": "import",
+            "text": "Say that the state of charge of old days comes in step 2 (#477)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Control the foxess ac ev charger for real once its owner agrees (#472)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Set the work mode of a foxess charger to unlock it (#470)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "web",
+            "text": "Explain a live connection that fails behind a reverse proxy (#474)"
+          },
+          {
+            "scope": "report",
+            "text": "Show the imported state of charge in the power day view (#473)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Say when the evcc sponsor token has expired (#466)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Check whether the grid operator needs the old smartbox (#475)"
+          },
+          {
+            "scope": null,
+            "text": "Mark saj reading as confirmed on the 3p-x e2 (#471)"
+          },
+          {
+            "scope": "foxess",
+            "text": "Add the write registers of the ac ev charger (#467)"
+          },
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#461)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump react-dom from 19.3.0 to 19.3.1 in /web (#458)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.34.0",
       "date": "2026-10-22",
       "first": false,

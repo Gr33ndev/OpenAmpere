@@ -4,6 +4,29 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.35.0 (2026-10-29)
+
+### Neu
+
+- **wallbox:** Switch the foxess charger between one and three phases (#479)
+- **import:** Say that the state of charge of old days comes in step 2 (#477)
+- **wallbox:** Control the foxess ac ev charger for real once its owner agrees (#472)
+- **wallbox:** Set the work mode of a foxess charger to unlock it (#470)
+
+### Behoben
+
+- **web:** Explain a live connection that fails behind a reverse proxy (#474)
+- **report:** Show the imported state of charge in the power day view (#473)
+- **wallbox:** Say when the evcc sponsor token has expired (#466)
+
+### Weitere Änderungen
+
+- Check whether the grid operator needs the old smartbox (#475)
+- Mark saj reading as confirmed on the 3p-x e2 (#471)
+- **foxess:** Add the write registers of the ac ev charger (#467)
+- **deps:** Update Python dependencies (#461)
+- **deps-web:** Bump react-dom from 19.3.0 to 19.3.1 in /web (#458)
+
 ## 0.34.0 (2026-10-22)
 
 ### Neu
@@ -127,29 +150,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - Reload in the overwrite test only once no request is running (#375)
-
-## 0.27.0 (2026-10-14)
-
-### Behoben
-
-- **release:** List only the advisory a fix closes, not one it mentions (#371)
-- **restore:** Keep the current password and app accesses when a backup is restored (#367)
-- **updates:** Keep the health check working while the database is busy and harden the update helper (#361)
-- **auth:** Harden login, sessions, app access and pairing (#366)
-- **status:** Hide database file names and times without login, refuse credentials in the evcc address (#369)
-- **security:** Let the web app run only its own scripts (#368)
-- **install:** Keep the tailscale login link and evcc data private and check helpers against the release (#364)
-- **control:** Keep grid charging and surplus control within safe limits (#363)
-- Never send the cloud api key on after a redirect and limit online requests in size and time (#362)
-- **security:** Home Assistant integration does not check the server when pairing (GHSA-8f28-gpm6-w56g)
-- **security:** Going back to an older version restores old passwords, sessions and revoked tokens (GHSA-x8rj-ccv8-qvmp)
-- **security:** Dependency update workflow can run code from an updated package with a write token (GHSA-mh4w-fmr4-2wpw)
-- **security:** Update helper and installer accept an older release (GHSA-8893-x8jf-64v6)
-- **security:** Release workflow signs files from any tag when started by hand (GHSA-3xmc-fc67-chgq)
-- **security:** Manual Docker Compose layout lets the root Tailscale helper follow a link in the data folder (GHSA-3grw-j32m-8gcj)
-- **security:** Website build can replace the install script that owners run with sudo (GHSA-g83m-rrj2-cm2j)
-
-### Weitere Änderungen
-
-- Correct security notes on backups, home assistant control and relays (#365)
-- Check website texts for unsafe html and pin the release helper images (#360)
