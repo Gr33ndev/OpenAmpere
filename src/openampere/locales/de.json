@@ -182,6 +182,7 @@
     "logSwitchAddressesUnreadable": "Schaltadressen nicht lesbar, OpenAmpere kann es nicht ausschalten",
     "logSwitchedOffDespiteTestMode": "trotz Testmodus ausgeschaltet, OpenAmpere hatte es eingeschaltet: {reason}",
     "logTooLittleSurplus": "zu wenig Überschuss ({available} W)",
+    "logAboveLimit": "niedrigster Ladestrom der Wallbox ({lowest_a} A) über dem höchsten Ladestrom ({highest_a} A)",
     "logUnreachableForADay": "seit einem Tag nicht erreichbar, OpenAmpere schaltet es nicht mehr",
     "minimumSurplusMustBetween": "{name}: Der Mindestüberschuss muss zwischen 50 W und der maximalen Leistung liegen.",
     "minimumTimes0240": "{name}: Mindestzeiten 0–240 Minuten.",

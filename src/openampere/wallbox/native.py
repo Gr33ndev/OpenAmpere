@@ -168,7 +168,7 @@ class Plan:
     short_since: float | None = None
     logged_at: float = float("-inf")  # last entry in the control log: start, stop or the summary of current changes
     pending: dict | None = None  # current changes not logged yet: lowest and highest current, the last reason
-    state: str = "unknown"  # for the app: charging, waiting, no_surplus, off, finished, no_car, unknown
+    state: str = "unknown"  # for the app: charging, waiting, no_surplus, above_limit, off, finished, no_car, unknown
 
     def reading(self, real: Reading) -> Reading:
         """The charger as it would be under the planned control: charging as planned, with the planned current."""
@@ -206,6 +206,8 @@ class Live:
     limit_at: float = float("-inf")
     want_on: int = 0
     short_since: float | None = None  # solar charging: first check without enough surplus
+    # the wallbox's lowest step and the owner's highest current while no step fits it: not charged (#481)
+    above_limit: tuple[int, int] | None = None
     task: asyncio.Task | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -1085,8 +1087,13 @@ class NativeWallboxes:
             phases = reading.phases()
         if live.limit_a is not None and now - live.limit_at >= LIMIT_AGAIN_S:
             live.limit_a = None  # ask again for the current the mode wants
-        limit = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
-                    wb.mode_current_a.get(wb.mode, wb.max_current_a), live.limit_a or wb.max_current_a)
+        owner = min(wb.max_current_a, reading.max_current_a or wb.max_current_a,
+                    wb.mode_current_a.get(wb.mode, wb.max_current_a))
+        limit = min(owner, live.limit_a or owner)
+        # no step at or below the owner's highest current (the limit of the socket): no charge at all, never the
+        # lowest step above it (#481). Only below the lower current the charger kept itself is its lowest step used
+        above = None if any(s <= owner for s in reading.steps_a) else (min(reading.steps_a), owner)
+        live.above_limit = above if wb.mode != "off" else None
         steps = [s for s in reading.steps_a if s <= limit] or [min(reading.steps_a)]
         if (plan is not None or switching) and phases < reading.installed_phases:
             # one phase of a three-phase charger: only up to just below its lowest power on three phases, above that
@@ -1107,6 +1114,16 @@ class NativeWallboxes:
                 await start(False, "Lademodus „Aus“")
             if plan is not None:
                 plan.state = "off"
+            return 0.0
+        if above is not None:
+            # the safe direction: a running charge is stopped, none is started and no current is written (#481)
+            lowest_a, highest_a = above
+            reason = f"niedrigster Ladestrom der Wallbox ({lowest_a} A) über dem höchsten Ladestrom ({highest_a} A)"
+            if reading.charging:
+                await start(False, reason)
+            if plan is not None:
+                plan.state = "above_limit"
+            ctl.want_on, ctl.short_since = 0, None
             return 0.0
         target = fits[-1] if fits else steps[0]  # without enough surplus: the lowest step
         if wb.mode == "now":
@@ -1417,6 +1434,9 @@ class NativeWallboxes:
                 "controllable": bool(getattr(MODELS[wb.model], "controllable", False)),  # real control on request
                 # real control held back because the charger did not take the fallback current (#465)
                 "not_prepared": real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S,
+                # no current step fits the owner's highest current: not charged (#481)
+                "above_limit": None if live.above_limit is None or reading is None else {
+                    "lowest_a": live.above_limit[0], "limit_a": live.above_limit[1]},
                 "work_modes": list(getattr(MODELS[wb.model], "work_modes", None) or ()),  # settable (#464)
                 "simulation": self._plan_view(live.plan) if self.simulates(wb) else None,
             })

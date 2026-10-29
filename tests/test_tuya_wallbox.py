@@ -520,6 +520,28 @@ async def test_fast_mode_uses_the_owners_limit_and_the_steps_of_the_wallbox(tmp_
         assert charger.writes == [{"150": 10}, {"140": True}]  # 13 A is above the owner's 12 A
 
 
+@pytest.mark.parametrize("mode", ["now", "minpv"])
+async def test_no_charge_when_the_lowest_step_is_above_the_owners_limit(tmp_path, monkeypatch, mode):
+    # the owner's 6 A is the limit of the socket: never the wallbox's lowest step of 8 A above it (#481)
+    async with simulated(plugged=True, steps=(8, 10, 13, 16)) as (charger, port):
+        charger.current_a = 8
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode=mode)
+        wallboxes.save([{**vars(w), "max_current_a": 6} for w in wallboxes.wallboxes])
+        wb = wallboxes.wallboxes[0]
+        control = SurplusControl(runtime, None, wallboxes)
+        site(runtime, grid=-8000)
+        for now in range(0, 300, 10):
+            await wallboxes.read(wb)
+            await control.tick(now=now)
+        assert charger.writes == [] and not charger.charging
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6}
+
+        charger.charging = True  # a charge the wallbox started by itself is stopped (the safe direction)
+        await wallboxes.read(wb)
+        await control.tick(now=300)
+        assert charger.writes == [{"140": False}] and not charger.charging
+
+
 async def test_test_mode_only_logs_and_letting_go_restores_the_owners_current(tmp_path, monkeypatch):
     async with simulated(plugged=True) as (charger, port):
         charger.current_a = 13
