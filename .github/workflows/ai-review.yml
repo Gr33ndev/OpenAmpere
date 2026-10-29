@@ -95,8 +95,10 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
       - name: Remove a summary that came with the pull request
-        # the summary is posted by the workflow from this file: only what Claude writes in this run counts. The trace
-        # script is run from a copy: a file in the checkout may have been changed by the time it runs.
+        # the summary is posted by the workflow from this file: only what Claude writes in this run counts. Nothing in
+        # the checkout is trusted after the review (GHSA-mwqm-mf75-9jhh): its commands may write there, also to .git.
+        # So the trace script runs from a copy, the summary is copied out, a second attempt starts from a new checkout
+        # and the summary is posted from outside the checkout.
         run: |
           rm -f .ai-review-summary.md
           install -m 0755 scripts/ai-review-trace.sh "$RUNNER_TEMP/ai-review-trace.sh"
@@ -151,22 +153,38 @@ jobs:
         env:
           FILE: ${{ steps.review.outputs.execution_file }}
         run: '"$RUNNER_TEMP/ai-review-trace.sh" "$FILE"'
-      - name: Check the summary
+      - name: Keep the summary
         id: summary
         if: ${{ !cancelled() }}
-        run: |
-          # Claude may write only the summary: anything else changed in the checkout (also .git/config, hence no
-          # fsmonitor here) fails the run before the retry or another step uses it
-          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
-            echo "::error::The review changed files in the checkout."; exit 1
-          fi
-          if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; then
+        run: &keep |
+          # a regular file (no link, no pipe) starting with the heading, at most 64 KiB, copied out of the checkout
+          file=.ai-review-summary.md
+          if [ -f "$file" ] && [ ! -L "$file" ] && head -n 1 "$file" | tr -d '\r' | grep -qx '## AI review'; then
+            head -c 65536 "$file" > "$RUNNER_TEMP/ai-review-summary.md"
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::The review wrote no summary, it runs once more."
+            echo "::warning::The review wrote no summary."
           fi
+      - name: Start the second attempt from a new checkout
+        id: emptied
+        if: ${{ !cancelled() && steps.summary.outputs.ok != 'true' }}
+        # the first attempt may have changed anything in the checkout, also .git/config, which git runs commands from;
+        # a .git left over would be reused by actions/checkout, so the steps below need it gone
+        run: |
+          chmod -R u+rwx . 2>/dev/null || true
+          find . -mindepth 1 -delete
+          [ -z "$(ls -A)" ]
+      - id: checkout
+        if: ${{ !cancelled() && steps.emptied.outcome == 'success' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: fresh
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        run: rm -f .ai-review-summary.md
       - id: retry
-        if: ${{ !cancelled() && steps.summary.outcome == 'success' && steps.summary.outputs.ok != 'true' }}
+        if: ${{ !cancelled() && steps.fresh.outcome == 'success' }}
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         continue-on-error: true
         with: *review
@@ -175,19 +193,28 @@ jobs:
         env:
           FILE: ${{ steps.retry.outputs.execution_file }}
         run: '"$RUNNER_TEMP/ai-review-trace.sh" "$FILE"'
+      - name: Keep the summary of the second attempt
+        if: ${{ !cancelled() && steps.retry.outcome != 'skipped' }}
+        run: *keep
       - name: Post the summary
-        # fails when there is none, so a missing review shows as a failed check instead of a green one (#435)
-        if: ${{ !cancelled() && steps.summary.outcome == 'success' }}
+        # fails when there is none, so a missing review shows as a failed check instead of a green one (#435). Outside
+        # the checkout: gh reads nothing the review may have written
+        if: ${{ !cancelled() }}
+        working-directory: ${{ runner.temp }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
-            echo "::error::The review changed files in the checkout."; exit 1
-          fi
-          if ! { [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; }; then
+          if [ ! -s ai-review-summary.md ]; then
             echo "::error::The review wrote no summary. Remove the label ai-review and add it again to run it once more."
             exit 1
           fi
           # a re-run updates the comment of the earlier run
-          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body-file .ai-review-summary.md
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body-file ai-review-summary.md
+      - name: Empty the workspace
+        # the post step of actions/checkout runs git in .git to remove its settings, and the review may have changed
+        # .git/config (e.g. core.fsmonitor): without a .git it runs nothing
+        if: ${{ always() }}
+        run: |
+          chmod -R u+rwx . 2>/dev/null || true
+          find . -mindepth 1 -delete
