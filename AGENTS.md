@@ -55,6 +55,13 @@ CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo
 `AI review` (not required) comments on pull requests from this repository following `.github/claude-review.md`;
 when a rule here changes, check whether that file needs the change too.
 
+**A pull request is done when the AI review finds nothing more, not when CI is green.** After opening a pull request
+(or pushing to it), watch it in a loop: wait for the `AI review` run on the latest commit, read its comment, fix every
+finding that holds, push, and wait for the next review. A finding that does not hold gets an answer with the reason in
+the pull request; it then counts as handled. Stop only when every finding of the review of the latest commit is fixed
+or answered and CI is green. If no review runs (draft, fork or dependency-workflow pull request, or a failed `review`
+check: remove the label `ai-review` and add it again, once), say so instead of counting the pull request as done.
+
 ## Rules
 
 - **Issue first, then PR.** Small PRs, linked with `Fixes #123`. PRs are squash-merged.
