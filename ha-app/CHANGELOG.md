@@ -4,6 +4,24 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.36.0 (2026-10-29)
+
+### Behoben
+
+- **release:** List advisory fixes merged without their id, and write down the advisory steps (#488)
+- **wallbox:** Say which limit keeps the wallbox from charging and drop an old note (#483)
+- **wallbox:** Do not charge when the lowest step is above the owner's highest current (#482)
+- **security:** OCPP listener accepts connections from web pages and puts their data into the diagnostics report (GHSA-q2mp-55hm-346m)
+- **security:** Prompt injection in the AI review workflow can overwrite a script that runs with the workflow's tokens (GHSA-mwqm-mf75-9jhh)
+- **security:** Restoring a backup takes over wallbox ownership and real control without the checks of the app (GHSA-wx8q-mh5w-82jr)
+- **security:** A device in the home network can move a stored dé wallbox to its own address (GHSA-q7r4-hqhv-322x)
+- **security:** Device query and wallbox check put host names and the device's page title into the report unmasked (GHSA-jpg8-f7vx-4g36)
+- **security:** Website build lets a javascript: link in a translation pass the check for unsafe links (GHSA-w7hp-wv8j-xff9)
+
+### Weitere Änderungen
+
+- **ai-review:** Trust nothing in the checkout after the review (#484)
+
 ## 0.35.0 (2026-10-29)
 
 ### Neu
@@ -139,14 +157,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Neu
 
 - **saj:** Control battery settings, export limit and grid charging of SAJ inverters (#378)
-
-## 0.28.0 (2026-10-14)
-
-### Neu
-
-- **homeassistant:** Show the inverter firmware as a sensor that follows an update (#376)
-- **control:** Explain in the app when another device sets a change back (#374)
-
-### Weitere Änderungen
-
-- Reload in the overwrite test only once no request is running (#375)

@@ -1,6 +1,60 @@
 {
   "versions": [
     {
+      "version": "0.36.0",
+      "date": "2026-10-29",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "release",
+            "text": "List advisory fixes merged without their id, and write down the advisory steps (#488)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Say which limit keeps the wallbox from charging and drop an old note (#483)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Do not charge when the lowest step is above the owner's highest current (#482)"
+          },
+          {
+            "scope": "security",
+            "text": "OCPP listener accepts connections from web pages and puts their data into the diagnostics report (GHSA-q2mp-55hm-346m)"
+          },
+          {
+            "scope": "security",
+            "text": "Prompt injection in the AI review workflow can overwrite a script that runs with the workflow's tokens (GHSA-mwqm-mf75-9jhh)"
+          },
+          {
+            "scope": "security",
+            "text": "Restoring a backup takes over wallbox ownership and real control without the checks of the app (GHSA-wx8q-mh5w-82jr)"
+          },
+          {
+            "scope": "security",
+            "text": "A device in the home network can move a stored dé wallbox to its own address (GHSA-q7r4-hqhv-322x)"
+          },
+          {
+            "scope": "security",
+            "text": "Device query and wallbox check put host names and the device's page title into the report unmasked (GHSA-jpg8-f7vx-4g36)"
+          },
+          {
+            "scope": "security",
+            "text": "Website build lets a javascript: link in a translation pass the check for unsafe links (GHSA-w7hp-wv8j-xff9)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "ai-review",
+            "text": "Trust nothing in the checkout after the review (#484)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.35.0",
       "date": "2026-10-29",
       "first": false,
