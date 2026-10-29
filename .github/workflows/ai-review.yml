@@ -157,8 +157,10 @@ jobs:
         run: |
           # Claude may write only the summary: anything else changed in the checkout (also .git/config, hence no
           # fsmonitor here) fails the run before the retry or another step uses it
-          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
-            echo "::error::The review changed files in the checkout."; exit 1
+          changed=$(git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' || true)
+          if [ -n "$changed" ]; then
+            printf '%s\n' "$changed" | head -50
+            echo "::error::The review changed files in the checkout (listed above)."; exit 1
           fi
           if [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
@@ -182,8 +184,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          if git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' | grep -q .; then
-            echo "::error::The review changed files in the checkout."; exit 1
+          changed=$(git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' || true)
+          if [ -n "$changed" ]; then
+            printf '%s\n' "$changed" | head -50
+            echo "::error::The review changed files in the checkout (listed above)."; exit 1
           fi
           if ! { [ -s .ai-review-summary.md ] && head -n 1 .ai-review-summary.md | tr -d '\r' | grep -qx '## AI review'; }; then
             echo "::error::The review wrote no summary. Remove the label ai-review and add it again to run it once more."
