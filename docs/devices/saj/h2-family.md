@@ -37,7 +37,7 @@ All reads use FC03, all writes FC06 (one register at a time). Device address (un
 | Register | Meaning | Type, scale, sign | R/W | Status | Source |
 |---|---|---|---|---|---|
 | 0x8F00 | Device type code. Names: 0x0055 "AS2 3-6K", 0x0056 "AS2 5-10K", 0x005A "H2 3-6K S2", 0x005B "H2 5-10K S3", 0x005C "HS2 3-6K S2", 0x005D "HS2 5-10K S3", 0x005E "3P-X E2" (not in the protocol, see [its page](0x005e-3p-x-e2.md)) | U16 | R | confirmed | H2 protocol (0x0055–0x005D); community; read on a real 0x005E ([#334](https://github.com/Gr33ndev/OpenAmpere/issues/334), [#339](https://github.com/Gr33ndev/OpenAmpere/issues/339), [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379)) |
-| 0x8F01 | Rated power; used for the export limit and the charging power in % | U16, W | R | derived | community; [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379) |
+| 0x8F01 | Rated power; used for the export limit and the charging power in % | U16, W | R | open | OpenAmpere's reading since [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379), without a source; stanus74 names it "sub type" ([#492](https://github.com/Gr33ndev/OpenAmpere/issues/492)) |
 | 0x8F02 | Communication version (read with the block, not shown) | U16 | R | derived | community |
 | 0x8F03–0x8F0C | Serial number | 10 registers ASCII | R | derived | community |
 | 0x8F0D–0x8F16 | Product code; shown as serial number if the serial is empty | 10 registers ASCII | R | derived | community |
@@ -169,6 +169,7 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 | Detection after FoxESS (unit 247): SAJ at unit 1, then 2. Block 0x8F00 (29 registers), then a plausibility check: 0x4004 ≤ 9 and 0x406F ≤ 10000. | The address depends on the installation; the check rejects devices that answer 0x8F00 but are no SAJ hybrid. | initial driver; [devices.md](../../devices.md) |
 | Known codes get their name; other codes in 0x0050–0x006F are accepted with a warning in the log, read like an H2 and shown as "Typ 0x…"; codes outside the range are rejected. | New family members can be read without a release; a foreign device is not mistaken for an SAJ. | initial driver; [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379) |
 | Register map `saj_h2`, driver label "SAJ H2 / HS2"; the rated power comes from 0x8F01, not from the model name. | One type code covers several power classes. | [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379) |
+| 0x8F01 counts as rated power only within the power class in the name of the type (0x0055–0x005D, e.g. "5-10K": 5 to 10 kW). Otherwise (outside the class, 0x005E, an unknown type) the export limit is written only after the owner confirmed the rated power from the type plate in the app, also a lower one; the confirmed value is then the base of the per-mille conversion and of the charging power, as long as the device reports the value it was confirmed for. | The meaning of 0x8F01 has no source, and a wrong base makes the export limit wrong by the same factor while the read-back still matches. | [#492](https://github.com/Gr33ndev/OpenAmpere/issues/492) |
 | The live blocks are read with every poll: 0x4004 (14), 0x4022 (11), 0x4069 (20), 0x40A0 (14), 0x40BF (64), 0x4167 (16), 0xA000 (18). A block the device rejects is skipped. | Optional blocks (summed counters) must not break the reading. | initial driver |
 | Meter B (0x40A3) is read with every poll (it is in the block 0x40A0) but counted as solar power only when the owner switches on the second inverter in "Meine Anlage"; it is then shown as its own source. The app points to the switch when the meter reads power. | Not every system uses Meter B for an extra PV inverter, and the owner can name it. | [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419) |
 | No energy counter for Meter B is known: OpenAmpere integrates its power (not across gaps over 2 minutes) into a counter of its own. The quarter hours add it to PV (and so to the consumption) and keep it in `pv_external`; Home Assistant gets it as its own lifetime counter. | Without it, generation, consumption, self-sufficiency and savings would be too low. | [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419) |
@@ -200,6 +201,8 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 - Sign of the battery power 0x40A6 (+ = discharging per evcc) and of the grid power 0x40AD (+ = import per evcc) on a
   real device ([registers.md](../../registers.md), evcc-io/evcc saj-h2 template).
 - Whether the PV energy counter 0x40BF/0x40C5 covers all MPPTs ([registers.md](../../registers.md)).
+- Whether 0x8F01 is the rated power in W on every type: diagnostics reports from devices of different power classes
+  would settle it ([#492](https://github.com/Gr33ndev/OpenAmpere/issues/492)).
 - Size of the export limit step of 0x365A on a real device (per mille of 0x8F01 as in the protocol), and which value
   0x365C has on EKD units ([#377](https://github.com/Gr33ndev/OpenAmpere/issues/377)).
 - Whether extending a running charge slot keeps charging without a gap ([#377](https://github.com/Gr33ndev/OpenAmpere/issues/377),

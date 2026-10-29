@@ -182,6 +182,7 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
         if (key === "control.enabled") return to[key] ? t("settings.controlLog.controlOn") : t("settings.controlLog.controlOff");
         if (key === "control.dry_run") return to[key] ? t("settings.controlLog.testModeOn") : t("settings.controlLog.testModeOff");
         if (key === "grid.feed_in_rule") return t("settings.controlLog.feedInRule", { from: feedInRule(from[key]), to: feedInRule(to[key]) });
+        if (key === "grid.rated_power_w") return t("settings.controlLog.ratedPower", { from: watts(from[key] || undefined), to: watts(to[key] || undefined) });
         if (key === "pv.installed_kwp") return t("settings.controlLog.pvCapacity", { from: kwp(from[key]), to: kwp(to[key]) });
         if (key === "server.allowed_hosts") return t("settings.controlLog.ownAddresses", { from: hosts(from[key]), to: hosts(to[key]) });
         return t("settings.controlLog.setting", { name: key, from: str(from[key]) || unknown(), to: str(to[key]) || unknown() });

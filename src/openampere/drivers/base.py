@@ -46,6 +46,18 @@ class DeviceInfo:
     charging_continues_min: int | None = None
     # the backup work mode keeps its own reserve (SAJ 0x3651, #380) instead of the reserve of normal operation
     backup_reserve: bool = False
+    # the rated power the device reports when it does not fit its type (SAJ, #492): an export limit, converted with it,
+    # is written only after the owner confirmed the rated power from the type plate (confirm_rated_power)
+    rated_power_unchecked_w: int | None = None
+    rated_power_confirmed: bool = False
+
+    def confirm_rated_power(self, reported_w: int, confirmed_w: int) -> None:
+        """The owner's rated power replaces an unchecked one while the device still reports the value it was
+        confirmed for; otherwise the reported one counts again, unconfirmed."""
+        if self.rated_power_unchecked_w is None:
+            return
+        self.rated_power_confirmed = bool(confirmed_w) and reported_w == self.rated_power_unchecked_w
+        self.rated_power_w = confirmed_w if self.rated_power_confirmed else self.rated_power_unchecked_w
 
 
 @dataclass

@@ -450,10 +450,16 @@ class ExportLimitControl:
     async def _read_limit(self) -> dict:
         return asdict(await self._driver().read_export_limit())
 
+    def _rated_power(self) -> dict:
+        """A rated power that does not fit the device type, and whether the owner confirmed it (#492)."""
+        device = self.runtime.collector.device
+        return {"rated_power_reported_w": device.rated_power_unchecked_w if device else None,
+                "rated_power_confirmed": bool(device and device.rated_power_confirmed)}
+
     async def read(self, shared: bool = False) -> dict:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
         limit = await self._shared.get(self._driver()) if shared else await self._read_limit()
-        return {**limit, **self._rule(), "external_change": self.external_change}
+        return {**limit, **self._rule(), **self._rated_power(), "external_change": self.external_change}
 
     async def write(self, limit_w: int, *, confirmed: bool = False, reference: str = "", source: str | None = None) -> dict:
         """source: who asked for it if not the web app, e.g. an admin of Home Assistant through its sidebar (#305)."""
@@ -475,6 +481,11 @@ class ExportLimitControl:
             current = await self.read()
             if not current["supported"]:
                 raise ValueError("Die Einspeisebegrenzung lässt sich bei diesem Gerät nicht über Modbus ändern.")
+            if current["rated_power_reported_w"] is not None and not current["rated_power_confirmed"]:
+                # the limit is written as a share of the rated power: with a wrong one, also a lower limit is wrong
+                raise ValueError("Die Nennleistung, die dein Wechselrichter meldet, passt nicht zu seinem Typ. Bitte "
+                                 "bestätige zuerst die Nennleistung vom Typenschild, dann kannst du die "
+                                 "Einspeisebegrenzung ändern.")
             limit_w = int(limit_w)
             maximum = current["rated_power_w"] or 99_999
             if not 0 <= limit_w <= maximum:

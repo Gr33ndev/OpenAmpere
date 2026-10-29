@@ -372,7 +372,8 @@
       "one": "{name}: set to 1 phase at {current} A.",
       "other": "{name}: set to {count} phases at {current} A."
     },
-    "wallboxPhasesBack": "{name}: power of the wallbox set back, it chooses the phases itself again."
+    "wallboxPhasesBack": "{name}: power of the wallbox set back, it chooses the phases itself again.",
+    "ratedPower": "Rated power of the inverter changed from {from} to {to} (type plate)."
   },
   "controlPage": {
     "emptyState": "No changes yet.",
@@ -896,5 +897,16 @@
     "name": "Name",
     "nameHint": "For example “Garage”. Leave empty: “Second inverter”.",
     "title": "Second inverter"
+  },
+  "ratedPowerCard": {
+    "title": "Rated power of the inverter",
+    "unconfirmed": "Your inverter reports a rated power of {reported}. That does not fit its type. Since OpenAmpere writes the export limit as a share of the rated power, a wrong value would make the limit wrong as well. Please enter the rated power from the type plate, then you can change the limit.",
+    "confirmed": "You confirmed the rated power from the type plate: {power}. The inverter reports {reported}; OpenAmpere uses your value.",
+    "label": "Rated power on the type plate",
+    "hint": "The type plate is on the side of the inverter. Look for the rated power (often “Rated output power”), e.g. 8000 W.",
+    "placeholder": "e.g. 8000",
+    "range": "Please enter a value between 1000 and 100000 W.",
+    "confirm": "Confirm rated power",
+    "change": "Change rated power"
   }
 }

@@ -42,6 +42,7 @@ async def test_export_limit_rules(tmp_path):
         try:
             assert await control.read() == {"supported": True, "limit_w": 6000, "rated_power_w": 10000, "step_w": 1,
                                             "rule": "unknown", "installed_kwp": 0.0, "legal_max_w": None,
+                                            "rated_power_reported_w": None, "rated_power_confirmed": False,
                                             "external_change": None}
 
             with pytest.raises(ControlDisabled):

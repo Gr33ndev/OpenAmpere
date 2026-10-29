@@ -53,6 +53,7 @@ class Collector:
         self._storage_logged = 0.0
         self._last_today_pv: float | None = None
         self.external_pv = False  # count an extra PV inverter the inverter measures (setting pv.external, #419)
+        self.rated_power = (0, 0)  # (reported, confirmed) rated power the owner confirmed (grid.rated_power_w, #492)
         self.external_pv_w: float | None = None  # what that meter reads, also before the owner counts it
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
@@ -199,6 +200,7 @@ class Collector:
             try:
                 if not self.connected:
                     self.device = await self.driver.connect()
+                    self.device.confirm_rated_power(*self.rated_power)
                 started = time.monotonic()
                 snap = (await self.driver.read()).sanitize()
                 self.external_pv_w = snap.pv_external_power

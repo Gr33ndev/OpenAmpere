@@ -1310,7 +1310,8 @@ export function ExportLimitPage({ onBack }: PageProps) {
   const raising = current?.limit_w == null || (valid && target > current.limit_w);
   const needsConsent = raising && legalMax == null && rule !== "none";
   const unchanged = valid && target === current?.limit_w;
-  const editable = !!status?.control.enabled && !!current?.supported;
+  const ratedUnconfirmed = current?.rated_power_reported_w != null && !current.rated_power_confirmed;
+  const editable = !!status?.control.enabled && !!current?.supported && !ratedUnconfirmed;
   const canSubmit = editable && valid && !unchanged && (!needsConsent || (confirmed && reference.trim().length >= 3));
   const pct = (w: number | null | undefined) =>
     (kwp && w != null ? ` (${t("settings.exportLimitPage.percentOfPv", { percent: Math.round(w / (kwp * 10)) })})` : "");
@@ -1365,6 +1366,10 @@ export function ExportLimitPage({ onBack }: PageProps) {
 
           {current.supported && (
             <>
+              {current.rated_power_reported_w != null && (
+                <RatedPowerCard reported={current.rated_power_reported_w} confirmed={!!current.rated_power_confirmed}
+                  rated={rated} onSaved={reload} />
+              )}
               <div className="section-title">{t("settings.exportLimitPage.newLimit")}</div>
               {(rule === "limit_60" || rule === "limit_70") && !kwp && (
                 <Notice kind="info">{t("settings.exportLimitPage.enterPvCapacity")}</Notice>
@@ -1432,6 +1437,50 @@ export function ExportLimitPage({ onBack }: PageProps) {
         </Dialog>
       )}
     </SubPage>
+  );
+}
+
+/** The rated power an inverter reports that does not fit its type: the export limit is a share of it, so the owner
+ * confirms it from the type plate before the limit can be changed (#492). */
+function RatedPowerCard({ reported, confirmed, rated, onSaved }: { reported: number; confirmed: boolean; rated: number | null; onSaved: () => void }) {
+  const { save } = useSettings();
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const watts = parseWatts(value);
+  const valid = Number.isFinite(watts) && watts >= 1000 && watts <= 100_000;
+  const submit = async () => {
+    setBusy(true);
+    try {
+      if (await save({ "grid.rated_power_w": watts, "grid.rated_power_reported_w": reported })) {
+        setValue("");
+        onSaved();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div className="section-title">{t("settings.ratedPowerCard.title")}</div>
+      {confirmed ? (
+        <Notice kind="info">{t("settings.ratedPowerCard.confirmed", { power: watt(rated), reported: watt(reported) })}</Notice>
+      ) : (
+        <Notice kind="warn">{t("settings.ratedPowerCard.unconfirmed", { reported: watt(reported) })}</Notice>
+      )}
+      <div className="card form">
+        <Field label={t("settings.ratedPowerCard.label")} hint={t("settings.ratedPowerCard.hint")}>
+          <div className="input-unit">
+            <input className="input" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)}
+              placeholder={t("settings.ratedPowerCard.placeholder")} />
+            <span>W</span>
+          </div>
+        </Field>
+        {!valid && value.trim() !== "" && <p className="hint">{t("settings.ratedPowerCard.range")}</p>}
+        <Button busy={busy} disabled={!valid} onClick={() => void submit()}>
+          {confirmed ? t("settings.ratedPowerCard.change") : t("settings.ratedPowerCard.confirm")}
+        </Button>
+      </div>
+    </>
   );
 }
 
