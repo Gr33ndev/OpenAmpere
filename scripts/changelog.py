@@ -113,12 +113,16 @@ def with_advisories(log: str, advisories: dict[str, str]) -> str:
 
 
 def advisory_commits(path: Path = ADVISORY_COMMITS) -> dict[str, str]:
-    """changelog/advisory-commits.json; stops the release when a listed commit is not in the history (a typo would
-    leave the advisory out of the changelog without a word)."""
+    """changelog/advisory-commits.json; stops the release when a listed commit is not in the history or is not a fix
+    merged from an advisory (a typo or a wrong line would leave the advisory out of the changelog without a word)."""
     advisories = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     for commit in advisories:
-        if subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=ROOT, capture_output=True).returncode:
+        done = subprocess.run(["git", "log", "-1", "--format=%s", f"{commit}^{{commit}}", "--"], cwd=ROOT,
+                              capture_output=True, text=True)
+        if done.returncode:
             raise SystemExit(f"{path.name}: commit {commit} is not in the history")
+        if done.stdout.strip() != ADVISORY_MERGE:
+            raise SystemExit(f"{path.name}: commit {commit} is not a \"{ADVISORY_MERGE}\"")
     return advisories
 
 

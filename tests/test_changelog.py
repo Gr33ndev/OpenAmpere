@@ -123,6 +123,12 @@ def test_a_listed_commit_that_does_not_exist_stops_the_release(tmp_path):
     listed.write_text(json.dumps({"0" * 40: "GHSA-q7r4-hqhv-322x"}))
     with pytest.raises(SystemExit, match="not in the history"):
         changelog["advisory_commits"](listed)
+    head = subprocess.run(["git", "log", "-1", "--format=%H%x1f%s"], cwd=ROOT, capture_output=True, text=True)
+    commit, subject = head.stdout.strip().split("\x1f")
+    if subject != "Merge commit from fork":  # a normal commit listed by mistake
+        listed.write_text(json.dumps({commit: "GHSA-q7r4-hqhv-322x"}))
+        with pytest.raises(SystemExit, match="is not a"):
+            changelog["advisory_commits"](listed)
 
 
 def test_every_listed_advisory_commit_is_a_merge_from_a_fork():

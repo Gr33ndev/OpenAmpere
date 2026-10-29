@@ -24,7 +24,7 @@ describes the process for reporters; this page has the steps and the things that
 - **One temporary private fork per advisory** (`POST …/security-advisories/<GHSA>/forks`). Never push a security fix
   to this repository or open a public pull request for it before the release: the fix would show the vulnerability.
 - The branch in the fork is the current `main` plus only this fix, so the forks can be merged in any order. Tests go
-  into a **new file per advisory** (`tests/test_ghsa_xxxx_xxxx_xxxx.py`); appending to a shared test file conflicts
+  into a **new file per advisory** (`tests/test_ghsa_<topic>.py`); appending to a shared test file conflicts
   with every other advisory.
 - **The commit message ends with the advisory id on a line of its own** (`GHSA-xxxx-xxxx-xxxx`). The merge arrives on
   `main` as one commit titled "Merge commit from fork", and `scripts/changelog.py` only lists it as a security fix
