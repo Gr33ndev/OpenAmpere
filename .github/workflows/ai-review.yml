@@ -95,11 +95,11 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
       - name: Remove a summary that came with the pull request
-        # the summary is posted by the workflow from this file: only what Claude writes in this run counts. The trace
-        # script is run from a copy: a file in the checkout may have been changed by the time it runs.
+        # the summary is posted by the workflow from this file: only what Claude writes in this run counts. The scripts
+        # below are run from a copy: a file in the checkout may have been changed by the time it runs.
         run: |
           rm -f .ai-review-summary.md
-          install -m 0755 scripts/ai-review-trace.sh "$RUNNER_TEMP/ai-review-trace.sh"
+          install -m 0755 scripts/ai-review-trace.sh scripts/ai-review-changed.sh "$RUNNER_TEMP/"
       - id: review
         uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
         # a failed first attempt gets a second one below, the check at the end decides
@@ -155,9 +155,9 @@ jobs:
         id: summary
         if: ${{ !cancelled() }}
         run: |
-          # Claude may write only the summary: anything else changed in the checkout (also .git/config, hence no
-          # fsmonitor here) fails the run before the retry or another step uses it
-          changed=$(git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' || true)
+          # Claude may write only the summary: anything else changed in the checkout fails the run before the retry or
+          # another step uses it (scripts/ai-review-changed.sh)
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh")
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
@@ -184,7 +184,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          changed=$(git -c core.fsmonitor=false status --porcelain --ignored | grep -vx '?? .ai-review-summary.md' || true)
+          changed=$("$RUNNER_TEMP/ai-review-changed.sh")
           if [ -n "$changed" ]; then
             printf '%s\n' "$changed" | head -50
             echo "::error::The review changed files in the checkout (listed above)."; exit 1
