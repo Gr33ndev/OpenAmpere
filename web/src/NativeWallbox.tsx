@@ -98,7 +98,6 @@ function planText(plan: WallboxSimulation): string {
   }
 }
 
-/** Steps a wallbox may offer, when it has not told its own yet (e.g. unplugged). */
 // what the owner has to change depends on where the highest current comes from (#481)
 function aboveLimitText(above: NonNullable<NativeWallbox["above_limit"]>): string {
   const values = { lowest: above.lowest_a, limit: above.limit_a };
@@ -107,6 +106,7 @@ function aboveLimitText(above: NonNullable<NativeWallbox["above_limit"]>): strin
   return t("devices.nativeWallbox.aboveLimit", values);
 }
 
+/** Steps a wallbox may offer, when it has not told its own yet (e.g. unplugged). */
 const STEPS = [6, 8, 10, 13, 16, 20, 25, 32];
 
 /** Currents to choose for a mode: the wallbox's steps up to the owner's highest current, the chosen one included. */

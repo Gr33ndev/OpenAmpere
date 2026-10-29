@@ -542,6 +542,20 @@ async def test_no_charge_when_the_lowest_step_is_above_the_owners_limit(tmp_path
         assert charger.writes == [{"140": False}] and not charger.charging
 
 
+async def test_the_note_names_the_wallboxs_own_maximum(tmp_path, monkeypatch):
+    # the dé wallbox set to at most 6 A in its own app, its steps from 8 A: changed there, not in OpenAmpere (#481)
+    async with simulated(plugged=True, steps=(8, 10, 13, 16)) as (charger, port):
+        charger.current_a, charger.max_current_a = 8, 6
+        runtime, wallboxes = setup(tmp_path, monkeypatch, port, mode="now")
+        wb = wallboxes.wallboxes[0]
+        control = SurplusControl(runtime, None, wallboxes)
+        site(runtime, grid=-8000)
+        await wallboxes.read(wb)
+        await control.tick(now=0)
+        assert charger.writes == []
+        assert wallboxes.view()["wallboxes"][0]["above_limit"] == {"lowest_a": 8, "limit_a": 6, "source": "wallbox"}
+
+
 async def test_the_note_on_the_lowest_step_names_its_limit_and_does_not_stay(tmp_path, monkeypatch):
     # the note says what to change (here the current of the mode) and goes once it no longer holds (#481)
     async with simulated(plugged=True, steps=(8, 10, 13, 16)) as (charger, port):
