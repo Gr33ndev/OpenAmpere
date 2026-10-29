@@ -52,6 +52,9 @@ ADVISORY_MERGE = "Merge commit from fork"
 # only an id on a line of its own, as every advisory fix ends: a fix that mentions an earlier advisory in its text
 # ("the rest of GHSA-…") must not list that one again (#370)
 GHSA = re.compile(r"^\s*(GHSA(?:-[23456789cfghjmpqrvwx]{4}){3})\s*$", re.MULTILINE)
+# fix commits merged from an advisory without its id on a line of their own (the message cannot be changed after the
+# merge): commit -> advisory, read as if the message ended with the id
+ADVISORY_COMMITS = SUMMARIES / "advisory-commits.json"
 
 
 def git(*args: str) -> str:
@@ -95,9 +98,21 @@ def parse(log: str, title=advisory_title) -> tuple[dict[str, list[dict]], list[d
     return groups, breaking
 
 
+def with_advisories(log: str, advisories: dict[str, str]) -> str:
+    """`git log --format=%H%x1f%s%x1f%b%x1e` output as parse() reads it, with the id of a listed advisory added to the
+    message of its fix commit."""
+    entries = []
+    for e in filter(None, (e.strip() for e in log.split("\x1e"))):
+        commit, _, rest = e.partition("\x1f")
+        entries.append(f"{rest}\n\n{advisories[commit]}" if commit in advisories else rest)
+    return "".join(f"{e}\x1e" for e in entries)
+
+
 def entry(version: str, date: str, prev: str | None, ref: str) -> dict:
     """One version: the commits after the previous tag up to ref."""
-    groups, breaking = parse(git("log", "--no-merges", "--format=%s%x1f%b%x1e", f"{prev}..{ref}" if prev else ref))
+    advisories = json.loads(ADVISORY_COMMITS.read_text(encoding="utf-8")) if ADVISORY_COMMITS.exists() else {}
+    log = git("log", "--no-merges", "--format=%H%x1f%s%x1f%b%x1e", f"{prev}..{ref}" if prev else ref)
+    groups, breaking = parse(with_advisories(log, advisories))
     if not prev:  # the full history is too long for a first release
         groups = {g: items if g == "feat" else [] for g, items in groups.items()}
     return {"version": version, "date": date, "first": prev is None, "groups": groups, "breaking": breaking}

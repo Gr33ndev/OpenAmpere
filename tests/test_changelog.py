@@ -4,6 +4,7 @@
 
 import json
 import runpy
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -105,6 +106,24 @@ def test_a_fix_merged_from_a_security_advisory_is_listed_with_the_advisory():
         {"scope": "security", "text": "Close security advisory GHSA-vrrc-53mr-hc3c"},
         {"scope": "security", "text": "Close security advisory GHSA-gfr8-g665-933w"}]
     assert groups["other"] == []
+
+
+def test_a_listed_fix_commit_without_the_id_is_listed_with_its_advisory():
+    """A fix merged without the advisory id on a line of its own: changelog/advisory-commits.json names it."""
+    raw = "aaa\x1fMerge commit from fork\x1fFix the search.\x1ebbb\x1ffix(web): other\x1f\x1e"
+    groups, _ = changelog["parse"](changelog["with_advisories"](raw, {"aaa": "GHSA-q7r4-hqhv-322x"}), title={}.get)
+    assert groups["fix"] == [{"scope": "security", "text": "Close security advisory GHSA-q7r4-hqhv-322x"},
+                             {"scope": "web", "text": "Other"}]
+    assert groups["other"] == []
+
+
+def test_every_listed_advisory_commit_is_a_merge_from_a_fork():
+    listed = json.loads((ROOT / "changelog" / "advisory-commits.json").read_text())
+    assert all(changelog["GHSA"].fullmatch(ghsa) for ghsa in listed.values())
+    for commit in listed:
+        subject = subprocess.run(["git", "log", "-1", "--format=%s", commit], cwd=ROOT, capture_output=True,
+                                 text=True).stdout.strip()
+        assert subject in ("Merge commit from fork", ""), commit  # "" in a shallow clone without that commit
 
 
 def test_an_advisory_only_mentioned_in_the_text_is_not_listed():
