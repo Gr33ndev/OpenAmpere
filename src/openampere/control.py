@@ -554,14 +554,19 @@ class ExportLimitControl:
     def _schedule_verify(self, limit_w: int, step: int = 1) -> None:
         if self._verify_task is not None:
             self._verify_task.cancel()
-        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w, step))
+        device = self.runtime.collector.device
+        rated = device.rated_power_w if device else None  # the base the limit was written with
+        self._verify_task = asyncio.get_running_loop().create_task(self._verify(limit_w, step, rated))
 
-    async def _verify(self, limit_w: int, step: int = 1) -> None:
+    async def _verify(self, limit_w: int, step: int, rated: int | None) -> None:
         async for _ in after_write():
             try:
-                now = (await self.read())["limit_w"]
+                current = await self.read()
             except Exception:  # noqa: BLE001
                 continue
+            if current["rated_power_w"] != rated:
+                return  # the owner confirmed another rated power (#492): the same register value is another limit now
+            now = current["limit_w"]
             if now is not None and not same_limit(now, limit_w, step):
                 self.external_change = {"expected": limit_w, "found": now}
                 self.runtime.storage.log_control("export_limit_check", {"from": {"export_limit_w": limit_w},

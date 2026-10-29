@@ -8,6 +8,7 @@ from datetime import datetime
 
 import pytest
 
+from openampere import control as control_module
 from openampere.charging import REMOTE_COMMAND, GridCharging
 from openampere.config import validate
 from openampere.control import BatteryControl, ExportLimitControl
@@ -123,6 +124,25 @@ def test_a_confirmed_rated_power_counts_only_for_the_value_it_was_confirmed_for(
     checked = DeviceInfo(manufacturer="SAJ", model="H2", rated_power_w=8000)
     checked.confirm_rated_power(8000, 6000)  # a rated power that fits its type is not replaced
     assert checked.rated_power_w == 8000 and not checked.rated_power_confirmed
+
+
+async def test_a_new_rated_power_after_a_write_is_no_change_by_another_device(tmp_path, monkeypatch):
+    """#492: the same per-mille value is another limit with another base; the check after the write must not report
+    it as overwritten."""
+    monkeypatch.setattr(control_module, "VERIFY_AFTER_S", (0.5,))
+    sim = SajSimulatedInverter(max_connections=3, rated_w=800)
+    server, runtime = await connected_runtime(tmp_path, sim)
+    async with server:
+        try:
+            await runtime.update_settings({"grid.rated_power_w": 8000, "grid.rated_power_reported_w": 800})
+            control = ExportLimitControl(runtime)
+            assert (await control.write(4000))["result"] == "ok"
+            await runtime.update_settings({"grid.rated_power_w": 10000})  # corrected from the type plate
+            await control._verify_task
+            assert control.external_change is None
+            assert not [e for e in runtime.storage.control_log() if e["action"] == "export_limit_check"]
+        finally:
+            await runtime.collector.stop()
 
 
 def test_a_tiny_rated_power_is_not_accepted():
