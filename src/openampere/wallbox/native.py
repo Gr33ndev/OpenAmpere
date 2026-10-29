@@ -95,7 +95,8 @@ PHASE_SWITCH_MIN = 5  # simulation: shortest time between two phase switches whe
 START_AGAIN_S = 300.0  # a car that does not start (full, or waiting for its own timer) is asked again after this
 STOP_SLACK_S = 60.0  # a read just after a stop may still show the car charging (the state follows with a later read)
 LIMIT_AGAIN_S = 900.0  # a lower current a charger kept (e.g. while dimmed) is asked again after this (#465)
-PREPARE_AGAIN_S = 900.0  # a wallbox that did not take the fallback current is tried again after this (#465)
+PREPARE_AGAIN_S = 900.0
+LIFT_TRIES = 4  # a one-phase cap that does not go back is tried this often on letting go, 15 minutes apart (#478)  # a wallbox that did not take the fallback current is tried again after this (#465)
 GIVE_UP_S = 24 * 3600.0  # a removed wallbox that stays unreachable is given up after a day
 ONE_PHASE_W = 4100.0  # OpenAmpere's one-phase cap (foxess.ONE_PHASE): never taken as the owner's power (#478)
 OWNED = "wallbox_owned"  # meta: id -> {"current_a": owner's current, "started": bool, "wallbox": sealed config}
@@ -697,6 +698,31 @@ class NativeWallboxes:
         power limit the owner set is never counted."""
         return live.phases_set == 1 or (self._owned().get(wb.id) or {}).get("phases") == 1
 
+    def _cap_on_charger(self, wb: NativeWallbox, live: Live, reading: Reading) -> bool:
+        """OpenAmpere's one-phase cap is still on the charger (#478). If the charger reads another power setpoint, read
+        after the cap was written, the owner (or someone else) set it since: the cap is gone and forgotten, and the
+        owner's new value is never overwritten. Unknown (not read, or read before the cap): taken as still there."""
+        if not self._capped_by_us(wb, live):
+            return False
+        model = MODELS[wb.model]
+        cap = next(iter(model.phase_power(1, reading, self._owner_power(wb)).values()), None)
+        if reading.power_setpoint_w is None or cap is None or live.updated <= live.phases_at \
+                or round(reading.power_setpoint_w / 100) == cap:
+            return True
+        live.phases_set = None
+        owned = self._owned()
+        entry = owned.get(wb.id)
+        if entry is not None:
+            if entry.get("lift_tried") is not None:  # only the note was left: nothing more to do
+                owned.pop(wb.id)
+            else:
+                owned[wb.id] = {**entry, "phases": None}
+            try:
+                self.runtime.storage.set_meta(OWNED, owned)
+            except Exception as err:  # noqa: BLE001 - control goes on
+                log.warning("could not forget the power cap of the wallbox %s: %s", wb.name, err)
+        return False
+
     def _disown(self, wallbox_id: str) -> None:
         owned = self._owned()
         if owned.pop(wallbox_id, None) is not None:
@@ -895,7 +921,7 @@ class NativeWallboxes:
                 live.stop_sent = now
         live.since, live.want_on, live.short_since = now, 0, None
         values = MODELS[wb.model].start(on)
-        if not on and real(wb) and self._capped_by_us(wb, live) and reading.charging:
+        if not on and real(wb) and reading.charging and self._cap_on_charger(wb, live, reading):
             # whether the charger keeps the power setpoint after a stop is open (#478): the owner's power back with the
             # stop, written before it while the car still charges, so a later charge is not capped at one phase
             values = {**MODELS[wb.model].phase_power(3, reading, self._owner_power(wb)), **values}
@@ -945,7 +971,7 @@ class NativeWallboxes:
         if real(wb) and now - live.unprepared_at < PREPARE_AGAIN_S:
             # it did not take the fallback current: not controlled for a while (#465); a charge OpenAmpere started is
             # stopped and let go of, since its watchdog would fall back to an unknown current (the stop skips the check)
-            if self._owned().get(wb.id, {}).get("started"):
+            if self._owned().get(wb.id, {}).get("started") or self._capped_by_us(wb, live):
                 await self.release(wb, "Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen, deshalb stoppt "
                                        "OpenAmpere das Laden und gibt die Wallbox ab.")
             return reading.power_w
@@ -953,7 +979,7 @@ class NativeWallboxes:
             # start and stop work only in the charger's work mode "controlled" (#465): the app asks for it. Changed
             # (e.g. in the FoxESS app) during a charge OpenAmpere started: stopped and let go of, nothing would keep
             # its watchdog alive
-            if self._owned().get(wb.id, {}).get("started"):
+            if self._owned().get(wb.id, {}).get("started") or self._capped_by_us(wb, live):
                 await self.release(wb, "Der Betriebsmodus der Wallbox ist nicht mehr „Gesteuert“, deshalb gibt "
                                        "OpenAmpere die Wallbox ab.")
             return reading.power_w
@@ -982,7 +1008,7 @@ class NativeWallboxes:
             reading = plan.reading(reading)
         ctl = plan if plan is not None else live  # the timers of the decision: the plan's in a simulation
         switching = plan is None and self.switches(wb, reading)
-        if plan is None and not switching and real(wb) and self._capped_by_us(wb, live) and reading.charging \
+        if plan is None and not switching and real(wb) and reading.charging and self._cap_on_charger(wb, live, reading) \
                 and not self.runtime.config.control.dry_run and now - live.restore_at >= PREPARE_AGAIN_S:
             # automatic switching was turned off during a charge OpenAmpere capped at one phase: the owner's power
             # back, then 0x3002 is left alone (#478). The heartbeat stops writing the cap either way; if the charger
@@ -1218,7 +1244,8 @@ class NativeWallboxes:
         quiet = reading.set_current_a is None and model.protocol == "modbus"
         if isinstance(owner, int) and owner != reading.set_current_a and (reading.charging or not quiet):
             values.update(model.set_current(owner))
-        restore = self._capped_by_us(wb, live) and bool(getattr(model, "phase_power", None))
+        restore = bool(getattr(model, "phase_power", None)) and self._cap_on_charger(wb, live, reading)
+        entry = self._owned().get(wb.id) or entry  # without a forgotten cap
         if restore:
             # not left capped at one phase by OpenAmpere, also after a restart (stored): the owner's power back (#478),
             # written before a stop; a power limit the owner set stays as it is. With a car connected that does not
@@ -1235,9 +1262,19 @@ class NativeWallboxes:
         if restore and not written:
             # the owner's power did not read back (e.g. the charger takes no setpoint outside "controlled"): a note of
             # the cap is kept, so the next release or control tries again; the rest is let go of
+            tries = int(entry.get("lift_tries") or 0) + 1
+            if tries >= LIFT_TRIES:
+                # it answers but never takes the power back (e.g. outside "controlled"): the owner has to set it; said
+                # once in the control log, then OpenAmpere lets go for good
+                self._log(wb, "release", None, False, "Die Wallbox hat ihre frühere Ladeleistung nicht wieder "
+                          "angenommen. Stelle sie in der App „Fox Switch“ selbst wieder ein.")
+                self._disown(wb.id)
+                live.want_on, live.short_since, live.limit_a, live.phases_set = 0, None, None, None
+                return True
             owned = self._owned()
             # OpenAmpere's own stop stays recorded with it (#454, #456): a "finished" charger after it is no full car
             owned[wb.id] = {"current_a": None, "started": False, "phases": 1, "power_w": entry.get("power_w"),
+                            "lift_tries": tries,
                             "stopped": bool(stop or entry.get("stopped")
                                             or model.start(False).items() <= values.items()),
                             "lift_tried": time.time(), "wallbox": entry.get("wallbox") or self._sealed(asdict(wb))}

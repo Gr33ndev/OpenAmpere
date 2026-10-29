@@ -197,7 +197,8 @@ Laden und stellt den Ladestrom ein. Das ist neu und noch an keiner Wallbox mit O
   (#478): bei wenig Überschuss eine Phase (ab etwa 1,5 kW), ab etwa 4,3 kW drei Phasen, umgeschaltet höchstens so oft,
   wie die Wallbox es erlaubt; **Sofort** lädt immer auf drei. Eine Leistungsgrenze, die du in der App von FoxESS
   eingestellt hast, bleibt: OpenAmpere stellt sie beim Stoppen und Abgeben wieder her, und unter 4,2 kW schaltet es
-  gar nicht zwischen den Phasen um. Ohne automatische Umschaltung lädt sie auf allen Phasen,
+  gar nicht zwischen den Phasen um. Nimmt die Wallbox sie nicht zurück, bittet dich das Steuerungsprotokoll, die
+  Leistung in der App „Fox Switch“ selbst einzustellen. Ohne automatische Umschaltung lädt sie auf allen Phasen,
   Solar-Laden braucht dann genug Überschuss für 6 A auf allen.
 - Bei echter Steuerung bleibt der Betriebsmodus **Gesteuert**: OpenAmpere ändert ihn nicht, und wird er während eines
   Ladens, das OpenAmpere gestartet hat, in der App von FoxESS geändert, sendet OpenAmpere einen Stopp und gibt die

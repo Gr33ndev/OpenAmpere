@@ -771,3 +771,64 @@ async def test_the_cap_note_keeps_openamperes_stop(tmp_path, monkeypatch):
         wallboxes.live[wb.id].start_sent = float("-inf")
         await check(wallboxes, wallboxes.wallboxes[0], t0 + 3600, available=0)
         assert charger.writes[-1] == (0x4001, 1)  # started again
+
+
+def ignoring_power(charger):
+    """A charger that answers a write of 0x3002 but keeps its value."""
+    handle = charger.handle
+
+    def ignores(pdu: bytes) -> bytes:
+        if pdu[0] == 16 and pdu[1:3] == bytes([0x30, 0x02]):
+            return pdu[:5]
+        return handle(pdu)
+    return ignores
+
+
+async def capped(wallboxes, wb, t0):
+    for i in range(3):
+        await check(wallboxes, wb, t0 + i * 10, available=2000)
+
+
+async def test_a_cap_that_never_goes_back_is_given_up_with_a_hint(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        for _ in range(native_module.LIFT_TRIES - 1):
+            assert not await wallboxes.release(wb, "Lademodus „von Hand“")
+            owned = wallboxes._owned()
+            owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+            runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")  # the last try: given up
+        assert not wallboxes._owned()
+        assert any("Fox Switch" in e["result"] for e in runtime.storage.control_log(50))
+
+
+async def test_a_power_the_owner_set_meanwhile_is_not_overwritten(tmp_path, monkeypatch):
+    async with charger_with_car(switching=True) as (charger, port):
+        runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await capped(wallboxes, wb, t0)
+        monkeypatch.setattr(charger, "handle", ignoring_power(charger))
+        assert not await wallboxes.release(wb, "Lademodus „von Hand“")  # a note waits
+        monkeypatch.undo()
+        monkeypatch.setattr(modbus, "REQUEST_GAP_S", 0)
+        charger.regs[0x3002] = 50  # the owner set 5 kW in the FoxESS app
+        owned = wallboxes._owned()
+        owned[wb.id]["lift_tried"] = time.time() - native_module.PREPARE_AGAIN_S
+        runtime.storage.set_meta(native_module.OWNED, owned)
+        assert await wallboxes.release(wb, "Lademodus „von Hand“")
+        assert charger.regs[0x3002] == 50 and not wallboxes._owned()  # the cap is gone, the owner's value stays
+
+
+async def test_a_work_mode_change_lifts_a_cap_on_a_charge_openampere_did_not_start(tmp_path):
+    async with charger_with_car(switching=True) as (charger, port):
+        charger.regs.update({0x1003: 3, 0x100B: 160, 0x100C: 160, 0x100D: 160, 0x100E: 110})  # it charges by itself
+        _runtime, wallboxes, wb = setup(tmp_path, port, mode="pv")
+        t0 = time.time() - 7200
+        await check(wallboxes, wb, t0, available=2000)
+        assert charger.regs[0x3002] == 41 and not wallboxes._owned()[wb.id]["started"]
+        charger.regs[0x3000] = 1  # plug and charge, set in the FoxESS app
+        await check(wallboxes, wb, t0 + 10, available=2000)
+        assert charger.regs[0x3002] == 220 and not wallboxes._owned()
