@@ -37,7 +37,9 @@
  * that exist only in a translation are reported too. Values are HTML, so every value of every language may only use
  * the tags of SAFE_TAGS (#355): <a href> to an https:// or relative address, <strong>, <em>, <code>, <br>, <p>, no
  * other attributes. Anything else (<script>, onclick=, a javascript: link, a "<" that is not such a tag) fails the
- * build; write a "<" in a text as &lt;.
+ * build; write a "<" in a text as &lt;. The check runs again on every value after the reserved placeholders are filled
+ * in for each language ({{root}} is empty on German pages, so "{{root}}javascript:" would become a scheme), and no
+ * page is written when it fails.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -201,6 +203,8 @@ for (const lang of Object.keys(texts)) {
   if (extra.length) warnings.push(`${lang}: ${extra.length} text(s) not in German (renamed or removed?): ${extra.join(", ")}`);
 }
 
+// pages to write: [dir, file, html], written only when no check failed (also not the check of the filled values)
+const output = [];
 if (!errors.length) {
   for (const language of languages) {
     const lang = language.code;
@@ -218,12 +222,16 @@ if (!errors.length) {
         missing.add(key);
         value = lookup(REFERENCE, key);
       }
-      return fillVars(value, `${key} (${lang})`);
+      const filled = fillVars(value, `${key} (${lang})`);
+      // the value as it goes into the page: the placeholders may complete a scheme ("{{root}}javascript:")
+      const problem = unsafeHtml(filled);
+      const error = `site/locales/${lang}/${key.split(".")[0]}.json: ${key}: ${problem} (after filling in the placeholders)`;
+      if (problem && !errors.includes(error)) errors.push(error);
+      return filled;
     };
     const switchLanguages = translated.some((other) => other.code === lang) ? translated : [...translated, language].sort(byName);
 
     const dir = lang === REFERENCE ? out : join(out, lang);
-    mkdirSync(dir, { recursive: true });
     for (const page of pages) {
       const alternates = [...translated.map(({ code }) => [code, code]), ["x-default", REFERENCE]]
         .map(([hreflang, code]) => `<link rel="alternate" hreflang="${hreflang}" href="${SITE_URL}${pagePath(code, page)}" />`)
@@ -244,11 +252,17 @@ if (!errors.length) {
         });
         return /^\s*\{\{[^{}]+\}\}\s*$/.test(line) && !rendered.trim() ? [] : [rendered];
       }).join("\n");
-      writeFileSync(join(dir, `${page}.html`), html);
+      output.push([dir, `${page}.html`, html]);
     }
     if (!language.translated) warnings.push(`${lang}: no site translation in site/locales/${lang}/, all ${missing.size} texts in German`);
     else if (missing.size) warnings.push(`${lang}: ${missing.size} text(s) missing, shown in German: ${[...missing].join(", ")}`);
     console.log(`site pages: ${lang} (${language.name}) → ${join(dir, "")}`);
+  }
+}
+if (!errors.length) {
+  for (const [dir, file, html] of output) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, file), html);
   }
 }
 
