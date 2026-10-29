@@ -182,6 +182,7 @@
     "logSwitchAddressesUnreadable": "switch addresses cannot be read, OpenAmpere cannot switch it off",
     "logSwitchedOffDespiteTestMode": "switched off despite test mode, OpenAmpere had switched it on: {reason}",
     "logTooLittleSurplus": "too little surplus ({available} W)",
+    "logAboveLimit": "lowest charging current of the wallbox ({lowest_a} A) above the highest charging current ({highest_a} A)",
     "logUnreachableForADay": "not reachable for a day, OpenAmpere no longer switches it",
     "minimumSurplusMustBetween": "{name}: The minimum surplus must be between 50 W and the maximum power.",
     "minimumTimes0240": "{name}: minimum times 0–240 minutes.",

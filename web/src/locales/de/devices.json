@@ -269,6 +269,8 @@
     },
     "planWaiting": "OpenAmpere würde noch nicht laden: Es wartet, ob der Überschuss bleibt.",
     "planNoSurplus": "OpenAmpere würde jetzt nicht laden: Es gibt zu wenig Solarüberschuss.",
+    "planAboveLimit": "OpenAmpere würde jetzt nicht laden: Der niedrigste Ladestrom der Wallbox liegt über deinem höchsten Ladestrom.",
+    "aboveLimit": "OpenAmpere lädt nicht: Die Wallbox lädt mit mindestens {lowest} A, du hast aber höchstens {limit} A eingestellt. Mehr als deinen höchsten Ladestrom stellt OpenAmpere nie ein, deshalb startet es kein Laden und stoppt ein laufendes. Wenn deine Steckdose mehr verträgt, stelle einen höheren Ladestrom ein.",
     "planOff": "OpenAmpere würde jetzt nicht laden: Der Lademodus ist „Aus“.",
     "planFinished": "OpenAmpere würde jetzt nicht laden: Das Auto nimmt keinen Strom mehr, vermutlich ist es voll.",
     "planNoCar": "OpenAmpere würde jetzt nicht laden: Es ist kein Auto angeschlossen.",

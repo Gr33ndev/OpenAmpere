@@ -46,10 +46,12 @@ export type NativeWallbox = {
   controllable?: boolean; control?: boolean;
   /** Real control held back: the charger did not take the fallback current of 6 A (#465). */
   not_prepared?: boolean;
+  /** No current step of the wallbox is at or below the owner's highest current: not charged (#481). */
+  above_limit?: { lowest_a: number; limit_a: number } | null;
 };
 type WorkMode = "controlled" | "plug_and_charge" | "locked";
 export type WallboxSimulation = {
-  state: "charging" | "waiting" | "no_surplus" | "off" | "finished" | "no_car" | "unknown";
+  state: "charging" | "waiting" | "no_surplus" | "above_limit" | "off" | "finished" | "no_car" | "unknown";
   current_a: number | null; phases: number | null; power_w: number;
 };
 export type WallboxModel = { key: string; label: string; protocol: "tuya" | "modbus"; read_only?: boolean;
@@ -88,6 +90,7 @@ function planText(plan: WallboxSimulation): string {
       power: kw(plan.power_w) });
     case "waiting": return t("devices.nativeWallbox.planWaiting");
     case "no_surplus": return t("devices.nativeWallbox.planNoSurplus");
+    case "above_limit": return t("devices.nativeWallbox.planAboveLimit");
     case "off": return t("devices.nativeWallbox.planOff");
     case "finished": return t("devices.nativeWallbox.planFinished");
     case "no_car": return t("devices.nativeWallbox.planNoCar");
@@ -307,6 +310,8 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
       </>}
       <Segmented value={wb.mode} disabled={busy} onChange={(m) => void setMode(m)} options={MODES} />
       <p className="hint">{modeHint(wb)}</p>
+      {wb.above_limit && wb.mode !== "manual" && wb.mode !== "off" && <Notice kind="warn">{t("devices.nativeWallbox.aboveLimit",
+        { lowest: wb.above_limit.lowest_a, limit: wb.above_limit.limit_a })}</Notice>}
       {(wb.mode === "pv" || wb.mode === "minpv" || wb.mode === "now") && (
         <fieldset className="field field-group">
           <legend className="field-label">{t("devices.nativeWallbox.modeCurrent")}</legend>
