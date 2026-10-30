@@ -135,7 +135,12 @@ test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in 
   expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
   await expect(page.getByLabel("Local Key")).toHaveCount(0);
   await expect(page.getByText("So bekommst du den Local Key")).toHaveCount(0);
-  // the FoxESS charger is shown read only (#439), the check is the other way
+  // the FoxESS charger is shown and can be controlled as a test once added (#465, #503), the check is the other way
+  await expect(which.locator("optgroup", { has: page.locator('option[value="foxess_ac"]') }))
+    .toHaveAttribute("label", "Anzeigen, Steuern als Test");
+  await expect(page.getByText("Nach dem Hinzufügen schaltest du bei der Wallbox die echte Steuerung ein.")).toBeVisible();
+  await expect(page.getByText("Steuern kann OpenAmpere sie noch nicht")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Einrichten" })).toBeVisible();
   await expect(page.getByLabel("Port")).toHaveValue("502");
   await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();
   expect(await element?.evaluate((e) => e.isConnected)).toBe(true);

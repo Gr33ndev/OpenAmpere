@@ -423,7 +423,7 @@ function nativeWallboxes() {
   return { max: 4, search: true, models: [
     { key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya", read_only: false,
       modes: ["manual", "off", "pv", "minpv", "now"], sold_by: [] },
-    { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, simulated: true,
+    { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, controllable: true, simulated: true,
       modes: [...FOX_MODES], sold_by: ["EKD"], port: 502, unit: 1 }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,

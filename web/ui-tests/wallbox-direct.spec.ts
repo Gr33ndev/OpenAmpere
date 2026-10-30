@@ -15,7 +15,7 @@ test("the direct check shows what the wallbox answers and leads to the report", 
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await expect(page.locator(".notice", { hasText: "Vorschau" })).toBeVisible();
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByLabel("Ist die Wallbox mit dem Wechselrichter verkabelt").selectOption("yes");
@@ -42,7 +42,7 @@ test("a readable check fills in the wallbox OpenAmpere shows", async ({ page, ap
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByRole("button", { name: "Wallbox prüfen" }).click();
   await page.getByRole("button", { name: "Diese Wallbox in OpenAmpere anzeigen" }).click();
-  await expect(page.getByRole("button", { name: "Anzeigen", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Einrichten", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.60");
   await expect(page.getByLabel("Port")).toHaveValue("1502");
   await expect(page.getByLabel("Geräteadresse (Unit-ID)")).toHaveValue("2");
@@ -58,7 +58,7 @@ test("a wallbox found in the home network is taken over like in the device reade
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await expect(page.locator('option[value="foxess_ac"]')).toHaveText("FoxESS AC EV Charger (auch von EKD verkauft)"); // #412
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await page.getByRole("button", { name: "Wallbox im Heimnetz suchen" }).click();
   await expect(page.locator(".found-list li").nth(1)).toContainText("dein Wechselrichter"); // not taken by mistake (#411)
   await expect(page.locator(".found-list li").first()).not.toContainText("Wechselrichter");
@@ -73,7 +73,7 @@ test("an unreachable wallbox names the ports that were tried", async ({ page, ap
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByRole("button", { name: "Wallbox prüfen" }).click();
   await expect(page.locator(".notice.error")).toContainText("502, 1502");
@@ -87,7 +87,7 @@ test("a refused connection and an unknown name get their own advice", async ({ p
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByRole("button", { name: "Wallbox prüfen" }).click();
   const refused = page.locator(".notice.warn", { hasText: "keine Modbus-Verbindung" });
@@ -115,7 +115,7 @@ test("another wallbox is pointed to the device reader", async ({ page }) => {
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await page.getByLabel("Welche Wallbox hast du?").selectOption("other");
   await page.getByRole("button", { name: "Gerät auslesen" }).click();
   await expect(page.locator(".page-head h1")).toHaveText("Gerät auslesen");
@@ -130,7 +130,7 @@ test("the OCPP listener shows the address and what the wallbox reported", async 
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Anzeigen" comes first (#439)
+  await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();  // "Einrichten" comes first (#439, #503)
   await expect(page.locator(".notice", { hasText: "ohne Ladeprofil lädt sie ohne Begrenzung" })).toBeVisible();
   const connected = { ...idle, active: true, remaining_s: 840, connected: true, charge_point: "SN01", vendor: "FoxESS",
     model: "A022KP1", firmware: "1.16", configuration_keys: 42, status: "Available", messages: 7 };

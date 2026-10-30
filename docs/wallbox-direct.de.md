@@ -123,16 +123,17 @@ Jede Änderung steht im Protokoll unter **Mehr → Steuerung und Protokoll**.
 Die Wallbox funktioniert in der App genauso. Nur die **Suche im Heimnetz** geht dort nicht, weil die App ein eigenes
 Netz hat. Trag die IP-Adresse aus dem Router von Hand ein.
 
-## FoxESS AC EV Charger anzeigen (nur lesen)
+## FoxESS AC EV Charger einrichten
 
 Der FoxESS AC EV Charger ist auch die Wallbox, die EKD mit seinen Ampere.IQ-Anlagen verkauft hat; im Router heißt sie
 `EVC-…`. OpenAmpere zeigt ihn an (#439): ob ein Auto angeschlossen ist, mit welcher Leistung es lädt und den Strom je
-Phase. Seine Leistung zählt im Hausverbrauch mit wie bei jeder Wallbox. Das Laden steuert OpenAmpere noch nicht
-(#318): Die Wallbox lädt weiter so, wie sie in ihrer App eingestellt ist. Das Einzige, was OpenAmpere schreibt, und
-nur auf deinen Wunsch, ist der Betriebsmodus der Wallbox (siehe unten).
+Phase. Seine Leistung zählt im Hausverbrauch mit wie bei jeder Wallbox. Das Laden steuert OpenAmpere nur als Test,
+nachdem du die echte Steuerung für sie eingeschaltet hast (siehe [Echte Steuerung (Test)](#echte-steuerung-test),
+#465). Bis dahin lädt die Wallbox weiter so, wie sie in ihrer App eingestellt ist, und das Einzige, was OpenAmpere
+schreibt, und nur auf deinen Wunsch, ist der Betriebsmodus der Wallbox (siehe unten).
 
 1. Unter **direkt → Wallbox hinzufügen oder prüfen** bei **Welche Wallbox hast du?** den FoxESS AC EV Charger
-   wählen (unter „Nur anzeigen“) und **Anzeigen** lassen.
+   wählen (unter „Anzeigen, Steuern als Test“) und **Einrichten** lassen.
 2. Die IP-Adresse eintragen, oder **Wallbox im Heimnetz suchen**. Port (meist 502) und Geräteadresse (meist 1)
    stehen unter **Erweitert**.
 3. **Verbindung prüfen**, dann **Speichern**.

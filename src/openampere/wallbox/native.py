@@ -1482,6 +1482,7 @@ class NativeWallboxes:
 def model_info(model) -> dict:
     """A model for the setup in the app: what it needs (a local key, or port and unit id) and what it offers."""
     return {"key": model.key, "label": model.label, "protocol": model.protocol, "read_only": model.read_only,
+            "controllable": bool(getattr(model, "controllable", False)),  # real control once the owner agrees (#465)
             "simulated": model.simulated, "modes": list(model.modes), "sold_by": list(getattr(model, "sold_by", ())),
             **({"port": model.port, "unit": model.unit} if model.protocol == "modbus" else {})}
 
