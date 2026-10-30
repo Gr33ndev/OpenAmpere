@@ -154,7 +154,10 @@ class Diagnostics:
                 details["countdown_error"] = remote["countdown_error"]
         if not remote["on"]:
             return Check("remote", title, "ok", "aus – kein Gerät steuert den Speicher gerade von außen", details)
-        # negative = taken in (sign not verified on every device, the raw value is in the details)
+        # negative = taken in (sign not verified on every device, the raw value is in the details); bit 1 of 46001
+        # set means the consumer convention, where + is taken in (#509)
+        if remote.get("consumer_sign"):
+            power = -power
         if target in ("ac", "ac_grid_first"):  # the setpoint applies to the inverter's AC side (#509)
             what = (f"{abs(power)} W Bezug am Wechselrichter-Ausgang" if power < 0 else
                     f"{power} W Abgabe am Wechselrichter-Ausgang" if power > 0 else
@@ -233,6 +236,9 @@ class Diagnostics:
         OpenAmpere's values, its last command was sent within the time limit, so a running countdown is its own."""
         if countdown is None:
             return ""
+        if countdown == 0 and (writing or recent):  # OpenAmpere's command is fresh: the counter does not count here
+            return ("Der Zähler des Zeitlimits (46007) zeigt 0, obwohl der letzte Befehl von OpenAmpere gerade erst "
+                    "gesendet wurde; dieser Wechselrichter zählt ihn offenbar nicht mit.")
         if countdown == 0:
             return ("Das Zeitlimit ist abgelaufen, die Fernsteuerung ist trotzdem noch an: Der Wechselrichter hat sie "
                     "nach Ablauf nicht abgeschaltet, und die Vorgabe gilt weiter, bis sie jemand abschaltet.")

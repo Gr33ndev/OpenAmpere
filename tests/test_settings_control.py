@@ -513,6 +513,12 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             # 5 = target battery: with 0 W the battery rests
             assert "Ziel Speicher" in check["summary"] and "weder Laden noch Entladen" in check["summary"]
             assert "dauerhaft bei 0 W" in check["hint"] and "Solaranlage ab" not in check["hint"]
+            # bit 1 set: consumer sign, + is taken in, so +3000 W charges the battery
+            sim._put("remote_enable", 7, settings)
+            sim._put("remote_power", 3000, settings)
+            check = await remote()
+            assert "3000 W Laden" in check["summary"] and check["details"]["power_w"] == 3000
+            sim._put("remote_power", 0, settings)
             # OpenAmpere's values although it switched its own command off: no blaming of the smartbox
             sim._put("remote_enable", 1, settings)
             sim._put("remote_timeout", 180, settings)
@@ -526,6 +532,8 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             driver._remote_owned = 180
             check = await remote()
             assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
+            # a counter that stays 0 while OpenAmpere sends: not "expired", it does not count on this device
+            assert "zählt ihn offenbar nicht" in check["hint"] and "abgelaufen" not in check["hint"]
             sim._put("remote_countdown", 170, settings)
             assert "OpenAmpere erneuert die Vorgabe" in (await remote())["hint"]
             # target AC with a fallback: the control log has the reason, except for a device that did not answer once
