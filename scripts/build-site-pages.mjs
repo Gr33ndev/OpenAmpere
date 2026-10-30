@@ -208,7 +208,7 @@ function docLink(from, href) {
   }
   const [path, hash] = href.split(/#(.*)/s);
   const target = posix.normalize(posix.join(posix.dirname(`${DOCS}/${from}`), decode(path)));
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:|^\//.test(href) || target.startsWith("../")) {
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:|^\//.test(href) || target === ".." || target.startsWith("../")) {
     warnings.push(`${DOCS}/${from}: the link to ${href} is left out (only https:// and files of the repository)`);
     return null;
   }

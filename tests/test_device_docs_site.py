@@ -167,7 +167,7 @@ def test_a_link_that_leads_nowhere_is_reported(tmp_path):
     shutil.copy(ROOT / "web" / "public" / "changelog.json", repo / "web" / "public" / "changelog.json")
     docs = repo / "docs" / "devices"
     (docs / "foxess").mkdir(parents=True)
-    (docs / "README.md").write_text("# Device knowledge\n\n## Pages\n\n[H3](foxess/h3.md)\n")
+    (docs / "README.md").write_text("# Device knowledge\n\n## Pages\n\n[H3](foxess/h3.md), [up](../../..)\n")
     (docs / "foxess" / "h3.md").write_text(
         "# FoxESS H3\n\n[gone](h3-gone.md), [no heading](../README.md#nothing), [here](#nowhere), [ok](../README.md#pages), "
         "[outside](../../../../etc/passwd), [script](javascript:alert(1))\n")
@@ -180,6 +180,7 @@ def test_a_link_that_leads_nowhere_is_reported(tmp_path):
     assert "docs/devices/foxess/h3.md: the link to foxess/h3.md#nowhere leads to no heading" in result.stderr
     assert "../../../../etc/passwd is left out" in result.stderr
     assert "javascript:alert(1) is left out" in result.stderr
+    assert "docs/devices/README.md: the link to ../../.. is left out" in result.stderr
     assert "#pages" not in result.stderr
     html = (out / "docs" / "devices" / "foxess" / "h3.html").read_text()
     assert 'href="../index.html#pages"' in html
