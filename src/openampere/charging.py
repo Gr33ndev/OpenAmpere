@@ -14,6 +14,8 @@ Safety rules:
 - Verifies after the first commands that the battery really charges; otherwise it stops and reports
   (the sign of the remote power command is not verified on every device yet).
 - Never discharges into the grid: it only charges; afterwards the inverter runs as before.
+- FoxESS: the setpoint targets the battery where the inverter has the newer layout of 46001, otherwise the AC side
+  as before, where PV is curtailed once the battery takes no more; the control log says so once per charge (#509).
 """
 
 from __future__ import annotations
@@ -111,6 +113,7 @@ class GridCharging:
         self._lock = asyncio.Lock()
         self._owner: asyncio.Task | None = None
         self._refused_quarter: int | None = None  # a refused command is not tried again in the same quarter
+        self._target_logged: tuple | None = None  # remote control target and fallback last logged this charge (#509)
         self._restore_failed = False  # setting a reserve raised by 0.23.1 back failed: logged once, tried on every tick
 
     # ---- settings ------------------------------------------------------------
@@ -328,11 +331,12 @@ class GridCharging:
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
-            self.verified = False
+            self.verified, self._target_logged = False, None
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
                                                                               "target_soc": s.target_soc},
                                                           **self._soc_now()},
                                         False, f"Laden gestartet ({plan['reason']})")
+        self._log_target(collector.driver)
 
     async def _stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging: switches the remote control off, then sets a reserve raised by 0.23.1 back (#320)."""
@@ -462,6 +466,29 @@ class GridCharging:
         except Exception:  # noqa: BLE001 - only decides whether "not charging" is a fault
             limit = None
         return float(limit) if limit else 100.0
+
+    def _log_target(self, driver) -> None:
+        """A FoxESS that charges with target AC instead of the battery (#509): logged at the start and whenever the
+        target or its reason changes during a charge (e.g. after a new connection). Then the setpoint applies to the
+        inverter's AC side, and in the sun PV is curtailed once the battery takes no more. A device that did not
+        answer for now is tried again with the next command and not logged."""
+        target, fallback = getattr(driver, "remote_target", None), getattr(driver, "remote_fallback", None)
+        if fallback == "unanswered" or (target, fallback) == self._target_logged:
+            return
+        self._target_logged = (target, fallback)
+        if target != "ac" or not fallback:
+            return
+        if fallback == "legacy":
+            reason = "Bei der älteren Registerbelegung ist nicht bekannt, ob der Wechselrichter das Ziel Speicher kennt"
+        elif fallback == "no_countdown":
+            reason = ("Der Wechselrichter meldet keinen Zähler der Zeitbegrenzung (46007), seine Firmware kennt das Ziel "
+                      "Speicher vielleicht nicht")
+        else:
+            reason = "Der Wechselrichter hat das Ziel Speicher nicht übernommen"
+        self.runtime.storage.log_control("grid_charging", {"from": {}, "to": {"target": "ac"}}, False,
+                                         f"Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: {reason}. Scheint die "
+                                         "Sonne, regelt der Wechselrichter die Solaranlage ab, sobald der Speicher "
+                                         "nichts mehr aufnimmt.")
 
     def _log_stop(self, result: str) -> None:
         snap = self.runtime.collector.latest

@@ -98,7 +98,7 @@ def translate(text: str, lang: str | None) -> str:
 LOG_SAID = {"ok", "manual", "auto"}
 LOG_SAID_KEYS = {"api.logNoPowerCut", "control.logOverwritten", "control.logNotDoneTestMode", "evcc.logNotSentTestMode",
                  "storage.logBackupRestored"}
-LOG_REASON_KEYS = {"charging.logStarted", "charging.logFinished", "charging.logWouldCharge", "charging.logRemoteReleased",
+LOG_REASON_KEYS = {"charging.logStarted", "charging.logFinished", "charging.logTargetAc", "charging.logWouldCharge", "charging.logRemoteReleased",
                    "consumers.logNotSwitchedTestMode", "consumers.logNotSentTestMode",
                    "wallbox.simulationNotSent"}  # the app says "simulation" in its own sentence (#440)
 

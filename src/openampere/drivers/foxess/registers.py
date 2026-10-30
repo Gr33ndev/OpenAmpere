@@ -33,6 +33,21 @@ class RegisterMap:
     firmware: tuple[int, ...]
 
 
+# Remote control on/off (46001 / 44000). FoxESS documents 46001 as a bit field (#509): bit 0 on, bit 1 sign
+# (0: + = discharge/export), bits 3:2 the controlled target. OpenAmpere writes 5 (target battery) where 46007 is
+# readable, otherwise 1 (target AC: the setpoint applies to the inverter's AC side, PV is curtailed once the battery
+# takes no more). Both with its own watchdog timeout count as OpenAmpere's, also 1 left over by older versions.
+REMOTE_ON_AC = 1
+REMOTE_ON_BATTERY = 5
+REMOTE_OURS = (REMOTE_ON_AC, REMOTE_ON_BATTERY)
+REMOTE_TARGETS = ("ac", "battery", "grid", "ac_grid_first")  # bits 3:2
+
+
+def remote_target(value: int) -> str:
+    """The controlled target encoded in the remote control on/off register."""
+    return REMOTE_TARGETS[(value >> 2) & 3]
+
+
 # Newer FoxESS map (H3 Smart / H3 Pro and devices with newer firmware).
 # Energy counters: 0.01 kWh -> scale 10 gives Wh.
 H3_NEW = RegisterMap(
@@ -112,6 +127,9 @@ H3_NEW = RegisterMap(
         "remote_enable": Reg(46001),
         "remote_timeout": Reg(46002),
         "remote_power": Reg(46003, Kind.I32),
+        # read only: seconds left until the watchdog ends remote control. Its presence tells the newer layout of
+        # 46001 (bits 3:2 = controlled target, #509); not on the legacy map.
+        "remote_countdown": Reg(46007),
         "max_charge_current": Reg(46607, Kind.U16, 0.1),
         "max_discharge_current": Reg(46608, Kind.U16, 0.1),
         "min_soc": Reg(46609),

@@ -459,7 +459,11 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             sim._put("remote_enable", 1, settings)
             check = await remote()
             assert check["status"] == "warn" and "anderes Gerät" in check["summary"]
-            assert "3000 W Laden" in check["summary"] and "180 s" in check["summary"]
+            # 1 = target AC (#509): the setpoint applies to the inverter's AC side, not to the battery
+            assert "3000 W Bezug am Wechselrichter-Ausgang" in check["summary"] and "180 s" in check["summary"]
+            assert "Wert 1 = Ziel Wechselrichter-Ausgang" in check["summary"] and check["details"]["target"] == "ac"
+            # the watchdog countdown (46007) is 0 although it is on: left on after the time limit (#141)
+            assert check["details"]["countdown_s"] == 0 and "Zeitlimit ist abgelaufen" in check["hint"]
             assert "Seit mindestens" not in check["summary"]
             assert "Smartbox" in check["hint"] and check["details"]["power_w"] == -3000
             assert "noch nie aus dem Netz geladen" in check["hint"]
@@ -472,11 +476,18 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             runtime.storage.log_control("grid_charging", {}, False, "Laden gestartet (im Ladefenster)")
             runtime.storage.log_control("grid_charging", {}, True, "würde laden – Testmodus")
             check = await remote()
-            assert check["status"] == "warn" and "weder Laden noch Entladen" in check["summary"]
+            assert check["status"] == "warn" and "kein Strom vom Wechselrichter ins Haus" in check["summary"]
             assert "Seit mindestens 3 Stunden durchgehend an" in check["summary"]
             assert "zuletzt vor weniger als einer Minute aus dem Netz geladen" in check["hint"]  # a duration, no time (#149)
             assert " Uhr " not in check["hint"]
-            assert "dauerhaft bei 0 W" in check["hint"]
+            # target AC with 0 W: the house runs from the grid, PV is curtailed once the battery is full (evcc, #509)
+            assert "regelt der Wechselrichter die Solaranlage ab" in check["hint"]
+            assert "dauerhaft bei 0 W" not in check["hint"]
+            # the countdown runs although OpenAmpere sends nothing: someone writes it, or the inverter restored it
+            sim._put("remote_countdown", 120, settings)
+            check = await remote()
+            assert "noch 120 s" in check["hint"] and "obwohl OpenAmpere gerade nichts sendet" in check["hint"]
+            sim._put("remote_countdown", 0, settings)
 
             # #141: a leftover of OpenAmpere's own charging (on = 1, its timeout), also long after the last command:
             # the watchdog may leave the switch on, so it is not another device, and OpenAmpere switches it off
@@ -485,12 +496,29 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
                 check = await remote()
                 assert check["status"] == "info" and "Rest des Ladens aus dem Netz von OpenAmpere" in check["summary"]
                 assert "anderes Gerät" not in check["summary"] and "schaltet sie" in check["hint"]
+            # a leftover within the time limit of OpenAmpere's last command (e.g. after a restart mid-charge): a running
+            # countdown is OpenAmpere's own, not another device's
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 60, "power_w": -3000})
+            sim._put("remote_countdown", 120, settings)
+            check = await remote()
+            assert check["status"] == "info" and "vom letzten Befehl von OpenAmpere (noch 120 s)" in check["hint"]
+            assert "anderes Gerät" not in check["hint"]
+            sim._put("remote_countdown", 0, settings)
             # the previous smartbox uses other values (on = 5, 30 s): another device, even though OpenAmpere charged
             sim._put("remote_enable", 5, settings)
             sim._put("remote_timeout", 30, settings)
             check = await remote()
             assert check["status"] == "warn" and "anderes Gerät" in check["summary"] and "Wert 5" in check["summary"]
             assert "Smartbox" in check["hint"] and "OpenAmpere war es nicht" in check["hint"]
+            # 5 = target battery: with 0 W the battery rests
+            assert "Ziel Speicher" in check["summary"] and "weder Laden noch Entladen" in check["summary"]
+            assert "dauerhaft bei 0 W" in check["hint"] and "Solaranlage ab" not in check["hint"]
+            # bit 1 set: consumer sign, + is taken in, so +3000 W charges the battery
+            sim._put("remote_enable", 7, settings)
+            sim._put("remote_power", 3000, settings)
+            check = await remote()
+            assert "3000 W Laden" in check["summary"] and check["details"]["power_w"] == 3000
+            sim._put("remote_power", 0, settings)
             # OpenAmpere's values although it switched its own command off: no blaming of the smartbox
             sim._put("remote_enable", 1, settings)
             sim._put("remote_timeout", 180, settings)
@@ -498,12 +526,38 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
                                                         "timeout_s": 180, "released": time.time() - 3500})
             check = await remote()
             assert check["status"] == "warn" and "dieselben Werte" in check["hint"] and "Smartbox" not in check["hint"]
+            # switched off and confirmed, then on again within the time limit (#143): not the countdown of OpenAmpere's
+            # last command
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 60, "power_w": -3000, "timeout_s": 180,
+                                                        "released": time.time() - 50})
+            sim._put("remote_countdown", 120, settings)
+            hint = (await remote())["hint"]
+            assert "vom letzten Befehl von OpenAmpere" not in hint and "obwohl OpenAmpere gerade nichts sendet" in hint
+            sim._put("remote_countdown", 0, settings)
+            hint = (await remote())["hint"]
+            assert "Zeitlimit ist abgelaufen" in hint and "zählt ihn offenbar nicht" not in hint
 
             # the same, but OpenAmpere started it (charging from the grid)
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
             driver._remote_owned = 180
             check = await remote()
             assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
+            # a counter that stays 0 while OpenAmpere sends: not "expired", it does not count on this device
+            assert "zählt ihn offenbar nicht" in check["hint"] and "abgelaufen" not in check["hint"]
+            sim._put("remote_countdown", 170, settings)
+            assert "OpenAmpere erneuert die Vorgabe" in (await remote())["hint"]
+            # target AC with a fallback: the control log has the reason, except for a device that did not answer once
+            driver.remote_target, driver.remote_fallback = "ac", "no_countdown"
+            assert "siehe Steuerungsprotokoll" in (await remote())["hint"]
+            driver.remote_fallback = "unanswered"
+            hint = (await remote())["hint"]
+            assert "kurz nicht geantwortet" in hint and "Steuerungsprotokoll" not in hint
+            driver.remote_target, driver.remote_fallback = None, None
+            # a device that refuses 46007: the check still works, without the countdown
+            del sim.regs[sim.map.settings["remote_countdown"].address]
+            check = await remote()
+            assert check["status"] == "ok" and check["details"]["countdown_s"] is None
+            assert check["details"]["countdown_error"] == "abgelehnt" and "Zeitlimit" not in check["hint"]
 
             # switched off: the background job forgets since when it was on
             sim._put("remote_enable", 0, settings)

@@ -9,7 +9,10 @@ Lets you develop and test without a real inverter:
 Implements a minimal Modbus TCP server (FC03, FC04, FC06, FC16) and a simple
 energy model: PV follows a sun curve with clouds, the house draws a base load
 with spikes, the battery follows the selected work mode or a remote-control
-setpoint, and the grid balances the rest. Lifetime and daily counters integrate.
+setpoint, and the grid balances the rest. The remote-control setpoint applies to
+the target encoded in the on/off register (FoxESS 46001 bits 3:2, #509): 5 = the
+battery, 1 = the inverter's AC side, where PV is curtailed once the battery takes
+no more. Lifetime and daily counters integrate.
 """
 
 from __future__ import annotations
@@ -57,6 +60,7 @@ class EnergyModel:
     remote_enabled: bool = False
     remote_power_w: float = 0
     remote_deadline: float = 0
+    remote_target: str = "battery"  # what the setpoint controls: battery, ac (inverter's AC side) or grid (meter)
     export_limit_w: float = 6000  # feed-in limit (60 % of 10 kW)
     cloud: float = 0.8
     # live values
@@ -90,7 +94,11 @@ class EnergyModel:
         surplus = self.pv_w - self.house_w  # > 0: excess PV
         if self.remote_enabled and time.monotonic() > self.remote_deadline:
             self.remote_enabled = False  # watchdog expired -> back to work mode
-        if self.remote_enabled:
+        if self.remote_enabled and self.remote_target == "ac":
+            battery = self.remote_power_w - self.pv_w  # AC side = PV + battery (+ = out of the inverter)
+        elif self.remote_enabled and self.remote_target == "grid":
+            battery = self.house_w - self.pv_w + self.remote_power_w  # grid = -setpoint
+        elif self.remote_enabled:
             battery = self.remote_power_w
         elif self.work_mode is WorkMode.SELF_USE:
             battery = -surplus
@@ -112,13 +120,13 @@ class EnergyModel:
             battery = 0.0
         if battery < 0 and self.soc >= 100:
             battery = 0.0
+        if self.remote_enabled and self.remote_target == "ac" and self.remote_power_w - battery < self.pv_w:
+            # the battery takes less than the AC setpoint leaves for it: PV is curtailed (evcc, foxess_modbus, #509)
+            self._curtail(max(0.0, self.remote_power_w - battery))
         self.battery_w = battery
         self.grid_w = self.house_w - self.pv_w - battery
         if -self.grid_w > self.export_limit_w:  # curtail PV to respect the feed-in limit
-            curtailed = self.pv_w - (-self.grid_w - self.export_limit_w)
-            factor = curtailed / self.pv_w if self.pv_w else 0
-            self.pv_inputs_w = [p * factor for p in self.pv_inputs_w]
-            self.pv_w = curtailed
+            self._curtail(self.pv_w - (-self.grid_w - self.export_limit_w))
             self.grid_w = -self.export_limit_w
 
         hours = dt_s / 3600
@@ -134,6 +142,11 @@ class EnergyModel:
         for key, wh in flows.items():
             self.totals[key] += wh
             self.today[key] += wh
+
+    def _curtail(self, pv_w: float) -> None:
+        factor = pv_w / self.pv_w if self.pv_w else 0
+        self.pv_inputs_w = [p * factor for p in self.pv_inputs_w]
+        self.pv_w = pv_w
 
 
 class SimulatedInverter:
@@ -191,6 +204,8 @@ class SimulatedInverter:
         self._put("remote_enable", 0, self.map.settings)
         self._put("remote_timeout", 0, self.map.settings)
         self._put("remote_power", 0, self.map.settings)
+        if "remote_countdown" in self.map.settings:
+            self._put("remote_countdown", 0, self.map.settings)
         if "export_limit" in self.map.settings:
             self._put("export_limit", e.export_limit_w, self.map.settings)
 
@@ -203,10 +218,13 @@ class SimulatedInverter:
         e.min_soc = self._get_setting("min_soc")
         e.max_soc = self._get_setting("max_soc")
         e.min_soc_on_grid = self._get_setting("min_soc_on_grid")
-        e.remote_power_w = self._get_setting("remote_power")
+        enable = self._get_setting("remote_enable")  # bit 0 on, bit 1 consumer sign, bits 3:2 target (#509)
+        power = self._get_setting("remote_power")
+        e.remote_power_w = -power if enable & 2 else power
+        e.remote_target = ("ac", "battery", "grid", "ac")[(enable >> 2) & 3]
         if "export_limit" in self.map.settings:
             e.export_limit_w = self._get_setting("export_limit")
-        enabled = bool(self._get_setting("remote_enable"))
+        enabled = bool(enable & 1)
         if enabled:
             timeout = self._get_setting("remote_timeout") or 60
             e.remote_deadline = time.monotonic() + timeout
@@ -217,6 +235,9 @@ class SimulatedInverter:
         m = self.map
         if not e.remote_enabled and self._get_setting("remote_enable"):
             self._put("remote_enable", 0, m.settings)  # watchdog expired
+        if "remote_countdown" in m.settings:
+            left = max(0, round(e.remote_deadline - time.monotonic())) if e.remote_enabled else 0
+            self._put("remote_countdown", left, m.settings)
         temps = {
             "inverter_temperature": 28 + e.pv_w / 1000 * 2.5,
             "battery_temperature": 22 + abs(e.battery_w) / 1500,

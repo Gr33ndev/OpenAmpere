@@ -108,7 +108,7 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
                            "window_end": 0, "target_soc": 100, "power_w": 3000})
             await charging.tick()
-            assert charging.active and sim._get_setting("remote_enable") == 1
+            assert charging.active and sim._get_setting("remote_enable") == 5  # target battery (#509)
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
 
             # switching off fails once: logged, and done on the next tick
@@ -118,7 +118,7 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             driver._write = broken
             charging.save({**charging.view()["settings"], "enabled": False})
             await charging.tick()
-            assert not charging.active and sim._get_setting("remote_enable") == 1
+            assert not charging.active and sim._get_setting("remote_enable") == 5
             assert runtime.storage.control_log()[0]["result"].startswith("Beenden fehlgeschlagen")
             # why charging ended is in the entry as well (#322)
             assert "Grund für das Ende: Laden aus dem Netz ist aus" in runtime.storage.control_log()[0]["result"]
@@ -127,10 +127,10 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             assert sim._get_setting("remote_enable") == 0
             assert runtime.storage.get_meta("remote_command")["released"]
 
-            # restart (or a new driver object): the in-memory flag is gone, the inverter still has 1 / 180 s
+            # restart (or a new driver object): the in-memory flag is gone, the inverter still has 5 / 180 s
             charging.save({**charging.view()["settings"], "enabled": True})
             await charging.tick()
-            assert sim._get_setting("remote_enable") == 1 and sim._get_setting("remote_timeout") == 180
+            assert sim._get_setting("remote_enable") == 5 and sim._get_setting("remote_timeout") == 180
             driver._remote_owned = None
             charging = GridCharging(runtime)
             charging.save({**charging.view()["settings"], "enabled": False})
@@ -140,14 +140,77 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
             await charging.tick()  # nothing left to do: no further entries
             assert runtime.storage.control_log()[0]["result"].startswith("Fernsteuerung nachträglich abgeschaltet")
 
-            # the smartbox took over (on = 5, 30 s): never switched off by OpenAmpere
+            # a leftover of an older version (1 = target AC, 180 s) is OpenAmpere's as well (#509)
             runtime.storage.set_meta("remote_command", {**runtime.storage.get_meta("remote_command"), "released": None})
             settings = sim.map.settings
+            sim._put("remote_timeout", 180, settings)
+            sim._put("remote_enable", 1, settings)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0
+
+            # the smartbox took over (on = 5, 30 s): never switched off by OpenAmpere
+            runtime.storage.set_meta("remote_command", {**runtime.storage.get_meta("remote_command"), "released": None})
             sim._put("remote_timeout", 30, settings)
             sim._put("remote_enable", 5, settings)
             await charging.tick()
             assert sim._get_setting("remote_enable") == 5
             assert runtime.storage.get_meta("remote_command")["released"]
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_charging_falls_back_to_target_ac_and_says_so(tmp_path):
+    """#509: without a readable 46007 grid charging goes on with 1 (target AC) as before, and the control log says
+    why and what it means in the sun, also when it happens during a charge. With target battery there is no such
+    entry, nor for a 46007 that does not answer once."""
+    from openampere.drivers.modbus import ModbusTransientError
+    sim, server, runtime = await connected(tmp_path)
+    async with server:
+        try:
+            await runtime.update_settings({"control.dry_run": False})
+            charging = GridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 3000})
+            await charging.tick()
+            assert charging.active and sim._get_setting("remote_enable") == 5
+            assert not any("Ziel" in e["result"] for e in runtime.storage.control_log())
+            charging.save({**charging.view()["settings"], "enabled": False})
+            await charging.tick()
+
+            driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
+            # 46007 does not answer for now: target AC for this command only, nothing logged
+            read_reg = driver._read_reg
+
+            async def no_answer(reg, function=3):
+                if reg.address == 46007:
+                    raise ModbusTransientError("timeout")
+                return await read_reg(reg, function)
+            driver._read_reg, driver._battery_target = no_answer, None
+            charging.save({**charging.view()["settings"], "enabled": True})
+            await charging.tick()
+            assert charging.active and sim._get_setting("remote_enable") == 1
+            assert not any("Ziel" in e["result"] for e in runtime.storage.control_log())
+            driver._read_reg = read_reg
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 5
+
+            # later in the same charge a new connection finds no countdown: logged then, not only at the start
+            del sim.regs[46007]
+            driver._battery_target = None
+            await charging.tick()
+            assert charging.active and sim._get_setting("remote_enable") == 1
+            note = runtime.storage.control_log()[0]["result"]
+            assert note.startswith("Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: Der Wechselrichter meldet "
+                                   "keinen Zähler der Zeitbegrenzung (46007)")
+            assert "regelt der Wechselrichter die Solaranlage ab" in note
+            # the app's headline says what it means, the note below it only why (#509)
+            from openampere.i18n import log_note
+            assert log_note(note, "en").startswith("The inverter reports no countdown of the time limit (46007)")
+            await charging.tick()  # once per charge
+            assert sum("Ziel" in e["result"] for e in runtime.storage.control_log()) == 1
+            charging.save({**charging.view()["settings"], "enabled": False})
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0
         finally:
             await runtime.collector.stop()
 
@@ -191,6 +254,10 @@ async def test_values_brought_back_after_an_inverter_restart_are_switched_off(tm
             assert "wieder eingeschaltet" in runtime.storage.control_log()[0]["result"]
             await charging.tick()  # nothing left to do: no further entries
             assert len(runtime.storage.control_log()) == entries + 1
+            # the same for this version's values (5 = target battery, #509)
+            restore(5, 180)
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 0
 
             # the smartbox's values are never touched
             restore(5, 30)

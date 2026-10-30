@@ -21,7 +21,8 @@ without a manufacturer name.
 - On a FoxESS H3 the box holds one of the very few Modbus TCP connections all the time.
 - While it is powered, OpenAmpere cannot read the FoxESS AC EV Charger that came with the system ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - On a FoxESS H3 it uses the inverter's remote control with its own values (enable 5, timeout 30 s), which is how
-  OpenAmpere tells it apart from its own commands (1 and 180 s).
+  OpenAmpere tells it apart from its own commands (1 or 5 with 180 s; since OpenAmpere writes 5 as well, by the
+  timeout, [#509](https://github.com/Gr33ndev/OpenAmpere/issues/509)).
 - On an SAJ it writes the work mode and the reserve, and while charging from the grid an undocumented block at
   0x8300 every 1–3 s.
 - The EKD cloud's customer API blocks clients that poll too often; OpenAmpere's history import sends at most one
@@ -88,7 +89,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | Remedies offered: block the box's internet access in the router, or disconnect it (LAN cable or power) only if nothing else needs it, then check the export limit shown in OpenAmpere. OpenAmpere only gives the hint; it writes nothing for this. | The inverter keeps the values stored last; the box may serve the grid operator. | [#53](https://github.com/Gr33ndev/OpenAmpere/issues/53), [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
 | Texts say "former smartbox" without the manufacturer's name. | Names only descriptively. | [#53](https://github.com/Gr33ndev/OpenAmpere/issues/53) |
 | When the inverter is busy, the message names other programs first and the IQ box second; a Modbus proxy is mentioned only as an option for advanced users. | Several reported cases were other programs, not the box; the box can undo a proxy setup. | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
-| FoxESS: any remote control values other than OpenAmpere's own (1 and 180 s) count as another device; OpenAmpere never writes to or releases them. | Release only what OpenAmpere started. | [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
+| FoxESS: any remote control values other than OpenAmpere's own (1 or 5 with 180 s) count as another device; OpenAmpere never writes to or releases them. | Release only what OpenAmpere started. | [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142), [#509](https://github.com/Gr33ndev/OpenAmpere/issues/509) |
 | FoxESS: the diagnostics show a warning when another device holds the remote control, explain the usual cause (the box) and what the owner can do. | OpenAmpere cannot change this state itself; the owner can. | [#126](https://github.com/Gr33ndev/OpenAmpere/issues/126), [#127](https://github.com/Gr33ndev/OpenAmpere/issues/127) |
 | SAJ: while charging, OpenAmpere sets its own work mode and charge slot again with every command and keeps the owner's values from the start of the session. | Another device such as the box may change them meanwhile. | [#382](https://github.com/Gr33ndev/OpenAmpere/issues/382), [#383](https://github.com/Gr33ndev/OpenAmpere/issues/383) |
 | SAJ: the undocumented block 0x8300–0x8306 is not used; grid charging uses a charge slot that ends by itself. | Not in SAJ's protocol; nobody has tested whether the block ends by itself. | [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377), [#378](https://github.com/Gr33ndev/OpenAmpere/issues/378) |

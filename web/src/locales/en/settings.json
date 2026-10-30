@@ -277,6 +277,7 @@
     "gridChargingStopFailed": "Grid charging could not be stopped.",
     "gridChargingStopped": "Grid charging finished: battery charged from {from} to {to}.",
     "gridChargingStoppedPlain": "Grid charging finished.",
+    "gridChargingTargetAc": "Grid charging with the inverter's AC output as target instead of the battery: in sunshine the inverter curtails the solar system as soon as the battery takes no more.",
     "hourValue": "{hour}:00",
     "hours": {
       "one": "1 hour",

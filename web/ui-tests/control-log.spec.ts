@@ -36,6 +36,11 @@ const ENTRIES = [
   { action: "control_switches", details: { from: {}, to: {} }, dry_run: false, result: "Datensicherung wiederhergestellt" },
   { action: "control_switches", details: { from: { "control.enabled": false }, to: { "control.enabled": true } }, dry_run: false,
     result: "Datensicherung wiederhergestellt" },
+  // #509: a FoxESS charging with target AC instead of the battery, while charging goes on
+  { action: "grid_charging", details: { from: {}, to: { target: "ac" } }, dry_run: false,
+    result: "Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: Der Wechselrichter hat das Ziel Speicher nicht übernommen. "
+      + "Scheint die Sonne, regelt der Wechselrichter die Solaranlage ab, sobald der Speicher nichts mehr aufnimmt.",
+    note: "Der Wechselrichter hat das Ziel Speicher nicht übernommen" },
   { action: "something_new", details: "not an object", dry_run: false, result: "Fehler: keine Antwort", note: "Fehler: keine Antwort" },
 ].map((e, i) => ({ ts: NOW - i * 600, ...e }));
 
@@ -63,6 +68,8 @@ test("control log entries read as sentences and can be exported", async ({ page,
     "Wechselrichter unter einer neuen Adresse im Heimnetz gefunden: 192.0.2.20 statt 192.0.2.10. OpenAmpere verbindet sich jetzt mit dieser Adresse.",
     "Datensicherung wiederhergestellt.",
     "Datensicherung wiederhergestellt. OpenAmpere darf den Wechselrichter jetzt steuern.",
+    "Laden aus dem Netz mit Ziel Wechselrichter-Ausgang statt Speicher: Scheint die Sonne, regelt der Wechselrichter die "
+      + "Solaranlage ab, sobald der Speicher nichts mehr aufnimmt.",
     "Sonstige Änderung (something_new).",
   ]) await expect(page.getByText(text, { exact: true })).toBeVisible();
   await expect(page.getByText("automatisch in der Nacht", { exact: false })).toBeVisible();

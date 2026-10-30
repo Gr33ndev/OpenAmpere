@@ -214,6 +214,8 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
         ];
         return t("settings.controlLog.gridChargingSet", { changes: list(changes) || unknown() });
       }
+      // a FoxESS charging with target AC instead of the battery (#509); the reason is in the note
+      if ("target" in to) return t("settings.controlLog.gridChargingTargetAc");
       if ("power_w" in to) {
         return "target_soc" in to
           ? t("settings.controlLog.gridChargingStarted", { power: kw(Number(to.power_w)), soc: pct(to.target_soc) })
