@@ -32,7 +32,7 @@
     "foxessWallbox": "FoxESS wallbox",
     "notAnInverter": "not an inverter",
     "wallboxHint": "“FoxESS wallbox”: this device announces itself in the network as a FoxESS wallbox. It is not the inverter, so it cannot be selected here.",
-    "secondInverterHint": "Do you have a second PV inverter whose power a meter at the storage system measures (“Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The meter reads {power} right now."
+    "secondInverterHint": "Do you have a second PV inverter whose power your storage system also measures (with SAJ the meter “Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The storage system measures {power} for it right now."
   },
   "setup": {
     "apiKeyHint": "For this you need the personal API key from the Ampere.IQ app. OpenAmpere is an independent project with no ties to EKD.",

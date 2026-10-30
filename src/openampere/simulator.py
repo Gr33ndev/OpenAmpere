@@ -498,8 +498,8 @@ class SajSimulatedInverter(SimulatedInverter):
 class SolarmaxSimulatedInverter(SimulatedInverter):
     """Solarmax MAX.STORAGE (#519): input registers only (FC04), 32-bit values with the low word first, Solarmax's
     signs (battery + = charging, grid + = export). connectivity: "unlocked" fills the registers of "Connectivity+"
-    (130–159), "rejected" refuses them, "zeros" answers them with 0 (both possible without it on a real device, not
-    known which). Writes are refused: the driver only reads."""
+    (130–159), "rejected" refuses them, "zeros" answers them with 0, "silent" answers them with "gateway target failed"
+    (all possible without it on a real device, not known which). Writes are refused: the driver only reads."""
 
     def __init__(self, *, unit: int = 1, max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
                  connectivity: str = "unlocked", rated_w: int = 10000, firmware: int = 344,
@@ -534,6 +534,12 @@ class SolarmaxSimulatedInverter(SimulatedInverter):
 
     def readable(self, function: int, address: int, count: int) -> bool:
         return function == solarmax.READ_FUNCTION and super().readable(function, address, count)
+
+    def handle(self, pdu: bytes) -> bytes:
+        if self.connectivity == "silent" and pdu[0] == solarmax.READ_FUNCTION \
+                and struct.unpack(">H", pdu[1:3])[0] >= 130:
+            return bytes([pdu[0] | 0x80, GATEWAY_TARGET_FAILED])
+        return super().handle(pdu)
 
     def update_registers(self) -> None:
         e = self.energy
@@ -822,8 +828,9 @@ def main() -> None:
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None,
                         help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
-    parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros"], default="unlocked",
-                        help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused or zero')
+    parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros", "silent"], default="unlocked",
+                        help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused, zero or '
+                             "not answered")
     parser.add_argument("--model", default=None, help="model string at register 30000")
     parser.add_argument("--serial", default="SIM0000000000001")
     parser.add_argument("--speed", type=float, default=1.0, help="simulated seconds per real second")

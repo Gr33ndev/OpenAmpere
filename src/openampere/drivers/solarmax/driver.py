@@ -8,7 +8,7 @@ import logging
 import time
 
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, Snapshot, WorkMode
-from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError
+from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError, ModbusTransientError
 from ..regs import counter_step_wh, decode
 from .registers import COUNTER_BLOCK, DEVICE_STATES, ERROR_STATE, READ_FUNCTION, STANDARD_BLOCK, VALUES
 
@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 # plausibility of the identification: nominal power of a MAX.STORAGE (6 to 15 kW, with room), firmware "x.y.z"
 RATED_RANGE_W = range(1000, 30001)
 FIRMWARE_RANGE = range(100, 1000)
+EXTERNAL_FROM_W = 50  # the plant's DC power above the inverter's own: another inverter is connected
+COUNTER_FAILURES = 3  # the counters stop being read after this many reads in a row without an answer
 
 
 class ReadOnly(DeviceRefused):
@@ -35,7 +37,9 @@ class SolarmaxDriver(ModbusDevice):
                  **_ignored) -> None:
         super().__init__(host, port, unit, timeout=timeout, read_attempts=read_attempts)
         self.read_function = READ_FUNCTION
-        self.has_counters = True  # False once the device rejects them (no "Connectivity+")
+        self.has_counters = True  # False once the device rejects them (no "Connectivity+") or keeps not answering
+        self._counter_failures = 0
+        self.has_external = False  # another inverter connected to the MAX.STORAGE was seen (112 above 110)
 
     async def _detect(self) -> DeviceInfo:
         start, count = STANDARD_BLOCK
@@ -59,15 +63,25 @@ class SolarmaxDriver(ModbusDevice):
     async def read_raw(self) -> dict[str, float]:
         words = await self._read_block(*STANDARD_BLOCK)
         if self.has_counters:
+            # optional: what they do without "Connectivity+" is not known, so the live values never wait for them
             try:
                 words.update(await self._read_block(*COUNTER_BLOCK))
+                self._counter_failures = 0
             except ModbusIllegalError:
-                self.has_counters = False  # only with "Connectivity+"
+                self.has_counters = False
                 log.info("Solarmax energy counters not readable (no Connectivity+)")
+            except ModbusTransientError as err:
+                self._counter_failures += 1
+                if self._counter_failures >= COUNTER_FAILURES:
+                    self.has_counters = False
+                    log.info("Solarmax energy counters do not answer, no longer read: %s", err)
         return values(words)
 
     async def read(self) -> Snapshot:
-        return to_snapshot(await self.read_raw(), time.time())
+        raw = await self.read_raw()
+        if not self.has_external and raw.get("pv_plant_power", 0) - raw.get("pv_power", 0) > EXTERNAL_FROM_W:
+            self.has_external = True
+        return to_snapshot(raw, time.time(), self.has_external)
 
     # ---- display only -------------------------------------------------------
 
@@ -107,7 +121,9 @@ def values(words: dict[int, int]) -> dict[str, float]:
     return result
 
 
-def to_snapshot(raw: dict[str, float], timestamp: float) -> Snapshot:
+def to_snapshot(raw: dict[str, float], timestamp: float, external: bool = False) -> Snapshot:
+    """external: another inverter was seen on the MAX.STORAGE; until then there is no second PV inverter to show (the
+    app offers to count one only when the device reports it)."""
     g = raw.get
     negate = lambda key: None if g(key) is None else -g(key)  # noqa: E731
     pv, plant = g("pv_power"), g("pv_plant_power")
@@ -116,7 +132,7 @@ def to_snapshot(raw: dict[str, float], timestamp: float) -> Snapshot:
         timestamp=timestamp,
         pv_power=pv,
         # other inverters connected to the MAX.STORAGE: the plant's DC power minus its own
-        pv_external_power=None if pv is None or plant is None else max(0.0, plant - pv),
+        pv_external_power=None if not external or pv is None or plant is None else max(0.0, plant - pv),
         house_power=g("house_power"),
         grid_power=negate("grid_power"),  # Solarmax: + = export
         battery_power=negate("battery_power"),  # Solarmax: + = charging

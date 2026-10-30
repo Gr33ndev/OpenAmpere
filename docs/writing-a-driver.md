@@ -343,7 +343,7 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 | `--vendor foxess\|saj\|solarmax\|mypv` | device family (`mypv` = my-PV heating rod) |
 | `--map new\|legacy` | FoxESS register map |
 | `--unit N` | the only unit id that answers (default FoxESS 247, SAJ and Solarmax 1); other ids get "gateway target failed" |
-| `--connectivity unlocked\|rejected\|zeros` | Solarmax: the "Connectivity+" registers (energy counters) filled, refused or zero |
+| `--connectivity unlocked\|rejected\|zeros\|silent` | Solarmax: the "Connectivity+" registers (energy counters) filled, refused, zero or not answered |
 | `--model`, `--serial` | FoxESS model string at 30000 and serial number |
 | `--speed N` | simulated seconds per real second |
 | `--strict-function` | FoxESS: answer measurements only on the map's native function code |

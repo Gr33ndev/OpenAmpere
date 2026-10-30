@@ -83,7 +83,7 @@
     "title": "So liest du die Übersicht"
   },
   "secondInverterHint": {
-    "hint": "Der Zähler „Meter B“ an deinem Speicher misst gerade {power}. Meist ist das ein zweiter PV-Wechselrichter. OpenAmpere zählt ihn erst mit, wenn du ihn einrichtest; bis dahin fehlt seine Leistung bei Erzeugung und Verbrauch.",
+    "hint": "Dein Speicher misst gerade {power} für einen zweiten PV-Wechselrichter (bei SAJ am Zähler „Meter B“). OpenAmpere zählt ihn erst mit, wenn du ihn einrichtest; bis dahin fehlt seine Leistung bei Erzeugung und Verbrauch.",
     "title": "Zweiter Wechselrichter?"
   }
 }

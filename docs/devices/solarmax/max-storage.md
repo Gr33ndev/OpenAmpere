@@ -60,8 +60,12 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 |---|---|---|
 | Solarmax's list marks 100–126 as available on every device and 130–159 as "Connectivity+" only. | documented | Solarmax list |
 | evcc reads grid 118, PV 110, battery 114 and state of charge 122 as signed 32-bit values with the low word first, and dropped the PV energy register because it counts only whole kWh. Battery control in evcc needs "Connectivity+" and firmware 3.4.4. | derived | evcc-io/evcc `templates/definition/meter/solarmax-maxstorage.yaml` at 8796395558 (MIT) |
+| Tinkerforge's energy manager reads the same addresses and also 112, 116 and 120: a second, independent reading of these registers. | derived | Tinkerforge/esp32-firmware `software/src/modules/meters_modbus_tcp/solarmax.py` (LGPL-2.1, facts only) |
+| geeks-r-us/solarmax2mqtt reads the device over Modbus TCP; geeks-r-us/maxstorage_ultimate reads the web interface on port 80 instead (no license: facts only). The older Solarmax "MaxTalk" protocol (port 12345) belongs to Solarmax string inverters, not to MAX.STORAGE. | derived | the repositories named (solarmax2mqtt MIT) |
+| The web interface shows firmware, hardware version and an "Ident"; the device can be reached as `<Ident>.local`. | derived | geeks-r-us/maxstorage_ultimate |
 | The list defines holding registers 140/141 as one 32-bit setpoint; evcc writes them as two 16-bit limits with 142 as watchdog, which owners say works. Only matters for control. | open | Solarmax list; evcc template |
-| The app and the device's web interface keep working inside the home network by IP address; the cloud portal costs money since 2025, and the old Solarmax apps are no longer in the App Store. | derived | photovoltaikforum.com threads 243977 and 252527 (2025); research in [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
+| Solarmax is in preliminary insolvency proceedings since 2024-11-29 (court Neu-Ulm); no buyer is reported. | documented | [solarserver.de, 2024-12-06](https://www.solarserver.de/2024/12/06/wechselrichtermarke-solarmax-hat-insolvenz-angemeldet/) |
+| The app and the device's web interface keep working inside the home network by IP address; the cloud portal came back in 2025 as a paid subscription run by another company, and the old Solarmax apps are no longer in the App Store. | derived | photovoltaikforum.com threads 243977 and 252527 (2025); research in [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 | EKD switched the storage function off remotely in September 2025 and released it after a fuse was fitted in the battery line. How the registers look while it is switched off is not known. | derived (shutdown), open (registers) | [names.md](../topics/names.md#behaviour); photovoltaikforum.com thread 252527 |
 | "AMPERE.Storage" is the 10 kW variant (three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs); MAX.STORAGE Ultimate also exists with 6, 8, 12 and 15 kW, and the list covers the older MAX.STORAGE too. Register 105 tells them apart. | documented | EKD datasheet "AMPERE.Storage" (2022-07); Solarmax datasheet MAX.STORAGE Ultimate (2021-12) |
 
@@ -71,8 +75,8 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 |---|---|---|
 | Display only: every write method refuses, `supports_control` is off. | EKD switched the storage function off remotely; control also needs "Connectivity+". OpenAmpere never switches it on again. | [#515](https://github.com/Gr33ndev/OpenAmpere/pull/515), [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 | Detected after FoxESS and SAJ, at unit 1, by reading 100–126 with FC04. The device counts as a Solarmax only if firmware (100–999), device state (0–3), nominal power (1–30 kW), state of charge and capacity (at most 100) are all plausible. | Detection must not claim another device; SAJ also answers at unit 1, but not with FC04 at 100. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
-| PV power is the inverter's own DC power (110); the rest of the plant (112 − 110) is shown as a second PV inverter the owner can count. | 112 includes other inverters connected to the MAX.STORAGE. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
-| The energy counters (150–159) are used only when they answer and are not all zero; there is no load counter, the consumption is their balance. | Without "Connectivity+" the device may refuse them or answer zeros; zeros would look like counters that start at 0. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
+| PV power is the inverter's own DC power (110); the rest of the plant (112 − 110) is shown as a second PV inverter the owner can count, once it was more than 50 W at least once. | 112 includes other inverters connected to the MAX.STORAGE; without one the app must not offer to count it. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
+| The energy counters (150–159) are used only when they answer and are not all zero, and are no longer asked for after a refusal or three reads in a row without an answer; there is no load counter, the consumption is their balance. | Without "Connectivity+" the device may refuse them, answer zeros or not answer; zeros would look like counters that start at 0, and the live values must never wait for them. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 | Device state 3 (error) is reported as a fault; 2 (warning) is not. | A warning is no fault the owner must act on. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 | The diagnostics show the powers with Solarmax's own signs (rounded) and whether the "Connectivity+" registers answer, without the serial number and without counter values. | So the first owner's report can confirm the signs. | [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 
@@ -84,6 +88,7 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 - What 103, 114, 123 and 124 show while EKD's switch-off is active, and whether PV keeps producing then.
 - Whether 116 is the whole house consumption when a second inverter is in the house.
 - Which firmware EKD's units run; the list is for 3.4.4 and later.
+- What the type plate says, and whether EKD's units carry "AMPERE" on the housing.
 
 ## Sources
 
@@ -91,5 +96,7 @@ later). The input registers 140–143 and the holding registers 140–143 are di
   by them to public evcc issues; no longer on solarmax.com. Facts only, in own words.
 - evcc-io/evcc, template `solarmax-maxstorage` (MIT), commit 8796395558.
 - EKD datasheet "AMPERE.Storage" (2022-07); Solarmax datasheet MAX.STORAGE Ultimate (2021-12).
-- photovoltaikforum.com threads 243977 and 252527 (owners, 2025).
+- Tinkerforge/esp32-firmware (LGPL-2.1), geeks-r-us/solarmax2mqtt (MIT), geeks-r-us/maxstorage_ultimate (no license):
+  facts only.
+- photovoltaikforum.com threads 243977 and 252527 (owners, 2025); solarserver.de (2024-12-06).
 - Research comment in [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519).

@@ -79,6 +79,29 @@ async def test_without_connectivity_plus_there_are_no_counters_but_live_values(c
     assert driver.has_counters == (connectivity == "zeros")
 
 
+async def test_counters_that_never_answer_do_not_stop_the_live_values():
+    """Without "Connectivity+" a device might also stay silent on 150–159: the live values go on, and after a few reads
+    the counters are no longer asked for."""
+    sim = sunny(SolarmaxSimulatedInverter(max_connections=3, connectivity="silent"))
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("solarmax", "127.0.0.1", port, 1, timeout=1)
+        try:
+            await driver.connect()
+            for _ in range(3):
+                snap = await driver.read()
+                assert snap.battery_soc is not None and snap.totals.pv is None
+        finally:
+            await driver.close()
+    assert driver.has_counters is False
+
+
+async def test_without_a_second_inverter_there_is_none_to_count():
+    """No hint about a second inverter in the setup for a plant that has none (112 = 110)."""
+    _info, _driver, snap = await read_once(sunny(SolarmaxSimulatedInverter(max_connections=3)), only="solarmax")
+    assert snap.pv_external_power is None
+
+
 async def test_another_inverter_on_the_max_storage_is_external_pv():
     sim = SolarmaxSimulatedInverter(max_connections=3)
     sim.extra_pv_w = 1500
