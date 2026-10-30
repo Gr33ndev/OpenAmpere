@@ -28,7 +28,7 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | Netze BW meter portal | [gridmeter/netze-bw.md](gridmeter/netze-bw.md) |
 | Cars of the Volkswagen group through the EU Data Act portal | [cars/vw-eu-data-act.md](cars/vw-eu-data-act.md) |
 | Previous EKD smartbox ("IQ box") and the EKD cloud | [topics/iq-box.md](topics/iq-box.md) |
-| Sales names and manufacturer models | [topics/names.md](topics/names.md) |
+| Sales names and manufacturer models, hardware sold by EKD since 2018 | [topics/names.md](topics/names.md) |
 | Modbus connections, proxies and what all inverters share | [topics/modbus.md](topics/modbus.md) |
 | Relays, smart plugs, SG Ready | [topics/consumers.md](topics/consumers.md) |
 | Wallboxes through evcc, OCPP and directly | [topics/wallboxes.md](topics/wallboxes.md) |

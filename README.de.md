@@ -95,7 +95,7 @@ Wechselrichter sprechen.
 
 ### Weg 1: eigenständig
 
-**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
+**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
 
 **1. Installieren:** Auf dem Rechner im Terminal ausführen:
 
@@ -395,7 +395,7 @@ Mit `sudo docker compose logs -f openampere` laufen neue Meldungen fortlaufend m
 
 - **Netzwerkkabel:** Der Wechselrichter braucht eine Verbindung ins Heimnetz, meist per Kabel am LAN-Anschluss. Ein reiner Cloud-WLAN-Stick reicht oft nicht.
 - **IP-Adresse von Hand eingeben:** Du findest sie in der Geräteliste deines Routers (FRITZ!Box: Heimnetz → Netzwerk) oder im Menü am Display des Wechselrichters. Vergib ihm im Router am besten eine feste Adresse.
-- **Modbus TCP muss eingeschaltet sein**, üblich ist Port 502. Bei den von EKD verkauften Speichern ist das schon der Fall. Siehe auch [Modbus TCP ist nicht eingeschaltet](#modbus-tcp-ist-nicht-eingeschaltet).
+- **Modbus TCP muss eingeschaltet sein**, üblich ist Port 502. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall. Siehe auch [Modbus TCP ist nicht eingeschaltet](#modbus-tcp-ist-nicht-eingeschaltet).
 - **Gleiches Netz:** Server und Wechselrichter müssen im selben Heimnetz hängen. Ein Gastnetz trennt die Geräte voneinander.
 
 ### „Das Gerät lehnt die Verbindung ab“
@@ -433,7 +433,7 @@ Der Wechselrichter erlaubt nur wenige gleichzeitige Modbus-Verbindungen. Hängt 
 
 ### Modbus TCP ist nicht eingeschaltet
 
-Bei den von EKD verkauften Speichern ist Modbus TCP schon eingeschaltet. Bei anderen Geräten schaltet es der Installationsbetrieb ein. Gibt es den Betrieb nicht mehr, frag einen anderen Elektro- oder Solarfachbetrieb in deiner Nähe oder den Kundendienst des Herstellers (FoxESS oder SAJ) mit der Seriennummer deines Geräts. Ändere im Service-Menü des Wechselrichters nichts, wenn du dir nicht sicher bist, was die Einstellung bewirkt.
+Bei den von EKD verkauften Ampere.StoragePro-Speichern ist Modbus TCP schon eingeschaltet. Bei anderen Geräten schaltet es der Installationsbetrieb ein. Gibt es den Betrieb nicht mehr, frag einen anderen Elektro- oder Solarfachbetrieb in deiner Nähe oder den Kundendienst des Herstellers (FoxESS oder SAJ) mit der Seriennummer deines Geräts. Ändere im Service-Menü des Wechselrichters nichts, wenn du dir nicht sicher bist, was die Einstellung bewirkt.
 
 ### „32-Bit-System erkannt“
 

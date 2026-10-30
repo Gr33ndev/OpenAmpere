@@ -4,8 +4,8 @@
 > Changing device settings can affect warranty and grid connection rules. No affiliation with FoxESS or EKD, not
 > legal advice. See [Device knowledge](../README.md).
 
-**Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** not stated in the
-sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup and live view
+**Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** "Ampere.ChargePro" (22 kW) by EKD
+([amperesolar.de/chargepro](https://amperesolar.de/chargepro/), documented; see [names.md](../topics/names.md)); owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup and live view
 (`wallbox/native.py`, [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)), its work mode written on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)), its charging modes as a simulation without writing ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) until the owner switches on real control ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)) · **Support:** display
 (live view and check) and the work mode on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464));
 control of charging as a test once the owner switches it on per wallbox ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465),

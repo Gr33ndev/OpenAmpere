@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "title": "EKD-Geräte | OpenAmpere",
+    "description": "Welche Speicher, Wallboxen und Zusatzgeräte EKD verkauft hat und was OpenAmpere davon anzeigen und steuern kann."
+  },
+  "head": {
+    "eyebrow": "Geräte",
+    "title": "Welche EKD-Geräte funktionieren mit OpenAmpere?",
+    "lead": "EKD hat seit 2018 Speicher, Wallboxen und Zusatzgeräte verschiedener Hersteller verkauft. Hier siehst du, was OpenAmpere davon heute kann und woran gearbeitet wird.",
+    "find": "Welches Gerät du hast, steht auf dem Typenschild am Speicher, am Wechselrichter oder an der Wallbox. Den Verkaufsnamen findest du meist im Angebot oder in der Rechnung von EKD."
+  },
+  "table": {
+    "label": "Von EKD verkaufte Geräte",
+    "sold": "Verkauft als",
+    "device": "Gerät",
+    "period": "Zeitraum, etwa",
+    "state": "In OpenAmpere",
+    "next": "Nächster Schritt"
+  },
+  "groups": {
+    "storage": "Speicher",
+    "wallbox": "Wallboxen",
+    "around": "Rund um den Speicher"
+  },
+  "state": {
+    "both": "Anzeige und Steuerung",
+    "readTest": "Anzeige, Steuerung als Test",
+    "evcc": "Über evcc",
+    "planned": "Geplant",
+    "info": "Infos gesucht",
+    "notNeeded": "Nicht nötig",
+    "nothing": "Nichts anzubinden",
+    "relay": "Über ein Relais"
+  },
+  "next": {
+    "issue": "Issue",
+    "deviceReport": "Ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> zur Steuerung hilft",
+    "tellUs": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=feature_request.yml\">Melde dich</a>, wenn du so ein Gerät hast"
+  },
+  "rows": {
+    "e3Device": "FoxESS H3 (12 und 22 kW)",
+    "e3Period": "2024–2026",
+    "e3Note": "Bestätigt an einem H3 mit neuerer Firmware, das 22-kW-Modell noch nicht.",
+    "e2Period": "2023–2024",
+    "e2Note": "Anzeige bestätigt, Steuerung noch nicht.",
+    "solarmaxPeriod": "2022–2023",
+    "solarmaxNote": "Zuerst nur die Anzeige. Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
+    "mtecPeriod": "ab Ende 2022",
+    "mtecNote": "Zuerst nur die Anzeige.",
+    "enphasePeriod": "ab Ende 2022",
+    "enphaseNote": "Zuerst nur die Anzeige. Braucht einmal einen Schlüssel aus dem Enphase-Konto.",
+    "senecPeriod": "2020–2022",
+    "senecNote": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-TCP-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
+    "vartaPeriod": "ab 2022",
+    "vartaNote": "Unklar, wie viele es gibt und welche Schnittstelle sie haben.",
+    "chargeProPeriod": "2024–2026",
+    "chargeProNote": "Steuert erst, wenn du es für die Wallbox in der App einschaltest.",
+    "chargePeriod": "2023–2024",
+    "chargeNote": "evcc braucht dafür einen Sponsor-Token. Direkt über OpenAmpere ist geplant.",
+    "senecWallboxPeriod": "2020–2022",
+    "senecWallboxNote": "Unklar, welche Schnittstelle sie hat.",
+    "iqDevice": "Energiemanager von Kiwigrid",
+    "iqPeriod": "2023–2026",
+    "iqNote": "OpenAmpere ersetzt die App. Den Verlauf kannst du aus der EKD-Cloud übernehmen, solange sie läuft.",
+    "heaterSold": "Heizstab",
+    "heaterPeriod": "–",
+    "heaterNote": "Noch an keiner echten Anlage bestätigt.",
+    "heatpumpSold": "Wärmepumpe von Partnern",
+    "heatpumpDevice": "verschiedene Hersteller, SG Ready",
+    "heatpumpPeriod": "ab 2025",
+    "heatpumpNote": "Über ein Shelly-Relais am SG-Ready-Eingang, noch nicht bestätigt.",
+    "otherDevice": "Notstrom-Umschalter, Solarmodule",
+    "otherPeriod": "2022–2026",
+    "otherNote": "Diese Geräte haben keine Schnittstelle."
+  },
+  "notes": {
+    "plannedTitle": "Was „geplant“ heißt",
+    "planned": "Für jedes geplante Gerät gibt es ein Issue auf GitHub, aber noch keinen Termin. Zuerst kommt die Anzeige. Steuern kommt erst, wenn ein Besitzer die Werte an seiner Anlage bestätigt hat.",
+    "testers": "Hast du so ein Gerät und kannst testen? Dann schreib das bitte im Issue: welches Gerät laut Typenschild. Lass die Seriennummer weg, denn das Issue ist öffentlich.",
+    "sources": "Einzelheiten und Quellen zu jedem Gerät stehen in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">Geräteübersicht im Repository</a> (auf Englisch).",
+    "legal": "<strong>Ohne Gewähr:</strong> Diese Übersicht ist keine offizielle Information von EKD oder den Herstellern. Sie stammt aus öffentlichen Datenblättern, Presseberichten und Berichten von Besitzern und kann unvollständig oder falsch sein. OpenAmpere hat keine Verbindung zu EKD oder den genannten Herstellern. Alle Produkt- und Firmennamen gehören ihren Inhabern und stehen hier nur, um zu beschreiben, mit welchen Geräten OpenAmpere funktioniert. Keine Rechtsberatung."
+  }
+}

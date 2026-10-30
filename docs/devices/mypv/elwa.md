@@ -3,7 +3,8 @@
 > **Not official manufacturer information.** Compiled by the OpenAmpere contributors; can be incomplete or wrong. No
 > affiliation with my-PV, not legal advice. See [Device knowledge](../README.md).
 
-**Applies to:** my-PV AC ELWA-E, AC ELWA 2, AC THOR · **Sold as:** – · **OpenAmpere:** consumer type "my-PV heating
+**Applies to:** my-PV AC ELWA-E, AC ELWA 2, AC THOR · **Sold as:** – (owners report a my-PV heating rod in EKD systems, connected through the IQ box; derived,
+[Photovoltaikforum](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/)) · **OpenAmpere:** consumer type "my-PV heating
 rod", `src/openampere/drivers/mypv.py` (`MyPvHeatingRod`) · **Support:** display and control (power setpoint only) ·
 **Confirmed on a real device:** no (simulator only)
 

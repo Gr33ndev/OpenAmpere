@@ -21,6 +21,7 @@
     "heater": "<strong>Immersion heater from my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): continuously adjusted, not yet confirmed",
     "relay": "Heat pump or other devices via a Shelly relay, not yet confirmed",
     "wallbox": "<strong>Wallbox</strong> via <a href=\"https://evcc.io\">evcc</a> or directly (portable dé wallbox), not yet confirmed",
+    "notYet": "<strong>Not yet:</strong> older batteries EKD sold before the Ampere.StoragePro (Senec, “AMPERE.Storage” by Solarmax, M-TEC, Enphase). More in the <a href=\"geraete.html\">overview of EKD devices</a>",
     "devicesNote": "The app detects which device you have during setup. It connects via Modbus TCP. “Not yet confirmed” means: built from manufacturer or community documentation and checked with tests, but not yet reported from a real system. If you have such a device, a <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">device report</a> with the diagnostics from the app helps. All details are in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.md\">device list</a>.",
     "setupTitle": "Setup",
     "setupText": "You start OpenAmpere once with Docker. A wizard then finds the inverter, and you make all settings in the app. There are no configuration files to edit.",
@@ -63,7 +64,7 @@
   "install": {
     "title": "Installation",
     "prepareTitle": "Prepare a computer",
-    "prepareText": "You need a Linux computer on the same network as the inverter, for example a Raspberry Pi with a 64-bit system, a NAS or a Proxmox server. Modbus TCP must be enabled on the inverter. This is already the case for the batteries sold by EKD; otherwise your installer can enable it.",
+    "prepareText": "You need a Linux computer on the same network as the inverter, for example a Raspberry Pi with a 64-bit system, a NAS or a Proxmox server. Modbus TCP must be enabled on the inverter. This is already the case for the Ampere.StoragePro batteries sold by EKD; otherwise your installer can enable it.",
     "runTitle": "Install",
     "runText": "Run this command in the computer's terminal:",
     "copy": "Copy",
