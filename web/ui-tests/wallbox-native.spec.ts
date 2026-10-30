@@ -138,7 +138,7 @@ test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in 
   // the FoxESS charger is shown and can be controlled as a test once added (#465, #503), the check is the other way
   await expect(which.locator("optgroup", { has: page.locator('option[value="foxess_ac"]') }))
     .toHaveAttribute("label", "Anzeigen, Steuern als Test");
-  await expect(page.getByText("Nach dem Hinzufügen kannst du bei der Wallbox die echte Steuerung einschalten, wenn du willst.")).toBeVisible();
+  await expect(page.getByText("Nach dem Hinzufügen kannst du die echte Steuerung einschalten, wenn du willst, unter „Geräte“ auf der Karte der Wallbox.")).toBeVisible();
   await expect(page.getByText("Steuern kann OpenAmpere sie noch nicht")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Einrichten" })).toBeVisible();
   await expect(page.getByLabel("Port")).toHaveValue("502");
@@ -228,7 +228,9 @@ test("a FoxESS charger is added with port and unit id; the limit and the waiting
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
   await expect(page.locator(".notice", { hasText: "Solange du die echte Steuerung nicht einschaltest" })).toContainText("bisherige Smartbox");
   await expect(page.getByLabel("Höchster Ladestrom (A)")).toHaveValue("16");
-  await expect(page.locator(".field", { hasText: "Höchster Ladestrom (A)" })).toContainText("in der Simulation");
+  // a controllable model: the limit holds in the simulation and with real control (#505)
+  await expect(page.locator(".field", { hasText: "Höchster Ladestrom (A)" }))
+    .toContainText("in der Simulation und mit eingeschalteter echter Steuerung auch wirklich");
   await expect(page.getByLabel("Solar-Laden pausieren nach (Minuten)")).toHaveValue("10");
   await expect(page.getByLabel("Name")).toHaveValue("Wallbox");
   await page.getByLabel("IP-Adresse der Wallbox").fill("192.168.178.61");
@@ -334,9 +336,13 @@ test("real control of a FoxESS charger is switched on after a question and off a
   expect((await sent).postDataJSON()).toEqual({ on: true });
   await expect(card).toContainText("Echte Steuerung (Test): OpenAmpere startet, stoppt und regelt diese Wallbox.");
   await expect(card.locator(".notice", { hasText: "Nur eine Simulation" })).toHaveCount(0);
+  // in the work mode "controlled" OpenAmpere starts the charges now, not the app or a card (#505)
+  await expect(card.locator(".facts")).toContainText("durch OpenAmpere");
+  await expect(card.locator(".facts")).not.toContainText("über App oder Karte");
   api.override("/api/wallboxes/demo0003/control", base);
   const off = page.waitForRequest((r) => r.url().endsWith("/api/wallboxes/demo0003/control"));
   await card.getByRole("button", { name: "Zurück zur Simulation" }).click();
   expect((await off).postDataJSON()).toEqual({ on: false });
   await expect(card.locator(".notice", { hasText: "Nur eine Simulation" })).toBeVisible();
+  await expect(card.locator(".facts")).toContainText("über App oder Karte");
 });
