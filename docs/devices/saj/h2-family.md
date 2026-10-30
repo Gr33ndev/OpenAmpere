@@ -132,6 +132,7 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 | Fact | Status | Source |
 |---|---|---|
 | Modbus TCP on port 502; the device address is 1 or 2, depending on the installation (communication module). | derived | community; [devices.md](../../devices.md) |
+| EKD's SAJ systems ("Ampere.StoragePro", 2023–2024) come with a Chint DTSU666 grid meter, sold as "AMPERE.StoragePro Meter" and connected to the inverter over RS485. | derived | [Photovoltaikforum on the Ampere Storage Pro](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/); [names.md](../topics/names.md) |
 | Names and meanings of the live registers were checked against SAJ's protocols for related inverters (R5/R6/C6 and H1). | derived | [registers.md](../../registers.md) |
 | SAJ's H2 protocol lists the type codes 0x0055–0x005D; 0x005E is not in it. | documented | H2 protocol; [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379) |
 | A type code does not identify one power class: 0x005B covers 5 to 10 kW. | documented | H2 protocol; [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379) |
