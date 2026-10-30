@@ -461,6 +461,8 @@
     "controlLabel": "Steuerung:",
     "copyFailed": "Kopieren hat nicht geklappt. Bitte den Bericht unten markieren und kopieren.",
     "copyReport": "Bericht kopieren",
+    "deviceDocs": "Was wir über deinen Wechselrichter wissen",
+    "deviceDocsHint": "Register und Verhalten, technisch und auf Englisch",
     "deviceReader": "Gerät auslesen",
     "deviceReaderHint": "Register eines beliebigen Geräts im Heimnetz lesen, zum Beispiel einer Wallbox",
     "done": "Diagnose fertig",

@@ -461,6 +461,8 @@
     "controlLabel": "Control:",
     "copyFailed": "Copying did not work. Please select the report below and copy it.",
     "copyReport": "Copy report",
+    "deviceDocs": "What we know about your inverter",
+    "deviceDocsHint": "Registers and behaviour, in technical detail",
     "deviceReader": "Read a device",
     "deviceReaderHint": "Read registers of any device in your home network, for example a wallbox",
     "done": "Diagnostics done",

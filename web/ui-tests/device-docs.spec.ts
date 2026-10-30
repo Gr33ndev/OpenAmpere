@@ -24,3 +24,9 @@ test("a SAJ inverter gets its own page", async ({ page, api }) => {
   await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
     .toHaveAttribute("href", `${SITE}docs/devices/saj/h2-family.html`);
 });
+
+test("the diagnostics page links to the page about the inverter", async ({ page }) => {
+  await open(page, "more/diagnostics");
+  await expect(page.getByRole("link", { name: /Was wir über deinen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/foxess/h3.html`);
+});

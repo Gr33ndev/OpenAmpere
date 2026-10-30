@@ -69,7 +69,8 @@ sentence and may contain inline HTML such as links. `scripts/build-site.sh` rend
 every other language under `/<code>/`, with a language switch in the header. A missing text appears in German with a
 warning; a key missing in German fails the build. To add a language, copy `site/locales/de/` to
 `site/locales/<code>/`, set the name in `meta.json` and translate the values. Every language of the web app also gets
-pages on the website (in German until it has a site translation), because the demo links to them.
+pages on the website (in German until it has a site translation), because the demo links to them. The pages of the
+device knowledge (`docs/devices/`, #512) stay English; their frame comes from `docs.json` and is translated like the rest.
 
 **Adding a language** needs no code changes:
 
