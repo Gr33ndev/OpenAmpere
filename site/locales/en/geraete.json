@@ -50,7 +50,7 @@
     "enphasePeriod": "from late 2022",
     "enphaseNote": "Monitoring first. Needs a key from the Enphase account once.",
     "senecPeriod": "2020–2022",
-    "senecNote": "Possibly also older Senec.Home V2.1. Senec has no Modbus interface, so it needs a new kind of connection.",
+    "senecNote": "Possibly also older Senec.Home V2.1. Senec has no Modbus TCP interface, so it needs a new kind of connection.",
     "vartaPeriod": "from 2022",
     "vartaNote": "Unclear how many there are and which interface they have.",
     "chargeProPeriod": "2024–2026",

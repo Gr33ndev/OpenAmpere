@@ -50,7 +50,7 @@
     "enphasePeriod": "ab Ende 2022",
     "enphaseNote": "Zuerst nur die Anzeige. Braucht einmal einen Schlüssel aus dem Enphase-Konto.",
     "senecPeriod": "2020–2022",
-    "senecNote": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
+    "senecNote": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-TCP-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
     "vartaPeriod": "ab 2022",
     "vartaNote": "Unklar, wie viele es gibt und welche Schnittstelle sie haben.",
     "chargeProPeriod": "2024–2026",
