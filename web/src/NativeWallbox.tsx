@@ -150,13 +150,15 @@ const WORK_MODE: Record<string, string> = {
   locked: t("devices.wallboxDirect.workModeLocked"),
 };
 
-/** What a wallbox OpenAmpere only reads tells about itself: its limit, how it starts and whether it switches phases. */
-function OwnSettings({ r }: { r: WallboxReading }) {
+/** What a wallbox OpenAmpere only reads tells about itself: its limit, how it starts and whether it switches phases.
+ *  ours: OpenAmpere controls it for real (#465), so in the work mode "controlled" it starts the charges itself. */
+function OwnSettings({ r, ours = false }: { r: WallboxReading; ours?: boolean }) {
   return (
     <>
       {r.max_current_a != null && <><dt>{t("devices.nativeWallbox.maxOfWallbox")}</dt>
         <dd>{t("devices.nativeWallbox.amps", { current: r.max_current_a })}</dd></>}
-      {r.work_mode && <><dt>{t("devices.wallboxDirect.workMode")}</dt><dd>{WORK_MODE[r.work_mode] ?? r.work_mode}</dd></>}
+      {r.work_mode && <><dt>{t("devices.wallboxDirect.workMode")}</dt>
+        <dd>{ours && r.work_mode === "controlled" ? t("devices.wallboxDirect.workModeOpenAmpere") : WORK_MODE[r.work_mode] ?? r.work_mode}</dd></>}
       {r.phase_switching != null && <><dt>{t("devices.wallboxDirect.phaseSwitching")}</dt>
         <dd>{r.phase_switching ? t("common.on") : t("common.off")}</dd></>}
     </>
@@ -334,7 +336,7 @@ function ControlledCard({ wb, onChange }: { wb: NativeWallbox; onChange: (view: 
           {r.charging && <><dt>{t("devices.nativeWallbox.phaseCurrents")}</dt><dd>{amps(r.current_a)} A</dd></>}
           <dt>{t("devices.nativeWallbox.phases")}</dt><dd>{r.active_phases || r.installed_phases}</dd>
           {r.connected && !!r.session_kwh && <><dt>{t("devices.wallboxCard.chargedThisSession")}</dt><dd>{num(r.session_kwh, 1)} kWh</dd></>}
-          {(sim || wb.controllable) && <OwnSettings r={r} />}
+          {(sim || wb.controllable) && <OwnSettings r={r} ours={!!wb.control} />}
           {sim && wb.simulation && <><dt>{t("devices.nativeWallbox.simulationPlan")}</dt><dd>{planText(wb.simulation)}</dd></>}
         </dl>
       )}
@@ -601,7 +603,8 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
       )}
       {!shownOnly && <>
         <Field label={t("devices.nativeWallbox.maxCurrent")}
-          hint={readOnly ? t("devices.nativeWallbox.maxCurrentHintSimulation") : t("devices.nativeWallbox.maxCurrentHint")}>
+          hint={!readOnly ? t("devices.nativeWallbox.maxCurrentHint") : model?.controllable
+            ? t("devices.nativeWallbox.maxCurrentHintControllable") : t("devices.nativeWallbox.maxCurrentHintSimulation")}>
           <input className="input" value={d.max_current_a} inputMode="numeric" onChange={(e) => set({ max_current_a: e.target.value })} />
         </Field>
         <Field label={t("devices.nativeWallbox.stopAfter")} hint={t("devices.nativeWallbox.stopAfterHint")}>
