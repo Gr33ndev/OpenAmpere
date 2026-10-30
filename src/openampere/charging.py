@@ -113,6 +113,7 @@ class GridCharging:
         self._lock = asyncio.Lock()
         self._owner: asyncio.Task | None = None
         self._refused_quarter: int | None = None  # a refused command is not tried again in the same quarter
+        self._target_logged: tuple | None = None  # remote control target and fallback last logged this charge (#509)
         self._restore_failed = False  # setting a reserve raised by 0.23.1 back failed: logged once, tried on every tick
 
     # ---- settings ------------------------------------------------------------
@@ -330,12 +331,12 @@ class GridCharging:
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
-            self.verified = False
+            self.verified, self._target_logged = False, None
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
                                                                               "target_soc": s.target_soc},
                                                           **self._soc_now()},
                                         False, f"Laden gestartet ({plan['reason']})")
-            self._log_target(collector.driver)
+        self._log_target(collector.driver)
 
     async def _stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging: switches the remote control off, then sets a reserve raised by 0.23.1 back (#320)."""
@@ -467,10 +468,15 @@ class GridCharging:
         return float(limit) if limit else 100.0
 
     def _log_target(self, driver) -> None:
-        """Once per charge: a FoxESS that charges with target AC instead of the battery (#509). Then the setpoint
-        applies to the inverter's AC side, and in the sun PV is curtailed once the battery takes no more."""
-        fallback = getattr(driver, "remote_fallback", None)
-        if getattr(driver, "remote_target", None) != "ac" or not fallback:
+        """A FoxESS that charges with target AC instead of the battery (#509): logged at the start and whenever the
+        target or its reason changes during a charge (e.g. after a new connection). Then the setpoint applies to the
+        inverter's AC side, and in the sun PV is curtailed once the battery takes no more. A device that did not
+        answer for now is tried again with the next command and not logged."""
+        target, fallback = getattr(driver, "remote_target", None), getattr(driver, "remote_fallback", None)
+        if fallback == "unanswered" or (target, fallback) == self._target_logged:
+            return
+        self._target_logged = (target, fallback)
+        if target != "ac" or not fallback:
             return
         if fallback == "legacy":
             reason = "Bei der älteren Registerbelegung ist nicht bekannt, ob der Wechselrichter das Ziel Speicher kennt"

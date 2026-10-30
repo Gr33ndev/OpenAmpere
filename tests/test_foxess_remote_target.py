@@ -112,7 +112,7 @@ async def test_target_ac_for_this_command_when_46007_does_not_answer():
                 return await read_reg(reg, function)
             driver._read_reg = no_answer
             await driver.set_remote_power(-3000, timeout_s=180)
-            assert sim._get_setting("remote_enable") == 1 and driver.remote_fallback == "no_countdown"
+            assert sim._get_setting("remote_enable") == 1 and driver.remote_fallback == "unanswered"
             driver._read_reg = read_reg  # answers again: tried again with the next command
             await driver.set_remote_power(-3000, timeout_s=180)
             assert sim._get_setting("remote_enable") == 5 and driver.remote_fallback is None
@@ -158,6 +158,41 @@ async def test_legacy_map_stays_at_1():
             await driver.set_remote_power(-3000, timeout_s=180)
             assert sim._get_setting("remote_enable") == 1
             assert driver.remote_target == "ac" and driver.remote_fallback == "legacy"
+        finally:
+            await driver.close()
+
+
+async def test_power_is_written_before_the_read_back_of_5(monkeypatch):
+    """The read-back of 5 takes up to a few seconds: the inverter must not follow an old setpoint in 46003 meanwhile,
+    e.g. a discharge setpoint left by another controller. A read-back without answer is target AC for this command
+    only, not a refused command."""
+    monkeypatch.setattr(foxess_driver, "READ_BACK_WAITS_S", (0, 0))
+    sim, server, driver = await start()
+    async with server:
+        try:
+            sim._put("remote_power", 4000, sim.map.settings)
+            await driver.connect()
+            order = []
+            write, read_reg = driver._write, driver._read_reg
+
+            async def logged(reg, value):
+                order.append(("write", reg.address, value))
+                await write(reg, value)
+
+            async def no_answer(reg, function=3):
+                order.append(("read", reg.address))
+                if reg.address == 46001:
+                    raise ModbusTransientError("timeout")
+                return await read_reg(reg, function)
+            driver._write, driver._read_reg = logged, no_answer
+            await driver.set_remote_power(-3000, timeout_s=180)
+            assert order.index(("write", 46003, -3000)) < order.index(("read", 46001))
+            assert order.index(("write", 46001, 5)) < order.index(("write", 46003, -3000))
+            assert sim._get_setting("remote_enable") == 1 and driver.remote_fallback == "unanswered"
+            assert sim.energy.remote_power_w == -3000
+            driver._read_reg = read_reg  # answers again: 5 with the next command
+            await driver.set_remote_power(-3000, timeout_s=180)
+            assert sim._get_setting("remote_enable") == 5 and driver.remote_target == "battery"
         finally:
             await driver.close()
 

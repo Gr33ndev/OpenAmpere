@@ -48,7 +48,8 @@ class FoxessDriver(ModbusDevice):
         # remote control target (#509): None = not checked yet on this connection, then whether target battery works
         self._battery_target: bool | None = None
         self.remote_target: str | None = None  # of the last command: "battery" or "ac"
-        self.remote_fallback: str | None = None  # why it is "ac": "legacy", "no_countdown", "readback"
+        # why it is "ac": "legacy", "no_countdown", "readback" or "unanswered" (for this command only)
+        self.remote_fallback: str | None = None
 
     # ---- detection -------------------------------------------------------
 
@@ -193,23 +194,40 @@ class FoxessDriver(ModbusDevice):
         s = self.map.settings
         await self._write(s["remote_timeout"], int(timeout_s))
         self._remote_owned = int(timeout_s)
-        battery = await self._battery_target_possible() and await self._enable_battery_target(s["remote_enable"])
+        battery = await self._battery_target_possible()
+        if battery:
+            try:
+                await self._write(s["remote_enable"], REMOTE_ON_BATTERY)
+            except ModbusIllegalError:  # refused
+                battery = self._no_battery_target("readback")
         if not battery:
             await self._write(s["remote_enable"], REMOTE_ON_AC)
-        self.remote_target = "battery" if battery else "ac"
+        # the power right after the enable: until it is written, the inverter follows whatever 46003 still holds
         await self._write(s["remote_power"], int(watts))
+        if battery and self._battery_target is None:  # checked once per connection, after the power is set
+            try:
+                taken: bool | None = await self._reads_back(s["remote_enable"], REMOTE_ON_BATTERY)
+            except ModbusIllegalError:
+                taken = False
+            except ModbusReadError:  # no answer for now: target AC for this command, tried again with the next
+                taken = None
+            if taken:
+                self._battery_target, self.remote_fallback = True, None
+            else:
+                battery = False
+                if taken is None:
+                    self.remote_fallback = "unanswered"
+                else:
+                    self._no_battery_target("readback")
+                await self._write(s["remote_enable"], REMOTE_ON_AC)
+        elif battery:
+            self.remote_fallback = None
+        self.remote_target = "battery" if battery else "ac"
 
-    async def _enable_battery_target(self, reg) -> bool:
-        """Writes 5; the first time on this connection it must read back as 5, else target AC from now on."""
-        try:
-            await self._write(reg, REMOTE_ON_BATTERY)
-            taken = self._battery_target or await self._reads_back(reg, REMOTE_ON_BATTERY)
-        except ModbusIllegalError:  # refused
-            taken = False
-        if not taken:
-            log.warning("remote control target battery not taken over, using target AC")
-        self._battery_target, self.remote_fallback = taken, None if taken else "readback"
-        return taken
+    def _no_battery_target(self, reason: str) -> bool:
+        log.warning("remote control target battery not taken over, using target AC")
+        self._battery_target, self.remote_fallback = False, reason
+        return False
 
     async def _battery_target_possible(self) -> bool:
         """Whether to try target battery: only on the new map with a readable countdown (46007). A refusal is
@@ -227,7 +245,7 @@ class FoxessDriver(ModbusDevice):
             self._battery_target, self.remote_fallback = False, "no_countdown"
             return False
         except ModbusReadError:
-            self.remote_fallback = "no_countdown"
+            self.remote_fallback = "unanswered"
             return False
         return True
 

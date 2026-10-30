@@ -161,7 +161,9 @@ async def test_leftover_remote_control_is_switched_off_later(tmp_path):
 
 async def test_charging_falls_back_to_target_ac_and_says_so(tmp_path):
     """#509: without a readable 46007 grid charging goes on with 1 (target AC) as before, and the control log says
-    why and what it means in the sun. With target battery there is no such entry."""
+    why and what it means in the sun, also when it happens during a charge. With target battery there is no such
+    entry, nor for a 46007 that does not answer once."""
+    from openampere.drivers.modbus import ModbusTransientError
     sim, server, runtime = await connected(tmp_path)
     async with server:
         try:
@@ -175,10 +177,26 @@ async def test_charging_falls_back_to_target_ac_and_says_so(tmp_path):
             charging.save({**charging.view()["settings"], "enabled": False})
             await charging.tick()
 
-            del sim.regs[46007]
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
-            driver._battery_target = None  # as after a new connection to a device without the countdown
+            # 46007 does not answer for now: target AC for this command only, nothing logged
+            read_reg = driver._read_reg
+
+            async def no_answer(reg, function=3):
+                if reg.address == 46007:
+                    raise ModbusTransientError("timeout")
+                return await read_reg(reg, function)
+            driver._read_reg, driver._battery_target = no_answer, None
             charging.save({**charging.view()["settings"], "enabled": True})
+            await charging.tick()
+            assert charging.active and sim._get_setting("remote_enable") == 1
+            assert not any("Ziel" in e["result"] for e in runtime.storage.control_log())
+            driver._read_reg = read_reg
+            await charging.tick()
+            assert sim._get_setting("remote_enable") == 5
+
+            # later in the same charge a new connection finds no countdown: logged then, not only at the start
+            del sim.regs[46007]
+            driver._battery_target = None
             await charging.tick()
             assert charging.active and sim._get_setting("remote_enable") == 1
             note = runtime.storage.control_log()[0]["result"]
