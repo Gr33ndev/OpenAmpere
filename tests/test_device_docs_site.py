@@ -91,6 +91,14 @@ def test_a_nul_in_the_text_cannot_stand_for_rendered_html():
 
 
 @needs_node
+@pytest.mark.parametrize("source", ["<https://example.org/-_x_-/>", "https://example.org/-_x_-/",
+                                    "[x](https://example.org/-_x_-/)", "<https://example.org/a*b*c>"])
+def test_emphasis_does_not_reach_into_an_address(source):
+    html = render(source)["html"]
+    assert re.search(r'<a href="https://example\.org/(-_x_-/|a\*b\*c)">', html), html
+
+
+@needs_node
 def test_the_title_and_id_of_a_heading_are_plain_text():
     page = render("# Map `<script>` & **more**")
     assert page["title"] == "Map <script> & more"  # escaped where it is used, like any other text of the page

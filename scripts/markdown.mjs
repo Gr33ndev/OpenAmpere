@@ -76,7 +76,7 @@ function inline(text, options) {
     if (c === "<") {
       const auto = /^<(https:\/\/[^\s<>]+)>/.exec(text.slice(i));
       if (auto) {
-        out += linkHtml(escapeHtml(auto[1]), auto[1], options);
+        out += token(linkHtml(escapeHtml(auto[1]), auto[1], options));
         i += auto[0].length;
         continue;
       }
