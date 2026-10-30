@@ -528,6 +528,13 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
             assert check["status"] == "ok" and "OpenAmpere lädt aus dem Netz" in check["summary"]
             sim._put("remote_countdown", 170, settings)
             assert "OpenAmpere erneuert die Vorgabe" in (await remote())["hint"]
+            # target AC with a fallback: the control log has the reason, except for a device that did not answer once
+            driver.remote_target, driver.remote_fallback = "ac", "no_countdown"
+            assert "siehe Steuerungsprotokoll" in (await remote())["hint"]
+            driver.remote_fallback = "unanswered"
+            hint = (await remote())["hint"]
+            assert "kurz nicht geantwortet" in hint and "Steuerungsprotokoll" not in hint
+            driver.remote_target, driver.remote_fallback = None, None
             # a device that refuses 46007: the check still works, without the countdown
             del sim.regs[sim.map.settings["remote_countdown"].address]
             check = await remote()

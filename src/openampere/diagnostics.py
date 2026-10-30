@@ -172,7 +172,11 @@ class Diagnostics:
         clock = self._countdown_text(countdown, writing, ours and now - command["ts"] < timeout)
         if writing:
             hint = "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit."
-            if getattr(driver, "remote_target", None) == "ac":
+            if getattr(driver, "remote_fallback", None) == "unanswered":  # not in the control log (#509)
+                hint += (" Der Wechselrichter lädt gerade mit Ziel Wechselrichter-Ausgang statt Speicher, weil er "
+                         "kurz nicht geantwortet hat; OpenAmpere versucht es mit dem nächsten Befehl wieder mit dem "
+                         "Ziel Speicher.")
+            elif getattr(driver, "remote_target", None) == "ac":
                 hint += (" Der Wechselrichter lädt mit Ziel Wechselrichter-Ausgang statt Speicher (siehe "
                          "Steuerungsprotokoll): Scheint die Sonne, regelt er die Solaranlage ab, sobald der Speicher "
                          "nichts mehr aufnimmt.")
