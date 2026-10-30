@@ -454,7 +454,7 @@
     "workModePlugAndCharge": "beim Einstecken",
     "yes": "ja",
     "showLive": "Diese Wallbox in OpenAmpere einrichten",
-    "showLiveHint": "OpenAmpere kann diese Wallbox auch dauerhaft anzeigen, nur lesend. Adresse, Port und Geräteadresse aus der Prüfung werden übernommen."
+    "showLiveHint": "OpenAmpere kann diese Wallbox auch dauerhaft anzeigen, zunächst nur lesend; die echte Steuerung kannst du danach als Test einschalten. Adresse, Port und Geräteadresse aus der Prüfung werden übernommen."
   },
   "wallboxPage": {
     "addressHint": "Auf demselben Rechner {local}, sonst z. B. {example}",

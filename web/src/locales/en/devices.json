@@ -454,7 +454,7 @@
     "workModePlugAndCharge": "when plugged in",
     "yes": "yes",
     "showLive": "Set up this wallbox in OpenAmpere",
-    "showLiveHint": "OpenAmpere can also show this wallbox permanently, read only. Address, port and unit ID are taken over from the check."
+    "showLiveHint": "OpenAmpere can also show this wallbox permanently, read only at first; you can switch on real control as a test afterwards. Address, port and unit ID are taken over from the check."
   },
   "wallboxPage": {
     "addressHint": "On the same computer {local}, otherwise e.g. {example}",
