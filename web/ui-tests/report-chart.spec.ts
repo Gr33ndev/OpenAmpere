@@ -10,6 +10,11 @@ const entry = (d: number, pv: number) => ({
 
 /** Bars of one colour (a css variable or a colour) along a row just above the x axis: their start and end as a share
  *  of the plot width, and their height as a share of the plot height. */
+/** How many bars of a color the chart draws, asked again until it holds: a click on the legend redraws the canvas
+ *  a moment later, slower on CI than locally. */
+const drawn = (chart: Locator, color: string, message: string, count: number) =>
+  expect.poll(async () => (await bars(chart, color)).length, { message }).toBe(count);
+
 async function bars(chart: Locator, color: string) {
   await chart.scrollIntoViewIfNeeded();
   await expect(chart.locator("canvas")).toBeVisible();
@@ -97,14 +102,14 @@ test("lines are hidden and shown with the legend and stay so after a reload", as
   // without the self-supplied part the blue bar is only what came from the grid: 2 kWh next to 20 kWh generated
   await entryButton("Selbst versorgt").click();
   await expect(entryButton("Selbst versorgt")).toHaveAttribute("aria-pressed", "false");
-  expect((await bars(chart, "--house")).length, "self-supplied hidden").toBe(0);
+  await drawn(chart, "--house", "self-supplied hidden", 0);
   const grid = await bars(chart, "--grid"), pv = await bars(chart, "--pv");
   expect(grid.length).toBe(3);
   expect(grid[1].height / pv[1].height).toBeCloseTo(0.1, 1);
 
   await entryButton("Erzeugt").click();
-  expect((await bars(chart, "--pv")).length, "generation hidden").toBe(0);
-  expect((await bars(chart, "--grid")).length, "grid still shown").toBe(3);
+  await drawn(chart, "--pv", "generation hidden", 0);
+  await drawn(chart, "--grid", "grid still shown", 3);
 
   // the last line cannot be hidden
   await entryButton("Aus dem Netz").click();
@@ -113,9 +118,9 @@ test("lines are hidden and shown with the legend and stay so after a reload", as
   await page.reload();
   await page.getByRole("button", { name: "Woche" }).click();
   await expect(entryButton("Erzeugt")).toHaveAttribute("aria-pressed", "false");
-  expect((await bars(chart, "--pv")).length).toBe(0);
+  await drawn(chart, "--pv", "still hidden after a reload", 0);
   await entryButton("Erzeugt").click();
-  expect((await bars(chart, "--pv")).length, "shown again").toBe(3);
+  await drawn(chart, "--pv", "shown again", 3);
   expect(await layoutProblems(page)).toEqual([]);
 });
 
@@ -131,8 +136,8 @@ test("a PV input is hidden with the legend of its chart", async ({ page, api }) 
   const legend = title.locator("xpath=following-sibling::div[contains(@class, 'legend')][1]");
   expect((await bars(chart, "#eec91d")).length).toBe(2);
   await legend.getByRole("button", { name: /Süd/ }).click();
-  expect((await bars(chart, "#eec91d")).length, "Süd hidden").toBe(0);
-  expect((await bars(chart, "#a78bfa")).length, "West now from the axis").toBe(2);
+  await drawn(chart, "#eec91d", "Süd hidden", 0);
+  await drawn(chart, "#a78bfa", "West now from the axis", 2);
 });
 
 // #468: a day imported from the cloud has no local readings; the "Leistung" view draws its state of charge
