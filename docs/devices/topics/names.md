@@ -87,7 +87,7 @@ Wallboxes:
 | Period (about) | Sold as | Manufacturer model | Local interface | OpenAmpere | Status | Source |
 |---|---|---|---|---|---|---|
 | 2020–2022 | Senec wallbox | SENEC.Wallbox | not looked into | not supported | open: only a datasheet hosted by EKD; derived (period) | Senec datasheet "SENEC.Wallbox" on ekd-solar.de, 2020-03 (web archive) |
-| 2023–2024 | "AMPERE.Charge" | Weidmüller AC Smart Value, 11 kW | Modbus TCP 502, Modbus RTU, OCPP 1.6J | through evcc (needs an evcc sponsor token); OCPP check read-only | documented (product, interfaces), derived (evcc, sponsor token) | see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`) |
+| 2023–2024 | "AMPERE.Charge" | Weidmüller AC Smart Value, 11 kW | Modbus TCP 502, Modbus RTU, OCPP 1.6J | through evcc (needs an evcc sponsor token); OCPP check read-only | documented (product, interfaces, start), derived (evcc, sponsor token, end of the period) | see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`) |
 | about 2024 – 2026 | "Ampere.ChargePro" | FoxESS AC EV Charger, 22 kW | Modbus TCP 502, OCPP 1.6 | wallbox module `foxess_ac` | documented (sales name), confirmed (FoxESS charger with EKD systems), derived (period) | [foxess/ac-charger.md](../foxess/ac-charger.md) |
 
 Around the storage system:
@@ -99,7 +99,7 @@ Around the storage system:
 | 2023–2024 | "AMPERE.StoragePro Meter" | Chint DTSU666 grid meter (SAJ systems) | RS485 to the inverter | read through the inverter | derived | as above |
 | from 2024-08 | "Ampere.Offgrid" | three-phase 63 A transfer switch for backup power; maker not stated | none | nothing to read | documented | EKD datasheet "Ampere.Offgrid", 2024-08 |
 | about 2022 – 2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented (maker), derived (period) | EKD datasheets "Ampere.SolarPro" |
-| from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)) | documented | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
+| from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)) | documented (partners), derived (period) | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
 | – | heating rod | my-PV, model not stated | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)) | derived | Photovoltaikforum on the Ampere Storage Pro (as above) |
 
 ## Behaviour
