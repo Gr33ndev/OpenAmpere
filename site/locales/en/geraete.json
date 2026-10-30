@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "title": "EKD devices | OpenAmpere",
+    "description": "Which batteries, wallboxes and other devices EKD sold, and which of them OpenAmpere can monitor and control."
+  },
+  "head": {
+    "eyebrow": "Devices",
+    "title": "Which EKD devices work with OpenAmpere?",
+    "lead": "Since 2018, EKD has sold batteries, wallboxes and other devices of several makers. This page shows what OpenAmpere can do with them today and what is being worked on.",
+    "find": "Which device you have is on the type plate of the battery, the inverter or the wallbox. The sales name is usually in EKD's offer or invoice."
+  },
+  "table": {
+    "label": "Devices sold by EKD",
+    "sold": "Sold as",
+    "device": "Device",
+    "period": "Period, about",
+    "state": "In OpenAmpere",
+    "next": "Next step"
+  },
+  "groups": {
+    "storage": "Batteries",
+    "wallbox": "Wallboxes",
+    "around": "Around the battery"
+  },
+  "state": {
+    "both": "Monitoring and control",
+    "readTest": "Monitoring, control as a test",
+    "evcc": "Through evcc",
+    "planned": "Planned",
+    "info": "Information wanted",
+    "notNeeded": "Not needed",
+    "nothing": "Nothing to connect",
+    "relay": "Through a relay"
+  },
+  "next": {
+    "issue": "Issue",
+    "deviceReport": "A <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">device report</a> helps with control",
+    "tellUs": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=feature_request.yml\">Get in touch</a> if you have one"
+  },
+  "rows": {
+    "e3Device": "FoxESS H3 (12 and 22 kW)",
+    "e3Period": "2024–2026",
+    "e3Note": "Confirmed on an H3 with newer firmware, the 22 kW model not yet.",
+    "e2Period": "2023–2024",
+    "e2Note": "Monitoring confirmed, control not yet.",
+    "solarmaxPeriod": "2022–2023",
+    "solarmaxNote": "Monitoring first. OpenAmpere never switches on a battery that EKD switched off remotely.",
+    "mtecPeriod": "from late 2022",
+    "mtecNote": "Monitoring first.",
+    "enphasePeriod": "from late 2022",
+    "enphaseNote": "Monitoring first. Needs a key from the Enphase account once.",
+    "senecPeriod": "2020–2022",
+    "senecNote": "Possibly also older Senec.Home V2.1. Senec has no Modbus TCP interface, so it needs a new kind of connection.",
+    "vartaPeriod": "from 2022",
+    "vartaNote": "Unclear how many there are and which interface they have.",
+    "chargeProPeriod": "2024–2026",
+    "chargeProNote": "Controls only after you switch it on for the wallbox in the app.",
+    "chargePeriod": "2023–2024",
+    "chargeNote": "evcc needs a sponsor token for it. Directly through OpenAmpere is planned.",
+    "senecWallboxPeriod": "2020–2022",
+    "senecWallboxNote": "Unclear which interface it has.",
+    "iqDevice": "Energy manager by Kiwigrid",
+    "iqPeriod": "2023–2026",
+    "iqNote": "OpenAmpere replaces the app. You can take over the history from the EKD cloud while it runs.",
+    "heaterSold": "Heating rod",
+    "heaterPeriod": "–",
+    "heaterNote": "Not yet confirmed on a real system.",
+    "heatpumpSold": "Heat pump from partners",
+    "heatpumpDevice": "several makers, SG Ready",
+    "heatpumpPeriod": "from 2025",
+    "heatpumpNote": "Through a Shelly relay on the SG Ready input, not yet confirmed.",
+    "otherDevice": "Backup power switch, solar modules",
+    "otherPeriod": "2022–2026",
+    "otherNote": "These devices have no interface."
+  },
+  "notes": {
+    "plannedTitle": "What “planned” means",
+    "planned": "Every planned device has an issue on GitHub, but no date yet. Monitoring comes first. Control comes only after an owner has confirmed the values on their system.",
+    "testers": "Do you have such a device and can test? Then please say so in the issue: which device according to the type plate. Leave out the serial number, because the issue is public.",
+    "sources": "Details and sources for every device are in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">device overview in the repository</a>.",
+    "legal": "<strong>No guarantee:</strong> This overview is not official information from EKD or the makers. It comes from public datasheets, press reports and reports of owners and may be incomplete or wrong. OpenAmpere has no affiliation with EKD or the makers named. All product and company names belong to their owners and are used here only to describe which devices OpenAmpere works with. Not legal advice."
+  }
+}

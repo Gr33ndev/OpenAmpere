@@ -21,6 +21,7 @@
     "heater": "<strong>Heizstab von my-PV</strong> (AC ELWA-E, AC ELWA 2, AC THOR): stufenlos geregelt, noch nicht bestätigt",
     "relay": "Wärmepumpe oder andere Geräte über ein Shelly-Relais, noch nicht bestätigt",
     "wallbox": "<strong>Wallbox</strong> über <a href=\"https://evcc.io\">evcc</a> oder direkt (mobile dé-Wallbox), noch nicht bestätigt",
+    "notYet": "<strong>Noch nicht:</strong> ältere Speicher, die EKD vor den Ampere.StoragePro verkauft hat (Senec, „AMPERE.Storage“ von Solarmax, M-TEC, Enphase). Mehr dazu in der <a href=\"geraete.html\">Übersicht der EKD-Geräte</a>",
     "devicesNote": "Welches Gerät du hast, erkennt die App beim Einrichten selbst. Die Verbindung läuft über Modbus TCP. „Noch nicht bestätigt“ heißt: nach Unterlagen der Hersteller oder der Community gebaut und mit Tests geprüft, aber noch von keiner echten Anlage gemeldet. Hast du so ein Gerät, hilft ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> mit der Diagnose aus der App. Alle Einzelheiten stehen in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices.de.md\">Geräteliste</a>.",
     "setupTitle": "Einrichtung",
     "setupText": "Du startest OpenAmpere einmal mit Docker. Danach sucht ein Assistent den Wechselrichter, und alle Einstellungen machst du in der App. Konfigurationsdateien musst du nicht bearbeiten.",
@@ -63,7 +64,7 @@
   "install": {
     "title": "Installation",
     "prepareTitle": "Rechner vorbereiten",
-    "prepareText": "Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit 64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Speichern ist das schon der Fall, sonst kann es der Installationsbetrieb erledigen.",
+    "prepareText": "Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit 64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall, sonst kann es der Installationsbetrieb erledigen.",
     "runTitle": "Installieren",
     "runText": "Diesen Befehl im Terminal des Rechners ausführen:",
     "copy": "Kopieren",

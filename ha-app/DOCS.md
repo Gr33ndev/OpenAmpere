@@ -19,7 +19,7 @@ The app is new and marked as **experimental**. If something does not work, pleas
 3. **Open OpenAmpere** in the sidebar. The setup wizard searches for the inverter in your home network, or you enter
    its IP address.
 
-Modbus TCP must be turned on at the inverter. For the battery systems sold by EKD this is already the case; for other
+Modbus TCP must be turned on at the inverter. For the Ampere.StoragePro batteries sold by EKD this is already the case; for other
 devices your installer can do it.
 
 In the sidebar you need no password: Home Assistant has already checked who you are. Only **administrators of Home
