@@ -496,6 +496,14 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
                 check = await remote()
                 assert check["status"] == "info" and "Rest des Ladens aus dem Netz von OpenAmpere" in check["summary"]
                 assert "anderes Gerät" not in check["summary"] and "schaltet sie" in check["hint"]
+            # a leftover within the time limit of OpenAmpere's last command (e.g. after a restart mid-charge): a running
+            # countdown is OpenAmpere's own, not another device's
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 60, "power_w": -3000})
+            sim._put("remote_countdown", 120, settings)
+            check = await remote()
+            assert check["status"] == "info" and "vom letzten Befehl von OpenAmpere (noch 120 s)" in check["hint"]
+            assert "anderes Gerät" not in check["hint"]
+            sim._put("remote_countdown", 0, settings)
             # the previous smartbox uses other values (on = 5, 30 s): another device, even though OpenAmpere charged
             sim._put("remote_enable", 5, settings)
             sim._put("remote_timeout", 30, settings)

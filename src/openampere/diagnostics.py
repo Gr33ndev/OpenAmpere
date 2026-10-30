@@ -169,7 +169,7 @@ class Diagnostics:
         ours = (bool(command) and remote["words"][0] in REMOTE_OURS
                 and timeout == command.get("timeout_s", REMOTE_TIMEOUT_S))
         writing = ours and bool(getattr(driver, "_remote_owned", None))
-        clock = self._countdown_text(countdown, writing)
+        clock = self._countdown_text(countdown, writing, ours and now - command["ts"] < timeout)
         if writing:
             hint = "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit."
             if getattr(driver, "remote_target", None) == "ac":
@@ -224,8 +224,9 @@ class Diagnostics:
                      "„Die bisherige Smartbox setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")).strip())
 
     @staticmethod
-    def _countdown_text(countdown: int | None, writing: bool) -> str:
-        """What the watchdog countdown (46007) says about a remote control that is on (#141, #143, #509)."""
+    def _countdown_text(countdown: int | None, writing: bool, recent: bool) -> str:
+        """What the watchdog countdown (46007) says about a remote control that is on (#141, #143, #509). recent: with
+        OpenAmpere's values, its last command was sent within the time limit, so a running countdown is its own."""
         if countdown is None:
             return ""
         if countdown == 0:
@@ -233,6 +234,8 @@ class Diagnostics:
                     "nach Ablauf nicht abgeschaltet, und die Vorgabe gilt weiter, bis sie jemand abschaltet.")
         if writing:
             return f"Das Zeitlimit läuft (noch {countdown} s), OpenAmpere erneuert die Vorgabe laufend."
+        if recent:
+            return f"Das Zeitlimit läuft noch vom letzten Befehl von OpenAmpere (noch {countdown} s)."
         return (f"Das Zeitlimit läuft (noch {countdown} s), obwohl OpenAmpere gerade nichts sendet: Ein anderes Gerät "
                 "schreibt die Vorgabe gerade, oder der Wechselrichter hat sie nach einem Neustart wiederhergestellt.")
 
