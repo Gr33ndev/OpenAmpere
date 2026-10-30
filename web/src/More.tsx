@@ -18,6 +18,7 @@ import { deviceStatus } from "./DevicesPage";
 import { PvInputsCard, TemperaturesCard } from "./Dashboard";
 import { TemperatureSection } from "./Report";
 import { goBack, navigate } from "./route";
+import { DEVICE_DOCS_URL, inverterDocsUrl } from "./links";
 import { ConsumersPage } from "./ConsumersPage";
 import { WallboxPage } from "./WallboxPage";
 import { BillingPage } from "./BillingPage";
@@ -44,6 +45,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
   const codes = (snap?.alarms ?? []).map((a, i) => ({ word: i + 1, value: a })).filter((a) => a.value !== 0);
   const alarms = codes.length > 0;
   const stale = useStale(snap, true, status);
+  const docsUrl = inverterDocsUrl(device?.driver);
 
   return (
     <SubPage title={t("common.mySystem")} onBack={onBack}>
@@ -82,6 +84,11 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>{t("settings.installationPage.lastReading")}</dt><dd>{status?.last_update ? updatedLabel(status.last_update) : "–"}</dd>
         </dl>
         <FirmwareFacts firmware={status?.firmware} />
+        {docsUrl && (
+          <p className="hint">
+            <a href={docsUrl} target="_blank" rel="noopener noreferrer">{t("settings.installationPage.deviceDocs")}</a> <span aria-hidden>↗</span>
+          </p>
+        )}
       </div>
 
       <div className="section-title">{t("common.pvSystem")}</div>
@@ -196,6 +203,9 @@ export function More({ snap, page }: { snap: Snapshot | null; page: string | nul
       <div className="card menu">
         <MenuRow label={t("common.dataBackup")} hint={t("settings.more.dataHint")} onClick={() => setPage("data")} />
         <MenuRow label={t("common.diagnostics")} hint={t("settings.more.diagnosticsHint")} onClick={() => setPage("diagnostics")} />
+        <a className="menu-row" href={DEVICE_DOCS_URL()} target="_blank" rel="noopener noreferrer">
+          <span>{t("settings.more.deviceDocs")}<span className="menu-hint">{t("settings.more.deviceDocsHint")}</span></span><span aria-hidden>↗</span>
+        </a>
         <MenuRow label={t("common.aboutOpenampere")} onClick={() => setPage("about")} />
       </div>
     </div>

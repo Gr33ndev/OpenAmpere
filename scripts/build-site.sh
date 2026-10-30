@@ -6,6 +6,7 @@
 # The pages are rendered by scripts/build-site-pages.mjs from the templates in site/pages/ and the texts in
 # site/locales/<lang>/: German at the root (index.html, faq.html, impressum.html), every other language of the site
 # or of the web app (web/src/locales/) in _site/<lang>/. A new language needs only a new folder, see that script.
+# The same script renders the device knowledge of docs/devices/ into docs/devices/ of every language (#512).
 # The site comes from the working tree, install.sh, tailscale.sh and updater.sh (plus their SHA256SUMS) from
 # scripts/site-scripts.sh (the newest stable release tag). SITE_SCRIPTS=skip leaves them out: the website workflow
 # adds them in a job without npm.

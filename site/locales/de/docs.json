@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "Gerätewissen | OpenAmpere",
+    "description": "Was OpenAmpere über Wechselrichter, Wallboxen und weitere Geräte weiß: Register, Verhalten und wie sicher jede Angabe ist."
+  },
+  "head": {
+    "overview": "Gerätewissen",
+    "note": "Diese Seiten sind technisch und auf Englisch. Sie sammeln, was die Mitwirkenden von OpenAmpere über die Geräte herausgefunden haben, jeweils mit Quelle und wie sicher die Angabe ist. Es sind keine offiziellen Angaben der Hersteller. Für die Einrichtung brauchst du sie nicht, die App erklärt dir alles Nötige."
+  },
+  "foot": {
+    "source": "Diese Seite auf GitHub ansehen und verbessern"
+  }
+}

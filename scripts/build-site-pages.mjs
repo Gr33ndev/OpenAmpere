@@ -23,6 +23,18 @@
  *                       version's summary in the page's language or German (#176)
  * A template line that holds only a placeholder whose value is empty is left out.
  *
+ * Device knowledge (#512): every Markdown file of docs/devices/ (#384) becomes a page in every language at the same
+ * path, docs/devices/<path>.html (README.md as index.html), rendered by scripts/markdown.mjs into the template
+ * site/doc.html. The pages stay English (lang="en" on the article); only the frame around them is translated, from
+ * site/locales/<lang>/docs.json. Reserved placeholders of that template, besides the ones above:
+ *   {{home}}       the way back to the page's language root, e.g. "../../../" ({{root}} is the site's root as above)
+ *   {{doc}}        the rendered page
+ *   {{docTitle}}   its first heading and " | " for the <title>, empty on the overview (README.md)
+ *   {{docSource}}  the Markdown file on GitHub
+ * A link to another page of docs/devices/ stays relative (.md → .html), a link to any other file of the repository
+ * goes to the file on GitHub, a link with another scheme than https:// is left out (its text stays). A link to a file
+ * or heading that does not exist is reported as a warning.
+ *
  * Languages: German (de) is the reference and goes to the root of the output (index.html, faq.html, impressum.html),
  * every other language to <output>/<lang>/ with the same file names. A language is every folder with a meta.json
  * ({"name": "English"}) in site/locales/ or in web/src/locales/: the demo of the web app links to ../<lang>/ for each
@@ -42,17 +54,21 @@
  * page is written when it fails.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
+import { renderMarkdown } from "./markdown.mjs";
 
 const REFERENCE = "de";
 const SITE_URL = (process.env.SITE_URL ?? "https://gr33ndev.github.io/OpenAmpere/").replace(/\/?$/, "/");
 const out = process.argv[2] ?? "_site";
 const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}/g;
-const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog"]);
+const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog", "home", "doc", "docTitle", "docSource"]);
 const CHANGELOG_FILE = "web/public/changelog.json";
 const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
 const ADVISORIES = "https://github.com/Gr33ndev/OpenAmpere/security/advisories/";
+const REPO_FILES = "https://github.com/Gr33ndev/OpenAmpere/blob/main/";
+const DOCS = "docs/devices";
+const DOC_TEMPLATE = "site/doc.html";
 
 // tags a text value may contain, with the attributes each may have (#355)
 const SAFE_TAGS = { a: ["href"], strong: [], em: [], code: [], br: [], p: [] };
@@ -148,20 +164,71 @@ function renderChangelog(text, contentLang) {
 }
 
 const escapeText = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const pagePath = (lang, page) => `${lang === REFERENCE ? "" : `${lang}/`}${page === "index" ? "" : `${page}.html`}`;
+const langPrefix = (lang) => (lang === REFERENCE ? "" : `${lang}/`);
+const pagePath = (lang, page) => `${langPrefix(lang)}${page === "index" ? "" : `${page}.html`}`;
 
 const pages = readdirSync("site/pages").filter((file) => file.endsWith(".html")).map((file) => file.slice(0, -5)).sort();
 const templates = Object.fromEntries(pages.map((page) => [page, readFileSync(join("site/pages", page + ".html"), "utf8")]));
+const docTemplate = existsSync(DOC_TEMPLATE) ? readFileSync(DOC_TEMPLATE, "utf8") : null;
 
 // keys the templates use: each must exist in German
 const used = new Set(["common.languageSwitch.label"]); // used by the language switch
-for (const [page, template] of Object.entries(templates)) {
+const templateFiles = [...pages.map((page) => [`site/pages/${page}.html`, templates[page]]), ...(docTemplate ? [[DOC_TEMPLATE, docTemplate]] : [])];
+for (const [file, template] of templateFiles) {
   for (const [, name] of template.matchAll(PLACEHOLDER)) {
     if (RESERVED.has(name)) continue;
-    if (!name.includes(".")) errors.push(`site/pages/${page}.html: unknown placeholder {{${name}}}`);
-    else if (lookup(REFERENCE, name) === undefined) errors.push(`site/pages/${page}.html: {{${name}}} is missing in site/locales/${REFERENCE}/`);
+    if (!name.includes(".")) errors.push(`${file}: unknown placeholder {{${name}}}`);
+    else if (lookup(REFERENCE, name) === undefined) errors.push(`${file}: {{${name}}} is missing in site/locales/${REFERENCE}/`);
     used.add(name);
   }
+}
+
+/** Every Markdown file below dir, relative to it ("foxess/h3.md"). */
+function markdownFiles(dir, prefix = "") {
+  return readdirSync(join(dir, prefix), { withFileTypes: true }).flatMap((entry) => {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+    return entry.isDirectory() ? markdownFiles(dir, path) : entry.name.endsWith(".md") ? [path] : [];
+  }).sort();
+}
+const docOut = (file) => `${DOCS}/${file.replace(/(^|\/)README\.md$/, "$1index.md").replace(/\.md$/, ".html")}`;
+const decode = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+const anchors = []; // [file, target file, heading id] of every link to a heading of a page, checked when all are rendered
+/** Where the link href of the Markdown file `from` (relative to DOCS) points on the website, null for none. */
+function docLink(from, href) {
+  if (/^https:\/\//i.test(href)) return href;
+  if (href.startsWith("#")) {
+    anchors.push([from, from, decode(href.slice(1))]);
+    return href;
+  }
+  const [path, hash] = href.split(/#(.*)/s);
+  const target = posix.normalize(posix.join(posix.dirname(`${DOCS}/${from}`), decode(path)));
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:|^\//.test(href) || target.startsWith("../")) {
+    warnings.push(`${DOCS}/${from}: the link to ${href} is left out (only https:// and files of the repository)`);
+    return null;
+  }
+  if (!existsSync(target)) warnings.push(`${DOCS}/${from}: the link to ${href} leads nowhere (${target} does not exist)`);
+  if (target.startsWith(`${DOCS}/`) && target.endsWith(".md")) {
+    const file = target.slice(DOCS.length + 1);
+    if (hash) anchors.push([from, file, decode(hash)]);
+    return posix.relative(posix.dirname(docOut(from)), docOut(file)) + (hash ? `#${hash}` : "");
+  }
+  return REPO_FILES + target.split("/").map(encodeURIComponent).join("/") + (hash ? `#${hash}` : "");
+}
+// rendered once, the same in every language
+const docs = docTemplate && existsSync(DOCS) ? markdownFiles(DOCS).map((file) => {
+  const { html, title, ids } = renderMarkdown(readFileSync(join(DOCS, file), "utf8"), { link: (href) => docLink(file, href) });
+  if (!title) errors.push(`${DOCS}/${file}: the page has no heading "# …" for its title`);
+  return { file, out: docOut(file), html, title: title ?? file, ids };
+}) : [];
+for (const [from, file, id] of anchors) {
+  const target = docs.find((doc) => doc.file === file);
+  if (target && !target.ids.includes(id)) warnings.push(`${DOCS}/${from}: the link to ${file}#${id} leads to no heading`);
 }
 const changelogUsed = Object.values(templates).some((template) => template.includes("{{changelog}}"));
 const changelog = changelogUsed ? readJson(CHANGELOG_FILE).versions ?? [] : [];
@@ -210,19 +277,20 @@ if (!errors.length) {
     const lang = language.code;
     const root = lang === REFERENCE ? "" : "../";
     const vars = { root, lang, contentLang: language.translated ? lang : REFERENCE };
-    const fillVars = (value, where) => value.replace(PLACEHOLDER, (match, name) => {
-      if (name in vars) return vars[name];
+    // pageVars: vars with the root of the page (a page of the device knowledge lies deeper)
+    const fillVars = (value, where, pageVars) => value.replace(PLACEHOLDER, (match, name) => {
+      if (name in pageVars) return pageVars[name];
       errors.push(`${where}: unknown placeholder ${match} in the text`);
       return match;
     });
     const missing = new Set();
-    const text = (key) => {
+    const text = (key, pageVars = vars) => {
       let value = lookup(lang, key);
       if (value === undefined) {
         missing.add(key);
         value = lookup(REFERENCE, key);
       }
-      const filled = fillVars(value, `${key} (${lang})`);
+      const filled = fillVars(value, `${key} (${lang})`, pageVars);
       // the value as it goes into the page: the placeholders may complete a scheme ("{{root}}javascript:")
       const problem = unsafeHtml(filled);
       const error = `site/locales/${lang}/${key.split(".")[0]}.json: ${key}: ${problem} (after filling in the placeholders)`;
@@ -231,28 +299,40 @@ if (!errors.length) {
     };
     const switchLanguages = translated.some((other) => other.code === lang) ? translated : [...translated, language].sort(byName);
 
+    const languageSwitch = (href) => `<span class="lang-switch" role="group" aria-label="${escapeText(text("common.languageSwitch.label"))}">`
+      + switchLanguages.map(({ code, name }) => `<a href="${href(code)}"`
+        + ` hreflang="${code}" lang="${code}" title="${escapeText(name)}" aria-label="${escapeText(name)}"`
+        + `${code === lang ? ' aria-current="page"' : ""}>${code.toUpperCase()}</a>`).join("")
+      + "</span>";
+    /** <link rel="alternate"> to the same page in every translated language, path(code) its address in that one. */
+    const alternates = (path) => [...translated.map(({ code }) => [code, code]), ["x-default", REFERENCE]]
+      .map(([hreflang, code]) => `<link rel="alternate" hreflang="${hreflang}" href="${SITE_URL}${path(code)}" />`)
+      .join("\n  ");
+    const render = (template, generated) => template.split("\n").flatMap((line) => {
+      const pageVars = { root: generated.root, lang, contentLang: vars.contentLang };
+      const rendered = line.replace(PLACEHOLDER, (match, name, offset) => {
+        if (name in generated) return generated[name];
+        const value = text(name, pageVars);
+        // inside a tag: the value is an attribute, so plain text
+        return line.lastIndexOf("<", offset) > line.lastIndexOf(">", offset) ? escapeText(value) : value;
+      });
+      return /^\s*\{\{[^{}]+\}\}\s*$/.test(line) && !rendered.trim() ? [] : [rendered];
+    }).join("\n");
+
     const dir = lang === REFERENCE ? out : join(out, lang);
     for (const page of pages) {
-      const alternates = [...translated.map(({ code }) => [code, code]), ["x-default", REFERENCE]]
-        .map(([hreflang, code]) => `<link rel="alternate" hreflang="${hreflang}" href="${SITE_URL}${pagePath(code, page)}" />`)
-        .join("\n  ");
-      const languageSwitch = `<span class="lang-switch" role="group" aria-label="${escapeText(text("common.languageSwitch.label"))}">`
-        + switchLanguages.map(({ code, name }) => `<a href="${(code === lang ? pagePath(REFERENCE, page) : root + pagePath(code, page)) || "./"}"`
-          + ` hreflang="${code}" lang="${code}" title="${escapeText(name)}" aria-label="${escapeText(name)}"`
-          + `${code === lang ? ' aria-current="page"' : ""}>${code.toUpperCase()}</a>`).join("")
-        + "</span>";
-      const generated = { ...vars, alternates, languageSwitch, changelog: changelogUsed ? renderChangelog(text, vars.contentLang) : "" };
-
-      const html = templates[page].split("\n").flatMap((line) => {
-        const rendered = line.replace(PLACEHOLDER, (match, name, offset) => {
-          if (name in generated) return generated[name];
-          const value = text(name);
-          // inside a tag: the value is an attribute, so plain text
-          return line.lastIndexOf("<", offset) > line.lastIndexOf(">", offset) ? escapeText(value) : value;
-        });
-        return /^\s*\{\{[^{}]+\}\}\s*$/.test(line) && !rendered.trim() ? [] : [rendered];
-      }).join("\n");
-      output.push([dir, `${page}.html`, html]);
+      const generated = { ...vars, alternates: alternates((code) => pagePath(code, page)), changelog: changelogUsed ? renderChangelog(text, vars.contentLang) : "",
+        languageSwitch: languageSwitch((code) => (code === lang ? pagePath(REFERENCE, page) : root + pagePath(code, page)) || "./") };
+      output.push([dir, `${page}.html`, render(templates[page], generated)]);
+    }
+    for (const doc of docs) {
+      const home = "../".repeat(doc.out.split("/").length - 1);
+      const path = (code) => `${langPrefix(code)}${doc.out.replace(/index\.html$/, "")}`;
+      const name = posix.basename(doc.out);
+      const generated = { ...vars, root: home + root, home, alternates: alternates(path), doc: doc.html,
+        docTitle: doc.out === `${DOCS}/index.html` ? "" : `${escapeText(doc.title)} | `, docSource: `${REPO_FILES}${DOCS}/${doc.file}`,
+        languageSwitch: languageSwitch((code) => (code === lang ? (name === "index.html" ? "./" : name) : home + root + path(code))) };
+      output.push([join(dir, posix.dirname(doc.out)), name, render(docTemplate, generated)]);
     }
     if (!language.translated) warnings.push(`${lang}: no site translation in site/locales/${lang}/, all ${missing.size} texts in German`);
     else if (missing.size) warnings.push(`${lang}: ${missing.size} text(s) missing, shown in German: ${[...missing].join(", ")}`);
