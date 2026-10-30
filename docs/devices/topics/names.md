@@ -80,7 +80,7 @@ Storage systems and hybrid inverters:
 | from 2022-08 | VARTA element backup | VARTA element backup (AC-coupled) | not looked into | not supported | open: only a datasheet hosted by EKD, no owner's report | VARTA datasheet "element backup" on ekd-solar.de, 2022-08 (web archive) |
 | 2023-04 – about 2024 | "AMPERE.Storage.Pro", "Ampere.StoragePro", type "ASP 10KW-3P-X E2" | SAJ H2/HS2 family (the E2 reports type code 0x005E); 6–20 kWh | Modbus TCP 502 | driver `saj` | documented (start, type string, capacity), derived (end), confirmed (SAJ, 0x005E) | EKD datasheets "AMPERE.Storage.Pro", 2023-04 (Rev02: 6–20 kWh), and "AMPERE.StoragePro", 2023-07 (Rev03: type "ASP 10KW-3P-X E2"); see [Sales names](#sales-names) |
 | about 2024 – 2026 | "Ampere.StoragePro E3", 12 kW ("ASP-12KW-3P-X-A-E3") | FoxESS H3 family, probably H3 Smart (3 MPPT) | Modbus TCP 502 | driver `foxess` | confirmed (FoxESS H3), derived (H3 Smart, start of the period) | see [Sales names](#sales-names); [Photovoltaikforum on the maker of the E3](https://www.photovoltaikforum.com/thread/235451-wer-ist-der-tats%C3%A4chliche-hersteller-vom-neuen-speicher-der-firma-ekd-solar/); amperesolar.de datasheet "Ampere.StoragePro 12 kW", 2026-05 |
-| 2025 – 2026 | "Ampere.StoragePro E3", 22 kW ("ASP-22KW-3P-A-X-E3"; the datasheets put A and X in the other order than for the 12 kW type) | FoxESS, probably H3 Pro (4 MPPT and 22 kW, more than any H3 Smart) | Modbus TCP | driver `foxess` should detect it as H3 Pro (not confirmed on a device) | open: no owner's report | amperesolar.de datasheet "Ampere.StoragePro 22 kW", 2026-05 |
+| 2025 – 2026 | "Ampere.StoragePro E3", 22 kW ("ASP-22KW-3P-A-X-E3"; the datasheets put A and X in the other order than for the 12 kW type) | FoxESS, probably H3 Pro (4 MPPT and 22 kW, more than any H3 Smart) | Modbus TCP | driver `foxess` should detect it as H3 Pro (not confirmed on a device) | open: no owner's report; derived (period) | amperesolar.de datasheet "Ampere.StoragePro 22 kW", 2026-05 |
 
 Wallboxes:
 
@@ -159,6 +159,7 @@ Around the storage system:
 - Trade press: pv magazine (2022-06-16, 2024-12-06), ess-news (2026-07-14), energie-experten.org ("SENEC");
   Wikipedia, "Energiekonzepte Deutschland".
 - Owners' reports in Photovoltaikforum threads 148472, 222119, 222147, 227016, 235451 and 252527 (linked above).
+- [evcc-io/evcc discussion 8394](https://github.com/evcc-io/evcc/discussions/8394): owners on the IQ box and its REST interface.
 - Projects, used for interfaces only: marq24/ha-senec-v3 and mchwalisz/pysenec (Apache-2.0), croedel/M-TEC-API (MIT),
   pyenphase/pyenphase (MIT), evcc-io/evcc templates (MIT).
 - Code: `src/openampere/drivers/registry.py`, `src/openampere/drivers/foxess/driver.py`,

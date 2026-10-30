@@ -126,6 +126,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 
 ## Sources
 
+- [evcc-io/evcc discussion 8394](https://github.com/evcc-io/evcc/discussions/8394): owners on the box (a Kiwigrid energy manager) and its REST interface in the LAN.
 - stanus74/home-assistant-saj-h2-modbus (MIT), issue stanus74/home-assistant-saj-h2-modbus#18: recorded Modbus
   traffic of the box on an SAJ; credited in [NOTICE](../../../NOTICE).
 - On control by the grid operator: [a public video of a German grid operator (2025)](https://www.youtube.com/watch?v=bs27GahT8Sg) on how the § 14a signal gets
