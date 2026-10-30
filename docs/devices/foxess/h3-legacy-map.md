@@ -91,7 +91,8 @@ below are read but not used. Model string 30000–30015: see [h3.md](h3.md). All
   [#196](https://github.com/Gr33ndev/OpenAmpere/issues/196), [#197](https://github.com/Gr33ndev/OpenAmpere/issues/197)).
   A diagnostics report from an H3 with older firmware would help.
 - Whether the remote control at 44000–44003 behaves like the new map's (watchdog, values left on after it,
-  [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141)).
+  [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141)), and whether 44000 is the same bit field as 46001 on the
+  new map (bit 0 on, bits 3:2 target; FoxESS's definition names only 46001).
 - Whether the work mode values (0, 1, 2, 4) and the SoC limits behave as documented.
 - Whether any firmware of this map has an export limit register.
 

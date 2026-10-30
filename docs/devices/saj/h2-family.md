@@ -157,6 +157,8 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 | evcc's saj-h2 template controls the battery only through stored settings: normal = backup mode with 0x3651 = lowest SoC, hold = backup mode with 0x3651 = highest SoC, charge = AppMode 1 with 0x3604 = 1 and slot 1 over the whole day at 100 %. No watchdog (unlike its FoxESS H3 template). | derived | evcc-io/evcc `templates/definition/meter/saj-h2.yaml`; research in [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377) |
 | stanus74's "Charging Control" switch sets bit 0 of 0x3604 (slot 1) and AppMode 1, and on switching off writes 0x3604 = 0 and the previous AppMode; the owner sets the slot times. The switch counts as on only with bit and AppMode together. | derived | stanus74/home-assistant-saj-h2-modbus `charge_control.py`, `switch.py` at e83bfb5; research in [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377) |
 | The previous IQ box writes 0x3647 and 0x3644, and the block 0x8300–0x8306 every 1–3 s while charging. Whether 0x8300–0x8306 ends by itself (the only candidate for a remote control with a timeout) has not been tested. | derived | stanus74/home-assistant-saj-h2-modbus#18; [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377) |
+| When the box writes 0x8300 at the start of a charge, 0x3647 changes to 3 (passive mode) by itself; at the end the box writes 0x8300 = 0 and 0x3647 = 0 back to back. 0x8300 is in no public SAJ document and no other project uses it; nobody has published a meaning for 0x8304 = 600. | derived | stanus74/home-assistant-saj-h2-modbus#18 (recorded traffic), stanus74/home-assistant-saj-h2-modbus#19 (research only) |
+| The inverter keeps running without the IQ box and without any other controller: owners report it running on with the box switched off, or never having had one. No public SAJ document has a function that stops or limits the inverter when an external controller falls silent; a lost meter ("Meter Communication Lost") is listed as a warning, not a fault, in the error table of the H2 user manual, without a stated effect on the export. See [iq-box.md](../topics/iq-box.md). | confirmed (owner reports), documented (none in public documents) | owner reports linked on [iq-box.md](../topics/iq-box.md#the-box-and-the-inverter); H2 user manual (see Sources) |
 | Another device (the IQ box, the SAJ app) can set the work mode away from time-of-use or clear bit 6 of 0x3604 while OpenAmpere charges through slot 7; the slot then no longer charges. | derived | [#382](https://github.com/Gr33ndev/OpenAmpere/issues/382), [#383](https://github.com/Gr33ndev/OpenAmpere/issues/383); stanus74/home-assistant-saj-h2-modbus#18 |
 | Writing 0x3644–0x3647 with FC06, one register at a time, is how the H2 protocol, stanus74 and evcc do it. Reading these registers is confirmed on a real device; OpenAmpere's writes were not yet confirmed on a real device when control was added. | documented | H2 protocol; stanus74; evcc; [#378](https://github.com/Gr33ndev/OpenAmpere/issues/378) |
 | Reading is confirmed on a real 0x005E ("3P-X E2"); control is not yet confirmed on any SAJ, and nothing is confirmed on 0x005A–0x005D. README and website once showed a checkmark for all of SAJ, corrected to "not yet confirmed" and later to this state. | confirmed (reading on 0x005E), open (rest) | [#111](https://github.com/Gr33ndev/OpenAmpere/issues/111), [#173](https://github.com/Gr33ndev/OpenAmpere/issues/173), [#185](https://github.com/Gr33ndev/OpenAmpere/issues/185), [#469](https://github.com/Gr33ndev/OpenAmpere/issues/469); [devices.md](../../devices.md) |
@@ -231,11 +233,16 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 
 - **H2 protocol:** SAJ, "H2-3~6K-S2 single phase communication protocol" (2022-12-02), shipped with
   stanus74/home-assistant-saj-h2-modbus. Named, not copied.
+- **H2 user manual:** SAJ, "H2 series hybrid solar inverter user manual", error code table with fault types
+  ([a copy of the error table](https://manualshive.com/en/manual/saj/h2-series/3531146?page=21)); the installation
+  part (meter on the "EMS/METER" RS485 port) also in SAJ's
+  [H2-5-10K-T2 user manual](https://img.saj-electric.com/file/H2-%285-10%29K-T2%20Series%20manual-20231207055209758.pdf)
+  (V0.0, 2023), which has no error table.
 - **H1 protocol** and the protocols for the R5/R6/C6 and AS1: SAJ's Modbus protocols for related inverters, used to
   check names and meanings.
 - **Community** (credited in [NOTICE](../../../NOTICE)):
   - stanus74/home-assistant-saj-h2-modbus (MIT), including `charge_control.py` and `switch.py` at e83bfb5, issues
-    stanus74/home-assistant-saj-h2-modbusstanus74/home-assistant-saj-h2-modbus#18 and stanus74/home-assistant-saj-h2-modbus#157 there, discussion stanus74/home-assistant-saj-h2-modbus#199
+    stanus74/home-assistant-saj-h2-modbus#18, stanus74/home-assistant-saj-h2-modbus#19 and stanus74/home-assistant-saj-h2-modbus#157 there, discussion stanus74/home-assistant-saj-h2-modbus#199
   - dboeni/home-assistant-ampere-storage-pro-modbus (MIT)
   - litronics/EKD_Telegraf_Modbus (Apache-2.0)
   - evcc-io/evcc, template `templates/definition/meter/saj-h2.yaml` (MIT)
