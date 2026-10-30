@@ -68,6 +68,8 @@ Collected from EKD's datasheets and press releases, trade press and owners' repo
 approximate: most come from datasheet dates, and when EKD stopped selling a product is mostly unknown. "Local
 interface" says what an owner's software could use, not what OpenAmpere does.
 
+<!-- generated:ekd from docs/devices/support.json by scripts/device-support.mjs; edit it there -->
+
 Storage systems and hybrid inverters:
 
 | Period (about) | Sold as | Manufacturer model | Local interface | OpenAmpere | Status | Source |
@@ -101,6 +103,8 @@ Around the storage system:
 | about 2022 – 2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented (maker), derived (period) | EKD datasheets "Ampere.SolarPro" |
 | from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)) | documented (partners), derived (period) | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
 | – | heating rod | my-PV, model not stated | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)) | derived | Photovoltaikforum on the Ampere Storage Pro (as above) |
+
+<!-- /generated:ekd -->
 
 ## Behaviour
 

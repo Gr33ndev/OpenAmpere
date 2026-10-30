@@ -6,6 +6,8 @@
  * working), paragraphs, block quotes, lists (nested, ordered), tables, fenced code, rules, hard line breaks, and inline
  * code, links, https:// addresses, <https://…>, **strong**, *em*, _em_, ~~strike~~ and backslash escapes.
  *
+ * An HTML comment on a line of its own is left out, as GitHub hides it.
+ *
  * Safe by construction: every text is escaped, raw HTML in the Markdown is shown as text, and an address becomes a
  * link only if options.link returns one for it (else the link text stays as plain text). Usage:
  *   renderMarkdown(source, { link: (href) => href or null }) → { html, title, ids }
@@ -155,6 +157,7 @@ function slug(html, ids) {
 
 const indentOf = (line) => /^ */.exec(line)[0].length;
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+const COMMENT = /^\s*<!--.*-->\s*$/;
 const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
 const RULE = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const QUOTE = /^ {0,3}> ?/;
@@ -198,7 +201,8 @@ function blocks(lines, options, tight = false) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    if (!line.trim()) {
+    // blank lines, and HTML comments on a line of their own (the markers of generated parts, #526), as on GitHub
+    if (!line.trim() || COMMENT.test(line)) {
       i += 1;
       continue;
     }

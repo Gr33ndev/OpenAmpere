@@ -10,6 +10,7 @@
     "build:demo": "npm run check:demo && tsc --noEmit && VITE_DEMO=1 vite build",
     "check:demo": "node scripts/check-demo-routes.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "check:devices": "cd .. && node scripts/device-support.mjs --check",
     "lint": "biome lint",
     "test:ui": "playwright test"
   },

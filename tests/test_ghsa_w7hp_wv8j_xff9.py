@@ -38,6 +38,8 @@ def copy_of_the_site(tmp_path: Path) -> Path:
         shutil.copy(meta, target)
     (repo / "web" / "public").mkdir(parents=True)
     shutil.copy(ROOT / "web" / "public" / "changelog.json", repo / "web" / "public" / "changelog.json")
+    (repo / "docs" / "devices").mkdir(parents=True, exist_ok=True)
+    shutil.copy(ROOT / "docs" / "devices" / "support.json", repo / "docs" / "devices" / "support.json")
     return repo
 
 

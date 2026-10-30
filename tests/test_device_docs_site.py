@@ -173,6 +173,8 @@ def test_a_link_that_leads_nowhere_is_reported(tmp_path):
         shutil.copy(meta, target)
     (repo / "web" / "public").mkdir(parents=True)
     shutil.copy(ROOT / "web" / "public" / "changelog.json", repo / "web" / "public" / "changelog.json")
+    (repo / "docs" / "devices").mkdir(parents=True, exist_ok=True)
+    shutil.copy(ROOT / "docs" / "devices" / "support.json", repo / "docs" / "devices" / "support.json")
     docs = repo / "docs" / "devices"
     (docs / "foxess").mkdir(parents=True)
     (docs / "README.md").write_text("# Device knowledge\n\n## Pages\n\n[H3](foxess/h3.md), [up](../../..)\n")
@@ -201,7 +203,8 @@ def test_a_page_without_a_title_fails_the_build(tmp_path):
     shutil.copytree(ROOT / "site", repo / "site")
     (repo / "web" / "public").mkdir(parents=True)
     shutil.copy(ROOT / "web" / "public" / "changelog.json", repo / "web" / "public" / "changelog.json")
-    (repo / "docs" / "devices").mkdir(parents=True)
+    (repo / "docs" / "devices").mkdir(parents=True, exist_ok=True)
+    shutil.copy(ROOT / "docs" / "devices" / "support.json", repo / "docs" / "devices" / "support.json")
     (repo / "docs" / "devices" / "README.md").write_text("No heading here.\n")
     result = build_pages(repo, tmp_path / "out")
     assert result.returncode == 1

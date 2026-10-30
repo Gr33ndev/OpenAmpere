@@ -22,15 +22,21 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 ## Unterstützte Geräte
 
+<!-- generated:devices from docs/devices/support.json by scripts/device-support.mjs; edit it there -->
+
 | Gerät | Was OpenAmpere kann | An echter Anlage bestätigt? |
 |---|---|---|
-| FoxESS H3, neuere Firmware | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige und Steuerung bestätigt |
-| FoxESS H3, ältere Firmware / H3 Smart / H3 Pro | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
-| SAJ H2 / HS2 | Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet. | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt |
-| Heizstab, Wärmepumpe (SG-Ready) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
-| Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
-| Wallbox | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)). | Noch nicht bestätigt |
+| [FoxESS H3, neuere Firmware](docs/devices/foxess/h3.md) | Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt. | ✅ Anzeige und Steuerung bestätigt |
+| [FoxESS H3, ältere Firmware / H3 Smart / H3 Pro](docs/devices/foxess/h3.md) | Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung | Noch nicht bestätigt |
+| [SAJ H2 / HS2](docs/devices/saj/h2-family.md) | Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet. | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt |
+| [Heizstab, Wärmepumpe (SG-Ready)](docs/devices/topics/consumers.md) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
+| [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](docs/devices/mypv/elwa.md) | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
+| [FoxESS AC EV Charger („Ampere.ChargePro“)](docs/devices/foxess/ac-charger.md) | Anzeige direkt über Modbus TCP. Laden steuert OpenAmpere als Test und erst richtig, wenn du es für die Wallbox in der App einschaltest. | ✅ Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt |
+| [Mobile dé-Wallbox (Tuya-WLAN)](docs/devices/tuya/de-portable.md) | Anzeige und Steuerung (Solarüberschuss, schnell, aus) über das lokale Tuya-Protokoll; braucht einmal den Local Key des Geräts. | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
+| [Wallbox über evcc](docs/devices/topics/wallboxes.md) | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)). | Noch nicht bestätigt |
 | Home Assistant | Eigene Integration: Daten live und Steuerung. Kommt mit der Home-Assistant-App, sonst über HACS, siehe [Installation](#installation). | – |
+
+<!-- /generated:devices -->
 
 **Noch nicht bestätigt** heißt: Die Unterstützung beruht auf Unterlagen der Hersteller oder der Community und ist mit Tests und dem Simulator geprüft, aber noch niemand hat sie von einer echten Anlage gemeldet. Gut möglich, dass alles klappt. Hast du so ein Gerät, hilf mit einem **Gerätebericht**: Starte in der App unter **Mehr → Diagnose** die Diagnose (sie liest nur und ändert nichts), tippe auf **Bericht kopieren** und füge den Bericht in das [Formular für Geräteberichte](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml) ein. Entferne vorher IP-Adressen, Passwörter und API-Schlüssel. Jeder Bericht hilft, eine Zeile auf „bestätigt“ zu bringen.
 
