@@ -125,16 +125,18 @@ Every change is in the log under **Mehr → Steuerung und Protokoll** (More → 
 The wallbox works the same in the app. Only the **search in the home network** does not, because the app has a
 network of its own. Enter the IP address from your router by hand.
 
-## Showing the FoxESS AC EV Charger (read-only)
+## Setting up the FoxESS AC EV Charger
 
 The FoxESS AC EV Charger is also the wallbox EKD sold with its Ampere.IQ systems; in the router it shows up as
 `EVC-…`. OpenAmpere shows it (#439): whether a car is plugged in, the charging power and the current per phase. Its
-power counts in the house load like any wallbox. OpenAmpere does not control its charging yet (#318): the wallbox goes
-on charging as it is set in its own app. The one thing OpenAmpere writes, only when you ask for it, is the wallbox's
-work mode (see below).
+power counts in the house load like any wallbox. Its charging OpenAmpere controls only as a test, after you switch on
+real control for it (see [Real control (test)](#real-control-test), #465). Until then the wallbox goes on charging as
+it is set in its own app, and the one thing OpenAmpere writes, only when you ask for it, is the wallbox's work mode
+(see below).
 
 1. Under **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose the FoxESS AC EV Charger at
-   **Welche Wallbox hast du?** (under "Nur anzeigen", show only) and keep **Anzeigen** (show).
+   **Welche Wallbox hast du?** (under "Anzeigen, Steuern als Test", show, control as a test) and keep **Einrichten**
+   (set up).
 2. Enter its IP address, or use **Wallbox im Heimnetz suchen** (search the home network). Port (usually 502) and unit
    ID (usually 1) are under **Erweitert** (advanced).
 3. **Verbindung prüfen** (check the connection), then **Speichern** (save).
@@ -222,8 +224,9 @@ For more wallboxes OpenAmpere is preparing the direct way. Under **direkt → Wa
 the wallbox at **Welche Wallbox hast du?**; for the FoxESS AC EV Charger then choose **Nur prüfen (Bericht)** (check
 only, report). Then OpenAmpere checks the wallbox read-only, in the mode it is in, and shows what it answers. Nothing
 is changed on the wallbox. The result goes into the diagnostics report (**Mehr → Diagnose**); sharing it helps to
-confirm the registers on real devices and to control the wallbox soon. If the check could read the FoxESS AC EV
-Charger, **Diese Wallbox in OpenAmpere anzeigen** (show this wallbox in OpenAmpere) takes over address, port and unit
+confirm the registers on real devices and to make control safe (for the FoxESS AC EV Charger it is still a test, see
+[Real control (test)](#real-control-test)). If the check could read the FoxESS AC EV
+Charger, **Diese Wallbox in OpenAmpere einrichten** (set up this wallbox in OpenAmpere) takes over address, port and unit
 ID. For other wallboxes, **Mehr → Diagnose → Gerät auslesen** (Read a device) reads any registers.
 
 Optionally the check can also listen over **OCPP 1.6J** (#328): start the listener there and enter the address shown

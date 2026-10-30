@@ -290,10 +290,11 @@ def test_the_modes_are_offered_as_a_simulation_and_no_key_or_device_id(tmp_path)
     assert item["modes"] == ["manual", "off", "pv", "minpv", "now"] and item["simulation"] is None  # "manual"
     model = next(m for m in view["models"] if m["key"] == "foxess_ac")
     assert model == {"key": "foxess_ac", "label": "FoxESS AC EV Charger", "protocol": "modbus", "read_only": True,
+                     "controllable": True,  # the setup offers real control once added (#503)
                      "simulated": True, "modes": ["manual", "off", "pv", "minpv", "now"], "sold_by": ["EKD"],
                      "port": 502, "unit": 1}
     tuya = next(m for m in view["models"] if m["key"] == "de_tuya")
-    assert tuya["read_only"] is False and tuya["simulated"] is False and "port" not in tuya
+    assert tuya["read_only"] is False and tuya["simulated"] is False and not tuya["controllable"] and "port" not in tuya
     wallboxes.set_mode(wb.id, "pv", current_a=10)
     item = wallboxes.view()["wallboxes"][0]
     assert item["mode"] == "pv" and item["mode_current_a"] == {"pv": 10} and item["controlled"] is False

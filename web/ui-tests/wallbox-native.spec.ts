@@ -135,7 +135,12 @@ test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in 
   expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
   await expect(page.getByLabel("Local Key")).toHaveCount(0);
   await expect(page.getByText("So bekommst du den Local Key")).toHaveCount(0);
-  // the FoxESS charger is shown read only (#439), the check is the other way
+  // the FoxESS charger is shown and can be controlled as a test once added (#465, #503), the check is the other way
+  await expect(which.locator("optgroup", { has: page.locator('option[value="foxess_ac"]') }))
+    .toHaveAttribute("label", "Anzeigen, Steuern als Test");
+  await expect(page.getByText("Nach dem Hinzufügen kannst du bei der Wallbox die echte Steuerung einschalten, wenn du willst.")).toBeVisible();
+  await expect(page.getByText("Steuern kann OpenAmpere sie noch nicht")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Einrichten" })).toBeVisible();
   await expect(page.getByLabel("Port")).toHaveValue("502");
   await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();
   expect(await element?.evaluate((e) => e.isConnected)).toBe(true);
@@ -221,7 +226,7 @@ test("a FoxESS charger is added with port and unit id; the limit and the waiting
   await page.getByRole("button", { name: "direkt", exact: true }).click();
   await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
   await page.getByLabel("Welche Wallbox hast du?").selectOption("foxess_ac");
-  await expect(page.locator(".notice", { hasText: "liest die Wallbox nur" })).toContainText("bisherige Smartbox");
+  await expect(page.locator(".notice", { hasText: "Solange du die echte Steuerung nicht einschaltest" })).toContainText("bisherige Smartbox");
   await expect(page.getByLabel("Höchster Ladestrom (A)")).toHaveValue("16");
   await expect(page.locator(".field", { hasText: "Höchster Ladestrom (A)" })).toContainText("in der Simulation");
   await expect(page.getByLabel("Solar-Laden pausieren nach (Minuten)")).toHaveValue("10");

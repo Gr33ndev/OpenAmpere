@@ -55,7 +55,8 @@ export type WallboxSimulation = {
   current_a: number | null; phases: number | null; power_w: number;
 };
 export type WallboxModel = { key: string; label: string; protocol: "tuya" | "modbus"; read_only?: boolean;
-  simulated?: boolean; modes?: WallboxMode[]; sold_by?: string[]; port?: number; unit?: number };
+  /** read only until the owner switches on real control of the added wallbox (#465) */
+  controllable?: boolean; simulated?: boolean; modes?: WallboxMode[]; sold_by?: string[]; port?: number; unit?: number };
 export type WallboxesView = { wallboxes: NativeWallbox[]; models: WallboxModel[]; max: number; search: boolean };
 type Found = { device_id: string; host: string; product_key: string | null };
 
@@ -454,9 +455,11 @@ function AddWallbox({ view, origin, busy, onSave, onCancel }: {
   const checking = !!checked && (!live || way === "check");
   const full = view.wallboxes.length >= view.max;
   const controlledModels = view.models.filter((m) => !m.read_only);
-  const shownModels = view.models.filter((m) => m.read_only);
+  const controllableModels = view.models.filter((m) => m.read_only && m.controllable);
+  const shownModels = view.models.filter((m) => m.read_only && !m.controllable);
   const onlyChecked = checkable.models.filter((m) => !view.models.some((v) => v.key === m.key));
-  const hint = live ? (live.read_only ? t("devices.nativeWallbox.whichShown") : t("devices.nativeWallbox.whichControlled"))
+  const hint = live ? (!live.read_only ? t("devices.nativeWallbox.whichControlled")
+    : live.controllable ? t("devices.nativeWallbox.whichControllable") : t("devices.nativeWallbox.whichShown"))
     : checked ? t("devices.nativeWallbox.whichChecked") : t("devices.wallboxDirect.otherHint");
   // the choice stays the same element while the fields below change: focus and keyboard keep working
   return (
@@ -466,6 +469,11 @@ function AddWallbox({ view, origin, busy, onSave, onCancel }: {
           {!!controlledModels.length && (
             <optgroup label={t("devices.nativeWallbox.groupControlled")}>
               {controlledModels.map((m) => <option key={m.key} value={m.key}>{modelLabel(m)}</option>)}
+            </optgroup>
+          )}
+          {!!controllableModels.length && (
+            <optgroup label={t("devices.nativeWallbox.groupControllable")}>
+              {controllableModels.map((m) => <option key={m.key} value={m.key}>{modelLabel(m)}</option>)}
             </optgroup>
           )}
           {!!shownModels.length && (
@@ -485,7 +493,8 @@ function AddWallbox({ view, origin, busy, onSave, onCancel }: {
         <fieldset className="field field-group">
           <legend className="field-label">{t("devices.nativeWallbox.way")}</legend>
           <Segmented value={way} onChange={setWay}
-            options={[["show", t("devices.nativeWallbox.wayShow")], ["check", t("devices.nativeWallbox.wayCheck")]]} />
+            options={[["show", live.controllable ? t("devices.nativeWallbox.wayAdd") : t("devices.nativeWallbox.wayShow")],
+              ["check", t("devices.nativeWallbox.wayCheck")]]} />
         </fieldset>
       )}
       {live && !checking && full && (
@@ -563,7 +572,8 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
       <Field label={t("devices.nativeWallbox.name")} hint={t("devices.nativeWallbox.nameHint")}>
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
-      {readOnly && <Notice kind="info">{t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
+      {readOnly && <Notice kind="info">{model?.controllable ? t("devices.nativeWallbox.controllableIntro")
+        : t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
       {modbus && <DeviceSearch label={t("devices.wallboxDirect.search")}
         onUse={(f) => set({ host: f.host, ...(f.port ? { port: String(f.port) } : {}) })} />}
       {tuya && <TuyaKeyGuide />}
