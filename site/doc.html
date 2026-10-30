@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- A page of the device knowledge (#512), filled with a file of docs/devices/ by scripts/build-site-pages.mjs -->
+<html lang="{{contentLang}}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{docTitle}}{{docs.meta.title}}</title>
+  <meta name="description" content="{{docs.meta.description}}" />
+  <meta name="theme-color" content="#f4f4f4" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#21262b" media="(prefers-color-scheme: dark)" />
+  {{alternates}}
+  <link rel="icon" href="{{root}}icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{root}}style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="{{home}}"><img src="{{root}}icon.svg" alt="" width="32" height="32" />OpenAmpere</a>
+      <nav aria-label="{{common.nav.label}}">
+        <a href="{{home}}#funktionen">{{common.nav.features}}</a>
+        <a href="{{home}}#installation">{{common.nav.install}}</a>
+        <a href="{{home}}geraete.html">{{common.nav.devices}}</a>
+        <a href="{{home}}faq.html">{{common.nav.faq}}</a>
+        <a href="{{home}}changelog.html">{{common.nav.changelog}}</a>
+        <a href="{{root}}demo/?lang={{lang}}">{{common.nav.demo}}</a>
+        <a href="https://github.com/Gr33ndev/OpenAmpere">GitHub</a>
+        {{languageSwitch}}
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap doc-page">
+    <p class="eyebrow doc-crumb"><a href="{{home}}docs/devices/">{{docs.head.overview}}</a></p>
+    <p class="doc-note">{{docs.head.note}}</p>
+    <article class="doc" lang="en">
+{{doc}}
+    </article>
+    <p class="doc-source"><a href="{{docSource}}">{{docs.foot.source}}</a></p>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p><a href="{{home}}impressum.html">{{common.footer.imprint}}</a> ·
+        <a href="{{home}}changelog.html">{{common.footer.changelog}}</a> ·
+        <a href="{{home}}docs/devices/">{{common.footer.docs}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere">{{common.footer.source}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">{{common.footer.license}}</a> ·
+        <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">{{common.footer.security}}</a></p>
+      <p class="small">{{common.footer.evcc}}</p>
+      <p class="small">{{common.footer.noTracking}}
+        {{common.footer.font}}</p>
+    </div>
+  </footer>
+</body>
+</html>

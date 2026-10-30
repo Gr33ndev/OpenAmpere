@@ -78,7 +78,7 @@ p { margin: 0 0 12px; }
 nav { display: flex; gap: 4px 18px; flex-wrap: wrap; justify-content: flex-end; }
 nav a { color: var(--text); text-decoration: none; font-size: 15px; padding: 10px 0; }
 nav a:hover { color: var(--accent-text); }
-@media (max-width: 620px) { nav a[href="./#funktionen"], nav a[href="./#installation"] { display: none; } }
+@media (max-width: 620px) { nav a[href$="#funktionen"], nav a[href$="#installation"] { display: none; } }
 /* language switch (#104): a small segmented control at the end of the nav; the ::after enlarges the touch target */
 .lang-switch { display: flex; align-self: center; gap: 2px; padding: 3px; border: 1px solid var(--line);
   border-radius: 999px; background: var(--card); }
@@ -89,7 +89,7 @@ nav .lang-switch a:hover { color: var(--text); }
 nav .lang-switch a[aria-current] { background: var(--text); color: var(--bg); }
 /* the header stays one row with the switch: the least needed links go first (GitHub and the demo are also linked
    from the page itself) */
-@media (max-width: 700px) { nav > a[href="https://github.com/Gr33ndev/OpenAmpere"], nav > a[href="changelog.html"], nav > a[href="geraete.html"] { display: none; } }
+@media (max-width: 700px) { nav > a[href="https://github.com/Gr33ndev/OpenAmpere"], nav > a[href$="changelog.html"], nav > a[href$="geraete.html"] { display: none; } }
 @media (max-width: 420px) { nav > a[href*="demo/"] { display: none; } }
 
 /* hero */
@@ -251,3 +251,35 @@ div.notice > :last-child { margin-bottom: 0; }
 .state.plan { background: color-mix(in srgb, var(--plan) 20%, transparent); color: var(--plan-text); }
 .state.info { background: color-mix(in srgb, var(--label) 16%, transparent); color: var(--text); }
 .state.none { background: transparent; color: var(--label); border: 1px solid var(--line); }
+
+/* device knowledge (#512): the pages of docs/devices/, rendered by scripts/markdown.mjs */
+.doc-page { max-width: 980px; padding-top: 32px; }
+.doc-crumb a { color: inherit; text-decoration: none; }
+.doc-crumb a:hover { text-decoration: underline; }
+.doc-note { margin: 4px 0 28px; max-width: 52em; color: var(--label); font-size: 15px; }
+.doc { overflow-wrap: break-word; }
+.doc h1 { font-size: clamp(30px, 5vw, 42px); }
+.doc h2 { margin-top: 40px; }
+.doc h3 { margin: 28px 0 10px; }
+.doc h4 { margin: 22px 0 8px; }
+.doc :is(h1, h2, h3, h4) { scroll-margin-top: 72px; }
+.doc ul, .doc ol { padding-left: 24px; margin: 0 0 12px; }
+.doc li { margin-bottom: 4px; }
+.doc li > p { margin-bottom: 6px; }
+.doc blockquote { margin: 0 0 20px; padding: 12px 16px; border-left: 4px solid var(--accent); border-radius: 12px;
+  background: var(--card); color: var(--label); }
+.doc blockquote > :last-child { margin-bottom: 0; }
+.doc :not(pre) > code { padding: 1px 5px; border-radius: 6px; background: var(--card); border: 1px solid var(--line);
+  font-size: 0.88em; overflow-wrap: anywhere; }
+.doc pre { margin: 0 0 16px; }
+.doc hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+/* a wide register table scrolls by itself, the page does not */
+.doc .table { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.doc table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.45; }
+.doc th, .doc td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.doc th { background: color-mix(in srgb, var(--line) 45%, var(--card)); font-weight: 600; }
+.doc tr:last-child td { border-bottom: 0; }
+.doc td { min-width: 8em; }
+.doc :is(th, td).center { text-align: center; }
+.doc :is(th, td).right { text-align: right; }
+.doc-source { margin-top: 32px; font-size: 15px; }

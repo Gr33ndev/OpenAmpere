@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "Device knowledge | OpenAmpere",
+    "description": "What OpenAmpere knows about inverters, wallboxes and other devices: registers, behaviour and how sure each fact is."
+  },
+  "head": {
+    "overview": "Device knowledge",
+    "note": "These pages are technical. They collect what the OpenAmpere contributors have found out about the devices, each fact with its source and how sure it is. They show the latest state of development, which can be ahead of the version you have installed. They are not official manufacturer information. You don't need them to set up OpenAmpere; the app explains everything you need."
+  },
+  "foot": {
+    "source": "View and improve this page on GitHub"
+  }
+}

@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
-import type { Settings } from "./api";
+import type { Settings, Status } from "./api";
 import { postJson, useResource } from "./api";
 import { updatedLabel } from "./format";
 import { t } from "./i18n";
-import { ISSUES_URL } from "./links";
+import { ISSUES_URL, inverterDocsUrl } from "./links";
 import type { PageProps } from "./SettingsPages";
 import { useSettings } from "./SettingsPages";
 import { Button, Checkbox, copyText, Field, LearnMore, LoadState, MenuRow, Notice, SubPage, toast } from "./ui";
@@ -25,6 +25,7 @@ const STATUS_LABEL: Record<Check["status"], string> = { ok: "OK", warn: t("setti
 
 export function DiagnosticsPage({ onBack, onNavigate }: PageProps) {
   const { data, error, reload, setData } = useResource<DiagnosticsData>("/api/diagnostics");
+  const docsUrl = inverterDocsUrl(useResource<Status>("/api/status").data?.device?.driver);
   const { settings, locked, save } = useSettings();
   const [connectionTest, setConnectionTest] = useState(false);
   const [serial, setSerial] = useState(false);
@@ -115,12 +116,18 @@ export function DiagnosticsPage({ onBack, onNavigate }: PageProps) {
         <Notice kind="warn">{t("settings.diagnosticsPage.checkHint")}</Notice>
       )}
 
-      {onNavigate && (
+      {(onNavigate || docsUrl) && (
         <>
           <div className="section-title">{t("settings.diagnosticsPage.advancedTitle")}</div>
           <div className="card menu">
-            <MenuRow label={t("settings.diagnosticsPage.deviceReader")} hint={t("settings.diagnosticsPage.deviceReaderHint")}
-              onClick={() => onNavigate("device-reader")} />
+            {onNavigate && <MenuRow label={t("settings.diagnosticsPage.deviceReader")} hint={t("settings.diagnosticsPage.deviceReaderHint")}
+              onClick={() => onNavigate("device-reader")} />}
+            {docsUrl && (
+              <a className="menu-row" href={docsUrl} target="_blank" rel="noopener noreferrer">
+                <span>{t("settings.diagnosticsPage.deviceDocs")}<span className="menu-hint">{t("settings.diagnosticsPage.deviceDocsHint")}</span></span>
+                <span aria-hidden>↗</span>
+              </a>
+            )}
           </div>
         </>
       )}

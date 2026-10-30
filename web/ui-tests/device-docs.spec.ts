@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+// SPDX-License-Identifier: MIT
+import { demoRequest } from "../src/demo/server";
+import { expect, open, test } from "./fixtures";
+
+const SITE = "https://gr33ndev.github.io/OpenAmpere/";
+
+// #512: the device knowledge of docs/devices/ is on the website, linked from the app
+test("the more page links to the device knowledge", async ({ page }) => {
+  await open(page, "more");
+  await expect(page.getByRole("link", { name: /Gerätewissen/ })).toHaveAttribute("href", `${SITE}docs/devices/`);
+});
+
+test("my system links to the page about the inverter", async ({ page }) => {
+  await open(page, "more/installation");
+  await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/foxess/h3.html`);
+});
+
+test("a SAJ inverter gets its own page", async ({ page, api }) => {
+  const status = (await demoRequest("GET", "/api/status")) as { device: Record<string, unknown> };
+  api.override("/api/status", { ...status, device: { ...status.device, manufacturer: "SAJ", driver: "saj", register_map: "saj_h2" } });
+  await open(page, "more/installation");
+  await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/saj/h2-family.html`);
+});
+
+test("the diagnostics page links to the page about the inverter", async ({ page }) => {
+  await open(page, "more/diagnostics");
+  await expect(page.getByRole("link", { name: /Was wir über deinen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/foxess/h3.html`);
+});

@@ -2,7 +2,10 @@
 
 What OpenAmpere knows about the devices it talks to: registers, behaviour, differences between types and firmware,
 and how OpenAmpere treats them. Every fact says how sure it is and where it comes from, so nobody has to search
-through hundreds of issues again.
+through hundreds of issues again. The website shows these pages too, linked from the app
+([Device knowledge](https://gr33ndev.github.io/OpenAmpere/en/docs/devices/),
+[#512](https://github.com/Gr33ndev/OpenAmpere/issues/512)), built from `main`, so they can describe behaviour that is not
+released yet. Keep links relative; the build reports a link to a file or heading that does not exist.
 
 > **Not official manufacturer information.** These pages are compiled by the OpenAmpere contributors from public
 > manufacturer documents, community projects and reports of owners. They can be incomplete or wrong. Changing

@@ -81,6 +81,7 @@ check: remove the label `ai-review` and add it again, once), say so instead of c
   devices). A new register, a behaviour seen on a device, a confirmation or a correction goes onto that page in the
   same PR, with status (documented, derived, confirmed, open) and source; decisions link their issue or PR. Read its
   README first: not official information, own words, no NDA material, private sources described but never linked.
+  The website shows these pages (`scripts/markdown.mjs`, #512) and the app links to them.
 - **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
   collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
   into `PAGES` in `web/ui-tests/fixtures.ts`.
