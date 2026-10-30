@@ -102,6 +102,25 @@ async def test_without_a_second_inverter_there_is_none_to_count():
     assert snap.pv_external_power is None
 
 
+async def test_a_counted_second_inverter_is_there_at_night_after_a_restart(tmp_path):
+    """The owner counts a second inverter; OpenAmpere restarts at night (112 = 110 = 0): it is shown with 0 W, not as
+    unknown until the sun comes back."""
+    sim = SolarmaxSimulatedInverter(max_connections=3)  # not stepped: no sun
+    server, port = await serve(sim)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.driver": "solarmax",
+                                           "inverter.poll_interval": 2, "pv.external": True})
+            for _ in range(150):
+                if runtime.collector.latest:
+                    break
+                await asyncio.sleep(0.1)
+            assert runtime.collector.external_pv_w == 0.0
+        finally:
+            await runtime.collector.stop()
+
+
 async def test_another_inverter_on_the_max_storage_is_external_pv():
     sim = SolarmaxSimulatedInverter(max_connections=3)
     sim.extra_pv_w = 1500

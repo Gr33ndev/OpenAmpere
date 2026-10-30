@@ -77,6 +77,10 @@ class SolarmaxDriver(ModbusDevice):
                     log.info("Solarmax energy counters do not answer, no longer read: %s", err)
         return values(words)
 
+    def assume_external(self) -> None:
+        """The owner counts a second inverter (pv.external): report it from now on, also at 0 W."""
+        self.has_external = True
+
     async def read(self) -> Snapshot:
         raw = await self.read_raw()
         if not self.has_external and raw.get("pv_plant_power", 0) - raw.get("pv_power", 0) > EXTERNAL_FROM_W:
