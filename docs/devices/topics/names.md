@@ -21,7 +21,8 @@ OpenAmpere works with.
 - The older "Ampere.StoragePro", including the "E2", is an SAJ of the H2/HS2 family; the E2 reports type code 0x005E.
 - "Ampere.IQ" is EKD's app, which works only through EKD's servers; the "IQ box" or "smartbox" is the energy manager
   installed with the systems ([iq-box.md](iq-box.md)).
-- On the systems sold by EKD, Modbus TCP is already turned on.
+- On the "Ampere.StoragePro" systems sold by EKD since 2023 (SAJ and FoxESS), Modbus TCP is already turned on; on
+  the older systems of other makers it depends on the device (a Senec has no Modbus TCP at all).
 
 ## Sales names
 
@@ -105,7 +106,7 @@ Around the storage system:
 
 | Fact | Status | Source |
 |---|---|---|
-| On the storage systems sold by EKD, Modbus TCP is already turned on; owners do not need to switch it on. | derived | [#84](https://github.com/Gr33ndev/OpenAmpere/issues/84), [#85](https://github.com/Gr33ndev/OpenAmpere/issues/85); [README](../../../README.md) |
+| On the "Ampere.StoragePro" systems sold by EKD since 2023 (SAJ and FoxESS), Modbus TCP is already turned on; owners do not need to switch it on. This does not hold for the older systems of other makers. | derived | [#84](https://github.com/Gr33ndev/OpenAmpere/issues/84), [#85](https://github.com/Gr33ndev/OpenAmpere/issues/85); [README](../../../README.md) |
 | EKD stands for Energiekonzepte Deutschland GmbH. It and other companies of its group filed for insolvency in early October 2026; the proceedings of seven companies run at the local court of Leipzig. | documented (public insolvency announcements) | [#85](https://github.com/Gr33ndev/OpenAmpere/issues/85), [#91](https://github.com/Gr33ndev/OpenAmpere/issues/91), [#92](https://github.com/Gr33ndev/OpenAmpere/issues/92); [README](../../../README.md) |
 | EKD was founded in 2018 by the founder of Senec and sold Senec storage systems at first; until 2022 its website called it a Senec partner. | documented | [Wikipedia, "Energiekonzepte Deutschland"](https://de.wikipedia.org/wiki/Energiekonzepte_Deutschland); [pv magazine, 2022-06-16](https://www.pv-magazine.de/2022/06/16/ekd-beteiligt-sich-an-solarmax/) |
 | EKD became majority owner of Solarmax in 2022; Solarmax filed for insolvency in late 2024, before the EKD group. | documented | [pv magazine, 2022-06-16](https://www.pv-magazine.de/2022/06/16/ekd-beteiligt-sich-an-solarmax/); pv magazine, 2024-12-06 |
@@ -128,7 +129,8 @@ Around the storage system:
 - Which register map (newer or older firmware) the "Ampere.StoragePro E3" uses, and which H3 variant it is. The E3
   is a FoxESS H3 ([#311](https://github.com/Gr33ndev/OpenAmpere/issues/311)), but its map is still open in
   [registers.md](../../registers.md) ([#185](https://github.com/Gr33ndev/OpenAmpere/issues/185)).
-- Whether every system sold by EKD has Modbus TCP turned on is known only from owners' reports, not from a document.
+- Whether every "Ampere.StoragePro" system has Modbus TCP turned on is known only from owners' reports, not from a
+  document.
 - Whether EKD sold Senec.Home V2.1 in 2018–2019; the web archive has no copy of EKD's website before December 2021.
 - Which PV inverters EKD installed next to a Senec, and whether the Senec reads a Fronius over the Datamanager's Modbus
   RTU or over Solar Net (only with Solar Net would Modbus TCP stay free).
