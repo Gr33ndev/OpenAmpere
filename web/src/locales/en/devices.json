@@ -254,7 +254,7 @@
     "locked": "locked",
     "defaultNameFixed": "Wallbox",
     "whichShown": "OpenAmpere shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it yet, it goes on charging as it is set in its own app. You can try out the charging modes as a simulation: OpenAmpere then only works out what it would do. With “Check only” you create a report instead, which helps to control it soon.",
-    "whichControllable": "OpenAmpere shows this wallbox: whether a car is plugged in and how much power it charges with. OpenAmpere can control it as a test: after adding it, you can switch on real control if you want, on the wallbox's card under “Geräte”. OpenAmpere asks you first and explains what happens if it fails. Without it the wallbox charges as set in its own app, and the charging modes run as a simulation only. With “Check only” you create a report instead.",
+    "whichControllable": "OpenAmpere shows this wallbox: whether a car is plugged in and how much power it charges with. OpenAmpere can control it as a test: after adding it, you can switch on real control if you want, on the wallbox's card under “Devices”. OpenAmpere asks you first and explains what happens if it fails. Without it the wallbox charges as set in its own app, and the charging modes run as a simulation only. With “Check only” you create a report instead.",
     "groupControllable": "Show, control as a test",
     "groupShown": "Show only",
     "way": "What should OpenAmpere do?",
