@@ -4,6 +4,13 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.36.2 (2026-10-30)
+
+### Behoben
+
+- **wallbox:** Describe real control in the FoxESS charger's limit, start and setup texts (#506)
+- **wallbox:** Offer the FoxESS charger as controllable as a test in the setup (#504)
+
 ## 0.36.1 (2026-10-29)
 
 ### Behoben
@@ -144,24 +151,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Behoben
 
 - **wallbox:** Find the Tuya wallbox, type IP addresses with a dot, stop a self-started charge at once (#397)
-
-## 0.30.0 (2026-10-15)
-
-### Neu
-
-- **wallbox:** One form to add or check a wallbox, with the steps to the Tuya local key (#389)
-- **homeassistant:** Show and control OpenAmpere's own wallboxes (#390)
-- **wallbox:** Read and control the portable dé wallbox over Tuya LAN (#387)
-- **saj:** Show and set the reserve that applies in backup mode (#381)
-
-### Behoben
-
-- **wallbox:** Keep a wallbox whose local key cannot be read and ask for it again (#393)
-- **consumers:** Keep a device whose switch addresses cannot be read and ask for them again (#394)
-- **saj:** Keep charging from the grid when another device changes the mode or the slot (#383)
-- **saj:** Show the three-phase type 0x005e by its model name (#379)
-
-### Weitere Änderungen
-
-- **wallbox:** No longer say that wallboxes are controlled only through evcc (#395)
-- Collect what we know per device in docs/devices with status and source (#385)

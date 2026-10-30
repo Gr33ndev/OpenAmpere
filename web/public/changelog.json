@@ -1,6 +1,27 @@
 {
   "versions": [
     {
+      "version": "0.36.2",
+      "date": "2026-10-30",
+      "first": false,
+      "groups": {
+        "feat": [],
+        "fix": [
+          {
+            "scope": "wallbox",
+            "text": "Describe real control in the FoxESS charger's limit, start and setup texts (#506)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Offer the FoxESS charger as controllable as a test in the setup (#504)"
+          }
+        ],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.36.1",
       "date": "2026-10-29",
       "first": false,
