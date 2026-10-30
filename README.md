@@ -96,7 +96,7 @@ OpenAmpere runs in one of two ways. Choose one of them: only one OpenAmpere may 
 
 ### Way 1: standalone
 
-**Requirements:** a Linux computer on the same network as the inverter (Raspberry Pi with a 64-bit system, NAS, Proxmox …) and Modbus TCP enabled on the inverter. For the battery systems sold by EKD this is already the case; for other devices the installer can take care of it.
+**Requirements:** a Linux computer on the same network as the inverter (Raspberry Pi with a 64-bit system, NAS, Proxmox …) and Modbus TCP enabled on the inverter. For the Ampere.StoragePro batteries sold by EKD this is already the case; for other devices the installer can take care of it.
 
 **1. Install:** run in a terminal on the computer:
 
@@ -395,7 +395,7 @@ With `sudo docker compose logs -f openampere`, new messages keep coming in; stop
 
 - **Network cable:** the inverter needs a connection to your home network, usually a cable in its LAN port. A cloud-only Wi-Fi stick is often not enough.
 - **Enter the IP address by hand:** you find it in the device list of your router (FRITZ!Box: Home Network → Network) or in the menu on the inverter's display. Ideally, give it a fixed address in the router.
-- **Modbus TCP must be turned on**; the usual port is 502. On the batteries sold by EKD it already is. See also [Modbus TCP is not turned on](#modbus-tcp-is-not-turned-on).
+- **Modbus TCP must be turned on**; the usual port is 502. On the Ampere.StoragePro batteries sold by EKD it already is. See also [Modbus TCP is not turned on](#modbus-tcp-is-not-turned-on).
 - **Same network:** the server and the inverter must be in the same home network. A guest network separates the devices from each other.
 
 ### "Das Gerät lehnt die Verbindung ab" (the device refuses the connection)
@@ -433,7 +433,7 @@ The inverter allows only a few Modbus connections at the same time. If another e
 
 ### Modbus TCP is not turned on
 
-On the batteries sold by EKD, Modbus TCP is already turned on. On other devices, the installer turns it on. If the installer no longer exists, ask another electrician or solar installer near you, or the manufacturer's customer service (FoxESS or SAJ) with the serial number of your device. Do not change anything in the inverter's service menu if you are not sure what the setting does.
+On the Ampere.StoragePro batteries sold by EKD, Modbus TCP is already turned on. On other devices, the installer turns it on. If the installer no longer exists, ask another electrician or solar installer near you, or the manufacturer's customer service (FoxESS or SAJ) with the serial number of your device. Do not change anything in the inverter's service menu if you are not sure what the setting does.
 
 ### "32-Bit-System erkannt" (32-bit system detected)
 

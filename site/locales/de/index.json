@@ -64,7 +64,7 @@
   "install": {
     "title": "Installation",
     "prepareTitle": "Rechner vorbereiten",
-    "prepareText": "Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit 64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Speichern ist das schon der Fall, sonst kann es der Installationsbetrieb erledigen.",
+    "prepareText": "Du brauchst einen Linux-Rechner im selben Netz wie der Wechselrichter, zum Beispiel einen Raspberry Pi mit 64-Bit-System, ein NAS oder einen Proxmox-Server. Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall, sonst kann es der Installationsbetrieb erledigen.",
     "runTitle": "Installieren",
     "runText": "Diesen Befehl im Terminal des Rechners ausführen:",
     "copy": "Kopieren",

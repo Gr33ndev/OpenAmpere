@@ -60,7 +60,7 @@
     "fixedIpHint": "Der Router kann dem Wechselrichter irgendwann eine neue Adresse geben. OpenAmpere sucht ihn dann zwar automatisch anhand der Seriennummer, zuverlässiger ist aber eine feste Adresse. In der FRITZ!Box: Heimnetz → Netzwerk → Gerät bearbeiten → „Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen“.",
     "fixedIpTitle": "Tipp: Feste IP-Adresse vergeben",
     "foxessAddress": "{model} (auch als „Ampere.StoragePro E3“ verkauft): Geräteadresse 247.",
-    "modbusHint": "Die Schnittstelle muss eingeschaltet sein. Bei den von EKD verkauften Speichern ist sie das schon, sonst kann der Installationsbetrieb sie aktivieren. Üblich ist Port 502.",
+    "modbusHint": "Die Schnittstelle muss eingeschaltet sein. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist sie das schon, sonst kann der Installationsbetrieb sie aktivieren. Üblich ist Port 502.",
     "otherManager": "{lead} (z. B. die bisherige Smartbox) am Wechselrichter, sind evtl. alle Verbindungen belegt. Dann nach dem Einrichten unter Mehr → Verbindung „Pro Abfrage“ wählen.",
     "otherManagerLead": "Hängt noch ein anderer Energiemanager",
     "sajAddress": "{model} (ältere „Ampere.StoragePro“): Geräteadresse 1 oder 2, je nach Kommunikationsmodul."

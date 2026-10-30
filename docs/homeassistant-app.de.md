@@ -21,7 +21,7 @@ Die App ist neu und als **experimentell** gekennzeichnet. Wenn etwas nicht klapp
 3. **OpenAmpere** in der Seitenleiste **öffnen**. Der Einrichtungsassistent sucht den Wechselrichter in deinem
    Heimnetz, oder du gibst seine IP-Adresse ein.
 
-Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Speichern ist das schon der Fall,
+Am Wechselrichter muss Modbus TCP eingeschaltet sein. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall,
 sonst kann es dein Installationsbetrieb erledigen.
 
 In der Seitenleiste brauchst du kein Passwort: Home Assistant hat schon geprüft, wer du bist. Einstellungen ändern und

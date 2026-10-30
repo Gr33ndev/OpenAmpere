@@ -64,7 +64,7 @@
   "install": {
     "title": "Installation",
     "prepareTitle": "Prepare a computer",
-    "prepareText": "You need a Linux computer on the same network as the inverter, for example a Raspberry Pi with a 64-bit system, a NAS or a Proxmox server. Modbus TCP must be enabled on the inverter. This is already the case for the batteries sold by EKD; otherwise your installer can enable it.",
+    "prepareText": "You need a Linux computer on the same network as the inverter, for example a Raspberry Pi with a 64-bit system, a NAS or a Proxmox server. Modbus TCP must be enabled on the inverter. This is already the case for the Ampere.StoragePro batteries sold by EKD; otherwise your installer can enable it.",
     "runTitle": "Install",
     "runText": "Run this command in the computer's terminal:",
     "copy": "Copy",
