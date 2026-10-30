@@ -41,7 +41,7 @@ test("a readable check fills in the wallbox OpenAmpere shows", async ({ page, ap
   await page.getByRole("button", { name: "Nur prüfen (Bericht)" }).click();
   await page.getByLabel("Adresse der Wallbox").fill("192.168.178.60");
   await page.getByRole("button", { name: "Wallbox prüfen" }).click();
-  await page.getByRole("button", { name: "Diese Wallbox in OpenAmpere anzeigen" }).click();
+  await page.getByRole("button", { name: "Diese Wallbox in OpenAmpere einrichten" }).click();
   await expect(page.getByRole("button", { name: "Einrichten", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("IP-Adresse der Wallbox")).toHaveValue("192.168.178.60");
   await expect(page.getByLabel("Port")).toHaveValue("1502");

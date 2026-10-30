@@ -6,9 +6,10 @@
 
 **Applies to:** FoxESS AC EV Charger (wallbox, single- and three-phase models) · **Sold as:** not stated in the
 sources; owners report it with EKD (Ampere.IQ) systems ([#412](https://github.com/Gr33ndev/OpenAmpere/issues/412)) · **OpenAmpere:** wallbox module `foxess_ac`, read-only wallbox check in the setup and live view
-(`wallbox/native.py`, [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)), its work mode written on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)), its charging modes as a simulation without writing ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) · **Support:** display
-(live view and check) and the work mode on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)), no
-control of charging · **Confirmed on a real device:** partly (connection and the read registers on one
+(`wallbox/native.py`, [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)), its work mode written on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)), its charging modes as a simulation without writing ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)) until the owner switches on real control ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)) · **Support:** display
+(live view and check) and the work mode on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464));
+control of charging as a test once the owner switches it on per wallbox ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465),
+offered as such in the setup since [#503](https://github.com/Gr33ndev/OpenAmpere/issues/503)) · **Confirmed on a real device:** partly (connection and the read registers on one
 three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431))
 
 ## Summary

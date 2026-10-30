@@ -572,7 +572,8 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
       <Field label={t("devices.nativeWallbox.name")} hint={t("devices.nativeWallbox.nameHint")}>
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
-      {readOnly && <Notice kind="info">{t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
+      {readOnly && <Notice kind="info">{model?.controllable ? t("devices.nativeWallbox.controllableIntro")
+        : t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
       {modbus && <DeviceSearch label={t("devices.wallboxDirect.search")}
         onUse={(f) => set({ host: f.host, ...(f.port ? { port: String(f.port) } : {}) })} />}
       {tuya && <TuyaKeyGuide />}

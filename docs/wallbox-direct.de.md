@@ -229,7 +229,7 @@ wählst du sie bei **Welche Wallbox hast du?**; beim FoxESS AC EV Charger wähls
 Dann prüft OpenAmpere die Wallbox nur lesend, in der Steuerungsart, in der sie gerade steht, und zeigt, was sie
 antwortet. An der Wallbox wird nichts geändert. Das Ergebnis kommt in den Diagnosebericht (**Mehr → Diagnose**); wenn
 du ihn teilst, hilft das, die Register an echten Geräten zu bestätigen und die Wallbox bald auch zu steuern. Konnte
-die Prüfung den FoxESS AC EV Charger lesen, übernimmt **Diese Wallbox in OpenAmpere anzeigen** Adresse, Port und
+die Prüfung den FoxESS AC EV Charger lesen, übernimmt **Diese Wallbox in OpenAmpere einrichten** Adresse, Port und
 Geräteadresse. Für andere Wallboxen liest **Mehr → Diagnose → Gerät auslesen** beliebige Register.
 
 Wahlweise kann die Prüfung auch per **OCPP 1.6J** zuhören (#328): Starte dort den Zuhörer und trage die angezeigte
