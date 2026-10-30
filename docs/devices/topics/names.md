@@ -98,7 +98,7 @@ Around the storage system:
 | 2023–2026 | "Ampere.IQ", "IQ box", "smartbox" | Kiwigrid energy manager | REST in the LAN; no Modbus server of its own (it is a Modbus TCP client of the inverter and the charger) | no driver; see [iq-box.md](iq-box.md) | derived | evcc-io/evcc discussion 8394; [Photovoltaikforum on the Ampere Storage Pro](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/) |
 | 2023–2024 | "AMPERE.StoragePro Meter" | Chint DTSU666 grid meter (SAJ systems) | RS485 to the inverter | read through the inverter | derived | as above |
 | from 2024-08 | "Ampere.Offgrid" | three-phase 63 A transfer switch for backup power; maker not stated | none | nothing to read | documented | EKD datasheet "Ampere.Offgrid", 2024-08 |
-| 2022–2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented | EKD datasheets "Ampere.SolarPro" |
+| about 2022 – 2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented (maker), derived (period) | EKD datasheets "Ampere.SolarPro" |
 | from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)) | documented | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
 | – | heating rod | my-PV, model not stated | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)) | derived | Photovoltaikforum on the Ampere Storage Pro (as above) |
 
@@ -113,7 +113,7 @@ Around the storage system:
 | EKD switched off the storage function of "AMPERE.Storage" remotely in September 2025 and released it again after a fuse was fitted on site. | confirmed (owner reports) | [iq-box.md](iq-box.md); [Photovoltaikforum thread on the shutdown](https://www.photovoltaikforum.com/thread/252527-ekd-zwangsabschaltung-ampere-storage-zum-18-09-2025-ohne-vorherige-kundenbeteili/) |
 | Senec stopped taking new customers in July 2026; app, service and the exchange of battery modules go on for existing systems. | documented (trade press) | [ess-news, 2026-07-14](https://www.ess-news.com/2026/07/14/enbw-scraps-senec-investor-search-shifts-storage-business-to-existing-customers/) |
 | Energieversum, which also sold Senec storage, is a separate installer, not an EKD brand. | derived | company websites |
-| The products named "Ampere" (storage, wallbox, modules, backup switch) come from AMPERE German Electric Innovation GmbH and were sold only through EKD. | documented (datasheets name it as maker), derived (sold only through EKD) | amperesolar.de datasheets |
+| "Ampere" is a sales name; the devices come from the makers in the tables above. The datasheets of the "Ampere.StoragePro E3" (2026-05) name AMPERE German Electric Innovation GmbH as maker ("Hersteller") although the device is a FoxESS; the 2023 datasheets of the SAJ-based "AMPERE.StoragePro" carry EKD's copyright instead. | documented | amperesolar.de datasheet "Ampere.StoragePro E3 12 kW", 2026-05; EKD datasheets "AMPERE.Storage.Pro", 2023-04, and "AMPERE.StoragePro", 2023-07 |
 
 ## Decisions in OpenAmpere
 
