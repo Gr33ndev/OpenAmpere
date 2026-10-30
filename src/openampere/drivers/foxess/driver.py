@@ -13,14 +13,17 @@ from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvI
 from ..modbus import (ModbusDevice, ModbusIllegalError, ModbusReadError,  # noqa: F401  (re-exported)
                       ModbusTransientError, _ascii)
 from ..regs import counter_step_wh
-from .registers import (H3_LEGACY, H3_NEW, MAPS, MODEL_ADDRESS, MODEL_LENGTH, SERIAL_ADDRESS,
-                        RegisterMap, decode)
+from .registers import (H3_LEGACY, H3_NEW, MAPS, MODEL_ADDRESS, MODEL_LENGTH, REMOTE_ON_AC, REMOTE_ON_BATTERY,
+                        REMOTE_OURS, SERIAL_ADDRESS, RegisterMap, decode)
 
 log = logging.getLogger(__name__)
 
 _NEW_MODEL = re.compile(r"^(H3-[\d.]+-(Smart|M)|[HP]3-Pro-[\d.]+)", re.I)
 _LEGACY_MODEL = re.compile(r"^H3-[\d.]+", re.I)
 _RATED_KW = re.compile(r"^[HP]3-(?:Pro-)?(\d+(?:\.\d+)?)", re.I)  # "H3-10.0-Smart" -> 10.0 kW
+
+
+READ_BACK_WAITS_S = (0, 1, 2, 3)  # a read-back may be delayed by a few seconds (docs/devices/foxess/h3.md)
 
 
 def rated_power_w(model: str | None) -> int | None:
@@ -42,10 +45,15 @@ class FoxessDriver(ModbusDevice):
         self._fc_choice = read_function
         self.map: RegisterMap | None = None
         self.read_function = 4
+        # remote control target (#509): None = not checked yet on this connection, then whether target battery works
+        self._battery_target: bool | None = None
+        self.remote_target: str | None = None  # of the last command: "battery" or "ac"
+        self.remote_fallback: str | None = None  # why it is "ac": "legacy", "no_countdown", "readback"
 
     # ---- detection -------------------------------------------------------
 
     async def _detect(self) -> DeviceInfo:
+        self._battery_target = None  # checked again after a new connection, e.g. after a firmware update
         functions = {"input": (4,), "holding": (3,)}.get(self._fc_choice, (4, 3))
         model = ""
         found = await self._probe(MODEL_ADDRESS, MODEL_LENGTH, functions)
@@ -172,7 +180,10 @@ class FoxessDriver(ModbusDevice):
 
     async def set_remote_power(self, watts: int, timeout_s: int, restore: dict | None = None) -> None:
         """Order matters: timeout first, then enable (single writes), then the power setpoint.
-        The inverter's own watchdog ends remote control after timeout_s without a new command."""
+        The inverter's own watchdog ends remote control after timeout_s without a new command.
+
+        Enable is 5 (target battery) where the device has the newer layout of 46001, recognised by a readable 46007
+        and a read-back of 5; otherwise 1 (target AC) as before (#509)."""
         assert self.map is not None
         rated = rated_power_w(self.info.model if self.info else None) or 10_000
         if not -rated <= int(watts) <= rated:
@@ -181,25 +192,67 @@ class FoxessDriver(ModbusDevice):
             raise ValueError("remote timeout must be between 10 and 3600 s")
         s = self.map.settings
         await self._write(s["remote_timeout"], int(timeout_s))
-        await self._write(s["remote_enable"], 1)
         self._remote_owned = int(timeout_s)
+        battery = await self._battery_target_possible() and await self._enable_battery_target(s["remote_enable"])
+        if not battery:
+            await self._write(s["remote_enable"], REMOTE_ON_AC)
+        self.remote_target = "battery" if battery else "ac"
         await self._write(s["remote_power"], int(watts))
+
+    async def _enable_battery_target(self, reg) -> bool:
+        """Writes 5; the first time on this connection it must read back as 5, else target AC from now on."""
+        try:
+            await self._write(reg, REMOTE_ON_BATTERY)
+            taken = self._battery_target or await self._reads_back(reg, REMOTE_ON_BATTERY)
+        except ModbusIllegalError:  # refused
+            taken = False
+        if not taken:
+            log.warning("remote control target battery not taken over, using target AC")
+        self._battery_target, self.remote_fallback = taken, None if taken else "readback"
+        return taken
+
+    async def _battery_target_possible(self) -> bool:
+        """Whether to try target battery: only on the new map with a readable countdown (46007). A refusal is
+        remembered for this connection; a read that fails for now falls back to target AC for this command only."""
+        assert self.map is not None
+        reg = self.map.settings.get("remote_countdown")
+        if reg is None:
+            self.remote_fallback = "legacy"
+            return False
+        if self._battery_target is not None:
+            return self._battery_target
+        try:
+            await self._read_reg(reg, 3)
+        except ModbusIllegalError:
+            self._battery_target, self.remote_fallback = False, "no_countdown"
+            return False
+        except ModbusReadError:
+            self.remote_fallback = "no_countdown"
+            return False
+        return True
+
+    async def _reads_back(self, reg, value: int) -> bool:
+        for wait_s in READ_BACK_WAITS_S:
+            await asyncio.sleep(wait_s)
+            if int(await self._read_reg(reg, 3)) == value:
+                return True
+        return False
 
     async def release_remote_power(self, timeout_s: int | None = None, restore: dict | None = None) -> bool:
         """Ends remote control, but only if OpenAmpere started it – never someone else's (e.g. a smartbox).
 
-        Ours means switched on with 1 and our watchdog timeout (the smartbox uses other values, #141). timeout_s
-        recognises a leftover of OpenAmpere after a restart or a new driver object, when the in-memory flag is gone.
+        Ours means switched on with 1 or 5 and our watchdog timeout (the smartbox uses 5 with 30 s, #141, #509).
+        timeout_s recognises a leftover of OpenAmpere after a restart or a new driver object, when the in-memory flag is gone.
         The watchdog may leave the switch on (#141), so it is read back. Returns whether it switched it off."""
         assert self.map is not None
         s = self.map.settings
         timeout_s = getattr(self, "_remote_owned", None) or timeout_s
         enable, timeout = await self._read(s["remote_enable"].address, 2, 3)
-        if not timeout_s or enable != 1 or timeout != timeout_s:
+        if not timeout_s or enable not in REMOTE_OURS or timeout != timeout_s:
             self._remote_owned = None  # off already, or someone else's now
             return False
         await self._write(s["remote_enable"], 0)
-        for wait_s in (0, 1, 2, 3):  # the read-back may be delayed by a few seconds (docs/devices/foxess/h3.md)
+        for wait_s in READ_BACK_WAITS_S:
             await asyncio.sleep(wait_s)
             if not await self._read_reg(s["remote_enable"], 3):
                 self._remote_owned = None

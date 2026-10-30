@@ -14,6 +14,8 @@ Safety rules:
 - Verifies after the first commands that the battery really charges; otherwise it stops and reports
   (the sign of the remote power command is not verified on every device yet).
 - Never discharges into the grid: it only charges; afterwards the inverter runs as before.
+- FoxESS: the setpoint targets the battery where the inverter has the newer layout of 46001, otherwise the AC side
+  as before, where PV is curtailed once the battery takes no more; the control log says so once per charge (#509).
 """
 
 from __future__ import annotations
@@ -333,6 +335,7 @@ class GridCharging:
                                                                               "target_soc": s.target_soc},
                                                           **self._soc_now()},
                                         False, f"Laden gestartet ({plan['reason']})")
+            self._log_target(collector.driver)
 
     async def _stop(self, reason: str, *, error: bool = False) -> None:
         """Ends charging: switches the remote control off, then sets a reserve raised by 0.23.1 back (#320)."""
@@ -462,6 +465,24 @@ class GridCharging:
         except Exception:  # noqa: BLE001 - only decides whether "not charging" is a fault
             limit = None
         return float(limit) if limit else 100.0
+
+    def _log_target(self, driver) -> None:
+        """Once per charge: a FoxESS that charges with target AC instead of the battery (#509). Then the setpoint
+        applies to the inverter's AC side, and in the sun PV is curtailed once the battery takes no more."""
+        fallback = getattr(driver, "remote_fallback", None)
+        if getattr(driver, "remote_target", None) != "ac" or not fallback:
+            return
+        if fallback == "legacy":
+            reason = "Bei der älteren Registerbelegung ist nicht bekannt, ob der Wechselrichter das Ziel Speicher kennt"
+        elif fallback == "no_countdown":
+            reason = ("Der Wechselrichter meldet keinen Zähler der Zeitbegrenzung (46007), seine Firmware kennt das Ziel "
+                      "Speicher vielleicht nicht")
+        else:
+            reason = "Der Wechselrichter hat das Ziel Speicher nicht übernommen"
+        self.runtime.storage.log_control("grid_charging", {"from": {}, "to": {"target": "ac"}}, False,
+                                         f"Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: {reason}. Scheint die "
+                                         "Sonne, regelt der Wechselrichter die Solaranlage ab, sobald der Speicher "
+                                         "nichts mehr aufnimmt.")
 
     def _log_stop(self, result: str) -> None:
         snap = self.runtime.collector.latest

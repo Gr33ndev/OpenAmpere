@@ -19,6 +19,7 @@ from datetime import datetime
 
 from . import logs, privacy
 from .charging import REMOTE_COMMAND, REMOTE_TIMEOUT_S, STARTED
+from .drivers.foxess.registers import REMOTE_OURS, remote_target
 from .drivers.modbus import ModbusIllegalError, ModbusReadError, ModbusTransientError
 from .ocpp import OcppListener, ocpp_markdown
 from .probe import Probe, section_markdown
@@ -94,13 +95,24 @@ class Diagnostics:
             return {"ok": False, "error": "keine Antwort", "detail": str(err)}
 
     async def _read_remote(self, register_map) -> dict:
-        """On/off, watchdog timeout and power (32 bit, negative = the battery charges) of the remote control."""
+        """On/off, watchdog timeout and power (32 bit, negative = the battery charges) of the remote control. On the
+        new map also the controlled target encoded in 46001 and the watchdog countdown 46007, read on its own so a
+        device that refuses it does not break the check (#509)."""
         r = await self._try(register_map.settings["remote_enable"].address, 4, 3)
         if not r["ok"]:
             return {"error": r["error"]}
         power = (r["words"][2] << 16) | r["words"][3]
-        return {"on": bool(r["words"][0]), "timeout_s": r["words"][1],
-                "power_w": power - 0x100000000 if power & 0x80000000 else power, "words": r["words"]}
+        remote = {"on": bool(r["words"][0] & 1), "timeout_s": r["words"][1],
+                  "power_w": power - 0x100000000 if power & 0x80000000 else power, "words": r["words"],
+                  "target": None, "countdown_s": None}
+        countdown = register_map.settings.get("remote_countdown")
+        if countdown is not None:  # the bit field of 46001 is documented for the new map only (#509)
+            remote["target"] = remote_target(r["words"][0])
+            remote["consumer_sign"] = bool(r["words"][0] & 2)
+            c = await self._try(countdown.address, 1, 3)
+            remote["countdown_s"] = c["words"][0] if c["ok"] else None
+            remote["countdown_error"] = None if c["ok"] else c["error"]
+        return remote
 
     async def watch_remote(self, now: float | None = None) -> None:
         """Background job, read only: every few minutes, whether the remote control is on, so the check can say for
@@ -127,28 +139,52 @@ class Diagnostics:
         if "error" in remote:
             return Check("remote", title, "info", f"nicht lesbar ({remote['error']})")
         now = time.time()
-        timeout, power = remote["timeout_s"], remote["power_w"]
+        timeout, power, target, countdown = (remote["timeout_s"], remote["power_w"], remote["target"],
+                                             remote["countdown_s"])
         command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
+        driver = self._driver()
         # durations instead of times of the user's actions (#149)
         details = {"words": remote["words"], "timeout_s": timeout, "power_w": power,
                    "openampere_last_command_min_ago": round((now - command["ts"]) / 60) if command else None}
+        if target is not None:
+            details.update({"target": target, "consumer_sign": remote["consumer_sign"], "countdown_s": countdown,
+                            "openampere_target": getattr(driver, "remote_target", None),
+                            "openampere_target_fallback": getattr(driver, "remote_fallback", None)})
+            if remote["countdown_error"]:
+                details["countdown_error"] = remote["countdown_error"]
         if not remote["on"]:
             return Check("remote", title, "ok", "aus – kein Gerät steuert den Speicher gerade von außen", details)
-        # negative = the battery charges (sign not verified on every device, the raw value is in the details)
-        what = (f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0
-                else "0 W, also weder Laden noch Entladen")
-        # OpenAmpere switches it on with exactly 1 and its own timeout; the smartbox uses other values (#141)
-        ours = bool(command) and remote["words"][0] == 1 and timeout == command.get("timeout_s", REMOTE_TIMEOUT_S)
-        if ours and getattr(self._driver(), "_remote_owned", None):
+        # negative = taken in (sign not verified on every device, the raw value is in the details)
+        if target in ("ac", "ac_grid_first"):  # the setpoint applies to the inverter's AC side (#509)
+            what = (f"{abs(power)} W Bezug am Wechselrichter-Ausgang" if power < 0 else
+                    f"{power} W Abgabe am Wechselrichter-Ausgang" if power > 0 else
+                    "0 W am Wechselrichter-Ausgang, also kein Strom vom Wechselrichter ins Haus")
+        elif target == "grid":
+            what = (f"{abs(power)} W Bezug am Netzanschluss" if power < 0 else
+                    f"{power} W Einspeisung am Netzanschluss" if power > 0 else "0 W am Netzanschluss")
+        else:
+            what = (f"{abs(power)} W Laden" if power < 0 else f"{power} W Entladen" if power > 0
+                    else "0 W, also weder Laden noch Entladen")
+        # OpenAmpere switches it on with 1 or 5 and its own timeout; the smartbox uses 5 with 30 s (#141, #509)
+        ours = (bool(command) and remote["words"][0] in REMOTE_OURS
+                and timeout == command.get("timeout_s", REMOTE_TIMEOUT_S))
+        writing = ours and bool(getattr(driver, "_remote_owned", None))
+        clock = self._countdown_text(countdown, writing)
+        if writing:
+            hint = "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit."
+            if getattr(driver, "remote_target", None) == "ac":
+                hint += (" Der Wechselrichter lädt mit Ziel Wechselrichter-Ausgang statt Speicher (siehe "
+                         "Steuerungsprotokoll): Scheint die Sonne, regelt er die Solaranlage ab, sobald der Speicher "
+                         "nichts mehr aufnimmt.")
             return Check("remote", title, "ok", f"an – OpenAmpere lädt aus dem Netz: {what}", details,
-                         "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit.")
+                         f"{hint} {clock}".strip())
         if ours and not command.get("released"):
             ago = privacy.ago(now - command["ts"])  # a duration, not the time of the owner's action (#149, #223)
             return Check("remote", title, "info", f"an – Rest des Ladens aus dem Netz von OpenAmpere ({what})", details,
                          f"OpenAmpere hat die Fernsteuerung zuletzt {ago} benutzt und am Ende nicht "
                          "abgeschaltet, zum Beispiel wegen eines Neustarts oder einer kurz unterbrochenen Verbindung. "
                          "Es schaltet sie innerhalb einer Minute selbst ab, du musst nichts tun. Ist sie danach noch "
-                         "an, melde das bitte als Fehler.")
+                         f"an, melde das bitte als Fehler. {clock}".strip())
         seen = self.runtime.storage.get_meta(REMOTE_SEEN) or {}
         if seen.get("on_since") and now - seen.get("checked", 0) <= 2 * WATCH_S:
             duration = seen["checked"] - seen["on_since"]
@@ -162,21 +198,43 @@ class Diagnostics:
                "Vielleicht hat der Wechselrichter die Werte nach einem Neustart wiederhergestellt: Dann schaltet "
                "OpenAmpere sie nach dem nächsten Verbindungsaufbau selbst ab. Oder ein zweites Programm steuert den "
                "Wechselrichter, zum Beispiel ein zweites OpenAmpere."
-               if ours else f"OpenAmpere war es nicht: Es schaltet die Fernsteuerung mit anderen Werten ein (1 und "
-               f"{REMOTE_TIMEOUT_S} s) und hat zuletzt {last}.")
-        effect = ("Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. Bei 0 W "
-                  "lädt und entlädt der Speicher meist nicht: Schau in der Übersicht, ob die Speicherleistung dauerhaft "
-                  "bei 0 W bleibt, obwohl die Sonne scheint oder das Haus Strom braucht. " if power == 0 else
-                  "Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. ")
+               if ours else f"OpenAmpere war es nicht: Es schaltet die Fernsteuerung mit anderen Werten ein (1 oder 5 "
+               f"und {REMOTE_TIMEOUT_S} s) und hat zuletzt {last}.")
+        effect = "Solange die Vorgabe gilt, folgt der Wechselrichter ihr statt seinem normalen Betrieb. "
+        if power == 0 and target in ("ac", "ac_grid_first"):
+            effect += ("Bei 0 W am Wechselrichter-Ausgang bezieht das Haus seinen Strom ganz aus dem Netz, die Sonne "
+                       "lädt nur den Speicher, und ist er voll, regelt der Wechselrichter die Solaranlage ab. Schau in "
+                       "der Übersicht, ob die Solarleistung bei voller Batterie auf fast 0 W fällt, obwohl die Sonne "
+                       "scheint. ")
+        elif power == 0 and target in (None, "battery"):
+            effect += ("Bei 0 W lädt und entlädt der Speicher meist nicht: Schau in der Übersicht, ob die "
+                       "Speicherleistung dauerhaft bei 0 W bleibt, obwohl die Sonne scheint oder das Haus Strom "
+                       "braucht. ")
+        named = {"ac": "Ziel Wechselrichter-Ausgang", "ac_grid_first": "Ziel Wechselrichter-Ausgang",
+                 "battery": "Ziel Speicher", "grid": "Ziel Netzanschluss"}.get(target)
+        value = f"Wert {remote['words'][0]}" + (f" = {named}" if named else "")
         return Check("remote", title, "warn",
-                     f"an – ein anderes Gerät gibt dem Speicher {what} vor (Wert {remote['words'][0]}, Zeitlimit "
+                     f"an – ein anderes Gerät gibt dem Speicher {what} vor ({value}, Zeitlimit "
                      f"{timeout} s).{since}", details,
-                     (f"{who} {effect}" + ("" if ours else
+                     (f"{who} {effect}{clock} " + ("" if ours else
                      "Meist ist das die bisherige Smartbox: Sie setzt Vorgaben aus der Cloud ihres "
                      "Herstellers um und kann dabei das Laden aus dem Netz und die Speicher-Einstellungen von "
                      "OpenAmpere überschreiben. Wenn du das nicht möchtest: der Smartbox im Router den Internetzugang "
                      "sperren oder sie abklemmen (vorher klären, ob sie für etwas anderes gebraucht wird), siehe README "
                      "„Die bisherige Smartbox setzt Einstellungen zurück“. Sonst kannst du den Hinweis ignorieren.")).strip())
+
+    @staticmethod
+    def _countdown_text(countdown: int | None, writing: bool) -> str:
+        """What the watchdog countdown (46007) says about a remote control that is on (#141, #143, #509)."""
+        if countdown is None:
+            return ""
+        if countdown == 0:
+            return ("Das Zeitlimit ist abgelaufen, die Fernsteuerung ist trotzdem noch an: Der Wechselrichter hat sie "
+                    "nach Ablauf nicht abgeschaltet, und die Vorgabe gilt weiter, bis sie jemand abschaltet.")
+        if writing:
+            return f"Das Zeitlimit läuft (noch {countdown} s), OpenAmpere erneuert die Vorgabe laufend."
+        return (f"Das Zeitlimit läuft (noch {countdown} s), obwohl OpenAmpere gerade nichts sendet: Ein anderes Gerät "
+                "schreibt die Vorgabe gerade, oder der Wechselrichter hat sie nach einem Neustart wiederhergestellt.")
 
     async def run(self, *, connection_test: bool = False, include_serial: bool = False) -> dict:
         if self.running:
