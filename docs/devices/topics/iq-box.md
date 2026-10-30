@@ -26,6 +26,9 @@ without a manufacturer name.
   0x8300 every 1–3 s.
 - The EKD cloud's customer API blocks clients that poll too often; OpenAmpere's history import sends at most one
   request per 65 s.
+- No source shows that an inverter stops when the box is switched off for good; the box has no watchdog role in any
+  document found. SAJ owners report their system running on without it; on a FoxESS H3 only short-term reports exist.
+  The real risk is cutting the box off in the middle of one of its commands (see Behaviour).
 
 ## Registers
 
@@ -54,7 +57,11 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | The box is also configured as a Modbus TCP client of the FoxESS AC EV Charger ("Ampere.ChargePro Bridge", host `EVC-<serial>.local`, unit id 1, port 502, not configurable on its settings page). While the box is powered, OpenAmpere cannot read the charger; with the box cut from power the wallbox check reads it at once. Whether the charger allows only one client or mishandles concurrent clients, and whether the box also controls the charger, is open; see [ac-charger.md](../foxess/ac-charger.md). | configured as a client: derived; blocks access: confirmed (one device) | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427); owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | Disconnecting the box from the network (its LAN cable or its power, not the inverter's) frees the slot. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311) |
 | At one installation that routed everything through a Modbus proxy, the box set itself back to the inverter's own address after a while and took a slot again. A proxy is no lasting way to share the inverter with the box. | confirmed | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
-| After the box is disconnected, the inverter keeps working with the settings stored last (including the export limit). | open (stated in the guide, not reported from a device) | [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312) |
+| After the box is disconnected, the inverter keeps working with the settings stored last (including the export limit). SAJ: owners report the system running on with the box switched off (the battery went on discharging) or never having had a box. FoxESS H3: only reports of the first hours after cutting the box off, no long-term report. | confirmed (SAJ, owner reports), open (FoxESS long-term) | owner reports in [a Photovoltaikforum thread on bursts of discharge](https://www.photovoltaikforum.com/thread/244965-ekd-ampere-storage-pro-asp-10kw-3p-x-schubweise-entladung-ins-netz/), [page 11 of a Photovoltaikforum thread on the storage](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/?pageNo=11) and [a Home Assistant community thread](https://community.home-assistant.io/t/integration-of-ampere-iq-inverter-battery-and-kiwigrid-energy-manager/684978); [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#312](https://github.com/Gr33ndev/OpenAmpere/issues/312), [#469](https://github.com/Gr33ndev/OpenAmpere/issues/469) |
+| Neither inverter has a documented function that stops or limits it when an external controller such as the box falls silent. Kiwigrid's installation guide for the Energy Manager RailX (version 014, 2025) mentions no watchdog, fallback or loss of communication for connected inverters or batteries. FoxESS's only mechanism is the timeout of the remote control (see below); SAJ has none (see [h2-family.md](../saj/h2-family.md)). | documented (none found) | Kiwigrid, installation guide Energy Manager RailX, version 014; FoxESS Modbus interface definition V1.05.04.00; SAJ H2 protocol |
+| The grid meter is read by the inverter (its values are in the inverter's registers), not by the box, so self-consumption and the export limit do not depend on the box. FoxESS reports a lost meter as an alarm ("Meter Lost"); on the FoxESS H1 a lost CT switches the inverter off, for the H3 this is not documented. Whether any EKD installation wires the meter through the box is open. | derived | [a Home Assistant community thread](https://community.home-assistant.io/t/integration-of-ampere-iq-inverter-battery-and-kiwigrid-energy-manager/684978) (SAJ meter registers); FoxESS Modbus interface definition V1.05.04.00; FoxESS H1/AC1 G100 declaration |
+| FoxESS: per FoxESS's Modbus definition 46001 is a bit field (bit 0 on, bits 3:2 target: 00 AC, 01 battery, 10 grid, 11 AC with grid first). The box's 5 therefore means remote control on with the battery as target. When the box falls silent, its 30 s timeout should end the remote control and the inverter go back to its own work mode; if it stays on as in [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), the battery would stay at the box's last power (0 W or charging) while PV and the house supply go on. Not seen on a device. | documented (bit field), derived (behaviour) | FoxESS Modbus interface definition V1.05.04.00, table 3-8; [foxess/h3.md](../foxess/h3.md#remote-control-grid-charging) |
+| SAJ: when the box writes 0x8300 at the start of a charge, the work mode 0x3647 changes to 3 (passive mode) by itself; the box ends a charge with 0x8300 = 0 and 0x3647 = 0 written back to back. Cut off in the middle of a charge, the inverter may therefore keep passive mode and the reserve 0x3644 at 100 %, and the battery would not discharge until someone changes them. | derived | stanus74/home-assistant-saj-h2-modbus#18 (recorded traffic); [#377](https://github.com/Gr33ndev/OpenAmpere/issues/377) |
 | The box may be needed for something else, for example control by the grid operator (§ 14a EnWG for a controllable device such as a wallbox or heat pump, § 9 EEG for feed-in). It can only do that where a smart meter gateway with a control box at the meter exists and is connected to the box (a cable on its inputs, or EEBus in the home network). No installation has confirmed it either way; owners check it with the steps in the README before disconnecting the box. | open (depends on the installation) | [#25](https://github.com/Gr33ndev/OpenAmpere/issues/25), [#311](https://github.com/Gr33ndev/OpenAmpere/issues/311), [#452](https://github.com/Gr33ndev/OpenAmpere/issues/452) |
 | FoxESS: the box drives the remote control with 46001 = 5, 46002 = 30 s, its charge power in 46003–46004, and also writes 20162 = 1. | confirmed (owner's report) | [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
 | FoxESS: a remote control that is on with values other than OpenAmpere's usually means the box is following targets from its cloud; it can overwrite grid charging and battery settings. | derived | [#126](https://github.com/Gr33ndev/OpenAmpere/issues/126), [#127](https://github.com/Gr33ndev/OpenAmpere/issues/127), [#136](https://github.com/Gr33ndev/OpenAmpere/issues/136), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
@@ -70,6 +77,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | The history can be fetched in two steps: energy values in quarter hours, then the battery state of charge per day. | confirmed | [#17](https://github.com/Gr33ndev/OpenAmpere/issues/17), [#42](https://github.com/Gr33ndev/OpenAmpere/issues/42) |
 | The previous app apparently calculated house consumption as the balance of the other energy flows, so its value differed from the inverter's own consumption counter. | derived | [#15](https://github.com/Gr33ndev/OpenAmpere/issues/15), [#36](https://github.com/Gr33ndev/OpenAmpere/issues/36); see Open questions |
 | The previous app offered three grid charging levels at 50, 75 and 100 % of the charge power the battery's datasheet permits. | derived | [#23](https://github.com/Gr33ndev/OpenAmpere/issues/23), [#49](https://github.com/Gr33ndev/OpenAmpere/issues/49) |
+| In September 2025 EKD switched off the storage function of the older "AMPERE.Storage" (SolarMax-based, neither SAJ nor FoxESS) remotely, announced one day before and citing a regulatory component to be retrofitted. This has nothing to do with switching the box off, but may be where the story "the system stops by itself" comes from. | confirmed (owner reports), derived (link to the rumour) | owner reports in [a Photovoltaikforum thread on the shutdown](https://www.photovoltaikforum.com/thread/252527-ekd-zwangsabschaltung-ampere-storage-zum-18-09-2025-ohne-vorherige-kundenbeteili/) |
 
 ## Decisions in OpenAmpere
 
@@ -102,8 +110,12 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
   meter gateway through a control box at the meter, confirm it and limit the system until the end of the reduction.
   Public sources describe this path (the signal goes from the gateway's CLS channel to a control box and from there to
   an HEMS or straight to the device, today mostly through relay contacts, a digital interface such as EEBus or Modbus
-  as a next step), but nothing shows that the box does it. Hypothesis, status open
+  as a next step), but nothing shows that the box does it. Kiwigrid presents taking these signals from the gateway as
+  new with its RailX+ (2026), which makes it less likely for the older box (derived). Hypothesis, status open
   ([#452](https://github.com/Gr33ndev/OpenAmpere/issues/452)).
+- Whether a FoxESS H3 runs normally for weeks without the box, and whether the box's remote control (5/30 s) ends by
+  itself when the box is cut off in the middle of a command.
+- Whether any EKD installation wires the grid meter through the box instead of to the inverter.
 - Whether and when the EKD cloud will be switched off ([#84](https://github.com/Gr33ndev/OpenAmpere/issues/84)).
 - The ZIP edge cases above come from reviews, not from a real export ([#288](https://github.com/Gr33ndev/OpenAmpere/issues/288)).
 - Whether the box only reads the FoxESS AC EV Charger or also controls it, and why the charger cannot be read while
@@ -119,6 +131,12 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
   from the smart meter gateway to an energy manager or the device, and the public fact sheets of the German Energy
   Agency (dena, 2025) on the CLS unit and on energy managers; summarised in own words
   ([#452](https://github.com/Gr33ndev/OpenAmpere/issues/452)).
+- Kiwigrid, [installation guide Energy Manager RailX](https://kiwigrid.com/docs/kiwigrid/de/OBJ_DCL-0000000142-014-_DE__WEBAPPHTML5/index.html)
+  (version 014, 2025), and [pv magazine on the RailX+ (2026)](https://www.pv-magazine.de/2026/02/09/kiwigrid-integriert-steuerbox-und-energiemanagement-in-einem-geraet/).
+- FoxESS, ["FOX commercial inverter Modbus interface definition" V1.05.04.00](https://www.foxesscommunity.com/download/file.php?id=3478)
+  (2025), table 3-8; FoxESS H1/AC1 G100 declaration (behaviour on a lost CT, other models).
+- Owner reports in public threads of the Photovoltaikforum and the Home Assistant community, linked in the tables;
+  summarised in own words, without personal data.
 - EKD's customer API documentation (developer.ekd-solar.de), as used by the cloud import. Nothing from the Ampere.IQ
   app or its code.
 - Issues and pull requests: [#15](https://github.com/Gr33ndev/OpenAmpere/issues/15),
