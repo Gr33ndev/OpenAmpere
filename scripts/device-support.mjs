@@ -17,7 +17,8 @@
  * The data:
  *   devices[]  id, name, does (Markdown, README only), short, confirmed, check (✅ in the README), state, next, page
  *              (its device page, the evidence behind "confirmed"), home: false to leave it off the home page
- *   ekd[]      id, group, names (the cells of its row in names.md: English Markdown, links relative to that page),
+ *   ekd[]      id, group, names (the cells of its row in names.md: English Markdown, links relative to that page;
+ *              with support, the OpenAmpere cell names only the driver, the confirmation is added from the device),
  *              and for the website: sold, device, period, state, note, issue or next; site: false leaves it off.
  *              support names a device: state, confirmation and next step come from it, a note of its own comes first.
  * A text is a string (the same in every language) or {de, en}. Website texts are plain text, escaped there.
@@ -115,7 +116,8 @@ export function loadSupport(path = SUPPORT_FILE, exists = existsSync) {
   return { data, errors: validate(data, exists).map((error) => `${path}: ${error}`) };
 }
 
-const cell = (value) => value.replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ");
+// a text as one table cell: backslashes kept as written, "|" not ending the cell, one line
+const cell = (value) => value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ");
 
 /** The table "Supported devices" of the README in lang (Markdown, links relative to the repository root). */
 export function readmeTable(data, lang) {
@@ -127,14 +129,23 @@ export function readmeTable(data, lang) {
   return [`| ${README_HEADER[lang].join(" | ")} |`, "|---|---|---|", ...rows].join("\n");
 }
 
-/** The tables "Hardware sold by EKD over time" of names.md, one per group, in the order of the file. */
+/**
+ * The tables "Hardware sold by EKD over time" of names.md, one per group, in the order of the file. A row with support
+ * gets the confirmation of its device after its own OpenAmpere cell, so names.md says the same as README and website.
+ */
 export function namesTables(data) {
+  const byId = new Map(data.devices.map((device) => [device.id, device]));
+  const openampere = (entry) => {
+    const device = byId.get(entry.support);
+    return device ? `${entry.names.openampere}. ${cell(pick(device.confirmed, "en"))}` : entry.names.openampere;
+  };
   return GROUPS.map((group) => [
     NAMES_GROUPS[group],
     "",
     `| ${NAMES_HEADER.join(" | ")} |`,
     `|${"---|".repeat(NAMES_HEADER.length)}`,
-    ...data.ekd.filter((entry) => entry.group === group).map((entry) => `| ${NAMES_COLUMNS.map((c) => entry.names[c]).join(" | ")} |`),
+    ...data.ekd.filter((entry) => entry.group === group)
+      .map((entry) => `| ${NAMES_COLUMNS.map((c) => (c === "openampere" ? openampere(entry) : entry.names[c])).join(" | ")} |`),
   ].join("\n")).join("\n\n");
 }
 

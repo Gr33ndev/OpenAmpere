@@ -399,7 +399,7 @@
         "sold": "\"Ampere.StoragePro E3\", 22 kW (\"ASP-22KW-3P-A-X-E3\"; the datasheets put A and X in the other order than for the 12 kW type)",
         "model": "FoxESS, probably H3 Pro (4 MPPT and 22 kW, more than any H3 Smart)",
         "interface": "Modbus TCP",
-        "openampere": "driver `foxess` should detect it as H3 Pro (not confirmed on a device)",
+        "openampere": "driver `foxess` should detect it as H3 Pro",
         "status": "open: no owner's report; derived (period)",
         "source": "amperesolar.de datasheet \"Ampere.StoragePro E3 22 kW\", 2026-05"
       }

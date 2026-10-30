@@ -157,7 +157,6 @@ function slug(html, ids) {
 
 const indentOf = (line) => /^ */.exec(line)[0].length;
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
-const COMMENT = /^\s*<!--.*-->\s*$/;
 const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
 const RULE = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const QUOTE = /^ {0,3}> ?/;
@@ -202,7 +201,7 @@ function blocks(lines, options, tight = false) {
   while (i < lines.length) {
     const line = lines[i];
     // blank lines, and HTML comments on a line of their own (the markers of generated parts, #526), as on GitHub
-    if (!line.trim() || COMMENT.test(line)) {
+    if (!line.trim() || (line.trim().startsWith("<!--") && line.trim().endsWith("-->"))) {
       i += 1;
       continue;
     }

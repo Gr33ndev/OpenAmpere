@@ -145,3 +145,17 @@ def test_the_markers_do_not_show_on_the_website():
                           check=True).stdout
     assert "generated" not in html and "&lt;!--" not in html
     assert html == "<p>a</p>\n<p>b</p>"
+
+
+@needs_node
+def test_names_md_takes_the_confirmation_from_the_device():
+    tables = call("namesTables", data())["value"]
+    rows = [line for line in tables.split("\n") if line.startswith("| x |")]
+    # the planned row as written, the supported one with the device's English confirmation
+    assert rows == ["| x | x | x | x | x | x | x |", "| x | x | x | x | x. Monitoring confirmed | x | x |"]
+
+
+@needs_node
+def test_a_cell_keeps_backslashes_and_pipes_as_written():
+    devices = [{**data()["devices"][0], "does": "a | b \\| c"}]
+    assert "| a \\| b \\\\\\| c |" in call("readmeTable", data(devices=devices), "en")["value"]
