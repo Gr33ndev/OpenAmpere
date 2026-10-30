@@ -134,7 +134,7 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 - Kiwigrid, [installation guide Energy Manager RailX](https://kiwigrid.com/docs/kiwigrid/de/OBJ_DCL-0000000142-014-_DE__WEBAPPHTML5/index.html)
   (version 014, 2025), and [pv magazine on the RailX+ (2026)](https://www.pv-magazine.de/2026/02/09/kiwigrid-integriert-steuerbox-und-energiemanagement-in-einem-geraet/).
 - FoxESS, ["FOX commercial inverter Modbus interface definition" V1.05.04.00](https://www.foxesscommunity.com/download/file.php?id=3478)
-  (2025), table 3-8; FoxESS H1/AC1 G100 declaration (behaviour on a lost CT, other models).
+  (2025), table 3-8; FoxESS, ["H1 and AC1 series inverter G100 Declaration"](https://portal.segen.co.uk/reseller/docs/H1-and-AC1-series-inverter-G100_Declaration-20210414.pdf) (2021-04-14, published by a UK distributor) (behaviour on a lost CT, other models).
 - Owner reports in public threads of the Photovoltaikforum and the Home Assistant community, linked in the tables;
   summarised in own words, without personal data.
 - EKD's customer API documentation (developer.ekd-solar.de), as used by the cloud import. Nothing from the Ampere.IQ
