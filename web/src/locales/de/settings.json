@@ -277,6 +277,7 @@
     "gridChargingStopFailed": "Laden aus dem Netz ließ sich nicht beenden.",
     "gridChargingStopped": "Laden aus dem Netz beendet: Speicher von {from} auf {to} geladen.",
     "gridChargingStoppedPlain": "Laden aus dem Netz beendet.",
+    "gridChargingTargetAc": "Laden aus dem Netz mit Ziel Wechselrichter-Ausgang statt Speicher: Scheint die Sonne, regelt der Wechselrichter die Solaranlage ab, sobald der Speicher nichts mehr aufnimmt.",
     "hourValue": "{hour} Uhr",
     "hours": {
       "one": "1 Stunde",

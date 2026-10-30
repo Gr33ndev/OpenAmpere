@@ -203,6 +203,9 @@ async def test_charging_falls_back_to_target_ac_and_says_so(tmp_path):
             assert note.startswith("Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: Der Wechselrichter meldet "
                                    "keinen Zähler der Zeitbegrenzung (46007)")
             assert "regelt der Wechselrichter die Solaranlage ab" in note
+            # the app's headline says what it means, the note below it only why (#509)
+            from openampere.i18n import log_note
+            assert log_note(note, "en").startswith("The inverter reports no countdown of the time limit (46007)")
             await charging.tick()  # once per charge
             assert sum("Ziel" in e["result"] for e in runtime.storage.control_log()) == 1
             charging.save({**charging.view()["settings"], "enabled": False})
