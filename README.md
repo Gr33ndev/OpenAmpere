@@ -28,7 +28,7 @@ The app's user interface and the website are in German.
 |---|---|---|
 | FoxESS H3, newer firmware | Monitoring and control. Control is off by default. The new or old register map is detected automatically. | ✅ Monitoring and control confirmed |
 | FoxESS H3, older firmware / H3 Smart / H3 Pro | Monitoring and control; with older firmware without the feed-in limit | Not yet confirmed |
-| SAJ H2 / HS2 | Monitoring and control. Grid charging through a short charge time slot in the inverter, because SAJ has no remote control that ends by itself. | Monitoring confirmed on a "3P-X E2" (older "Ampere.StoragePro"), control not yet |
+| SAJ H2 / HS2 | Monitoring and control. Grid charging through a short charge time slot in the inverter, because SAJ has no remote control that ends by itself. | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); control not yet confirmed |
 | Immersion heater, heat pump (SG-Ready) | Switching on solar surplus via Shelly relays or web addresses. | Not yet confirmed |
 | Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR | Continuously variable according to solar surplus, optionally with cheap grid power. | Not yet confirmed |
 | Wallbox | Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). For many wallboxes evcc requires a paid sponsor token ([list](https://docs.evcc.io/en/chargers)). | Not yet confirmed |
