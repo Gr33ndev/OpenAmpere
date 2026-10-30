@@ -79,7 +79,8 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 | The history can be fetched in two steps: energy values in quarter hours, then the battery state of charge per day. | confirmed | [#17](https://github.com/Gr33ndev/OpenAmpere/issues/17), [#42](https://github.com/Gr33ndev/OpenAmpere/issues/42) |
 | The previous app apparently calculated house consumption as the balance of the other energy flows, so its value differed from the inverter's own consumption counter. | derived | [#15](https://github.com/Gr33ndev/OpenAmpere/issues/15), [#36](https://github.com/Gr33ndev/OpenAmpere/issues/36); see Open questions |
 | The previous app offered three grid charging levels at 50, 75 and 100 % of the charge power the battery's datasheet permits. | derived | [#23](https://github.com/Gr33ndev/OpenAmpere/issues/23), [#49](https://github.com/Gr33ndev/OpenAmpere/issues/49) |
-| In September 2025 EKD switched off the storage function of the older "AMPERE.Storage" (SolarMax-based, neither SAJ nor FoxESS) remotely, announced one day before and citing a regulatory component to be retrofitted. This has nothing to do with switching the box off, but may be where the story "the system stops by itself" comes from. | confirmed (owner reports), derived (link to the rumour) | owner reports in [a Photovoltaikforum thread on the shutdown](https://www.photovoltaikforum.com/thread/252527-ekd-zwangsabschaltung-ampere-storage-zum-18-09-2025-ohne-vorherige-kundenbeteili/) |
+| In September 2025 EKD switched off the storage function of the older "AMPERE.Storage" (SolarMax-based, neither SAJ nor FoxESS) remotely, announced one day before and citing a regulatory component to be retrofitted. EKD released it again after a fuse was fitted on site in the following weeks. This has nothing to do with switching the box off, but may be where the story "the system stops by itself" comes from. | confirmed (owner reports), derived (link to the rumour) | owner reports in [a Photovoltaikforum thread on the shutdown](https://www.photovoltaikforum.com/thread/252527-ekd-zwangsabschaltung-ampere-storage-zum-18-09-2025-ohne-vorherige-kundenbeteili/) |
+| The box is a Kiwigrid energy manager. In the LAN it offers a REST interface (items named after the inverter, e.g. `sajhybrid_…` or `foxesshybrid_…`); it has no Modbus server of its own, but is a Modbus TCP client of the inverter and the charger (see above). | derived | evcc-io/evcc discussion 8394; [Photovoltaikforum on the Ampere Storage Pro](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/); [names.md](names.md) |
 
 ## Decisions in OpenAmpere
 
@@ -123,10 +124,10 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 - Whether the box only reads the FoxESS AC EV Charger or also controls it, and why the charger cannot be read while
   the box is powered (only one client, or concurrent clients mishandled;
   [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
-- Who made the box is not stated in OpenAmpere's sources.
 
 ## Sources
 
+- [evcc-io/evcc discussion 8394](https://github.com/evcc-io/evcc/discussions/8394): owners on the box (a Kiwigrid energy manager) and its REST interface in the LAN.
 - stanus74/home-assistant-saj-h2-modbus (MIT), issue stanus74/home-assistant-saj-h2-modbus#18: recorded Modbus
   traffic of the box on an SAJ; credited in [NOTICE](../../../NOTICE).
 - On control by the grid operator: [a public video of a German grid operator (2025)](https://www.youtube.com/watch?v=bs27GahT8Sg) on how the § 14a signal gets
