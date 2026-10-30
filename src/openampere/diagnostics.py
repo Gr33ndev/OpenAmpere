@@ -172,7 +172,9 @@ class Diagnostics:
         ours = (bool(command) and remote["words"][0] in REMOTE_OURS
                 and timeout == command.get("timeout_s", REMOTE_TIMEOUT_S))
         writing = ours and bool(getattr(driver, "_remote_owned", None))
-        clock = self._countdown_text(countdown, writing, ours and now - command["ts"] < timeout)
+        # a command OpenAmpere switched off afterwards cannot be the source of the countdown
+        recent = ours and not command.get("released") and now - command["ts"] < timeout
+        clock = self._countdown_text(countdown, writing, recent)
         if writing:
             hint = "Das ist das Laden aus dem Netz von OpenAmpere (Geräte → Speicher). Es endet zur geplanten Zeit."
             if getattr(driver, "remote_fallback", None) == "unanswered":  # not in the control log (#509)

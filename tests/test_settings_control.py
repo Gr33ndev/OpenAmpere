@@ -526,6 +526,16 @@ async def test_diagnostics_explain_who_uses_remote_control(tmp_path):
                                                         "timeout_s": 180, "released": time.time() - 3500})
             check = await remote()
             assert check["status"] == "warn" and "dieselben Werte" in check["hint"] and "Smartbox" not in check["hint"]
+            # switched off and confirmed, then on again within the time limit (#143): not the countdown of OpenAmpere's
+            # last command
+            runtime.storage.set_meta("remote_command", {"ts": time.time() - 60, "power_w": -3000, "timeout_s": 180,
+                                                        "released": time.time() - 50})
+            sim._put("remote_countdown", 120, settings)
+            hint = (await remote())["hint"]
+            assert "vom letzten Befehl von OpenAmpere" not in hint and "obwohl OpenAmpere gerade nichts sendet" in hint
+            sim._put("remote_countdown", 0, settings)
+            hint = (await remote())["hint"]
+            assert "Zeitlimit ist abgelaufen" in hint and "zählt ihn offenbar nicht" not in hint
 
             # the same, but OpenAmpere started it (charging from the grid)
             driver = getattr(runtime.collector.driver, "_driver", runtime.collector.driver)
