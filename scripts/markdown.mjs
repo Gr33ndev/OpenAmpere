@@ -6,6 +6,8 @@
  * working), paragraphs, block quotes, lists (nested, ordered), tables, fenced code, rules, hard line breaks, and inline
  * code, links, https:// addresses, <https://…>, **strong**, *em*, _em_, ~~strike~~ and backslash escapes.
  *
+ * An HTML comment on a line of its own is left out, as GitHub hides it.
+ *
  * Safe by construction: every text is escaped, raw HTML in the Markdown is shown as text, and an address becomes a
  * link only if options.link returns one for it (else the link text stays as plain text). Usage:
  *   renderMarkdown(source, { link: (href) => href or null }) → { html, title, ids }
@@ -198,7 +200,8 @@ function blocks(lines, options, tight = false) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    if (!line.trim()) {
+    // blank lines, and HTML comments on a line of their own (the markers of generated parts, #526), as on GitHub
+    if (!line.trim() || (line.trim().startsWith("<!--") && line.trim().endsWith("-->"))) {
       i += 1;
       continue;
     }

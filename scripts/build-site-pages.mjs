@@ -21,6 +21,9 @@
  *   {{changelog}}       every version of web/public/changelog.json (scripts/changelog.py, #155), headings from
  *                       changelog.list.* of the page's language; the entries are the commit titles, above them the
  *                       version's summary in the page's language or German (#176)
+ *   {{devicesMatrix}}   the rows of the table of EKD devices, {{devicesList}} the supported devices as <li> items,
+ *                       both from docs/devices/support.json (scripts/device-support.mjs, #526) with the labels of
+ *                       geraete.* of the page's language
  * A template line that holds only a placeholder whose value is empty is left out.
  *
  * Device knowledge (#512): every Markdown file of docs/devices/ (#384) becomes a page in every language at the same
@@ -55,13 +58,14 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, posix } from "node:path";
+import { loadSupport, siteKeys, siteList, siteMatrix } from "./device-support.mjs";
 import { renderMarkdown } from "./markdown.mjs";
 
 const REFERENCE = "de";
 const SITE_URL = (process.env.SITE_URL ?? "https://gr33ndev.github.io/OpenAmpere/").replace(/\/?$/, "/");
 const out = process.argv[2] ?? "_site";
 const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}/g;
-const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog", "home", "doc", "docTitle", "docSource"]);
+const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog", "devicesMatrix", "devicesList", "home", "doc", "docTitle", "docSource"]);
 const CHANGELOG_FILE = "web/public/changelog.json";
 const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
@@ -238,6 +242,16 @@ if (changelogUsed) {
     used.add(key);
   }
 }
+const devicesUsed = Object.values(templates).some((template) => /\{\{devices(Matrix|List)\}\}/.test(template));
+// the device pages are checked by node scripts/device-support.mjs --check (CI), not here
+const support = devicesUsed ? loadSupport(undefined, () => true) : null;
+if (support) {
+  errors.push(...support.errors);
+  for (const key of support.errors.length ? [] : siteKeys(support.data)) {
+    if (lookup(REFERENCE, key) === undefined) errors.push(`{{devicesMatrix}} needs ${key} in site/locales/${REFERENCE}/`);
+    used.add(key);
+  }
+}
 const germanKeys = Object.entries(texts[REFERENCE] ?? {}).flatMap(([file, node]) => keysOf(node, file));
 const unused = germanKeys.filter((key) => !used.has(key));
 /** Why value is not safe to insert as HTML, undefined if it is (only SAFE_TAGS, see above). */
@@ -322,6 +336,8 @@ if (!errors.length) {
     const dir = lang === REFERENCE ? out : join(out, lang);
     for (const page of pages) {
       const generated = { ...vars, alternates: alternates((code) => pagePath(code, page)), changelog: changelogUsed ? renderChangelog(text, vars.contentLang) : "",
+        devicesMatrix: support ? siteMatrix(support.data, vars.contentLang, (key) => text(key)) : "",
+        devicesList: support ? siteList(support.data, vars.contentLang) : "",
         languageSwitch: languageSwitch((code) => (code === lang ? pagePath(REFERENCE, page) : root + pagePath(code, page)) || "./") };
       output.push([dir, `${page}.html`, render(templates[page], generated)]);
     }

@@ -226,6 +226,12 @@ Mistakes when writing can affect devices, the warranty or the grid connection re
 - **Device knowledge** (a register, a behaviour seen on a device, a confirmation, a correction) goes onto the device
   page in [docs/devices/](docs/devices/README.md) in the same pull request, with its status and source. The README
   there has the rules: not official information, sources in own words, no NDA material, no personal data.
+- **Which devices are supported and confirmed** (and what EKD sold) is kept in one file,
+  [docs/devices/support.json](docs/devices/support.json) (#526). Change it there and run
+  `node scripts/device-support.mjs`: it writes the tables in both READMEs and in `docs/devices/topics/names.md`, and
+  the website builds its device page and the list on the home page from it. Never edit the parts between the
+  `generated:` markers by hand; `npm run check:devices` in `web/` (CI) fails when they are out of date. The evidence
+  for a confirmation stays on the device page.
 
 ### Adding grid operators (meter readings)
 

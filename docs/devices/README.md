@@ -80,6 +80,11 @@ New knowledge about a device goes onto its page in the same pull request as the 
 a new register, a behaviour seen on a device, a confirmation, a correction. Add the status and the source; mark
 facts that turned out wrong as such instead of deleting them silently.
 
+The short status (supported, confirmed, planned) of every device, and the list of what EKD sold, is kept in
+[support.json](support.json) ([#526](https://github.com/Gr33ndev/OpenAmpere/issues/526)): the READMEs,
+[topics/names.md](topics/names.md) and the website are generated from it. When a confirmation on a device page changes
+that status, change it there too and run `node scripts/device-support.mjs`.
+
 ## Layout of a page
 
 ```markdown

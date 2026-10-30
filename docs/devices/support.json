@@ -1,0 +1,640 @@
+{
+  "$comment": [
+    "Single source for which devices OpenAmpere supports and what EKD sold (#526). Edit it here, then run",
+    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md and docs/devices/topics/names.md.",
+    "The website renders its EKD device page and the device list on its home page from this file.",
+    "The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation stays on the",
+    "device page ('page')."
+  ],
+  "devices": [
+    {
+      "id": "foxess-h3",
+      "name": {
+        "de": "FoxESS H3, neuere Firmware",
+        "en": "FoxESS H3, newer firmware"
+      },
+      "does": {
+        "de": "Anzeige und Steuerung. Steuerung ist ab Werk aus. Neue oder alte Registerkarte wird automatisch erkannt.",
+        "en": "Monitoring and control. Control is off by default. The new or old register map is detected automatically."
+      },
+      "short": {
+        "de": "Anzeige und Steuerung",
+        "en": "monitoring and control"
+      },
+      "confirmed": {
+        "de": "Anzeige und Steuerung bestätigt",
+        "en": "Monitoring and control confirmed"
+      },
+      "check": true,
+      "state": "both",
+      "page": "docs/devices/foxess/h3.md"
+    },
+    {
+      "id": "foxess-h3-other",
+      "name": {
+        "de": "FoxESS H3, ältere Firmware / H3 Smart / H3 Pro",
+        "en": "FoxESS H3, older firmware / H3 Smart / H3 Pro"
+      },
+      "does": {
+        "de": "Anzeige und Steuerung, bei älterer Firmware ohne Einspeisebegrenzung",
+        "en": "Monitoring and control; with older firmware without the feed-in limit"
+      },
+      "short": {
+        "de": "Anzeige und Steuerung",
+        "en": "monitoring and control"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "both",
+      "next": "deviceReport",
+      "page": "docs/devices/foxess/h3.md"
+    },
+    {
+      "id": "saj",
+      "name": {
+        "de": "SAJ H2 / HS2",
+        "en": "SAJ H2 / HS2"
+      },
+      "does": {
+        "de": "Anzeige und Steuerung. Laden aus dem Netz über ein kurzes Ladezeitfenster im Wechselrichter, weil SAJ keine Fernsteuerung hat, die von selbst endet.",
+        "en": "Monitoring and control. Grid charging through a short charge time slot in the inverter, because SAJ has no remote control that ends by itself."
+      },
+      "short": {
+        "de": "Anzeige und Steuerung",
+        "en": "monitoring and control"
+      },
+      "confirmed": {
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed"
+      },
+      "check": true,
+      "state": "both",
+      "next": "deviceReport",
+      "page": "docs/devices/saj/h2-family.md"
+    },
+    {
+      "id": "relay",
+      "name": {
+        "de": "Heizstab, Wärmepumpe (SG-Ready)",
+        "en": "Immersion heater, heat pump (SG-Ready)"
+      },
+      "does": {
+        "de": "Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen.",
+        "en": "Switching on solar surplus via Shelly relays or web addresses."
+      },
+      "short": {
+        "de": "schalten bei Solarüberschuss über ein Shelly-Relais oder Web-Adressen",
+        "en": "switched on solar surplus via a Shelly relay or web addresses"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "relay",
+      "page": "docs/devices/topics/consumers.md"
+    },
+    {
+      "id": "mypv",
+      "name": {
+        "de": "Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR",
+        "en": "Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR"
+      },
+      "does": {
+        "de": "Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom.",
+        "en": "Continuously variable according to solar surplus, optionally with cheap grid power."
+      },
+      "short": {
+        "de": "stufenlos nach Solarüberschuss geregelt",
+        "en": "continuously adjusted to the solar surplus"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "both",
+      "page": "docs/devices/mypv/elwa.md"
+    },
+    {
+      "id": "foxess-charger",
+      "name": {
+        "de": "FoxESS AC EV Charger („Ampere.ChargePro“)",
+        "en": "FoxESS AC EV Charger (\"Ampere.ChargePro\")"
+      },
+      "does": {
+        "de": "Anzeige direkt über Modbus TCP. Laden steuert OpenAmpere als Test und erst richtig, wenn du es für die Wallbox in der App einschaltest.",
+        "en": "Monitoring directly over Modbus TCP. OpenAmpere controls charging as a test, and for real only after you switch it on for the wallbox in the app."
+      },
+      "short": {
+        "de": "Anzeige, Steuerung erst nach deiner Zustimmung in der App",
+        "en": "monitoring, control only after you agree in the app"
+      },
+      "confirmed": {
+        "de": "Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt",
+        "en": "Monitoring confirmed on a charger of an EKD system; control not yet confirmed"
+      },
+      "check": true,
+      "state": "readTest",
+      "page": "docs/devices/foxess/ac-charger.md"
+    },
+    {
+      "id": "de-tuya",
+      "name": {
+        "de": "Mobile dé-Wallbox (Tuya-WLAN)",
+        "en": "Portable dé wallbox (Tuya Wi-Fi)"
+      },
+      "does": {
+        "de": "Anzeige und Steuerung (Solarüberschuss, schnell, aus) über das lokale Tuya-Protokoll; braucht einmal den Local Key des Geräts.",
+        "en": "Monitoring and control (solar surplus, fast, off) over the local Tuya protocol; needs the device's local key once."
+      },
+      "short": {
+        "de": "Anzeige und Steuerung im Heimnetz",
+        "en": "monitoring and control in the home network"
+      },
+      "confirmed": {
+        "de": "Anzeige bestätigt; Steuerung noch nicht bestätigt",
+        "en": "Monitoring confirmed; control not yet confirmed"
+      },
+      "check": true,
+      "state": "both",
+      "page": "docs/devices/tuya/de-portable.md"
+    },
+    {
+      "id": "evcc",
+      "name": {
+        "de": "Wallbox über evcc",
+        "en": "Wallbox through evcc"
+      },
+      "does": {
+        "de": "Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)).",
+        "en": "Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). For many wallboxes evcc requires a paid sponsor token ([list](https://docs.evcc.io/en/chargers))."
+      },
+      "short": {
+        "de": "Anzeige und Bedienung über evcc",
+        "en": "monitoring and operation through evcc"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "evcc",
+      "page": "docs/devices/topics/wallboxes.md"
+    },
+    {
+      "id": "home-assistant",
+      "name": {
+        "de": "Home Assistant",
+        "en": "Home Assistant"
+      },
+      "does": {
+        "de": "Eigene Integration: Daten live und Steuerung. Kommt mit der Home-Assistant-App, sonst über HACS, siehe [Installation](#installation).",
+        "en": "Dedicated integration: live data and control. Comes with the Home Assistant app, otherwise via HACS, see [Installation](#installation)."
+      },
+      "confirmed": {
+        "de": "–",
+        "en": "–"
+      },
+      "home": false
+    }
+  ],
+  "ekd": [
+    {
+      "id": "senec-v21",
+      "group": "storage",
+      "site": false,
+      "names": {
+        "period": "2018–2019",
+        "sold": "–",
+        "model": "Senec.Home V2.1 (AC-coupled, external PV inverter on RS485)",
+        "interface": "local web interface `lala.cgi` (JSON)",
+        "openampere": "not supported",
+        "status": "open: no source shows EKD selling it",
+        "source": "energie-experten.org, \"SENEC\""
+      }
+    },
+    {
+      "id": "senec-v3",
+      "group": "storage",
+      "sold": "Senec",
+      "device": "Senec.Home V3",
+      "period": {
+        "de": "2020–2022",
+        "en": "2020–2022"
+      },
+      "state": "planned",
+      "note": {
+        "de": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-TCP-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
+        "en": "Possibly also older Senec.Home V2.1. Senec has no Modbus TCP interface, so it needs a new kind of connection."
+      },
+      "issue": 521,
+      "names": {
+        "period": "2020 – mid-2022, some into 2023",
+        "sold": "Senec storage, EKD as \"SENEC-Fachpartner\", with SENEC.Cloud",
+        "model": "Senec.Home V3 hybrid and hybrid duo (DC hybrid)",
+        "interface": "`lala.cgi`, HTTPS only with a self-signed certificate since about firmware 825, some fields gone",
+        "openampere": "not supported",
+        "status": "documented (EKD website 2021–2022 in the web archive, Senec datasheets hosted by EKD); derived (owners' reports, end of the period)",
+        "source": "[pv magazine, 2022-06-16](https://www.pv-magazine.de/2022/06/16/ekd-beteiligt-sich-an-solarmax/); [Photovoltaikforum on a Senec V3 hybrid duo bought through EKD](https://www.photovoltaikforum.com/thread/222119-suche-ersatz-f%C3%BCr-senec-v3-hybrid-duo/); marq24/ha-senec-v3 and mchwalisz/pysenec (both Apache-2.0, for `lala.cgi`)"
+      }
+    },
+    {
+      "id": "solarmax",
+      "group": "storage",
+      "sold": "AMPERE.Storage",
+      "device": "Solarmax MAX.STORAGE Ultimate",
+      "period": {
+        "de": "2022–2023",
+        "en": "2022–2023"
+      },
+      "state": "planned",
+      "note": {
+        "de": "Zuerst nur die Anzeige. Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
+        "en": "Monitoring first. OpenAmpere never switches on a battery that EKD switched off remotely."
+      },
+      "issue": 519,
+      "names": {
+        "period": "mid-2022 – mid-2023",
+        "sold": "\"AMPERE.Storage\"",
+        "model": "Solarmax MAX.STORAGE Ultimate: 10 kW, three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs",
+        "interface": "Modbus TCP and RTU, KNX (datasheet); battery control only after Solarmax unlocked \"Connectivity+\"",
+        "openampere": "not supported",
+        "status": "documented (maker, interfaces), derived (model, control, end of the period)",
+        "source": "EKD datasheet \"AMPERE.Storage\", 2022-07; evcc template for the Solarmax MAX.STORAGE"
+      }
+    },
+    {
+      "id": "mtec",
+      "group": "storage",
+      "sold": "Energy-Butler",
+      "device": "M-TEC Energy-Butler",
+      "period": {
+        "de": "ab Ende 2022",
+        "en": "from late 2022"
+      },
+      "state": "planned",
+      "note": {
+        "de": "Zuerst nur die Anzeige.",
+        "en": "Monitoring first."
+      },
+      "issue": 520,
+      "names": {
+        "period": "from 2022-10",
+        "sold": "M-TEC Energy-Butler",
+        "model": "M-TEC Energy-Butler GEN3: 10 kW hybrid, about 11 kWh",
+        "interface": "Modbus over TCP through the Wi-Fi/LAN module, port 5743 (502 on newer module firmware); unit id (252, 247 or 255) and framing (RTU frames or plain Modbus TCP) differ between sources. The inverter is a Solinteg.",
+        "openampere": "not supported",
+        "status": "documented (sale), derived (interface), open (unit id, framing)",
+        "source": "[EKD news on the M-TEC Energy-Butler](https://www.ekd-solar.de/news/energiekonzepte-deutschland-erweitert-portfolio-mit-modularem-energy-butler-von-m-tec/); croedel/MTECmqtt up to commit 32cdf27 (MIT); evcc template `solinteg-gen3` (MIT); [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520)"
+      }
+    },
+    {
+      "id": "enphase",
+      "group": "storage",
+      "sold": "IQ Battery",
+      "device": "Enphase IQ Battery",
+      "period": {
+        "de": "ab Ende 2022",
+        "en": "from late 2022"
+      },
+      "state": "planned",
+      "note": {
+        "de": "Zuerst nur die Anzeige. Braucht einmal einen Schlüssel aus dem Enphase-Konto.",
+        "en": "Monitoring first. Needs a key from the Enphase account once."
+      },
+      "issue": 522,
+      "names": {
+        "period": "from 2022-10",
+        "sold": "Enphase IQ Battery",
+        "model": "Enphase IQ Battery (AC-coupled); which models is not stated",
+        "interface": "IQ Gateway (Envoy) local HTTPS API; since firmware 7 a token from the owner's Enphase account is needed",
+        "openampere": "not supported",
+        "status": "documented (cooperation), open (models)",
+        "source": "EKD press release on the Enphase cooperation, 2022-10 ([PDF](https://www.ekd-solar.de/wp-content/uploads/2022/10/EKD_Enphase_Neue_Kooperation.pdf)); pyenphase/pyenphase (MIT)"
+      }
+    },
+    {
+      "id": "varta",
+      "group": "storage",
+      "sold": "element backup",
+      "device": "VARTA element backup",
+      "period": {
+        "de": "ab 2022",
+        "en": "from 2022"
+      },
+      "state": "info",
+      "note": {
+        "de": "Unklar, wie viele es gibt und welche Schnittstelle sie haben.",
+        "en": "Unclear how many there are and which interface they have."
+      },
+      "next": "tellUs",
+      "names": {
+        "period": "from 2022-08",
+        "sold": "VARTA element backup",
+        "model": "VARTA element backup (AC-coupled)",
+        "interface": "not looked into",
+        "openampere": "not supported",
+        "status": "open: only a datasheet hosted by EKD, no owner's report",
+        "source": "VARTA datasheet \"element backup\" on ekd-solar.de, 2022-08 (web archive)"
+      }
+    },
+    {
+      "id": "e2",
+      "group": "storage",
+      "sold": "Ampere.StoragePro (E2)",
+      "device": "SAJ H2 / HS2",
+      "period": {
+        "de": "2023–2024",
+        "en": "2023–2024"
+      },
+      "support": "saj",
+      "names": {
+        "period": "2023-04 – about 2024",
+        "sold": "\"AMPERE.Storage.Pro\", \"Ampere.StoragePro\", type \"ASP 10KW-3P-X E2\"",
+        "model": "SAJ H2/HS2 family (the E2 reports type code 0x005E); 6–20 kWh",
+        "interface": "Modbus TCP 502",
+        "openampere": "driver `saj`",
+        "status": "documented (start, type string, capacity), derived (end), confirmed (SAJ, 0x005E)",
+        "source": "EKD datasheets \"AMPERE.Storage.Pro\", 2023-04 (Rev02: 6–20 kWh), and \"AMPERE.StoragePro\", 2023-07 (Rev03: type \"ASP 10KW-3P-X E2\"); see [Sales names](#sales-names)"
+      }
+    },
+    {
+      "id": "e3-12",
+      "group": "storage",
+      "sold": "Ampere.StoragePro E3, 12 kW",
+      "device": {
+        "de": "FoxESS H3, wahrscheinlich H3 Smart",
+        "en": "FoxESS H3, probably H3 Smart"
+      },
+      "period": {
+        "de": "2024–2026",
+        "en": "2024–2026"
+      },
+      "support": "foxess-h3",
+      "names": {
+        "period": "about 2024 – 2026",
+        "sold": "\"Ampere.StoragePro E3\", 12 kW (\"ASP-12KW-3P-X-A-E3\")",
+        "model": "FoxESS H3 family, probably H3 Smart (3 MPPT)",
+        "interface": "Modbus TCP 502",
+        "openampere": "driver `foxess`",
+        "status": "confirmed (FoxESS H3), derived (H3 Smart, start of the period)",
+        "source": "see [Sales names](#sales-names); [Photovoltaikforum on the maker of the E3](https://www.photovoltaikforum.com/thread/235451-wer-ist-der-tats%C3%A4chliche-hersteller-vom-neuen-speicher-der-firma-ekd-solar/); amperesolar.de datasheet \"Ampere.StoragePro E3 12 kW\", 2026-05"
+      }
+    },
+    {
+      "id": "e3-22",
+      "group": "storage",
+      "sold": "Ampere.StoragePro E3, 22 kW",
+      "device": {
+        "de": "FoxESS, wahrscheinlich H3 Pro",
+        "en": "FoxESS, probably H3 Pro"
+      },
+      "period": {
+        "de": "2025–2026",
+        "en": "2025–2026"
+      },
+      "support": "foxess-h3-other",
+      "names": {
+        "period": "2025 – 2026",
+        "sold": "\"Ampere.StoragePro E3\", 22 kW (\"ASP-22KW-3P-A-X-E3\"; the datasheets put A and X in the other order than for the 12 kW type)",
+        "model": "FoxESS, probably H3 Pro (4 MPPT and 22 kW, more than any H3 Smart)",
+        "interface": "Modbus TCP",
+        "openampere": "driver `foxess` should detect it as H3 Pro",
+        "status": "open: no owner's report; derived (period)",
+        "source": "amperesolar.de datasheet \"Ampere.StoragePro E3 22 kW\", 2026-05"
+      }
+    },
+    {
+      "id": "senec-wallbox",
+      "group": "wallbox",
+      "sold": "SENEC.Wallbox",
+      "device": "Senec",
+      "period": {
+        "de": "2020–2022",
+        "en": "2020–2022"
+      },
+      "state": "info",
+      "note": {
+        "de": "Unklar, welche Schnittstelle sie hat.",
+        "en": "Unclear which interface it has."
+      },
+      "next": "tellUs",
+      "names": {
+        "period": "2020–2022",
+        "sold": "Senec wallbox",
+        "model": "SENEC.Wallbox",
+        "interface": "not looked into",
+        "openampere": "not supported",
+        "status": "open: only a datasheet hosted by EKD; derived (period)",
+        "source": "Senec datasheet \"SENEC.Wallbox\" on ekd-solar.de, 2020-03 (web archive)"
+      }
+    },
+    {
+      "id": "ampere-charge",
+      "group": "wallbox",
+      "sold": "AMPERE.Charge",
+      "device": "Weidmüller AC Smart Value",
+      "period": {
+        "de": "2023–2024",
+        "en": "2023–2024"
+      },
+      "support": "evcc",
+      "note": {
+        "de": "evcc braucht dafür einen Sponsor-Token. Direkt über OpenAmpere ist geplant.",
+        "en": "evcc needs a sponsor token for it. Directly through OpenAmpere is planned."
+      },
+      "issue": 523,
+      "names": {
+        "period": "2023–2024",
+        "sold": "\"AMPERE.Charge\"",
+        "model": "Weidmüller AC Smart Value, 11 kW",
+        "interface": "Modbus TCP 502, Modbus RTU, OCPP 1.6J",
+        "openampere": "through evcc (needs an evcc sponsor token); OCPP check read-only",
+        "status": "documented (product, interfaces, start), derived (evcc, sponsor token, end of the period)",
+        "source": "see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`)"
+      }
+    },
+    {
+      "id": "charge-pro",
+      "group": "wallbox",
+      "sold": "Ampere.ChargePro",
+      "device": "FoxESS AC EV Charger",
+      "period": {
+        "de": "2024–2026",
+        "en": "2024–2026"
+      },
+      "support": "foxess-charger",
+      "names": {
+        "period": "about 2024 – 2026",
+        "sold": "\"Ampere.ChargePro\"",
+        "model": "FoxESS AC EV Charger, 22 kW",
+        "interface": "Modbus TCP 502, OCPP 1.6",
+        "openampere": "wallbox module `foxess_ac`",
+        "status": "documented (sales name), confirmed (FoxESS charger with EKD systems), derived (period)",
+        "source": "[foxess/ac-charger.md](../foxess/ac-charger.md)"
+      }
+    },
+    {
+      "id": "fronius",
+      "group": "around",
+      "site": false,
+      "names": {
+        "period": "2018–2022",
+        "sold": "–",
+        "model": "PV inverter next to a Senec, e.g. Fronius Symo with Datamanager 2.0, coupled to the Senec over RS485",
+        "interface": "Fronius Solar API (HTTP, JSON); Modbus TCP probably not free while the Senec reads over Modbus RTU",
+        "openampere": "not supported",
+        "status": "derived (coupling); open: no source ties Fronius to EKD",
+        "source": "[Photovoltaikforum on a Fronius Symo at a Senec over RS485](https://www.photovoltaikforum.com/thread/148472-fronius-symo-rs485-an-senec-speicher-per-funk-oder-powerline/); Fronius Datamanager 2.0 manual, Modbus settings"
+      }
+    },
+    {
+      "id": "iq-box",
+      "group": "around",
+      "sold": "Ampere.IQ",
+      "device": {
+        "de": "Energiemanager von Kiwigrid",
+        "en": "Energy manager by Kiwigrid"
+      },
+      "period": {
+        "de": "2023–2026",
+        "en": "2023–2026"
+      },
+      "state": "notNeeded",
+      "note": {
+        "de": "OpenAmpere ersetzt die App. Den Verlauf kannst du aus der EKD-Cloud übernehmen, solange sie läuft.",
+        "en": "OpenAmpere replaces the app. You can take over the history from the EKD cloud while it runs."
+      },
+      "names": {
+        "period": "2023–2026",
+        "sold": "\"Ampere.IQ\", \"IQ box\", \"smartbox\"",
+        "model": "Kiwigrid energy manager",
+        "interface": "REST in the LAN; no Modbus server of its own (it is a Modbus TCP client of the inverter and the charger)",
+        "openampere": "no driver; see [iq-box.md](iq-box.md)",
+        "status": "derived",
+        "source": "evcc-io/evcc discussion 8394; [Photovoltaikforum on the Ampere Storage Pro](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/)"
+      }
+    },
+    {
+      "id": "chint-meter",
+      "group": "around",
+      "site": false,
+      "names": {
+        "period": "2023–2024",
+        "sold": "\"AMPERE.StoragePro Meter\"",
+        "model": "Chint DTSU666 grid meter (SAJ systems)",
+        "interface": "RS485 to the inverter",
+        "openampere": "read through the inverter",
+        "status": "derived",
+        "source": "as above"
+      }
+    },
+    {
+      "id": "offgrid",
+      "group": "around",
+      "sold": "Ampere.Offgrid",
+      "device": {
+        "de": "Notstrom-Umschalter",
+        "en": "Backup power switch"
+      },
+      "period": {
+        "de": "ab 2024",
+        "en": "from 2024"
+      },
+      "state": "nothing",
+      "note": {
+        "de": "Das Gerät hat keine Schnittstelle.",
+        "en": "The device has no interface."
+      },
+      "names": {
+        "period": "from 2024-08",
+        "sold": "\"Ampere.Offgrid\"",
+        "model": "three-phase 63 A transfer switch for backup power; maker not stated",
+        "interface": "none",
+        "openampere": "nothing to read",
+        "status": "documented",
+        "source": "EKD datasheet \"Ampere.Offgrid\", 2024-08"
+      }
+    },
+    {
+      "id": "solarpro",
+      "group": "around",
+      "sold": "Ampere.SolarPro",
+      "device": {
+        "de": "Solarmodule von SOLYCO",
+        "en": "Solar modules by SOLYCO"
+      },
+      "period": {
+        "de": "2022–2026",
+        "en": "2022–2026"
+      },
+      "state": "nothing",
+      "note": {
+        "de": "Solarmodule haben keine Schnittstelle.",
+        "en": "Solar modules have no interface."
+      },
+      "names": {
+        "period": "about 2022 – 2026",
+        "sold": "\"Ampere.SolarPro\"",
+        "model": "PV modules of SOLYCO Solar AG",
+        "interface": "none",
+        "openampere": "nothing to read",
+        "status": "documented (maker), derived (period)",
+        "source": "EKD datasheets \"Ampere.SolarPro\""
+      }
+    },
+    {
+      "id": "heat-pump",
+      "group": "around",
+      "sold": {
+        "de": "Wärmepumpe von Partnern",
+        "en": "Heat pump from partners"
+      },
+      "device": {
+        "de": "verschiedene Hersteller, SG Ready",
+        "en": "several makers, SG Ready"
+      },
+      "period": {
+        "de": "ab 2025",
+        "en": "from 2025"
+      },
+      "support": "relay",
+      "note": {
+        "de": "Über ein Shelly-Relais am SG-Ready-Eingang.",
+        "en": "Through a Shelly relay on the SG Ready input."
+      },
+      "names": {
+        "period": "from 2025",
+        "sold": "heat pumps of partner makers",
+        "model": "Aira, Defro, Galvany, S&K, WKD, Heat Hero",
+        "interface": "SG Ready",
+        "openampere": "SG Ready through a relay ([consumers.md](consumers.md))",
+        "status": "documented (partners), derived (period)",
+        "source": "[ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/)"
+      }
+    },
+    {
+      "id": "heating-rod",
+      "group": "around",
+      "sold": {
+        "de": "Heizstab",
+        "en": "Heating rod"
+      },
+      "device": "my-PV",
+      "period": {
+        "de": "–",
+        "en": "–"
+      },
+      "support": "mypv",
+      "names": {
+        "period": "–",
+        "sold": "heating rod",
+        "model": "my-PV, model not stated",
+        "interface": "Modbus TCP",
+        "openampere": "driver `mypv` ([mypv/elwa.md](../mypv/elwa.md))",
+        "status": "derived",
+        "source": "Photovoltaikforum on the Ampere Storage Pro (as above)"
+      }
+    }
+  ]
+}

@@ -79,6 +79,9 @@ jobs:
       - name: Translations match the texts in the code
         run: npm run check:i18n
         working-directory: web
+      - name: Device tables match docs/devices/support.json
+        run: npm run check:devices
+        working-directory: web
 
   ui:
     runs-on: ubuntu-latest
