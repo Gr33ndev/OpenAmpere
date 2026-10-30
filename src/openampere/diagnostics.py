@@ -393,6 +393,8 @@ class Diagnostics:
             checks.append(await self._saj_limits())
             checks.append(await self._saj_control())
             checks.append(await self._saj_meter_b())
+        if getattr(driver, "KEY", None) == "solarmax":
+            checks.append(await self._solarmax_registers())
 
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
@@ -486,6 +488,39 @@ class Diagnostics:
                      hint="Meter B misst Leistung, OpenAmpere zählt sie aber nicht mit. Ist das ein zweiter "
                           "PV-Wechselrichter, schalte ihn unter Mehr → Meine Anlage → Modulfelder benennen ein. Sonst "
                           "fehlt seine Leistung bei Erzeugung und Verbrauch.")
+
+    async def _solarmax_registers(self) -> Check:
+        """What the Solarmax driver reads (#519), built from the manufacturer's list without a device: the powers with
+        their sign, rounded like every power in the report, to confirm the signs against the display, and whether the
+        registers of "Connectivity+" (130–159) answer and are filled. No serial number (100–101) and no counter values:
+        lifetime energy would identify the plant."""
+        from .drivers.regs import decode
+        from .drivers.solarmax.registers import COUNTER_BLOCK, READ_FUNCTION, VALUES
+        title = "Register (Solarmax)"
+        standard = await self._try(102, 25, READ_FUNCTION)
+        if not standard["ok"]:
+            return Check("solarmax_registers", title, "warn", f"102–126 {standard['error']}")
+        words = dict(enumerate(standard["words"], start=102))
+
+        def rounded(name: str) -> float:
+            reg = VALUES[name]
+            return round(decode(reg, [words[reg.address + i] for i in range(reg.count)]), -2)
+
+        powers = {name: rounded(name) for name in ("pv_power", "pv_plant_power", "battery_power", "house_power",
+                                                   "grid_power", "pv_ac_power")}
+        details = {"firmware": words[102], "device_state": words[103], "rated_power_w": words[105],
+                   "battery_soc": words[122], "powers_rounded_w": powers}
+        counters = await self._try(*COUNTER_BLOCK, READ_FUNCTION)
+        plus = await self._try(130, 14, READ_FUNCTION)
+        details["counters"] = ("filled" if any(counters["words"]) else "zero") if counters["ok"] else counters["error"]
+        details["130-143"] = ("filled" if any(plus["words"]) else "zero") if plus["ok"] else plus["error"]
+        summary = (f"Zustand {words[103]}, Batterie {powers['battery_power']:+g} W (laden +), "
+                   f"Netz {powers['grid_power']:+g} W (einspeisen +), Haus {powers['house_power']:g} W; "
+                   f"Zähler (Connectivity+): {details['counters']}")
+        return Check("solarmax_registers", title, "info", summary, details,
+                     hint="OpenAmpere liest diesen Speicher nach der Liste von Solarmax, aber noch ohne Bestätigung von "
+                          "einem echten Gerät. Vergleiche Batterie- und Netzleistung mit dem Display und schreib uns, "
+                          "ob die Vorzeichen stimmen.")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

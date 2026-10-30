@@ -31,6 +31,7 @@ The app's user interface and the website are in German.
 | [FoxESS H3, newer firmware](docs/devices/foxess/h3.md) | Monitoring and control. Control is off by default. The new or old register map is detected automatically. | ✅ Monitoring and control confirmed |
 | [FoxESS H3, older firmware / H3 Smart / H3 Pro](docs/devices/foxess/h3.md) | Monitoring and control; with older firmware without the feed-in limit | Not yet confirmed |
 | [SAJ H2 / HS2](docs/devices/saj/h2-family.md) | Monitoring and control. Grid charging through a short charge time slot in the inverter, because SAJ has no remote control that ends by itself. | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); control not yet confirmed |
+| [Solarmax MAX.STORAGE ("AMPERE.Storage")](docs/devices/solarmax/max-storage.md) | Monitoring only: PV, battery, house, grid and state of charge. The energy history needs "Connectivity+", which only Solarmax unlocked. OpenAmpere changes nothing there. | Not yet confirmed |
 | [Immersion heater, heat pump (SG-Ready)](docs/devices/topics/consumers.md) | Switching on solar surplus via Shelly relays or web addresses. | Not yet confirmed |
 | [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](docs/devices/mypv/elwa.md) | Continuously variable according to solar surplus, optionally with cheap grid power. | Not yet confirmed |
 | [FoxESS AC EV Charger ("Ampere.ChargePro")](docs/devices/foxess/ac-charger.md) | Monitoring directly over Modbus TCP. OpenAmpere controls charging as a test, and for real only after you switch it on for the wallbox in the app. | ✅ Monitoring confirmed on a charger of an EKD system; control not yet confirmed |
@@ -42,7 +43,7 @@ The app's user interface and the website are in German.
 
 **Not yet confirmed** means: the support is based on documentation from the manufacturers or the community and is checked with tests and the simulator, but nobody has reported it from a real system yet. It may well work. If you have such a device, help with a **device report**: in the app, start the diagnostics under **Mehr → Diagnose** (More → Diagnostics; it only reads and changes nothing), tap **Bericht kopieren** (Copy report) and paste the report into the [device report form](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml). Remove IP addresses, passwords and API keys first. Every report helps to move a row to "confirmed".
 
-**The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2. So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
+**The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2, Solarmax at 1. So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
 
 Full list: [docs/devices.md](docs/devices.md), with what is read and controlled per model and what exactly has been confirmed on real hardware.
 

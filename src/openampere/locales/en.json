@@ -240,7 +240,8 @@
     "onlyPrivateNetworksUp": "Only private networks up to /22 can be scanned"
   },
   "driver": {
-    "chargeSlotInUse": "Charge time {CHARGE_SLOT} is already in use in the inverter. Please free it in the SAJ app, then OpenAmpere can charge from the grid."
+    "chargeSlotInUse": "Charge time {CHARGE_SLOT} is already in use in the inverter. Please free it in the SAJ app, then OpenAmpere can charge from the grid.",
+    "solarmaxReadOnly": "For the Solarmax battery, OpenAmpere only shows the values and changes no settings."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",
