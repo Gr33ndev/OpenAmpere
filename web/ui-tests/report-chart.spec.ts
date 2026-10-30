@@ -8,6 +8,11 @@ const entry = (d: number, pv: number) => ({
   ts: day(d), pv, load: 12000, grid_import: 2000, grid_export: 0, battery_charge: 0, battery_discharge: 0, soc: null,
 });
 
+/** How many bars of a color the chart draws, asked again until it holds: a click on a period or the legend draws the
+ *  canvas a moment later, slower on CI than locally. */
+const drawn = (chart: Locator, color: string, message: string, count: number) =>
+  expect.poll(async () => (await bars(chart, color)).length, { message }).toBe(count);
+
 /** Bars of one colour (a css variable or a colour) along a row just above the x axis: their start and end as a share
  *  of the plot width, and their height as a share of the plot height. */
 async function bars(chart: Locator, color: string) {
@@ -55,9 +60,9 @@ test("energy bars are complete and grow from zero", async ({ page, api }) => {
   await page.getByRole("button", { name: "Woche" }).click();
   const chart = page.getByRole("img", { name: /^Diagramm Energie/ });
 
+  await drawn(chart, "--pv", "generation bars", 3);
+  await drawn(chart, "--house", "consumption bars", 3);
   const pv = await bars(chart, "--pv");
-  expect(pv.length, "generation bars").toBe(3);
-  expect((await bars(chart, "--house")).length, "consumption bars").toBe(3);
   // 10 kWh is half of 20 kWh only on an axis that starts at zero
   expect(pv[0].height / pv[1].height).toBeCloseTo(0.5, 1);
 });
@@ -73,9 +78,13 @@ test("a year with little data still shows all its months", async ({ page, api })
   await open(page, "report");
   await page.getByRole("button", { name: "Jahr", exact: true }).click();
 
-  const main = await bars(page.getByRole("img", { name: /^Diagramm Energie/ }), "--pv");
-  const inputs = await bars(page.locator(".section-title", { hasText: "Nach Modulfeldern" })
-    .locator("xpath=following-sibling::div[contains(@class, 'chart')][1]"), "#eec91d");
+  const mainChart = page.getByRole("img", { name: /^Diagramm Energie/ });
+  const inputsChart = page.locator(".section-title", { hasText: "Nach Modulfeldern" })
+    .locator("xpath=following-sibling::div[contains(@class, 'chart')][1]");
+  await drawn(mainChart, "--pv", "main chart", 2);
+  await drawn(inputsChart, "#eec91d", "inputs chart", 2);
+  const main = await bars(mainChart, "--pv");
+  const inputs = await bars(inputsChart, "#eec91d");
   for (const [name, found] of [["main chart", main], ["inputs chart", inputs]] as const) {
     expect(found.length, name).toBe(2);
     // January and February are the first two of twelve months: both in the left sixth of the plot
@@ -92,19 +101,19 @@ test("lines are hidden and shown with the legend and stay so after a reload", as
   const chart = page.getByRole("img", { name: /^Diagramm Energie/ });
   const legend = page.locator(".legend").first();
   const entryButton = (name: string) => legend.getByRole("button", { name });
-  expect((await bars(chart, "--pv")).length).toBe(3);
+  await drawn(chart, "--pv", "generation bars", 3);
 
   // without the self-supplied part the blue bar is only what came from the grid: 2 kWh next to 20 kWh generated
   await entryButton("Selbst versorgt").click();
   await expect(entryButton("Selbst versorgt")).toHaveAttribute("aria-pressed", "false");
-  expect((await bars(chart, "--house")).length, "self-supplied hidden").toBe(0);
+  await drawn(chart, "--house", "self-supplied hidden", 0);
   const grid = await bars(chart, "--grid"), pv = await bars(chart, "--pv");
   expect(grid.length).toBe(3);
   expect(grid[1].height / pv[1].height).toBeCloseTo(0.1, 1);
 
   await entryButton("Erzeugt").click();
-  expect((await bars(chart, "--pv")).length, "generation hidden").toBe(0);
-  expect((await bars(chart, "--grid")).length, "grid still shown").toBe(3);
+  await drawn(chart, "--pv", "generation hidden", 0);
+  await drawn(chart, "--grid", "grid still shown", 3);
 
   // the last line cannot be hidden
   await entryButton("Aus dem Netz").click();
@@ -113,9 +122,9 @@ test("lines are hidden and shown with the legend and stay so after a reload", as
   await page.reload();
   await page.getByRole("button", { name: "Woche" }).click();
   await expect(entryButton("Erzeugt")).toHaveAttribute("aria-pressed", "false");
-  expect((await bars(chart, "--pv")).length).toBe(0);
+  await drawn(chart, "--pv", "still hidden after a reload", 0);
   await entryButton("Erzeugt").click();
-  expect((await bars(chart, "--pv")).length, "shown again").toBe(3);
+  await drawn(chart, "--pv", "shown again", 3);
   expect(await layoutProblems(page)).toEqual([]);
 });
 
@@ -129,10 +138,10 @@ test("a PV input is hidden with the legend of its chart", async ({ page, api }) 
   const title = page.locator(".section-title", { hasText: "Nach Modulfeldern" });
   const chart = title.locator("xpath=following-sibling::div[contains(@class, 'chart')][1]");
   const legend = title.locator("xpath=following-sibling::div[contains(@class, 'legend')][1]");
-  expect((await bars(chart, "#eec91d")).length).toBe(2);
+  await drawn(chart, "#eec91d", "Süd shown", 2);
   await legend.getByRole("button", { name: /Süd/ }).click();
-  expect((await bars(chart, "#eec91d")).length, "Süd hidden").toBe(0);
-  expect((await bars(chart, "#a78bfa")).length, "West now from the axis").toBe(2);
+  await drawn(chart, "#eec91d", "Süd hidden", 0);
+  await drawn(chart, "#a78bfa", "West now from the axis", 2);
 });
 
 // #468: a day imported from the cloud has no local readings; the "Leistung" view draws its state of charge
