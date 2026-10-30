@@ -91,6 +91,13 @@ def test_a_nul_in_the_text_cannot_stand_for_rendered_html():
 
 
 @needs_node
+def test_the_title_and_id_of_a_heading_are_plain_text():
+    page = render("# Map `<script>` & **more**")
+    assert page["title"] == "Map <script> & more"  # escaped where it is used, like any other text of the page
+    assert page["ids"] == ["map-script--more"]
+
+
+@needs_node
 def test_the_markdown_of_the_device_pages():
     page = render(
         "# FoxESS H3\n\n"

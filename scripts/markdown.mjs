@@ -13,7 +13,26 @@
  */
 
 const escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const unescapeHtml = (value) => value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+const ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"' };
+
+/** The plain text of inline HTML rendered here, for the id and the title of a heading: the tags left out, the entities
+ *  decoded. Never HTML again: the title is escaped where it is used. */
+function textOf(html) {
+  let text = "";
+  for (let i = 0; i < html.length; i++) {
+    if (html[i] === "<") {
+      // only the tags of this renderer: a "<" of the text is &lt;
+      const end = html.indexOf(">", i);
+      if (end < 0) break;
+      i = end;
+    } else if (html[i] === "&") {
+      const entity = Object.keys(ENTITIES).find((name) => html.startsWith(name, i));
+      text += entity ? ENTITIES[entity] : "&";
+      if (entity) i += entity.length - 1;
+    } else text += html[i];
+  }
+  return text.trim();
+}
 
 // a token stands for already rendered HTML while the emphasis is matched on the escaped text around it
 const TOKEN = /\u0000(\d+)\u0000/g;
@@ -126,7 +145,7 @@ function linkHtml(labelHtml, href, options) {
 
 /** GitHub's id of a heading: lower case, without punctuation, spaces as "-"; repeated ones get -1, -2 … */
 function slug(html, ids) {
-  const text = unescapeHtml(html.replace(/<[^>]*>/g, "")).trim().toLowerCase();
+  const text = textOf(html).toLowerCase();
   const base = text.replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
   let id = base;
   for (let n = 1; ids.includes(id); n++) id = `${base}-${n}`;
@@ -203,7 +222,7 @@ function blocks(lines, options, tight = false) {
       const level = heading[1].length;
       const html = inline(heading[2] ?? "", options);
       const id = slug(html, options.ids);
-      if (level === 1 && options.title === undefined) options.title = unescapeHtml(html.replace(/<[^>]*>/g, "")).trim();
+      if (level === 1 && options.title === undefined) options.title = textOf(html);
       out.push(`<h${level} id="${escapeHtml(id)}">${html}</h${level}>`);
       i += 1;
       continue;
