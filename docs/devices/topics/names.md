@@ -79,7 +79,7 @@ Storage systems and hybrid inverters:
 | from 2022-10 | Enphase IQ Battery | Enphase IQ Battery (AC-coupled); which models is not stated | IQ Gateway (Envoy) local HTTPS API; since firmware 7 a token from the owner's Enphase account is needed | not supported | documented (cooperation), open (models) | EKD press release on the Enphase cooperation, 2022-10 ([PDF](https://www.ekd-solar.de/wp-content/uploads/2022/10/EKD_Enphase_Neue_Kooperation.pdf)); pyenphase/pyenphase (MIT) |
 | from 2022-08 | VARTA element backup | VARTA element backup (AC-coupled) | not looked into | not supported | open: only a datasheet hosted by EKD, no owner's report | VARTA datasheet "element backup" on ekd-solar.de, 2022-08 (web archive) |
 | 2023-04 – 2024 | "AMPERE.Storage.Pro", "Ampere.StoragePro", type "ASP 10KW-3P-X E2" | SAJ HS2 family, type code 0x005E; 6–20 kWh | Modbus TCP 502 | driver `saj` | confirmed | see [Sales names](#sales-names) |
-| 2024-08 – 2026 | "Ampere.StoragePro E3", 12 kW ("ASP-12KW-3P-X-A-E3") | FoxESS H3 family, probably H3 Smart (3 MPPT) | Modbus TCP 502 | driver `foxess` | confirmed (FoxESS H3), derived (H3 Smart) | see [Sales names](#sales-names); [Photovoltaikforum on the maker of the E3](https://www.photovoltaikforum.com/thread/235451-wer-ist-der-tats%C3%A4chliche-hersteller-vom-neuen-speicher-der-firma-ekd-solar/); amperesolar.de datasheet "Ampere.StoragePro 12 kW", 2026-06 |
+| 2024-08 – 2026 | "Ampere.StoragePro E3", 12 kW ("ASP-12KW-3P-X-A-E3") | FoxESS H3 family, probably H3 Smart (3 MPPT) | Modbus TCP 502 | driver `foxess` | confirmed (FoxESS H3), derived (H3 Smart) | see [Sales names](#sales-names); [Photovoltaikforum on the maker of the E3](https://www.photovoltaikforum.com/thread/235451-wer-ist-der-tats%C3%A4chliche-hersteller-vom-neuen-speicher-der-firma-ekd-solar/); amperesolar.de datasheet "Ampere.StoragePro 12 kW", 2026-05 |
 | 2025 – 2026 | "Ampere.StoragePro E3", 22 kW ("ASP-22KW-3P-A-X-E3") | FoxESS, probably H3 Pro (4 MPPT and 22 kW, more than any H3 Smart) | Modbus TCP | driver `foxess` (H3 Pro) | open: no owner's report | amperesolar.de datasheet "Ampere.StoragePro 22 kW", 2026-05 |
 
 Wallboxes:
@@ -122,7 +122,7 @@ Around the storage system:
 | The model string is only a hint; the driver checks which register map really answers and prefers the newer one. Owners can choose the map by hand. | Sales names and model strings do not tell the firmware's register map. | [docs/devices.md](../../devices.md) |
 | Detection does not depend on a sales name: FoxESS at unit 247 first, then SAJ at 1 and 2 ([modbus.md](modbus.md)). | The same devices are sold under several names. | [docs/devices.md](../../devices.md) |
 | App texts call the box the "former smartbox", without a manufacturer name; the README names companies only in the background and no-affiliation notes. | Names only descriptively. | [#53](https://github.com/Gr33ndev/OpenAmpere/issues/53) |
-| A driver for a storage system EKD sold must never switch on a storage function that EKD switched off remotely (as with "AMPERE.Storage" in 2025); at most it reads. | The lock was announced as a safety retrofit; switching it off is the safe direction. | [#514](https://github.com/Gr33ndev/OpenAmpere/issues/514) |
+| A driver for a storage system EKD sold must never switch on a storage function that EKD switched off remotely (as with "AMPERE.Storage" in 2025); at most it reads. | The lock was announced as a safety retrofit; switching it off is the safe direction. | [#514](https://github.com/Gr33ndev/OpenAmpere/issues/514), [#515](https://github.com/Gr33ndev/OpenAmpere/pull/515) |
 
 ## Open questions
 
@@ -153,7 +153,7 @@ Around the storage system:
   [#379](https://github.com/Gr33ndev/OpenAmpere/issues/379).
 - Public insolvency announcements (court of Leipzig), linked from the [README](../../../README.md).
 - EKD and Ampere datasheets and press releases on ekd-solar.de and amperesolar.de: "AMPERE.Storage" (2022-07),
-  "AMPERE.Charge" (2023-04, 2024-01), "Ampere.StoragePro" 12 kW (2026-06) and 22 kW (2026-05), "Ampere.Offgrid"
+  "AMPERE.Charge" (2023-04, 2024-01), "Ampere.StoragePro" 12 kW and 22 kW (both 2026-05), "Ampere.Offgrid"
   (2024-08), "Ampere.SolarPro", M-TEC Energy-Butler (2022-10), Enphase cooperation (2022-10); older pages and
   datasheets (Senec, VARTA) through the web archive.
 - Trade press: pv magazine (2022-06-16, 2024-12-06), ess-news (2026-07-14), energie-experten.org ("SENEC");
