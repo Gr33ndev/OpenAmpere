@@ -75,8 +75,10 @@ async def test_found_again_after_the_device_restarted():
             await driver.connect()
             assert (await driver.read()).battery_soc is not None
             sim.session = "sim2"  # the device restarted
-            with pytest.raises(ModbusTransientError):
+            with pytest.raises(ModbusTransientError) as caught:
                 await driver.read()
+            # what the owner reads: the storage system, no Modbus proxy
+            assert "Senec-Speicher" in friendly_error(caught.value) and "Modbus" not in friendly_error(caught.value)
             await driver.close()  # what the collector does after repeated errors
             await driver.connect()
             assert (await driver.read()).battery_soc is not None
