@@ -26,6 +26,7 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | SAJ H2, HS2, AS2 (sold as "Ampere.StoragePro") | [saj/h2-family.md](saj/h2-family.md) |
 | SAJ type code 0x005E, "3P-X E2" | [saj/0x005e-3p-x-e2.md](saj/0x005e-3p-x-e2.md) |
 | Solarmax MAX.STORAGE (sold as "AMPERE.Storage", display only) | [solarmax/max-storage.md](solarmax/max-storage.md) |
+| M-TEC Energy-Butler GEN3 (display only) | [mtec/energy-butler.md](mtec/energy-butler.md) |
 | my-PV AC ELWA heating rod | [mypv/elwa.md](mypv/elwa.md) |
 | Netze BW meter portal | [gridmeter/netze-bw.md](gridmeter/netze-bw.md) |
 | Cars of the Volkswagen group through the EU Data Act portal | [cars/vw-eu-data-act.md](cars/vw-eu-data-act.md) |

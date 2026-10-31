@@ -263,5 +263,7 @@ async def test_the_app_keeps_control_off_and_the_report_shows_the_raw_signs(tmp_
     details = check["details"]
     # Solarmax's own signs, rounded: charging and export are positive there
     assert details["powers_rounded_w"]["battery_power"] == round(-sim.energy.battery_w, -2) > 0
-    assert details["powers_rounded_w"]["grid_power"] > 0 and details["counters"] == "filled"
+    # the export of the sunny hour depends on the simulated clouds: compare it, rounded, instead of a sign alone
+    assert details["powers_rounded_w"]["grid_power"] == round(-sim.energy.grid_w, -2) >= 0
+    assert details["counters"] == "filled"
     assert "12345678" not in str(report["checks"])  # no serial number in the raw registers

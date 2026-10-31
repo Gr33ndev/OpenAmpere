@@ -14,18 +14,21 @@ import logging
 from .base import DeviceInfo
 from .foxess.driver import FoxessDriver
 from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
+from .mtec.driver import MtecDriver
 from .saj.driver import SajDriver
 from .solarmax.driver import SolarmaxDriver
 
 log = logging.getLogger(__name__)
 
-DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver}
+DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver,
+                                          "mtec": MtecDriver}
 
 LABELS = {
     "auto": "Automatisch erkennen",
     "foxess": "FoxESS H3 / H3 Smart / H3 Pro",
     "saj": "SAJ H2 / HS2",
     "solarmax": "Solarmax MAX.STORAGE (nur Anzeige)",
+    "mtec": "M-TEC Energy-Butler GEN3 (nur Anzeige)",
 }
 
 DETECT_TIMEOUT_S = 2.5

@@ -97,6 +97,28 @@
       "page": "docs/devices/solarmax/max-storage.md"
     },
     {
+      "id": "mtec",
+      "name": {
+        "de": "M-TEC Energy-Butler GEN3",
+        "en": "M-TEC Energy-Butler GEN3"
+      },
+      "does": {
+        "de": "Nur Anzeige: PV, Speicher, Haus, Netz, Ladestand und Energieverlauf. Über das WLAN-/LAN-Modul, Port 502 (bei älterer Firmware 5743).",
+        "en": "Monitoring only: PV, battery, house, grid, state of charge and energy history. Through the Wi-Fi/LAN module, port 502 (5743 on older firmware)."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/mtec/energy-butler.md"
+    },
+    {
       "id": "relay",
       "name": {
         "de": "Heizstab, Wärmepumpe (SG-Ready)",
@@ -315,21 +337,20 @@
         "de": "ab Ende 2022",
         "en": "from late 2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige.",
-        "en": "Monitoring first."
+        "de": "Bei älterer Firmware des WLAN-Moduls beim Einrichten Port 5743 eintragen.",
+        "en": "With older firmware of the Wi-Fi module, enter port 5743 in the setup."
       },
-      "issue": 520,
       "names": {
         "period": "from 2022-10",
         "sold": "M-TEC Energy-Butler",
         "model": "M-TEC Energy-Butler GEN3: 10 kW hybrid, about 11 kWh",
         "interface": "Modbus over TCP through the Wi-Fi/LAN module, port 5743 (502 on newer module firmware); unit id (252, 247 or 255) and framing (RTU frames or plain Modbus TCP) differ between sources. The inverter is a Solinteg.",
-        "openampere": "not supported",
+        "openampere": "driver `mtec`, display only ([mtec/energy-butler.md](../mtec/energy-butler.md))",
         "status": "documented (sale), derived (interface), open (unit id, framing)",
         "source": "[EKD news on the M-TEC Energy-Butler](https://www.ekd-solar.de/news/energiekonzepte-deutschland-erweitert-portfolio-mit-modularem-energy-butler-von-m-tec/); croedel/MTECmqtt up to commit 32cdf27 (MIT); evcc template `solinteg-gen3` (MIT); [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520)"
-      }
+      },
+      "support": "mtec"
     },
     {
       "id": "enphase",
