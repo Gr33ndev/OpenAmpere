@@ -105,7 +105,7 @@ async def test_without_a_second_inverter_there_is_none_to_count():
 async def test_a_counted_second_inverter_is_there_at_night_after_a_restart(tmp_path):
     """The owner counts a second inverter; OpenAmpere restarts at night (112 = 110 = 0): it is shown with 0 W, not as
     unknown until the sun comes back."""
-    sim = SolarmaxSimulatedInverter(max_connections=3)  # not stepped: no sun
+    sim = SolarmaxSimulatedInverter(max_connections=3, connectivity="rejected")  # not stepped: no sun
     server, port = await serve(sim)
     async with server:
         runtime = Runtime({}, Storage(tmp_path / "t.db"))
@@ -122,12 +122,28 @@ async def test_a_counted_second_inverter_is_there_at_night_after_a_restart(tmp_p
 
 
 async def test_another_inverter_on_the_max_storage_is_external_pv():
-    sim = SolarmaxSimulatedInverter(max_connections=3)
+    """Without the counters of "Connectivity+" the other inverter is shown on its own and the owner may count it."""
+    sim = SolarmaxSimulatedInverter(max_connections=3, connectivity="rejected")
     sim.extra_pv_w = 1500
     sunny(sim)
     _info, _driver, snap = await read_once(sim, only="solarmax")
     assert snap.pv_external_power == pytest.approx(1500, abs=1)
     assert snap.pv_power == pytest.approx(sim.energy.pv_w, abs=1)
+
+
+async def test_with_counters_another_inverter_is_part_of_the_pv_power():
+    """The PV counter (150) includes the inverters connected to the MAX.STORAGE: with it, the PV power is the whole
+    plant's, and there is no second inverter to count on top (it would be counted twice)."""
+    sim = SolarmaxSimulatedInverter(max_connections=3)
+    sim.extra_pv_w = 1500
+    sunny(sim)
+    _info, _driver, snap = await read_once(sim, only="solarmax")
+    assert snap.totals.pv is not None and snap.pv_external_power is None
+    assert snap.pv_power == pytest.approx(sim.energy.pv_w + 1500, abs=1)
+    raw = {"pv_power": 4000.0, "pv_plant_power": 5500.0, "pv_total": 9e6, "grid_import_total": 1e6,
+           "grid_export_total": 2e6, "battery_charge_total": 5e5, "battery_discharge_total": 4e5}
+    counted = to_snapshot(raw, 0, external=True)  # also when the owner counts one
+    assert (counted.pv_power, counted.pv_external_power) == (5500.0, None)
 
 
 def test_an_error_state_is_an_alarm():

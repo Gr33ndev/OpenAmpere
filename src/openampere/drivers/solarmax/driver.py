@@ -127,11 +127,17 @@ def values(words: dict[int, int]) -> dict[str, float]:
 
 def to_snapshot(raw: dict[str, float], timestamp: float, external: bool = False) -> Snapshot:
     """external: another inverter was seen on the MAX.STORAGE; until then there is no second PV inverter to show (the
-    app offers to count one only when the device reports it)."""
+    app offers to count one only when the device reports it).
+
+    With the counters of "Connectivity+" the PV power is the whole plant's (112): the PV counter (150) already includes
+    the inverters connected to the MAX.STORAGE, so a second inverter counted on top of it would be counted twice."""
     g = raw.get
     negate = lambda key: None if g(key) is None else -g(key)  # noqa: E731
     pv, plant = g("pv_power"), g("pv_plant_power")
     state = int(raw["device_state"]) if "device_state" in raw else None
+    totals = counters(raw)
+    if totals.pv is not None:
+        pv, external = plant if plant is not None else pv, False
     return Snapshot(
         timestamp=timestamp,
         pv_power=pv,
@@ -143,7 +149,7 @@ def to_snapshot(raw: dict[str, float], timestamp: float, external: bool = False)
         battery_soc=g("battery_soc"),
         inverter_state=state,
         alarms=[state] if state == ERROR_STATE else [],
-        totals=counters(raw),
+        totals=totals,
         today=EnergyCounters(),
     )
 
