@@ -8,7 +8,7 @@ import hashlib
 import json
 import ssl
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from openampere import discovery
 from openampere.api import create_app
+from openampere.config import build_config
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
 from openampere.drivers.enphase.driver import (INFO, PRODUCTION, CertificateChanged, EnphaseDriver, TokenRejected,
@@ -69,8 +70,10 @@ def test_the_days_left_are_calendar_days():
 async def test_the_diagnostics_say_today_and_a_token_that_ran_out_today(tmp_path):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     runtime.collector.driver = driver = EnphaseDriver("192.0.2.1")
+    in_three_days = datetime.combine(datetime.now(runtime.tz).date() + timedelta(days=3), datetime.min.time().replace(hour=12),
+                                     tzinfo=runtime.tz).timestamp()  # noon: the days left are calendar days (#553)
     for expires, summary, status in ((time.time() - 60, "Abgelaufen.", "error"),  # not "since yesterday"
-                                     (time.time() + 3 * 86400, "Noch 3 Tage gültig.", "warn")):
+                                     (in_three_days, "Noch 3 Tage gültig.", "warn")):
         driver.token_expires = expires
         assert (Diagnostics(runtime)._enphase_token().summary, Diagnostics(runtime)._enphase_token().status) \
             == (summary, status)
@@ -247,7 +250,10 @@ def test_every_driver_can_be_tested_in_the_setup(tmp_path):
 
 
 async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_its_expiry(tmp_path):
-    token = jwt(time.time() + 20 * 86400)  # runs out in 20 days
+    plant = ZoneInfo(build_config({})[0].timezone)  # the zone the runtime below counts the days in (also from the env)
+    # runs out at noon in 20 days: the days left are calendar days (#553)
+    token = jwt(datetime.combine(datetime.now(plant).date() + timedelta(days=20), datetime.min.time().replace(hour=12),
+                                 tzinfo=plant).timestamp())
     sim = sunny(SimulatedEnphase(token=token))
     server, port = await serve(sim)
     async with server:
@@ -270,7 +276,7 @@ async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_i
     stored = runtime.storage.get_settings()
     assert stored["inverter.token"] and token not in json.dumps(stored)  # stored, but never in plain text
     check = {c["id"]: c for c in report["checks"]}["enphase_token"]
-    assert check["status"] == "warn" and check["summary"] in ("Noch 19 Tage gültig.", "Noch 20 Tage gültig.")
+    assert check["status"] == "warn" and check["summary"] == "Noch 20 Tage gültig."
     assert "." not in check["summary"].split("Noch")[0]  # no date that would tell the day the token was made
     assert token not in json.dumps(report)
 
