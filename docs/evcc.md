@@ -23,7 +23,9 @@ support evcc, smart plugs and plugins work without a token.
   evcc warns 30 days ahead.
 - **In OpenAmpere:** under **Geräte** (Devices) and **Mehr → Verbindung → Wallbox** OpenAmpere warns while evcc runs
   with the test token or the token expires soon, says when the token has expired (#462), and says so when evcc does not start the wallbox because a valid
-  token is missing.
+  token is missing. Next to a wallbox OpenAmpere reads directly, while evcc has no charge point, it says instead that
+  this wallbox needs no token and should be deleted in evcc (#535), see
+  [Wallbox without evcc](wallbox-direct.md).
 
 We recommend supporting evcc. OpenAmpere uses only the open interface of evcc and has no influence on its terms.
 
