@@ -186,6 +186,15 @@ async def test_the_inverter_is_read_over_the_existing_connection(runtime):
         await p.read("127.0.0.1", 50200, 1, 3, 30000, 1)
 
 
+async def test_a_device_read_through_its_web_interface_gets_a_message_not_an_error(runtime):
+    """#547: the device query on the address of a connected Senec or Enphase answered 500 (no Modbus to share)."""
+    from openampere.drivers.senec.driver import SenecDriver
+    runtime.config.inverter.host, runtime.config.inverter.port = "127.0.0.1", 502
+    runtime.collector.driver, runtime.collector.connected = SenecDriver("127.0.0.1"), True
+    with pytest.raises(ProbeError, match="über seine Weboberfläche, nicht über Modbus"):
+        await Probe(runtime).read("127.0.0.1", 502, 0, 3, 30000, 1)
+
+
 async def test_the_report_shortens_text_and_hides_addresses(runtime):
     sim = SimulatedInverter(H3_NEW, "H3-10.0-Smart", SERIAL, strict_function=False, max_connections=1)
     server, port = await serve(sim)
