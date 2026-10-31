@@ -245,7 +245,7 @@
     "senecReadOnly": "Beim Senec-Speicher zeigt OpenAmpere nur die Werte an und ändert keine Einstellungen.",
     "senecUnreachable": "Keine Antwort von der Weboberfläche des Senec-Speichers unter {host}. Stimmt die Adresse, und ist der Speicher eingeschaltet und im Heimnetz?",
     "notSenec": "Unter {host} antwortet ein Gerät, aber nicht wie ein Senec-Speicher. Stimmt die Adresse?",
-    "senecNotAnswering": "Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn nach 30 Sekunden wieder."
+    "senecNotAnswering": "Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn in Kürze wieder."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",

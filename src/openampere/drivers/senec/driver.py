@@ -123,8 +123,8 @@ class SenecDriver:
             return parse(await self._post(form))
         except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
             log.info("Senec at %s not answering: %s", self._host, err)
-            raise SenecNotAnswering("Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn nach "
-                                    "30 Sekunden wieder.") from err
+            raise SenecNotAnswering("Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn in Kürze "
+                                    "wieder.") from err
 
     # ---- the driver interface ----------------------------------------------
 
