@@ -32,7 +32,7 @@ def test_the_rtu_checksum():
     assert crc16(bytes.fromhex("FC0327100008")) == 0x905A  # sent as 5A 90
 
 
-@pytest.mark.parametrize(("rtu", "unit"), [(False, 252), (False, 255), (True, 252)])
+@pytest.mark.parametrize(("rtu", "unit"), [(False, 252), (False, 255), (True, 252), (True, 255), (True, 247)])
 async def test_read_in_either_framing_and_on_its_unit_ids(rtu, unit):
     sim = sunny(MtecSimulatedInverter(rtu=rtu, unit=unit, max_connections=3))
     server, port = await serve(sim)
@@ -67,9 +67,11 @@ async def test_found_by_automatic_detection_and_by_no_other_driver(rtu):
     assert (info.driver, info.unit) == ("mtec", 252)
 
 
-async def test_a_silent_host_does_not_hold_up_detection():
-    """A Modbus device that answers nothing: one try per framing on the first unit, then plain Modbus TCP only."""
+async def test_a_silent_host_does_not_hold_up_detection(monkeypatch):
+    """In the automatic detection, a Modbus device that answers nothing gets one try per framing on the first unit,
+    then plain Modbus TCP only (the other drivers are left out here to time M-TEC alone)."""
     mtec_driver._silent.clear()
+    monkeypatch.setattr(registry, "DRIVERS", {"mtec": mtec_driver.MtecDriver})
     connected = []
 
     async def silent(reader, writer):
@@ -81,7 +83,7 @@ async def test_a_silent_host_does_not_hold_up_detection():
     async with server:
         started = time.monotonic()
         with pytest.raises(DetectionFailed):
-            await registry.detect("127.0.0.1", port, only="mtec")
+            await registry.detect("127.0.0.1", port)
         elapsed = time.monotonic() - started
     # unit 252 in both framings, 255 and 247 in plain Modbus TCP only: four timeouts of 2.5 s and their connects,
     # not twelve timeouts (more than 30 s)

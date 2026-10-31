@@ -56,7 +56,8 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
                 driver = FoxessDriver(host, port, candidate_unit, timeout=timeout, read_attempts=2,
                                       register_map=register_map, read_function=read_function)
             else:
-                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2)
+                # quick: the automatic detection, where a driver may take shortcuts for silent hosts (M-TEC)
+                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=not only)
             try:
                 info = await driver.connect()
                 log.info("detected %s on unit %s", info.model, candidate_unit)

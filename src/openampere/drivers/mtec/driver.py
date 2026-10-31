@@ -17,8 +17,9 @@ from .registers import BLOCKS, FAULT_STATE, OFF_GRID_STATE, READ_FUNCTION, RUNNI
 log = logging.getLogger(__name__)
 
 FRAMERS = (FramerType.SOCKET, FramerType.RTU)  # plain Modbus TCP first, then RTU frames over TCP (port 5743)
-# host:port whose first unit answered in neither framing, and when: the other units are then only asked in plain
-# Modbus TCP for a while, so a silent Modbus device in the network does not hold up the setup scan
+# host:port whose first unit answered in neither framing, and when: in the automatic detection (quick) the other units
+# are then only asked in plain Modbus TCP for a while, so a silent Modbus device does not hold up the setup scan. When
+# the owner chose M-TEC, every unit gets both framings (an RTU gateway at 247 would otherwise never be found).
 SILENT_S = 600.0
 _silent: dict[tuple[str, int], float] = {}
 
@@ -36,14 +37,15 @@ class MtecDriver(ModbusDevice):
     DEFAULT_UNITS = (252, 255, 247)
 
     def __init__(self, host: str, port: int = 502, unit: int = 252, *, timeout: float = 3.0, read_attempts: int = 3,
-                 **_ignored) -> None:
+                 quick: bool = False, **_ignored) -> None:
         super().__init__(host, port, unit, timeout=timeout, read_attempts=read_attempts)
         self.read_function = READ_FUNCTION
+        self.quick = quick  # part of the automatic detection: the shortcut for silent hosts applies
 
     async def _detect(self) -> DeviceInfo:
         key = (self._host, self._port)
         silent = time.monotonic() - _silent.get(key, -SILENT_S) < SILENT_S
-        framers = (FramerType.SOCKET,) if silent and self._unit != self.DEFAULT_UNITS[0] else FRAMERS
+        framers = (FramerType.SOCKET,) if self.quick and silent and self._unit != self.DEFAULT_UNITS[0] else FRAMERS
         attempts, self._attempts = self._attempts, 1  # one try per framing: a silent host must not hold up detection
         last: Exception | None = None
         try:
@@ -58,8 +60,8 @@ class MtecDriver(ModbusDevice):
                     log.debug("M-TEC unit %s, %s framing: %s", self._unit, framer.value, err)
         finally:
             self._attempts = attempts
-        if len(framers) == len(FRAMERS):
-            _silent[key] = time.monotonic()
+        if self.quick and self._unit == self.DEFAULT_UNITS[0] and not silent:
+            _silent[key] = time.monotonic()  # not refreshed while it lasts: the window runs out
         raise ConnectionError(f"no M-TEC answer on unit {self._unit}: {last}")
 
     async def _identify(self) -> DeviceInfo:
