@@ -32,7 +32,8 @@ def sunny(sim: SimulatedSenec) -> SimulatedSenec:
 @pytest.mark.parametrize(("raw", "value"), [("fl_42C80000", 100.0), ("fl_C2C80000", -100.0), ("u8_13", 19),
                                             ("u1_0001", 1), ("i3_FFFFFFFF", -1), ("i1_7FFF", 32767),
                                             ("st_V3", "V3"), ("VARIABLE_NOT_FOUND", None), ("fl_XYZ", None),
-                                            ("fl_42C8", None), ("fl_", None)])
+                                            ("fl_42C8", None), ("fl_", None), ("fl_7FC00000", None),
+                                            ("fl_7F800000", None), ("fl_FF800000", None)])
 def test_typed_hex_values(raw, value):
     assert parse_value(raw) == value
 

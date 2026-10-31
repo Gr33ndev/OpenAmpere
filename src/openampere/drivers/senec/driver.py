@@ -27,6 +27,7 @@ import http.client
 import http.cookiejar
 import json
 import logging
+import math
 import ssl
 import struct
 import time
@@ -60,7 +61,8 @@ def parse_value(value):
     kind, _, raw = value.partition("_")
     try:
         if kind == "fl":
-            return struct.unpack(">f", bytes.fromhex(raw))[0]
+            number = struct.unpack(">f", bytes.fromhex(raw))[0]
+            return number if math.isfinite(number) else None  # NaN or infinity: no value (and no valid JSON)
         if kind.startswith("u"):
             return int(raw, 16)
         if kind.startswith("i"):
