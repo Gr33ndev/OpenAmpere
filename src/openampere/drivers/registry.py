@@ -50,6 +50,7 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
     driver and must close it. Raises ConnectionError."""
     timeout = max(timeout, DETECT_TIMEOUT_S)  # never shorter than configured (slow proxies need more)
     keys = [only] if only else [key for key, cls in DRIVERS.items() if getattr(cls, "AUTO_DETECT", True)]
+    failure: DetectionFailed | None = None  # a driver's own reason, shown when the owner chose that driver
     for key in keys:
         cls = DRIVERS[key]
         for candidate_unit in ([unit] if unit else list(cls.DEFAULT_UNITS)):
@@ -68,7 +69,10 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
                 raise  # nothing listens there: no point in trying other vendors
             except (ConnectionError, ModbusReadError, OSError, asyncio.TimeoutError) as err:
                 log.debug("%s unit %s: %s", key, candidate_unit, err)
+                failure = err if only and isinstance(err, DetectionFailed) else failure
                 await driver.close()
+    if failure is not None:
+        raise failure
     raise DetectionFailed("Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?")
 
 

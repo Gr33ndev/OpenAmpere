@@ -33,7 +33,7 @@ import urllib.error
 import urllib.request
 
 from ..base import BatterySettings, DeviceInfo, ExportLimit, Snapshot, WorkMode
-from ..modbus import DeviceRefused, DeviceUnreachable, ModbusTransientError
+from ..modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
 
 log = logging.getLogger(__name__)
 
@@ -117,16 +117,12 @@ class SenecDriver:
             return await asyncio.to_thread(self._post_sync, url or self._url, form)
 
     async def _request(self, form: dict) -> dict:
-        """One answer of the known device, with retries for a busy device; parsed."""
-        last: BaseException | None = None
-        for attempt in range(self._attempts):
-            if attempt:
-                await asyncio.sleep(1.0)
-            try:
-                return parse(await self._post(form))
-            except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
-                last = err
-        raise ModbusTransientError(f"Senec at {self._host} not answering: {last}")
+        """One answer of the known device, parsed. No retries here: the collector tries again after its interval,
+        which is never shorter than MIN_POLL_S for this device."""
+        try:
+            return parse(await self._post(form))
+        except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
+            raise ModbusTransientError(f"Senec at {self._host} not answering: {err}") from err
 
     # ---- the driver interface ----------------------------------------------
 
@@ -158,9 +154,11 @@ class SenecDriver:
                     continue
                 self._url = url
                 return self._identify(identity.get("FACTORY", {}))
+        host = self._host
         if answered:
-            raise ConnectionError(f"{self._host} answers, but not like a Senec storage system")
-        raise DeviceUnreachable(f"cannot connect to a Senec at {self._host}")
+            raise NotSenec(f"Unter {host} antwortet ein Gerät, aber nicht wie ein Senec-Speicher. Stimmt die Adresse?")
+        raise SenecUnreachable(f"Keine Antwort von der Weboberfläche des Senec-Speichers unter {host}. Stimmt die "
+                               "Adresse, und ist der Speicher eingeschaltet und im Heimnetz?")
 
     def _identify(self, factory: dict) -> DeviceInfo:
         system = factory.get("SYS_TYPE")
@@ -213,6 +211,18 @@ class SenecDriver:
 
     async def write_export_limit(self, watts: int) -> None:
         refuse()
+
+
+class SenecUnreachable(DeviceUnreachable):
+    """Nothing answers like a web server at the address; .message is a German text for the app (no Modbus to check)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class NotSenec(DetectionFailed):
+    """Something answers, but not like lala.cgi."""
 
 
 class ReadOnly(DeviceRefused):

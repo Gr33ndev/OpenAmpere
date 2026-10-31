@@ -116,12 +116,16 @@ class Collector:
             return True
         return not self.connected or time.time() - self.latest.timestamp > max(3 * self.poll_interval(), seconds)
 
+    def min_gap(self) -> float:
+        """The shortest time between two requests the device stands, 0 for none."""
+        try:
+            return getattr(self.driver, "MIN_POLL_S", 0.0)
+        except ConnectionError:  # the automatic driver before it detected the device
+            return 0.0
+
     def poll_interval(self) -> float:
         """The poll interval, but at least what the device stands (a Senec restarts when asked too often, #521)."""
-        try:
-            return max(self.interval, getattr(self.driver, "MIN_POLL_S", 0.0))
-        except ConnectionError:  # the automatic driver before it detected the device
-            return self.interval
+        return max(self.interval, self.min_gap())
 
     def _check_firmware(self) -> None:
         """An update can change registers: remember the firmware and note when it changes."""
@@ -272,5 +276,6 @@ class Collector:
                 self.connected = False
                 self.last_error = message
                 await self.driver.close()
-                await asyncio.sleep(backoff)
+                # never sooner than the device stands (a Senec restarts when asked too often, #521)
+                await asyncio.sleep(max(backoff, self.min_gap()))
                 backoff = min(backoff * 2, 300)

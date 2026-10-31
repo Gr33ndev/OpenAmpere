@@ -8,9 +8,11 @@ from datetime import datetime
 
 import pytest
 
+from openampere import discovery
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
-from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
+from openampere.drivers.modbus import (DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError,
+                                       friendly_error)
 from openampere.drivers.senec.driver import LIVE, MAX_REQUEST_CHARS, SenecDriver, parse_value
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedSenec
@@ -106,7 +108,7 @@ async def test_another_web_server_is_no_senec():
     server = await asyncio.start_server(not_found, "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     async with server:
-        with pytest.raises(DetectionFailed):
+        with pytest.raises(DetectionFailed, match="nicht wie ein Senec-Speicher"):
             await registry.detect("127.0.0.1", port, only="senec")
 
 
@@ -115,8 +117,20 @@ async def test_nothing_listening_is_unreachable():
     port = server.sockets[0].getsockname()[1]
     server.close()
     await server.wait_closed()
-    with pytest.raises(DeviceUnreachable):
+    with pytest.raises(DeviceUnreachable) as caught:
         await registry.detect("127.0.0.1", port, only="senec")
+    # no word about Modbus or its port: a Senec has none
+    assert "Weboberfläche des Senec-Speichers" in friendly_error(caught.value) and "Modbus" not in friendly_error(caught.value)
+
+
+async def test_the_setup_test_names_the_web_interface(tmp_path):
+    server = await asyncio.start_server(lambda r, w: None, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    server.close()
+    await server.wait_closed()
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    result = await discovery.test_connection(runtime, "127.0.0.1", port, 0, driver="senec")
+    assert not result["ok"] and "Senec" in result["error"] and "Modbus" not in result["error"]
 
 
 def test_the_modbus_default_port_stands_for_its_own_ports():
