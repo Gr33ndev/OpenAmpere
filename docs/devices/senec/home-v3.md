@@ -43,6 +43,7 @@ text. Something else (e.g. `VARIABLE_NOT_FOUND`) is no value.
 | Fact | Status | Source |
 |---|---|---|
 | Since about NPU 2411 a first request for `FACTORY` (`SYS_TYPE`, `COUNTRY`, `DEVICE_ID`) gives the session cookie the device wants, as its own web page does. | derived | marq24/ha-senec-v3 (`_init_gui_cookies`) |
+| What a request with the session cookie from before a restart of the device gets is not known (an error answer or empty values); OpenAmpere's simulator answers it with 403. | open | assumption for the simulator; marq24/ha-senec-v3 (cookie since NPU 2411) |
 | The device's web page splits requests into parts below 600 characters with about 200 ms between them. | derived | marq24/ha-senec-v3 (`_request_senec_lala_chunked`, 2026-08) |
 | Firmware 825–827 (2023-08) emptied `STATISTIC`: no energy counters any more. | derived | marq24/ha-senec-v3#4 |
 | Polling too often can restart the device or stop its cloud sync; ioBroker polls every 10 s, Home Assistant every 30 s (V3) or 60 s (V2); two clients at the same time were linked to repeated errors. | derived | nobl/ioBroker.senec (MIT); marq24/ha-senec-v3#235 (2026-09) |
@@ -58,6 +59,7 @@ text. Something else (e.g. `VARIABLE_NOT_FOUND`) is no value.
 | Only when the owner chooses "Senec"; port 502 (the setup's default) stands for 443 and then 80, HTTPS before HTTP. Its error messages name the web interface, not Modbus. | It does not answer on the Modbus port, so the other drivers' detection would stop there. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
 | The certificate is not checked, and not pinned after the first contact either (as #521 first planned). | It is self-signed with nothing to check it against. A pinned certificate would lock the owner out after every firmware update or reset that brings a new one, with no way to pair again in the app; and what an attacker in the home network could gain is only wrong values on the display: OpenAmpere only reads and sends nothing secret. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
 | Asked at most every 30 s (`MIN_POLL_S`), also after an error (no quick retries; the reconnect waits at least as long), one request at a time, below 600 characters, the session cookie kept until a reconnect. | What the open projects found the device stands. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
+| Error answers of the device (403, 404) are closed at once. | Unclosed, they hold a connection to the device until the error object is collected. | [#540](https://github.com/Gr33ndev/OpenAmpere/issues/540) |
 | No counters: no energy history for this device. | The device has none since firmware 825; integrating the power is a follow-up. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
 | The diagnostics show the `ENERGY` values of the last read with Senec's own signs (powers rounded) and how the device answered (scheme, port), not the device id; the report sends no request of its own. | So the first owner's report can confirm the signs. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
 
