@@ -333,7 +333,8 @@
     "noDeviceAnswers": "No device answers at {host} on port {port}. Is the address right, and is the device switched on and in your home network?",
     "noModbusConnection": "{host} is reachable but does not accept a Modbus connection on port {port}. Maybe the port is wrong, or another program such as evcc holds the only connection of the device.",
     "onlyReadFunctions": "Only the function codes 3 and 4 (read) are possible.",
-    "tooManyRegisters": "Please read at most {MAX_REGISTERS} registers between 0 and 65535."
+    "tooManyRegisters": "Please read at most {MAX_REGISTERS} registers between 0 and 65535.",
+    "readThroughWebInterface": "OpenAmpere reads this device through its web interface, not over Modbus. The device query reads only Modbus registers and so cannot query it."
   },
   "registry": {
     "noSupportedDeviceFound": "No supported device found. Is the address correct and Modbus TCP enabled?"

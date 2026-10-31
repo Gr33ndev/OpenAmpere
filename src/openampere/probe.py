@@ -204,6 +204,9 @@ class Probe:
     async def _read(self, host: str, port: int, unit: int, function: int, blocks: list[tuple[int, int]]) -> ReadResult:
         result = ReadResult(host, port, unit, function)
         driver = await self._inverter_driver(host, port)
+        if driver is not None and getattr(driver, "PROTOCOL", "modbus") == "http":  # Senec, Enphase (#547)
+            raise ProbeError("OpenAmpere liest dieses Gerät über seine Weboberfläche, nicht über Modbus. Die "
+                             "Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen.")
         if driver is not None:
             own_unit = getattr(driver, "_unit", None)
             if unit not in (0, own_unit):

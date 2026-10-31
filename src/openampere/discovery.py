@@ -174,10 +174,13 @@ async def find_by_serial(runtime: Runtime, prefix: str, port: int, serial: str) 
         async with semaphore:
             return host if await _port_open(host, port, 0.7) else None
 
+    driver = runtime.config.inverter.driver
     for host in [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]:
         try:
+            # with a fixed driver only that one: faster, and no other vendor's probes at every device (#547)
             info = await registry.detect(host, port, runtime.config.inverter.unit,
-                                         timeout=runtime.config.inverter.timeout)
+                                         timeout=runtime.config.inverter.timeout,
+                                         only=None if driver == "auto" else driver)
         except (ConnectionError, OSError, asyncio.TimeoutError):
             continue
         if info.serial and info.serial == serial:
@@ -208,6 +211,10 @@ class Rediscovery:
         inverter = runtime.config.inverter
         if (collector.connected or not known or "inverter.host" in runtime.locked
                 or known.get("host") != inverter.host or inverter.host.count(".") != 3):
+            return None
+        # the search is a Modbus one: a device read through its web interface (Senec, Enphase) is never found by it,
+        # and the search would only open a connection to every Modbus device in the network every 30 minutes (#547)
+        if not getattr(registry.DRIVERS.get(inverter.driver), "AUTO_DETECT", True):
             return None
         since = collector.disconnected_since
         if since is None or now - since < REDISCOVER_AFTER_S or now - self._last_attempt < REDISCOVER_EVERY_S:

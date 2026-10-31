@@ -250,7 +250,7 @@ async def test_test_connection_without_first_reading(monkeypatch, runtime):
 async def test_find_by_serial_skips_hosts_that_fail(monkeypatch, runtime):
     open_ports(monkeypatch, "10.0.0.5", "10.0.0.7")
 
-    async def detect(host, port, unit, *, timeout):
+    async def detect(host, port, unit, *, timeout, only=None):
         if host == "10.0.0.5":
             raise OSError("connection reset")
         return device("SN7")
@@ -274,10 +274,12 @@ async def test_rediscovery_keeps_settings_when_found_at_the_same_address(monkeyp
     assert runtime.config.inverter.host == "10.0.0.5" and runtime.storage.get_meta("relocated") is None
 
 
-@pytest.mark.parametrize("change", ["locked", "other_host", "hostname"])
+@pytest.mark.parametrize("change", ["locked", "other_host", "hostname", "senec", "enphase"])
 async def test_rediscovery_does_not_search(monkeypatch, runtime, change):
     unreachable_since(runtime)
-    if change == "locked":
+    if change in ("senec", "enphase"):  # read through the web interface: the Modbus search never finds it (#547)
+        runtime.config.inverter.driver = change
+    elif change == "locked":
         runtime.locked.add("inverter.host")  # set by an environment variable
     elif change == "other_host":
         runtime.storage.set_meta("known_device", {"serial": "SN1", "host": "10.0.0.9"})
@@ -288,3 +290,19 @@ async def test_rediscovery_does_not_search(monkeypatch, runtime, change):
         raise AssertionError("must not search")
     monkeypatch.setattr(discovery, "find_by_serial", find)
     assert await discovery.Rediscovery(runtime).check(1000.0 + 300) is None
+
+
+async def test_with_a_fixed_driver_the_search_detects_only_that_one(monkeypatch, runtime):
+    """#547: a FoxESS owner's search does not send the probes of every other vendor to every device."""
+    open_ports(monkeypatch, "10.0.0.7")
+    asked = []
+
+    async def detect(host, port, unit, *, timeout, only=None):
+        asked.append(only)
+        return device("SN7")
+    monkeypatch.setattr(registry, "detect", detect)
+    runtime.config.inverter.driver = "foxess"
+    assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.7"
+    runtime.config.inverter.driver = "auto"
+    assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.7"
+    assert asked == ["foxess", None]
