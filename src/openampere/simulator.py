@@ -721,6 +721,66 @@ class MtecSimulatedInverter(SimulatedInverter):
             writer.close()
 
 
+class SimulatedEnphase:
+    """Enphase IQ Gateway with IQ Batteries (#522) over plain HTTP (a real gateway answers HTTPS with a self-signed
+    certificate): /info without a token, /production.json, /ivp/livedata/status and /ivp/ensemble/inventory only with
+    "Authorization: Bearer <token>" (401 otherwise), on the same energy model. Enphase's signs: net-consumption
+    + = import, storage + = discharging. `requests` keeps (path, authorised)."""
+
+    def __init__(self, *, token: str = "sim-token", serial: str = "122100000001", batteries: bool = True) -> None:
+        self.energy = EnergyModel()
+        self.token, self.serial, self.batteries = token, serial, batteries
+        self.requests: list[tuple[str, bool]] = []
+        self.model = "Enphase IQ Gateway"
+
+    def answer(self, path: str) -> object:
+        e = self.energy
+        if path.startswith("/production.json"):
+            return {"production": [{"type": "inverters", "activeCount": 20, "wNow": e.pv_w},
+                                   {"type": "eim", "measurementType": "production", "activeCount": 1, "wNow": e.pv_w}],
+                    "consumption": [{"type": "eim", "measurementType": "total-consumption", "activeCount": 1,
+                                     "wNow": e.house_w},
+                                    {"type": "eim", "measurementType": "net-consumption", "activeCount": 1,
+                                     "wNow": e.grid_w}]}
+        if path == "/ivp/livedata/status" and self.batteries:
+            return {"meters": {"soc": round(e.soc), "storage": {"agg_p_mw": round(e.battery_w * 1000)}}}
+        if path == "/ivp/ensemble/inventory" and self.batteries:
+            return [{"type": "ENCHARGE", "devices": [{"percentFull": round(e.soc)}, {"percentFull": round(e.soc)}]}]
+        return None
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            first = await reader.readexactly(1)
+            if first == b"\x16":  # a TLS handshake: this simulator speaks plain HTTP only
+                return
+            head = first + await reader.readuntil(b"\r\n\r\n")
+            lines = head.decode("latin-1").split("\r\n")
+            method, path = lines[0].split(" ")[:2]
+            headers = {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines[1:] if line)}
+            authorised = headers.get("authorization") == f"Bearer {self.token}"
+            self.requests.append((path, authorised))
+            if method == "GET" and path == "/info":
+                body = (f"<?xml version='1.0'?><envoy_info><device><sn>{self.serial}</sn><pn>800-00654-r08</pn>"
+                        "<software>D8.2.4382</software></device></envoy_info>").encode()
+                status, kind = "200 OK", "text/xml"
+            elif method != "GET" or self.answer(path) is None:
+                body, status, kind = b"", "404 Not Found", "text/plain"
+            elif not authorised:
+                body, status, kind = b"", "401 Unauthorized", "text/plain"
+            else:
+                body, status, kind = json.dumps(self.answer(path)).encode(), "200 OK", "application/json"
+            writer.write(f"HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {len(body)}\r\n"
+                         "Connection: close\r\n\r\n".encode() + body)
+        except (asyncio.IncompleteReadError, ConnectionError, ValueError):
+            pass
+        finally:
+            try:
+                await writer.drain()
+            except ConnectionError:
+                pass
+            writer.close()
+
+
 class SimulatedHeatingRod(SimulatedInverter):
     """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
     The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
@@ -1017,7 +1077,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "mypv", "foxess-charger",
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "enphase", "mypv", "foxess-charger",
                                              "weidmueller", "de-tuya"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
@@ -1029,6 +1089,7 @@ def main() -> None:
     parser.add_argument("--unit", type=int, default=None,
                         help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
     parser.add_argument("--rtu", action="store_true", help="mtec: RTU frames over TCP (like port 5743)")
+    parser.add_argument("--token", default="sim-token", help="enphase: the access token the gateway takes")
     parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros", "silent"], default="unlocked",
                         help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused, zero or '
                              "not answered")
@@ -1045,7 +1106,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("senec", "mypv", "foxess-charger", "weidmueller", "de-tuya"):
+    if args.vendor in ("senec", "enphase", "mypv", "foxess-charger", "weidmueller", "de-tuya"):
         pass
     elif args.vendor == "mtec":
         sim = MtecSimulatedInverter(unit=args.unit or 252, rtu=args.rtu, max_connections=args.max_connections,
@@ -1089,6 +1150,22 @@ def main() -> None:
                     senec.energy.step(datetime.fromtimestamp(sim_time), args.speed)
         try:
             asyncio.run(run_senec())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "enphase":
+        async def run_enphase() -> None:
+            gateway = SimulatedEnphase(token=args.token)
+            server = await asyncio.start_server(gateway.serve_client, args.host, args.port)
+            log.info("simulating an Enphase IQ Gateway (HTTP, token %r) on %s:%d", args.token, args.host, args.port)
+            sim_time = time.time()
+            async with server:
+                while True:
+                    await asyncio.sleep(1.0)
+                    sim_time += args.speed
+                    gateway.energy.step(datetime.fromtimestamp(sim_time), args.speed)
+        try:
+            asyncio.run(run_enphase())
         except KeyboardInterrupt:
             pass
         return

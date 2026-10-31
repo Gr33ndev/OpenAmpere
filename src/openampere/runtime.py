@@ -35,7 +35,7 @@ def make_driver(config: Config):
         return registry.AutoDriver(inv.host, inv.port, inv.unit, **options)
     if inv.driver not in registry.DRIVERS:
         raise ValueError(f"unknown inverter driver {inv.driver!r}")
-    return registry.create(inv.driver, inv.host, inv.port, inv.unit, **options)
+    return registry.create(inv.driver, inv.host, inv.port, inv.unit, token=inv.token, **options)
 
 
 class Runtime:

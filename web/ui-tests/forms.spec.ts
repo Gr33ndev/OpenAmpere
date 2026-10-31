@@ -67,3 +67,23 @@ test("a connection test for an address that was changed meanwhile does not count
   await page.waitForTimeout(2500);
   await expect(page.getByText("Prüfgerät X1")).toHaveCount(0); // the device found at .50, not .51
 });
+
+// #522: an Enphase gateway needs an access token: the form asks for it only then, and the test sends it
+test("the connection form asks for the Enphase token and sends it with the test", async ({ page }) => {
+  await page.route("**/api/setup/drivers", (route) => route.fulfill({ json: { drivers: [
+    { key: "auto", label: "Automatisch erkennen" }, { key: "enphase", label: "Enphase IQ Gateway mit IQ Battery (nur Anzeige)" }] } }));
+  let sent: Record<string, unknown> | null = null;
+  await page.route("**/api/setup/test", async (route) => {
+    sent = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: false, error: "Das Enphase-Gateway lehnt das Zugangs-Token ab." } });
+  });
+  await open(page, "more/connection");
+  await page.getByPlaceholder(/192\.168\.178\.50/).fill("192.168.178.70");
+  await page.getByRole("button", { name: /Erweitert/ }).click();
+  await expect(page.getByLabel("Zugangs-Token von Enphase")).toHaveCount(0);  // only for Enphase
+  await page.getByLabel("Gerätetyp").selectOption("enphase");
+  await page.getByLabel("Zugangs-Token von Enphase").fill("eyJ.test.token");
+  await expect(page.getByText(/entrez\.enphaseenergy\.com/)).toBeVisible();
+  await page.getByRole("button", { name: "Verbindung testen" }).click();
+  await expect.poll(() => sent).toMatchObject({ driver: "enphase", token: "eyJ.test.token" });
+});

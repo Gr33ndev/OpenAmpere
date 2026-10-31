@@ -398,6 +398,8 @@ class Diagnostics:
             checks.append(await self._solarmax_registers())
         if getattr(driver, "KEY", None) == "senec":
             checks.append(await self._senec_values())
+        if getattr(driver, "KEY", None) == "enphase":
+            checks.append(self._enphase_token())
         if getattr(driver, "KEY", None) == "mtec":
             checks.append(await self._mtec_values())
 
@@ -582,6 +584,26 @@ class Diagnostics:
                      hint="OpenAmpere liest diesen Speicher nach Unterlagen von M-TEC und offenen Projekten, aber noch "
                           "ohne Bestätigung von einem echten Gerät. Vergleiche Netz-, Batterie- und Hausleistung mit der "
                           "M-TEC-App und schreib uns, ob sie stimmen.")
+
+    def _enphase_token(self) -> Check:
+        """When the Enphase access token runs out (#522): the gateway then refuses every request until the owner
+        enters a new one. Only the date, never the token."""
+        from datetime import datetime
+
+        from .drivers.enphase.driver import WARN_DAYS
+        title = "Zugangs-Token (Enphase)"
+        expires = getattr(self._driver(), "token_expires", None)
+        if expires is None:
+            return Check("enphase_token", title, "info", "Ablaufdatum nicht lesbar.")
+        days = int((expires - time.time()) // 86400)
+        date = datetime.fromtimestamp(expires, self.runtime.tz).strftime("%d.%m.%Y")
+        if days < 0:
+            return Check("enphase_token", title, "error", f"Abgelaufen am {date}.",
+                         {"days_left": days}, hint="Hol bei Enphase ein neues Token und trag es beim Einrichten ein.")
+        status = "warn" if days < WARN_DAYS else "ok"
+        return Check("enphase_token", title, status, f"Gültig bis {date} (noch {days} Tage).", {"days_left": days},
+                     hint="Hol rechtzeitig bei Enphase ein neues Token und trag es beim Einrichten ein."
+                     if status == "warn" else "")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

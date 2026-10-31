@@ -246,7 +246,13 @@
     "senecReadOnly": "For the Senec battery, OpenAmpere only shows the values and changes no settings.",
     "senecUnreachable": "No answer from the web interface of the Senec storage system at {host}. Is the address right, and is the system switched on and in the home network?",
     "notSenec": "A device answers at {host}, but not like a Senec storage system. Is the address right?",
-    "senecNotAnswering": "The Senec storage system is not answering right now. OpenAmpere asks it again shortly."
+    "senecNotAnswering": "The Senec storage system is not answering right now. OpenAmpere asks it again shortly.",
+    "enphaseReadOnly": "For the Enphase battery, OpenAmpere only shows the values and changes no settings.",
+    "enphaseTokenRejected": "The Enphase gateway refuses the access token. It has probably run out: get a new one from Enphase and enter it under “Advanced” in the setup.",
+    "enphaseTokenMissing": "The Enphase gateway needs an access token. Enter it under “Advanced” in the setup; the guide says how to get it.",
+    "enphaseUnreachable": "No answer from the Enphase gateway at {host}. Is the address right, and is the gateway in the home network?",
+    "enphaseNotAnswering": "The Enphase gateway is not answering right now. OpenAmpere asks it again shortly.",
+    "notEnphase": "A device answers at {host}, but not like an Enphase gateway. Is the address right?"
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",

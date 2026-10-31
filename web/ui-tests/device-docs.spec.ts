@@ -52,6 +52,14 @@ test("an M-TEC gets its own page", async ({ page, api }) => {
     .toHaveAttribute("href", `${SITE}docs/devices/mtec/energy-butler.html`);
 });
 
+test("an Enphase gateway gets its own page", async ({ page, api }) => {
+  const status = (await demoRequest("GET", "/api/status")) as { device: Record<string, unknown> };
+  api.override("/api/status", { ...status, device: { ...status.device, manufacturer: "Enphase", driver: "enphase", register_map: "enphase_local" } });
+  await open(page, "more/installation");
+  await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/enphase/iq-gateway.html`);
+});
+
 test("the diagnostics page links to the page about the inverter", async ({ page }) => {
   await open(page, "more/diagnostics");
   await expect(page.getByRole("link", { name: /Was wir über deinen Wechselrichter wissen/ }))

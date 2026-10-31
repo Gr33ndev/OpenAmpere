@@ -141,6 +141,28 @@
       "page": "docs/devices/senec/home-v3.md"
     },
     {
+      "id": "enphase",
+      "name": {
+        "de": "Enphase IQ Gateway mit IQ Battery",
+        "en": "Enphase IQ Gateway with IQ Battery"
+      },
+      "does": {
+        "de": "Nur Anzeige über die lokale Schnittstelle des Gateways (kein Modbus): PV, Speicher und Ladestand, Netz und Haus mit Verbrauchswandlern. Braucht einmal im Jahr ein Zugangs-Token aus dem Enphase-Konto; beim Einrichten unter „Erweitert“ eintragen.",
+        "en": "Monitoring only through the gateway's local interface (no Modbus): PV, battery and state of charge, grid and house with consumption CTs. Needs an access token from the Enphase account once a year; enter it under \"Advanced\" in the setup."
+      },
+      "short": {
+        "de": "nur Anzeige, mit Zugangs-Token von Enphase",
+        "en": "monitoring only, with an access token from Enphase"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/enphase/iq-gateway.md"
+    },
+    {
       "id": "relay",
       "name": {
         "de": "Heizstab, Wärmepumpe (SG-Ready)",
@@ -382,21 +404,20 @@
         "de": "ab Ende 2022",
         "en": "from late 2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige. Braucht einmal einen Schlüssel aus dem Enphase-Konto.",
-        "en": "Monitoring first. Needs a key from the Enphase account once."
+        "de": "Braucht einmal im Jahr ein Zugangs-Token aus dem Enphase-Konto.",
+        "en": "Needs an access token from the Enphase account once a year."
       },
-      "issue": 522,
       "names": {
         "period": "from 2022-10",
         "sold": "Enphase IQ Battery",
         "model": "Enphase IQ Battery (AC-coupled); which models is not stated",
         "interface": "IQ Gateway (Envoy) local HTTPS API; since firmware 7 a token from the owner's Enphase account is needed",
-        "openampere": "not supported",
+        "openampere": "driver `enphase`, display only, with an access token ([enphase/iq-gateway.md](../enphase/iq-gateway.md))",
         "status": "documented (cooperation), open (models)",
         "source": "EKD press release on the Enphase cooperation, 2022-10 ([PDF](https://www.ekd-solar.de/wp-content/uploads/2022/10/EKD_Enphase_Neue_Kooperation.pdf)); pyenphase/pyenphase (MIT)"
-      }
+      },
+      "support": "enphase"
     },
     {
       "id": "varta",

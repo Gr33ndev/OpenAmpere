@@ -15,6 +15,7 @@ The register tables, with the status and the source of every register, are on th
 | Senec.Home V3 / V2.1: the keys of its web interface `lala.cgi`, display only | `senec_lala` (HTTP) | [devices/senec/home-v3.md](devices/senec/home-v3.md) |
 | Weidmüller AC SMART ("AMPERE.Charge"), display only | wallbox module `weidmueller_ac_smart` (unit 255) | [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md) |
 | M-TEC Energy-Butler GEN3, display only | `mtec_gen3` (units 252, 255, 247) | [devices/mtec/energy-butler.md](devices/mtec/energy-butler.md) |
+| Enphase IQ Gateway with IQ Batteries: endpoints and fields of its local API, display only | `enphase_local` (HTTPS, token) | [devices/enphase/iq-gateway.md](devices/enphase/iq-gateway.md) |
 | my-PV AC ELWA heating rod | registers 1000–1003 | [devices/mypv/elwa.md](devices/mypv/elwa.md) |
 | Previous EKD smartbox: what it writes | — | [devices/topics/iq-box.md](devices/topics/iq-box.md) |
 
