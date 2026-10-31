@@ -704,6 +704,41 @@ class SimulatedFoxCharger(SimulatedInverter):
                           0x100E: round(amps * phases * 230 / 1000) if charging else 0})
 
 
+class SimulatedWeidmueller(SimulatedInverter):
+    """Weidmüller AC SMART VALUE (wallbox/weidmueller.py, #523): holding registers, unit 255, values of 4 bytes with
+    the low word first. `charging`: a car charges at 16 A on three phases. Refuses every write (OpenAmpere only shows
+    it) and keeps every function code in `functions`; like the real wallbox it takes only one connection at a time."""
+
+    def __init__(self, *, unit: int = 255, charging: bool = False, firmware: str = "01.05.00") -> None:
+        self.unit = unit
+        self.max_connections, self.connections, self.latency_s, self.fault_rate = 1, 0, 0.0, 0.0
+        self.map, self.model, self.serial, self.read_only = None, "AC SMART VALUE", "", True
+        self.strict_function = False
+        self.functions: list[int] = []
+        self.regs = dict.fromkeys([*range(300, 324), *range(400, 435), *range(457, 461), *range(700, 708),
+                                   *range(846, 852), 995, 11000, 11001, *range(11050, 11056)], 0)
+        self._write_string(846, firmware, 6)
+        self.regs.update({301: ord("A"), 302: 0, 307: 1, 319: 1, 700: 16, 701: 16, 702: 16, 704: 1, 11054: 0})
+        for i, address in enumerate((400, 402, 404)):
+            self._u32(address, 230_000 + i * 1000)  # mV
+        if charging:
+            self.regs.update({300: 16, 301: ord("C"), 302: 11, 303: 1, 304: 1})
+            for address in (406, 408, 410):
+                self._u32(address, 16_000)  # mA
+            self._u32(418, 11_040_000)  # mW
+            self._u32(430, 2_500)  # Wh of this charge
+            self._u32(305, 1_800)  # s
+
+    def _u32(self, address: int, value: int) -> None:
+        self.regs[address], self.regs[address + 1] = value & 0xFFFF, value >> 16
+
+    def handle(self, pdu: bytes) -> bytes:
+        self.functions.append(pdu[0])
+        if pdu[0] != 3:
+            return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
+        return super().handle(pdu)
+
+
 class SimulatedTuyaCharger:
     """The portable dé wallbox over Tuya LAN 3.5 (wallbox/de_tuya.py): data points like an owner's status reads,
     the session key exchange of tuya.py, and only one connection at a time like the real device. `plugged`: a car is
@@ -819,12 +854,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mypv", "foxess-charger", "de-tuya"],
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mypv", "foxess-charger", "weidmueller",
+                                             "de-tuya"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
+                             "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
                              "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
     parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
-    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger: a car charges at 16 A")
+    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger, weidmueller: a car charges at 16 A")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None,
                         help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
@@ -844,7 +881,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("mypv", "foxess-charger", "de-tuya"):
+    if args.vendor in ("mypv", "foxess-charger", "weidmueller", "de-tuya"):
         pass
     elif args.vendor == "solarmax":
         sim = SolarmaxSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
@@ -868,6 +905,18 @@ def main() -> None:
                 await server.serve_forever()
         try:
             asyncio.run(run_charger())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "weidmueller":
+        async def run_weidmueller() -> None:
+            wallbox = SimulatedWeidmueller(unit=args.unit or 255, charging=args.plugged)
+            server = await asyncio.start_server(wallbox.serve_client, args.host, args.port)
+            log.info("simulating a Weidmüller AC SMART (read-only) on %s:%d", args.host, args.port)
+            async with server:
+                await server.serve_forever()
+        try:
+            asyncio.run(run_weidmueller())
         except KeyboardInterrupt:
             pass
         return
