@@ -178,13 +178,15 @@ async def test_counters_that_answered_once_are_never_given_up():
             await driver.connect()
             await driver.read()
             sim.connectivity = "silent"
-            for _ in range(4):
+            for _ in range(3):
                 await driver.read()
             sim.connectivity = "unlocked"
+            waiting = await driver.read()  # after a run of failures they are asked only every minute
+            driver._counters_due = 0.0  # the minute is over
             back = await driver.read()
         finally:
             await driver.close()
-    assert driver.has_counters and back.totals.pv is not None
+    assert driver.has_counters and waiting.totals.pv is None and back.totals.pv is not None
 
 
 def test_an_error_state_is_an_alarm():

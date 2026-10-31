@@ -19,6 +19,7 @@ RATED_RANGE_W = range(1000, 30001)
 FIRMWARE_RANGE = range(100, 1000)
 EXTERNAL_FROM_W = 50  # the plant's DC power above the inverter's own: another inverter is connected
 COUNTER_FAILURES = 3  # counters that never answered stop being read after this many reads in a row without an answer
+COUNTER_RETRY_S = 60.0  # counters that answered before: asked only this often after such a run, not with every read
 
 
 class ReadOnly(DeviceRefused):
@@ -40,6 +41,7 @@ class SolarmaxDriver(ModbusDevice):
         self.has_counters = True  # False once the device rejects them (no "Connectivity+") or keeps not answering
         self._counter_failures = 0
         self.counters_seen = False  # the counters answered with values once: PV is the whole plant's from then on
+        self._counters_due = 0.0  # monotonic time from which the counters are asked again
         self.has_external = False  # another inverter connected to the MAX.STORAGE was seen (112 above 110)
 
     async def _detect(self) -> DeviceInfo:
@@ -63,20 +65,23 @@ class SolarmaxDriver(ModbusDevice):
 
     async def read_raw(self) -> dict[str, float]:
         words = await self._read_block(*STANDARD_BLOCK)
-        if self.has_counters:
+        if self.has_counters and time.monotonic() >= self._counters_due:
             # optional: what they do without "Connectivity+" is not known, so the live values never wait for them
             try:
                 words.update(await self._read_block(*COUNTER_BLOCK))
-                self._counter_failures = 0
+                self._counter_failures, self._counters_due = 0, 0.0
             except ModbusIllegalError:
                 self.has_counters = False
                 log.info("Solarmax energy counters not readable (no Connectivity+)")
             except ModbusTransientError as err:
-                # a device that delivered counters keeps being asked: a busy moment must not end its energy history
+                # a device that delivered counters keeps being asked, after a run of failures only every
+                # COUNTER_RETRY_S, so its energy history goes on without slowing down the live values
                 self._counter_failures += 1
                 if self._counter_failures >= COUNTER_FAILURES and not self.counters_seen:
                     self.has_counters = False
                     log.info("Solarmax energy counters do not answer, no longer read: %s", err)
+                elif self._counter_failures >= COUNTER_FAILURES:
+                    self._counters_due = time.monotonic() + COUNTER_RETRY_S
         return values(words)
 
     def assume_external(self) -> None:
