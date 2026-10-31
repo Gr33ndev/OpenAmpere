@@ -527,16 +527,12 @@ class Diagnostics:
     async def _senec_values(self) -> Check:
         """What the Senec driver reads from lala.cgi (#521), built without a device: the values of ENERGY with Senec's
         own signs (powers rounded like every power in the report) and how the device answered (scheme and port). Not
-        the device id."""
-        from .drivers.senec.driver import LIVE
+        the device id. The values of the collector's last read: no extra request outside its 30 s rhythm."""
         driver = self._driver()
         title = "Werte (Senec)"
-        if not getattr(driver, "_url", None):
-            return Check("senec_values", title, "skipped", "Der Senec-Speicher ist gerade nicht verbunden.")
-        try:
-            energy = (await driver._request(LIVE)).get("ENERGY", {})
-        except Exception as err:  # noqa: BLE001 - a check never stops the report
-            return Check("senec_values", title, "warn", f"lala.cgi: {err}")
+        energy = getattr(driver, "last_energy", None)
+        if not energy:
+            return Check("senec_values", title, "skipped", "Noch keine Werte vom Senec-Speicher gelesen.")
 
         def shown(key: str, value):
             if not isinstance(value, float):

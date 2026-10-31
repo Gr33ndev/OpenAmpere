@@ -217,6 +217,14 @@ async def test_the_setup_test_names_the_web_interface(tmp_path):
     assert not result["ok"] and "Senec" in result["error"] and "Modbus" not in result["error"]
 
 
+async def test_the_report_without_a_read_yet_skips_the_values(tmp_path):
+    from openampere.diagnostics import Check
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.driver = SenecDriver("192.0.2.1")
+    check = await Diagnostics(runtime)._senec_values()
+    assert isinstance(check, Check) and check.status == "skipped"
+
+
 def test_the_modbus_default_port_stands_for_its_own_ports():
     assert SenecDriver("192.0.2.1", 502)._ports == (443, 80)
     assert SenecDriver("192.0.2.1", 8443)._ports == (8443,)
@@ -245,10 +253,13 @@ async def test_polled_at_most_every_30_seconds_and_reported_without_the_device_i
                 await asyncio.sleep(0.1)
             assert runtime.collector.device.driver == "senec"
             assert runtime.collector.poll_interval() == 30.0  # a Senec restarts when asked too often
+            requests_before_report = len(sim.requests)
             report = await Diagnostics(runtime).run()
         finally:
             await runtime.collector.stop()
     check = {c["id"]: c for c in report["checks"]}["senec_values"]
     assert check["details"]["scheme"] == "http" and check["details"]["values"]["GUI_GRID_POW"] < 0
     assert str(0x12345678) not in json.dumps(report["checks"])
+    # the check shows the values of the last read: the report sends no request of its own
+    assert not any("ENERGY" in form for _path, form, _cookie in sim.requests[requests_before_report:])
     assert "connections" not in {c["id"] for c in report["checks"] if c["status"] != "skipped"}

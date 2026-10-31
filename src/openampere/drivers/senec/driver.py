@@ -101,6 +101,7 @@ class SenecDriver:
                                                    urllib.request.HTTPCookieProcessor(self._cookies),
                                                    urllib.request.HTTPSHandler(context=tls))
         self.info: DeviceInfo | None = None
+        self.last_energy: dict = {}  # the ENERGY values of the last read, for the diagnostics (no extra request)
 
     # ---- HTTP --------------------------------------------------------------
 
@@ -185,7 +186,8 @@ class SenecDriver:
     async def read(self) -> Snapshot:
         if self._url is None:
             await self.connect()
-        return to_snapshot((await self._request(LIVE)).get("ENERGY", {}), time.time())
+        self.last_energy = (await self._request(LIVE)).get("ENERGY", {})
+        return to_snapshot(self.last_energy, time.time())
 
     async def disconnect(self) -> None:
         """Nothing to close: every request is its own connection."""
