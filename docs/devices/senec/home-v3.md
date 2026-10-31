@@ -62,6 +62,7 @@ text. Something else (e.g. `VARIABLE_NOT_FOUND`) is no value.
 | Error answers of the device (403, 404) are closed at once. | Unclosed, they hold a connection to the device until the error object is collected. | [#540](https://github.com/Gr33ndev/OpenAmpere/issues/540) |
 | No counters: no energy history for this device. | The device has none since firmware 825; integrating the power is a follow-up. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
 | The diagnostics show the `ENERGY` values of the last read with Senec's own signs (powers rounded) and how the device answered (scheme, port), not the device id; the report sends no request of its own. | So the first owner's report can confirm the signs. | [#521](https://github.com/Gr33ndev/OpenAmpere/issues/521) |
+| A redirect of the web interface (301/302/303) is not followed; it counts as an error answer and is closed at once: during the detection the device answers but is no Senec, while reading it is not answering. | Requests stay at the address the owner set, like every other outgoing request (`outbound.py`). | [#548](https://github.com/Gr33ndev/OpenAmpere/issues/548) |
 
 ## Open questions
 
