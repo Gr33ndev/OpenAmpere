@@ -157,7 +157,7 @@
   "evccNextToDirect": {
     "both": "OpenAmpere ist auch mit evcc verbunden. Das passt, wenn evcc eine andere Wallbox steuert. Richte aber keine Wallbox in beiden ein: Sie nimmt meist nur eine Verbindung an, und evcc und OpenAmpere würden sie gleichzeitig steuern.",
     "idle": "OpenAmpere ist noch mit evcc verbunden, aber evcc hat keinen Ladepunkt. Ist in evcc die Wallbox eingerichtet, die OpenAmpere jetzt direkt liest, lösche sie dort unter Konfiguration: Die Wallbox nimmt meist nur eine Verbindung an. Brauchst du evcc nicht mehr, leere unter „{way}“ das Feld „{address}“ und speichere.",
-    "sponsor": "evcc braucht ein Sponsortoken für eine Wallbox in seiner Einrichtung. Ist das die Wallbox, die OpenAmpere jetzt direkt liest, brauchst du kein Token: Lösche sie in evcc unter Konfiguration. Sonst sprechen evcc und OpenAmpere dieselbe Wallbox an, und sie nimmt meist nur eine Verbindung an. Brauchst du evcc nicht mehr, leere unter „{way}“ das Feld „{address}“ und speichere."
+    "sponsor": "evcc braucht ein Sponsortoken für eine Wallbox in seiner Einrichtung. Ist das die Wallbox, die OpenAmpere jetzt direkt liest, brauchst du kein Token: Lösche sie in evcc unter Konfiguration, denn die Wallbox nimmt meist nur eine Verbindung an. Steuert evcc eine andere Wallbox, trage in evcc unter Konfiguration → Sponsoring ein gültiges Token ein und starte evcc neu. Brauchst du evcc nicht mehr, leere unter „{way}“ das Feld „{address}“ und speichere."
   },
   "hint": {
     "live": "Änderungen werden an Wechselrichter und Geräte gesendet.",

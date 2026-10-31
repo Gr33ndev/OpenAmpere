@@ -37,6 +37,30 @@ test("a missing sponsor token next to a direct wallbox says to remove it from ev
   await expect(page.locator(".notice", { hasText: SPONSOR_ERROR })).toHaveCount(0);
 });
 
+// review of #536: an expired token for evcc's own wallbox is what evcc needs, so its advice must stay
+test("with charge points of its own evcc's sponsor error stays next to a direct wallbox", async ({ page, api }) => {
+  const view = await demoRequest<EvccView>("GET", "/api/evcc");
+  api.override("/api/evcc", { ...view, error: SPONSOR_ERROR, error_code: "sponsor" });
+  await open(page, "devices");
+  await expect(page.locator(".notice", { hasText: SPONSOR_ERROR })).toBeVisible();
+  await expect(page.locator(".notice", { hasText: "brauchst du kein Token" })).toHaveCount(0);
+});
+
+// review of #536: OpenAmpere does not connect to a wallbox that is switched off
+test("a switched-off direct wallbox gets no warning about evcc", async ({ page, api }) => {
+  const native = await demoRequest<WallboxesView>("GET", "/api/wallboxes");
+  api.override("/api/wallboxes", { ...native, wallboxes: native.wallboxes.map((w) => ({ ...w, enabled: false })) });
+  api.override("/api/evcc", await evccWithout({ error: SPONSOR_ERROR, error_code: "sponsor" }));
+  await open(page, "devices");
+  await expect(page.locator(".notice", { hasText: SPONSOR_ERROR })).toBeVisible();
+  await expect(page.locator(".notice", { hasText: "brauchst du kein Token" })).toHaveCount(0);
+  await open(page, "more/wallbox");  // opens on "direkt": the wallbox is set up that way
+  await expect(page.locator(".notice", { hasText: "brauchst du kein Token" })).toHaveCount(0);
+  await page.getByRole("button", { name: "über evcc" }).click();
+  await expect(page.locator(".notice", { hasText: SPONSOR_ERROR })).toBeVisible();
+  await expect(page.locator(".notice", { hasText: "brauchst du kein Token" })).toHaveCount(0);
+});
+
 test("without a direct wallbox evcc's sponsor error stays as it is", async ({ page, api }) => {
   const native = await demoRequest<WallboxesView>("GET", "/api/wallboxes");
   api.override("/api/wallboxes", { ...native, wallboxes: [] });

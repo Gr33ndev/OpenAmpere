@@ -217,10 +217,14 @@ export function SponsorNotice({ sponsor }: { sponsor?: EvccSponsor | null }) {
   return <Notice kind="warn">{date ? tx("devices.sponsor.expiresOn", { date, link }) : tx("devices.sponsor.expiresSoon", { link })}</Notice>;
 }
 
-/** evcc's error. Next to a wallbox OpenAmpere reads directly a missing sponsor token may be about that very wallbox,
- *  still set up in evcc: EvccNextToDirect explains that instead (#535). */
+/** evcc has no charge point (also when it could not start any): next to a direct wallbox, likely a leftover (#535). */
+const evccIdle = (view: EvccView) => !view.state?.loadpoints.length;
+
+/** evcc's error. Next to a wallbox OpenAmpere reads directly, a missing sponsor token while evcc has no charge point
+ *  may be about that very wallbox, still set up in evcc: EvccNextToDirect explains that instead (#535). With charge
+ *  points of its own the token is what evcc's wallbox needs, so the error stays. */
 export function EvccError({ view, direct }: { view?: EvccView | null; direct: boolean }) {
-  if (!view?.configured || !view.error || (direct && view.error_code === "sponsor")) return null;
+  if (!view?.configured || !view.error || (direct && view.error_code === "sponsor" && evccIdle(view))) return null;
   return <Notice kind="error">{view.error}</Notice>;
 }
 
@@ -229,8 +233,8 @@ export function EvccError({ view, direct }: { view?: EvccView | null; direct: bo
 export function EvccNextToDirect({ view }: { view?: EvccView | null }) {
   if (!view?.configured) return null;
   const vars = { way: t("devices.wallboxDirect.wayEvcc"), address: t("devices.wallboxPage.evccAddress") };
-  if (view.error_code === "sponsor") return <Notice kind="warn">{t("devices.evccNextToDirect.sponsor", vars)}</Notice>;
-  if (view.state && !view.state.loadpoints.length) return <Notice kind="warn">{t("devices.evccNextToDirect.idle", vars)}</Notice>;
+  if (view.error_code === "sponsor" && evccIdle(view)) return <Notice kind="warn">{t("devices.evccNextToDirect.sponsor", vars)}</Notice>;
+  if (view.state && evccIdle(view)) return <Notice kind="warn">{t("devices.evccNextToDirect.idle", vars)}</Notice>;
   return null;
 }
 
@@ -271,9 +275,10 @@ export function WallboxPage({ onBack }: PageProps) {
   const cars = view?.state?.loadpoints ?? [];
   // evcc or OpenAmpere itself (#318, #325); "direct" first when a wallbox is set up that way and evcc has none (#535)
   const { data: native } = useResource<WallboxesView>("/api/wallboxes");
-  const direct = !!native?.wallboxes.length;
+  // only a wallbox that is switched on connects to it (as on the devices tab)
+  const direct = !!native?.wallboxes.some((w) => w.enabled);
   const [chosen, setWay] = useState<"evcc" | "direct" | null>(null);
-  const way = chosen ?? (direct && !cars.length ? "direct" : "evcc");
+  const way = chosen ?? (native?.wallboxes.length && !cars.length ? "direct" : "evcc");
 
   return (
     <SubPage title={t("devices.wallboxPage.title")} onBack={onBack}>
