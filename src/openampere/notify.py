@@ -16,12 +16,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .collector import LOW_DISK_BYTES
+from .drivers.enphase.driver import token_days_left
 from .outbound import open_without_redirect
 from .runtime import Runtime
 
 log = logging.getLogger(__name__)
 
 UNREACHABLE_AFTER_S = 15 * 60
+TOKEN_NOTICE_DAYS = 14  # the Enphase token runs out (#538): one message this many days before
 RELOCATED_RECENT_S = 24 * 3600  # notifications switched on later do not report an old change of address
 STORAGE_FAILING_AFTER_S = 5 * 60  # a single failed write (e.g. the database briefly locked) is no reason to warn
 # a fault that is gone by itself within this time is no reason to wake anyone, e.g. the about ten minutes of fault
@@ -192,6 +194,23 @@ class Notifier:
                              "neue Adresse gibt. Die Adressen stehen in der App unter Mehr → Steuerung und Protokoll. "
                              "Hast du nichts geändert und kennst die neue Adresse nicht, stelle die Wallbox auf "
                              "„von Hand“ und prüfe ihre Adresse.", "warning")
+
+        expires = collector.token_expires()
+        days = token_days_left(expires, now, tz)  # calendar days: "heute" and "morgen" are read as such
+        if cfg.on_unreachable and expires is not None and days is not None and days <= TOKEN_NOTICE_DAYS:
+            if days < 0:
+                text = "Das Zugangs-Token für dein Enphase-Gateway ist abgelaufen. OpenAmpere zeigt keine Werte mehr."
+            elif days == 0:
+                text = "Das Zugangs-Token für dein Enphase-Gateway läuft heute ab. Danach zeigt OpenAmpere keine Werte mehr."
+            elif days == 1:
+                text = "Das Zugangs-Token für dein Enphase-Gateway läuft morgen ab. Danach zeigt OpenAmpere keine Werte mehr."
+            else:
+                text = (f"Das Zugangs-Token für dein Enphase-Gateway läuft in {days} Tagen ab. Danach zeigt OpenAmpere "
+                        "keine Werte mehr.")
+            # once per token: a new one (another expiry) is reported again
+            await notify("token_expires", int(expires), "Enphase-Token läuft ab",
+                         f"{text} Ein neues bekommst du mit deinem Enphase-Konto auf entrez.enphaseenergy.com. Trag es "
+                         "in der App unter Mehr → Verbindung → Erweitert ein.", "warning")
 
         if cfg.on_unreachable and collector.configured:
             since = collector.disconnected_since

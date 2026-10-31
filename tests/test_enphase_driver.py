@@ -9,6 +9,7 @@ import json
 import ssl
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,7 +19,7 @@ from openampere.api import create_app
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
 from openampere.drivers.enphase.driver import (INFO, PRODUCTION, CertificateChanged, EnphaseDriver, TokenRejected,
-                                              to_snapshot, token_expiry)
+                                              to_snapshot, token_days_left, token_expiry)
 from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, friendly_error
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedEnphase, self_signed_tls
@@ -50,6 +51,29 @@ def sunny(sim):
 def test_the_expiry_of_the_token():
     assert token_expiry(jwt(1_900_000_000)) == 1_900_000_000
     assert token_expiry("not a token") is None and token_expiry("") is None
+
+
+def test_the_days_left_are_calendar_days():
+    """#538: the app, Home Assistant, the diagnostics and ntfy say "heute" and "morgen" as owners read them."""
+    berlin = ZoneInfo("Europe/Berlin")
+    evening = datetime(2026, 6, 1, 20, 0, tzinfo=berlin).timestamp()
+    assert token_days_left(evening + 22 * 3600, evening, berlin) == 1  # tomorrow at 18:00: less than 24 h, still 1
+    assert token_days_left(evening + 3600, evening, berlin) == 0  # today at 21:00
+    assert token_days_left(evening - 3600, evening, berlin) == -1  # ran out an hour ago: no longer "today"
+    assert token_days_left(evening + 10 * 86400, evening, berlin) == 10
+    assert token_days_left(None, evening, berlin) is None
+    for huge in (1e13, 1e300, -1e13):  # a pasted text with an exp no date can hold: unknown, not a crash
+        assert token_days_left(huge, evening, berlin) is None
+
+
+async def test_the_diagnostics_say_today_and_a_token_that_ran_out_today(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.driver = driver = EnphaseDriver("192.0.2.1")
+    for expires, summary, status in ((time.time() - 60, "Abgelaufen.", "error"),  # not "since yesterday"
+                                     (time.time() + 3 * 86400, "Noch 3 Tage gültig.", "warn")):
+        driver.token_expires = expires
+        assert (Diagnostics(runtime)._enphase_token().summary, Diagnostics(runtime)._enphase_token().status) \
+            == (summary, status)
 
 
 @pytest.mark.parametrize("payload", [b"[1]", b'"text"', b'{"exp": Infinity}', b'{"exp": NaN}', b'{"exp": "soon"}'])

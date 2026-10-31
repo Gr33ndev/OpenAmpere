@@ -35,6 +35,8 @@ function StatusPill({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
+const TOKEN_WARN_DAYS = 30;  // as the diagnostics (#538)
+
 const RULES: Record<string, string> = { unknown: t("common.notSpecified"), limit_60: t("settings.rules.limit60Percent"),
   limit_70: t("settings.rules.limit70Percent"), operator: t("settings.rules.operator"), none: t("common.noLimitValue") };
 
@@ -46,6 +48,7 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
   const alarms = codes.length > 0;
   const stale = useStale(snap, true, status);
   const docsUrl = inverterDocsUrl(device?.driver);
+  const tokenDays = status?.token_days_left;
 
   return (
     <SubPage title={t("common.mySystem")} onBack={onBack}>
@@ -82,7 +85,18 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>{t("settings.installationPage.serialNumber")}</dt><dd>{device?.serial ?? "–"}</dd>
           <dt>Firmware</dt><dd>{device?.firmware ?? "–"}</dd>
           <dt>{t("settings.installationPage.lastReading")}</dt><dd>{status?.last_update ? updatedLabel(status.last_update) : "–"}</dd>
+          {tokenDays != null && <>
+            <dt>{t("settings.installationPage.token")}</dt>
+            <dd>{tokenDays < 0 ? t("settings.installationPage.tokenExpired") : tokenDays === 0 ? t("settings.installationPage.tokenToday")
+              : t("settings.installationPage.tokenDaysLeft", { count: tokenDays })}</dd>
+          </>}
         </dl>
+        {tokenDays != null && tokenDays < TOKEN_WARN_DAYS && (
+          <Notice kind={tokenDays < 0 ? "error" : "warn"}>
+            {tokenDays < 0 ? t("settings.installationPage.tokenExpiredHint") : t("settings.installationPage.tokenSoonHint")}{" "}
+            <button type="button" className="link" onClick={() => onNavigate("connection")}>{t("settings.installationPage.tokenEnter")}</button>
+          </Notice>
+        )}
         <FirmwareFacts firmware={status?.firmware} />
         {docsUrl && (
           <p className="hint">

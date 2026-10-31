@@ -36,6 +36,7 @@ import re
 import ssl
 import time
 import urllib.parse
+from datetime import datetime, tzinfo
 
 from ..base import BatterySettings, DeviceInfo, ExportLimit, Snapshot, WorkMode
 from ..modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
@@ -61,11 +62,17 @@ def token_expiry(token: str) -> float | None:
         return None
 
 
-def token_days_left(expires: float | None, now: float | None = None) -> int | None:
-    """Whole days until the token runs out (negative: since it ran out), None when not known."""
+def token_days_left(expires: float | None, now: float | None = None, tz: tzinfo | None = None) -> int | None:
+    """Calendar days in tz (else local time) until the token runs out: 0 today, 1 tomorrow; negative once it ran out.
+    None when not known. Calendar days, because owners read "heute" and "morgen" as such (#538)."""
     if expires is None:
         return None
-    return int((expires - (time.time() if now is None else now)) // 86400)
+    now = time.time() if now is None else now
+    try:
+        days = (datetime.fromtimestamp(expires, tz).date() - datetime.fromtimestamp(now, tz).date()).days
+    except (ValueError, OverflowError, OSError):  # an exp far beyond any date (a pasted text, not Enphase's)
+        return None
+    return min(days, -1) if expires <= now else days
 
 
 def finite(value) -> float | None:

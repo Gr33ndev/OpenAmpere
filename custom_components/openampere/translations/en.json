@@ -124,6 +124,9 @@
       "firmware": {
         "name": "Firmware"
       },
+      "token_days_left": {
+        "name": "Enphase token valid for"
+      },
       "pv_energy": {
         "name": "PV production"
       },
