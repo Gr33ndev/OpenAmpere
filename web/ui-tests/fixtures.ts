@@ -17,9 +17,13 @@ const NOT_IN_DEMO: Record<string, unknown> = {
 export const test = base.extend<{
   api: { override(path: string, body: unknown): void; live(patch: Record<string, unknown>): void }; consoleErrors: string[];
 }>({
-  consoleErrors: [async ({ page }, use) => {
+  consoleErrors: [async ({ page, browserName }, use) => {
     const errors: string[] = [];
     page.on("console", (message) => {
+      // Safari's engine refuses style attributes of its own (a <select> on the iPhone since Playwright 1.64, the Web
+      // Inspector's screenshots, #358) under the app's Content-Security-Policy. Not the app's: Chromium reports a
+      // style the app sets itself with another text, and that still fails the test
+      if (browserName === "webkit" && message.text().startsWith("Refused to apply a stylesheet")) return;
       if (message.type() === "error") errors.push(`${message.text()} (${message.location().url})`);
     });
     page.on("pageerror", (error) => errors.push(String(error)));
