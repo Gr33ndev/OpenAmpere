@@ -513,6 +513,14 @@ def test_a_made_up_wallbox_id_does_not_count_against_the_limits(runtime, web, mo
         assert app.put(f"{V1}/wallboxes/0a1b2c3d/mode", json={"mode": "now"}).status_code == 400
 
 
+def noon_in(runtime, days: int) -> float:
+    """Noon of the day in so many days, in the plant's time zone: the days left are calendar days (#553)."""
+    from datetime import datetime, timedelta
+    from datetime import time as clock
+    day = datetime.now(runtime.tz).date() + timedelta(days=days)
+    return datetime.combine(day, clock(12), tzinfo=runtime.tz).timestamp()
+
+
 def test_the_days_left_of_an_enphase_token_are_shown(runtime, web):
     """#538: the app and Home Assistant show how long the token of an Enphase gateway is valid, in days like the
     diagnostics; never the token."""
@@ -520,6 +528,6 @@ def test_the_days_left_of_an_enphase_token_are_shown(runtime, web):
     client = app_client(web, new_token(web, "read"))
     assert client.get(f"{V1}/state").json()["status"]["token_days_left"] is None  # no device with a token
     runtime.collector.driver = EnphaseDriver("192.0.2.1")
-    runtime.collector.driver.token_expires = time.time() + 20 * 86400 + 3600
+    runtime.collector.driver.token_expires = noon_in(runtime, 20)
     assert client.get(f"{V1}/state").json()["status"]["token_days_left"] == 20
     assert TestClient(web.app).get("/api/status").json()["token_days_left"] == 20  # the app, also without login
