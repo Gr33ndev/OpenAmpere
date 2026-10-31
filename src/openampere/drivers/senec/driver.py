@@ -182,7 +182,10 @@ class SenecDriver:
         """Nothing to close: every request is its own connection."""
 
     async def close(self) -> None:
-        """Nothing to close: every request is its own connection."""
+        """Forgets the session: the next connect() finds the device again and gets a new cookie (after a restart of the
+        device the old one no longer counts, and a firmware update can move it from HTTP to HTTPS)."""
+        self.info, self._url = None, None
+        self._cookies.clear()
 
     # ---- display only -------------------------------------------------------
 

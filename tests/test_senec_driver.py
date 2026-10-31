@@ -10,7 +10,7 @@ import pytest
 
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
-from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable
+from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
 from openampere.drivers.senec.driver import LIVE, MAX_REQUEST_CHARS, SenecDriver, parse_value
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedSenec
@@ -60,6 +60,26 @@ async def test_read_with_its_signs_and_the_session_cookie():
     # the first request asks for FACTORY and gets the cookie, every later one sends it back
     assert "FACTORY" in sim.requests[0][1]
     assert all(cookie for _path, form, cookie in sim.requests[1:] if "ENERGY" in form)
+
+
+async def test_found_again_after_the_device_restarted():
+    """A restarted Senec no longer takes the old session cookie: after the collector closes the driver, it asks for
+    FACTORY again and reads on."""
+    sim = sunny(SimulatedSenec(require_session=True))
+    server, port = await serve(sim)
+    async with server:
+        driver = SenecDriver("127.0.0.1", port, timeout=1, read_attempts=1)
+        try:
+            await driver.connect()
+            assert (await driver.read()).battery_soc is not None
+            sim.session = "sim2"  # the device restarted
+            with pytest.raises(ModbusTransientError):
+                await driver.read()
+            await driver.close()  # what the collector does after repeated errors
+            await driver.connect()
+            assert (await driver.read()).battery_soc is not None
+        finally:
+            await driver.close()
 
 
 async def test_an_unknown_system_type_still_reads(caplog):

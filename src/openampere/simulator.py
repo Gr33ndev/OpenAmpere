@@ -567,8 +567,11 @@ class SimulatedSenec:
     825). A request for FACTORY sets a session cookie, as on newer firmware; `requests` keeps every request as
     (path, form, cookie sent). Everything else gets 404, writes are not taken."""
 
-    def __init__(self, *, system_type: int = 19, device_id: int = 0x12345678) -> None:
+    def __init__(self, *, system_type: int = 19, device_id: int = 0x12345678, require_session: bool = False) -> None:
         self.energy = EnergyModel()
+        # require_session: like newer firmware, ENERGY only with the cookie of the current session (403 otherwise);
+        # a restart of the device starts a new session
+        self.require_session, self.session = require_session, "sim1"
         self.system_type, self.device_id = system_type, device_id
         self.requests: list[tuple[str, dict, bool]] = []
         self.model = "Senec.Home V3 hybrid"
@@ -608,9 +611,13 @@ class SimulatedSenec:
                 writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                 return
             form = json.loads(body or b"{}")
-            self.requests.append((path, form, "senec_session" in headers.get("cookie", "")))
+            current = f"senec_session={self.session}" in headers.get("cookie", "")
+            self.requests.append((path, form, current))
+            if self.require_session and "FACTORY" not in form and not current:
+                writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
             data = json.dumps(self.answer(form)).encode()
-            cookie = "Set-Cookie: senec_session=sim; Path=/\r\n" if "FACTORY" in form else ""
+            cookie = f"Set-Cookie: senec_session={self.session}; Path=/\r\n" if "FACTORY" in form else ""
             writer.write(f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(data)}\r\n"
                          f"{cookie}Connection: close\r\n\r\n".encode() + data)
         except (asyncio.IncompleteReadError, ConnectionError, ValueError):

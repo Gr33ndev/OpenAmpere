@@ -161,7 +161,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
               </select>
             </Field>
             <div className="field-row">
-              <Field label={t("common.port")} hint={t(driver === "senec" ? "setup.connectionForm.portHintSenec" : "setup.connectionForm.portHint")}>
+              <Field label={t("common.port")} hint={driver === "senec" ? t("setup.connectionForm.portHintSenec") : t("setup.connectionForm.portHint")}>
                 <input className="input" type="number" value={port} onChange={(e) => { setPort(Number(e.target.value)); reset(); }} />
               </Field>
               <Field label={t("setup.connectionForm.deviceAddress")} hint={t("setup.connectionForm.deviceAddressHint")}>
