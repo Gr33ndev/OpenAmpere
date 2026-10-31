@@ -25,6 +25,7 @@ import json
 import logging
 import math
 import random
+import ssl
 import struct
 import time
 from dataclasses import dataclass, field
@@ -721,9 +722,36 @@ class MtecSimulatedInverter(SimulatedInverter):
             writer.close()
 
 
+def self_signed_tls(name: str = "envoy.local") -> ssl.SSLContext:
+    """A server context with a fresh self-signed certificate, like the IQ Gateway's (for the Enphase simulator)."""
+    import tempfile
+    from datetime import timedelta
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)])
+    now = datetime.now(tz=None).astimezone()
+    cert = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=30)).sign(key, hashes.SHA256()))
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    with tempfile.TemporaryDirectory() as folder:
+        cert_file, key_file = f"{folder}/cert.pem", f"{folder}/key.pem"
+        with open(cert_file, "wb") as out:
+            out.write(cert.public_bytes(serialization.Encoding.PEM))
+        with open(key_file, "wb") as out:
+            out.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                        serialization.NoEncryption()))
+        context.load_cert_chain(cert_file, key_file)
+    return context
+
+
 class SimulatedEnphase:
-    """Enphase IQ Gateway with IQ Batteries (#522) over plain HTTP (a real gateway answers HTTPS with a self-signed
-    certificate): /info without a token, /production.json, /ivp/livedata/status and /ivp/ensemble/inventory only with
+    """Enphase IQ Gateway with IQ Batteries (#522). Serve it with ssl=self_signed_tls() like a real gateway (the driver
+    sends the token only over HTTPS), or without TLS for a gateway that answers plain HTTP: /info without a token, /production.json, /ivp/livedata/status and /ivp/ensemble/inventory only with
     "Authorization: Bearer <token>" (401 otherwise), on the same energy model. Enphase's signs: net-consumption
     + = import, storage + = discharging. `requests` keeps (path, authorised)."""
 
@@ -743,10 +771,12 @@ class SimulatedEnphase:
                                      "wNow": e.house_w},
                                     {"type": "eim", "measurementType": "net-consumption", "activeCount": 1,
                                      "wNow": e.grid_w}]}
-        if path == "/ivp/livedata/status" and self.batteries:
-            return {"meters": {"soc": round(e.soc), "storage": {"agg_p_mw": round(e.battery_w * 1000)}}}
-        if path == "/ivp/ensemble/inventory" and self.batteries:
-            return [{"type": "ENCHARGE", "devices": [{"percentFull": round(e.soc)}, {"percentFull": round(e.soc)}]}]
+        if path == "/ivp/livedata/status":  # without IQ Batteries too, with 0 W (as gateways on software 7+)
+            power = round(e.battery_w * 1000) if self.batteries else 0
+            return {"meters": {"soc": round(e.soc) if self.batteries else 0, "storage": {"agg_p_mw": power}}}
+        if path == "/ivp/ensemble/inventory":
+            return [{"type": "ENCHARGE", "devices": [{"percentFull": round(e.soc)}, {"percentFull": round(e.soc)}]}] \
+                if self.batteries else []
         return None
 
     async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -1157,8 +1187,8 @@ def main() -> None:
     if args.vendor == "enphase":
         async def run_enphase() -> None:
             gateway = SimulatedEnphase(token=args.token)
-            server = await asyncio.start_server(gateway.serve_client, args.host, args.port)
-            log.info("simulating an Enphase IQ Gateway (HTTP, token %r) on %s:%d", args.token, args.host, args.port)
+            server = await asyncio.start_server(gateway.serve_client, args.host, args.port, ssl=self_signed_tls())
+            log.info("simulating an Enphase IQ Gateway (HTTPS, token %r) on %s:%d", args.token, args.host, args.port)
             sim_time = time.time()
             async with server:
                 while True:

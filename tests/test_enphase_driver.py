@@ -18,7 +18,7 @@ from openampere.drivers import registry
 from openampere.drivers.enphase.driver import EnphaseDriver, TokenRejected, to_snapshot, token_expiry
 from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, friendly_error
 from openampere.runtime import Runtime
-from openampere.simulator import SimulatedEnphase
+from openampere.simulator import SimulatedEnphase, self_signed_tls
 from openampere.storage import Storage
 from conftest import login
 
@@ -30,8 +30,12 @@ def jwt(exp: float) -> str:
     return f"{part({'alg': 'ES256'})}.{part({'exp': int(exp)})}.c2lnbmF0dXJl"
 
 
-async def serve(sim):
-    server = await asyncio.start_server(sim.serve_client, "127.0.0.1", 0)
+TLS = self_signed_tls()
+
+
+async def serve(sim, tls: bool = True):
+    """Like a real gateway: HTTPS with a self-signed certificate (tls=False: one that answers plain HTTP)."""
+    server = await asyncio.start_server(sim.serve_client, "127.0.0.1", 0, ssl=TLS if tls else None)
     return server, server.sockets[0].getsockname()[1]
 
 
@@ -135,6 +139,16 @@ async def test_a_new_token_is_tried_although_the_gateway_is_connected(tmp_path):
     assert right["ok"]
 
 
+async def test_the_token_never_goes_over_plain_http():
+    """A gateway that answers only plain HTTP gets no token: it would cross the network in clear text."""
+    sim = sunny(SimulatedEnphase(token="t1"))
+    server, port = await serve(sim, tls=False)  # plain HTTP only
+    async with server:
+        with pytest.raises(TokenRejected):
+            await registry.detect("127.0.0.1", port, only="enphase", token="t1")
+    assert not any(authorised for _path, authorised in sim.requests)
+
+
 def test_inverters_count_when_the_production_meter_is_off():
     production = {"production": [{"type": "inverters", "wNow": 3200},
                                  {"type": "eim", "measurementType": "production", "activeCount": 0, "wNow": 0}],
@@ -200,5 +214,6 @@ async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_i
     stored = runtime.storage.get_settings()
     assert stored["inverter.token"] and token not in json.dumps(stored)  # stored, but never in plain text
     check = {c["id"]: c for c in report["checks"]}["enphase_token"]
-    assert check["status"] == "warn" and ("noch 19 Tage" in check["summary"] or "noch 20 Tage" in check["summary"])
+    assert check["status"] == "warn" and check["summary"] in ("Noch 19 Tage gültig.", "Noch 20 Tage gültig.")
+    assert "." not in check["summary"].split("Noch")[0]  # no date that would tell the day the token was made
     assert token not in json.dumps(report)

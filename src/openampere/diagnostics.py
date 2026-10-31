@@ -588,20 +588,17 @@ class Diagnostics:
     def _enphase_token(self) -> Check:
         """When the Enphase access token runs out (#522): the gateway then refuses every request until the owner
         enters a new one. Only the date, never the token."""
-        from datetime import datetime
-
-        from .drivers.enphase.driver import WARN_DAYS
+        from .drivers.enphase.driver import WARN_DAYS, token_days_left
         title = "Zugangs-Token (Enphase)"
-        expires = getattr(self._driver(), "token_expires", None)
-        if expires is None:
+        # only the days left: the date would tell the day the owner made the token (#149)
+        days = token_days_left(getattr(self._driver(), "token_expires", None))
+        if days is None:
             return Check("enphase_token", title, "info", "Ablaufdatum nicht lesbar.")
-        days = int((expires - time.time()) // 86400)
-        date = datetime.fromtimestamp(expires, self.runtime.tz).strftime("%d.%m.%Y")
         if days < 0:
-            return Check("enphase_token", title, "error", f"Abgelaufen am {date}.",
+            return Check("enphase_token", title, "error", f"Seit {-days} Tagen abgelaufen.",
                          {"days_left": days}, hint="Hol bei Enphase ein neues Token und trag es beim Einrichten ein.")
         status = "warn" if days < WARN_DAYS else "ok"
-        return Check("enphase_token", title, status, f"Gültig bis {date} (noch {days} Tage).", {"days_left": days},
+        return Check("enphase_token", title, status, f"Noch {days} Tage gültig.", {"days_left": days},
                      hint="Hol rechtzeitig bei Enphase ein neues Token und trag es beim Einrichten ein."
                      if status == "warn" else "")
 

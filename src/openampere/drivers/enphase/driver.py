@@ -59,6 +59,13 @@ def token_expiry(token: str) -> float | None:
         return None
 
 
+def token_days_left(expires: float | None, now: float | None = None) -> int | None:
+    """Whole days until the token runs out (negative: since it ran out), None when not known."""
+    if expires is None:
+        return None
+    return int((expires - (time.time() if now is None else now)) // 86400)
+
+
 def finite(value) -> float | None:
     return float(value) if isinstance(value, (int, float)) and math.isfinite(value) else None
 
@@ -126,7 +133,8 @@ class EnphaseDriver:
 
     def _get_sync(self, url: str, auth: bool) -> str:
         headers = {"User-Agent": "OpenAmpere", "Accept": "application/json"}
-        if auth:
+        # the token only over HTTPS, never in plain text on the network (a gateway that needs one has HTTPS)
+        if auth and self._token and url.startswith("https://"):
             headers["Authorization"] = f"Bearer {self._token}"
         with self._opener.open(urllib.request.Request(url, headers=headers), timeout=self._timeout) as response:
             return response.read().decode("utf-8", "replace")
@@ -140,6 +148,7 @@ class EnphaseDriver:
         try:
             answer = json.loads(await self._get(path))
         except urllib.error.HTTPError as err:
+            err.close()  # the answer holds the connection open otherwise
             if err.code in (401, 403):
                 self._reject()
             raise EnphaseNotAnswering("Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze "
@@ -177,7 +186,8 @@ class EnphaseDriver:
                 base = f"{scheme}://{host}:{port}"
                 try:
                     info = await self._get(INFO, base, auth=False)
-                except urllib.error.HTTPError:
+                except urllib.error.HTTPError as err:
+                    err.close()
                     answered = True
                     continue
                 except http.client.HTTPException:
@@ -209,8 +219,11 @@ class EnphaseDriver:
                                  "Gateway im Heimnetz?")
 
     def _note_expiry(self) -> None:
-        if self.token_expires is not None and self.token_expires - time.time() < WARN_DAYS * 86400:
-            log.warning("the Enphase token runs out on %s", time.strftime("%Y-%m-%d", time.gmtime(self.token_expires)))
+        """Only the days left, never the date: it would tell the day the owner made the token (reports show times as
+        durations)."""
+        days = token_days_left(self.token_expires)
+        if days is not None and days < WARN_DAYS:
+            log.warning("the Enphase token runs out in %d days", days)
 
     async def read(self) -> Snapshot:
         if self._base is None:
@@ -227,6 +240,8 @@ class EnphaseDriver:
             soc = state_of_charge(await self._json(INVENTORY))
         except (EnphaseNotAnswering, TokenRejected) as err:
             log.debug("Enphase state of charge not readable: %s", err)
+        if soc is None and battery == 0:
+            battery = None  # livedata answers 0 W without IQ Batteries too: no battery to show
         return to_snapshot(production if isinstance(production, dict) else {}, battery, soc, time.time())
 
     async def disconnect(self) -> None:
