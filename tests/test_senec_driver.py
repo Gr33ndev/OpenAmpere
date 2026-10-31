@@ -170,6 +170,30 @@ async def test_a_failed_read_is_one_request_and_never_sooner_than_30_seconds_aga
     assert len(reads) <= rounds + 2  # one read per round, no retries a second apart
 
 
+@pytest.mark.parametrize("where", ["detect", "read"])
+async def test_an_error_answer_is_closed(where, monkeypatch):
+    """A 403 (old session) or a 404 (another web server) holds its connection to the device open until it is closed;
+    a device that takes few connections would run out of them."""
+    import io
+    import urllib.error
+    answers = []
+
+    def refuse(url, form):
+        body = io.BytesIO(b"")
+        answers.append(body)
+        raise urllib.error.HTTPError(url, 403, "Forbidden", {}, body)
+    driver = SenecDriver("127.0.0.1", 8443, timeout=1)
+    monkeypatch.setattr(driver, "_post_sync", refuse)
+    if where == "detect":
+        with pytest.raises(DetectionFailed):
+            await driver.connect()
+    else:
+        driver._url = "https://127.0.0.1:8443/lala.cgi"
+        with pytest.raises(ModbusTransientError):
+            await driver.read()
+    assert answers and all(body.closed for body in answers)
+
+
 async def test_an_unknown_system_type_still_reads(caplog):
     sim = sunny(SimulatedSenec(system_type=99))
     server, port = await serve(sim)

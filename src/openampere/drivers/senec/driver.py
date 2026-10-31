@@ -130,6 +130,8 @@ class SenecDriver:
         try:
             return parse(await self._post(form))
         except (TimeoutError, urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as err:
+            if isinstance(err, urllib.error.HTTPError):
+                err.close()  # an error answer holds the connection to the device open otherwise
             # a cut-off answer (IncompleteRead) while the device restarts is as transient as a timeout
             log.info("Senec at %s not answering: %s", self._host, err)
             raise SenecNotAnswering("Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn in Kürze "
@@ -152,7 +154,8 @@ class SenecDriver:
                 try:
                     identity = parse(await self._post(IDENTITY, url))  # also the session cookie (NPU 2411 and later)
                     live = parse(await self._post(LIVE, url))
-                except urllib.error.HTTPError:
+                except urllib.error.HTTPError as err:
+                    err.close()  # an error answer holds the connection open otherwise
                     answered = True  # a web server, but not this one
                     continue
                 except http.client.HTTPException as err:  # e.g. plain HTTP at a TLS port: no status line
