@@ -250,7 +250,7 @@ async def test_test_connection_without_first_reading(monkeypatch, runtime):
 async def test_find_by_serial_skips_hosts_that_fail(monkeypatch, runtime):
     open_ports(monkeypatch, "10.0.0.5", "10.0.0.7")
 
-    async def detect(host, port, unit, *, timeout, only=None):
+    async def detect(host, port, unit, *, timeout, only=None, quick=None):
         if host == "10.0.0.5":
             raise OSError("connection reset")
         return device("SN7")
@@ -297,12 +297,12 @@ async def test_with_a_fixed_driver_the_search_detects_only_that_one(monkeypatch,
     open_ports(monkeypatch, "10.0.0.7")
     asked = []
 
-    async def detect(host, port, unit, *, timeout, only=None):
-        asked.append(only)
+    async def detect(host, port, unit, *, timeout, only=None, quick=None):
+        asked.append((only, quick))
         return device("SN7")
     monkeypatch.setattr(registry, "detect", detect)
     runtime.config.inverter.driver = "foxess"
     assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.7"
     runtime.config.inverter.driver = "auto"
     assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.7"
-    assert asked == ["foxess", None]
+    assert asked == [("foxess", True), (None, True)]  # the shortcuts for silent hosts also with a fixed driver

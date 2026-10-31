@@ -177,10 +177,11 @@ async def find_by_serial(runtime: Runtime, prefix: str, port: int, serial: str) 
     driver = runtime.config.inverter.driver
     for host in [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]:
         try:
-            # with a fixed driver only that one: faster, and no other vendor's probes at every device (#547)
+            # with a fixed driver only that one: faster, and no other vendor's probes at every device; with the
+            # shortcuts for silent hosts of the automatic detection, as the search asks every host (#547)
             info = await registry.detect(host, port, runtime.config.inverter.unit,
                                          timeout=runtime.config.inverter.timeout,
-                                         only=None if driver == "auto" else driver)
+                                         only=None if driver == "auto" else driver, quick=True)
         except (ConnectionError, OSError, asyncio.TimeoutError):
             continue
         if info.serial and info.serial == serial:

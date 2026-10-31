@@ -53,9 +53,11 @@ def create(key: str, host: str, port: int, unit: int, *, timeout: float, registe
 
 async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
                         only: str | None = None, register_map: str = "auto", read_function: str = "auto",
-                        token: str = "", cert_sha256: str = ""):
+                        token: str = "", cert_sha256: str = "", quick: bool | None = None):
     """Returns (info, connected driver) of the first driver that recognises the device; the caller owns the
-    driver and must close it. Raises ConnectionError."""
+    driver and must close it. Raises ConnectionError. quick: shortcuts for silent hosts (M-TEC), by default only in
+    the automatic detection; a search through the network wants them with a fixed driver too (#547)."""
+    quick = not only if quick is None else quick
     timeout = max(timeout, DETECT_TIMEOUT_S)  # never shorter than configured (slow proxies need more)
     keys = [only] if only else [key for key, cls in DRIVERS.items() if getattr(cls, "AUTO_DETECT", True)]
     failure: DetectionFailed | None = None  # a driver's own reason, shown when the owner chose that driver
@@ -66,8 +68,7 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
                 driver = FoxessDriver(host, port, candidate_unit, timeout=timeout, read_attempts=2,
                                       register_map=register_map, read_function=read_function)
             else:
-                # quick: the automatic detection, where a driver may take shortcuts for silent hosts (M-TEC)
-                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=not only, token=token,
+                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=quick, token=token,
                              cert_sha256=cert_sha256)
             try:
                 info = await driver.connect()
@@ -87,10 +88,11 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
 
 
 async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
-                 only: str | None = None, token: str = "", cert_sha256: str = "") -> DeviceInfo:
+                 only: str | None = None, token: str = "", cert_sha256: str = "",
+                 quick: bool | None = None) -> DeviceInfo:
     """Returns the info of the first driver that recognises the device. Raises ConnectionError."""
     info, driver = await detect_driver(host, port, unit, timeout=timeout, only=only, token=token,
-                                       cert_sha256=cert_sha256)
+                                       cert_sha256=cert_sha256, quick=quick)
     await driver.close()
     return info
 
