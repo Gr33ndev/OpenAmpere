@@ -145,7 +145,9 @@ schließt.
   OpenAmpere die Wallbox nicht lesen und zeigt „nicht erreichbar“. Soll OpenAmpere die Wallbox anzeigen, muss die
   Smartbox vom Strom getrennt bleiben.
 - **Nie evcc und OpenAmpere an derselben Wallbox:** Vielleicht erlaubt sie nur eine Verbindung. Liest evcc sie schon,
-  richte sie hier nicht zusätzlich ein.
+  richte sie hier nicht zusätzlich ein. Ziehst du eine Wallbox von evcc zu OpenAmpere um, lösche sie in evcc unter
+  Konfiguration. Bleibt evcc ohne Ladepunkt verbunden, warnt OpenAmpere unter **Geräte** und auf der Wallbox-Seite
+  davor (#535). Brauchst du evcc nicht mehr, leere unter **über evcc** das Feld **Adresse von evcc** und speichere.
 - Zählerstand, Kartennummer und Seriennummer liest OpenAmpere dafür gar nicht erst.
 
 ### Die Lademodi als Simulation ausprobieren

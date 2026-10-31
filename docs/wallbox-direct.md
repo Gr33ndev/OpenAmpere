@@ -147,7 +147,9 @@ OpenAmpere asks the wallbox every few seconds, each time over a short connection
   then cannot read the wallbox and shows it as not reachable. For OpenAmpere to show the wallbox, the smartbox has to
   stay disconnected from power.
 - **Never evcc and OpenAmpere on the same wallbox:** it may allow only one connection. If evcc already reads it, do
-  not add it here as well.
+  not add it here as well. If you move a wallbox from evcc to OpenAmpere, delete it in evcc under Configuration. While
+  evcc stays connected without a charge point, OpenAmpere warns about it under **Geräte** and on the wallbox page
+  (#535). If you no longer need evcc, clear **Adresse von evcc** under **über evcc** and save.
 - OpenAmpere does not even read the energy counter, the card number or the serial number for this.
 
 ### Trying out the charging modes as a simulation

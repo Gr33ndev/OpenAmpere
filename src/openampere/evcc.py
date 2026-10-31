@@ -43,11 +43,12 @@ def _whole(value) -> int:
 
 
 class EvccError(Exception):
-    """A problem with evcc; .message is the text written for the owner, shown in the app."""
+    """A problem with evcc; .message is the text written for the owner, shown in the app, .code tells the app which
+    one it is where it needs to (#535)."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, code: str | None = None) -> None:
         super().__init__(message)
-        self.message = message
+        self.message, self.code = message, code
 
 
 def _num(value) -> float | None:
@@ -127,7 +128,7 @@ def check_fatal(raw: dict) -> None:
     if "sponsor" in json.dumps(fatal).lower():  # "sponsorship required", class "sponsorship" (token expired)
         raise EvccError("evcc startet die Wallbox nicht, weil ein gültiges Sponsortoken fehlt. evcc verlangt es für "
                         "viele Wallboxen, und das Testtoken gilt nur wenige Tage. Trage in evcc unter Konfiguration → "
-                        "Sponsoring ein gültiges Token ein und starte evcc neu.")
+                        "Sponsoring ein gültiges Token ein und starte evcc neu.", code="sponsor")
     raise EvccError("evcc meldet einen Fehler in seiner Einrichtung. Was genau fehlt, zeigt die Weboberfläche von evcc.")
 
 
@@ -147,6 +148,7 @@ class Evcc:
         self.runtime = runtime
         self.state: dict | None = None  # normalized
         self.error: str | None = None
+        self.error_code: str | None = None  # "sponsor": a wallbox in evcc lacks its sponsor token (#317, #535)
         self.updated: float = 0.0
         self._cookie: str | None = None
         self._cookie_url: str | None = None  # the address the login cookie came from: never sent elsewhere
@@ -209,28 +211,30 @@ class Evcc:
 
     async def refresh(self) -> dict | None:
         if not self.configured:
-            self.state, self.error = None, None
+            self.state, self.error, self.error_code = None, None, None
             return None
         try:
             raw = await asyncio.to_thread(self._call, "GET", "/api/state")
         except EvccError as err:
-            self.error = err.message
+            self.error, self.error_code = err.message, err.code
             return self.state
         fatal = None
         try:
             if isinstance(raw, dict):
                 check_fatal(raw)
         except EvccError as err:
-            fatal = err.message
+            fatal = err
         if not isinstance(raw, dict) or "loadpoints" not in raw:
-            self.error = fatal or "Unter dieser Adresse antwortet kein evcc."
+            self.error = fatal.message if fatal else "Unter dieser Adresse antwortet kein evcc."
+            self.error_code = fatal.code if fatal else None
             return self.state
         vehicles = raw.get("vehicles") if isinstance(raw.get("vehicles"), dict) else {}
         loadpoints = [normalize_loadpoint(i + 1, lp, vehicles) for i, lp in enumerate(raw.get("loadpoints") or [])
                       if isinstance(lp, dict)]
         self.state = {"version": raw.get("version"), "site_title": raw.get("siteTitle"), "loadpoints": loadpoints,
                       "grid_configured": bool(raw.get("gridConfigured")), "sponsor": normalize_sponsor(raw.get("sponsor"))}
-        self.error, self.updated = fatal, time.time()
+        self.error, self.error_code = (fatal.message, fatal.code) if fatal else (None, None)
+        self.updated = time.time()
         return self.state
 
     def fresh(self) -> dict | None:
@@ -240,7 +244,7 @@ class Evcc:
         return None
 
     def view(self) -> dict:
-        return {"configured": self.configured, "url": self.url or None, "error": self.error,
+        return {"configured": self.configured, "url": self.url or None, "error": self.error, "error_code": self.error_code,
                 "updated": self.updated or None, "state": self.state,
                 "priority": self.runtime.config.evcc.priority}
 
