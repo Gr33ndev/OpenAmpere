@@ -219,8 +219,8 @@
         "en": "monitoring, control only after you agree in the app"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed on a charger of an EKD system; control not yet confirmed"
+        "de": "Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt",
+        "en": "Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed"
       },
       "check": true,
       "state": "readTest",

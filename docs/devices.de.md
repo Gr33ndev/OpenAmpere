@@ -33,7 +33,7 @@ Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte
 | [Enphase IQ Gateway mit IQ Battery](devices/enphase/iq-gateway.md) | Noch nicht bestätigt |
 | [Heizstab, Wärmepumpe (SG-Ready)](devices/topics/consumers.md) | Noch nicht bestätigt |
 | [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Noch nicht bestätigt |
-| [FoxESS AC EV Charger („Ampere.ChargePro“)](devices/foxess/ac-charger.md) | ✅ Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt |
+| [FoxESS AC EV Charger („Ampere.ChargePro“)](devices/foxess/ac-charger.md) | ✅ Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt |
 | [Weidmüller AC SMART („AMPERE.Charge“)](devices/weidmueller/ac-smart.md) | Noch nicht bestätigt |
 | [Mobile dé-Wallbox (Tuya-WLAN)](devices/tuya/de-portable.md) | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
 | [Wallbox über evcc](devices/topics/wallboxes.md) | Noch nicht bestätigt |
