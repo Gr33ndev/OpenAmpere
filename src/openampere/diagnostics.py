@@ -30,7 +30,7 @@ from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
-SENEC_STALE_S = 120  # values of the Senec's last read older than this are marked as such in the report
+SENEC_STALE_S = 120  # values of the Senec's last read older than this (and three poll intervals) are marked as old
 REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
 EXPORT_LIMIT = "Einspeisebegrenzung (46616)"
 
@@ -551,7 +551,8 @@ class Diagnostics:
                    "age_s": age}
         summary = (f"Batterie {values.get('GUI_BAT_DATA_POWER')} W (laden +), Netz {values.get('GUI_GRID_POW')} W "
                    f"(Bezug +), Ladestand {values.get('GUI_BAT_DATA_FUEL_CHARGE')} %")
-        old = age is not None and age > SENEC_STALE_S
+        stale_after = max(SENEC_STALE_S, 3 * self.runtime.collector.poll_interval())  # a longer interval is no fault
+        old = age is not None and age > stale_after
         if old:  # the device stopped answering: these are not the values of now
             summary = f"Letzte Werte von vor {age // 60} min: {summary}"
         return Check("senec_values", title, "warn" if old else "info", summary, details,

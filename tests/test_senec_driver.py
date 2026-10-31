@@ -236,6 +236,10 @@ async def test_old_values_are_marked_in_the_report(tmp_path):
     check = await Diagnostics(runtime)._senec_values()
     assert check.status == "warn" and check.summary.startswith("Letzte Werte von vor 10 min")
     assert check.details["age_s"] >= 600
+    # with a poll interval of five minutes, values of three minutes ago are the current ones
+    runtime.collector.interval = 300
+    driver.last_energy_at = time.time() - 180
+    assert (await Diagnostics(runtime)._senec_values()).status == "info"
 
 
 def test_the_modbus_default_port_stands_for_its_own_ports():
