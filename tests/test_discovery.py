@@ -238,7 +238,7 @@ async def test_test_connection_without_first_reading(monkeypatch, runtime):
     async def close():
         closed.append(True)
 
-    async def detect_driver(host, port, unit, *, timeout, only, token=""):
+    async def detect_driver(host, port, unit, *, timeout, only, token="", cert_sha256=""):
         assert only is None and timeout >= 3
         return device(), SimpleNamespace(read=read, close=close)
     monkeypatch.setattr(registry, "detect_driver", detect_driver)

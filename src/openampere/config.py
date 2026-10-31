@@ -37,6 +37,8 @@ class InverterConfig:
     # again (for inverters with very few connection slots shared with another energy manager)
     connection_mode: str = "persistent"
     token: str = ""  # access token of a device that needs one (Enphase, from the owner's Enphase account)
+    # SHA-256 of the certificate the token may go to (Enphase, #539): recorded by the setup test with a new token
+    cert_sha256: str = ""
 
 
 @dataclass
@@ -191,6 +193,8 @@ EDITABLE: dict[str, tuple] = {
     "inverter.timeout": ("float", 1, 30),
     "inverter.connection_mode": ("choice", "persistent", "per_poll"),
     "inverter.token": ("secret",),
+    # not secret, but kept like the token: bound to the address, never from a backup, saved only together with it
+    "inverter.cert_sha256": ("secret",),
     "storage.raw_retention_days": ("int", 0, 36500),  # 0 = keep forever
     "control.enabled": ("bool",),
     "control.dry_run": ("bool",),
@@ -242,7 +246,7 @@ SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 # and the host names allowed besides the usual ones, which loosen the protection against DNS rebinding (#437)
 AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "grid.rated_power_w", "pv.installed_kwp",
            "server.allowed_hosts")
-SECRET_TARGETS = {"inverter.token": ("inverter.host",), "evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
+SECRET_TARGETS = {"inverter.token": ("inverter.host",), "inverter.cert_sha256": ("inverter.host",), "evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
                   "meter.password": ("meter.provider", "meter.username")}
 
 # Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
@@ -340,7 +344,7 @@ def get_value(config: Config, key: str):
 LABELS = {
     "inverter.host": "IP-Adresse", "inverter.port": "Port", "inverter.unit": "Geräteadresse",
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
-    "inverter.token": "Zugangs-Token (Enphase)",
+    "inverter.token": "Zugangs-Token (Enphase)", "inverter.cert_sha256": "Zertifikat des Enphase-Gateways",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung",
     "grid.rated_power_w": "Nennleistung des Wechselrichters", "grid.rated_power_reported_w": "Gemeldete Nennleistung",
@@ -452,6 +456,11 @@ def validate(changes: dict) -> dict:
             raise ValueError(_invalid_message(key, rule)) from None
         if kind == "hosts":
             value = _host_names(value)  # with its own messages, not the general one
+        if key == "inverter.cert_sha256":
+            value = value.lower()
+            if value and not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise ValueError("Der Fingerabdruck des Zertifikats ist ungültig. Bitte die Verbindung beim Einrichten "
+                                 "noch einmal prüfen und speichern.")
         if key == "grid.rated_power_w" and 0 < value < MIN_RATED_POWER_W:
             # the base of the export limit in per mille (#492): a tiny one would turn a small limit into full feed-in
             raise ValueError(f"Die Nennleistung vom Typenschild muss mindestens {MIN_RATED_POWER_W} W betragen.")

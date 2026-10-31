@@ -4,7 +4,9 @@
 
 import asyncio
 import base64
+import hashlib
 import json
+import ssl
 import time
 from datetime import datetime
 
@@ -15,7 +17,8 @@ from openampere import discovery
 from openampere.api import create_app
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
-from openampere.drivers.enphase.driver import EnphaseDriver, TokenRejected, to_snapshot, token_expiry
+from openampere.drivers.enphase.driver import (INFO, PRODUCTION, CertificateChanged, EnphaseDriver, TokenRejected,
+                                              to_snapshot, token_expiry)
 from openampere.drivers.modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, friendly_error
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedEnphase, self_signed_tls
@@ -246,3 +249,74 @@ async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_i
     assert check["status"] == "warn" and check["summary"] in ("Noch 19 Tage gültig.", "Noch 20 Tage gültig.")
     assert "." not in check["summary"].split("Noch")[0]  # no date that would tell the day the token was made
     assert token not in json.dumps(report)
+
+
+async def fingerprint(port: int) -> str:
+    """SHA-256 of the certificate the server on port shows (in a thread: the server runs on this event loop)."""
+    pem = await asyncio.to_thread(ssl.get_server_certificate, ("127.0.0.1", port))
+    return hashlib.sha256(ssl.PEM_cert_to_DER_cert(pem)).hexdigest()
+
+
+async def test_the_token_goes_only_to_the_pinned_certificate():
+    """Someone in the home network who takes over the gateway's address shows another certificate (#539): nothing
+    is sent to it, not even /info, and the app says what to do."""
+    sim = sunny(SimulatedEnphase(token="t1"))
+    server, port = await serve(sim)
+    async with server:
+        with pytest.raises(DeviceUnreachable) as caught:
+            await registry.detect("127.0.0.1", port, only="enphase", token="t1", cert_sha256="0" * 64)
+        pin = await fingerprint(port)
+        info = await registry.detect("127.0.0.1", port, only="enphase", token="t1", cert_sha256=pin)
+    assert "anderen Zertifikat" in friendly_error(caught.value) and "noch einmal ein" in friendly_error(caught.value)
+    assert info.driver == "enphase"
+    assert sim.requests[0] == (INFO, False)  # the requests of the second detection only
+    assert all(path != PRODUCTION or authorised for path, authorised in sim.requests)
+
+
+async def test_without_a_pin_the_first_certificate_of_a_detection_counts():
+    """Trust on first use, but only for the server that answered as the gateway; a change within the detection
+    stops it."""
+    driver = EnphaseDriver("127.0.0.1", token="t1")
+    driver._check_certificate(b"gateway")
+    with pytest.raises(CertificateChanged):
+        driver._check_certificate(b"someone else")
+    assert driver.cert_sha256 is None  # pinned only once the detection succeeded
+
+
+async def test_the_setup_pins_the_certificate_of_a_new_token_and_needs_the_token_again_for_another(tmp_path):
+    sim = sunny(SimulatedEnphase(token="t1"))
+    server, port = await serve(sim)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            # the setup test with a typed token tells the certificate it went to, the setup saves it with the token
+            tested = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="t1")
+            assert tested["ok"] and tested["cert_sha256"] == await fingerprint(port)
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.driver": "enphase", "inverter.token": "t1",
+                                           "inverter.cert_sha256": tested["cert_sha256"].upper()})
+            assert runtime.config.inverter.cert_sha256 == await fingerprint(port)
+            # a certificate never comes without the token: else a session could point the stored token elsewhere
+            with pytest.raises(PermissionError, match="nur zusammen mit dem Zugangs-Token"):
+                await runtime.update_settings({"inverter.cert_sha256": "a" * 64})
+            with pytest.raises(ValueError, match="Fingerabdruck"):
+                await runtime.update_settings({"inverter.token": "t1", "inverter.cert_sha256": "nope"})
+        finally:
+            await runtime.collector.stop()
+    # the gateway was set up again: another certificate on the same address
+    other = SimulatedEnphase(token="t1")
+    server = await asyncio.start_server(other.serve_client, "127.0.0.1", port, ssl=self_signed_tls())
+    async with server:
+        try:
+            stored = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase")
+            reached = list(other.requests)  # before the token is typed again
+            again = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="t1")
+            new = await fingerprint(port)
+        finally:
+            await runtime.collector.stop()
+    assert not stored["ok"] and "anderen Zertifikat" in stored["error"]
+    assert reached == []  # with the stored token nothing at all reached the server with the other certificate
+    assert again["ok"] and again["cert_sha256"] == new != runtime.config.inverter.cert_sha256
+    # another address forgets token and certificate together
+    await runtime.update_settings({"inverter.host": "127.0.0.2"})
+    assert (runtime.config.inverter.token, runtime.config.inverter.cert_sha256) == ("", "")

@@ -11,7 +11,8 @@ tech brief, open projects and the simulator)
 
 ## Summary
 
-- **Not Modbus:** JSON over HTTPS with a self-signed certificate from the IQ Gateway.
+- **Not Modbus:** JSON over HTTPS with a self-signed certificate from the IQ Gateway; OpenAmpere pins it when the owner
+  enters the token (#539).
 - **Needs a token from Enphase's cloud:** since gateway software 7 every request needs an access token (JWT). The owner
   gets it once with their Enphase login on entrez.enphaseenergy.com; for an owner account it is valid for **one
   year**. This is the one device in OpenAmpere that needs the manufacturer's cloud, once a year.
@@ -41,6 +42,7 @@ tech brief, open projects and the simulator)
 | No rate limit is documented; Home Assistant polls every 60 s and pyenphase notes that the gateway can be slow to answer. | derived | home-assistant/core `enphase_envoy` (Apache-2.0); pyenphase (MIT) |
 | On software 7 and later the gateway answers `/ivp/livedata/status` without IQ Batteries too, with `meters.storage.agg_p_mw` 0. | derived | pyenphase and Home Assistant test fixtures |
 | EKD systems may have IQ7 or IQ8 microinverters (IQ8 only shipped in Germany from mid-2023), or a string inverter with only the battery from Enphase. With a string inverter and no production CT, the PV power from `production.json` misses the string inverter. | open | research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) (pv-magazine.de, 2023-06-26) |
+| Whether the gateway keeps its self-signed certificate across a firmware update, a reboot or a factory reset. With the pin (#539) a new certificate means the owner enters the token again, usually a new one from entrez.enphaseenergy.com. | open | – |
 | A battery needs an IQ Gateway Metered; EKD's systems most likely have IQ Battery 3T/10T and no backup (System Controller). | documented (gateway), derived (models) | Enphase IQ Gateway datasheet; research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 
 ## Decisions in OpenAmpere
@@ -50,7 +52,8 @@ tech brief, open projects and the simulator)
 | Display only: every write method refuses, `supports_control` is off. | Nothing confirmed on a device; newer gateway software refuses local writes. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 | The token is a setting of its own (`inverter.token`), stored encrypted and bound to the gateway's address (a new address needs the token again); it is sent only to the gateway. The setup test of the stored address uses the stored token. | It gives access to the gateway; like every secret in OpenAmpere. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 | The app says plainly when the gateway refuses the token, and the diagnostics show how many days it has left (a warning 30 days before), never the date: it would tell the day the owner made the token. | A token that ran out stops every reading; the owner must get a new one from Enphase. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
-| Only when the owner chooses "Enphase"; port 502 (the setup's default) stands for 443, then 80, HTTPS first. The token goes only over HTTPS, never over plain HTTP; a gateway that answers only plain HTTP gets a message of its own, not "token refused". The certificate is not checked yet; pinning it on the first contact is [#539](https://github.com/Gr33ndev/OpenAmpere/issues/539). | It does not answer on the Modbus port; the certificate is self-signed with nothing to check it against. Someone in the home network who takes over the address could get the token; pinning closes that. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
+| Only when the owner chooses "Enphase"; port 502 (the setup's default) stands for 443, then 80, HTTPS first. The token goes only over HTTPS, never over plain HTTP; a gateway that answers only plain HTTP gets a message of its own, not "token refused". | It does not answer on the Modbus port. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
+| The certificate is pinned on first use: the setup test with a newly typed token records the SHA-256 fingerprint of the certificate it sent the token to, the setup saves it with the token (`inverter.cert_sha256`, bound to the address like the token, saved only together with a token). The token then goes only to that certificate, checked after the TLS handshake and before anything is sent; another certificate stops every request with a message to enter the token again. A token from `config.yaml` without a fingerprint trusts the first certificate after each start. | The certificate is self-signed with nothing to check it against, so someone in the home network who takes over the address (ARP spoofing) could get the token, valid for a year. Unlike Senec (not pinned, #521) the owner can pair again in the app: entering the token again takes the new certificate, e.g. after a replaced gateway. | [#539](https://github.com/Gr33ndev/OpenAmpere/issues/539) |
 | Asked at most every 15 s (`MIN_POLL_S`). | The gateway is slow to answer; no limit is documented. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 | Battery values are optional, each on its own: a gateway without IQ Batteries still shows PV and, with CTs, grid and house; its 0 W from livedata is no battery until the inventory listed one, after that 0 W is an idle battery. | Not every Enphase system has a battery. | [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 
