@@ -196,7 +196,7 @@ class WallboxCheckRequest(BaseModel):
 
 class WallboxTestRequest(BaseModel):
     """A wallbox OpenAmpere reads itself, read once from the setup form."""
-    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac)$")
+    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart)$")
     host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
     local_key: str = Field("", max_length=64)  # Tuya
     port: int | None = Field(None, ge=1, le=65535)  # Modbus; None: the model's usual port

@@ -254,6 +254,7 @@
     "locked": "gesperrt",
     "defaultNameFixed": "Wallbox",
     "whichShown": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie noch nicht, sie lädt weiter so, wie sie in ihrer App eingestellt ist. Die Lademodi kannst du als Simulation ausprobieren: OpenAmpere rechnet dann nur aus, was es tun würde. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht, der hilft, sie bald auch zu steuern.",
+    "whichShownOnly": "OpenAmpere zeigt diese Wallbox nur an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie nicht, sie lädt so, wie sie in ihrer App eingestellt ist.",
     "whichControllable": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie als Test: Nach dem Hinzufügen kannst du die echte Steuerung einschalten, wenn du willst, unter „Geräte“ auf der Karte der Wallbox. Vorher fragt OpenAmpere dich und erklärt, was passiert, wenn es ausfällt. Ohne sie lädt die Wallbox so, wie sie in ihrer App eingestellt ist, und die Lademodi laufen nur als Simulation. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht.",
     "groupControllable": "Anzeigen, Steuern als Test",
     "groupShown": "Nur anzeigen",

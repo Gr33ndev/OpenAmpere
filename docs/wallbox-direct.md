@@ -218,6 +218,30 @@ charge). A wallbox that went "locked" can be released here. OpenAmpere writes th
 reads it back. It needs **Aktiv** (active) under **Änderungen an Geräten** (changes to devices), the previous smartbox
 cut from power, and a wallbox that answers right now. In test mode the control log only shows the change.
 
+## Setting up the Weidmüller AC SMART
+
+EKD sold the Weidmüller AC SMART VALUE as "AMPERE.Charge". OpenAmpere **only shows** it (#523): whether a car is
+plugged in, the charging power, current and voltage per phase, and the energy of the charge. It never writes to it;
+the only charging mode is **Von Hand** (manual). Its power counts in the house load like any wallbox. To control it,
+evcc is still the way (with an evcc sponsor token).
+
+1. Under **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose the Weidmüller AC SMART at
+   **Welche Wallbox hast du?**.
+2. Enter its IP address. At delivery the wallbox has the fixed address 192.168.0.8 without DHCP; the electrician
+   usually changed that, so look for it in the list of devices in your router. Port (502) and unit ID (255) are under
+   **Erweitert** (advanced) and normally stay as they are.
+3. **Verbindung prüfen** (check the connection), then **Speichern** (save).
+
+- **It takes only one Modbus connection at a time.** While evcc or the previous smartbox holds it, OpenAmpere cannot
+  read the wallbox and shows it as not reachable. On EKD systems, take the smartbox off power; do not add a wallbox here
+  that evcc already reads.
+- OpenAmpere asks it every few seconds over a short connection it closes right afterwards, so the wallbox's own app can
+  still connect in between.
+- Nothing is confirmed on a real wallbox yet. A check with **Nur prüfen (Bericht)** (check only, report) and a report
+  under **Mehr → Diagnose** helps to confirm the values.
+
+Technical details: [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md).
+
 ## Checking other wallboxes (read-only)
 
 For more wallboxes OpenAmpere is preparing the direct way. Under **direkt → Wallbox hinzufügen oder prüfen**, choose

@@ -22,6 +22,7 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | FoxESS H3, register map of older firmware | [foxess/h3-legacy-map.md](foxess/h3-legacy-map.md) |
 | FoxESS AC EV Charger (read-only wallbox check) | [foxess/ac-charger.md](foxess/ac-charger.md) |
 | Portable dé wallbox over Tuya LAN (display and control) | [tuya/de-portable.md](tuya/de-portable.md) |
+| Weidmüller AC SMART (sold as "AMPERE.Charge", display only) | [weidmueller/ac-smart.md](weidmueller/ac-smart.md) |
 | SAJ H2, HS2, AS2 (sold as "Ampere.StoragePro") | [saj/h2-family.md](saj/h2-family.md) |
 | SAJ type code 0x005E, "3P-X E2" | [saj/0x005e-3p-x-e2.md](saj/0x005e-3p-x-e2.md) |
 | Solarmax MAX.STORAGE (sold as "AMPERE.Storage", display only) | [solarmax/max-storage.md](solarmax/max-storage.md) |
