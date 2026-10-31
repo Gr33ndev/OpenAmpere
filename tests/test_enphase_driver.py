@@ -309,12 +309,13 @@ async def test_the_setup_pins_the_certificate_of_a_new_token_and_needs_the_token
     async with server:
         try:
             stored = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase")
+            reached = list(other.requests)  # before the token is typed again
             again = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="t1")
             new = await fingerprint(port)
         finally:
             await runtime.collector.stop()
     assert not stored["ok"] and "anderen Zertifikat" in stored["error"]
-    assert other.requests == []  # nothing at all reached the server with the other certificate
+    assert reached == []  # with the stored token nothing at all reached the server with the other certificate
     assert again["ok"] and again["cert_sha256"] == new != runtime.config.inverter.cert_sha256
     # another address forgets token and certificate together
     await runtime.update_settings({"inverter.host": "127.0.0.2"})
