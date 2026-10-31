@@ -314,7 +314,7 @@ async def test_the_setup_pins_the_certificate_of_a_new_token_and_needs_the_token
         finally:
             await runtime.collector.stop()
     assert not stored["ok"] and "anderen Zertifikat" in stored["error"]
-    assert not any(authorised for _path, authorised in other.requests[:1])
+    assert other.requests == []  # nothing at all reached the server with the other certificate
     assert again["ok"] and again["cert_sha256"] == new != runtime.config.inverter.cert_sha256
     # another address forgets token and certificate together
     await runtime.update_settings({"inverter.host": "127.0.0.2"})
