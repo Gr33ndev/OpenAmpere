@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 
+from pymodbus import FramerType
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
@@ -144,6 +145,8 @@ class ModbusDevice:
         self.read_function: int = 3
         self.info: DeviceInfo | None = None
         self._bad_addresses: dict[int, float] = {}  # address -> time until it is skipped
+        # how the requests are framed on TCP: Modbus TCP, or RTU frames over TCP (M-TEC's Wi-Fi/LAN module, #520)
+        self.framer = FramerType.SOCKET
 
     # ---- low level -------------------------------------------------------
 
@@ -153,7 +156,7 @@ class ModbusDevice:
             # retries=0 and reconnect_delay=0: retrying and reconnecting are handled here, not by pymodbus
             # (its own background reconnect could open a second socket and block one of the few slots)
             self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=self._timeout, retries=0,
-                                                reconnect_delay=0)
+                                                reconnect_delay=0, framer=self.framer)
         if not self._client.connected:
             if not await self._client.connect():
                 self._client.close()

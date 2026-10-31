@@ -44,6 +44,14 @@ test("a Senec gets its own page", async ({ page, api }) => {
     .toHaveAttribute("href", `${SITE}docs/devices/senec/home-v3.html`);
 });
 
+test("an M-TEC gets its own page", async ({ page, api }) => {
+  const status = (await demoRequest("GET", "/api/status")) as { device: Record<string, unknown> };
+  api.override("/api/status", { ...status, device: { ...status.device, manufacturer: "M-TEC", driver: "mtec", register_map: "mtec_gen3 (socket)" } });
+  await open(page, "more/installation");
+  await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/mtec/energy-butler.html`);
+});
+
 test("the diagnostics page links to the page about the inverter", async ({ page }) => {
   await open(page, "more/diagnostics");
   await expect(page.getByRole("link", { name: /Was wir über deinen Wechselrichter wissen/ }))

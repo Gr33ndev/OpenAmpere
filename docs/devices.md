@@ -17,7 +17,7 @@ system. The page only lists what the code, the [device pages](devices/README.md)
 ## Inverters and batteries
 
 All inverters are connected via Modbus TCP, default port 502. Setup detects the device by reading only, in this
-order: FoxESS at device address (unit id) 247, then SAJ at 1 and 2, then Solarmax at 1.
+order: FoxESS at device address (unit id) 247, then SAJ at 1 and 2, then Solarmax at 1, then M-TEC at 252, 255 and 247.
 
 | Device / model | Sold by EKD as | Register map / detection (unit id) | Read | Control | Tested on real hardware | Notes |
 |---|---|---|---|---|---|---|
@@ -29,6 +29,7 @@ order: FoxESS at device address (unit id) 247, then SAJ at 1 and 2, then Solarma
 | SAJ AS2 (type code 0x0055, 0x0056) and other codes in the SAJ family range 0x0050–0x006F | not stated in the sources | `saj_h2`, as above. Unknown codes in the family range are accepted with a warning in the log | Yes | No | not yet confirmed | Read with the same register map as the H2 and HS2. |
 | Solarmax MAX.STORAGE, MAX.STORAGE Ultimate | "AMPERE.Storage" (the 10 kW Ultimate) | `solarmax_max_storage`; input registers 100–126 (FC04) with a plausibility check of firmware, device state, nominal power and state of charge (unit 1) | Yes: PV, battery, house, grid, state of charge; energy counters only with "Connectivity+" | No | not yet confirmed | Built from Solarmax's register list (#519). 32-bit values with the low word first; Solarmax counts charging and export as positive, the driver turns them around. Without "Connectivity+" there is no energy history. OpenAmpere never writes: EKD switched the storage function off remotely in 2025. Details on the [device page](devices/solarmax/max-storage.md). |
 | Senec.Home V3 (hybrid, hybrid duo, also LFP), V2.1 | Senec storage systems (EKD until about 2022) | `senec_lala`: the local web interface `lala.cgi` (HTTPS with a self-signed certificate, else HTTP; no Modbus). Not detected automatically: chosen in the setup | Yes: PV, battery, house, grid, state of charge; no energy counters | No | not yet confirmed | Built from open projects (#521). Asked at most every 30 s. Details on the [device page](devices/senec/home-v3.md). |
+| M-TEC Energy-Butler GEN3 | M-TEC Energy-Butler (from late 2022) | `mtec_gen3`; serial number, running state and state of charge (units 252, 255, 247; plain Modbus TCP, then RTU frames over TCP). Port 502, or 5743 on older module firmware | Yes: PV (2 inputs), battery, house, grid, state of charge and health, energy counters | No | not yet confirmed | Built from M-TEC's register document and MTECmqtt (#520). Details on the [device page](devices/mtec/energy-butler.md). |
 
 More about the FoxESS H3 family:
 

@@ -28,6 +28,11 @@ Register definitions for the Weidmüller AC SMART wallbox are based on facts fro
 SMART ECO / VALUE / ADVANCED Modbus-Register" (2933050000 Rev. 02, 2023-06); the word order of 32-bit values on owner
 reports in evcc's issues. OpenAmpere contains no evcc code.
 
+Register definitions for the M-TEC Energy-Butler GEN3 are based on facts from M-TEC's "Energy Butler RTU Protocol GEN2 +
+GEN3 V1.0" (2022-11-19), MTECmqtt up to commit 32cdf27 (https://github.com/croedel/MTECmqtt, Copyright (c) 2023
+Christian Rödel, MIT License; later versions are LGPL-3.0 and were not used) and the evcc solinteg-gen3 template
+(https://github.com/evcc-io/evcc, MIT License).
+
 The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
 tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own
 implementation and contains no tinytuya code. The data points of the dé wallbox are based on facts from tuya-local
