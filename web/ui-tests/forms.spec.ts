@@ -67,3 +67,46 @@ test("a connection test for an address that was changed meanwhile does not count
   await page.waitForTimeout(2500);
   await expect(page.getByText("Prüfgerät X1")).toHaveCount(0); // the device found at .50, not .51
 });
+
+// #522: an Enphase gateway needs an access token: the form asks for it only then, and the test sends it
+test("the connection form asks for the Enphase token and sends it with the test", async ({ page }) => {
+  await page.route("**/api/setup/drivers", (route) => route.fulfill({ json: { drivers: [
+    { key: "auto", label: "Automatisch erkennen" }, { key: "enphase", label: "Enphase IQ Gateway mit IQ Battery (nur Anzeige)" }] } }));
+  let sent: Record<string, unknown> | null = null;
+  await page.route("**/api/setup/test", async (route) => {
+    sent = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: false, error: "Das Enphase-Gateway lehnt das Zugangs-Token ab." } });
+  });
+  await open(page, "more/connection");
+  await page.getByPlaceholder(/192\.168\.178\.50/).fill("192.168.178.70");
+  await page.getByRole("button", { name: /Erweitert/ }).click();
+  await expect(page.getByLabel("Zugangs-Token von Enphase")).toHaveCount(0);  // only for Enphase
+  await page.getByLabel("Gerätetyp").selectOption("enphase");
+  await page.getByLabel("Zugangs-Token von Enphase").fill("eyJ.test.token");
+  await expect(page.getByText(/entrez\.enphaseenergy\.com/)).toBeVisible();
+  await page.getByRole("button", { name: "Verbindung testen" }).click();
+  await expect.poll(() => sent).toMatchObject({ driver: "enphase", token: "eyJ.test.token" });
+});
+
+// #539: the certificate the new token went to in the test is saved with the token
+test("saving an Enphase connection keeps the certificate of the test with the token", async ({ page }) => {
+  await page.route("**/api/setup/drivers", (route) => route.fulfill({ json: { drivers: [
+    { key: "auto", label: "Automatisch erkennen" }, { key: "enphase", label: "Enphase IQ Gateway mit IQ Battery (nur Anzeige)" }] } }));
+  await page.route("**/api/setup/test", (route) => route.fulfill({ json: { ok: true, label: null, sample: null,
+    cert_sha256: "ab".repeat(32), device: { manufacturer: "Enphase", model: "IQ Gateway", firmware: "8.2", driver: "enphase",
+      unit: 0, supports_control: false } } }));
+  let saved: Record<string, unknown> | null = null;
+  await page.route("**/api/settings", async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    saved = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: true } });
+  });
+  await open(page, "more/connection");
+  await page.getByPlaceholder(/192\.168\.178\.50/).fill("192.168.178.70");
+  await page.getByRole("button", { name: /Erweitert/ }).click();
+  await page.getByLabel("Gerätetyp").selectOption("enphase");
+  await page.getByLabel("Zugangs-Token von Enphase").fill("eyJ.test.token");
+  await page.getByRole("button", { name: "Verbindung testen" }).click();
+  await page.locator("button.btn.primary", { hasText: "Speichern" }).click();  // the form's, once the test passed
+  await expect.poll(() => saved).toMatchObject({ "inverter.token": "eyJ.test.token", "inverter.cert_sha256": "ab".repeat(32) });
+});

@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 
+from pymodbus import FramerType
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
@@ -82,12 +83,16 @@ def friendly_error(err: BaseException) -> str:
     if isinstance(err, InverterBusy):
         return BUSY_MESSAGE
     if isinstance(err, DeviceUnreachable):
-        return "Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die Adresse und ist Modbus TCP aktiviert?"
+        # a driver without Modbus (Senec) says itself what to check
+        return getattr(err, "message", None) or ("Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die "
+                                                 "Adresse und ist Modbus TCP aktiviert?")
     if isinstance(err, DeviceRefused):
         return str(err)
     if isinstance(err, ModbusIllegalError):
         return "Der Wechselrichter hat die Anfrage abgelehnt (Register nicht vorhanden)."
     if isinstance(err, (ModbusTransientError, TimeoutError, asyncio.TimeoutError)):
+        if getattr(err, "message", None):  # a driver without Modbus (Senec) says itself what happens
+            return err.message
         return "Der Wechselrichter antwortet nicht rechtzeitig. Bei einem Modbus-Proxy oder WLAN hilft ein höheres Zeitlimit."
     if isinstance(err, OSError) and err.errno is not None:
         if err.errno in (113, 65, 51, 101):  # host/network unreachable (Linux, macOS)
@@ -140,6 +145,8 @@ class ModbusDevice:
         self.read_function: int = 3
         self.info: DeviceInfo | None = None
         self._bad_addresses: dict[int, float] = {}  # address -> time until it is skipped
+        # how the requests are framed on TCP: Modbus TCP, or RTU frames over TCP (M-TEC's Wi-Fi/LAN module, #520)
+        self.framer = FramerType.SOCKET
 
     # ---- low level -------------------------------------------------------
 
@@ -149,7 +156,7 @@ class ModbusDevice:
             # retries=0 and reconnect_delay=0: retrying and reconnecting are handled here, not by pymodbus
             # (its own background reconnect could open a second socket and block one of the few slots)
             self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=self._timeout, retries=0,
-                                                reconnect_delay=0)
+                                                reconnect_delay=0, framer=self.framer)
         if not self._client.connected:
             if not await self._client.connect():
                 self._client.close()

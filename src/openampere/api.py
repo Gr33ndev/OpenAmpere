@@ -117,7 +117,9 @@ class Target(BaseModel):
     host: str = Field(min_length=1)
     port: int = Field(502, ge=1, le=65535)
     unit: int = Field(0, ge=0, le=255)  # 0 = try the default ids of each device type
-    driver: str = Field("auto", pattern="^(auto|foxess|saj)$")
+    # every driver the setup offers (it once allowed only FoxESS and SAJ, so choosing another failed the test)
+    driver: str = Field("auto", pattern=f"^(auto|{'|'.join(registry.DRIVERS)})$")
+    token: str = Field("", max_length=4096)  # a device that needs one (Enphase); empty: the stored one, if any
 
 
 class PasswordRequest(BaseModel):
@@ -196,7 +198,7 @@ class WallboxCheckRequest(BaseModel):
 
 class WallboxTestRequest(BaseModel):
     """A wallbox OpenAmpere reads itself, read once from the setup form."""
-    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac)$")
+    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart)$")
     host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
     local_key: str = Field("", max_length=64)  # Tuya
     port: int | None = Field(None, ge=1, le=65535)  # Modbus; None: the model's usual port
@@ -644,7 +646,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "relocated": storage.get_meta("relocated"),
             "database": database,
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
-            "poll_interval": collector.interval,
+            "poll_interval": collector.poll_interval(),
             "device": device,
             "energy_step_wh": collector.energy_step_wh(),
             # what a meter at the inverter reads for a second PV inverter (SAJ Meter B), also before it is counted
@@ -696,7 +698,8 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.post("/api/setup/test")
     async def setup_test(target: Target):
-        return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver)
+        return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver,
+                                               token=target.token.strip())
 
     # ---- battery control -------------------------------------------------
 

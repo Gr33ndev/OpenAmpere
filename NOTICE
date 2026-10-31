@@ -11,9 +11,32 @@ evcc saj-h2 template (https://github.com/evcc-io/evcc, MIT License). The control
 settings, export limit, charge slots) follows SAJ's H2 communication protocol, shipped with
 home-assistant-saj-h2-modbus, and the way that project and evcc write these registers.
 
+Register definitions for Solarmax MAX.STORAGE inverters are based on facts from Solarmax's "MAX.STORAGE /
+MAX.STORAGE Ultimate ModbusTCP Datenpunktliste" (2024-09-11), checked against the evcc solarmax-maxstorage template
+(https://github.com/evcc-io/evcc, MIT License).
+
 Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/evcc, MIT License for the
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.
+
+The local web interface of Senec storage systems (lala.cgi: request format, value types, keys, system types) follows the
+facts described by ha-senec-v3 (https://github.com/marq24/ha-senec-v3, Apache-2.0) and pysenec
+(https://github.com/mchwalisz/pysenec, Apache-2.0), and evcc's senec-home template (https://github.com/evcc-io/evcc,
+MIT License). OpenAmpere has its own implementation and contains no code of these projects.
+
+Register definitions for the Weidmüller AC SMART wallbox are based on facts from Weidmüller's public document "AC
+SMART ECO / VALUE / ADVANCED Modbus-Register" (2933050000 Rev. 02, 2023-06); the word order of 32-bit values on owner
+reports in evcc's issues. OpenAmpere contains no evcc code.
+
+Register definitions for the M-TEC Energy-Butler GEN3 are based on facts from M-TEC's "Energy Butler RTU Protocol GEN2 +
+GEN3 V1.0" (2022-11-19), MTECmqtt up to commit 32cdf27 (https://github.com/croedel/MTECmqtt, Copyright (c) 2023
+Christian Rödel, MIT License; later versions are LGPL-3.0 and were not used) and the evcc solinteg-gen3 template
+(https://github.com/evcc-io/evcc, MIT License).
+
+The local API of the Enphase IQ Gateway (endpoints, fields, signs, the token) follows Enphase's tech brief "Accessing IQ
+Gateway local APIs or local UI with token-based authentication" (2023-01) and the facts described by pyenphase
+(https://github.com/pyenphase/pyenphase, MIT License) and evcc's enphase template (https://github.com/evcc-io/evcc, MIT
+License). OpenAmpere has its own implementation and contains no code of these projects.
 
 The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
 tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own

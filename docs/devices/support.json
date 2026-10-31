@@ -1,10 +1,10 @@
 {
   "$comment": [
     "Single source for which devices OpenAmpere supports and what EKD sold (#526). Edit it here, then run",
-    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md and docs/devices/topics/names.md.",
-    "The website renders its EKD device page and the device list on its home page from this file.",
-    "The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation stays on the",
-    "device page ('page')."
+    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md, docs/devices.md, docs/devices.de.md",
+    "and docs/devices/topics/names.md. The website renders its EKD device page and the device list on its home page from",
+    "this file. The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation",
+    "stays on the device page ('page')."
   ],
   "devices": [
     {
@@ -66,13 +66,101 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed; H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",
       "next": "deviceReport",
       "page": "docs/devices/saj/h2-family.md"
+    },
+    {
+      "id": "solarmax",
+      "name": {
+        "de": "Solarmax MAX.STORAGE („AMPERE.Storage“)",
+        "en": "Solarmax MAX.STORAGE (\"AMPERE.Storage\")"
+      },
+      "does": {
+        "de": "Nur Anzeige: PV, Speicher, Haus, Netz und Ladestand. Den Energieverlauf gibt es nur, wenn Solarmax „Connectivity+“ freigeschaltet hat. OpenAmpere ändert dort nichts.",
+        "en": "Monitoring only: PV, battery, house, grid and state of charge. The energy history needs \"Connectivity+\", which only Solarmax unlocked. OpenAmpere changes nothing there."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/solarmax/max-storage.md"
+    },
+    {
+      "id": "mtec",
+      "name": {
+        "de": "M-TEC Energy-Butler GEN3",
+        "en": "M-TEC Energy-Butler GEN3"
+      },
+      "does": {
+        "de": "Nur Anzeige: PV, Speicher, Haus, Netz, Ladestand und Energieverlauf. Über das WLAN-/LAN-Modul, Port 502 (bei älterer Firmware 5743).",
+        "en": "Monitoring only: PV, battery, house, grid, state of charge and energy history. Through the Wi-Fi/LAN module, port 502 (5743 on older firmware)."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/mtec/energy-butler.md"
+    },
+    {
+      "id": "senec",
+      "name": {
+        "de": "Senec.Home V3 / V2.1",
+        "en": "Senec.Home V3 / V2.1"
+      },
+      "does": {
+        "de": "Nur Anzeige über die Weboberfläche im Heimnetz (kein Modbus): PV, Speicher, Haus, Netz und Ladestand. Beim Einrichten unter „Erweitert“ als Gerätetyp wählen. Einen Energieverlauf gibt es nicht, weil der Speicher keine Zähler mehr meldet.",
+        "en": "Monitoring only through its web interface in the home network (no Modbus): PV, battery, house, grid and state of charge. Choose it as the device type under \"Advanced\" in the setup. There is no energy history, because the device no longer reports counters."
+      },
+      "short": {
+        "de": "nur Anzeige, beim Einrichten auswählen",
+        "en": "monitoring only, chosen in the setup"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/senec/home-v3.md"
+    },
+    {
+      "id": "enphase",
+      "name": {
+        "de": "Enphase IQ Gateway mit IQ Battery",
+        "en": "Enphase IQ Gateway with IQ Battery"
+      },
+      "does": {
+        "de": "Nur Anzeige über die lokale Schnittstelle des Gateways (kein Modbus): PV, Speicher und Ladestand, Netz und Haus mit Verbrauchswandlern. Braucht einmal im Jahr ein Zugangs-Token aus dem Enphase-Konto; beim Einrichten unter „Erweitert“ eintragen.",
+        "en": "Monitoring only through the gateway's local interface (no Modbus): PV, battery and state of charge, grid and house with consumption CTs. Needs an access token from the Enphase account once a year; enter it under \"Advanced\" in the setup."
+      },
+      "short": {
+        "de": "nur Anzeige, mit Zugangs-Token von Enphase",
+        "en": "monitoring only, with an access token from Enphase"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/enphase/iq-gateway.md"
     },
     {
       "id": "relay",
@@ -131,12 +219,34 @@
         "en": "monitoring, control only after you agree in the app"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed on a charger of an EKD system; control not yet confirmed"
+        "de": "Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt",
+        "en": "Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed"
       },
       "check": true,
       "state": "readTest",
       "page": "docs/devices/foxess/ac-charger.md"
+    },
+    {
+      "id": "weidmueller",
+      "name": {
+        "de": "Weidmüller AC SMART („AMPERE.Charge“)",
+        "en": "Weidmüller AC SMART (\"AMPERE.Charge\")"
+      },
+      "does": {
+        "de": "Nur Anzeige über Modbus TCP: Zustand, Ladeleistung, Strom und Spannung je Phase, Energie des Ladevorgangs. Steuern kann sie weiter evcc (mit Sponsortoken).",
+        "en": "Monitoring only over Modbus TCP: state, charging power, current and voltage per phase, energy of the charge. evcc can still control it (with a sponsor token)."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/weidmueller/ac-smart.md"
     },
     {
       "id": "de-tuya",
@@ -182,6 +292,23 @@
       "page": "docs/devices/topics/wallboxes.md"
     },
     {
+      "id": "vw-cars",
+      "name": {
+        "de": "Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)",
+        "en": "Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)"
+      },
+      "does": {
+        "de": "Nur Anzeige über das EU-Data-Act-Portal des Konzerns mit dem Konto der Marke (Cloud, freiwillig): Ladestand, Reichweite und Kilometerstand, mindestens 15 Minuten alt.",
+        "en": "Monitoring only, through the group's EU Data Act portal with the brand account (cloud, optional): state of charge, range and odometer, at least 15 minutes old."
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "home": false,
+      "page": "docs/devices/cars/vw-eu-data-act.md"
+    },
+    {
       "id": "home-assistant",
       "name": {
         "de": "Home Assistant",
@@ -208,7 +335,7 @@
         "sold": "–",
         "model": "Senec.Home V2.1 (AC-coupled, external PV inverter on RS485)",
         "interface": "local web interface `lala.cgi` (JSON)",
-        "openampere": "not supported",
+        "openampere": "driver `senec`, display only ([senec/home-v3.md](../senec/home-v3.md))",
         "status": "open: no source shows EKD selling it",
         "source": "energie-experten.org, \"SENEC\""
       }
@@ -222,21 +349,20 @@
         "de": "2020–2022",
         "en": "2020–2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-TCP-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
-        "en": "Possibly also older Senec.Home V2.1. Senec has no Modbus TCP interface, so it needs a new kind of connection."
+        "de": "Auch ältere Senec.Home V2.1. Beim Einrichten unter „Erweitert“ den Gerätetyp „Senec“ wählen.",
+        "en": "Also older Senec.Home V2.1. Choose the device type \"Senec\" under \"Advanced\" in the setup."
       },
-      "issue": 521,
       "names": {
         "period": "2020 – mid-2022, some into 2023",
         "sold": "Senec storage, EKD as \"SENEC-Fachpartner\", with SENEC.Cloud",
         "model": "Senec.Home V3 hybrid and hybrid duo (DC hybrid)",
         "interface": "`lala.cgi`, HTTPS only with a self-signed certificate since about firmware 825, some fields gone",
-        "openampere": "not supported",
+        "openampere": "driver `senec`, display only ([senec/home-v3.md](../senec/home-v3.md))",
         "status": "documented (EKD website 2021–2022 in the web archive, Senec datasheets hosted by EKD); derived (owners' reports, end of the period)",
         "source": "[pv magazine, 2022-06-16](https://www.pv-magazine.de/2022/06/16/ekd-beteiligt-sich-an-solarmax/); [Photovoltaikforum on a Senec V3 hybrid duo bought through EKD](https://www.photovoltaikforum.com/thread/222119-suche-ersatz-f%C3%BCr-senec-v3-hybrid-duo/); marq24/ha-senec-v3 and mchwalisz/pysenec (both Apache-2.0, for `lala.cgi`)"
-      }
+      },
+      "support": "senec"
     },
     {
       "id": "solarmax",
@@ -247,21 +373,20 @@
         "de": "2022–2023",
         "en": "2022–2023"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige. Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
-        "en": "Monitoring first. OpenAmpere never switches on a battery that EKD switched off remotely."
+        "de": "Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
+        "en": "OpenAmpere never switches on a battery that EKD switched off remotely."
       },
-      "issue": 519,
       "names": {
         "period": "mid-2022 – mid-2023",
         "sold": "\"AMPERE.Storage\"",
         "model": "Solarmax MAX.STORAGE Ultimate: 10 kW, three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs",
         "interface": "Modbus TCP and RTU, KNX (datasheet); battery control only after Solarmax unlocked \"Connectivity+\"",
-        "openampere": "not supported",
+        "openampere": "driver `solarmax`, display only ([solarmax/max-storage.md](../solarmax/max-storage.md))",
         "status": "documented (maker, interfaces), derived (model, control, end of the period)",
         "source": "EKD datasheet \"AMPERE.Storage\", 2022-07; evcc template for the Solarmax MAX.STORAGE"
-      }
+      },
+      "support": "solarmax"
     },
     {
       "id": "mtec",
@@ -272,21 +397,20 @@
         "de": "ab Ende 2022",
         "en": "from late 2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige.",
-        "en": "Monitoring first."
+        "de": "Bei älterer Firmware des WLAN-Moduls beim Einrichten Port 5743 eintragen.",
+        "en": "With older firmware of the Wi-Fi module, enter port 5743 in the setup."
       },
-      "issue": 520,
       "names": {
         "period": "from 2022-10",
         "sold": "M-TEC Energy-Butler",
         "model": "M-TEC Energy-Butler GEN3: 10 kW hybrid, about 11 kWh",
         "interface": "Modbus over TCP through the Wi-Fi/LAN module, port 5743 (502 on newer module firmware); unit id (252, 247 or 255) and framing (RTU frames or plain Modbus TCP) differ between sources. The inverter is a Solinteg.",
-        "openampere": "not supported",
+        "openampere": "driver `mtec`, display only ([mtec/energy-butler.md](../mtec/energy-butler.md))",
         "status": "documented (sale), derived (interface), open (unit id, framing)",
         "source": "[EKD news on the M-TEC Energy-Butler](https://www.ekd-solar.de/news/energiekonzepte-deutschland-erweitert-portfolio-mit-modularem-energy-butler-von-m-tec/); croedel/MTECmqtt up to commit 32cdf27 (MIT); evcc template `solinteg-gen3` (MIT); [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520)"
-      }
+      },
+      "support": "mtec"
     },
     {
       "id": "enphase",
@@ -297,21 +421,20 @@
         "de": "ab Ende 2022",
         "en": "from late 2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige. Braucht einmal einen Schlüssel aus dem Enphase-Konto.",
-        "en": "Monitoring first. Needs a key from the Enphase account once."
+        "de": "Braucht einmal im Jahr ein Zugangs-Token aus dem Enphase-Konto.",
+        "en": "Needs an access token from the Enphase account once a year."
       },
-      "issue": 522,
       "names": {
         "period": "from 2022-10",
         "sold": "Enphase IQ Battery",
         "model": "Enphase IQ Battery (AC-coupled); which models is not stated",
         "interface": "IQ Gateway (Envoy) local HTTPS API; since firmware 7 a token from the owner's Enphase account is needed",
-        "openampere": "not supported",
+        "openampere": "driver `enphase`, display only, with an access token ([enphase/iq-gateway.md](../enphase/iq-gateway.md))",
         "status": "documented (cooperation), open (models)",
         "source": "EKD press release on the Enphase cooperation, 2022-10 ([PDF](https://www.ekd-solar.de/wp-content/uploads/2022/10/EKD_Enphase_Neue_Kooperation.pdf)); pyenphase/pyenphase (MIT)"
-      }
+      },
+      "support": "enphase"
     },
     {
       "id": "varta",
@@ -438,18 +561,17 @@
         "de": "2023–2024",
         "en": "2023–2024"
       },
-      "support": "evcc",
+      "support": "weidmueller",
       "note": {
-        "de": "evcc braucht dafür einen Sponsor-Token. Direkt über OpenAmpere ist geplant.",
-        "en": "evcc needs a sponsor token for it. Directly through OpenAmpere is planned."
+        "de": "Steuern kann sie weiter evcc, dafür braucht evcc einen Sponsor-Token.",
+        "en": "evcc can still control it; evcc needs a sponsor token for that."
       },
-      "issue": 523,
       "names": {
         "period": "2023–2024",
         "sold": "\"AMPERE.Charge\"",
         "model": "Weidmüller AC Smart Value, 11 kW",
         "interface": "Modbus TCP 502, Modbus RTU, OCPP 1.6J",
-        "openampere": "through evcc (needs an evcc sponsor token); OCPP check read-only",
+        "openampere": "wallbox module `weidmueller_ac_smart`, display only ([weidmueller/ac-smart.md](../weidmueller/ac-smart.md)); control through evcc (needs an evcc sponsor token)",
         "status": "documented (product, interfaces, start), derived (evcc, sponsor token, end of the period)",
         "source": "see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`)"
       }

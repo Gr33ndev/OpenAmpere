@@ -15,6 +15,11 @@
     "networkHint": "Die ersten drei Zahlen deiner IP-Adressen, z. B. {example}",
     "noDeviceFound": "Kein Gerät gefunden. Prüfe das Netzwerk oder gib die Adresse unten von Hand ein.",
     "portHint": "Standard 502 – bei einem Modbus-Proxy dessen Port",
+    "portHintSenec": "Senec: 502 stehen lassen, OpenAmpere probiert die Ports 443 und 80 der Weboberfläche",
+    "portHintMtec": "M-TEC: 502, bei älterer Firmware des WLAN-/LAN-Moduls 5743",
+    "portHintEnphase": "Enphase: 502 stehen lassen, OpenAmpere probiert die Ports 443 und 80 des Gateways",
+    "enphaseToken": "Zugangs-Token von Enphase",
+    "enphaseTokenHint": "Das Gateway gibt seine Werte nur mit diesem Token heraus. Damit ist es das einzige Gerät, bei dem OpenAmpere die Cloud des Herstellers braucht: einmal im Jahr für ein neues Token. Du bekommst es mit deinem Enphase-Login auf entrez.enphaseenergy.com (System und Gateway-Seriennummer auswählen, dann „Create access token“). OpenAmpere speichert es verschlüsselt und schickt es nur an das Gateway.",
     "readOnlyDevice": "Für dieses Gerät zeigt OpenAmpere Werte an; Einstellungen ändern ist noch nicht möglich.",
     "sameSerialHint": "Zwei Treffer haben dieselbe Seriennummer: Einer davon ist vermutlich ein Modbus-Proxy oder Datenlogger, der den Wechselrichter weiterreicht. Beide funktionieren. Über einen Proxy können auch andere Programme gleichzeitig lesen.",
     "searchButton": "Netzwerk durchsuchen",
@@ -32,7 +37,7 @@
     "foxessWallbox": "FoxESS-Wallbox",
     "notAnInverter": "kein Wechselrichter",
     "wallboxHint": "„FoxESS-Wallbox“: Dieses Gerät meldet sich im Netzwerk selbst als Wallbox von FoxESS. Es ist nicht der Wechselrichter und lässt sich hier deshalb nicht auswählen.",
-    "secondInverterHint": "Hast du einen zweiten PV-Wechselrichter, dessen Leistung ein Zähler am Speicher misst („Meter B“)? Dann kannst du ihn nach dem Speichern unter Mehr → Meine Anlage → Modulfelder benennen mitzählen lassen. Der Zähler misst gerade {power}."
+    "secondInverterHint": "Hast du einen zweiten PV-Wechselrichter, dessen Leistung dein Speicher mitmisst (bei SAJ der Zähler „Meter B“)? Dann kannst du ihn nach dem Speichern unter Mehr → Meine Anlage → Modulfelder benennen mitzählen lassen. Der Speicher misst dafür gerade {power}."
   },
   "setup": {
     "apiKeyHint": "Du brauchst dafür den persönlichen API-Schlüssel aus der Ampere.IQ-App. OpenAmpere ist ein unabhängiges Projekt ohne Verbindung zu EKD.",

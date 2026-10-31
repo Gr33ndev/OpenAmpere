@@ -15,6 +15,11 @@
     "networkHint": "The first three numbers of your IP addresses, e.g. {example}",
     "noDeviceFound": "No device found. Check the network or enter the address manually below.",
     "portHint": "Usually 502 – with a Modbus proxy, the proxy's port",
+    "portHintSenec": "Senec: leave 502, OpenAmpere tries ports 443 and 80 of the web interface",
+    "portHintMtec": "M-TEC: 502, or 5743 with older firmware of the Wi-Fi/LAN module",
+    "portHintEnphase": "Enphase: leave 502, OpenAmpere tries ports 443 and 80 of the gateway",
+    "enphaseToken": "Access token from Enphase",
+    "enphaseTokenHint": "The gateway only gives its values with this token. That makes it the one device for which OpenAmpere needs the manufacturer's cloud: once a year for a new token. You get it with your Enphase login on entrez.enphaseenergy.com (choose the system and the gateway's serial number, then “Create access token”). OpenAmpere stores it encrypted and sends it only to the gateway.",
     "readOnlyDevice": "For this device OpenAmpere shows values; changing settings is not possible yet.",
     "sameSerialHint": "Two results have the same serial number: one of them is probably a Modbus proxy or data logger that passes the inverter through. Both work. Through a proxy, other programs can read at the same time.",
     "searchButton": "Search network",
@@ -32,7 +37,7 @@
     "foxessWallbox": "FoxESS wallbox",
     "notAnInverter": "not an inverter",
     "wallboxHint": "“FoxESS wallbox”: this device announces itself in the network as a FoxESS wallbox. It is not the inverter, so it cannot be selected here.",
-    "secondInverterHint": "Do you have a second PV inverter whose power a meter at the storage system measures (“Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The meter reads {power} right now."
+    "secondInverterHint": "Do you have a second PV inverter whose power your storage system also measures (with SAJ the meter “Meter B”)? After saving, you can have it counted under More → My system → Name PV strings. The storage system measures {power} for it right now."
   },
   "setup": {
     "apiKeyHint": "For this you need the personal API key from the Ampere.IQ app. OpenAmpere is an independent project with no ties to EKD.",

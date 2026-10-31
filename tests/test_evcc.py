@@ -208,14 +208,14 @@ async def test_missing_sponsor_token_is_explained(tmp_path, evcc_server):
     FakeEvcc.state = {"version": "0.300.0", "fatal": [
         {"class": "charger", "device": "wallbox", "error": "sponsorship required, see https://docs.evcc.io/docs/sponsorship"}]}
     await evcc.refresh()
-    assert "Sponsortoken" in evcc.view()["error"]
+    assert "Sponsortoken" in evcc.view()["error"] and evcc.view()["error_code"] == "sponsor"
     FakeEvcc.state = {**STATE, "fatal": [{"class": "sponsorship", "error": "token is expired"}],
                       "sponsor": {"status": {"name": ""}}}
     state = await evcc.refresh()
     assert "Sponsortoken" in evcc.view()["error"] and len(state["loadpoints"]) == 2
     FakeEvcc.state = {**STATE, "fatal": [{"class": "meter", "error": "connection refused"}]}
     await evcc.refresh()
-    assert "Weboberfläche von evcc" in evcc.view()["error"]
+    assert "Weboberfläche von evcc" in evcc.view()["error"] and evcc.view()["error_code"] is None
     FakeEvcc.state = {**STATE, "sponsor": {"status": {"name": "trial", "expiresAt": "2026-10-17T00:00:00Z"}}}
     state = await evcc.refresh()
-    assert evcc.view()["error"] is None and state["sponsor"]["trial"]
+    assert evcc.view()["error"] is None and evcc.view()["error_code"] is None and state["sponsor"]["trial"]

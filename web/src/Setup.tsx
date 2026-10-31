@@ -11,7 +11,8 @@ import { t, tx } from "./i18n";
 
 type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
-type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
+// cert_sha256: the certificate a newly typed Enphase token went to, saved with it (#539)
+type TestResult = { ok: boolean; error?: string; device?: Device; label?: string; cert_sha256?: string;
   sample?: { pv_power: number | null; battery_soc: number | null; pv_external_power?: number | null } | null };
 
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
@@ -30,6 +31,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
   const [port, setPort] = useState(initial.port);
   const [unit, setUnit] = useState(initial.unit);
   const [driver, setDriver] = useState(initial.driver ?? "auto");
+  const [token, setToken] = useState("");  // Enphase: the access token from the owner's Enphase account
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [advanced, setAdvanced] = useState(initial.port !== 502 || initial.unit !== 0 || (initial.driver ?? "auto") !== "auto");
   const [prefix, setPrefix] = useState("");
@@ -66,7 +68,8 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
     const mine = ++run.current;
     setTesting(true); setResult(null); setError(null);
     try {
-      const answer = await postJson<TestResult>("/api/setup/test", { host: target, port, unit, driver });
+      const answer = await postJson<TestResult>("/api/setup/test",
+        { host: target, port, unit, driver, ...(driver === "enphase" && token.trim() ? { token: token.trim() } : {}) });
       if (mine === run.current) setResult(answer);
     } catch (e) {
       if (mine === run.current) setError((e as Error).message);
@@ -84,6 +87,10 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         "inverter.port": port, "inverter.driver": result.device.driver, "inverter.unit": result.device.unit ?? 0,
       };
       if (!hostLocked) changes["inverter.host"] = host.trim();
+      if (result.device.driver === "enphase" && token.trim()) {
+        changes["inverter.token"] = token.trim();
+        if (result.cert_sha256) changes["inverter.cert_sha256"] = result.cert_sha256;
+      }
       await putJson("/api/settings", changes);
       onSaved();
     } catch (e) {
@@ -160,8 +167,14 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
                 ))}
               </select>
             </Field>
+            {driver === "enphase" && (
+              <Field label={t("setup.connectionForm.enphaseToken")} hint={t("setup.connectionForm.enphaseTokenHint")}>
+                <textarea className="input" rows={3} value={token} autoComplete="off" spellCheck={false}
+                  onChange={(e) => { setToken(e.target.value); reset(); }} />
+              </Field>
+            )}
             <div className="field-row">
-              <Field label={t("common.port")} hint={t("setup.connectionForm.portHint")}>
+              <Field label={t("common.port")} hint={driver === "senec" ? t("setup.connectionForm.portHintSenec") : driver === "mtec" ? t("setup.connectionForm.portHintMtec") : driver === "enphase" ? t("setup.connectionForm.portHintEnphase") : t("setup.connectionForm.portHint")}>
                 <input className="input" type="number" value={port} onChange={(e) => { setPort(Number(e.target.value)); reset(); }} />
               </Field>
               <Field label={t("setup.connectionForm.deviceAddress")} hint={t("setup.connectionForm.deviceAddressHint")}>

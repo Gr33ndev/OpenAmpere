@@ -27,6 +27,10 @@ Contents:
 | `src/openampere/drivers/registry.py` | `DRIVERS`, `LABELS`, `create()`, `detect_driver()`, `detect()` and `AutoDriver`. |
 | `src/openampere/drivers/foxess/` | FoxESS H3 family: two register maps (`H3_NEW`, `H3_LEGACY`), read and write path. |
 | `src/openampere/drivers/saj/` | SAJ H2 / HS2: the smallest complete example and the best template; control through a charge slot instead of a remote control (#377). |
+| `src/openampere/drivers/mtec/` | M-TEC Energy-Butler GEN3: a display-only driver (#520) that tries plain Modbus TCP and then RTU frames over TCP (`ModbusDevice.framer`). |
+| `src/openampere/drivers/enphase/` | Enphase IQ Gateway: a display-only HTTPS driver (#522) with an access token (`inverter.token`, a secret bound to the address) and the certificate it may go to (`inverter.cert_sha256`, #539), passed by `registry.create(token=…, cert_sha256=…)`. |
+| `src/openampere/drivers/senec/` | Senec.Home V3 / V2.1: a display-only driver over HTTP (`lala.cgi`) instead of Modbus (#521). It has the same face as a `ModbusDevice` (`connect`, `read`, `close`, the settings methods), `AUTO_DETECT = False` keeps it out of the automatic detection and `MIN_POLL_S` raises the poll interval. |
+| `src/openampere/drivers/solarmax/` | Solarmax MAX.STORAGE: a display-only driver (#519), input registers with the low word first, built without a device. |
 | `src/openampere/drivers/mypv.py` | my-PV heating rods. Not an inverter driver, see [Other devices](#other-devices). |
 
 ### The driver interface
@@ -96,12 +100,13 @@ Things that are easy to get wrong:
 `registry.py` holds the list of drivers and does the detection:
 
 ```python
-DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver}
-LABELS = {"auto": "Automatisch erkennen", "foxess": "FoxESS H3 / H3 Smart / H3 Pro", "saj": "SAJ H2 / HS2"}
+DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver}
+LABELS = {"auto": "Automatisch erkennen", "foxess": "FoxESS H3 / H3 Smart / H3 Pro", "saj": "SAJ H2 / HS2",
+          "solarmax": "Solarmax MAX.STORAGE (nur Anzeige)"}
 ```
 
 `detect_driver()` goes through `DRIVERS` in order and, for each driver, through its `DEFAULT_UNITS` (Modbus unit
-ids; FoxESS `(247,)`, SAJ `(1, 2)`), unless the user set a unit id. For each candidate it creates the driver with
+ids; FoxESS `(247,)`, SAJ `(1, 2)`, Solarmax `(1,)`), unless the user set a unit id. For each candidate it creates the driver with
 `read_attempts=2` and a timeout of at least `DETECT_TIMEOUT_S` and calls `connect()`:
 
 - the first driver whose `_detect()` succeeds wins; its connection is kept and handed over;
@@ -158,7 +163,7 @@ VALUES = {
 ```
 
 - `Reg(address, kind, scale)`: `decode()` returns `raw * scale`. 32-bit values have the high word at the lower
-  address. Choose `scale` so the result is already in the snapshot's unit (W, Wh, °C, %).
+  address; `low_word_first=True` for devices that store the low word first (Solarmax). Choose `scale` so the result is already in the snapshot's unit (W, Wh, °C, %).
 - Keep blocks small and contiguous (Modbus allows at most 125 registers per request; `docs/devices/foxess/h3.md`
   recommends at most 100 for FoxESS). If the device rejects a block, `_read_block()` falls back to single reads.
 - Write every open question into the docstring (`VERIFY ON HARDWARE`, as in `saj/registers.py`).
@@ -338,9 +343,10 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 
 | Option | Effect |
 |---|---|
-| `--vendor foxess\|saj\|mypv` | device family (`mypv` = my-PV heating rod) |
+| `--vendor foxess\|saj\|solarmax\|mtec\|senec\|enphase\|mypv` | device family (`mypv` = my-PV heating rod, `senec` = lala.cgi over HTTP, `enphase` = IQ Gateway over HTTP with `--token`); `--rtu` for M-TEC: RTU frames over TCP |
 | `--map new\|legacy` | FoxESS register map |
-| `--unit N` | the only unit id that answers (default FoxESS 247, SAJ 1); other ids get "gateway target failed" |
+| `--unit N` | the only unit id that answers (default FoxESS 247, SAJ and Solarmax 1); other ids get "gateway target failed" |
+| `--connectivity unlocked\|rejected\|zeros\|silent` | Solarmax: the "Connectivity+" registers (energy counters) filled, refused, zero or not answered |
 | `--model`, `--serial` | FoxESS model string at 30000 and serial number |
 | `--speed N` | simulated seconds per real second |
 | `--strict-function` | FoxESS: answer measurements only on the map's native function code |

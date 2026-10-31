@@ -22,6 +22,13 @@ export const REVERSE_PROXY_GUIDE = () => (lang() === "de"
 export const WALLBOX_DIRECT_GUIDE = () => `${REPO_URL}/blob/main/docs/${lang() === "de" ? "wallbox-direct.de.md" : "wallbox-direct.md"}`;
 /** The device knowledge on the website (#512): the pages of docs/devices/ in the app's language, page e.g. "foxess/h3.html". */
 export const DEVICE_DOCS_URL = (page = "") => `${SITE_URL}${lang() === "de" ? "" : `${lang()}/`}docs/devices/${page}`;
-const DRIVER_DOCS: Record<string, string> = { foxess: "foxess/h3.html", saj: "saj/h2-family.html" };
+const DRIVER_DOCS: Record<string, string> = {
+  foxess: "foxess/h3.html",
+  saj: "saj/h2-family.html",
+  solarmax: "solarmax/max-storage.html",
+  senec: "senec/home-v3.html",
+  enphase: "enphase/iq-gateway.html",
+  mtec: "mtec/energy-butler.html",
+};
 /** The page about the inverter of a driver, null for a driver without one. */
 export const inverterDocsUrl = (driver: string | null | undefined) => (driver && DRIVER_DOCS[driver] ? DEVICE_DOCS_URL(DRIVER_DOCS[driver]) : null);

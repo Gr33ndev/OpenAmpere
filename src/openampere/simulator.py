@@ -25,6 +25,7 @@ import json
 import logging
 import math
 import random
+import ssl
 import struct
 import time
 from dataclasses import dataclass, field
@@ -33,7 +34,9 @@ from datetime import datetime
 from .drivers.base import WorkMode
 from .drivers.foxess.registers import H3_LEGACY, H3_NEW, MODEL_ADDRESS, SERIAL_ADDRESS, RegisterMap, encode
 from . import tuya
+from .drivers.mtec import registers as mtec
 from .drivers.saj import registers as saj
+from .drivers.solarmax import registers as solarmax
 
 log = logging.getLogger("openampere.simulator")
 
@@ -494,6 +497,321 @@ class SajSimulatedInverter(SimulatedInverter):
         put("battery1_temperature", 23)
 
 
+class SolarmaxSimulatedInverter(SimulatedInverter):
+    """Solarmax MAX.STORAGE (#519): input registers only (FC04), 32-bit values with the low word first, Solarmax's
+    signs (battery + = charging, grid + = export). connectivity: "unlocked" fills the registers of "Connectivity+"
+    (130–159), "rejected" refuses them, "zeros" answers them with 0, "silent" answers them with "gateway target failed"
+    (all possible without it on a real device, not known which). Writes are refused: the driver only reads."""
+
+    def __init__(self, *, unit: int = 1, max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
+                 connectivity: str = "unlocked", rated_w: int = 10000, firmware: int = 344,
+                 serial: int = 12345678) -> None:
+        self.map = None
+        self.model = "Solarmax MAX.STORAGE"
+        self.serial = str(serial)
+        self.strict_function = False
+        self.max_connections = max_connections
+        self.connections = 0
+        self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, True, unit
+        self.connectivity = connectivity
+        self.extra_pv_w = 0.0  # another inverter connected to the MAX.STORAGE (112 = own + others)
+        self.energy = EnergyModel()
+        # lifetime counters of a plant that has run for a while (whole kWh on the device)
+        self.counter_base = {"pv": 12_000_000.0, "grid_import": 3_000_000.0, "grid_export": 6_000_000.0,
+                             "battery_charge": 2_500_000.0, "battery_discharge": 2_300_000.0}
+        start, count = solarmax.STANDARD_BLOCK
+        self.regs = dict.fromkeys(range(start, start + count), 0)
+        if connectivity != "rejected":
+            self.regs.update(dict.fromkeys(range(130, 144), 0))
+            self.regs.update(dict.fromkeys(range(solarmax.COUNTER_BLOCK[0], sum(solarmax.COUNTER_BLOCK)), 0))
+        self._put("serial", serial)
+        self._put("firmware", firmware)
+        self._put("rated_power", rated_w)
+        self.update_registers()
+
+    def _put(self, name: str, value: float) -> None:
+        reg = solarmax.VALUES[name]
+        for i, word in enumerate(encode(reg, int(round(value / reg.scale)))):
+            self.regs[reg.address + i] = word
+
+    def readable(self, function: int, address: int, count: int) -> bool:
+        return function == solarmax.READ_FUNCTION and super().readable(function, address, count)
+
+    def handle(self, pdu: bytes) -> bytes:
+        if self.connectivity == "silent" and pdu[0] == solarmax.READ_FUNCTION \
+                and struct.unpack(">H", pdu[1:3])[0] >= 130:
+            return bytes([pdu[0] | 0x80, GATEWAY_TARGET_FAILED])
+        return super().handle(pdu)
+
+    def update_registers(self) -> None:
+        e = self.energy
+        self._put("device_state", 1)
+        self._put("pv_power", e.pv_w)
+        self._put("pv_plant_power", e.pv_w + self.extra_pv_w)
+        self._put("battery_power", -e.battery_w)  # Solarmax: + = charging
+        self._put("house_power", e.house_w)
+        self._put("grid_power", -e.grid_w)  # Solarmax: + = export
+        self._put("pv_ac_power", (e.pv_w + self.extra_pv_w) * 0.97)
+        self._put("battery_soc", round(e.soc))
+        self._put("battery_capacity", 10)
+        self._put("battery_energy", int(e.soc / 10))
+        for i, address in enumerate((125, 126)):  # per MPPT, whole kW
+            self.regs[address] = int(e.pv_inputs_w[i] // 1000) if i < len(e.pv_inputs_w) else 0
+        if self.connectivity == "unlocked":
+            self.regs[137], self.regs[138] = 180, 230  # cell temperatures, 0.1 °C
+            for flow, base in self.counter_base.items():
+                self._put(f"{flow}_total", (base + e.totals[flow]) // 1000 * 1000)  # whole kWh
+
+
+class SimulatedSenec:
+    """Senec.Home V3 over its local web interface (#521): POST /lala.cgi with JSON, every value a typed hex string, on
+    the same energy model. Plain HTTP (a real device answers HTTPS with a self-signed certificate since about firmware
+    825). A request for FACTORY sets a session cookie, as on newer firmware; `requests` keeps every request as
+    (path, form, cookie sent). Everything else gets 404, writes are not taken."""
+
+    def __init__(self, *, system_type: int = 19, device_id: int = 0x12345678, require_session: bool = False) -> None:
+        self.energy = EnergyModel()
+        # require_session: like newer firmware, ENERGY only with the cookie of the current session (403 otherwise);
+        # a restart of the device starts a new session
+        self.require_session, self.session = require_session, "sim1"
+        self.system_type, self.device_id = system_type, device_id
+        self.requests: list[tuple[str, dict, bool]] = []
+        self.model = "Senec.Home V3 hybrid"
+
+    @staticmethod
+    def _float(value: float) -> str:
+        return "fl_" + struct.pack(">f", float(value)).hex().upper()
+
+    def values(self) -> dict:
+        e = self.energy
+        return {
+            "ENERGY": {"STAT_STATE": f"u8_{14:02X}", "GUI_INVERTER_POWER": self._float(e.pv_w),
+                       "GUI_BAT_DATA_POWER": self._float(-e.battery_w),  # Senec: + = charging
+                       "GUI_BAT_DATA_FUEL_CHARGE": self._float(e.soc), "GUI_GRID_POW": self._float(e.grid_w),
+                       "GUI_HOUSE_POW": self._float(e.house_w), "GUI_BAT_DATA_VOLTAGE": self._float(52.0),
+                       "GUI_BAT_DATA_CURRENT": self._float(-e.battery_w / 52.0)},
+            "FACTORY": {"SYS_TYPE": f"u8_{self.system_type:02X}", "COUNTRY": "u8_00",
+                        "DEVICE_ID": f"u8_{self.device_id:08X}"},
+        }
+
+    def answer(self, form: dict) -> dict:
+        values = self.values()
+        return {section: {key: values.get(section, {}).get(key, "VARIABLE_NOT_FOUND") for key in keys}
+                for section, keys in form.items() if isinstance(keys, dict)}
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            first = await reader.readexactly(1)
+            if first == b"\x16":  # a TLS handshake: this simulator speaks plain HTTP only
+                return
+            head = first + await reader.readuntil(b"\r\n\r\n")
+            lines = head.decode("latin-1").split("\r\n")
+            method, path = lines[0].split(" ")[:2]
+            headers = {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines[1:] if line)}
+            body = await reader.readexactly(int(headers.get("content-length", "0")))
+            if method != "POST" or path != "/lala.cgi":
+                writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
+            form = json.loads(body or b"{}")
+            current = f"senec_session={self.session}" in headers.get("cookie", "")
+            self.requests.append((path, form, current))
+            if self.require_session and "FACTORY" not in form and not current:
+                writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
+            data = json.dumps(self.answer(form)).encode()
+            cookie = f"Set-Cookie: senec_session={self.session}; Path=/\r\n" if "FACTORY" in form else ""
+            writer.write(f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(data)}\r\n"
+                         f"{cookie}Connection: close\r\n\r\n".encode() + data)
+        except (asyncio.IncompleteReadError, ConnectionError, ValueError):
+            pass
+        finally:
+            try:
+                await writer.drain()
+            except ConnectionError:
+                pass
+            writer.close()
+
+
+def crc16(data: bytes) -> int:
+    """Modbus RTU checksum."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
+class MtecSimulatedInverter(SimulatedInverter):
+    """M-TEC Energy-Butler GEN3 (#520) on the same energy model: holding registers, high word first, M-TEC's signs
+    (grid + = export, battery + = discharging). rtu: RTU frames over TCP like the Wi-Fi/LAN module on port 5743 (a
+    request in another framing gets no answer), else plain Modbus TCP. Writes are refused."""
+
+    def __init__(self, *, unit: int = 252, rtu: bool = False, max_connections: int = 2, serial: str = "MTEC10K3G25SIM",
+                 fault_rate: float = 0.0, latency_s: float = 0.0) -> None:
+        self.map = None
+        self.model, self.serial, self.strict_function = "M-TEC Energy-Butler GEN3", serial, False
+        self.max_connections, self.connections = max_connections, 0
+        self.fault_rate, self.latency_s, self.read_only, self.unit, self.rtu = fault_rate, latency_s, True, unit, rtu
+        self.energy = EnergyModel()
+        self.regs = {}
+        for start, count in mtec.BLOCKS:
+            self.regs.update(dict.fromkeys(range(start, start + count), 0))
+        self._write_string(10000, serial, 8)
+        self.regs[10008] = 0x0103
+        for i, word in enumerate((0x1B34, 0x0500, 0x0304, 0x0100)):  # firmware bytes
+            self.regs[10011 + i] = word
+        self.counter_base = {"pv": 9_000_000.0, "grid_import": 2_000_000.0, "grid_export": 5_000_000.0,
+                             "battery_charge": 1_500_000.0, "battery_discharge": 1_400_000.0}
+        self.update_registers()
+
+    def _put(self, name: str, value: float) -> None:
+        reg = mtec.VALUES[name]
+        for i, word in enumerate(encode(reg, int(round(value / reg.scale)))):
+            self.regs[reg.address + i] = word
+
+    def readable(self, function: int, address: int, count: int) -> bool:
+        return function == 3 and super().readable(function, address, count)
+
+    def update_registers(self) -> None:
+        e = self.energy
+        grid_raw = -e.grid_w  # M-TEC: + = export
+        self._put("running_state", 2)
+        for phase in (1, 2, 3):
+            self._put(f"grid_l{phase}_power", grid_raw / 3)
+        self._put("grid_power", grid_raw)
+        self._put("inverter_power", e.house_w + grid_raw)  # house = inverter − grid
+        self._put("pv_power", e.pv_w)
+        for i in (1, 2):
+            power = e.pv_inputs_w[i - 1] if i - 1 < len(e.pv_inputs_w) else 0.0
+            voltage = 350 + power / 50 if power > 5 else 0.0
+            self._put(f"pv{i}_power", power)
+            self._put(f"pv{i}_voltage", voltage)
+            self._put(f"pv{i}_current", power / voltage if voltage else 0.0)
+        self._put("backup_power", 0)
+        self._put("battery_voltage", 230)
+        self._put("battery_current", e.battery_w / 230)
+        self._put("battery_power", e.battery_w)  # + = discharging
+        self._put("battery_soc", e.soc)
+        self._put("battery_soh", 98)
+        for flow, base in self.counter_base.items():
+            self._put(f"{flow}_total", base + e.totals[flow])
+            self._put(f"{flow}_today", e.today[flow])
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        if not self.rtu:
+            await super().serve_client(reader, writer)
+            return
+        if self.connections >= self.max_connections:
+            writer.close()
+            return
+        self.connections += 1
+        try:
+            while True:
+                frame = await reader.readexactly(8)  # unit, function, address, count, CRC
+                if crc16(frame[:6]) != int.from_bytes(frame[6:8], "little") or frame[0] != self.unit:
+                    continue  # not an RTU request for this unit: an RTU device stays silent
+                pdu = self.handle(frame[1:6])
+                answer = bytes([frame[0]]) + pdu
+                writer.write(answer + crc16(answer).to_bytes(2, "little"))
+                await writer.drain()
+        except (asyncio.IncompleteReadError, ConnectionError):
+            pass
+        finally:
+            self.connections -= 1
+            writer.close()
+
+
+def self_signed_tls(name: str = "envoy.local") -> ssl.SSLContext:
+    """A server context with a fresh self-signed certificate, like the IQ Gateway's (for the Enphase simulator)."""
+    import tempfile
+    from datetime import timedelta
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)])
+    now = datetime.now(tz=None).astimezone()
+    cert = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=30)).sign(key, hashes.SHA256()))
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    with tempfile.TemporaryDirectory() as folder:
+        cert_file, key_file = f"{folder}/cert.pem", f"{folder}/key.pem"
+        with open(cert_file, "wb") as out:
+            out.write(cert.public_bytes(serialization.Encoding.PEM))
+        with open(key_file, "wb") as out:
+            out.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                        serialization.NoEncryption()))
+        context.load_cert_chain(cert_file, key_file)
+    return context
+
+
+class SimulatedEnphase:
+    """Enphase IQ Gateway with IQ Batteries (#522). Serve it with ssl=self_signed_tls() like a real gateway (the driver
+    sends the token only over HTTPS), or without TLS for a gateway that answers plain HTTP: /info without a token, /production.json, /ivp/livedata/status and /ivp/ensemble/inventory only with
+    "Authorization: Bearer <token>" (401 otherwise), on the same energy model. Enphase's signs: net-consumption
+    + = import, storage + = discharging. `requests` keeps (path, authorised)."""
+
+    def __init__(self, *, token: str = "sim-token", serial: str = "122100000001", batteries: bool = True) -> None:
+        self.energy = EnergyModel()
+        self.token, self.serial, self.batteries = token, serial, batteries
+        self.requests: list[tuple[str, bool]] = []
+        self.refused: set[str] = set()  # paths answered with 401 whatever the token (some software and token types)
+        self.model = "Enphase IQ Gateway"
+
+    def answer(self, path: str) -> object:
+        e = self.energy
+        if path.startswith("/production.json"):
+            return {"production": [{"type": "inverters", "activeCount": 20, "wNow": e.pv_w},
+                                   {"type": "eim", "measurementType": "production", "activeCount": 1, "wNow": e.pv_w}],
+                    "consumption": [{"type": "eim", "measurementType": "total-consumption", "activeCount": 1,
+                                     "wNow": e.house_w},
+                                    {"type": "eim", "measurementType": "net-consumption", "activeCount": 1,
+                                     "wNow": e.grid_w}]}
+        if path == "/ivp/livedata/status":  # without IQ Batteries too, with 0 W (as gateways on software 7+)
+            power = round(e.battery_w * 1000) if self.batteries else 0
+            return {"meters": {"soc": round(e.soc) if self.batteries else 0, "storage": {"agg_p_mw": power}}}
+        if path == "/ivp/ensemble/inventory":
+            return [{"type": "ENCHARGE", "devices": [{"percentFull": round(e.soc)}, {"percentFull": round(e.soc)}]}] \
+                if self.batteries else []
+        return None
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            first = await reader.readexactly(1)
+            if first == b"\x16":  # a TLS handshake: this simulator speaks plain HTTP only
+                return
+            head = first + await reader.readuntil(b"\r\n\r\n")
+            lines = head.decode("latin-1").split("\r\n")
+            method, path = lines[0].split(" ")[:2]
+            headers = {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines[1:] if line)}
+            authorised = headers.get("authorization") == f"Bearer {self.token}"
+            self.requests.append((path, authorised))
+            if method == "GET" and path == "/info":
+                body = (f"<?xml version='1.0'?><envoy_info><device><sn>{self.serial}</sn><pn>800-00654-r08</pn>"
+                        "<software>D8.2.4382</software></device></envoy_info>").encode()
+                status, kind = "200 OK", "text/xml"
+            elif method != "GET" or self.answer(path) is None:
+                body, status, kind = b"", "404 Not Found", "text/plain"
+            elif not authorised or path in self.refused:
+                body, status, kind = b"", "401 Unauthorized", "text/plain"
+            else:
+                body, status, kind = json.dumps(self.answer(path)).encode(), "200 OK", "application/json"
+            writer.write(f"HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {len(body)}\r\n"
+                         "Connection: close\r\n\r\n".encode() + body)
+        except (asyncio.IncompleteReadError, ConnectionError, ValueError):
+            pass
+        finally:
+            try:
+                await writer.drain()
+            except ConnectionError:
+                pass
+            writer.close()
+
+
 class SimulatedHeatingRod(SimulatedInverter):
     """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
     The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
@@ -637,6 +955,44 @@ class SimulatedFoxCharger(SimulatedInverter):
                           0x100E: round(amps * phases * 230 / 1000) if charging else 0})
 
 
+class SimulatedWeidmueller(SimulatedInverter):
+    """Weidmüller AC SMART VALUE (wallbox/weidmueller.py, #523): holding registers, unit 255, values of 4 bytes with
+    the low word first. `charging`: a car charges at 16 A on three phases. Refuses every write (OpenAmpere only shows
+    it) and keeps every function code in `functions`; like the real wallbox it takes only one connection at a time."""
+
+    def __init__(self, *, unit: int = 255, charging: bool = False, firmware: str = "01.05.00") -> None:
+        self.unit = unit
+        self.max_connections, self.connections, self.latency_s, self.fault_rate = 1, 0, 0.0, 0.0
+        self.map, self.model, self.serial, self.read_only = None, "AC SMART VALUE", "", True
+        self.strict_function = False
+        self.functions: list[int] = []
+        # only the addresses Weidmüller's document lists: a block across a gap (312–316, 433, 703) is refused, as
+        # an embedded Modbus server may do
+        self.regs = dict.fromkeys([*range(300, 312), *range(317, 324), *range(400, 433), 434, *range(457, 461),
+                                   700, 701, 702, *range(704, 708), *range(846, 852), 995, 11000, 11001,
+                                   *range(11050, 11056)], 0)
+        self._write_string(846, firmware, 6)
+        self.regs.update({301: ord("A"), 302: 0, 307: 1, 319: 1, 700: 16, 701: 16, 702: 16, 704: 1, 11054: 0})
+        for i, address in enumerate((400, 402, 404)):
+            self._u32(address, 230_000 + i * 1000)  # mV
+        if charging:
+            self.regs.update({300: 16, 301: ord("C"), 302: 11, 303: 1, 304: 1})
+            for address in (406, 408, 410):
+                self._u32(address, 16_000)  # mA
+            self._u32(418, 11_040_000)  # mW
+            self._u32(430, 2_500)  # Wh of this charge
+            self._u32(305, 1_800)  # s
+
+    def _u32(self, address: int, value: int) -> None:
+        self.regs[address], self.regs[address + 1] = value & 0xFFFF, value >> 16
+
+    def handle(self, pdu: bytes) -> bytes:
+        self.functions.append(pdu[0])
+        if pdu[0] != 3:
+            return bytes([pdu[0] | 0x80, ILLEGAL_FUNCTION])
+        return super().handle(pdu)
+
+
 class SimulatedTuyaCharger:
     """The portable dé wallbox over Tuya LAN 3.5 (wallbox/de_tuya.py): data points like an owner's status reads,
     the session key exchange of tuya.py, and only one connection at a time like the real device. `plugged`: a car is
@@ -737,7 +1093,7 @@ class SimulatedTuyaCharger:
 
 async def run(host: str, port: int, speed: float, sim: SimulatedInverter, tick_s: float = 1.0) -> None:
     server = await asyncio.start_server(sim.serve_client, host, port)
-    log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else "saj_h2",
+    log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else type(sim).__name__,
              sim.unit, host, port, speed)
     sim_time = time.time()
     async with server:
@@ -752,13 +1108,22 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv", "foxess-charger", "de-tuya"], default="foxess",
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "enphase", "mypv", "foxess-charger",
+                                             "weidmueller", "de-tuya"],
+                        default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
+                             "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
                              "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
     parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
-    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger: a car charges at 16 A")
+    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger, weidmueller: a car charges at 16 A")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
-    parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
+    parser.add_argument("--unit", type=int, default=None,
+                        help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
+    parser.add_argument("--rtu", action="store_true", help="mtec: RTU frames over TCP (like port 5743)")
+    parser.add_argument("--token", default="sim-token", help="enphase: the access token the gateway takes")
+    parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros", "silent"], default="unlocked",
+                        help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused, zero or '
+                             "not answered")
     parser.add_argument("--model", default=None, help="model string at register 30000")
     parser.add_argument("--serial", default="SIM0000000000001")
     parser.add_argument("--speed", type=float, default=1.0, help="simulated seconds per real second")
@@ -772,8 +1137,15 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("mypv", "foxess-charger", "de-tuya"):
+    if args.vendor in ("senec", "enphase", "mypv", "foxess-charger", "weidmueller", "de-tuya"):
         pass
+    elif args.vendor == "mtec":
+        sim = MtecSimulatedInverter(unit=args.unit or 252, rtu=args.rtu, max_connections=args.max_connections,
+                                    fault_rate=args.fault_rate, latency_s=args.latency)
+    elif args.vendor == "solarmax":
+        sim = SolarmaxSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
+                                        fault_rate=args.fault_rate, latency_s=args.latency,
+                                        connectivity=args.connectivity)
     elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
                                    fault_rate=args.fault_rate, latency_s=args.latency, read_only=args.read_only)
@@ -792,6 +1164,51 @@ def main() -> None:
                 await server.serve_forever()
         try:
             asyncio.run(run_charger())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "senec":
+        async def run_senec() -> None:
+            senec = SimulatedSenec()
+            server = await asyncio.start_server(senec.serve_client, args.host, args.port)
+            log.info("simulating a Senec.Home V3 (lala.cgi over HTTP) on %s:%d, speed x%g", args.host, args.port,
+                     args.speed)
+            sim_time = time.time()
+            async with server:
+                while True:
+                    await asyncio.sleep(1.0)
+                    sim_time += args.speed
+                    senec.energy.step(datetime.fromtimestamp(sim_time), args.speed)
+        try:
+            asyncio.run(run_senec())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "enphase":
+        async def run_enphase() -> None:
+            gateway = SimulatedEnphase(token=args.token)
+            server = await asyncio.start_server(gateway.serve_client, args.host, args.port, ssl=self_signed_tls())
+            log.info("simulating an Enphase IQ Gateway (HTTPS, token %r) on %s:%d", args.token, args.host, args.port)
+            sim_time = time.time()
+            async with server:
+                while True:
+                    await asyncio.sleep(1.0)
+                    sim_time += args.speed
+                    gateway.energy.step(datetime.fromtimestamp(sim_time), args.speed)
+        try:
+            asyncio.run(run_enphase())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "weidmueller":
+        async def run_weidmueller() -> None:
+            wallbox = SimulatedWeidmueller(unit=args.unit or 255, charging=args.plugged)
+            server = await asyncio.start_server(wallbox.serve_client, args.host, args.port)
+            log.info("simulating a Weidmüller AC SMART (read-only) on %s:%d", args.host, args.port)
+            async with server:
+                await server.serve_forever()
+        try:
+            asyncio.run(run_weidmueller())
         except KeyboardInterrupt:
             pass
         return

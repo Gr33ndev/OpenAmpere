@@ -30,11 +30,12 @@
     "info": "Infos gesucht",
     "notNeeded": "Nicht nötig",
     "nothing": "Nichts anzubinden",
-    "relay": "Über ein Relais"
+    "relay": "Über ein Relais",
+    "read": "Nur Anzeige"
   },
   "next": {
     "issue": "Issue",
-    "deviceReport": "Ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> zur Steuerung hilft",
+    "deviceReport": "Ein <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">Gerätebericht</a> hilft, es zu bestätigen",
     "tellUs": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=feature_request.yml\">Melde dich</a>, wenn du so ein Gerät hast"
   },
   "notes": {
