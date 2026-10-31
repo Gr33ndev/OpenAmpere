@@ -33,6 +33,7 @@ from datetime import datetime
 from .drivers.base import WorkMode
 from .drivers.foxess.registers import H3_LEGACY, H3_NEW, MODEL_ADDRESS, SERIAL_ADDRESS, RegisterMap, encode
 from . import tuya
+from .drivers.mtec import registers as mtec
 from .drivers.saj import registers as saj
 from .drivers.solarmax import registers as solarmax
 
@@ -561,6 +562,96 @@ class SolarmaxSimulatedInverter(SimulatedInverter):
                 self._put(f"{flow}_total", (base + e.totals[flow]) // 1000 * 1000)  # whole kWh
 
 
+def crc16(data: bytes) -> int:
+    """Modbus RTU checksum."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
+class MtecSimulatedInverter(SimulatedInverter):
+    """M-TEC Energy-Butler GEN3 (#520) on the same energy model: holding registers, high word first, M-TEC's signs
+    (grid + = export, battery + = discharging). rtu: RTU frames over TCP like the Wi-Fi/LAN module on port 5743 (a
+    request in another framing gets no answer), else plain Modbus TCP. Writes are refused."""
+
+    def __init__(self, *, unit: int = 252, rtu: bool = False, max_connections: int = 2, serial: str = "MTEC10K3G25SIM",
+                 fault_rate: float = 0.0, latency_s: float = 0.0) -> None:
+        self.map = None
+        self.model, self.serial, self.strict_function = "M-TEC Energy-Butler GEN3", serial, False
+        self.max_connections, self.connections = max_connections, 0
+        self.fault_rate, self.latency_s, self.read_only, self.unit, self.rtu = fault_rate, latency_s, True, unit, rtu
+        self.energy = EnergyModel()
+        self.regs = {}
+        for start, count in mtec.BLOCKS:
+            self.regs.update(dict.fromkeys(range(start, start + count), 0))
+        self._write_string(10000, serial, 8)
+        self.regs[10008] = 0x0103
+        for i, word in enumerate((0x1B34, 0x0500, 0x0304, 0x0100)):  # firmware bytes
+            self.regs[10011 + i] = word
+        self.counter_base = {"pv": 9_000_000.0, "grid_import": 2_000_000.0, "grid_export": 5_000_000.0,
+                             "battery_charge": 1_500_000.0, "battery_discharge": 1_400_000.0}
+        self.update_registers()
+
+    def _put(self, name: str, value: float) -> None:
+        reg = mtec.VALUES[name]
+        for i, word in enumerate(encode(reg, int(round(value / reg.scale)))):
+            self.regs[reg.address + i] = word
+
+    def readable(self, function: int, address: int, count: int) -> bool:
+        return function == 3 and super().readable(function, address, count)
+
+    def update_registers(self) -> None:
+        e = self.energy
+        grid_raw = -e.grid_w  # M-TEC: + = export
+        self._put("running_state", 2)
+        for phase in (1, 2, 3):
+            self._put(f"grid_l{phase}_power", grid_raw / 3)
+        self._put("grid_power", grid_raw)
+        self._put("inverter_power", e.house_w + grid_raw)  # house = inverter − grid
+        self._put("pv_power", e.pv_w)
+        for i in (1, 2):
+            power = e.pv_inputs_w[i - 1] if i - 1 < len(e.pv_inputs_w) else 0.0
+            voltage = 350 + power / 50 if power > 5 else 0.0
+            self._put(f"pv{i}_power", power)
+            self._put(f"pv{i}_voltage", voltage)
+            self._put(f"pv{i}_current", power / voltage if voltage else 0.0)
+        self._put("backup_power", 0)
+        self._put("battery_voltage", 230)
+        self._put("battery_current", e.battery_w / 230)
+        self._put("battery_power", e.battery_w)  # + = discharging
+        self._put("battery_soc", e.soc)
+        self._put("battery_soh", 98)
+        for flow, base in self.counter_base.items():
+            self._put(f"{flow}_total", base + e.totals[flow])
+            self._put(f"{flow}_today", e.today[flow])
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        if not self.rtu:
+            await super().serve_client(reader, writer)
+            return
+        if self.connections >= self.max_connections:
+            writer.close()
+            return
+        self.connections += 1
+        try:
+            while True:
+                frame = await reader.readexactly(8)  # unit, function, address, count, CRC
+                if crc16(frame[:6]) != int.from_bytes(frame[6:8], "little") or frame[0] != self.unit:
+                    continue  # not an RTU request for this unit: an RTU device stays silent
+                pdu = self.handle(frame[1:6])
+                answer = bytes([frame[0]]) + pdu
+                writer.write(answer + crc16(answer).to_bytes(2, "little"))
+                await writer.drain()
+        except (asyncio.IncompleteReadError, ConnectionError):
+            pass
+        finally:
+            self.connections -= 1
+            writer.close()
+
+
 class SimulatedHeatingRod(SimulatedInverter):
     """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
     The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
@@ -857,8 +948,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mypv", "foxess-charger", "weidmueller",
-                                             "de-tuya"],
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "mypv", "foxess-charger",
+                                             "weidmueller", "de-tuya"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
@@ -868,6 +959,7 @@ def main() -> None:
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None,
                         help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
+    parser.add_argument("--rtu", action="store_true", help="mtec: RTU frames over TCP (like port 5743)")
     parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros", "silent"], default="unlocked",
                         help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused, zero or '
                              "not answered")
@@ -886,6 +978,9 @@ def main() -> None:
     sim: SimulatedInverter | None = None
     if args.vendor in ("mypv", "foxess-charger", "weidmueller", "de-tuya"):
         pass
+    elif args.vendor == "mtec":
+        sim = MtecSimulatedInverter(unit=args.unit or 252, rtu=args.rtu, max_connections=args.max_connections,
+                                    fault_rate=args.fault_rate, latency_s=args.latency)
     elif args.vendor == "solarmax":
         sim = SolarmaxSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
                                         fault_rate=args.fault_rate, latency_s=args.latency,

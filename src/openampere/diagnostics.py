@@ -395,6 +395,8 @@ class Diagnostics:
             checks.append(await self._saj_meter_b())
         if getattr(driver, "KEY", None) == "solarmax":
             checks.append(await self._solarmax_registers())
+        if getattr(driver, "KEY", None) == "mtec":
+            checks.append(await self._mtec_values())
 
         # 6. connection limit (optional: may briefly disturb other devices)
         if connection_test:
@@ -521,6 +523,30 @@ class Diagnostics:
                      hint="OpenAmpere liest diesen Speicher nach der Liste von Solarmax, aber noch ohne Bestätigung von "
                           "einem echten Gerät. Vergleiche Batterie- und Netzleistung mit dem Display und schreib uns, "
                           "ob die Vorzeichen stimmen.")
+
+    async def _mtec_values(self) -> Check:
+        """What the M-TEC driver reads (#520), built without a device: the powers in M-TEC's own signs (rounded like every
+        power in the report), the backup output (whether the house load must include it is open), and the unit id and
+        framing that answered. No serial number and no counter values."""
+        driver = self._driver()
+        title = "Werte (M-TEC)"
+        try:
+            raw = await driver.read_raw()
+        except Exception as err:  # noqa: BLE001 - a check never stops the report
+            return Check("mtec_values", title, "warn", str(err))
+        names = ("pv_power", "grid_power", "inverter_power", "backup_power", "battery_power")
+        powers = {name: round(raw[name], -2) for name in names if name in raw}
+        details = {"powers_rounded_w": powers, "running_state": raw.get("running_state"),
+                   "unit": getattr(driver, "_unit", None), "framing": getattr(getattr(driver, "framer", None), "value", None)}
+        def shown(name: str) -> str:
+            return f"{powers[name]:g} W" if name in powers else "nicht gelesen"
+
+        summary = (f"Netz {shown('grid_power')} (einspeisen +), Batterie {shown('battery_power')} (entladen +), "
+                   f"Wechselrichter {shown('inverter_power')}, Notstromausgang {shown('backup_power')}")
+        return Check("mtec_values", title, "info", summary, details,
+                     hint="OpenAmpere liest diesen Speicher nach Unterlagen von M-TEC und offenen Projekten, aber noch "
+                          "ohne Bestätigung von einem echten Gerät. Vergleiche Netz-, Batterie- und Hausleistung mit der "
+                          "M-TEC-App und schreib uns, ob sie stimmen.")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

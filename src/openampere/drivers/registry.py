@@ -14,18 +14,21 @@ import logging
 from .base import DeviceInfo
 from .foxess.driver import FoxessDriver
 from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
+from .mtec.driver import MtecDriver
 from .saj.driver import SajDriver
 from .solarmax.driver import SolarmaxDriver
 
 log = logging.getLogger(__name__)
 
-DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver}
+DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver,
+                                          "mtec": MtecDriver}
 
 LABELS = {
     "auto": "Automatisch erkennen",
     "foxess": "FoxESS H3 / H3 Smart / H3 Pro",
     "saj": "SAJ H2 / HS2",
     "solarmax": "Solarmax MAX.STORAGE (nur Anzeige)",
+    "mtec": "M-TEC Energy-Butler GEN3 (nur Anzeige)",
 }
 
 DETECT_TIMEOUT_S = 2.5
@@ -53,7 +56,8 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
                 driver = FoxessDriver(host, port, candidate_unit, timeout=timeout, read_attempts=2,
                                       register_map=register_map, read_function=read_function)
             else:
-                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2)
+                # quick: the automatic detection, where a driver may take shortcuts for silent hosts (M-TEC)
+                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=not only)
             try:
                 info = await driver.connect()
                 log.info("detected %s on unit %s", info.model, candidate_unit)
