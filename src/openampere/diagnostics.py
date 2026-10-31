@@ -587,7 +587,7 @@ class Diagnostics:
 
     def _enphase_token(self) -> Check:
         """When the Enphase access token runs out (#522): the gateway then refuses every request until the owner
-        enters a new one. Only the date, never the token."""
+        enters a new one. Only the days left: never the token, and no date (it would tell the day the token was made)."""
         from .drivers.enphase.driver import WARN_DAYS, token_days_left
         title = "Zugangs-Token (Enphase)"
         # only the days left: the date would tell the day the owner made the token (#149)
