@@ -36,6 +36,7 @@ import urllib.request
 
 from ..base import BatterySettings, DeviceInfo, ExportLimit, Snapshot, WorkMode
 from ..modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
+from ...outbound import NoRedirect
 
 log = logging.getLogger(__name__)
 
@@ -98,8 +99,8 @@ class SenecDriver:
         self._cookies = http.cookiejar.CookieJar()
         tls = ssl.create_default_context()
         tls.check_hostname, tls.verify_mode = False, ssl.CERT_NONE  # self-signed, see the module docstring
-        # never through a proxy from the environment: the device is in the home network
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+        # never through a proxy from the environment, and no redirect elsewhere: the device is in the home network (#548)
+        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect,
                                                    urllib.request.HTTPCookieProcessor(self._cookies),
                                                    urllib.request.HTTPSHandler(context=tls))
         self.info: DeviceInfo | None = None
