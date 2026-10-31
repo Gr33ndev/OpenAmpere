@@ -461,7 +461,8 @@ function AddWallbox({ view, origin, busy, onSave, onCancel }: {
   const shownModels = view.models.filter((m) => m.read_only && !m.controllable);
   const onlyChecked = checkable.models.filter((m) => !view.models.some((v) => v.key === m.key));
   const hint = live ? (!live.read_only ? t("devices.nativeWallbox.whichControlled")
-    : live.controllable ? t("devices.nativeWallbox.whichControllable") : t("devices.nativeWallbox.whichShown"))
+    : live.controllable ? t("devices.nativeWallbox.whichControllable")
+    : live.simulated ? t("devices.nativeWallbox.whichShown") : t("devices.nativeWallbox.whichShownOnly"))
     : checked ? t("devices.nativeWallbox.whichChecked") : t("devices.wallboxDirect.otherHint");
   // the choice stays the same element while the fields below change: focus and keyboard keep working
   return (
