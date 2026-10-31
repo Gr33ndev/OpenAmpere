@@ -21,5 +21,12 @@
         "noArrayIndexKey": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      // a Playwright rule: the app's own describe() (controlLog.ts) is no test.describe
+      "includes": ["src/**", "scripts/**"],
+      "linter": { "rules": { "correctness": { "usePlaywrightValidDescribeCallback": "off" } } }
+    }
+  ]
 }

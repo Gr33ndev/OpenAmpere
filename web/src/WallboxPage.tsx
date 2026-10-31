@@ -265,9 +265,7 @@ export function WallboxPage({ onBack }: PageProps) {
         <Segmented value={way} onChange={setWay}
           options={[["evcc", t("devices.wallboxDirect.wayEvcc")], ["direct", t("devices.wallboxDirect.wayDirect")]]} />
       </fieldset>
-      {way === "direct" ? <>
-        <NativeWallboxSetup origin={origin} />
-      </> : <>
+      {way === "direct" ? <NativeWallboxSetup origin={origin} /> : <>
       <p className="hint">{tx("devices.wallboxPage.intro", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
       {!view && <LoadState error={error} onRetry={reload} />}
       {view?.state && <Notice kind="ok">{t("devices.wallboxPage.connected", { version: view.state.version ?? "" })} ·{" "}
