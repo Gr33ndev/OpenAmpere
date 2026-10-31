@@ -39,6 +39,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 | [Weidmüller AC SMART („AMPERE.Charge“)](docs/devices/weidmueller/ac-smart.md) | Nur Anzeige über Modbus TCP: Zustand, Ladeleistung, Strom und Spannung je Phase, Energie des Ladevorgangs. Steuern kann sie weiter evcc (mit Sponsortoken). | Noch nicht bestätigt |
 | [Mobile dé-Wallbox (Tuya-WLAN)](docs/devices/tuya/de-portable.md) | Anzeige und Steuerung (Solarüberschuss, schnell, aus) über das lokale Tuya-Protokoll; braucht einmal den Local Key des Geräts. | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
 | [Wallbox über evcc](docs/devices/topics/wallboxes.md) | Über [evcc](https://evcc.io): Anzeige und Bedienung in OpenAmpere, siehe [docs/evcc.de.md](docs/evcc.de.md). Für viele Wallboxen verlangt evcc ein kostenpflichtiges Sponsortoken ([Liste](https://docs.evcc.io/de/chargers)). | Noch nicht bestätigt |
+| [Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)](docs/devices/cars/vw-eu-data-act.md) | Nur Anzeige über das EU-Data-Act-Portal des Konzerns mit dem Konto der Marke (Cloud, freiwillig): Ladestand, Reichweite und Kilometerstand, mindestens 15 Minuten alt. | Noch nicht bestätigt |
 | Home Assistant | Eigene Integration: Daten live und Steuerung. Kommt mit der Home-Assistant-App, sonst über HACS, siehe [Installation](#installation). | – |
 
 <!-- /generated:devices -->

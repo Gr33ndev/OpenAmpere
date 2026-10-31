@@ -41,6 +41,7 @@ The app's user interface and the website are in German.
 | [Weidmüller AC SMART ("AMPERE.Charge")](docs/devices/weidmueller/ac-smart.md) | Monitoring only over Modbus TCP: state, charging power, current and voltage per phase, energy of the charge. evcc can still control it (with a sponsor token). | Not yet confirmed |
 | [Portable dé wallbox (Tuya Wi-Fi)](docs/devices/tuya/de-portable.md) | Monitoring and control (solar surplus, fast, off) over the local Tuya protocol; needs the device's local key once. | ✅ Monitoring confirmed; control not yet confirmed |
 | [Wallbox through evcc](docs/devices/topics/wallboxes.md) | Via [evcc](https://evcc.io): monitoring and operation in OpenAmpere, see [docs/evcc.md](docs/evcc.md). For many wallboxes evcc requires a paid sponsor token ([list](https://docs.evcc.io/en/chargers)). | Not yet confirmed |
+| [Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)](docs/devices/cars/vw-eu-data-act.md) | Monitoring only, through the group's EU Data Act portal with the brand account (cloud, optional): state of charge, range and odometer, at least 15 minutes old. | Not yet confirmed |
 | Home Assistant | Dedicated integration: live data and control. Comes with the Home Assistant app, otherwise via HACS, see [Installation](#installation). | – |
 
 <!-- /generated:devices -->

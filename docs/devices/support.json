@@ -1,10 +1,10 @@
 {
   "$comment": [
     "Single source for which devices OpenAmpere supports and what EKD sold (#526). Edit it here, then run",
-    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md and docs/devices/topics/names.md.",
-    "The website renders its EKD device page and the device list on its home page from this file.",
-    "The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation stays on the",
-    "device page ('page')."
+    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md, docs/devices.md, docs/devices.de.md",
+    "and docs/devices/topics/names.md. The website renders its EKD device page and the device list on its home page from",
+    "this file. The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation",
+    "stays on the device page ('page')."
   ],
   "devices": [
     {
@@ -290,6 +290,23 @@
       },
       "state": "evcc",
       "page": "docs/devices/topics/wallboxes.md"
+    },
+    {
+      "id": "vw-cars",
+      "name": {
+        "de": "Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)",
+        "en": "Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)"
+      },
+      "does": {
+        "de": "Nur Anzeige über das EU-Data-Act-Portal des Konzerns mit dem Konto der Marke (Cloud, freiwillig): Ladestand, Reichweite und Kilometerstand, mindestens 15 Minuten alt.",
+        "en": "Monitoring only, through the group's EU Data Act portal with the brand account (cloud, optional): state of charge, range and odometer, at least 15 minutes old."
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "home": false,
+      "page": "docs/devices/cars/vw-eu-data-act.md"
     },
     {
       "id": "home-assistant",

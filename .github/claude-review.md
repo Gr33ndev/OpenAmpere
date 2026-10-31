@@ -35,7 +35,7 @@ Go through this table for the changed files. A missing update is a finding; name
 | If the pull request changes … | … this must change too |
 |---|---|
 | a driver, a register, the simulator, the behaviour towards a device | the device page in `docs/devices/` (fact with status documented/derived/confirmed/open and source, decision with a link to its issue or PR, see `docs/devices/README.md`); `docs/registers.md` for a new register table; `NOTICE` if code or registers come from another project |
-| which devices or functions are supported, or what is confirmed | `docs/devices/support.json` (then `node scripts/device-support.mjs`; never the generated tables in the READMEs and `names.md` by hand), `docs/devices.md` and `docs/devices.de.md` |
+| which devices or functions are supported, or what is confirmed | `docs/devices/support.json` (then `node scripts/device-support.mjs`; never the generated tables in the READMEs, `docs/devices.md`, `docs/devices.de.md` and `names.md` by hand); the other columns of `docs/devices.md` and `docs/devices.de.md` (read, control, notes) by hand |
 | installation, ports, updates, remote access, configuration | `README.md`, `README.de.md`, `site/pages/` with `site/locales/`; for the Home Assistant app `ha-app/DOCS.md` and `docs/homeassistant-app.de.md` |
 | a feature described in a user guide (`docs/*.md` with its `*.de.md`: Home Assistant, evcc, wallbox) | both languages of that guide |
 | sensors or controls of the Home Assistant integration | `docs/homeassistant.md` and `docs/homeassistant.de.md` |

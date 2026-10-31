@@ -7,8 +7,8 @@ bestätigt ist. Hier steht nur, was der Programmcode, die [Geräteseiten](device
 
 **So liest du diese Seite:**
 
-- **Bestätigt** heißt: Jemand hat es an seiner eigenen Anlage geprüft und im Issue festgehalten. Die Nummer des
-  Issues steht dabei.
+- **Bestätigt** heißt: Jemand hat es an seiner eigenen Anlage geprüft und im Issue festgehalten. Die Seite des
+  Geräts nennt das Issue.
 - **Noch nicht bestätigt** heißt: Die Unterstützung beruht auf Unterlagen aus der Community oder der
   Schnittstellenbeschreibung des Herstellers und ist mit Tests und dem Simulator geprüft, aber noch niemand hat sie
   von einer echten Anlage gemeldet. Gut möglich, dass alles klappt. Sag uns gern Bescheid, siehe
@@ -16,23 +16,48 @@ bestätigt ist. Hier steht nur, was der Programmcode, die [Geräteseiten](device
 - Die Steuerung ist bei jedem Wechselrichter **ab Werk aus** („Nur ansehen“). Unter **Mehr → Steuerung und Protokoll**
   stellst du sie auf „Testen“ oder „Aktiv“.
 
+## An echter Anlage bestätigt
+
+Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte verkauft hat: [Verkaufsnamen und Modelle](devices/topics/names.md) (englisch).
+
+<!-- generated:confirmed from docs/devices/support.json by scripts/device-support.mjs; edit it there -->
+
+| Gerät | An echter Anlage bestätigt? |
+|---|---|
+| [FoxESS H3, neuere Firmware](devices/foxess/h3.md) | ✅ Anzeige und Steuerung bestätigt |
+| [FoxESS H3, ältere Firmware / H3 Smart / H3 Pro](devices/foxess/h3.md) | Noch nicht bestätigt |
+| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt |
+| [Solarmax MAX.STORAGE („AMPERE.Storage“)](devices/solarmax/max-storage.md) | Noch nicht bestätigt |
+| [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Noch nicht bestätigt |
+| [Senec.Home V3 / V2.1](devices/senec/home-v3.md) | Noch nicht bestätigt |
+| [Enphase IQ Gateway mit IQ Battery](devices/enphase/iq-gateway.md) | Noch nicht bestätigt |
+| [Heizstab, Wärmepumpe (SG-Ready)](devices/topics/consumers.md) | Noch nicht bestätigt |
+| [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Noch nicht bestätigt |
+| [FoxESS AC EV Charger („Ampere.ChargePro“)](devices/foxess/ac-charger.md) | ✅ Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt |
+| [Weidmüller AC SMART („AMPERE.Charge“)](devices/weidmueller/ac-smart.md) | Noch nicht bestätigt |
+| [Mobile dé-Wallbox (Tuya-WLAN)](devices/tuya/de-portable.md) | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
+| [Wallbox über evcc](devices/topics/wallboxes.md) | Noch nicht bestätigt |
+| [Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Noch nicht bestätigt |
+
+<!-- /generated:confirmed -->
+
 ## Wechselrichter und Speicher
 
 Alle Wechselrichter werden über Modbus TCP verbunden, Standard ist Port 502. Die Einrichtung erkennt das Gerät
 automatisch und liest dabei nur. Reihenfolge: FoxESS auf Geräteadresse 247, danach SAJ auf 1 und 2, danach Solarmax auf 1, danach M-TEC auf 252, 255 und 247.
 
-| Gerät / Modell | Von EKD verkauft als | Registerkarte / Erkennung (Geräteadresse) | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
-|---|---|---|---|---|---|---|
-| FoxESS H3, neuere Firmware | „Ampere.StoragePro E3“ (siehe Hinweise) | `foxess_h3_new`; gewählt, wenn die Energiezähler ab 39601 antworten (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz, Einspeisebegrenzung | Anzeige: bestätigt (#11, #16). Steuerung: bestätigt (#25, #196) | Welche Registerkarte der E3 nutzt, ist in [h3.md](devices/foxess/h3.md) noch offen. #11 hat die neue Registerkarte an einem H3 bestätigt; im Formular steht H3, H3 Smart, H3 Pro und E3 zur Auswahl, das genaue Modell ist also nicht genannt. Die Einspeisebegrenzung (46616) stammt aus Community-Unterlagen zum H3 Smart; an einer echten Anlage mit der neuen Registerkarte ist sie bestätigt (#196). |
-| FoxESS H3, ältere Firmware | in den Quellen nicht genannt | `foxess_h3_legacy`; gewählt, wenn die neue Registerkarte nicht antwortet, die Zähler ab 32000 aber schon (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz. Keine Einspeisebegrenzung (kein bekanntes Register) | noch nicht bestätigt | Die Speicher-Gesundheit (SoH, 31090) gibt es erst ab Firmware 1.80. Der Hausverbrauch ist die Summe der drei Phasen (kein Gesamtregister). |
-| FoxESS H3 Smart (Modellname `H3-…-Smart` oder `H3-…-M`) | in den Quellen nicht genannt | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | noch nicht bestätigt | Die Register der Einspeisebegrenzung stammen aus Community-Unterlagen zu diesem Modell. |
-| FoxESS H3 Pro (Modellname `H3-Pro-…` oder `P3-Pro-…`) | in den Quellen nicht genannt | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | noch nicht bestätigt | |
-| SAJ H2 (Typcode 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), „3P-X E2“ (0x005E, dreiphasig) | „Ampere.StoragePro“ | `saj_h2`; Kennungsblock 0x8F00 und eine Plausibilitätsprüfung von Betriebsart und Ladestand (Adresse 1 oder 2, beide werden probiert) | Ja | Ja: Speicher-Einstellungen (nur Eigenverbrauch und Backup, mit der Reserve im Backup-Modus), Einspeisebegrenzung, Laden aus dem Netz über ein Ladezeitfenster (#377) | Lesen: bestätigt an einem 0x005E „3P-X E2“ (#334, #339, #379). Steuerung: noch nicht bestätigt; ein Besitzer nutzt OpenAmpere an einem 0x005E im Alltag ohne Probleme (Bericht eines Besitzers, 2026-10), ob und welche Schreibzugriffe es gab, ist nicht festgehalten. H2 und HS2 (0x005A–0x005D): noch nicht bestätigt | Register für die Steuerung aus dem H2-Protokoll von SAJ, so auch genutzt von home-assistant-saj-h2-modbus und evcc. SAJ hat keine Fernsteuerung, die von selbst endet: Laden aus dem Netz nutzt ein kurzes Ladezeitfenster, das OpenAmpere verlängert (siehe [h2-family.md](devices/saj/h2-family.md)). Noch zu prüfen: die Vorzeichen von Speicher- und Netzleistung und ob der PV-Zähler alle MPP-Tracker erfasst. Manchen Firmware-Ständen fehlen die summierten Netzzähler (0x4167); dann nimmt OpenAmpere die Zähler von L1. Einen zweiten PV-Wechselrichter, den „Meter B“ misst (0x40A3), kann OpenAmpere unter „Meine Anlage“ mitzählen (#419). Lässt sich die Nennleistung, die der Wechselrichter meldet, nicht an seinem Typ prüfen (sie liegt außerhalb seiner Leistungsklasse, oder er hat keine, wie 0x005E), ändert OpenAmpere die Einspeisebegrenzung erst, wenn du die Nennleistung vom Typenschild in der App bestätigt hast (#492). Solange die bisherige IQ-Box im Netzwerk ist, hält sie die Modbus-Verbindung belegt; OpenAmpere kann sich erst wenige Minuten, nachdem sie vom Netzwerk getrennt ist, verbinden; welche Meldung es bis dahin zeigt, ist nicht bekannt (#469). |
-| SAJ AS2 (Typcode 0x0055, 0x0056) und andere Codes aus dem SAJ-Bereich 0x0050–0x006F | in den Quellen nicht genannt | `saj_h2`, wie oben. Unbekannte Codes aus diesem Bereich werden mit einer Warnung im Protokoll angenommen | Ja | Nein | noch nicht bestätigt | Wird mit derselben Registerkarte wie H2 und HS2 gelesen. |
-| Solarmax MAX.STORAGE, MAX.STORAGE Ultimate | „AMPERE.Storage“ (der Ultimate mit 10 kW) | `solarmax_max_storage`; Eingangsregister 100–126 (FC04) mit einer Plausibilitätsprüfung von Firmware, Gerätezustand, Nennleistung und Ladestand (Adresse 1) | Ja: PV, Speicher, Haus, Netz, Ladestand; Energiezähler nur mit „Connectivity+“ | Nein | noch nicht bestätigt | Nach der Registerliste von Solarmax gebaut (#519). 32-Bit-Werte mit dem niederwertigen Wort zuerst; Solarmax zählt Laden und Einspeisen positiv, der Treiber dreht beides um. Ohne „Connectivity+“ gibt es keinen Energieverlauf. OpenAmpere schreibt nie: EKD hat die Speicherfunktion 2025 aus der Ferne abgeschaltet. Einzelheiten auf der [Geräteseite](devices/solarmax/max-storage.md) (Englisch). |
-| Senec.Home V3 (hybrid, hybrid duo, auch LFP), V2.1 | Senec-Speicher (EKD bis etwa 2022) | `senec_lala`: die Weboberfläche `lala.cgi` im Heimnetz (HTTPS mit selbst ausgestelltem Zertifikat, sonst HTTP; kein Modbus). Wird nicht automatisch erkannt: beim Einrichten auswählen | Ja: PV, Speicher, Haus, Netz, Ladestand; keine Energiezähler | Nein | noch nicht bestätigt | Nach offenen Projekten gebaut (#521). Höchstens alle 30 s abgefragt. Einzelheiten auf der [Geräteseite](devices/senec/home-v3.md) (Englisch). |
-| Enphase IQ Gateway mit IQ Batteries | Enphase IQ Battery (ab Ende 2022) | `enphase_local`: die lokale HTTPS-Schnittstelle des Gateways mit einem Zugangs-Token aus dem Enphase-Konto (ein Jahr gültig; kein Modbus). Wird nicht automatisch erkannt: beim Einrichten mit dem Token auswählen | Ja: PV, Speicher, Ladestand; Netz und Haus mit Verbrauchswandlern; keine Energiezähler | Nein | noch nicht bestätigt | Nach dem Tech Brief von Enphase, pyenphase und evcc gebaut (#522). Höchstens alle 15 s abgefragt. Einzelheiten auf der [Geräteseite](devices/enphase/iq-gateway.md) (Englisch). |
-| M-TEC Energy-Butler GEN3 | M-TEC Energy-Butler (ab Ende 2022) | `mtec_gen3`; Seriennummer, Betriebszustand und Ladestand (Adressen 252, 255, 247; erst Modbus TCP, dann RTU-Rahmen über TCP). Port 502, bei älterer Firmware des Moduls 5743 | Ja: PV (2 Eingänge), Speicher, Haus, Netz, Ladestand und Zustand, Energiezähler | Nein | noch nicht bestätigt | Nach dem Registerdokument von M-TEC und MTECmqtt gebaut (#520). Einzelheiten auf der [Geräteseite](devices/mtec/energy-butler.md) (Englisch). |
+| Gerät / Modell | Registerkarte / Erkennung (Geräteadresse) | Anzeige | Steuerung | Hinweise |
+|---|---|---|---|---|
+| FoxESS H3, neuere Firmware | `foxess_h3_new`; gewählt, wenn die Energiezähler ab 39601 antworten (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz, Einspeisebegrenzung | Welche Registerkarte der [E3](devices/topics/names.md) nutzt, ist in [h3.md](devices/foxess/h3.md) noch offen. #11 hat die neue Registerkarte an einem H3 bestätigt; im Formular steht H3, H3 Smart, H3 Pro und E3 zur Auswahl, das genaue Modell ist also nicht genannt. Die Einspeisebegrenzung (46616) stammt aus Community-Unterlagen zum H3 Smart; an einer echten Anlage mit der neuen Registerkarte ist sie bestätigt (#196). |
+| FoxESS H3, ältere Firmware | `foxess_h3_legacy`; gewählt, wenn die neue Registerkarte nicht antwortet, die Zähler ab 32000 aber schon (Adresse 247) | Ja | Ja: Betriebsart, Notstrom-Reserve und Grenzen, Fernsteuerung für Laden aus dem Netz. Keine Einspeisebegrenzung (kein bekanntes Register) | Die Speicher-Gesundheit (SoH, 31090) gibt es erst ab Firmware 1.80. Der Hausverbrauch ist die Summe der drei Phasen (kein Gesamtregister). |
+| FoxESS H3 Smart (Modellname `H3-…-Smart` oder `H3-…-M`) | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | Die Register der Einspeisebegrenzung stammen aus Community-Unterlagen zu diesem Modell. |
+| FoxESS H3 Pro (Modellname `H3-Pro-…` oder `P3-Pro-…`) | `foxess_h3_new` (Adresse 247) | Ja | Ja, wie oben | |
+| SAJ H2 (Typcode 0x005A, 0x005B), SAJ HS2 (0x005C, 0x005D), „3P-X E2“ (0x005E, dreiphasig) | `saj_h2`; Kennungsblock 0x8F00 und eine Plausibilitätsprüfung von Betriebsart und Ladestand (Adresse 1 oder 2, beide werden probiert) | Ja | Ja: Speicher-Einstellungen (nur Eigenverbrauch und Backup, mit der Reserve im Backup-Modus), Einspeisebegrenzung, Laden aus dem Netz über ein Ladezeitfenster (#377) | Register für die Steuerung aus dem H2-Protokoll von SAJ, so auch genutzt von home-assistant-saj-h2-modbus und evcc. SAJ hat keine Fernsteuerung, die von selbst endet: Laden aus dem Netz nutzt ein kurzes Ladezeitfenster, das OpenAmpere verlängert (siehe [h2-family.md](devices/saj/h2-family.md)). Noch zu prüfen: die Vorzeichen von Speicher- und Netzleistung und ob der PV-Zähler alle MPP-Tracker erfasst. Manchen Firmware-Ständen fehlen die summierten Netzzähler (0x4167); dann nimmt OpenAmpere die Zähler von L1. Einen zweiten PV-Wechselrichter, den „Meter B“ misst (0x40A3), kann OpenAmpere unter „Meine Anlage“ mitzählen (#419). Lässt sich die Nennleistung, die der Wechselrichter meldet, nicht an seinem Typ prüfen (sie liegt außerhalb seiner Leistungsklasse, oder er hat keine, wie 0x005E), ändert OpenAmpere die Einspeisebegrenzung erst, wenn du die Nennleistung vom Typenschild in der App bestätigt hast (#492). Solange die bisherige IQ-Box im Netzwerk ist, hält sie die Modbus-Verbindung belegt; OpenAmpere kann sich erst wenige Minuten, nachdem sie vom Netzwerk getrennt ist, verbinden; welche Meldung es bis dahin zeigt, ist nicht bekannt (#469). |
+| SAJ AS2 (Typcode 0x0055, 0x0056) und andere Codes aus dem SAJ-Bereich 0x0050–0x006F | `saj_h2`, wie oben. Unbekannte Codes aus diesem Bereich werden mit einer Warnung im Protokoll angenommen | Ja | Nein | Wird mit derselben Registerkarte wie H2 und HS2 gelesen. |
+| Solarmax MAX.STORAGE, MAX.STORAGE Ultimate | `solarmax_max_storage`; Eingangsregister 100–126 (FC04) mit einer Plausibilitätsprüfung von Firmware, Gerätezustand, Nennleistung und Ladestand (Adresse 1) | Ja: PV, Speicher, Haus, Netz, Ladestand; Energiezähler nur mit „Connectivity+“ | Nein | Nach der Registerliste von Solarmax gebaut (#519). 32-Bit-Werte mit dem niederwertigen Wort zuerst; Solarmax zählt Laden und Einspeisen positiv, der Treiber dreht beides um. Ohne „Connectivity+“ gibt es keinen Energieverlauf. OpenAmpere schreibt nie: EKD hat die Speicherfunktion 2025 aus der Ferne abgeschaltet. Einzelheiten auf der [Geräteseite](devices/solarmax/max-storage.md) (Englisch). |
+| Senec.Home V3 (hybrid, hybrid duo, auch LFP), V2.1 | `senec_lala`: die Weboberfläche `lala.cgi` im Heimnetz (HTTPS mit selbst ausgestelltem Zertifikat, sonst HTTP; kein Modbus). Wird nicht automatisch erkannt: beim Einrichten auswählen | Ja: PV, Speicher, Haus, Netz, Ladestand; keine Energiezähler | Nein | Nach offenen Projekten gebaut (#521). Höchstens alle 30 s abgefragt. Einzelheiten auf der [Geräteseite](devices/senec/home-v3.md) (Englisch). |
+| Enphase IQ Gateway mit IQ Batteries | `enphase_local`: die lokale HTTPS-Schnittstelle des Gateways mit einem Zugangs-Token aus dem Enphase-Konto (ein Jahr gültig; kein Modbus). Wird nicht automatisch erkannt: beim Einrichten mit dem Token auswählen | Ja: PV, Speicher, Ladestand; Netz und Haus mit Verbrauchswandlern; keine Energiezähler | Nein | Nach dem Tech Brief von Enphase, pyenphase und evcc gebaut (#522). Höchstens alle 15 s abgefragt. Einzelheiten auf der [Geräteseite](devices/enphase/iq-gateway.md) (Englisch). |
+| M-TEC Energy-Butler GEN3 | `mtec_gen3`; Seriennummer, Betriebszustand und Ladestand (Adressen 252, 255, 247; erst Modbus TCP, dann RTU-Rahmen über TCP). Port 502, bei älterer Firmware des Moduls 5743 | Ja: PV (2 Eingänge), Speicher, Haus, Netz, Ladestand und Zustand, Energiezähler | Nein | Nach dem Registerdokument von M-TEC und MTECmqtt gebaut (#520). Einzelheiten auf der [Geräteseite](devices/mtec/energy-butler.md) (Englisch). |
 
 Mehr zur FoxESS-H3-Familie:
 
@@ -66,9 +91,9 @@ Register, Verhalten und Quellen je Gerät: [docs/devices/](devices/README.md) (e
 
 ## Heizstäbe
 
-| Gerät / Modell | Verbindung | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
-|---|---|---|---|---|---|
-| my-PV AC ELWA-E, AC ELWA 2, AC THOR | Modbus TCP, Port 502, Geräteadresse 1 | Leistungsvorgabe (1000), Wassertemperatur (1001), Zieltemperatur (1002), Status (1003) | Nur die Leistungsvorgabe (Register 1000), stufenlos nach Solarüberschuss, wahlweise auch mit günstigem Netzstrom | noch nicht bestätigt | In der Weboberfläche des Heizstabs die Ansteuerung auf „Modbus TCP“ stellen und die Zeitüberschreitung etwas länger als den Takt von OpenAmpere wählen; ohne neuen Wert schaltet der Heizstab ab. OpenAmpere schreibt kein anderes Register, weil der Hersteller darum bittet, andere nicht häufig zu schreiben. Mit einem Simulator getestet. |
+| Gerät / Modell | Verbindung | Anzeige | Steuerung | Hinweise |
+|---|---|---|---|---|
+| my-PV AC ELWA-E, AC ELWA 2, AC THOR | Modbus TCP, Port 502, Geräteadresse 1 | Leistungsvorgabe (1000), Wassertemperatur (1001), Zieltemperatur (1002), Status (1003) | Nur die Leistungsvorgabe (Register 1000), stufenlos nach Solarüberschuss, wahlweise auch mit günstigem Netzstrom | In der Weboberfläche des Heizstabs die Ansteuerung auf „Modbus TCP“ stellen und die Zeitüberschreitung etwas länger als den Takt von OpenAmpere wählen; ohne neuen Wert schaltet der Heizstab ab. OpenAmpere schreibt kein anderes Register, weil der Hersteller darum bittet, andere nicht häufig zu schreiben. Mit einem Simulator getestet. |
 
 ## Relais und geschaltete Geräte
 
@@ -76,12 +101,12 @@ Für Heizstäbe ohne Modbus, Wärmepumpen und andere Verbraucher. Diese Geräte 
 mit Mindestlaufzeit und Mindestpause. Ihre Leistung liest OpenAmpere nicht aus, es rechnet mit der Leistung, die du
 einträgst.
 
-| Gerät | So schaltet OpenAmpere | An echter Anlage geprüft | Hinweise |
-|---|---|---|---|
-| Shelly-Relais der 1. Generation | `http://<Adresse>/relay/<Kanal>?turn=on` bzw. `off` | noch nicht bestätigt | Kanal wählbar. |
-| Shelly ab der 2. Generation | `http://<Adresse>/rpc/Switch.Set?id=<Kanal>&on=true` bzw. `false` | noch nicht bestätigt | Kanal wählbar. |
-| Beliebiges Gerät mit Web-Adressen | Eine Adresse zum Einschalten, eine zum Ausschalten (http oder https) | noch nicht bestätigt | Jedes Gerät im Heimnetz, das sich über den Aufruf einer Adresse schalten lässt. |
-| Wärmepumpe mit SG-Ready-Eingang | Über eines der Relais oben, das den SG-Ready-Kontakt schaltet | noch nicht bestätigt | OpenAmpere schaltet nur das Relais; was die Wärmepumpe mit dem Signal macht, stellst du an der Wärmepumpe ein. |
+| Gerät | So schaltet OpenAmpere | Hinweise |
+|---|---|---|
+| Shelly-Relais der 1. Generation | `http://<Adresse>/relay/<Kanal>?turn=on` bzw. `off` | Kanal wählbar. |
+| Shelly ab der 2. Generation | `http://<Adresse>/rpc/Switch.Set?id=<Kanal>&on=true` bzw. `false` | Kanal wählbar. |
+| Beliebiges Gerät mit Web-Adressen | Eine Adresse zum Einschalten, eine zum Ausschalten (http oder https) | Jedes Gerät im Heimnetz, das sich über den Aufruf einer Adresse schalten lässt. |
+| Wärmepumpe mit SG-Ready-Eingang | Über eines der Relais oben, das den SG-Ready-Kontakt schaltet | OpenAmpere schaltet nur das Relais; was die Wärmepumpe mit dem Signal macht, stellst du an der Wärmepumpe ein. |
 
 **Ein Relais, das OpenAmpere eingeschaltet hat, bleibt an, solange OpenAmpere gestoppt oder deinstalliert ist.** Beim
 Beenden setzt OpenAmpere nur regelbare Geräte (wie die Heizstäbe oben) auf 0 W. OpenAmpere gibt Relais keine Zeitbegrenzung mit:
@@ -90,18 +115,18 @@ deinstallierst, stelle diese Geräte auf der Seite **Geräte** auf **Aus**.
 
 ## Wallboxen
 
-| Gerät | Verbindung | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
-|---|---|---|---|---|---|
-| Wallboxen und Fahrzeuge, die [evcc](https://evcc.io) unterstützt | REST-Schnittstelle von evcc; evcc bekommt Netz-, Solar- und Speicherwerte von OpenAmpere (`/api/evcc/site`) | Ladepunkte, Ladeleistung, Ladevorgänge; Ladestand und Reichweite, wenn das Auto in evcc eingerichtet ist | Lademodus, Ladeziel, Mindestladung, Ladeplan, Vorrang Hausspeicher | noch nicht bestätigt | Welche Wallboxen gehen, entscheidet evcc, siehe [evcc-Dokumentation](https://docs.evcc.io). Einrichtung: [evcc.de.md](evcc.de.md). |
-| Mobile 11-kW-Wallbox von „dé“ (Tuya-WLAN) | Lokales Tuya-Protokoll 3.5 im Heimnetz (TCP 6668); braucht den Local Key des Geräts von der Tuya-Entwicklerplattform, danach keine Cloud | Zustand, Ladeleistung, Strom je Phase, eingestellter Ladestrom, Energie des Ladevorgangs | Lademodus (von Hand, Aus, Solar, Min + Solar, Sofort), Ladestrom in den Stufen der Wallbox; mehrere Wallboxen | Anzeige ja, Steuerung noch nicht | Ohne evcc. Oft ausgesteckt: wird als nicht erreichbar gezeigt und verbindet sich von selbst wieder. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/tuya/de-portable.md](devices/tuya/de-portable.md). |
-| FoxESS AC EV Charger (auch die Wallbox der EKD-Anlagen) | Modbus TCP im Heimnetz (Port 502, Geräteadresse 1), nur lesend außer dem Betriebsmodus und, mit echter Steuerung, Ladestrom und Start/Stopp; je Abfrage eine kurze Verbindung | Zustand, Ladeleistung, Strom je Phase, höchster Ladestrom, wie sie Ladevorgänge startet | ihr Betriebsmodus auf Wunsch (z. B. zum Entsperren, #464); das Laden nur als Test nach Zustimmung (#465): Start, Stopp, Ladestrom, 1/3 Phasen (#478) | Anzeige teilweise (ohne Auto, eine Wallbox) | Ohne evcc, nie zusammen mit evcc. Bei Anlagen von EKD muss die bisherige Smartbox vom Strom getrennt bleiben. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/foxess/ac-charger.md](devices/foxess/ac-charger.md). |
-| Weidmüller AC SMART (EKD hat die VALUE als „AMPERE.Charge“ verkauft) | Modbus TCP im Heimnetz (Port 502, Geräteadresse 255), eine kurze Verbindung je Abfrage; die Wallbox nimmt nur einen Modbus-Client an | Zustand, Ladeleistung, Strom und Spannung je Phase, Energie und Dauer des Ladevorgangs, Stromgrenzen, Firmware | Nein (nur die Betriebsart „manuell“) | noch nicht bestätigt | Nach dem öffentlichen Registerdokument von Weidmüller gebaut (#523). Werte mit 4 Byte mit dem niederwertigen Wort zuerst. Solange evcc oder die bisherige Smartbox die Modbus-Verbindung hält, kann OpenAmpere sie nicht lesen. Einzelheiten auf der [Geräteseite](devices/weidmueller/ac-smart.md) (Englisch). |
+| Gerät | Verbindung | Anzeige | Steuerung | Hinweise |
+|---|---|---|---|---|
+| Wallboxen und Fahrzeuge, die [evcc](https://evcc.io) unterstützt | REST-Schnittstelle von evcc; evcc bekommt Netz-, Solar- und Speicherwerte von OpenAmpere (`/api/evcc/site`) | Ladepunkte, Ladeleistung, Ladevorgänge; Ladestand und Reichweite, wenn das Auto in evcc eingerichtet ist | Lademodus, Ladeziel, Mindestladung, Ladeplan, Vorrang Hausspeicher | Welche Wallboxen gehen, entscheidet evcc, siehe [evcc-Dokumentation](https://docs.evcc.io). Einrichtung: [evcc.de.md](evcc.de.md). |
+| Mobile 11-kW-Wallbox von „dé“ (Tuya-WLAN) | Lokales Tuya-Protokoll 3.5 im Heimnetz (TCP 6668); braucht den Local Key des Geräts von der Tuya-Entwicklerplattform, danach keine Cloud | Zustand, Ladeleistung, Strom je Phase, eingestellter Ladestrom, Energie des Ladevorgangs | Lademodus (von Hand, Aus, Solar, Min + Solar, Sofort), Ladestrom in den Stufen der Wallbox; mehrere Wallboxen | Ohne evcc. Oft ausgesteckt: wird als nicht erreichbar gezeigt und verbindet sich von selbst wieder. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/tuya/de-portable.md](devices/tuya/de-portable.md). |
+| FoxESS AC EV Charger | Modbus TCP im Heimnetz (Port 502, Geräteadresse 1), nur lesend außer dem Betriebsmodus und, mit echter Steuerung, Ladestrom und Start/Stopp; je Abfrage eine kurze Verbindung | Zustand, Ladeleistung, Strom je Phase, höchster Ladestrom, wie sie Ladevorgänge startet | ihr Betriebsmodus auf Wunsch (z. B. zum Entsperren, #464); das Laden nur als Test nach Zustimmung (#465): Start, Stopp, Ladestrom, 1/3 Phasen (#478) | Ohne evcc, nie zusammen mit evcc. Bei Anlagen von EKD muss die bisherige Smartbox vom Strom getrennt bleiben. Einrichtung: [wallbox-direct.de.md](wallbox-direct.de.md). Details (englisch): [devices/foxess/ac-charger.md](devices/foxess/ac-charger.md). |
+| Weidmüller AC SMART | Modbus TCP im Heimnetz (Port 502, Geräteadresse 255), eine kurze Verbindung je Abfrage; die Wallbox nimmt nur einen Modbus-Client an | Zustand, Ladeleistung, Strom und Spannung je Phase, Energie und Dauer des Ladevorgangs, Stromgrenzen, Firmware | Nein (nur die Betriebsart „manuell“) | Nach dem öffentlichen Registerdokument von Weidmüller gebaut (#523). Werte mit 4 Byte mit dem niederwertigen Wort zuerst. Solange evcc oder die bisherige Smartbox die Modbus-Verbindung hält, kann OpenAmpere sie nicht lesen. Einzelheiten auf der [Geräteseite](devices/weidmueller/ac-smart.md) (Englisch). |
 
 ## Autos
 
-| Auto | Verbindung | Anzeige | Steuerung | An echter Anlage geprüft | Hinweise |
-|---|---|---|---|---|---|
-| Volkswagen, Audi, Škoda, SEAT, CUPRA | EU-Data-Act-Portal des Volkswagen-Konzerns mit dem Konto der Marke (Cloud, freiwillig); muss einmal im Browser eingerichtet werden | Ladestand, Reichweite, Kilometerstand, eingesteckt und lädt, alle 15 Minuten und mindestens 15 Minuten alt; Ladevorgänge an einer Wallbox, die OpenAmpere steuert | keine (nur lesen) | noch nicht bestätigt | Einrichtung: [car.de.md](car.de.md). Details (englisch): [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+| Auto | Verbindung | Anzeige | Steuerung | Hinweise |
+|---|---|---|---|---|
+| Volkswagen, Audi, Škoda, SEAT, CUPRA | EU-Data-Act-Portal des Volkswagen-Konzerns mit dem Konto der Marke (Cloud, freiwillig); muss einmal im Browser eingerichtet werden | Ladestand, Reichweite, Kilometerstand, eingesteckt und lädt, alle 15 Minuten und mindestens 15 Minuten alt; Ladevorgänge an einer Wallbox, die OpenAmpere steuert | keine (nur lesen) | Einrichtung: [car.de.md](car.de.md). Details (englisch): [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
 
 ## Dein Gerät fehlt oder verhält sich anders?
 
