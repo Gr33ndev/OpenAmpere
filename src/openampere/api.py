@@ -648,6 +648,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.poll_interval(),
             "device": device,
+            # the access token of the device runs out (Enphase, #538): days, never the date
+            "token_days_left": collector.token_days_left(),
             "energy_step_wh": collector.energy_step_wh(),
             # what a meter at the inverter reads for a second PV inverter (SAJ Meter B), also before it is counted
             # (#419); None if the inverter has no such meter

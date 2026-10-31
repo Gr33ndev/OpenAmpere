@@ -123,6 +123,19 @@ class Collector:
         except ConnectionError:  # the automatic driver before it detected the device
             return 0.0
 
+    def token_expires(self) -> float | None:
+        """When the device's access token runs out (Enphase, #538), None without one."""
+        try:
+            return getattr(self.driver, "token_expires", None)
+        except ConnectionError:  # the automatic driver before it detected the device
+            return None
+
+    def token_days_left(self) -> int | None:
+        """Whole days until the access token runs out (negative: since it ran out), None without one. What the app and
+        Home Assistant show: never the date, which would tell the day the owner made the token."""
+        from .drivers.enphase.driver import token_days_left
+        return token_days_left(self.token_expires())
+
     def poll_interval(self) -> float:
         """The poll interval, but at least what the device stands (a Senec restarts when asked too often, #521)."""
         return max(self.interval, self.min_gap())

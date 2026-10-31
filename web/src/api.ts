@@ -42,6 +42,8 @@ export type Status = {
   external_pv_w?: number | null;
   configured: boolean;
   connected: boolean;
+  /** days until the device's access token runs out (Enphase, #538; negative: since it ran out), null without one */
+  token_days_left?: number | null;
   last_error: string | null;
   last_update: number | null;
   stale: boolean;

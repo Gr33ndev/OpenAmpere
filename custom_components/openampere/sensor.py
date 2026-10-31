@@ -11,7 +11,7 @@ from typing import Any
 from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity, SensorEntityDescription,
                                              SensorStateClass)
 from homeassistant.const import (PERCENTAGE, EntityCategory, UnitOfElectricCurrent, UnitOfElectricPotential,
-                                 UnitOfEnergy, UnitOfPower, UnitOfTemperature)
+                                 UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfTime)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -113,6 +113,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         if not wallbox.get("read_only"):  # one OpenAmpere only shows does not tell the current set in it (#439)
             entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
     entities.append(FirmwareSensor(coordinator))
+    if ((coordinator.data or {}).get("status") or {}).get("token_days_left") is not None:  # Enphase (#538)
+        entities.append(TokenDaysSensor(coordinator))
     async_add_entities(entities)
 
 
@@ -143,6 +145,21 @@ class FirmwareSensor(OpenAmpereEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         return firmware(self.coordinator)
+
+
+class TokenDaysSensor(OpenAmpereEntity, SensorEntity):
+    """Days until the access token of an Enphase gateway runs out (#538; negative: since it ran out), e.g. for an
+    automation that reminds the owner. Only days, never the date."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = UnitOfTime.DAYS
+
+    def __init__(self, coordinator: OpenAmpereCoordinator) -> None:
+        super().__init__(coordinator, "token_days_left")
+
+    @property
+    def native_value(self) -> int | None:
+        return ((self.coordinator.data or {}).get("status") or {}).get("token_days_left")
 
 
 class PvInputSensor(OpenAmpereEntity, SensorEntity):

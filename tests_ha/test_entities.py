@@ -88,6 +88,27 @@ async def test_firmware_from_an_older_openampere(hass: HomeAssistant, entry, cli
     assert hass.states.get(entity_id(hass, "sensor", "_firmware")).state == "1.40"
 
 
+async def test_the_days_left_of_an_enphase_token(hass: HomeAssistant, entry, client) -> None:
+    """#538: a diagnostic sensor for an automation that reminds the owner; only when the device has a token."""
+    with_token = state()
+    with_token["status"]["token_days_left"] = 12
+    client.state.return_value = with_token
+    await setup(hass, entry)
+    days = entity_id(hass, "sensor", "_token_days_left")
+    assert hass.states.get(days).state == "12"
+    assert er.async_get(hass).async_get(days).entity_category == "diagnostic"
+    coordinator = entry.runtime_data
+    coordinator._on_push({"type": "live", "live": coordinator.data["live"],
+                          "status": {**coordinator.data["status"], "token_days_left": -1}})
+    await hass.async_block_till_done()
+    assert hass.states.get(days).state == "-1"  # ran out: the gateway refuses every request now
+
+
+async def test_no_token_sensor_for_a_device_without_one(hass: HomeAssistant, entry, client) -> None:
+    await setup(hass, entry)
+    assert entity_id(hass, "sensor", "_token_days_left") is None
+
+
 async def test_alarm_only_for_fault_codes_other_than_0(hass: HomeAssistant, entry, client) -> None:
     """#330: the inverter reports every fault word, all of them 0 without a fault."""
     await setup(hass, entry)

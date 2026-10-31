@@ -539,7 +539,7 @@
     "settingOverwritten": "Einstellung überschrieben",
     "storage": "Speicherplatz und Messwerte",
     "storageHint": "Wenn Messwerte nicht gespeichert werden können oder der Speicherplatz knapp wird, und wenn es wieder geht.",
-    "unreachableHint": "Nach 15 Minuten ohne Verbindung, wenn sie wieder steht und wenn OpenAmpere den Wechselrichter unter einer neuen Adresse gefunden hat.",
+    "unreachableHint": "Nach 15 Minuten ohne Verbindung, wenn sie wieder steht, wenn OpenAmpere den Wechselrichter unter einer neuen Adresse gefunden hat und 14 Tage bevor das Zugangs-Token von Enphase abläuft.",
     "wallbox": "Laden der Wallbox",
     "wallboxHint": "Wenn ein Auto an einer Wallbox oder einem Ladepunkt von evcc zu laden beginnt und wenn das Laden endet, mit der Energie seit dem Anstecken. Meldet die Wallbox das Auto als voll, kommt die Meldung sofort. Bei einer Pause, etwa beim Laden mit Überschuss, und wenn OpenAmpere das Laden gerade selbst gestoppt hat, kommt sie erst nach 15 Minuten."
   },
@@ -652,6 +652,15 @@
     "stringNamesAndSecondHint": "z. B. Süddach, Garage; zweiter Wechselrichter an Meter B",
     "stringNamesHint": "z. B. Süddach, Garage",
     "temperature": "Temperatur",
+    "token": "Zugangs-Token (Enphase)",
+    "tokenDaysLeft": {
+      "one": "Noch {count} Tag gültig",
+      "other": "Noch {count} Tage gültig"
+    },
+    "tokenEnter": "Zur Verbindung",
+    "tokenExpired": "Abgelaufen",
+    "tokenExpiredHint": "Das Zugangs-Token von Enphase ist abgelaufen, deshalb zeigt OpenAmpere keine Werte mehr. Hol mit deinem Enphase-Konto auf entrez.enphaseenergy.com ein neues und trag es unter Verbindung → Erweitert ein.",
+    "tokenSoonHint": "Das Zugangs-Token von Enphase läuft bald ab. Danach zeigt OpenAmpere keine Werte mehr. Hol mit deinem Enphase-Konto auf entrez.enphaseenergy.com ein neues und trag es unter Verbindung → Erweitert ein.",
     "totalCharged": "Gesamt geladen",
     "totalDischarged": "Gesamt entladen"
   },
