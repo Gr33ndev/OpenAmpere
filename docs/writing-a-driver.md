@@ -28,7 +28,7 @@ Contents:
 | `src/openampere/drivers/foxess/` | FoxESS H3 family: two register maps (`H3_NEW`, `H3_LEGACY`), read and write path. |
 | `src/openampere/drivers/saj/` | SAJ H2 / HS2: the smallest complete example and the best template; control through a charge slot instead of a remote control (#377). |
 | `src/openampere/drivers/mtec/` | M-TEC Energy-Butler GEN3: a display-only driver (#520) that tries plain Modbus TCP and then RTU frames over TCP (`ModbusDevice.framer`). |
-| `src/openampere/drivers/enphase/` | Enphase IQ Gateway: a display-only HTTPS driver (#522) with an access token (`inverter.token`, a secret bound to the address), passed by `registry.create(token=…)`. |
+| `src/openampere/drivers/enphase/` | Enphase IQ Gateway: a display-only HTTPS driver (#522) with an access token (`inverter.token`, a secret bound to the address) and the certificate it may go to (`inverter.cert_sha256`, #539), passed by `registry.create(token=…, cert_sha256=…)`. |
 | `src/openampere/drivers/senec/` | Senec.Home V3 / V2.1: a display-only driver over HTTP (`lala.cgi`) instead of Modbus (#521). It has the same face as a `ModbusDevice` (`connect`, `read`, `close`, the settings methods), `AUTO_DETECT = False` keeps it out of the automatic detection and `MIN_POLL_S` raises the poll interval. |
 | `src/openampere/drivers/solarmax/` | Solarmax MAX.STORAGE: a display-only driver (#519), input registers with the low word first, built without a device. |
 | `src/openampere/drivers/mypv.py` | my-PV heating rods. Not an inverter driver, see [Other devices](#other-devices). |

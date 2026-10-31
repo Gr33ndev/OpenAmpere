@@ -11,7 +11,8 @@ import { t, tx } from "./i18n";
 
 type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
-type TestResult = { ok: boolean; error?: string; device?: Device; label?: string;
+// cert_sha256: the certificate a newly typed Enphase token went to, saved with it (#539)
+type TestResult = { ok: boolean; error?: string; device?: Device; label?: string; cert_sha256?: string;
   sample?: { pv_power: number | null; battery_soc: number | null; pv_external_power?: number | null } | null };
 
 type Found = { host: string; port: number; model: string | null; manufacturer: string | null; driver: string | null; unit: number | null;
@@ -86,7 +87,10 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         "inverter.port": port, "inverter.driver": result.device.driver, "inverter.unit": result.device.unit ?? 0,
       };
       if (!hostLocked) changes["inverter.host"] = host.trim();
-      if (result.device.driver === "enphase" && token.trim()) changes["inverter.token"] = token.trim();
+      if (result.device.driver === "enphase" && token.trim()) {
+        changes["inverter.token"] = token.trim();
+        if (result.cert_sha256) changes["inverter.cert_sha256"] = result.cert_sha256;
+      }
       await putJson("/api/settings", changes);
       onSaved();
     } catch (e) {

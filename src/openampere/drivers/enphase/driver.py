@@ -16,6 +16,8 @@ out. Facts from Enphase's tech brief "Accessing IQ Gateway local APIs or local U
 - No energy counters for the battery, so no energy history.
 - Not found by the scan for Modbus devices: the owner chooses "Enphase" in the setup and enters the token. Port 502 (the
   setup's default) stands for 443, then 80.
+- The certificate cannot be checked against anything, so it is pinned on first use (#539): the setup test with a new
+  token records its SHA-256 fingerprint, saved as inverter.cert_sha256, and the token goes only to that certificate.
 
 VERIFY ON HARDWARE: everything; nothing is confirmed on a device yet. The signs of net-consumption (+ = import) and
 storage.agg_p_mw (+ = discharging, as evcc takes it).
@@ -25,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import http.client
 import json
 import logging
@@ -32,8 +35,7 @@ import math
 import re
 import ssl
 import time
-import urllib.error
-import urllib.request
+import urllib.parse
 
 from ..base import BatterySettings, DeviceInfo, ExportLimit, Snapshot, WorkMode
 from ..modbus import DetectionFailed, DeviceRefused, DeviceUnreachable, ModbusTransientError
@@ -90,6 +92,22 @@ class NotEnphase(DetectionFailed):
     """Something answers, but not like an IQ Gateway."""
 
 
+class CertificateChanged(DeviceUnreachable):
+    """The gateway shows another certificate than the pinned one (#539); nothing is sent. .message for the app."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class HttpStatus(Exception):
+    """An answer other than 200."""
+
+    def __init__(self, code: int) -> None:
+        super().__init__(f"HTTP {code}")
+        self.code = code
+
+
 class PlainHttpOnly(DetectionFailed):
     """The gateway answers only over plain HTTP, where the token is never sent; not a refused token."""
 
@@ -118,7 +136,7 @@ class EnphaseDriver:
     MIN_POLL_S = MIN_POLL_S
 
     def __init__(self, host: str, port: int = 0, unit: int = 0, *, timeout: float = 10.0, read_attempts: int = 3,
-                 token: str = "", **_ignored) -> None:
+                 token: str = "", cert_sha256: str = "", **_ignored) -> None:
         self._host = host
         self._ports = DEFAULT_PORTS if port in (0, MODBUS_PORT) else (port,)
         self._timeout = max(timeout, 10.0)
@@ -126,10 +144,13 @@ class EnphaseDriver:
         self._token = token.strip()
         self._base: str | None = None
         self._lock = asyncio.Lock()
-        tls = ssl.create_default_context()
-        tls.check_hostname, tls.verify_mode = False, ssl.CERT_NONE  # self-signed, nothing to check it against
-        # never through a proxy from the environment: the gateway is in the home network
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=tls))
+        self._tls = ssl.create_default_context()
+        # self-signed, nothing to check it against: pinned instead (#539)
+        self._tls.check_hostname, self._tls.verify_mode = False, ssl.CERT_NONE
+        # the fingerprint the token may go to: the stored one, else the first one seen (the setup test with a new
+        # token, or a token from config.yaml until the next start)
+        self.cert_sha256: str | None = cert_sha256.strip().lower() or None
+        self._candidate: str | None = None  # without a pin: the certificate of the detection under way
         self.info: DeviceInfo | None = None
         self.token_expires: float | None = token_expiry(self._token)
         self.has_battery = False  # the gateway listed IQ Batteries once: from then on 0 W is an idle battery
@@ -137,12 +158,39 @@ class EnphaseDriver:
     # ---- HTTP --------------------------------------------------------------
 
     def _get_sync(self, url: str, auth: bool) -> str:
-        headers = {"User-Agent": "OpenAmpere", "Accept": "application/json"}
-        # the token only over HTTPS, never in plain text on the network (a gateway that needs one has HTTPS)
-        if auth and self._token and url.startswith("https://"):
-            headers["Authorization"] = f"Bearer {self._token}"
-        with self._opener.open(urllib.request.Request(url, headers=headers), timeout=self._timeout) as response:
-            return response.read().decode("utf-8", "replace")
+        """One GET; http.client (never a proxy from the environment, no redirects), so the certificate is checked after
+        the handshake and before anything is sent."""
+        parts = urllib.parse.urlsplit(url)
+        https = parts.scheme == "https"
+        connection = (http.client.HTTPSConnection(parts.hostname, parts.port, timeout=self._timeout, context=self._tls)
+                      if https else http.client.HTTPConnection(parts.hostname, parts.port, timeout=self._timeout))
+        try:
+            connection.connect()
+            headers = {"User-Agent": "OpenAmpere", "Accept": "application/json", "Connection": "close"}
+            if https:
+                self._check_certificate(connection.sock.getpeercert(binary_form=True))
+                # the token only over HTTPS, never in plain text on the network (a gateway that needs one has HTTPS)
+                if auth and self._token:
+                    headers["Authorization"] = f"Bearer {self._token}"
+            connection.request("GET", f"{parts.path}?{parts.query}" if parts.query else parts.path, headers=headers)
+            response = connection.getresponse()
+            body = response.read()
+            if response.status != 200:
+                raise HttpStatus(response.status)
+            return body.decode("utf-8", "replace")
+        finally:
+            connection.close()
+
+    def _check_certificate(self, der: bytes | None) -> None:
+        seen = hashlib.sha256(der or b"").hexdigest()
+        if self.cert_sha256 is None and self._candidate is None:
+            self._candidate = seen  # trust on first use: pinned once the detection succeeded
+        elif seen != (self.cert_sha256 or self._candidate):
+            log.warning("the Enphase gateway at %s shows another certificate than the pinned one", self._host)
+            raise CertificateChanged(
+                "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt "
+                "OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das "
+                "Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie.")
 
     async def _get(self, path: str, base: str | None = None, auth: bool = True) -> str:
         async with self._lock:
@@ -152,13 +200,14 @@ class EnphaseDriver:
         """One answer of the known gateway; no retries (the collector tries again after its interval)."""
         try:
             answer = json.loads(await self._get(path))
-        except urllib.error.HTTPError as err:
-            err.close()  # the answer holds the connection open otherwise
+        except CertificateChanged:
+            raise
+        except HttpStatus as err:
             if err.code in (401, 403):
                 self._reject()
             raise EnphaseNotAnswering("Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze "
                                       "wieder.") from err
-        except (TimeoutError, urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as err:
+        except (TimeoutError, OSError, ValueError, http.client.HTTPException) as err:
             log.info("Enphase gateway at %s not answering: %s", self._host, err)
             raise EnphaseNotAnswering("Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze "
                                       "wieder.") from err
@@ -189,17 +238,16 @@ class EnphaseDriver:
         for port in self._ports:
             for scheme in ("https", "http"):
                 base = f"{scheme}://{host}:{port}"
+                self._candidate = None  # another server than the gateway may have answered before
                 try:
                     info = await self._get(INFO, base, auth=False)
-                except urllib.error.HTTPError as err:
-                    err.close()
+                except CertificateChanged:
+                    raise
+                except (HttpStatus, http.client.HTTPException):
                     answered = True
                     continue
-                except http.client.HTTPException:
-                    answered = True
-                    continue
-                except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
-                    answered = answered or isinstance(getattr(err, "reason", None), ssl.SSLError)
+                except (TimeoutError, OSError, ValueError) as err:
+                    answered = answered or isinstance(err, ssl.SSLError)
                     log.debug("Enphase %s: %s", base, err)
                     continue
                 serial, software = tag(info, "sn"), tag(info, "software")
@@ -215,6 +263,8 @@ class EnphaseDriver:
                 except TokenRejected:
                     self._base = None
                     raise
+                if scheme == "https" and self.cert_sha256 is None:
+                    self.cert_sha256 = self._candidate
                 self.info = DeviceInfo(manufacturer="Enphase", model="IQ Gateway", serial=serial, firmware=software,
                                        register_map="enphase_local", driver=self.KEY, unit=0, supports_control=False)
                 self._note_expiry()

@@ -122,7 +122,8 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
 async def test_connection(runtime: Runtime, host: str, port: int, unit: int, driver: str = "auto", *,
                           token: str = "") -> dict:
     """token: for a device that needs one (Enphase); empty means the stored one, but only for the stored address (the
-    token is bound to it like every secret, SECRET_TARGETS)."""
+    token is bound to it like every secret, SECRET_TARGETS), and only to the stored certificate (#539). A new token
+    goes to the certificate the gateway shows now: its fingerprint comes back as cert_sha256, for the setup to save."""
     collector, current = runtime.collector, runtime.config.inverter
     # an inverter is in the home network: no probing of addresses on the internet (open or closed port)
     if not await asyncio.to_thread(in_home_network, host):
@@ -132,11 +133,14 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
             and driver in ("auto", collector.device.driver) and unit in (0, collector.device.unit)):
         return {"ok": True, "device": collector.device.__dict__}
     timeout = max(3.0, runtime.config.inverter.timeout)
+    pin = ""
     if not token and host == current.host:
-        token = current.token
+        token, pin = current.token, current.cert_sha256
+    typed = bool(token) and not pin
     try:
         info, device = await registry.detect_driver(host, port, unit, timeout=timeout,
-                                                    only=None if driver == "auto" else driver, token=token)
+                                                    only=None if driver == "auto" else driver, token=token,
+                                                    cert_sha256=pin)
     except InverterBusy as err:
         return {"ok": False, "error": friendly_error(err), "busy": True}
     except DeviceUnreachable as err:  # a driver without Modbus (Senec) says itself what to check
@@ -152,7 +156,9 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
         sample = None
     finally:
         await device.close()
-    return {"ok": True, "device": info.__dict__, "label": registry.LABELS.get(info.driver), "sample": sample}
+    seen = getattr(device, "cert_sha256", None) if typed else None
+    return {"ok": True, "device": info.__dict__, "label": registry.LABELS.get(info.driver), "sample": sample,
+            **({"cert_sha256": seen} if seen else {})}
 
 
 REDISCOVER_AFTER_S = 180  # unreachable this long -> look for the device elsewhere in the network
