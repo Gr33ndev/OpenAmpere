@@ -183,23 +183,30 @@ async def find_by_serial(runtime: Runtime, prefix: str, port: int, serial: str) 
 
     driver = runtime.config.inverter.driver
     detecting = asyncio.Semaphore(DETECT_PARALLEL)
+    found = [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]
+    first = len(found)  # the lowest index that matched so far: hosts after it are not asked any more
 
-    async def matches(host: str) -> bool:
-        try:
-            # with a fixed driver only that one: faster, and no other vendor's probes at every device; with the
-            # shortcuts for silent hosts of the automatic detection, as the search asks every host (#547)
-            async with detecting:
+    async def matches(index: int, host: str) -> bool:
+        nonlocal first
+        async with detecting:
+            if index > first:
+                return False
+            try:
+                # with a fixed driver only that one: faster, and no other vendor's probes at every device; with the
+                # shortcuts for silent hosts of the automatic detection, as the search asks every host (#547)
                 info = await registry.detect(host, port, runtime.config.inverter.unit,
                                              timeout=runtime.config.inverter.timeout,
                                              only=None if driver == "auto" else driver, quick=True)
-        except (ConnectionError, OSError, asyncio.TimeoutError):
-            return False
-        return bool(info.serial) and info.serial == serial
+            except (ConnectionError, OSError, asyncio.TimeoutError):
+                return False
+        if info.serial and info.serial == serial:
+            first = min(first, index)
+            return True
+        return False
 
-    found = [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]
     # several hosts at a time, as in the setup's search (#549); the first match in address order
-    return next((host for host, match in zip(found, await asyncio.gather(*(matches(h) for h in found))) if match),
-                None)
+    results = await asyncio.gather(*(matches(i, h) for i, h in enumerate(found)))
+    return next((host for host, match in zip(found, results) if match), None)
 
 
 class Rediscovery:
