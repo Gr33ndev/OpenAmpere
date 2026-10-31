@@ -55,11 +55,14 @@ def test_states(car, evse, state):
     assert WeidmuellerAcSmartLive.interpret(regs).state == state
 
 
-def test_a_voltage_in_the_other_word_order_is_left_out():
-    """If the word order were the other way round, 230 V would read as thousands of volts: not shown."""
-    regs = SimulatedWeidmueller().regs
-    swapped = {**regs, 400: regs[401], 401: regs[400]}
-    assert WeidmuellerAcSmartLive.interpret(swapped).voltage_v[0] is None
+def test_values_in_the_other_word_order_are_left_out():
+    """If the word order were the other way round, 230 V would read as thousands of volts, 11 kW as about 1.95 MW and
+    16 A as about a million amperes: none of them is shown, and a charge with such a power is not taken as one."""
+    regs = SimulatedWeidmueller(charging=True).regs
+    swapped = {**regs, **{a: regs[a + 1] for a in (400, 406, 418)}, **{a + 1: regs[a] for a in (400, 406, 418)}}
+    reading = WeidmuellerAcSmartLive.interpret(swapped)
+    assert reading.voltage_v[0] is None and reading.current_a[0] is None
+    assert (reading.state, reading.charging, reading.power_w) == ("unknown", False, 0.0)
 
 
 async def test_the_check_reads_only_and_keeps_the_energy_counter_out(runtime):
@@ -72,6 +75,7 @@ async def test_the_check_reads_only_and_keeps_the_energy_counter_out(runtime):
     f = result["findings"]
     assert (f["firmware"], f["car_state"], f["evse_state"], f["power_kw"]) == ("01.05.00", "C", 11, 11.04)
     assert (f["user_limit_a"], f["fallback_current_a"], f["satellite"], f["energy_plausible"]) == (16, 0, False, True)
+    assert {b["start"] for b in result["blocks"]} >= {300, 317, 400, 700, 704}  # no undocumented address in a block
     energy = next(b for b in result["blocks"] if b["start"] == 457)
     assert energy["words"] == [None] * 4  # private: only whether it is plausible
 

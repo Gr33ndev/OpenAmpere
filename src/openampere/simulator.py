@@ -715,8 +715,11 @@ class SimulatedWeidmueller(SimulatedInverter):
         self.map, self.model, self.serial, self.read_only = None, "AC SMART VALUE", "", True
         self.strict_function = False
         self.functions: list[int] = []
-        self.regs = dict.fromkeys([*range(300, 324), *range(400, 435), *range(457, 461), *range(700, 708),
-                                   *range(846, 852), 995, 11000, 11001, *range(11050, 11056)], 0)
+        # only the addresses Weidmüller's document lists: a block across a gap (312–316, 433, 703) is refused, as
+        # an embedded Modbus server may do
+        self.regs = dict.fromkeys([*range(300, 312), *range(317, 324), *range(400, 433), 434, *range(457, 461),
+                                   700, 701, 702, *range(704, 708), *range(846, 852), 995, 11000, 11001,
+                                   *range(11050, 11056)], 0)
         self._write_string(846, firmware, 6)
         self.regs.update({301: ord("A"), 302: 0, 307: 1, 319: 1, 700: 16, 701: 16, 702: 16, 704: 1, 11054: 0})
         for i, address in enumerate((400, 402, 404)):

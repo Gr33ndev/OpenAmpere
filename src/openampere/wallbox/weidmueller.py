@@ -29,7 +29,10 @@ LIFETIME_ENERGY = 457  # 8 bytes, Wh
 PHASE_ON_V = 100.0
 PHASE_ACTIVE_A = 1.0
 CHARGING_W = 100.0
-MAX_PLAUSIBLE_V = 400.0  # a voltage above this is a wrong word order or a broken read, not a measurement
+# above these a value is a wrong word order or a broken read, not a measurement: not shown
+MAX_PLAUSIBLE_V = 400.0
+MAX_PLAUSIBLE_A = 80.0
+MAX_PLAUSIBLE_W = 30_000.0  # the AC SMART charges with at most 22 kW
 
 
 def u32le(values: dict[int, int], address: int) -> int | None:
@@ -66,9 +69,20 @@ def car_state(values: dict[int, int]) -> str | None:
     return letter if letter in CAR_STATE else None
 
 
+def plausible(value: float | None, limit: float) -> float | None:
+    return value if value is None or value <= limit else None
+
+
 def voltages(values: dict[int, int]) -> list[float | None]:
-    found = [scaled32(values, a, 0.001) for a in (400, 402, 404)]  # mV
-    return [v if v is None or v <= MAX_PLAUSIBLE_V else None for v in found]
+    return [plausible(scaled32(values, a, 0.001), MAX_PLAUSIBLE_V) for a in (400, 402, 404)]  # mV
+
+
+def currents(values: dict[int, int]) -> list[float | None]:
+    return [plausible(scaled32(values, a, 0.001), MAX_PLAUSIBLE_A) for a in (406, 408, 410)]  # mA
+
+
+def power_w(values: dict[int, int]) -> float | None:
+    return plausible(scaled32(values, 418, 0.001), MAX_PLAUSIBLE_W)  # mW
 
 
 class WeidmuellerAcSmart(Wallbox):
@@ -78,25 +92,26 @@ class WeidmuellerAcSmart(Wallbox):
     ports = (502,)
     unit = 255
     function = 3
-    # charge controller, measurements (with the energy of the last charge and the temperature), the total energy, the
-    # limits, the firmware, the Modbus interface, and the load management (satellite or control box, timeout,
-    # current, fallback current)
-    ranges = ((300, 24), (400, 35), (LIFETIME_ENERGY, 4), (700, 8), (FIRMWARE, 6), (995, 1), (11000, 2), (11050, 6))
+    # charge controller, phases, measurements (with the energy of the last charge and the temperature), the total
+    # energy, the limits, the firmware, the Modbus interface, and the load management (satellite or control box,
+    # timeout, current, fallback current); only the addresses the document lists (312–316, 433 and 703 are not)
+    ranges = ((300, 12), (317, 7), (400, 33), (LIFETIME_ENERGY, 4), (700, 3), (704, 4), (FIRMWARE, 6), (995, 1),
+              (11000, 2), (11050, 6))
     private = frozenset(range(LIFETIME_ENERGY, LIFETIME_ENERGY + 4))
     public_text = frozenset(range(FIRMWARE, FIRMWARE + 6))
 
     @classmethod
     def interpret(cls, values: dict[int, int]) -> dict:
         lifetime = u64le(values, LIFETIME_ENERGY)
-        power = scaled32(values, 418, 0.000001)  # mW -> kW
+        power = power_w(values)
         return {
             "firmware": text(values, FIRMWARE, 6),
             "car_state": car_state(values),
             "evse_state": values.get(302),
             "offered_current_a": values.get(300),
             "voltage_v": voltages(values),
-            "current_a": [scaled32(values, a, 0.001) for a in (406, 408, 410)],  # mA
-            "power_kw": None if power is None else round(power, 2),
+            "current_a": currents(values),
+            "power_kw": None if power is None else round(power / 1000, 2),
             "session_kwh": scaled32(values, 430, 0.001),
             "phases_setting": {0: 1, 1: 3}.get(values.get(317)),
             "phases_load_management": {0: 1, 1: 3}.get(values.get(318)),
@@ -143,10 +158,13 @@ class WeidmuellerAcSmartLive:
             r.state = "waiting"
         r.connected = letter in ("B", "C", "D")
         r.voltage_v = voltages(values)
-        r.current_a = [scaled32(values, a, 0.001) for a in (406, 408, 410)]
+        r.current_a = currents(values)
         found = [v for v in r.voltage_v if v is not None]
         r.installed_phases = max(1, sum(v >= PHASE_ON_V for v in found)) if found else 3
-        power = scaled32(values, 418, 0.001) or 0.0  # mW -> W
+        power = power_w(values)
+        if power is None and 418 in values:  # implausible: nothing about this charge can be trusted
+            r.state = "unknown"
+        power = power or 0.0
         r.charging = r.state == "charging" and power >= CHARGING_W
         r.power_w = round(power) if r.charging else 0.0
         if r.charging:
