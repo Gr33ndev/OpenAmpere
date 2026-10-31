@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from openampere import discovery
 from openampere.api import create_app
+from openampere.config import Config
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
 from openampere.drivers.enphase.driver import (INFO, PRODUCTION, CertificateChanged, EnphaseDriver, TokenRejected,
@@ -249,7 +250,10 @@ def test_every_driver_can_be_tested_in_the_setup(tmp_path):
 
 
 async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_its_expiry(tmp_path):
-    token = jwt(time.time() + 20 * 86400)  # runs out in 20 days
+    plant = ZoneInfo(Config().timezone)  # the zone of a new installation, the one the days are counted in
+    # runs out at noon in 20 days: the days left are calendar days (#553)
+    token = jwt(datetime.combine(datetime.now(plant).date() + timedelta(days=20), datetime.min.time().replace(hour=12),
+                                 tzinfo=plant).timestamp())
     sim = sunny(SimulatedEnphase(token=token))
     server, port = await serve(sim)
     async with server:
@@ -272,7 +276,7 @@ async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_i
     stored = runtime.storage.get_settings()
     assert stored["inverter.token"] and token not in json.dumps(stored)  # stored, but never in plain text
     check = {c["id"]: c for c in report["checks"]}["enphase_token"]
-    assert check["status"] == "warn" and check["summary"] in ("Noch 19 Tage gültig.", "Noch 20 Tage gültig.")
+    assert check["status"] == "warn" and check["summary"] == "Noch 20 Tage gültig."
     assert "." not in check["summary"].split("Noch")[0]  # no date that would tell the day the token was made
     assert token not in json.dumps(report)
 
