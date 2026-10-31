@@ -22,9 +22,13 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | FoxESS H3, register map of older firmware | [foxess/h3-legacy-map.md](foxess/h3-legacy-map.md) |
 | FoxESS AC EV Charger (read-only wallbox check) | [foxess/ac-charger.md](foxess/ac-charger.md) |
 | Portable dé wallbox over Tuya LAN (display and control) | [tuya/de-portable.md](tuya/de-portable.md) |
+| Weidmüller AC SMART (sold as "AMPERE.Charge", display only) | [weidmueller/ac-smart.md](weidmueller/ac-smart.md) |
 | SAJ H2, HS2, AS2 (sold as "Ampere.StoragePro") | [saj/h2-family.md](saj/h2-family.md) |
 | SAJ type code 0x005E, "3P-X E2" | [saj/0x005e-3p-x-e2.md](saj/0x005e-3p-x-e2.md) |
 | Solarmax MAX.STORAGE (sold as "AMPERE.Storage", display only) | [solarmax/max-storage.md](solarmax/max-storage.md) |
+| Senec.Home V3 and V2.1 over their web interface (display only) | [senec/home-v3.md](senec/home-v3.md) |
+| Enphase IQ Gateway with IQ Batteries (display only, needs a token) | [enphase/iq-gateway.md](enphase/iq-gateway.md) |
+| M-TEC Energy-Butler GEN3 (display only) | [mtec/energy-butler.md](mtec/energy-butler.md) |
 | my-PV AC ELWA heating rod | [mypv/elwa.md](mypv/elwa.md) |
 | Netze BW meter portal | [gridmeter/netze-bw.md](gridmeter/netze-bw.md) |
 | Cars of the Volkswagen group through the EU Data Act portal | [cars/vw-eu-data-act.md](cars/vw-eu-data-act.md) |
@@ -83,7 +87,8 @@ facts that turned out wrong as such instead of deleting them silently.
 
 The short status (supported, confirmed, planned) of every device, and the list of what EKD sold, is kept in
 [support.json](support.json) ([#526](https://github.com/Gr33ndev/OpenAmpere/issues/526)): the READMEs,
-[topics/names.md](topics/names.md) and the website are generated from it. When a confirmation on a device page changes
+[devices.md](../devices.md) (the table "Confirmed on a real system"), [topics/names.md](topics/names.md) and the website
+are generated from it. When a confirmation on a device page changes
 that status, change it there too and run `node scripts/device-support.mjs`.
 
 ## Layout of a page

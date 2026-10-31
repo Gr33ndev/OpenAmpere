@@ -35,7 +35,8 @@ def make_driver(config: Config):
         return registry.AutoDriver(inv.host, inv.port, inv.unit, **options)
     if inv.driver not in registry.DRIVERS:
         raise ValueError(f"unknown inverter driver {inv.driver!r}")
-    return registry.create(inv.driver, inv.host, inv.port, inv.unit, **options)
+    return registry.create(inv.driver, inv.host, inv.port, inv.unit, token=inv.token, cert_sha256=inv.cert_sha256,
+                           **options)
 
 
 class Runtime:
@@ -160,6 +161,12 @@ class Runtime:
             raise PermissionError(f"Fest eingestellt (Umgebungsvariable), in der App nicht änderbar: {', '.join(sorted(blocked))}")
         if "timezone" in clean:
             ZoneInfo(clean["timezone"])  # raises for unknown zones
+
+        if "inverter.cert_sha256" in clean and "inverter.token" not in clean:
+            # the certificate the stored token goes to changes only with a token entered again (#539): otherwise
+            # whoever has a session could point the stored token at their own server
+            raise PermissionError("Das Zertifikat des Enphase-Gateways lässt sich nur zusammen mit dem Zugangs-Token "
+                                  "speichern. Bitte das Token beim Einrichten noch einmal eintragen.")
 
         stored = self._load_settings()
         saved = {**stored, **clean}

@@ -21,7 +21,7 @@ export type EvccLoadpoint = {
 /** evcc's sponsor token (#317); null for evcc versions that do not say. */
 export type EvccSponsor = { active: boolean; trial: boolean; expires_at: string | null; expires_soon: boolean };
 export type EvccView = {
-  configured: boolean; url: string | null; error: string | null; updated: number | null;
+  configured: boolean; url: string | null; error: string | null; error_code?: "sponsor" | null; updated: number | null;
   priority: "wallbox_first" | "devices_first";
   state: { version: string | null; site_title: string | null; loadpoints: EvccLoadpoint[]; sponsor?: EvccSponsor | null } | null;
 };
@@ -217,6 +217,27 @@ export function SponsorNotice({ sponsor }: { sponsor?: EvccSponsor | null }) {
   return <Notice kind="warn">{date ? tx("devices.sponsor.expiresOn", { date, link }) : tx("devices.sponsor.expiresSoon", { link })}</Notice>;
 }
 
+/** evcc has no charge point (also when it could not start any): next to a direct wallbox, likely a leftover (#535). */
+const evccIdle = (view: EvccView) => !view.state?.loadpoints.length;
+
+/** evcc's error. Next to a wallbox OpenAmpere reads directly, a missing sponsor token while evcc has no charge point
+ *  may be about that very wallbox, still set up in evcc: EvccNextToDirect explains that instead (#535). With charge
+ *  points of its own the token is what evcc's wallbox needs, so the error stays. */
+export function EvccError({ view, direct }: { view?: EvccView | null; direct: boolean }) {
+  if (!view?.configured || !view.error || (direct && view.error_code === "sponsor" && evccIdle(view))) return null;
+  return <Notice kind="error">{view.error}</Notice>;
+}
+
+/** evcc left connected next to a wallbox OpenAmpere reads directly (#535): both may talk to the same wallbox, which
+ *  usually takes one connection (#318), so say how to remove it from evcc or disconnect evcc. */
+export function EvccNextToDirect({ view }: { view?: EvccView | null }) {
+  if (!view?.configured) return null;
+  const vars = { way: t("devices.wallboxDirect.wayEvcc"), address: t("devices.wallboxPage.evccAddress") };
+  if (view.error_code === "sponsor" && evccIdle(view)) return <Notice kind="warn">{t("devices.evccNextToDirect.sponsor", vars)}</Notice>;
+  if (view.state && evccIdle(view)) return <Notice kind="warn">{t("devices.evccNextToDirect.idle", vars)}</Notice>;
+  return null;
+}
+
 export function WallboxPage({ onBack }: PageProps) {
   const { data: settings, reload: reloadSettings } = useResource<Settings>("/api/settings");
   const { data: view, error, reload } = useResource<EvccView>("/api/evcc?refresh=true", 10_000);
@@ -252,10 +273,12 @@ export function WallboxPage({ onBack }: PageProps) {
     }
   };
   const cars = view?.state?.loadpoints ?? [];
-  // evcc or OpenAmpere itself (#318, #325); "direct" first when a wallbox is set up that way
+  // evcc or OpenAmpere itself (#318, #325); "direct" first when a wallbox is set up that way and evcc has none (#535)
   const { data: native } = useResource<WallboxesView>("/api/wallboxes");
+  // only a wallbox that is switched on connects to it (as on the devices tab)
+  const direct = !!native?.wallboxes.some((w) => w.enabled);
   const [chosen, setWay] = useState<"evcc" | "direct" | null>(null);
-  const way = chosen ?? (native?.wallboxes.length && !view?.configured ? "direct" : "evcc");
+  const way = chosen ?? (native?.wallboxes.length && !cars.length ? "direct" : "evcc");
 
   return (
     <SubPage title={t("devices.wallboxPage.title")} onBack={onBack}>
@@ -265,12 +288,17 @@ export function WallboxPage({ onBack }: PageProps) {
         <Segmented value={way} onChange={setWay}
           options={[["evcc", t("devices.wallboxDirect.wayEvcc")], ["direct", t("devices.wallboxDirect.wayDirect")]]} />
       </fieldset>
-      {way === "direct" ? <NativeWallboxSetup origin={origin} /> : <>
+      {way === "direct" ? <>
+        {direct && <EvccNextToDirect view={view} />}
+        {view?.configured && !!cars.length && <p className="hint">{t("devices.evccNextToDirect.both")}</p>}
+        <NativeWallboxSetup origin={origin} />
+      </> : <>
       <p className="hint">{tx("devices.wallboxPage.intro", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
       {!view && <LoadState error={error} onRetry={reload} />}
       {view?.state && <Notice kind="ok">{t("devices.wallboxPage.connected", { version: view.state.version ?? "" })} ·{" "}
         {t("devices.wallboxPage.chargePoints", { count: cars.length })}</Notice>}
-      {view?.configured && view.error && <Notice kind="error">{view.error}</Notice>}
+      <EvccError view={view} direct={direct} />
+      {direct && <EvccNextToDirect view={view} />}
       <SponsorNotice sponsor={view?.state?.sponsor} />
 
       <ol className="steps-list">

@@ -154,6 +154,11 @@
     "solarShare": "{percent} % Sonne",
     "title": "Ladevorgänge"
   },
+  "evccNextToDirect": {
+    "both": "OpenAmpere ist auch mit evcc verbunden. Das passt, wenn evcc eine andere Wallbox steuert. Richte aber keine Wallbox in beiden ein: Sie nimmt meist nur eine Verbindung an, und evcc und OpenAmpere würden sie gleichzeitig steuern.",
+    "idle": "OpenAmpere ist noch mit evcc verbunden, aber evcc hat keinen Ladepunkt. Ist in evcc die Wallbox eingerichtet, die OpenAmpere jetzt direkt liest, lösche sie dort unter Konfiguration: Die Wallbox nimmt meist nur eine Verbindung an. Brauchst du evcc nicht mehr, leere unter „{way}“ das Feld „{address}“ und speichere.",
+    "sponsor": "evcc braucht ein Sponsortoken für eine Wallbox in seiner Einrichtung. Ist das die Wallbox, die OpenAmpere jetzt direkt liest, brauchst du kein Token: Lösche sie in evcc unter Konfiguration, denn die Wallbox nimmt meist nur eine Verbindung an. Steuert evcc eine andere Wallbox, trage in evcc unter Konfiguration → Sponsoring ein gültiges Token ein und starte evcc neu. Brauchst du evcc nicht mehr, leere unter „{way}“ das Feld „{address}“ und speichere."
+  },
   "hint": {
     "live": "Änderungen werden an Wechselrichter und Geräte gesendet.",
     "off": "OpenAmpere zeigt nur an und ändert nichts an deinen Geräten.",
@@ -254,6 +259,7 @@
     "locked": "gesperrt",
     "defaultNameFixed": "Wallbox",
     "whichShown": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie noch nicht, sie lädt weiter so, wie sie in ihrer App eingestellt ist. Die Lademodi kannst du als Simulation ausprobieren: OpenAmpere rechnet dann nur aus, was es tun würde. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht, der hilft, sie bald auch zu steuern.",
+    "whichShownOnly": "OpenAmpere zeigt diese Wallbox nur an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie nicht, sie lädt so, wie sie in ihrer App eingestellt ist.",
     "whichControllable": "OpenAmpere zeigt diese Wallbox an: ob ein Auto angeschlossen ist und mit welcher Leistung es lädt. Steuern kann OpenAmpere sie als Test: Nach dem Hinzufügen kannst du die echte Steuerung einschalten, wenn du willst, unter „Geräte“ auf der Karte der Wallbox. Vorher fragt OpenAmpere dich und erklärt, was passiert, wenn es ausfällt. Ohne sie lädt die Wallbox so, wie sie in ihrer App eingestellt ist, und die Lademodi laufen nur als Simulation. Mit „Nur prüfen“ erstellst du stattdessen einen Bericht.",
     "groupControllable": "Anzeigen, Steuern als Test",
     "groupShown": "Nur anzeigen",

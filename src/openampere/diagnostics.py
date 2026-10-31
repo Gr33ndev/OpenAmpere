@@ -30,6 +30,7 @@ from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
+SENEC_STALE_S = 120  # values of the Senec's last read older than this (and three poll intervals) are marked as old
 REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
 EXPORT_LIMIT = "Einspeisebegrenzung (46616)"
 
@@ -395,9 +396,15 @@ class Diagnostics:
             checks.append(await self._saj_meter_b())
         if getattr(driver, "KEY", None) == "solarmax":
             checks.append(await self._solarmax_registers())
+        if getattr(driver, "KEY", None) == "senec":
+            checks.append(await self._senec_values())
+        if getattr(driver, "KEY", None) == "enphase":
+            checks.append(self._enphase_token())
+        if getattr(driver, "KEY", None) == "mtec":
+            checks.append(await self._mtec_values())
 
-        # 6. connection limit (optional: may briefly disturb other devices)
-        if connection_test:
+        # 6. connection limit (optional: may briefly disturb other devices); Modbus only
+        if connection_test and getattr(driver, "PROTOCOL", "modbus") == "modbus":
             checks.append(await self._connection_test())
         else:
             checks.append(Check("connections", "Gleichzeitige Verbindungen", "skipped",
@@ -521,6 +528,79 @@ class Diagnostics:
                      hint="OpenAmpere liest diesen Speicher nach der Liste von Solarmax, aber noch ohne Bestätigung von "
                           "einem echten Gerät. Vergleiche Batterie- und Netzleistung mit dem Display und schreib uns, "
                           "ob die Vorzeichen stimmen.")
+
+    async def _senec_values(self) -> Check:
+        """What the Senec driver reads from lala.cgi (#521), built without a device: the values of ENERGY with Senec's
+        own signs (powers rounded like every power in the report) and how the device answered (scheme and port). Not
+        the device id. The values of the collector's last read: no extra request outside its 30 s rhythm."""
+        driver = self._driver()
+        title = "Werte (Senec)"
+        energy = getattr(driver, "last_energy", None)
+        if not energy:
+            return Check("senec_values", title, "skipped", "Noch keine Werte vom Senec-Speicher gelesen.")
+
+        def shown(key: str, value):
+            if not isinstance(value, float):
+                return value
+            return round(value, -2) if key.endswith(("_POW", "_POWER")) else round(value, 1)
+
+        values = {key: shown(key, value) for key, value in energy.items()}
+        url = getattr(driver, "_url", None) or ""
+        scheme, _, rest = url.partition("://")
+        read_at = getattr(driver, "last_energy_at", None)
+        age = None if read_at is None else max(0, round(time.time() - read_at))
+        details = {"values": values, "scheme": scheme or None, "port": rest.split("/")[0].rpartition(":")[2] or None,
+                   "age_s": age}
+        summary = (f"Batterie {values.get('GUI_BAT_DATA_POWER')} W (laden +), Netz {values.get('GUI_GRID_POW')} W "
+                   f"(Bezug +), Ladestand {values.get('GUI_BAT_DATA_FUEL_CHARGE')} %")
+        stale_after = max(SENEC_STALE_S, 3 * self.runtime.collector.poll_interval())  # a longer interval is no fault
+        old = age is not None and age > stale_after
+        if old:  # the device stopped answering: these are not the values of now
+            summary = f"Letzte Werte von vor {age // 60} min: {summary}"
+        return Check("senec_values", title, "warn" if old else "info", summary, details,
+                     hint="OpenAmpere liest diesen Speicher nach offenen Projekten, aber noch ohne Bestätigung von einem "
+                          "echten Gerät. Vergleiche Batterie- und Netzleistung mit der Senec-App und schreib uns, ob die "
+                          "Vorzeichen stimmen.")
+    async def _mtec_values(self) -> Check:
+        """What the M-TEC driver reads (#520), built without a device: the powers in M-TEC's own signs (rounded like every
+        power in the report), the backup output (whether the house load must include it is open), and the unit id and
+        framing that answered. No serial number and no counter values."""
+        driver = self._driver()
+        title = "Werte (M-TEC)"
+        try:
+            raw = await driver.read_raw()
+        except Exception as err:  # noqa: BLE001 - a check never stops the report
+            return Check("mtec_values", title, "warn", str(err))
+        names = ("pv_power", "grid_power", "inverter_power", "backup_power", "battery_power")
+        powers = {name: round(raw[name], -2) for name in names if name in raw}
+        details = {"powers_rounded_w": powers, "running_state": raw.get("running_state"),
+                   "unit": getattr(driver, "_unit", None), "framing": getattr(getattr(driver, "framer", None), "value", None)}
+        def shown(name: str) -> str:
+            return f"{powers[name]:g} W" if name in powers else "nicht gelesen"
+
+        summary = (f"Netz {shown('grid_power')} (einspeisen +), Batterie {shown('battery_power')} (entladen +), "
+                   f"Wechselrichter {shown('inverter_power')}, Notstromausgang {shown('backup_power')}")
+        return Check("mtec_values", title, "info", summary, details,
+                     hint="OpenAmpere liest diesen Speicher nach Unterlagen von M-TEC und offenen Projekten, aber noch "
+                          "ohne Bestätigung von einem echten Gerät. Vergleiche Netz-, Batterie- und Hausleistung mit der "
+                          "M-TEC-App und schreib uns, ob sie stimmen.")
+
+    def _enphase_token(self) -> Check:
+        """When the Enphase access token runs out (#522): the gateway then refuses every request until the owner
+        enters a new one. Only the days left: never the token, and no date (it would tell the day the token was made)."""
+        from .drivers.enphase.driver import WARN_DAYS, token_days_left
+        title = "Zugangs-Token (Enphase)"
+        # only the days left: the date would tell the day the owner made the token (#149)
+        days = token_days_left(getattr(self._driver(), "token_expires", None))
+        if days is None:
+            return Check("enphase_token", title, "info", "Ablaufdatum nicht lesbar.")
+        if days < 0:
+            return Check("enphase_token", title, "error", f"Seit {-days} Tagen abgelaufen.",
+                         {"days_left": days}, hint="Hol bei Enphase ein neues Token und trag es beim Einrichten ein.")
+        status = "warn" if days < WARN_DAYS else "ok"
+        return Check("enphase_token", title, status, f"Noch {days} Tage gültig.", {"days_left": days},
+                     hint="Hol rechtzeitig bei Enphase ein neues Token und trag es beim Einrichten ein."
+                     if status == "warn" else "")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

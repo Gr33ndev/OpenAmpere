@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: MIT
 """One source for which devices are supported and confirmed (#526).
 
-docs/devices/support.json holds it; scripts/device-support.mjs writes the tables in README.md, README.de.md and
-docs/devices/topics/names.md, and scripts/build-site-pages.mjs renders the EKD device page and the home page list.
+docs/devices/support.json holds it; scripts/device-support.mjs writes the tables in README.md, README.de.md,
+docs/devices.md, docs/devices.de.md (#542) and docs/devices/topics/names.md, and scripts/build-site-pages.mjs renders
+the EKD device page and the home page list.
 """
 
 import json
@@ -103,6 +104,26 @@ def test_the_readme_table_marks_a_confirmed_device_and_links_its_page():
     table = call("readmeTable", data(devices=devices), "en")["value"]
     assert "| [Inverter](docs/devices/foxess/h3.md) | Monitoring. | ✅ Monitoring confirmed |" in table
     assert call("readmeTable", data(), "de")["value"].startswith("| Gerät | Was OpenAmpere kann |")
+
+
+@needs_node
+def test_the_confirmed_table_of_devices_md_links_relative_to_docs_and_leaves_out_devices_without_a_page():
+    devices = [{**data()["devices"][0], "page": "docs/devices/foxess/h3.md"},
+               {**data()["devices"][0], "id": "ha", "name": "Home Assistant", "check": False}]
+    table = call("confirmedTable", data(devices=devices), "de")["value"].split("\n")
+    assert table == ["| Gerät | An echter Anlage bestätigt? |", "|---|---|",
+                     "| [Inverter](devices/foxess/h3.md) | ✅ Anzeige bestätigt |"]
+
+
+@pytest.mark.parametrize(("page", "columns"), [
+    ("devices.md", ["Tested on real hardware", "Sold by EKD as"]),
+    ("devices.de.md", ["An echter Anlage geprüft", "Von EKD verkauft als"]),
+])
+def test_devices_md_keeps_no_confirmation_by_hand(page, columns):
+    """The status columns were kept by hand next to support.json and drifted (#542); the generated table replaced them."""
+    headers = [line for line in (ROOT / "docs" / page).read_text(encoding="utf-8").split("\n") if line.startswith("|")]
+    for column in columns:
+        assert not any(f"| {column} |" in line for line in headers), column
 
 
 @needs_node

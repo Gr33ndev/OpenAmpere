@@ -154,6 +154,11 @@
     "solarShare": "{percent} % solar",
     "title": "Charging sessions"
   },
+  "evccNextToDirect": {
+    "both": "OpenAmpere is also connected to evcc. That is fine if evcc controls another wallbox. Do not set up one wallbox in both, though: it usually takes only one connection, and evcc and OpenAmpere would control it at the same time.",
+    "idle": "OpenAmpere is still connected to evcc, but evcc has no charge point. If the wallbox OpenAmpere now reads directly is set up in evcc, delete it there under Configuration: the wallbox usually takes only one connection. If you no longer need evcc, clear the field “{address}” under “{way}” and save.",
+    "sponsor": "evcc needs a sponsor token for a wallbox in its setup. If it is the wallbox OpenAmpere now reads directly, you need no token: delete it in evcc under Configuration, because the wallbox usually takes only one connection. If evcc controls another wallbox, enter a valid token in evcc under Configuration → Sponsorship and restart evcc. If you no longer need evcc, clear the field “{address}” under “{way}” and save."
+  },
   "hint": {
     "live": "Changes are sent to the inverter and devices.",
     "off": "OpenAmpere only displays and changes nothing on your devices.",
@@ -254,6 +259,7 @@
     "locked": "locked",
     "defaultNameFixed": "Wallbox",
     "whichShown": "OpenAmpere shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it yet, it goes on charging as it is set in its own app. You can try out the charging modes as a simulation: OpenAmpere then only works out what it would do. With “Check only” you create a report instead, which helps to control it soon.",
+    "whichShownOnly": "OpenAmpere only shows this wallbox: whether a car is plugged in and with how much power it charges. OpenAmpere cannot control it, it charges as it is set in its own app.",
     "whichControllable": "OpenAmpere shows this wallbox: whether a car is plugged in and how much power it charges with. OpenAmpere can control it as a test: after adding it, you can switch on real control if you want, on the wallbox's card under “Devices”. OpenAmpere asks you first and explains what happens if it fails. Without it the wallbox charges as set in its own app, and the charging modes run as a simulation only. With “Check only” you create a report instead.",
     "groupControllable": "Show, control as a test",
     "groupShown": "Show only",

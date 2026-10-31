@@ -10,13 +10,15 @@
  *
  * Generated between the markers of section() (HTML comments, hidden on GitHub and on the website):
  *   README.md, README.de.md          the table "Supported devices" from `devices`
+ *   docs/devices.md, devices.de.md   the table "Confirmed on a real system" from `devices` with a device page (#542)
  *   docs/devices/topics/names.md     the tables "Hardware sold by EKD over time" from `ekd`
  * scripts/build-site-pages.mjs renders the matrix of the EKD device page ({{devicesMatrix}}) and the device list on
  * the home page ({{devicesList}}) with siteMatrix() and siteList().
  *
  * The data:
- *   devices[]  id, name, does (Markdown, README only), short, confirmed, check (✅ in the README), state, next, page
- *              (its device page, the evidence behind "confirmed"), home: false to leave it off the home page
+ *   devices[]  id, name, does (Markdown, README only), short, confirmed, check (✅), state, next, page (its device
+ *              page, the evidence behind "confirmed"; without one it is left out of docs/devices.md), home: false to
+ *              leave it off the home page
  *   ekd[]      id, group, names (the cells of its row in names.md: English Markdown, links relative to that page;
  *              with support, the OpenAmpere cell names only the driver, the confirmation is added from the device),
  *              and for the website: sold, device, period, state, note, issue or next; site: false leaves it off.
@@ -130,6 +132,19 @@ export function readmeTable(data, lang) {
 }
 
 /**
+ * The table "Confirmed on a real system" of docs/devices.md in lang: every device with a device page, linked relative
+ * to docs/. The evidence stays on the device page.
+ */
+export function confirmedTable(data, lang) {
+  const rows = data.devices.filter((device) => device.page).map((device) => {
+    const name = cell(pick(device.name, lang));
+    return `| [${name}](${device.page.replace(/^docs\//, "")}) | ${device.check ? "✅ " : ""}${cell(pick(device.confirmed, lang))} |`;
+  });
+  const [device, , confirmed] = README_HEADER[lang];
+  return [`| ${device} | ${confirmed} |`, "|---|---|", ...rows].join("\n");
+}
+
+/**
  * The tables "Hardware sold by EKD over time" of names.md, one per group, in the order of the file. A row with support
  * gets the confirmation of its device after its own OpenAmpere cell, so names.md says the same as README and website.
  */
@@ -216,6 +231,8 @@ export function section(content, name, body) {
 export const TARGETS = [
   ["README.md", "devices", (data) => readmeTable(data, "en")],
   ["README.de.md", "devices", (data) => readmeTable(data, "de")],
+  ["docs/devices.md", "confirmed", (data) => confirmedTable(data, "en")],
+  ["docs/devices.de.md", "confirmed", (data) => confirmedTable(data, "de")],
   ["docs/devices/topics/names.md", "ekd", (data) => namesTables(data)],
 ];
 

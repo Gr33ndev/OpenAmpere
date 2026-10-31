@@ -197,7 +197,8 @@ const settings = {
     "log.level": "info", "server.allowed_hosts": [],
   },
   secrets: { "cloud.api_key": { set: false, hint: null }, "notify.ntfy_token": { set: false, hint: null },
-    "evcc.password": { set: false, hint: null }, "meter.password": { set: true, hint: null } },
+    "evcc.password": { set: false, hint: null }, "meter.password": { set: true, hint: null },
+    "inverter.token": { set: false, hint: null }, "inverter.cert_sha256": { set: false, hint: null } },
   locked: [],
   hidden: [], // the demo is always logged in (see /api/auth/status)
   revision: 1,
@@ -424,7 +425,9 @@ function nativeWallboxes() {
     { key: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)", protocol: "tuya", read_only: false,
       modes: ["manual", "off", "pv", "minpv", "now"], sold_by: [] },
     { key: "foxess_ac", label: "FoxESS AC EV Charger", protocol: "modbus", read_only: true, controllable: true, simulated: true,
-      modes: [...FOX_MODES], sold_by: ["EKD"], port: 502, unit: 1 }],
+      modes: [...FOX_MODES], sold_by: ["EKD"], port: 502, unit: 1 },
+    { key: "weidmueller_ac_smart", label: "Weidmüller AC SMART", protocol: "modbus", read_only: true, controllable: false,
+      simulated: false, modes: ["manual"], sold_by: ["EKD"], port: 502, unit: 255 }],
     wallboxes: [{ id: "demo0001", name: "Mobile Wallbox", model: "de_tuya", label: "dé Mobile Wallbox 11 kW (Tuya)",
       host: "192.168.178.60", device_id: null, local_key_set: true, max_current_a: 16, mode: "pv", enabled: true,
       mode_current_a: { now: 8 }, stop_after_min: 10, port: null, unit: null, read_only: false,
@@ -481,7 +484,7 @@ function carSessions(params: URLSearchParams) {
 }
 
 function evcc() {
-  return { configured: true, url: "http://evcc.local:7070", error: null, updated: now(), priority: "wallbox_first",
+  return { configured: true, url: "http://evcc.local:7070", error: null, error_code: null, updated: now(), priority: "wallbox_first",
     state: { version: "0.316.1", site_title: "Zuhause", loadpoints: [wallbox()],
       // a paid sponsor token far from expiring: no warning in the demo (#317)
       sponsor: { active: true, trial: false, expires_at: new Date(now() * 1000 + 300 * 86_400_000).toISOString(), expires_soon: false } } };
@@ -615,7 +618,8 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/evcc": evcc,
   "/api/wallbox/ocpp": () => ({ active: false, remaining_s: 0, connected: false, path: "/ocpp", charge_point: null, vendor: null,
     model: null, firmware: null, configuration_keys: 0, status: null, messages: 0 }),
-  "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger", sold_by: ["EKD"] }] }),
+  "/api/wallbox/models": () => ({ models: [{ key: "foxess_ac", label: "FoxESS AC EV Charger", sold_by: ["EKD"] },
+    { key: "weidmueller_ac_smart", label: "Weidmüller AC SMART", sold_by: ["EKD"] }] }),
   "/api/wallboxes": nativeWallboxes,
   "/api/cars": cars,
   "/api/cars/sessions": carSessions,

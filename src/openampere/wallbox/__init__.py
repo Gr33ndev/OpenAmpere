@@ -19,8 +19,9 @@ from .. import ha_app
 from ..probe import Probe, ProbeBusy, ProbeError, ProbeUnreachable, ProbeUnresolved, blocks_markdown, is_local_name
 from .base import Wallbox
 from .foxess import FoxEssCharger
+from .weidmueller import WeidmuellerAcSmart
 
-WALLBOXES: dict[str, type[Wallbox]] = {w.key: w for w in (FoxEssCharger,)}
+WALLBOXES: dict[str, type[Wallbox]] = {w.key: w for w in (FoxEssCharger, WeidmuellerAcSmart)}
 APP_MODES = ("default", "modbus_tcp", "ocpp", "unknown")  # what the manufacturer's app shows, as the owner says
 WIRED = ("yes", "no", "unknown")  # wired to the inverter (the manufacturer's own solar linkage)
 

@@ -44,7 +44,7 @@ cd web && npm run lint                                       # TypeScript code s
 cd web && npm run build                                      # tsc + build into src/openampere/web/
 cd web && npm run check:demo                                 # every API endpoint the app uses has a demo answer
 cd web && npm run check:i18n                                 # translation keys, placeholders, plurals, coverage
-node scripts/device-support.mjs                              # after editing docs/devices/support.json: README and names.md tables
+node scripts/device-support.mjs                              # after editing docs/devices/support.json: README, devices.md and names.md tables
 cd web && npm run test:ui                                    # UI tests (Playwright, after npm run build; once: npx playwright install chromium webkit)
 scripts/build-site.sh                                        # website + demo into _site/ (needs web/node_modules)
 scripts/i18n_messages.py --missing                           # server messages without a key in locales/de.json
@@ -85,8 +85,9 @@ check: remove the label `ai-review` and add it again, once), say so instead of c
   The website shows these pages (`scripts/markdown.mjs`, #512) and the app links to them.
 - **Support status in one place:** which devices are supported and confirmed, and what EKD sold, lives only in
   `docs/devices/support.json` (#526). After changing it run `node scripts/device-support.mjs`; it writes the tables in
-  README.md, README.de.md and `docs/devices/topics/names.md` (between `generated:` markers, never edit those by hand),
-  and the website renders the EKD device page and the home page list from it.
+  README.md, README.de.md, `docs/devices.md`, `docs/devices.de.md` and `docs/devices/topics/names.md` (between
+  `generated:` markers, never edit those by hand), and the website renders the EKD device page and the home page list
+  from it. The other tables in `docs/devices.md` say what is read and controlled, not what is confirmed (#542).
 - **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
   collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
   into `PAGES` in `web/ui-tests/fixtures.ts`.
