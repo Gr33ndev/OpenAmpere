@@ -538,9 +538,11 @@ class Diagnostics:
         powers = {name: round(raw[name], -2) for name in names if name in raw}
         details = {"powers_rounded_w": powers, "running_state": raw.get("running_state"),
                    "unit": getattr(driver, "_unit", None), "framing": getattr(getattr(driver, "framer", None), "value", None)}
-        summary = (f"Netz {powers.get('grid_power')} W (einspeisen +), Batterie {powers.get('battery_power')} W "
-                   f"(entladen +), Wechselrichter {powers.get('inverter_power')} W, Notstromausgang "
-                   f"{powers.get('backup_power')} W")
+        def shown(name: str) -> str:
+            return f"{powers[name]:g} W" if name in powers else "nicht gelesen"
+
+        summary = (f"Netz {shown('grid_power')} (einspeisen +), Batterie {shown('battery_power')} (entladen +), "
+                   f"Wechselrichter {shown('inverter_power')}, Notstromausgang {shown('backup_power')}")
         return Check("mtec_values", title, "info", summary, details,
                      hint="OpenAmpere liest diesen Speicher nach Unterlagen von M-TEC und offenen Projekten, aber noch "
                           "ohne Bestätigung von einem echten Gerät. Vergleiche Netz-, Batterie- und Hausleistung mit der "

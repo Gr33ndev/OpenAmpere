@@ -123,6 +123,21 @@ async def test_the_report_shows_the_raw_signs_and_the_backup_output(tmp_path):
     powers = check["details"]["powers_rounded_w"]
     assert powers["grid_power"] == round(-sim.energy.grid_w, -2) and "backup_power" in powers
     assert check["details"]["framing"] == "socket" and "MTEC10K3G25SIM" not in str(report["checks"])
+    assert "None" not in check["summary"]
+
+
+async def test_a_value_not_read_is_named_so_in_the_report(tmp_path):
+    from openampere.diagnostics import Diagnostics
+
+    class Driver:
+        KEY, _unit, framer = "mtec", 252, None
+
+        async def read_raw(self):
+            return {"grid_power": -1500.0, "battery_power": 800.0, "inverter_power": 2000.0}  # no backup block
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.driver = Driver()
+    check = await Diagnostics(runtime)._mtec_values()
+    assert "Notstromausgang nicht gelesen" in check.summary and "None" not in check.summary
 
 
 def test_off_grid_and_faults():
