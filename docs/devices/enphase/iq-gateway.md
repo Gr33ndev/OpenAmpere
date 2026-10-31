@@ -42,6 +42,7 @@ tech brief, open projects and the simulator)
 | No rate limit is documented; Home Assistant polls every 60 s and pyenphase notes that the gateway can be slow to answer. | derived | home-assistant/core `enphase_envoy` (Apache-2.0); pyenphase (MIT) |
 | On software 7 and later the gateway answers `/ivp/livedata/status` without IQ Batteries too, with `meters.storage.agg_p_mw` 0. | derived | pyenphase and Home Assistant test fixtures |
 | EKD systems may have IQ7 or IQ8 microinverters (IQ8 only shipped in Germany from mid-2023), or a string inverter with only the battery from Enphase. With a string inverter and no production CT, the PV power from `production.json` misses the string inverter. | open | research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) (pv-magazine.de, 2023-06-26) |
+| Whether the gateway keeps its self-signed certificate across a firmware update, a reboot or a factory reset. With the pin (#539) a new certificate means the owner enters the token again, usually a new one from entrez.enphaseenergy.com. | open | – |
 | A battery needs an IQ Gateway Metered; EKD's systems most likely have IQ Battery 3T/10T and no backup (System Controller). | documented (gateway), derived (models) | Enphase IQ Gateway datasheet; research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 
 ## Decisions in OpenAmpere

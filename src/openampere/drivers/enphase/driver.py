@@ -151,6 +151,7 @@ class EnphaseDriver:
         # token, or a token from config.yaml until the next start)
         self.cert_sha256: str | None = cert_sha256.strip().lower() or None
         self._candidate: str | None = None  # without a pin: the certificate of the detection under way
+        self._warned = False
         self.info: DeviceInfo | None = None
         self.token_expires: float | None = token_expiry(self._token)
         self.has_battery = False  # the gateway listed IQ Batteries once: from then on 0 W is an idle battery
@@ -186,11 +187,14 @@ class EnphaseDriver:
         if self.cert_sha256 is None and self._candidate is None:
             self._candidate = seen  # trust on first use: pinned once the detection succeeded
         elif seen != (self.cert_sha256 or self._candidate):
-            log.warning("the Enphase gateway at %s shows another certificate than the pinned one", self._host)
+            if not self._warned:  # once per driver, not at every poll until the owner acts
+                log.warning("the Enphase gateway at %s shows another certificate than the pinned one", self._host)
+                self._warned = True
             raise CertificateChanged(
                 "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt "
                 "OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das "
-                "Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie.")
+                "Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie. Ein neues Token "
+                "bekommst du mit deinem Enphase-Konto auf entrez.enphaseenergy.com.")
 
     async def _get(self, path: str, base: str | None = None, auth: bool = True) -> str:
         async with self._lock:

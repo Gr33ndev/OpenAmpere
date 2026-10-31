@@ -255,7 +255,7 @@
     "enphaseNotAnswering": "The Enphase gateway is not answering right now. OpenAmpere asks it again shortly.",
     "notEnphase": "A device answers at {host}, but not like an Enphase gateway. Is the address right?",
     "enphasePlainHttp": "The Enphase gateway answers only unencrypted; OpenAmpere does not send the access token there. Check the address and try again.",
-    "enphaseCertificateChanged": "The Enphase gateway presents a different certificate than during setup, so OpenAmpere does not send it the access token. If the gateway was replaced or set up again, enter the token in the setup again, test the connection and save it."
+    "enphaseCertificateChanged": "The Enphase gateway presents a different certificate than during setup, so OpenAmpere does not send it the access token. If the gateway was replaced or set up again, enter the token in the setup again, test the connection and save it. You get a new token with your Enphase account at entrez.enphaseenergy.com."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",

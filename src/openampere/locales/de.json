@@ -255,7 +255,7 @@
     "enphaseNotAnswering": "Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze wieder.",
     "notEnphase": "Unter {host} antwortet ein Gerät, aber nicht wie ein Enphase-Gateway. Stimmt die Adresse?",
     "enphasePlainHttp": "Das Enphase-Gateway antwortet nur unverschlüsselt; dorthin schickt OpenAmpere das Zugangs-Token nicht. Prüf die Adresse und versuch es noch einmal.",
-    "enphaseCertificateChanged": "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie."
+    "enphaseCertificateChanged": "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie. Ein neues Token bekommst du mit deinem Enphase-Konto auf entrez.enphaseenergy.com."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",
