@@ -37,6 +37,34 @@ def test_typed_hex_values(raw, value):
     assert parse_value(raw) == value
 
 
+async def test_no_status_line_is_no_senec_and_a_cut_off_answer_a_failed_read():
+    """Plain HTTP at a TLS port gets no status line (BadStatusLine); an answer cut off while the device restarts
+    (IncompleteRead) is a failed read, not a hard error."""
+    async def garbage(reader, writer):
+        await reader.read(1024)
+        writer.write(b"\x15\x03\x03\x00\x02\x02\x46")  # a TLS alert instead of an HTTP answer
+        await writer.drain()
+        writer.close()
+
+    async def cut_off(reader, writer):
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 500\r\nConnection: close\r\n\r\n{\"ENERGY\"")
+        await writer.drain()
+        writer.close()
+    for handler, expected in ((garbage, DetectionFailed), (cut_off, ModbusTransientError)):
+        server = await asyncio.start_server(handler, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        async with server:
+            if expected is DetectionFailed:
+                with pytest.raises(DetectionFailed):
+                    await registry.detect("127.0.0.1", port, only="senec")
+            else:
+                driver = SenecDriver("127.0.0.1", port, timeout=1)
+                driver._url = f"http://127.0.0.1:{port}/lala.cgi"
+                with pytest.raises(ModbusTransientError):
+                    await driver.read()
+
+
 async def test_an_answer_that_is_no_json_object_is_a_failed_read():
     """A firmware that answers a list or null: a read without values, not a crash of the collector."""
     async def odd(reader, writer):

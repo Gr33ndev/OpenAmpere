@@ -23,6 +23,7 @@ as evcc scales it by -1) and GUI_GRID_POW (+ = import).
 from __future__ import annotations
 
 import asyncio
+import http.client
 import http.cookiejar
 import json
 import logging
@@ -124,7 +125,8 @@ class SenecDriver:
         which is never shorter than MIN_POLL_S for this device."""
         try:
             return parse(await self._post(form))
-        except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
+        except (TimeoutError, urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as err:
+            # a cut-off answer (IncompleteRead) while the device restarts is as transient as a timeout
             log.info("Senec at %s not answering: %s", self._host, err)
             raise SenecNotAnswering("Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn in Kürze "
                                     "wieder.") from err
@@ -148,6 +150,10 @@ class SenecDriver:
                     live = parse(await self._post(LIVE, url))
                 except urllib.error.HTTPError:
                     answered = True  # a web server, but not this one
+                    continue
+                except http.client.HTTPException as err:  # e.g. plain HTTP at a TLS port: no status line
+                    answered = True
+                    log.debug("Senec %s: %s", url, err)
                     continue
                 except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
                     answered = answered or isinstance(getattr(err, "reason", None), ssl.SSLError)
