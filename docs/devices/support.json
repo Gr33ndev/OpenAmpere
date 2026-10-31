@@ -66,8 +66,8 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed; H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",

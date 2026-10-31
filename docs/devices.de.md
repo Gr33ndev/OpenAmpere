@@ -26,7 +26,7 @@ Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte
 |---|---|
 | [FoxESS H3, neuere Firmware](devices/foxess/h3.md) | ✅ Anzeige und Steuerung bestätigt |
 | [FoxESS H3, ältere Firmware / H3 Smart / H3 Pro](devices/foxess/h3.md) | Noch nicht bestätigt |
-| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt |
+| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt; H2, HS2 und AS2 noch nicht bestätigt |
 | [Solarmax MAX.STORAGE („AMPERE.Storage“)](devices/solarmax/max-storage.md) | Noch nicht bestätigt |
 | [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Noch nicht bestätigt |
 | [Senec.Home V3 / V2.1](devices/senec/home-v3.md) | Noch nicht bestätigt |

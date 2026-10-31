@@ -24,7 +24,7 @@ The evidence is on each device page. What EKD sold the devices as: [sales names 
 |---|---|
 | [FoxESS H3, newer firmware](devices/foxess/h3.md) | ✅ Monitoring and control confirmed |
 | [FoxESS H3, older firmware / H3 Smart / H3 Pro](devices/foxess/h3.md) | Not yet confirmed |
-| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); control not yet confirmed |
+| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); control not yet confirmed; H2, HS2 and AS2 not yet confirmed |
 | [Solarmax MAX.STORAGE ("AMPERE.Storage")](devices/solarmax/max-storage.md) | Not yet confirmed |
 | [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Not yet confirmed |
 | [Senec.Home V3 / V2.1](devices/senec/home-v3.md) | Not yet confirmed |
