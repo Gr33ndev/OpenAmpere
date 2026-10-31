@@ -127,7 +127,8 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
     # an inverter is in the home network: no probing of addresses on the internet (open or closed port)
     if not await asyncio.to_thread(in_home_network, host):
         return {"ok": False, "error": "Bitte eine Adresse im Heimnetz angeben."}
-    if (collector.connected and collector.device and (host, port) == (current.host, current.port)
+    # a new token is always tried: the connected gateway still works with the old one (#522)
+    if (not token and collector.connected and collector.device and (host, port) == (current.host, current.port)
             and driver in ("auto", collector.device.driver) and unit in (0, collector.device.unit)):
         return {"ok": True, "device": collector.device.__dict__}
     timeout = max(3.0, runtime.config.inverter.timeout)

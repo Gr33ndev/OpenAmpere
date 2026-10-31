@@ -731,6 +731,7 @@ class SimulatedEnphase:
         self.energy = EnergyModel()
         self.token, self.serial, self.batteries = token, serial, batteries
         self.requests: list[tuple[str, bool]] = []
+        self.refused: set[str] = set()  # paths answered with 401 whatever the token (some software and token types)
         self.model = "Enphase IQ Gateway"
 
     def answer(self, path: str) -> object:
@@ -765,7 +766,7 @@ class SimulatedEnphase:
                 status, kind = "200 OK", "text/xml"
             elif method != "GET" or self.answer(path) is None:
                 body, status, kind = b"", "404 Not Found", "text/plain"
-            elif not authorised:
+            elif not authorised or path in self.refused:
                 body, status, kind = b"", "401 Unauthorized", "text/plain"
             else:
                 body, status, kind = json.dumps(self.answer(path)).encode(), "200 OK", "application/json"

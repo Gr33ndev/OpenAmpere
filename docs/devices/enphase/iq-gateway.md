@@ -57,7 +57,7 @@ tech brief, open projects and the simulator)
   whether the token there is valid for a year.
 - The signs of net-consumption and `storage.agg_p_mw` on a real system; whether EKD's systems have consumption CTs.
 - Whether the token a newer gateway (software D8) can create locally works without internet.
-- A reminder in the app (not only the diagnostics) before the token runs out.
+- A reminder in the app (not only the diagnostics) before the token runs out ([#538](https://github.com/Gr33ndev/OpenAmpere/issues/538)).
 
 ## Sources
 

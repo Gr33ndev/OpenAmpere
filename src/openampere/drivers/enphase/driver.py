@@ -216,12 +216,17 @@ class EnphaseDriver:
         if self._base is None:
             await self.connect()
         production = await self._json(PRODUCTION)
+        # IQ Batteries: optional, each on its own. A gateway without batteries has no ensemble, and some software or
+        # token types refuse these endpoints although /production.json took the token: then only the battery is missing
         battery = soc = None
-        try:  # IQ Batteries: optional, a gateway without batteries has no ensemble
+        try:
             battery = storage_power(await self._json(LIVEDATA))
+        except (EnphaseNotAnswering, TokenRejected) as err:
+            log.debug("Enphase battery power not readable: %s", err)
+        try:
             soc = state_of_charge(await self._json(INVENTORY))
-        except EnphaseNotAnswering as err:
-            log.debug("Enphase battery values not readable: %s", err)
+        except (EnphaseNotAnswering, TokenRejected) as err:
+            log.debug("Enphase state of charge not readable: %s", err)
         return to_snapshot(production if isinstance(production, dict) else {}, battery, soc, time.time())
 
     async def disconnect(self) -> None:

@@ -19,7 +19,7 @@
     "portHintMtec": "M-TEC: 502, or 5743 with older firmware of the Wi-Fi/LAN module",
     "portHintEnphase": "Enphase: leave 502, OpenAmpere tries ports 443 and 80 of the gateway",
     "enphaseToken": "Access token from Enphase",
-    "enphaseTokenHint": "The gateway only gives its values with this token. You get it once with your Enphase login on entrez.enphaseenergy.com (choose the system and the gateway's serial number, then “Create access token”). It is valid for one year; then enter a new one here. OpenAmpere stores it encrypted and sends it only to the gateway.",
+    "enphaseTokenHint": "The gateway only gives its values with this token. That makes it the one device for which OpenAmpere needs the manufacturer's cloud: once a year for a new token. You get it with your Enphase login on entrez.enphaseenergy.com (choose the system and the gateway's serial number, then “Create access token”). OpenAmpere stores it encrypted and sends it only to the gateway.",
     "readOnlyDevice": "For this device OpenAmpere shows values; changing settings is not possible yet.",
     "sameSerialHint": "Two results have the same serial number: one of them is probably a Modbus proxy or data logger that passes the inverter through. Both work. Through a proxy, other programs can read at the same time.",
     "searchButton": "Search network",

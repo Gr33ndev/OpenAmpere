@@ -91,6 +91,50 @@ async def test_a_gateway_without_batteries_still_shows_pv_and_grid():
     assert snap.pv_power is not None and snap.battery_power is None and snap.battery_soc is None
 
 
+@pytest.mark.parametrize(("refused", "missing", "battery", "soc"), [
+    ({"/ivp/ensemble/inventory"}, set(), True, False),  # the token is refused there only
+    (set(), {"/ivp/livedata/status"}, False, True),  # older software without the endpoint
+])
+async def test_each_battery_value_on_its_own(refused, missing, battery, soc):
+    """/production.json took the token; a battery endpoint that refuses it or is missing drops only its own value."""
+    sim = sunny(SimulatedEnphase(token="t1"))
+    sim.refused = refused
+    answer = sim.answer
+    sim.answer = lambda path: None if path in missing else answer(path)
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("enphase", "127.0.0.1", port, 0, timeout=3, token="t1")
+        try:
+            await driver.connect()
+            snap = await driver.read()
+        finally:
+            await driver.close()
+    assert snap.pv_power is not None
+    assert (snap.battery_power is not None, snap.battery_soc is not None) == (battery, soc)
+
+
+async def test_a_new_token_is_tried_although_the_gateway_is_connected(tmp_path):
+    """The owner pastes a new token while the old one still works: the test must try the new one."""
+    sim = sunny(SimulatedEnphase(token="t1"))
+    server, port = await serve(sim)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.driver": "enphase", "inverter.token": "t1",
+                                           "inverter.poll_interval": 2})
+            for _ in range(150):
+                if runtime.collector.connected:
+                    break
+                await asyncio.sleep(0.1)
+            wrong = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="typo")
+            right = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="t1")
+        finally:
+            await runtime.collector.stop()
+    assert not wrong["ok"] and "lehnt das Zugangs-Token ab" in wrong["error"]
+    assert right["ok"]
+
+
 def test_inverters_count_when_the_production_meter_is_off():
     production = {"production": [{"type": "inverters", "wNow": 3200},
                                  {"type": "eim", "measurementType": "production", "activeCount": 0, "wNow": 0}],
