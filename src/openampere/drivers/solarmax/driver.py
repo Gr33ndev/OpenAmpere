@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 RATED_RANGE_W = range(1000, 30001)
 FIRMWARE_RANGE = range(100, 1000)
 EXTERNAL_FROM_W = 50  # the plant's DC power above the inverter's own: another inverter is connected
-COUNTER_FAILURES = 3  # the counters stop being read after this many reads in a row without an answer
+COUNTER_FAILURES = 3  # counters that never answered stop being read after this many reads in a row without an answer
 
 
 class ReadOnly(DeviceRefused):
@@ -72,8 +72,9 @@ class SolarmaxDriver(ModbusDevice):
                 self.has_counters = False
                 log.info("Solarmax energy counters not readable (no Connectivity+)")
             except ModbusTransientError as err:
+                # a device that delivered counters keeps being asked: a busy moment must not end its energy history
                 self._counter_failures += 1
-                if self._counter_failures >= COUNTER_FAILURES:
+                if self._counter_failures >= COUNTER_FAILURES and not self.counters_seen:
                     self.has_counters = False
                     log.info("Solarmax energy counters do not answer, no longer read: %s", err)
         return values(words)

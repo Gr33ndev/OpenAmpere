@@ -168,6 +168,25 @@ async def test_one_missed_counter_read_does_not_bring_the_second_inverter_back()
     assert driver.has_counters
 
 
+async def test_counters_that_answered_once_are_never_given_up():
+    """A device with "Connectivity+" that is busy for a few readings keeps its energy history afterwards."""
+    sim = sunny(SolarmaxSimulatedInverter(max_connections=3))
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("solarmax", "127.0.0.1", port, 1, timeout=1)
+        try:
+            await driver.connect()
+            await driver.read()
+            sim.connectivity = "silent"
+            for _ in range(4):
+                await driver.read()
+            sim.connectivity = "unlocked"
+            back = await driver.read()
+        finally:
+            await driver.close()
+    assert driver.has_counters and back.totals.pv is not None
+
+
 def test_an_error_state_is_an_alarm():
     assert to_snapshot({"device_state": 3}, 0).alarms == [3]
     assert to_snapshot({"device_state": 2}, 0).alarms == []  # a warning is no fault
