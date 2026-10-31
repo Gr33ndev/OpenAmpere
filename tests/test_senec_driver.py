@@ -304,3 +304,29 @@ async def test_polled_at_most_every_30_seconds_and_reported_without_the_device_i
     # the check shows the values of the last read: the report sends no request of its own
     assert not any("ENERGY" in form for _path, form, _cookie in sim.requests[requests_before_report:])
     assert "connections" not in {c["id"] for c in report["checks"] if c["status"] != "skipped"}
+
+
+async def test_a_redirect_is_not_followed():
+    """#548: the request stays at the address the owner set; a redirect elsewhere counts as a failed answer."""
+    elsewhere = []
+
+    async def other(reader, writer):
+        elsewhere.append(await reader.readuntil(b"\r\n\r\n"))
+        writer.close()
+
+    target = await asyncio.start_server(other, "127.0.0.1", 0)
+    target_port = target.sockets[0].getsockname()[1]
+
+    async def redirect(reader, writer):
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(f"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:{target_port}/lala.cgi\r\n"
+                     "Content-Length: 0\r\nConnection: close\r\n\r\n".encode())
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(redirect, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, target:
+        with pytest.raises(DetectionFailed):
+            await SenecDriver("127.0.0.1", port, timeout=2).connect()
+    assert elsewhere == []

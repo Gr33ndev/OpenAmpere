@@ -21,19 +21,21 @@ import urllib.request
 from email.message import Message
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirect is an error answer: a request stays at the address it was sent to."""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001 - urllib's signature
         return None
 
 
-_opener = urllib.request.build_opener(_NoRedirect)
+_opener = urllib.request.build_opener(NoRedirect)
 
 
 def open_without_redirect(request: urllib.request.Request, timeout: float, context: ssl.SSLContext | None = None):
     """`context`: for HTTPS with other certificate checks, e.g. a device's self-signed certificate (#324)."""
     if context is None:
         return _opener.open(request, timeout=timeout)
-    opener = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=context))
+    opener = urllib.request.build_opener(NoRedirect, urllib.request.HTTPSHandler(context=context))
     return opener.open(request, timeout=timeout)
 
 
@@ -120,7 +122,7 @@ def fetch_within(request: urllib.request.Request, *, timeout: float, deadline: f
     `handlers`: further urllib handlers, e.g. one that keeps the cookies of a login."""
     cut = _Deadline(deadline)
     handlers = (_DeadlineHTTPHandler(cut), _DeadlineHTTPSHandler(cut, context), *handlers,
-                *(() if redirect else (_NoRedirect,)))
+                *(() if redirect else (NoRedirect,)))
     try:
         with urllib.request.build_opener(*handlers).open(request, timeout=timeout) as response:
             status, url, headers, body = response.status, response.geturl(), response.headers, response.read(limit)
