@@ -144,9 +144,29 @@ async def test_the_token_never_goes_over_plain_http():
     sim = sunny(SimulatedEnphase(token="t1"))
     server, port = await serve(sim, tls=False)  # plain HTTP only
     async with server:
-        with pytest.raises(TokenRejected):
+        with pytest.raises(DetectionFailed) as caught:
             await registry.detect("127.0.0.1", port, only="enphase", token="t1")
+    # not "refused": the token was never sent, a new one from Enphase would not help
+    assert "nur unverschlüsselt" in friendly_error(caught.value) and "abgelaufen" not in friendly_error(caught.value)
     assert not any(authorised for _path, authorised in sim.requests)
+
+
+async def test_an_idle_battery_stays_when_the_inventory_fails_once():
+    """Once the gateway listed IQ Batteries, 0 W is an idle battery, also in a reading whose inventory failed."""
+    sim = sunny(SimulatedEnphase(token="t1"))
+    sim.energy.battery_w = 0  # idle: at its reserve or full
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("enphase", "127.0.0.1", port, 0, timeout=3, token="t1")
+        try:
+            await driver.connect()
+            first = await driver.read()
+            sim.refused = {"/ivp/ensemble/inventory"}
+            later = await driver.read()
+        finally:
+            await driver.close()
+    assert first.battery_power == 0 and first.battery_soc is not None
+    assert later.battery_power == 0 and later.battery_soc is None  # still a battery, only without its charge
 
 
 def test_inverters_count_when_the_production_meter_is_off():

@@ -252,7 +252,8 @@
     "enphaseTokenMissing": "Das Enphase-Gateway braucht ein Zugangs-Token. Trag es beim Einrichten unter „Erweitert“ ein; wie du es bekommst, steht in der Anleitung.",
     "enphaseUnreachable": "Keine Antwort vom Enphase-Gateway unter {host}. Stimmt die Adresse, und ist das Gateway im Heimnetz?",
     "enphaseNotAnswering": "Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze wieder.",
-    "notEnphase": "Unter {host} antwortet ein Gerät, aber nicht wie ein Enphase-Gateway. Stimmt die Adresse?"
+    "notEnphase": "Unter {host} antwortet ein Gerät, aber nicht wie ein Enphase-Gateway. Stimmt die Adresse?",
+    "enphasePlainHttp": "Das Enphase-Gateway antwortet nur unverschlüsselt; dorthin schickt OpenAmpere das Zugangs-Token nicht. Prüf die Adresse und versuch es noch einmal."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",

@@ -90,6 +90,10 @@ class NotEnphase(DetectionFailed):
     """Something answers, but not like an IQ Gateway."""
 
 
+class PlainHttpOnly(DetectionFailed):
+    """The gateway answers only over plain HTTP, where the token is never sent; not a refused token."""
+
+
 class EnphaseNotAnswering(ModbusTransientError):
     """A read without an answer; .message is a German text for the app."""
 
@@ -128,6 +132,7 @@ class EnphaseDriver:
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=tls))
         self.info: DeviceInfo | None = None
         self.token_expires: float | None = token_expiry(self._token)
+        self.has_battery = False  # the gateway listed IQ Batteries once: from then on 0 W is an idle battery
 
     # ---- HTTP --------------------------------------------------------------
 
@@ -201,6 +206,9 @@ class EnphaseDriver:
                 if not serial or "envoy" not in info.lower():
                     answered = True
                     continue
+                if scheme == "http" and self._token:  # the token never goes over plain HTTP
+                    raise PlainHttpOnly("Das Enphase-Gateway antwortet nur unverschlüsselt; dorthin schickt OpenAmpere "
+                                        "das Zugangs-Token nicht. Prüf die Adresse und versuch es noch einmal.")
                 self._base = base
                 try:
                     await self._json(PRODUCTION)  # the token
@@ -240,8 +248,10 @@ class EnphaseDriver:
             soc = state_of_charge(await self._json(INVENTORY))
         except (EnphaseNotAnswering, TokenRejected) as err:
             log.debug("Enphase state of charge not readable: %s", err)
-        if soc is None and battery == 0:
-            battery = None  # livedata answers 0 W without IQ Batteries too: no battery to show
+        if soc is not None:
+            self.has_battery = True
+        if not self.has_battery and battery == 0:
+            battery = None  # livedata answers 0 W without IQ Batteries too: no battery to show until one is listed
         return to_snapshot(production if isinstance(production, dict) else {}, battery, soc, time.time())
 
     async def disconnect(self) -> None:
