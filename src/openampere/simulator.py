@@ -34,6 +34,7 @@ from .drivers.base import WorkMode
 from .drivers.foxess.registers import H3_LEGACY, H3_NEW, MODEL_ADDRESS, SERIAL_ADDRESS, RegisterMap, encode
 from . import tuya
 from .drivers.saj import registers as saj
+from .drivers.solarmax import registers as solarmax
 
 log = logging.getLogger("openampere.simulator")
 
@@ -494,6 +495,72 @@ class SajSimulatedInverter(SimulatedInverter):
         put("battery1_temperature", 23)
 
 
+class SolarmaxSimulatedInverter(SimulatedInverter):
+    """Solarmax MAX.STORAGE (#519): input registers only (FC04), 32-bit values with the low word first, Solarmax's
+    signs (battery + = charging, grid + = export). connectivity: "unlocked" fills the registers of "Connectivity+"
+    (130–159), "rejected" refuses them, "zeros" answers them with 0, "silent" answers them with "gateway target failed"
+    (all possible without it on a real device, not known which). Writes are refused: the driver only reads."""
+
+    def __init__(self, *, unit: int = 1, max_connections: int = 2, fault_rate: float = 0.0, latency_s: float = 0.0,
+                 connectivity: str = "unlocked", rated_w: int = 10000, firmware: int = 344,
+                 serial: int = 12345678) -> None:
+        self.map = None
+        self.model = "Solarmax MAX.STORAGE"
+        self.serial = str(serial)
+        self.strict_function = False
+        self.max_connections = max_connections
+        self.connections = 0
+        self.fault_rate, self.latency_s, self.read_only, self.unit = fault_rate, latency_s, True, unit
+        self.connectivity = connectivity
+        self.extra_pv_w = 0.0  # another inverter connected to the MAX.STORAGE (112 = own + others)
+        self.energy = EnergyModel()
+        # lifetime counters of a plant that has run for a while (whole kWh on the device)
+        self.counter_base = {"pv": 12_000_000.0, "grid_import": 3_000_000.0, "grid_export": 6_000_000.0,
+                             "battery_charge": 2_500_000.0, "battery_discharge": 2_300_000.0}
+        start, count = solarmax.STANDARD_BLOCK
+        self.regs = dict.fromkeys(range(start, start + count), 0)
+        if connectivity != "rejected":
+            self.regs.update(dict.fromkeys(range(130, 144), 0))
+            self.regs.update(dict.fromkeys(range(solarmax.COUNTER_BLOCK[0], sum(solarmax.COUNTER_BLOCK)), 0))
+        self._put("serial", serial)
+        self._put("firmware", firmware)
+        self._put("rated_power", rated_w)
+        self.update_registers()
+
+    def _put(self, name: str, value: float) -> None:
+        reg = solarmax.VALUES[name]
+        for i, word in enumerate(encode(reg, int(round(value / reg.scale)))):
+            self.regs[reg.address + i] = word
+
+    def readable(self, function: int, address: int, count: int) -> bool:
+        return function == solarmax.READ_FUNCTION and super().readable(function, address, count)
+
+    def handle(self, pdu: bytes) -> bytes:
+        if self.connectivity == "silent" and pdu[0] == solarmax.READ_FUNCTION \
+                and struct.unpack(">H", pdu[1:3])[0] >= 130:
+            return bytes([pdu[0] | 0x80, GATEWAY_TARGET_FAILED])
+        return super().handle(pdu)
+
+    def update_registers(self) -> None:
+        e = self.energy
+        self._put("device_state", 1)
+        self._put("pv_power", e.pv_w)
+        self._put("pv_plant_power", e.pv_w + self.extra_pv_w)
+        self._put("battery_power", -e.battery_w)  # Solarmax: + = charging
+        self._put("house_power", e.house_w)
+        self._put("grid_power", -e.grid_w)  # Solarmax: + = export
+        self._put("pv_ac_power", (e.pv_w + self.extra_pv_w) * 0.97)
+        self._put("battery_soc", round(e.soc))
+        self._put("battery_capacity", 10)
+        self._put("battery_energy", int(e.soc / 10))
+        for i, address in enumerate((125, 126)):  # per MPPT, whole kW
+            self.regs[address] = int(e.pv_inputs_w[i] // 1000) if i < len(e.pv_inputs_w) else 0
+        if self.connectivity == "unlocked":
+            self.regs[137], self.regs[138] = 180, 230  # cell temperatures, 0.1 °C
+            for flow, base in self.counter_base.items():
+                self._put(f"{flow}_total", (base + e.totals[flow]) // 1000 * 1000)  # whole kWh
+
+
 class SimulatedHeatingRod(SimulatedInverter):
     """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
     The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
@@ -737,7 +804,7 @@ class SimulatedTuyaCharger:
 
 async def run(host: str, port: int, speed: float, sim: SimulatedInverter, tick_s: float = 1.0) -> None:
     server = await asyncio.start_server(sim.serve_client, host, port)
-    log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else "saj_h2",
+    log.info("simulating %s (%s, unit %s) on %s:%d, speed x%g", sim.model, sim.map.name if sim.map else type(sim).__name__,
              sim.unit, host, port, speed)
     sim_time = time.time()
     async with server:
@@ -752,13 +819,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "mypv", "foxess-charger", "de-tuya"], default="foxess",
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mypv", "foxess-charger", "de-tuya"],
+                        default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
     parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
     parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger: a car charges at 16 A")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
-    parser.add_argument("--unit", type=int, default=None, help="Modbus unit id (default: FoxESS 247, SAJ 1)")
+    parser.add_argument("--unit", type=int, default=None,
+                        help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
+    parser.add_argument("--connectivity", choices=["unlocked", "rejected", "zeros", "silent"], default="unlocked",
+                        help='solarmax: the registers of "Connectivity+" (energy counters) filled, refused, zero or '
+                             "not answered")
     parser.add_argument("--model", default=None, help="model string at register 30000")
     parser.add_argument("--serial", default="SIM0000000000001")
     parser.add_argument("--speed", type=float, default=1.0, help="simulated seconds per real second")
@@ -774,6 +846,10 @@ def main() -> None:
     sim: SimulatedInverter | None = None
     if args.vendor in ("mypv", "foxess-charger", "de-tuya"):
         pass
+    elif args.vendor == "solarmax":
+        sim = SolarmaxSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
+                                        fault_rate=args.fault_rate, latency_s=args.latency,
+                                        connectivity=args.connectivity)
     elif args.vendor == "saj":
         sim = SajSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
                                    fault_rate=args.fault_rate, latency_s=args.latency, read_only=args.read_only)

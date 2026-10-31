@@ -102,7 +102,7 @@ export type PowerEntry = { ts: number; pv: number | null; house: number | null; 
 export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password";
 export type Settings = {
   values: {
-    "inverter.driver": "auto" | "foxess" | "saj";
+    "inverter.driver": "auto" | "foxess" | "saj" | "solarmax";
     "inverter.host": string;
     "inverter.port": number;
     "inverter.unit": number;

@@ -201,6 +201,10 @@ class Collector:
                 if not self.connected:
                     self.device = await self.driver.connect()
                     self.device.confirm_rated_power(*self.rated_power)
+                if self.external_pv:
+                    # a second inverter the owner counts is there at night too (the Solarmax driver reports one only
+                    # once it saw it, which a restart forgets, #519)
+                    getattr(self.driver, "assume_external", lambda: None)()
                 started = time.monotonic()
                 snap = (await self.driver.read()).sanitize()
                 self.external_pv_w = snap.pv_external_power

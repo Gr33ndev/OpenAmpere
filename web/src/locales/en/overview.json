@@ -83,7 +83,7 @@
     "title": "How to read the overview"
   },
   "secondInverterHint": {
-    "hint": "The meter “Meter B” at your storage system reads {power} right now. Usually this is a second PV inverter. OpenAmpere counts it only once you set it up; until then its power is missing from generation and consumption.",
+    "hint": "Your storage system measures {power} for a second PV inverter right now (with SAJ at the meter “Meter B”). OpenAmpere counts it only once you set it up; until then its power is missing from generation and consumption.",
     "title": "Second inverter?"
   }
 }

@@ -240,7 +240,8 @@
     "onlyPrivateNetworksUp": "Nur private Netze bis /22 können durchsucht werden"
   },
   "driver": {
-    "chargeSlotInUse": "Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden."
+    "chargeSlotInUse": "Ladezeit {CHARGE_SLOT} ist im Wechselrichter schon belegt. Bitte in der SAJ-App freigeben, dann kann OpenAmpere aus dem Netz laden.",
+    "solarmaxReadOnly": "Beim Solarmax-Speicher zeigt OpenAmpere nur die Werte an und ändert keine Einstellungen."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",

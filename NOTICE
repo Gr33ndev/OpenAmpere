@@ -11,6 +11,10 @@ evcc saj-h2 template (https://github.com/evcc-io/evcc, MIT License). The control
 settings, export limit, charge slots) follows SAJ's H2 communication protocol, shipped with
 home-assistant-saj-h2-modbus, and the way that project and evcc write these registers.
 
+Register definitions for Solarmax MAX.STORAGE inverters are based on facts from Solarmax's "MAX.STORAGE /
+MAX.STORAGE Ultimate ModbusTCP Datenpunktliste" (2024-09-11), checked against the evcc solarmax-maxstorage template
+(https://github.com/evcc-io/evcc, MIT License).
+
 Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/evcc, MIT License for the
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.

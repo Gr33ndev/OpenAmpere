@@ -33,7 +33,7 @@ const LANGS = ["de", "en"];
 const GROUPS = ["storage", "wallbox", "around"];
 const NEXT = ["deviceReport", "tellUs"];
 // state → class of the pill on the website (site/style.css)
-const STATE_CLASS = { both: "ok", readTest: "ok", evcc: "part", relay: "part", planned: "plan", info: "info", notNeeded: "none", nothing: "none" };
+const STATE_CLASS = { both: "ok", read: "ok", readTest: "ok", evcc: "part", relay: "part", planned: "plan", info: "info", notNeeded: "none", nothing: "none" };
 // order on the website within a group: supported first, then planned, …; the same rank newest first
 const RANK = { planned: 1, info: 2, notNeeded: 3, nothing: 4 };
 const NAMES_COLUMNS = ["period", "sold", "model", "interface", "openampere", "status", "source"];

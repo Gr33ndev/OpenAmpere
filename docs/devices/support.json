@@ -75,6 +75,28 @@
       "page": "docs/devices/saj/h2-family.md"
     },
     {
+      "id": "solarmax",
+      "name": {
+        "de": "Solarmax MAX.STORAGE („AMPERE.Storage“)",
+        "en": "Solarmax MAX.STORAGE (\"AMPERE.Storage\")"
+      },
+      "does": {
+        "de": "Nur Anzeige: PV, Speicher, Haus, Netz und Ladestand. Den Energieverlauf gibt es nur, wenn Solarmax „Connectivity+“ freigeschaltet hat. OpenAmpere ändert dort nichts.",
+        "en": "Monitoring only: PV, battery, house, grid and state of charge. The energy history needs \"Connectivity+\", which only Solarmax unlocked. OpenAmpere changes nothing there."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/solarmax/max-storage.md"
+    },
+    {
       "id": "relay",
       "name": {
         "de": "Heizstab, Wärmepumpe (SG-Ready)",
@@ -247,21 +269,20 @@
         "de": "2022–2023",
         "en": "2022–2023"
       },
-      "state": "planned",
       "note": {
-        "de": "Zuerst nur die Anzeige. Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
-        "en": "Monitoring first. OpenAmpere never switches on a battery that EKD switched off remotely."
+        "de": "Einen Speicher, den EKD aus der Ferne abgeschaltet hat, schaltet OpenAmpere nie wieder ein.",
+        "en": "OpenAmpere never switches on a battery that EKD switched off remotely."
       },
-      "issue": 519,
       "names": {
         "period": "mid-2022 – mid-2023",
         "sold": "\"AMPERE.Storage\"",
         "model": "Solarmax MAX.STORAGE Ultimate: 10 kW, three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs",
         "interface": "Modbus TCP and RTU, KNX (datasheet); battery control only after Solarmax unlocked \"Connectivity+\"",
-        "openampere": "not supported",
+        "openampere": "driver `solarmax`, display only ([solarmax/max-storage.md](../solarmax/max-storage.md))",
         "status": "documented (maker, interfaces), derived (model, control, end of the period)",
         "source": "EKD datasheet \"AMPERE.Storage\", 2022-07; evcc template for the Solarmax MAX.STORAGE"
-      }
+      },
+      "support": "solarmax"
     },
     {
       "id": "mtec",

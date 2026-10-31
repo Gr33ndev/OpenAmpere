@@ -30,11 +30,12 @@
     "info": "Information wanted",
     "notNeeded": "Not needed",
     "nothing": "Nothing to connect",
-    "relay": "Through a relay"
+    "relay": "Through a relay",
+    "read": "Monitoring only"
   },
   "next": {
     "issue": "Issue",
-    "deviceReport": "A <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">device report</a> helps with control",
+    "deviceReport": "A <a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml\">device report</a> helps to confirm it",
     "tellUs": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/issues/new?template=feature_request.yml\">Get in touch</a> if you have one"
   },
   "notes": {
