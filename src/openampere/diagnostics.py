@@ -30,6 +30,7 @@ from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
+SENEC_STALE_S = 120  # values of the Senec's last read older than this are marked as such in the report
 REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
 EXPORT_LIMIT = "Einspeisebegrenzung (46616)"
 
@@ -542,10 +543,16 @@ class Diagnostics:
         values = {key: shown(key, value) for key, value in energy.items()}
         url = getattr(driver, "_url", None) or ""
         scheme, _, rest = url.partition("://")
-        details = {"values": values, "scheme": scheme or None, "port": rest.split("/")[0].rpartition(":")[2] or None}
+        read_at = getattr(driver, "last_energy_at", None)
+        age = None if read_at is None else max(0, round(time.time() - read_at))
+        details = {"values": values, "scheme": scheme or None, "port": rest.split("/")[0].rpartition(":")[2] or None,
+                   "age_s": age}
         summary = (f"Batterie {values.get('GUI_BAT_DATA_POWER')} W (laden +), Netz {values.get('GUI_GRID_POW')} W "
                    f"(Bezug +), Ladestand {values.get('GUI_BAT_DATA_FUEL_CHARGE')} %")
-        return Check("senec_values", title, "info", summary, details,
+        old = age is not None and age > SENEC_STALE_S
+        if old:  # the device stopped answering: these are not the values of now
+            summary = f"Letzte Werte von vor {age // 60} min: {summary}"
+        return Check("senec_values", title, "warn" if old else "info", summary, details,
                      hint="OpenAmpere liest diesen Speicher nach offenen Projekten, aber noch ohne Bestätigung von einem "
                           "echten Gerät. Vergleiche Batterie- und Netzleistung mit der Senec-App und schreib uns, ob die "
                           "Vorzeichen stimmen.")

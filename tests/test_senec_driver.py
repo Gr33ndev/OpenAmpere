@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import time
 from datetime import datetime
 
 import pytest
@@ -224,6 +225,17 @@ async def test_the_report_without_a_read_yet_skips_the_values(tmp_path):
     runtime.collector.driver = SenecDriver("192.0.2.1")
     check = await Diagnostics(runtime)._senec_values()
     assert isinstance(check, Check) and check.status == "skipped"
+
+
+async def test_old_values_are_marked_in_the_report(tmp_path):
+    """After the device stopped answering, the report must not pass off the last values as the values of now."""
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    driver = SenecDriver("192.0.2.1")
+    driver.last_energy, driver.last_energy_at = {"GUI_GRID_POW": 512.0}, time.time() - 600
+    runtime.collector.driver = driver
+    check = await Diagnostics(runtime)._senec_values()
+    assert check.status == "warn" and check.summary.startswith("Letzte Werte von vor 10 min")
+    assert check.details["age_s"] >= 600
 
 
 def test_the_modbus_default_port_stands_for_its_own_ports():
