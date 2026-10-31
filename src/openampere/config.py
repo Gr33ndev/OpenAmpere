@@ -25,7 +25,7 @@ from .secretbox import PREFIX as ENCRYPTED_PREFIX
 
 @dataclass
 class InverterConfig:
-    driver: str = "auto"  # auto | foxess | saj | solarmax | mtec | senec
+    driver: str = "auto"  # auto | foxess | saj | solarmax | mtec | senec | enphase
     host: str = ""
     port: int = 502
     unit: int = 0  # Modbus unit id; 0 = the device's default (FoxESS 247, SAJ 1 or 2)
@@ -36,6 +36,7 @@ class InverterConfig:
     # "persistent": keep one connection open; "per_poll": connect for each reading and release the slot
     # again (for inverters with very few connection slots shared with another energy manager)
     connection_mode: str = "persistent"
+    token: str = ""  # access token of a device that needs one (Enphase, from the owner's Enphase account)
 
 
 @dataclass
@@ -180,7 +181,7 @@ MIN_RATED_POWER_W = 1000  # smallest rated power the owner can confirm (grid.rat
 
 # Settings the web app may change, with validation limits for numbers / allowed values for strings.
 EDITABLE: dict[str, tuple] = {
-    "inverter.driver": ("choice", "auto", "foxess", "saj", "solarmax", "mtec", "senec"),
+    "inverter.driver": ("choice", "auto", "foxess", "saj", "solarmax", "mtec", "senec", "enphase"),
     "inverter.host": ("str",),
     "inverter.port": ("int", 1, 65535),
     "inverter.unit": ("int", 0, 255),
@@ -189,6 +190,7 @@ EDITABLE: dict[str, tuple] = {
     "inverter.poll_interval": ("float", 2, 300),
     "inverter.timeout": ("float", 1, 30),
     "inverter.connection_mode": ("choice", "persistent", "per_poll"),
+    "inverter.token": ("secret",),
     "storage.raw_retention_days": ("int", 0, 36500),  # 0 = keep forever
     "control.enabled": ("bool",),
     "control.dry_run": ("bool",),
@@ -240,7 +242,7 @@ SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 # and the host names allowed besides the usual ones, which loosen the protection against DNS rebinding (#437)
 AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "grid.rated_power_w", "pv.installed_kwp",
            "server.allowed_hosts")
-SECRET_TARGETS = {"evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
+SECRET_TARGETS = {"inverter.token": ("inverter.host",), "evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
                   "meter.password": ("meter.provider", "meter.username")}
 
 # Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
@@ -338,6 +340,7 @@ def get_value(config: Config, key: str):
 LABELS = {
     "inverter.host": "IP-Adresse", "inverter.port": "Port", "inverter.unit": "Geräteadresse",
     "inverter.poll_interval": "Abfrageintervall", "inverter.timeout": "Zeitlimit",
+    "inverter.token": "Zugangs-Token (Enphase)",
     "storage.raw_retention_days": "Aufbewahrungsdauer", "tariff.electricity_price_ct": "Strompreis",
     "tariff.feed_in_ct": "Einspeisevergütung", "pv.installed_kwp": "Modulleistung",
     "grid.rated_power_w": "Nennleistung des Wechselrichters", "grid.rated_power_reported_w": "Gemeldete Nennleistung",

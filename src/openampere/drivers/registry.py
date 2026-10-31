@@ -12,6 +12,7 @@ import asyncio
 import logging
 
 from .base import DeviceInfo
+from .enphase.driver import EnphaseDriver
 from .foxess.driver import FoxessDriver
 from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
 from .mtec.driver import MtecDriver
@@ -23,7 +24,8 @@ log = logging.getLogger(__name__)
 
 # SenecDriver is no ModbusDevice (HTTP), but has the same face; it is only used when chosen (AUTO_DETECT)
 DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver,
-                                          "mtec": MtecDriver, "senec": SenecDriver}  # type: ignore[dict-item]
+                                          "mtec": MtecDriver, "senec": SenecDriver,
+                                          "enphase": EnphaseDriver}  # type: ignore[dict-item]
 
 LABELS = {
     "auto": "Automatisch erkennen",
@@ -32,22 +34,25 @@ LABELS = {
     "solarmax": "Solarmax MAX.STORAGE (nur Anzeige)",
     "mtec": "M-TEC Energy-Butler GEN3 (nur Anzeige)",
     "senec": "Senec.Home V3 / V2.1 (nur Anzeige)",
+    "enphase": "Enphase IQ Gateway mit IQ Battery (nur Anzeige)",
 }
 
 DETECT_TIMEOUT_S = 2.5
 
 
 def create(key: str, host: str, port: int, unit: int, *, timeout: float, register_map: str = "auto",
-           read_function: str = "auto") -> ModbusDevice:
+           read_function: str = "auto", token: str = "") -> ModbusDevice:
+    """token: the access token of a device that needs one (Enphase); the other drivers ignore it."""
     cls = DRIVERS[key]
     unit = unit or cls.DEFAULT_UNITS[0]
     if cls is FoxessDriver:
         return FoxessDriver(host, port, unit, register_map=register_map, read_function=read_function, timeout=timeout)
-    return cls(host, port, unit, timeout=timeout)
+    return cls(host, port, unit, timeout=timeout, token=token)
 
 
 async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
-                        only: str | None = None, register_map: str = "auto", read_function: str = "auto"):
+                        only: str | None = None, register_map: str = "auto", read_function: str = "auto",
+                        token: str = ""):
     """Returns (info, connected driver) of the first driver that recognises the device; the caller owns the
     driver and must close it. Raises ConnectionError."""
     timeout = max(timeout, DETECT_TIMEOUT_S)  # never shorter than configured (slow proxies need more)
@@ -61,7 +66,7 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
                                       register_map=register_map, read_function=read_function)
             else:
                 # quick: the automatic detection, where a driver may take shortcuts for silent hosts (M-TEC)
-                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=not only)
+                driver = cls(host, port, candidate_unit, timeout=timeout, read_attempts=2, quick=not only, token=token)
             try:
                 info = await driver.connect()
                 log.info("detected %s on unit %s", info.model, candidate_unit)
@@ -80,9 +85,9 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
 
 
 async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT_TIMEOUT_S,
-                 only: str | None = None) -> DeviceInfo:
+                 only: str | None = None, token: str = "") -> DeviceInfo:
     """Returns the info of the first driver that recognises the device. Raises ConnectionError."""
-    info, driver = await detect_driver(host, port, unit, timeout=timeout, only=only)
+    info, driver = await detect_driver(host, port, unit, timeout=timeout, only=only, token=token)
     await driver.close()
     return info
 

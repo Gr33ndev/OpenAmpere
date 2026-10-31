@@ -99,10 +99,10 @@ export type EnergyEntry = Counters & { ts: number; soc: number | null };
 export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null;
   pv_external?: number | null };
 
-export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password";
+export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password" | "inverter.token";
 export type Settings = {
   values: {
-    "inverter.driver": "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec";
+    "inverter.driver": "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec" | "enphase";
     "inverter.host": string;
     "inverter.port": number;
     "inverter.unit": number;

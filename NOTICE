@@ -33,6 +33,11 @@ GEN3 V1.0" (2022-11-19), MTECmqtt up to commit 32cdf27 (https://github.com/croed
 Christian Rödel, MIT License; later versions are LGPL-3.0 and were not used) and the evcc solinteg-gen3 template
 (https://github.com/evcc-io/evcc, MIT License).
 
+The local API of the Enphase IQ Gateway (endpoints, fields, signs, the token) follows Enphase's tech brief "Accessing IQ
+Gateway local APIs or local UI with token-based authentication" (2023-01) and the facts described by pyenphase
+(https://github.com/pyenphase/pyenphase, MIT License) and evcc's enphase template (https://github.com/evcc-io/evcc, MIT
+License). OpenAmpere has its own implementation and contains no code of these projects.
+
 The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
 tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own
 implementation and contains no tinytuya code. The data points of the dé wallbox are based on facts from tuya-local

@@ -117,7 +117,9 @@ class Target(BaseModel):
     host: str = Field(min_length=1)
     port: int = Field(502, ge=1, le=65535)
     unit: int = Field(0, ge=0, le=255)  # 0 = try the default ids of each device type
-    driver: str = Field("auto", pattern="^(auto|foxess|saj)$")
+    # every driver the setup offers (it once allowed only FoxESS and SAJ, so choosing another failed the test)
+    driver: str = Field("auto", pattern=f"^(auto|{'|'.join(registry.DRIVERS)})$")
+    token: str = Field("", max_length=4096)  # a device that needs one (Enphase); empty: the stored one, if any
 
 
 class PasswordRequest(BaseModel):
@@ -696,7 +698,8 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.post("/api/setup/test")
     async def setup_test(target: Target):
-        return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver)
+        return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver,
+                                               token=target.token.strip())
 
     # ---- battery control -------------------------------------------------
 
