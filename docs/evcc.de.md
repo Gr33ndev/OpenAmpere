@@ -24,8 +24,9 @@ die evcc unterstützen, Schaltsteckdosen und Plugins funktionieren ohne Token.
   [sponsor.evcc.io](https://sponsor.evcc.io), und evcc warnt 30 Tage vorher.
 - **In OpenAmpere:** Unter **Geräte** und **Mehr → Verbindung → Wallbox** warnt OpenAmpere, solange evcc mit dem
   Testtoken läuft oder das Token bald abläuft, sagt, wenn das Token abgelaufen ist (#462), und sagt es, wenn evcc die Wallbox wegen eines fehlenden Tokens nicht
-  startet. Liest OpenAmpere eine Wallbox direkt und hat evcc keinen Ladepunkt, sagt es stattdessen, dass diese Wallbox
-  kein Token braucht und in evcc gelöscht werden sollte (#535), siehe [Wallbox ohne evcc](wallbox-direct.de.md).
+  startet. Liest OpenAmpere eine Wallbox direkt und hat evcc keinen Ladepunkt, sagt es stattdessen: Ist das die
+  Wallbox, die OpenAmpere direkt liest, braucht sie kein Token und gehört in evcc gelöscht; steuert evcc eine andere
+  Wallbox, trag ein gültiges Token ein (#535). Siehe [Wallbox ohne evcc](wallbox-direct.de.md).
 
 Wir empfehlen, evcc zu unterstützen. OpenAmpere nutzt nur die offene Schnittstelle von evcc und hat keinen Einfluss
 auf dessen Bedingungen.
