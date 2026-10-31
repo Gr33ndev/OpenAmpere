@@ -8,7 +8,7 @@ import hashlib
 import json
 import ssl
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -69,8 +69,10 @@ def test_the_days_left_are_calendar_days():
 async def test_the_diagnostics_say_today_and_a_token_that_ran_out_today(tmp_path):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     runtime.collector.driver = driver = EnphaseDriver("192.0.2.1")
+    in_three_days = datetime.combine(datetime.now(runtime.tz).date() + timedelta(days=3), datetime.min.time().replace(hour=12),
+                                     tzinfo=runtime.tz).timestamp()  # noon: the days left are calendar days (#553)
     for expires, summary, status in ((time.time() - 60, "Abgelaufen.", "error"),  # not "since yesterday"
-                                     (time.time() + 3 * 86400, "Noch 3 Tage gültig.", "warn")):
+                                     (in_three_days, "Noch 3 Tage gültig.", "warn")):
         driver.token_expires = expires
         assert (Diagnostics(runtime)._enphase_token().summary, Diagnostics(runtime)._enphase_token().status) \
             == (summary, status)
