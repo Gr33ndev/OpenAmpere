@@ -1,10 +1,10 @@
 {
   "$comment": [
     "Single source for which devices OpenAmpere supports and what EKD sold (#526). Edit it here, then run",
-    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md and docs/devices/topics/names.md.",
-    "The website renders its EKD device page and the device list on its home page from this file.",
-    "The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation stays on the",
-    "device page ('page')."
+    "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md, docs/devices.md, docs/devices.de.md",
+    "and docs/devices/topics/names.md. The website renders its EKD device page and the device list on its home page from",
+    "this file. The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation",
+    "stays on the device page ('page')."
   ],
   "devices": [
     {
@@ -66,8 +66,8 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed; H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",
@@ -219,8 +219,8 @@
         "en": "monitoring, control only after you agree in the app"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt an einer Wallbox einer EKD-Anlage; Steuerung noch nicht bestätigt",
-        "en": "Monitoring confirmed on a charger of an EKD system; control not yet confirmed"
+        "de": "Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt",
+        "en": "Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed"
       },
       "check": true,
       "state": "readTest",
@@ -290,6 +290,23 @@
       },
       "state": "evcc",
       "page": "docs/devices/topics/wallboxes.md"
+    },
+    {
+      "id": "vw-cars",
+      "name": {
+        "de": "Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)",
+        "en": "Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)"
+      },
+      "does": {
+        "de": "Nur Anzeige über das EU-Data-Act-Portal des Konzerns mit dem Konto der Marke (Cloud, freiwillig): Ladestand, Reichweite und Kilometerstand, mindestens 15 Minuten alt.",
+        "en": "Monitoring only, through the group's EU Data Act portal with the brand account (cloud, optional): state of charge, range and odometer, at least 15 minutes old."
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "home": false,
+      "page": "docs/devices/cars/vw-eu-data-act.md"
     },
     {
       "id": "home-assistant",

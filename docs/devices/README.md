@@ -87,7 +87,8 @@ facts that turned out wrong as such instead of deleting them silently.
 
 The short status (supported, confirmed, planned) of every device, and the list of what EKD sold, is kept in
 [support.json](support.json) ([#526](https://github.com/Gr33ndev/OpenAmpere/issues/526)): the READMEs,
-[topics/names.md](topics/names.md) and the website are generated from it. When a confirmation on a device page changes
+[devices.md](../devices.md) (the table "Confirmed on a real system"), [topics/names.md](topics/names.md) and the website
+are generated from it. When a confirmation on a device page changes
 that status, change it there too and run `node scripts/device-support.mjs`.
 
 ## Layout of a page
