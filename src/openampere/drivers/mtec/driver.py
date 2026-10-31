@@ -10,13 +10,17 @@ import time
 from pymodbus import FramerType
 
 from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
-from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError, ModbusTransientError, ascii_text
+from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError, ModbusReadError, ModbusTransientError, ascii_text
 from ..regs import counter_step_wh, decode
 from .registers import BLOCKS, FAULT_STATE, OFF_GRID_STATE, READ_FUNCTION, RUNNING_STATES, VALUES
 
 log = logging.getLogger(__name__)
 
 FRAMERS = (FramerType.SOCKET, FramerType.RTU)  # plain Modbus TCP first, then RTU frames over TCP (port 5743)
+# host:port whose first unit answered in neither framing, and when: the other units are then only asked in plain
+# Modbus TCP for a while, so a silent Modbus device in the network does not hold up the setup scan
+SILENT_S = 600.0
+_silent: dict[tuple[str, int], float] = {}
 
 
 class ReadOnly(DeviceRefused):
@@ -37,16 +41,25 @@ class MtecDriver(ModbusDevice):
         self.read_function = READ_FUNCTION
 
     async def _detect(self) -> DeviceInfo:
+        key = (self._host, self._port)
+        silent = time.monotonic() - _silent.get(key, -SILENT_S) < SILENT_S
+        framers = (FramerType.SOCKET,) if silent and self._unit != self.DEFAULT_UNITS[0] else FRAMERS
+        attempts, self._attempts = self._attempts, 1  # one try per framing: a silent host must not hold up detection
         last: Exception | None = None
-        for framer in FRAMERS:
-            if framer is not self.framer:
-                await self.close()  # a new connection with the other framing
-                self.framer = framer
-            try:
-                return await self._identify()
-            except ModbusTransientError as err:  # no answer in this framing (or not from this unit)
-                last = err
-                log.debug("M-TEC unit %s, %s framing: %s", self._unit, framer.value, err)
+        try:
+            for framer in framers:
+                if framer is not self.framer:
+                    await self.close()  # a new connection with the other framing
+                    self.framer = framer
+                try:
+                    return await self._identify()
+                except ModbusTransientError as err:  # no answer in this framing (or not from this unit)
+                    last = err
+                    log.debug("M-TEC unit %s, %s framing: %s", self._unit, framer.value, err)
+        finally:
+            self._attempts = attempts
+        if len(framers) == len(FRAMERS):
+            _silent[key] = time.monotonic()
         raise ConnectionError(f"no M-TEC answer on unit {self._unit}: {last}")
 
     async def _identify(self) -> DeviceInfo:
@@ -62,7 +75,7 @@ class MtecDriver(ModbusDevice):
             words = await self._read(10011, 4, READ_FUNCTION)
             parts = [".".join(str(b) for w in half for b in (w >> 8, w & 0xFF)) for half in (words[:2], words[2:])]
             firmware = " / ".join(parts)  # two versions of four bytes (as in the app: "V27.53.05.00")
-        except ModbusIllegalError:
+        except ModbusReadError:  # optional: a slow module must not lose a device that was identified
             pass
         self.info = DeviceInfo(manufacturer="M-TEC", model="Energy-Butler GEN3", serial=serial, firmware=firmware,
                                register_map=f"mtec_gen3 ({self.framer.value})", driver=self.KEY, unit=self._unit,

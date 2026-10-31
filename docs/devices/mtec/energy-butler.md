@@ -17,7 +17,14 @@ device:** no (built from M-TEC's register document, open projects and the simula
   energy history for this device.
 - **Signs:** grid power is + for export (turned around), battery power + for discharging (as OpenAmpere).
 - M-TEC still serves owners (app and portal); OpenAmpere only reads.
-- GEN2 uses other addresses (4xxxx) and is not covered.
+- GEN2 uses other addresses (4xxxx) and is not covered; the GEN3 registers need inverter firmware 3.04.01 or later.
+
+## Identification
+
+- Type plate: "Energy-Butler 10kW-3P-3G25" (three-phase, GEN3); from 2023-07 the 10 kW model is "3G40", so EKD's units
+  from 2022/23 are most likely 3G25 (derived: M-TEC datasheet 2025, owners' posts).
+- GEN2 has RS485 only and the 4xxxx registers (documented: M-TEC document).
+- Firmware on the display, in the app or in 10011–10014.
 
 ## Registers
 
@@ -36,18 +43,19 @@ All holding registers (FC03).
 | 11028–11029 | PV power, total | U32, W | R | documented | M-TEC document; MTECmqtt |
 | 11038–11041 | PV1, PV2 voltage and current | U16, 0.1 V, 0.1 A | R | derived | MTECmqtt |
 | 11062–11065 | PV1, PV2 power | U32 each, W | R | derived | MTECmqtt |
+| 30230–30231 | Backup (EPS) output power | I32, W | R | documented | M-TEC document; MTECmqtt |
 | 30254 | Battery voltage | U16, 0.1 V | R | documented | M-TEC document |
 | 30255 | Battery current | I16, 0.1 A | R | documented | M-TEC document |
 | 30256 | Battery mode | U16 | R | derived; not used | MTECmqtt |
 | 30258–30259 | Battery power, **+ = discharging** | I32, W | R | documented (register), derived (sign) | M-TEC document; evcc |
-| 31000–31006 | Today: export, import, backup, battery charge and discharge, PV, load | U16, 0.1 kWh | R | derived | MTECmqtt |
-| 31102–31113 | Lifetime: export, import, backup, battery charge, battery discharge, PV | U32, 0.1 kWh | R | derived | MTECmqtt |
+| 31000–31006 | Today: export, import, backup output (31002), battery charge and discharge, PV, load | U16, 0.1 kWh | R | derived | MTECmqtt |
+| 31102–31113 | Lifetime: export, import, backup output (31106), battery charge, battery discharge, PV | U32, 0.1 kWh | R | derived | MTECmqtt |
 | 33000 | State of charge | U16, 0.01 % | R | documented | M-TEC document; MTECmqtt |
 | 33001 | State of health | U16, 0.01 % | R | derived | MTECmqtt |
 
 "M-TEC document" is "M-TEC Energy Butler RTU Protocol GEN2 + GEN3 V1.0" (2022-11-19), which an owner posted publicly
-in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, address 247) and lists every register
-as read-only.
+in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, address 247) and the function codes
+03, 06 and 16, but lists every register as read-only.
 
 ## Behaviour
 
@@ -58,14 +66,16 @@ as read-only.
 | The house load is the inverter's AC power minus the grid power (11016 − 11000). | derived | MTECmqtt (32cdf27) |
 | The Energy-Butler GEN3 is a Solinteg inverter; evcc's `solinteg-gen3` and the Solinteg plugin of homeassistant-solax-modbus cover it. | derived | evcc-io/evcc (MIT); wills106/homeassistant-solax-modbus (Apache-2.0) |
 | The module shows up in the router as "espressif"; the data also goes to M-TEC's cloud at least once a minute. | derived | owners' reports; croedel/M-TEC-API README |
-| Writing (operating mode 50000, export limit 25100/25103, SoC floors 52502–52505) is used by projects without a documented watchdog: the values are probably stored. | derived, open | MTECmqtt (LGPL, facts only), evcc, Solinteg plugin |
+| Writing (operating mode 50000, export limit 25100/25103, SoC floors 52502–52505, EMS setpoints 50202–50210) is used by projects without a documented watchdog: the values are probably stored. | derived, open | MTECmqtt (LGPL, facts only), evcc, Solinteg plugin |
+| M-TEC is still in business; owners use the "M-TEC Energy Butler" app and the portal energybutler.mtec-portal.com. In 2023 M-TEC removed the grid export settings from the portal for owners; installers still have them. | documented (store listings), derived (forum) | App Store and Google Play listings; forum.iobroker.net topic 64236 |
 
 ## Decisions in OpenAmpere
 
 | Decision | Why | Issue/PR |
 |---|---|---|
 | Display only: every write method refuses, `supports_control` is off. | Nothing confirmed on a device; the writes known have no watchdog. | [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520) |
-| Detected after FoxESS, SAJ and Solarmax on units 252, 255 and 247; plain Modbus TCP first, then RTU frames over TCP. A device counts as an M-TEC only with a readable serial number, a known running state and a state of charge within 0–100 %. | The sources disagree on unit id and framing; detection must not claim another device. | [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520) |
+| Detected after FoxESS, SAJ and Solarmax on units 252, 255 and 247; plain Modbus TCP first, then RTU frames over TCP, one try each. If the first unit answers in neither framing, the others are asked in plain Modbus TCP only for 10 minutes. A device counts as an M-TEC only with a readable serial number, a known running state and a state of charge within 0–100 %. | The sources disagree on unit id and framing; detection must not claim another device, and a silent Modbus device in the network must not hold up the setup scan. |
+| The port is not probed: with older module firmware the owner enters 5743 (the setup says so next to the port). | Detection stops when nothing listens on the port; a second port would need a second address in the settings. | [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520) |
 | Blocks only over the addresses the sources list. | A block across an undocumented gap might be refused. | [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520) |
 | Running state 3 (fault) reports the fault flags as a fault; 5 means off-grid. | M-TEC document. | [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520) |
 
@@ -73,6 +83,8 @@ as read-only.
 
 - On port 502: which framing and unit id answer on an EKD unit; does 5743 still answer after an update?
 - The signs of 11000 and 30258, and whether 11016 − 11000 matches the house load in the M-TEC app.
+- Whether loads on the backup (EPS) output are part of 11016: if not, the house load needs 30230 too (and during an
+  outage it is all of it). The diagnostics show 30230 so a report can tell.
 - Whether the module takes OpenAmpere next to the M-TEC app and cloud without trouble.
 - Type plate text ("Energy-Butler 10kW-3P-3G25" is expected) and register 10008 of an EKD unit; whether any is a GEN2.
 

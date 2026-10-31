@@ -618,6 +618,7 @@ class MtecSimulatedInverter(SimulatedInverter):
             self._put(f"pv{i}_power", power)
             self._put(f"pv{i}_voltage", voltage)
             self._put(f"pv{i}_current", power / voltage if voltage else 0.0)
+        self._put("backup_power", 0)
         self._put("battery_voltage", 230)
         self._put("battery_current", e.battery_w / 230)
         self._put("battery_power", e.battery_w)  # + = discharging

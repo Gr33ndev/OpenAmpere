@@ -34,6 +34,7 @@ BLOCKS = (
     (11028, 2),  # PV total power
     (11038, 4),  # PV1, PV2 voltage and current
     (11062, 4),  # PV1, PV2 power
+    (30230, 2),  # backup (EPS) output power
     (30254, 3),  # battery voltage, current, mode
     (30258, 2),  # battery power
     (31000, 7),  # today's energy
@@ -61,6 +62,7 @@ VALUES = {
     "pv2_current": Reg(11041, Kind.U16, 0.1),
     "pv1_power": Reg(11062, Kind.U32),
     "pv2_power": Reg(11064, Kind.U32),
+    "backup_power": Reg(30230, Kind.I32),  # backup (EPS) output: whether the house load includes it is open
     "battery_voltage": Reg(30254, Kind.U16, 0.1),
     "battery_current": Reg(30255, Kind.I16, 0.1),
     "battery_power": Reg(30258, Kind.I32),  # + = discharging
