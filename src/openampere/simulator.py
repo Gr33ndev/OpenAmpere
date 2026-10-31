@@ -561,6 +561,75 @@ class SolarmaxSimulatedInverter(SimulatedInverter):
                 self._put(f"{flow}_total", (base + e.totals[flow]) // 1000 * 1000)  # whole kWh
 
 
+class SimulatedSenec:
+    """Senec.Home V3 over its local web interface (#521): POST /lala.cgi with JSON, every value a typed hex string, on
+    the same energy model. Plain HTTP (a real device answers HTTPS with a self-signed certificate since about firmware
+    825). A request for FACTORY sets a session cookie, as on newer firmware; `requests` keeps every request as
+    (path, form, cookie sent). Everything else gets 404, writes are not taken."""
+
+    def __init__(self, *, system_type: int = 19, device_id: int = 0x12345678, require_session: bool = False) -> None:
+        self.energy = EnergyModel()
+        # require_session: like newer firmware, ENERGY only with the cookie of the current session (403 otherwise);
+        # a restart of the device starts a new session
+        self.require_session, self.session = require_session, "sim1"
+        self.system_type, self.device_id = system_type, device_id
+        self.requests: list[tuple[str, dict, bool]] = []
+        self.model = "Senec.Home V3 hybrid"
+
+    @staticmethod
+    def _float(value: float) -> str:
+        return "fl_" + struct.pack(">f", float(value)).hex().upper()
+
+    def values(self) -> dict:
+        e = self.energy
+        return {
+            "ENERGY": {"STAT_STATE": f"u8_{14:02X}", "GUI_INVERTER_POWER": self._float(e.pv_w),
+                       "GUI_BAT_DATA_POWER": self._float(-e.battery_w),  # Senec: + = charging
+                       "GUI_BAT_DATA_FUEL_CHARGE": self._float(e.soc), "GUI_GRID_POW": self._float(e.grid_w),
+                       "GUI_HOUSE_POW": self._float(e.house_w), "GUI_BAT_DATA_VOLTAGE": self._float(52.0),
+                       "GUI_BAT_DATA_CURRENT": self._float(-e.battery_w / 52.0)},
+            "FACTORY": {"SYS_TYPE": f"u8_{self.system_type:02X}", "COUNTRY": "u8_00",
+                        "DEVICE_ID": f"u8_{self.device_id:08X}"},
+        }
+
+    def answer(self, form: dict) -> dict:
+        values = self.values()
+        return {section: {key: values.get(section, {}).get(key, "VARIABLE_NOT_FOUND") for key in keys}
+                for section, keys in form.items() if isinstance(keys, dict)}
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            first = await reader.readexactly(1)
+            if first == b"\x16":  # a TLS handshake: this simulator speaks plain HTTP only
+                return
+            head = first + await reader.readuntil(b"\r\n\r\n")
+            lines = head.decode("latin-1").split("\r\n")
+            method, path = lines[0].split(" ")[:2]
+            headers = {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines[1:] if line)}
+            body = await reader.readexactly(int(headers.get("content-length", "0")))
+            if method != "POST" or path != "/lala.cgi":
+                writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
+            form = json.loads(body or b"{}")
+            current = f"senec_session={self.session}" in headers.get("cookie", "")
+            self.requests.append((path, form, current))
+            if self.require_session and "FACTORY" not in form and not current:
+                writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
+            data = json.dumps(self.answer(form)).encode()
+            cookie = f"Set-Cookie: senec_session={self.session}; Path=/\r\n" if "FACTORY" in form else ""
+            writer.write(f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(data)}\r\n"
+                         f"{cookie}Connection: close\r\n\r\n".encode() + data)
+        except (asyncio.IncompleteReadError, ConnectionError, ValueError):
+            pass
+        finally:
+            try:
+                await writer.drain()
+            except ConnectionError:
+                pass
+            writer.close()
+
+
 class SimulatedHeatingRod(SimulatedInverter):
     """my-PV AC ELWA-style heating rod: power setpoint at 1000, temperature 1001, target 1002, status 1003.
     The water warms up while power is applied; without a new setpoint within `timeout_s` it switches off."""
@@ -857,8 +926,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mypv", "foxess-charger", "weidmueller",
-                                             "de-tuya"],
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "senec", "mypv", "foxess-charger",
+                                             "weidmueller", "de-tuya"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
@@ -884,7 +953,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("mypv", "foxess-charger", "weidmueller", "de-tuya"):
+    if args.vendor in ("senec", "mypv", "foxess-charger", "weidmueller", "de-tuya"):
         pass
     elif args.vendor == "solarmax":
         sim = SolarmaxSimulatedInverter(unit=args.unit or 1, max_connections=args.max_connections,
@@ -908,6 +977,23 @@ def main() -> None:
                 await server.serve_forever()
         try:
             asyncio.run(run_charger())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "senec":
+        async def run_senec() -> None:
+            senec = SimulatedSenec()
+            server = await asyncio.start_server(senec.serve_client, args.host, args.port)
+            log.info("simulating a Senec.Home V3 (lala.cgi over HTTP) on %s:%d, speed x%g", args.host, args.port,
+                     args.speed)
+            sim_time = time.time()
+            async with server:
+                while True:
+                    await asyncio.sleep(1.0)
+                    sim_time += args.speed
+                    senec.energy.step(datetime.fromtimestamp(sim_time), args.speed)
+        try:
+            asyncio.run(run_senec())
         except KeyboardInterrupt:
             pass
         return

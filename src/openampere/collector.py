@@ -114,7 +114,18 @@ class Collector:
         """Not connected, or no reading for three poll intervals and at least `seconds`."""
         if self.latest is None:
             return True
-        return not self.connected or time.time() - self.latest.timestamp > max(3 * self.interval, seconds)
+        return not self.connected or time.time() - self.latest.timestamp > max(3 * self.poll_interval(), seconds)
+
+    def min_gap(self) -> float:
+        """The shortest time between two requests the device stands, 0 for none."""
+        try:
+            return getattr(self.driver, "MIN_POLL_S", 0.0)
+        except ConnectionError:  # the automatic driver before it detected the device
+            return 0.0
+
+    def poll_interval(self) -> float:
+        """The poll interval, but at least what the device stands (a Senec restarts when asked too often, #521)."""
+        return max(self.interval, self.min_gap())
 
     def _check_firmware(self) -> None:
         """An update can change registers: remember the firmware and note when it changes."""
@@ -239,7 +250,7 @@ class Collector:
                     except Exception as err:  # noqa: BLE001
                         log.error("could not prune old samples: %s", err)
                     last_prune = time.time()
-                await asyncio.sleep(max(0.0, self.interval - (time.monotonic() - started)))
+                await asyncio.sleep(max(0.0, self.poll_interval() - (time.monotonic() - started)))
             except asyncio.CancelledError:
                 raise
             except Exception as err:  # keep running whatever the inverter does
@@ -253,7 +264,7 @@ class Collector:
                 if getattr(err, "transient", False) and self.connected and transient_failures < MAX_TRANSIENT:
                     transient_failures += 1
                     log.info("temporary read error (%d/%d): %s", transient_failures, MAX_TRANSIENT, err)
-                    await asyncio.sleep(self.interval)
+                    await asyncio.sleep(self.poll_interval())
                     continue
                 transient_failures = 0
                 if self.connected or self.disconnected_since is None:
@@ -265,5 +276,6 @@ class Collector:
                 self.connected = False
                 self.last_error = message
                 await self.driver.close()
-                await asyncio.sleep(backoff)
+                # never sooner than the device stands (a Senec restarts when asked too often, #521)
+                await asyncio.sleep(max(backoff, self.min_gap()))
                 backoff = min(backoff * 2, 300)

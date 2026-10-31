@@ -12,6 +12,7 @@ The register tables, with the status and the source of every register, are on th
 | SAJ H2 / HS2 / AS2: measurements, settings, control, charge slots | `saj_h2` (unit 1 or 2) | [devices/saj/h2-family.md](devices/saj/h2-family.md) |
 | SAJ type code 0x005E ("3P-X E2") | `saj_h2` | [devices/saj/0x005e-3p-x-e2.md](devices/saj/0x005e-3p-x-e2.md) |
 | Solarmax MAX.STORAGE ("AMPERE.Storage"), display only | `solarmax_max_storage` (unit 1, FC04) | [devices/solarmax/max-storage.md](devices/solarmax/max-storage.md) |
+| Senec.Home V3 / V2.1: the keys of its web interface `lala.cgi`, display only | `senec_lala` (HTTP) | [devices/senec/home-v3.md](devices/senec/home-v3.md) |
 | Weidmüller AC SMART ("AMPERE.Charge"), display only | wallbox module `weidmueller_ac_smart` (unit 255) | [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md) |
 | my-PV AC ELWA heating rod | registers 1000–1003 | [devices/mypv/elwa.md](devices/mypv/elwa.md) |
 | Previous EKD smartbox: what it writes | — | [devices/topics/iq-box.md](devices/topics/iq-box.md) |

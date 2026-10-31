@@ -395,9 +395,11 @@ class Diagnostics:
             checks.append(await self._saj_meter_b())
         if getattr(driver, "KEY", None) == "solarmax":
             checks.append(await self._solarmax_registers())
+        if getattr(driver, "KEY", None) == "senec":
+            checks.append(await self._senec_values())
 
-        # 6. connection limit (optional: may briefly disturb other devices)
-        if connection_test:
+        # 6. connection limit (optional: may briefly disturb other devices); Modbus only
+        if connection_test and getattr(driver, "PROTOCOL", "modbus") == "modbus":
             checks.append(await self._connection_test())
         else:
             checks.append(Check("connections", "Gleichzeitige Verbindungen", "skipped",
@@ -521,6 +523,34 @@ class Diagnostics:
                      hint="OpenAmpere liest diesen Speicher nach der Liste von Solarmax, aber noch ohne Bestätigung von "
                           "einem echten Gerät. Vergleiche Batterie- und Netzleistung mit dem Display und schreib uns, "
                           "ob die Vorzeichen stimmen.")
+
+    async def _senec_values(self) -> Check:
+        """What the Senec driver reads from lala.cgi (#521), built without a device: the values of ENERGY with Senec's
+        own signs (powers rounded like every power in the report) and how the device answered (scheme and port). Not
+        the device id."""
+        from .drivers.senec.driver import LIVE
+        driver = self._driver()
+        title = "Werte (Senec)"
+        try:
+            energy = (await driver._request(LIVE)).get("ENERGY", {})
+        except Exception as err:  # noqa: BLE001 - a check never stops the report
+            return Check("senec_values", title, "warn", f"lala.cgi: {err}")
+
+        def shown(key: str, value):
+            if not isinstance(value, float):
+                return value
+            return round(value, -2) if key.endswith(("_POW", "_POWER")) else round(value, 1)
+
+        values = {key: shown(key, value) for key, value in energy.items()}
+        url = getattr(driver, "_url", None) or ""
+        scheme, _, rest = url.partition("://")
+        details = {"values": values, "scheme": scheme or None, "port": rest.split("/")[0].rpartition(":")[2] or None}
+        summary = (f"Batterie {values.get('GUI_BAT_DATA_POWER')} W (laden +), Netz {values.get('GUI_GRID_POW')} W "
+                   f"(Bezug +), Ladestand {values.get('GUI_BAT_DATA_FUEL_CHARGE')} %")
+        return Check("senec_values", title, "info", summary, details,
+                     hint="OpenAmpere liest diesen Speicher nach offenen Projekten, aber noch ohne Bestätigung von einem "
+                          "echten Gerät. Vergleiche Batterie- und Netzleistung mit der Senec-App und schreib uns, ob die "
+                          "Vorzeichen stimmen.")
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

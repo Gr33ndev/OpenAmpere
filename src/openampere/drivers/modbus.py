@@ -82,12 +82,16 @@ def friendly_error(err: BaseException) -> str:
     if isinstance(err, InverterBusy):
         return BUSY_MESSAGE
     if isinstance(err, DeviceUnreachable):
-        return "Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die Adresse und ist Modbus TCP aktiviert?"
+        # a driver without Modbus (Senec) says itself what to check
+        return getattr(err, "message", None) or ("Keine Verbindung zum Wechselrichter. Ist er eingeschaltet, stimmt die "
+                                                 "Adresse und ist Modbus TCP aktiviert?")
     if isinstance(err, DeviceRefused):
         return str(err)
     if isinstance(err, ModbusIllegalError):
         return "Der Wechselrichter hat die Anfrage abgelehnt (Register nicht vorhanden)."
     if isinstance(err, (ModbusTransientError, TimeoutError, asyncio.TimeoutError)):
+        if getattr(err, "message", None):  # a driver without Modbus (Senec) says itself what happens
+            return err.message
         return "Der Wechselrichter antwortet nicht rechtzeitig. Bei einem Modbus-Proxy oder WLAN hilft ein höheres Zeitlimit."
     if isinstance(err, OSError) and err.errno is not None:
         if err.errno in (113, 65, 51, 101):  # host/network unreachable (Linux, macOS)

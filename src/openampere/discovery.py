@@ -133,8 +133,9 @@ async def test_connection(runtime: Runtime, host: str, port: int, unit: int, dri
                                                     only=None if driver == "auto" else driver)
     except InverterBusy as err:
         return {"ok": False, "error": friendly_error(err), "busy": True}
-    except DeviceUnreachable:
-        return {"ok": False, "error": f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse und ist Modbus TCP aktiviert?"}
+    except DeviceUnreachable as err:  # a driver without Modbus (Senec) says itself what to check
+        return {"ok": False, "error": getattr(err, "message", None)
+                or f"Keine Verbindung zu {host}:{port}. Stimmt die Adresse und ist Modbus TCP aktiviert?"}
     except (ConnectionError, OSError, asyncio.TimeoutError) as err:
         return {"ok": False, "error": friendly_error(err)}
     try:

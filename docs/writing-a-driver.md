@@ -27,6 +27,7 @@ Contents:
 | `src/openampere/drivers/registry.py` | `DRIVERS`, `LABELS`, `create()`, `detect_driver()`, `detect()` and `AutoDriver`. |
 | `src/openampere/drivers/foxess/` | FoxESS H3 family: two register maps (`H3_NEW`, `H3_LEGACY`), read and write path. |
 | `src/openampere/drivers/saj/` | SAJ H2 / HS2: the smallest complete example and the best template; control through a charge slot instead of a remote control (#377). |
+| `src/openampere/drivers/senec/` | Senec.Home V3 / V2.1: a display-only driver over HTTP (`lala.cgi`) instead of Modbus (#521). It has the same face as a `ModbusDevice` (`connect`, `read`, `close`, the settings methods), `AUTO_DETECT = False` keeps it out of the automatic detection and `MIN_POLL_S` raises the poll interval. |
 | `src/openampere/drivers/solarmax/` | Solarmax MAX.STORAGE: a display-only driver (#519), input registers with the low word first, built without a device. |
 | `src/openampere/drivers/mypv.py` | my-PV heating rods. Not an inverter driver, see [Other devices](#other-devices). |
 
@@ -340,7 +341,7 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 
 | Option | Effect |
 |---|---|
-| `--vendor foxess\|saj\|solarmax\|mypv` | device family (`mypv` = my-PV heating rod) |
+| `--vendor foxess\|saj\|solarmax\|senec\|mypv` | device family (`mypv` = my-PV heating rod, `senec` = lala.cgi over HTTP) |
 | `--map new\|legacy` | FoxESS register map |
 | `--unit N` | the only unit id that answers (default FoxESS 247, SAJ and Solarmax 1); other ids get "gateway target failed" |
 | `--connectivity unlocked\|rejected\|zeros\|silent` | Solarmax: the "Connectivity+" registers (energy counters) filled, refused, zero or not answered |

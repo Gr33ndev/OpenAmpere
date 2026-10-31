@@ -97,6 +97,28 @@
       "page": "docs/devices/solarmax/max-storage.md"
     },
     {
+      "id": "senec",
+      "name": {
+        "de": "Senec.Home V3 / V2.1",
+        "en": "Senec.Home V3 / V2.1"
+      },
+      "does": {
+        "de": "Nur Anzeige über die Weboberfläche im Heimnetz (kein Modbus): PV, Speicher, Haus, Netz und Ladestand. Beim Einrichten unter „Erweitert“ als Gerätetyp wählen. Einen Energieverlauf gibt es nicht, weil der Speicher keine Zähler mehr meldet.",
+        "en": "Monitoring only through its web interface in the home network (no Modbus): PV, battery, house, grid and state of charge. Choose it as the device type under \"Advanced\" in the setup. There is no energy history, because the device no longer reports counters."
+      },
+      "short": {
+        "de": "nur Anzeige, beim Einrichten auswählen",
+        "en": "monitoring only, chosen in the setup"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/senec/home-v3.md"
+    },
+    {
       "id": "relay",
       "name": {
         "de": "Heizstab, Wärmepumpe (SG-Ready)",
@@ -252,7 +274,7 @@
         "sold": "–",
         "model": "Senec.Home V2.1 (AC-coupled, external PV inverter on RS485)",
         "interface": "local web interface `lala.cgi` (JSON)",
-        "openampere": "not supported",
+        "openampere": "driver `senec`, display only ([senec/home-v3.md](../senec/home-v3.md))",
         "status": "open: no source shows EKD selling it",
         "source": "energie-experten.org, \"SENEC\""
       }
@@ -266,21 +288,20 @@
         "de": "2020–2022",
         "en": "2020–2022"
       },
-      "state": "planned",
       "note": {
-        "de": "Vielleicht auch ältere Senec.Home V2.1. Senec hat keine Modbus-TCP-Schnittstelle, deshalb braucht es eine neue Art der Anbindung.",
-        "en": "Possibly also older Senec.Home V2.1. Senec has no Modbus TCP interface, so it needs a new kind of connection."
+        "de": "Auch ältere Senec.Home V2.1. Beim Einrichten unter „Erweitert“ den Gerätetyp „Senec“ wählen.",
+        "en": "Also older Senec.Home V2.1. Choose the device type \"Senec\" under \"Advanced\" in the setup."
       },
-      "issue": 521,
       "names": {
         "period": "2020 – mid-2022, some into 2023",
         "sold": "Senec storage, EKD as \"SENEC-Fachpartner\", with SENEC.Cloud",
         "model": "Senec.Home V3 hybrid and hybrid duo (DC hybrid)",
         "interface": "`lala.cgi`, HTTPS only with a self-signed certificate since about firmware 825, some fields gone",
-        "openampere": "not supported",
+        "openampere": "driver `senec`, display only ([senec/home-v3.md](../senec/home-v3.md))",
         "status": "documented (EKD website 2021–2022 in the web archive, Senec datasheets hosted by EKD); derived (owners' reports, end of the period)",
         "source": "[pv magazine, 2022-06-16](https://www.pv-magazine.de/2022/06/16/ekd-beteiligt-sich-an-solarmax/); [Photovoltaikforum on a Senec V3 hybrid duo bought through EKD](https://www.photovoltaikforum.com/thread/222119-suche-ersatz-f%C3%BCr-senec-v3-hybrid-duo/); marq24/ha-senec-v3 and mchwalisz/pysenec (both Apache-2.0, for `lala.cgi`)"
-      }
+      },
+      "support": "senec"
     },
     {
       "id": "solarmax",
