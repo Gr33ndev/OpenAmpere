@@ -31,9 +31,26 @@ def sunny(sim: SimulatedSenec) -> SimulatedSenec:
 
 @pytest.mark.parametrize(("raw", "value"), [("fl_42C80000", 100.0), ("fl_C2C80000", -100.0), ("u8_13", 19),
                                             ("u1_0001", 1), ("i3_FFFFFFFF", -1), ("i1_7FFF", 32767),
-                                            ("st_V3", "V3"), ("VARIABLE_NOT_FOUND", None), ("fl_XYZ", None)])
+                                            ("st_V3", "V3"), ("VARIABLE_NOT_FOUND", None), ("fl_XYZ", None),
+                                            ("fl_42C8", None), ("fl_", None)])
 def test_typed_hex_values(raw, value):
     assert parse_value(raw) == value
+
+
+async def test_an_answer_that_is_no_json_object_is_a_failed_read():
+    """A firmware that answers a list or null: a read without values, not a crash of the collector."""
+    async def odd(reader, writer):
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]")
+        await writer.drain()
+        writer.close()
+    server = await asyncio.start_server(odd, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server:
+        driver = SenecDriver("127.0.0.1", port, timeout=1)
+        driver._url = f"http://127.0.0.1:{port}/lala.cgi"
+        with pytest.raises(ModbusTransientError):
+            await driver.read()
 
 
 def test_a_request_stays_below_the_size_the_device_takes():

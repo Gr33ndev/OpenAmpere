@@ -67,7 +67,7 @@ def parse_value(value):
             return number - (1 << bits) if number >= 1 << (bits - 1) else number
         if kind == "st":
             return raw
-    except ValueError:
+    except (ValueError, struct.error):  # not hex, or a float of another length
         return None
     return None
 
@@ -89,7 +89,7 @@ class SenecDriver:
         self._host = host
         self._ports = DEFAULT_PORTS if port in (0, MODBUS_PORT) else (port,)
         self._timeout = max(timeout, 5.0)
-        self._attempts = read_attempts
+        self._attempts = read_attempts  # set by the registry like for every driver; one request per read here
         self._url: str | None = None
         self._lock = asyncio.Lock()
         self._cookies = http.cookiejar.CookieJar()
@@ -110,7 +110,10 @@ class SenecDriver:
         request = urllib.request.Request(url, data=body, method="POST", headers={
             "Content-Type": "application/json", "User-Agent": "OpenAmpere"})
         with self._opener.open(request, timeout=self._timeout) as response:
-            return json.loads(response.read().decode("utf-8", "replace"))
+            answer = json.loads(response.read().decode("utf-8", "replace"))
+        if not isinstance(answer, dict):
+            raise ValueError("lala.cgi answered with something that is no JSON object")
+        return answer
 
     async def _post(self, form: dict, url: str | None = None) -> dict:
         async with self._lock:

@@ -531,6 +531,8 @@ class Diagnostics:
         from .drivers.senec.driver import LIVE
         driver = self._driver()
         title = "Werte (Senec)"
+        if not getattr(driver, "_url", None):
+            return Check("senec_values", title, "skipped", "Der Senec-Speicher ist gerade nicht verbunden.")
         try:
             energy = (await driver._request(LIVE)).get("ENERGY", {})
         except Exception as err:  # noqa: BLE001 - a check never stops the report
