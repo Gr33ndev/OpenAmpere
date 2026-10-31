@@ -222,6 +222,29 @@ Rückfrage einmal und liest sie zurück. Dafür muss **Änderungen an Geräten**
 Smartbox vom Strom getrennt sein und die Wallbox gerade antworten. Im Testmodus steht die Änderung nur im
 Steuerungsprotokoll.
 
+## Weidmüller AC SMART einrichten
+
+EKD hat die Weidmüller AC SMART VALUE als „AMPERE.Charge“ verkauft. OpenAmpere **zeigt sie nur an** (#523): ob ein
+Auto angesteckt ist, die Ladeleistung, Strom und Spannung je Phase und die Energie des Ladevorgangs. Es schreibt nie
+etwas auf die Wallbox; der einzige Lademodus ist **Von Hand**. Ihre Leistung zählt wie bei jeder Wallbox zum
+Hausverbrauch. Steuern lässt sie sich weiter über evcc (mit einem Sponsortoken von evcc).
+
+1. Unter **direkt → Wallbox hinzufügen oder prüfen** bei **Welche Wallbox hast du?** die Weidmüller AC SMART wählen.
+2. Ihre IP-Adresse eintragen. Ab Werk hat die Wallbox die feste Adresse 192.168.0.8 ohne DHCP; meist hat der
+   Elektriker das geändert, dann findest du sie in der Geräteliste deines Routers. Port (502) und Geräteadresse (255)
+   stehen unter **Erweitert** und bleiben normalerweise so.
+3. **Verbindung prüfen**, dann **Speichern**.
+
+- **Sie nimmt nur eine Modbus-Verbindung gleichzeitig an.** Solange evcc oder die bisherige Smartbox sie hält, kann
+  OpenAmpere die Wallbox nicht lesen und zeigt sie als nicht erreichbar. Bei Anlagen von EKD die Smartbox vom Strom
+  nehmen; eine Wallbox, die schon evcc liest, hier nicht zusätzlich einrichten.
+- OpenAmpere fragt sie alle paar Sekunden über eine kurze Verbindung ab und schließt sie gleich wieder, damit die
+  eigene App der Wallbox zwischendurch auch verbinden kann.
+- An einer echten Wallbox ist noch nichts bestätigt. Eine Prüfung mit **Nur prüfen (Bericht)** und ein Bericht unter
+  **Mehr → Diagnose** helfen, die Werte zu bestätigen.
+
+Technische Einzelheiten (Englisch): [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md).
+
 ## Andere Wallboxen prüfen (nur lesen)
 
 Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor. Unter **direkt → Wallbox hinzufügen oder prüfen**

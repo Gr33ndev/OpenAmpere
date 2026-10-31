@@ -161,6 +161,28 @@
       "page": "docs/devices/foxess/ac-charger.md"
     },
     {
+      "id": "weidmueller",
+      "name": {
+        "de": "Weidmüller AC SMART („AMPERE.Charge“)",
+        "en": "Weidmüller AC SMART (\"AMPERE.Charge\")"
+      },
+      "does": {
+        "de": "Nur Anzeige über Modbus TCP: Zustand, Ladeleistung, Strom und Spannung je Phase, Energie des Ladevorgangs. Steuern kann sie weiter evcc (mit Sponsortoken).",
+        "en": "Monitoring only over Modbus TCP: state, charging power, current and voltage per phase, energy of the charge. evcc can still control it (with a sponsor token)."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/weidmueller/ac-smart.md"
+    },
+    {
       "id": "de-tuya",
       "name": {
         "de": "Mobile dé-Wallbox (Tuya-WLAN)",
@@ -459,18 +481,17 @@
         "de": "2023–2024",
         "en": "2023–2024"
       },
-      "support": "evcc",
+      "support": "weidmueller",
       "note": {
-        "de": "evcc braucht dafür einen Sponsor-Token. Direkt über OpenAmpere ist geplant.",
-        "en": "evcc needs a sponsor token for it. Directly through OpenAmpere is planned."
+        "de": "Steuern kann sie weiter evcc, dafür braucht evcc einen Sponsor-Token.",
+        "en": "evcc can still control it; evcc needs a sponsor token for that."
       },
-      "issue": 523,
       "names": {
         "period": "2023–2024",
         "sold": "\"AMPERE.Charge\"",
         "model": "Weidmüller AC Smart Value, 11 kW",
         "interface": "Modbus TCP 502, Modbus RTU, OCPP 1.6J",
-        "openampere": "through evcc (needs an evcc sponsor token); OCPP check read-only",
+        "openampere": "wallbox module `weidmueller_ac_smart`, display only ([weidmueller/ac-smart.md](../weidmueller/ac-smart.md)); control through evcc (needs an evcc sponsor token)",
         "status": "documented (product, interfaces, start), derived (evcc, sponsor token, end of the period)",
         "source": "see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`)"
       }

@@ -121,6 +121,17 @@ test("a search that is not possible says so instead of finding nothing", async (
   await expect(page.getByText("Keine Tuya-Wallbox gefunden")).toHaveCount(0);
 });
 
+// #523: a wallbox OpenAmpere only shows gets no word about a simulation it does not have
+test("the Weidmüller AC SMART is only shown, without a simulation", async ({ page }) => {
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  await page.getByLabel("Welche Wallbox hast du?").selectOption("weidmueller_ac_smart");
+  await expect(page.getByText("OpenAmpere zeigt diese Wallbox nur an")).toBeVisible();
+  await expect(page.getByText("als Simulation")).toHaveCount(0);
+  await expect(page.getByLabel("Port")).toHaveValue("502");
+});
+
 // one form for every wallbox: what is asked depends on the wallbox chosen
 test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in the same form", async ({ page }) => {
   await open(page, "more/wallbox");

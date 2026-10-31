@@ -19,6 +19,10 @@ Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/ev
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.
 
+Register definitions for the Weidmüller AC SMART wallbox are based on facts from Weidmüller's public document "AC
+SMART ECO / VALUE / ADVANCED Modbus-Register" (2933050000 Rev. 02, 2023-06); the word order of 32-bit values on owner
+reports in evcc's issues. OpenAmpere contains no evcc code.
+
 The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
 tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own
 implementation and contains no tinytuya code. The data points of the dé wallbox are based on facts from tuya-local

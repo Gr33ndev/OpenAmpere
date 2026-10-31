@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Wallboxes OpenAmpere reads and controls itself, without evcc (#318): the portable dé wallbox over Tuya, and the
-FoxESS AC EV Charger over Modbus TCP, shown (#439), simulated (#440) and, once its owner agrees, controlled (#465).
+"""Wallboxes OpenAmpere reads and controls itself, without evcc (#318): the portable dé wallbox over Tuya, the
+FoxESS AC EV Charger over Modbus TCP, shown (#439), simulated (#440) and, once its owner agrees, controlled (#465), and
+the Weidmüller AC SMART over Modbus TCP, only shown (#523).
 
 - Every model is a class in MODELS with the same face: key, label, protocol ("tuya" or "modbus"), the modes it
   offers, read_only, and interpret() that turns what the wallbox answered into a base.Reading. reader() gives what a
@@ -70,10 +71,11 @@ from .base import NotPrepared, ReadBackFailed, Reading, WallboxUnreachable
 from .de_tuya import DeTuyaCharger
 from .foxess import FoxEssChargerLive
 from .modbus import ModbusWallbox
+from .weidmueller import WeidmuellerAcSmartLive
 
 log = logging.getLogger(__name__)
 
-MODELS = {m.key: m for m in (DeTuyaCharger, FoxEssChargerLive)}
+MODELS = {m.key: m for m in (DeTuyaCharger, FoxEssChargerLive, WeidmuellerAcSmartLive)}
 UNREACHABLE = (tuya.TuyaError, WallboxUnreachable)  # both carry a German .message for the owner
 
 MAX_WALLBOXES = 4
