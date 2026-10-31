@@ -82,6 +82,9 @@ async def _announced_wallboxes() -> set[str]:
     return {d["host"] for d in devices if d["name"].upper().startswith("EVC-")}
 
 
+DETECT_PARALLEL = 8  # hosts detected at a time by the searches; each host still gets one connection at a time
+
+
 async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) -> list[dict]:
     hosts = parse_prefix(prefix)
     semaphore = asyncio.Semaphore(128)
@@ -95,8 +98,9 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
 
     found, wallboxes = await asyncio.gather(open_hosts(), _announced_wallboxes())
     collector, current = runtime.collector, runtime.config.inverter
-    results = []
-    for host in found:
+    detecting = asyncio.Semaphore(DETECT_PARALLEL)
+
+    async def identify(host: str) -> dict:
         busy = wallbox = False
         if collector.connected and collector.device and host == current.host and port == current.port:
             device = collector.device  # already connected: do not open a second connection
@@ -106,17 +110,20 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
             device, wallbox = None, True
         else:
             try:
-                device = await registry.detect(host, port, unit)
+                async with detecting:
+                    device = await registry.detect(host, port, unit)
             except InverterBusy:  # only connection taken, e.g. by the old IQ box (#311): inverter or wallbox (#433)
                 device, busy = None, True
             except ConnectionError:
                 device = None
-        results.append({"host": host, "port": port, "busy": busy, "wallbox": wallbox,
-                        "model": device.model if device else None, "manufacturer": device.manufacturer if device else None,
-                        "driver": device.driver if device else None, "unit": device.unit if device else None,
-                        # the same inverter answers twice when a Modbus proxy or data logger forwards it
-                        "serial": device.serial if device else None})
-    return results
+        return {"host": host, "port": port, "busy": busy, "wallbox": wallbox,
+                "model": device.model if device else None, "manufacturer": device.manufacturer if device else None,
+                "driver": device.driver if device else None, "unit": device.unit if device else None,
+                # the same inverter answers twice when a Modbus proxy or data logger forwards it
+                "serial": device.serial if device else None}
+
+    # several hosts at a time, each with one connection: a host that does not answer takes about 45 s (#549)
+    return list(await asyncio.gather(*(identify(host) for host in found)))
 
 
 async def test_connection(runtime: Runtime, host: str, port: int, unit: int, driver: str = "auto", *,
@@ -175,18 +182,31 @@ async def find_by_serial(runtime: Runtime, prefix: str, port: int, serial: str) 
             return host if await _port_open(host, port, 0.7) else None
 
     driver = runtime.config.inverter.driver
-    for host in [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]:
-        try:
-            # with a fixed driver only that one: faster, and no other vendor's probes at every device; with the
-            # shortcuts for silent hosts of the automatic detection, as the search asks every host (#547)
-            info = await registry.detect(host, port, runtime.config.inverter.unit,
-                                         timeout=runtime.config.inverter.timeout,
-                                         only=None if driver == "auto" else driver, quick=True)
-        except (ConnectionError, OSError, asyncio.TimeoutError):
-            continue
+    detecting = asyncio.Semaphore(DETECT_PARALLEL)
+    found = [h for h in await asyncio.gather(*(probe(h) for h in hosts)) if h]
+    first = len(found)  # the lowest index that matched so far: hosts after it are not asked any more
+
+    async def matches(index: int, host: str) -> bool:
+        nonlocal first
+        async with detecting:
+            if index > first:
+                return False
+            try:
+                # with a fixed driver only that one: faster, and no other vendor's probes at every device; with the
+                # shortcuts for silent hosts of the automatic detection, as the search asks every host (#547)
+                info = await registry.detect(host, port, runtime.config.inverter.unit,
+                                             timeout=runtime.config.inverter.timeout,
+                                             only=None if driver == "auto" else driver, quick=True)
+            except (ConnectionError, OSError, asyncio.TimeoutError):
+                return False
         if info.serial and info.serial == serial:
-            return host
-    return None
+            first = min(first, index)
+            return True
+        return False
+
+    # several hosts at a time, as in the setup's search (#549); the first match in address order
+    results = await asyncio.gather(*(matches(i, h) for i, h in enumerate(found)))
+    return next((host for host, match in zip(found, results) if match), None)
 
 
 class Rediscovery:

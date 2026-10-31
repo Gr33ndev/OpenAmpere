@@ -3,6 +3,7 @@
 """Error paths of the network search in the setup wizard, without a real network (#237)."""
 
 import asyncio
+import time
 import socket
 import struct
 from types import SimpleNamespace
@@ -306,3 +307,32 @@ async def test_with_a_fixed_driver_the_search_detects_only_that_one(monkeypatch,
     runtime.config.inverter.driver = "auto"
     assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.7"
     assert asked == [("foxess", True), (None, True)]  # the shortcuts for silent hosts also with a fixed driver
+
+
+async def test_the_searches_detect_several_hosts_at_a_time(monkeypatch, runtime):
+    """#549: a Modbus host that never answers takes about 45 s to detect; one after another the setup's search took
+    that long for every such device in the network. Still one connection per host, results in address order."""
+    hosts = [f"10.0.0.{n}" for n in range(1, 13)]
+    open_ports(monkeypatch, *hosts)
+    running, most, per_host = 0, 0, {}
+
+    async def detect(host, port, unit, *, timeout=None, only=None, quick=None):
+        nonlocal running, most
+        running, per_host[host] = running + 1, per_host.get(host, 0) + 1
+        most = max(most, running)
+        await asyncio.sleep(0.4 if host == "10.0.0.2" else 0.05 if host == "10.0.0.3" else 0.2)
+        running -= 1
+        if host.endswith((".2", ".3")):
+            return device("SN7")
+        raise ConnectionError("no Modbus answer")
+    monkeypatch.setattr(registry, "detect", detect)
+    started = time.monotonic()
+    found = await discovery.scan(runtime, "10.0.0")
+    assert time.monotonic() - started < 1.2  # 12 hosts × 0.2 s one after another would be 2.4 s
+    assert [r["host"] for r in found] == hosts and found[1]["serial"] == "SN7"
+    assert most == discovery.DETECT_PARALLEL and set(per_host.values()) == {1}
+    # the address search: the first match in address order, not the first to answer (.3 matches first); the hosts
+    # after a match are not asked any more, once a place is free (single-client wallboxes, #547)
+    per_host.clear()
+    assert await discovery.find_by_serial(runtime, "10.0.0", 502, "SN7") == "10.0.0.2"
+    assert "10.0.0.12" not in per_host and set(per_host.values()) == {1}
