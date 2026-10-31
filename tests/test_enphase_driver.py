@@ -64,6 +64,16 @@ def test_the_days_left_are_calendar_days():
     assert token_days_left(None, evening, berlin) is None
 
 
+async def test_the_diagnostics_say_today_and_a_token_that_ran_out_today(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.driver = driver = EnphaseDriver("192.0.2.1")
+    for expires, summary, status in ((time.time() - 60, "Abgelaufen.", "error"),  # not "since yesterday"
+                                     (time.time() + 3 * 86400, "Noch 3 Tage gültig.", "warn")):
+        driver.token_expires = expires
+        assert (Diagnostics(runtime)._enphase_token().summary, Diagnostics(runtime)._enphase_token().status) \
+            == (summary, status)
+
+
 @pytest.mark.parametrize("payload", [b"[1]", b'"text"', b'{"exp": Infinity}', b'{"exp": NaN}', b'{"exp": "soon"}'])
 def test_an_odd_token_has_no_expiry_and_does_not_stop_the_driver(payload):
     """A pasted text that decodes to JSON but no object, or an exp that is not a finite number: no expiry, no crash

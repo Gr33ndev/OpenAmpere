@@ -596,7 +596,8 @@ class Diagnostics:
             return Check("enphase_token", title, "info", "Ablaufdatum nicht lesbar.")
         if days < 0:
             return Check("enphase_token", title, "error",
-                         "Seit gestern abgelaufen." if days == -1 else f"Seit {-days} Tagen abgelaufen.",
+                         # -1: today or yesterday (the count stays below 0 once it ran out)
+                         "Abgelaufen." if days == -1 else f"Seit {-days} Tagen abgelaufen.",
                          {"days_left": days}, hint="Hol bei Enphase ein neues Token und trag es beim Einrichten ein.")
         status = "warn" if days < WARN_DAYS else "ok"
         summary = "Läuft heute ab." if days == 0 else "Noch 1 Tag gültig." if days == 1 else f"Noch {days} Tage gültig."
