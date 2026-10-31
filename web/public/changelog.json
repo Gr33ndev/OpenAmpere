@@ -1,6 +1,121 @@
 {
   "versions": [
     {
+      "version": "0.37.0",
+      "date": "2026-11-01",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "enphase",
+            "text": "Remind the owner before the access token runs out (#545)"
+          },
+          {
+            "scope": "enphase",
+            "text": "Send the token only to the gateway it was set up with (#544)"
+          },
+          {
+            "scope": "enphase",
+            "text": "Show the enphase iq gateway with iq batteries (#537)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Warn when evcc stays connected next to a direct wallbox (#536)"
+          },
+          {
+            "scope": "senec",
+            "text": "Show the senec.home v3 and v2.1 (#533)"
+          },
+          {
+            "scope": "mtec",
+            "text": "Show the m-tec energy-butler gen3 (#534)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Show the weidmüller ac smart (\"ampere.charge\") (#532)"
+          },
+          {
+            "scope": "solarmax",
+            "text": "Show the solarmax max.storage (\"ampere.storage\") (#528)"
+          },
+          {
+            "scope": null,
+            "text": "Show the device knowledge on the website and link it from the app (#518)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "discovery",
+            "text": "Make the network search faster when devices do not answer (#552)"
+          },
+          {
+            "scope": null,
+            "text": "Keep senec and enphase out of the modbus address search and device query (#550)"
+          },
+          {
+            "scope": "senec",
+            "text": "Do not follow redirects of the web interface (#551)"
+          },
+          {
+            "scope": "senec",
+            "text": "Free the connection after an error answer of the device (#541)"
+          },
+          {
+            "scope": "foxess",
+            "text": "Charge the battery, not the AC side, with the remote control (#513)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Put the enphase token's expiry at noon in the tests of its days (#554)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump @biomejs/biome from 2.5.15 to 2.6.3 (#546)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump @playwright/test from 1.63.0 to 1.64.1 in /web (#530)"
+          },
+          {
+            "scope": null,
+            "text": "Take the confirmation status in devices.md from support.json (#543)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump vite from 8.3.4 to 8.3.5 in /web in the vite group (#529)"
+          },
+          {
+            "scope": null,
+            "text": "Generate the device support tables from one data file (#527)"
+          },
+          {
+            "scope": null,
+            "text": "Correct the m-tec sources and the e2 status (#525)"
+          },
+          {
+            "scope": "site",
+            "text": "Show which EKD devices OpenAmpere supports (#517)"
+          },
+          {
+            "scope": "devices",
+            "text": "Record the hardware EKD sold since 2018 (#515)"
+          },
+          {
+            "scope": "devices",
+            "text": "Record what happens when the previous smartbox is switched off (#511)"
+          },
+          {
+            "scope": "report",
+            "text": "Wait for the chart to redraw after a click on the legend (#508)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.36.2",
       "date": "2026-10-30",
       "first": false,

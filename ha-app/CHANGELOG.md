@@ -4,6 +4,42 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.37.0 (2026-11-01)
+
+### Neu
+
+- **enphase:** Remind the owner before the access token runs out (#545)
+- **enphase:** Send the token only to the gateway it was set up with (#544)
+- **enphase:** Show the enphase iq gateway with iq batteries (#537)
+- **wallbox:** Warn when evcc stays connected next to a direct wallbox (#536)
+- **senec:** Show the senec.home v3 and v2.1 (#533)
+- **mtec:** Show the m-tec energy-butler gen3 (#534)
+- **wallbox:** Show the weidmüller ac smart ("ampere.charge") (#532)
+- **solarmax:** Show the solarmax max.storage ("ampere.storage") (#528)
+- Show the device knowledge on the website and link it from the app (#518)
+
+### Behoben
+
+- **discovery:** Make the network search faster when devices do not answer (#552)
+- Keep senec and enphase out of the modbus address search and device query (#550)
+- **senec:** Do not follow redirects of the web interface (#551)
+- **senec:** Free the connection after an error answer of the device (#541)
+- **foxess:** Charge the battery, not the AC side, with the remote control (#513)
+
+### Weitere Änderungen
+
+- Put the enphase token's expiry at noon in the tests of its days (#554)
+- **deps-web:** Bump @biomejs/biome from 2.5.15 to 2.6.3 (#546)
+- **deps-web:** Bump @playwright/test from 1.63.0 to 1.64.1 in /web (#530)
+- Take the confirmation status in devices.md from support.json (#543)
+- **deps-web:** Bump vite from 8.3.4 to 8.3.5 in /web in the vite group (#529)
+- Generate the device support tables from one data file (#527)
+- Correct the m-tec sources and the e2 status (#525)
+- **site:** Show which EKD devices OpenAmpere supports (#517)
+- **devices:** Record the hardware EKD sold since 2018 (#515)
+- **devices:** Record what happens when the previous smartbox is switched off (#511)
+- **report:** Wait for the chart to redraw after a click on the legend (#508)
+
 ## 0.36.2 (2026-10-30)
 
 ### Behoben
@@ -145,9 +181,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - **pages:** Let a running deployment finish instead of cancelling it (#399)
-
-## 0.30.1 (2026-10-15)
-
-### Behoben
-
-- **wallbox:** Find the Tuya wallbox, type IP addresses with a dot, stop a self-started charge at once (#397)
