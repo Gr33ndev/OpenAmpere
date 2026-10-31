@@ -146,6 +146,28 @@ async def test_with_counters_another_inverter_is_part_of_the_pv_power():
     assert (counted.pv_power, counted.pv_external_power) == (5500.0, None)
 
 
+async def test_one_missed_counter_read_does_not_bring_the_second_inverter_back():
+    """While the counters are read, PV stays the whole plant's even when one read of them fails (else the second
+    inverter would be counted on top of counter 150 for that reading)."""
+    sim = SolarmaxSimulatedInverter(max_connections=3)
+    sim.extra_pv_w = 1500
+    sunny(sim)
+    server, port = await serve(sim)
+    async with server:
+        driver = registry.create("solarmax", "127.0.0.1", port, 1, timeout=1)
+        try:
+            await driver.connect()
+            driver.assume_external()  # the owner counts a second inverter
+            first = await driver.read()
+            sim.connectivity = "silent"  # one read of 150–159 gets no answer
+            missed = await driver.read()
+        finally:
+            await driver.close()
+    assert first.pv_external_power is None and missed.pv_external_power is None
+    assert missed.pv_power == pytest.approx(sim.energy.pv_w + 1500, abs=1) and missed.totals.pv is None
+    assert driver.has_counters
+
+
 def test_an_error_state_is_an_alarm():
     assert to_snapshot({"device_state": 3}, 0).alarms == [3]
     assert to_snapshot({"device_state": 2}, 0).alarms == []  # a warning is no fault

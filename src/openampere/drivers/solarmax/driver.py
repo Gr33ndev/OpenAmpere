@@ -39,6 +39,7 @@ class SolarmaxDriver(ModbusDevice):
         self.read_function = READ_FUNCTION
         self.has_counters = True  # False once the device rejects them (no "Connectivity+") or keeps not answering
         self._counter_failures = 0
+        self.counters_seen = False  # the counters answered with values once: PV is the whole plant's from then on
         self.has_external = False  # another inverter connected to the MAX.STORAGE was seen (112 above 110)
 
     async def _detect(self) -> DeviceInfo:
@@ -83,9 +84,12 @@ class SolarmaxDriver(ModbusDevice):
 
     async def read(self) -> Snapshot:
         raw = await self.read_raw()
+        if counters(raw).pv is not None:
+            self.counters_seen = True
         if not self.has_external and raw.get("pv_plant_power", 0) - raw.get("pv_power", 0) > EXTERNAL_FROM_W:
             self.has_external = True
-        return to_snapshot(raw, time.time(), self.has_external)
+        # sticky while the counters are read: one missed read must not switch PV back to the inverter's own power
+        return to_snapshot(raw, time.time(), self.has_external, whole_plant=self.has_counters and self.counters_seen)
 
     # ---- display only -------------------------------------------------------
 
@@ -125,18 +129,19 @@ def values(words: dict[int, int]) -> dict[str, float]:
     return result
 
 
-def to_snapshot(raw: dict[str, float], timestamp: float, external: bool = False) -> Snapshot:
+def to_snapshot(raw: dict[str, float], timestamp: float, external: bool = False, whole_plant: bool = False) -> Snapshot:
     """external: another inverter was seen on the MAX.STORAGE; until then there is no second PV inverter to show (the
     app offers to count one only when the device reports it).
 
-    With the counters of "Connectivity+" the PV power is the whole plant's (112): the PV counter (150) already includes
-    the inverters connected to the MAX.STORAGE, so a second inverter counted on top of it would be counted twice."""
+    With the counters of "Connectivity+" (whole_plant, or in this reading) the PV power is the whole plant's (112): the
+    PV counter (150) already includes the inverters connected to the MAX.STORAGE, so a second inverter counted on top
+    of it would be counted twice."""
     g = raw.get
     negate = lambda key: None if g(key) is None else -g(key)  # noqa: E731
     pv, plant = g("pv_power"), g("pv_plant_power")
     state = int(raw["device_state"]) if "device_state" in raw else None
     totals = counters(raw)
-    if totals.pv is not None:
+    if whole_plant or totals.pv is not None:
         pv, external = plant if plant is not None else pv, False
     return Snapshot(
         timestamp=timestamp,
