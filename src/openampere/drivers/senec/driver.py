@@ -122,7 +122,9 @@ class SenecDriver:
         try:
             return parse(await self._post(form))
         except (TimeoutError, urllib.error.URLError, OSError, ValueError) as err:
-            raise ModbusTransientError(f"Senec at {self._host} not answering: {err}") from err
+            log.info("Senec at %s not answering: %s", self._host, err)
+            raise SenecNotAnswering("Der Senec-Speicher antwortet gerade nicht. OpenAmpere fragt ihn nach "
+                                    "30 Sekunden wieder.") from err
 
     # ---- the driver interface ----------------------------------------------
 
@@ -215,6 +217,14 @@ class SenecDriver:
 
 class SenecUnreachable(DeviceUnreachable):
     """Nothing answers like a web server at the address; .message is a German text for the app (no Modbus to check)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class SenecNotAnswering(ModbusTransientError):
+    """A read without an answer; .message is a German text for the app (no Modbus proxy to blame)."""
 
     def __init__(self, message: str) -> None:
         super().__init__(message)

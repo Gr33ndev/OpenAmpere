@@ -84,6 +84,43 @@ async def test_found_again_after_the_device_restarted():
             await driver.close()
 
 
+async def test_a_failed_read_is_one_request_and_never_sooner_than_30_seconds_again(tmp_path, monkeypatch):
+    """A busy or restarting Senec must not be asked every few seconds: a failed read is one request (no quick
+    retries), and the collector waits at least MIN_POLL_S before the next try and before a reconnect."""
+    from openampere import collector as collector_module
+    sim = sunny(SimulatedSenec(require_session=True))
+    server, port = await serve(sim)
+    real_sleep, sleeps = asyncio.sleep, []
+
+    async def recorded(delay, *args):
+        sleeps.append(delay)
+        await real_sleep(0.01)
+    async with server:
+        runtime = Runtime({}, Storage(tmp_path / "t.db"))
+        monkeypatch.setattr(collector_module.asyncio, "sleep", recorded)  # every wait of the collector, shortened
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
+                                           "inverter.driver": "senec", "inverter.poll_interval": 2})
+            for _ in range(150):
+                if runtime.collector.latest:
+                    break
+                await real_sleep(0.1)
+            sleeps.clear()
+            sim.session = "sim2"  # the device restarted: reads fail until the reconnect asks for FACTORY again
+            before = len(sim.requests)
+            for _ in range(300):
+                if len(sleeps) >= 6:
+                    break
+                await real_sleep(0.02)
+        finally:
+            await runtime.collector.stop()
+    # the normal wait is 30 s minus the time the read took: 30 s from one request to the next
+    assert len(sleeps) >= 6 and min(sleeps) >= 29.5, sleeps
+    reads = [form for _path, form, _cookie in sim.requests[before:] if "ENERGY" in form]
+    rounds = len(sleeps)
+    assert len(reads) <= rounds + 2  # one read per round, no retries a second apart
+
+
 async def test_an_unknown_system_type_still_reads(caplog):
     sim = sunny(SimulatedSenec(system_type=99))
     server, port = await serve(sim)
