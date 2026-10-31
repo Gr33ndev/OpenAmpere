@@ -661,6 +661,7 @@
     "tokenExpired": "Abgelaufen",
     "tokenExpiredHint": "Das Zugangs-Token von Enphase ist abgelaufen, deshalb zeigt OpenAmpere keine Werte mehr. Hol mit deinem Enphase-Konto auf entrez.enphaseenergy.com ein neues und trag es unter Verbindung → Erweitert ein.",
     "tokenSoonHint": "Das Zugangs-Token von Enphase läuft bald ab. Danach zeigt OpenAmpere keine Werte mehr. Hol mit deinem Enphase-Konto auf entrez.enphaseenergy.com ein neues und trag es unter Verbindung → Erweitert ein.",
+    "tokenToday": "Läuft heute ab",
     "totalCharged": "Gesamt geladen",
     "totalDischarged": "Gesamt entladen"
   },

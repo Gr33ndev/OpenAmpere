@@ -650,7 +650,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "device": device,
             # the access token of the device runs out (Enphase, #538); in days, as the diagnostics, whose report is
             # shared and must not tell the day the owner made the token (on the home network that is no secret)
-            "token_days_left": collector.token_days_left(),
+            "token_days_left": collector.token_days_left(runtime.tz),
             "energy_step_wh": collector.energy_step_wh(),
             # what a meter at the inverter reads for a second PV inverter (SAJ Meter B), also before it is counted
             # (#419); None if the inverter has no such meter

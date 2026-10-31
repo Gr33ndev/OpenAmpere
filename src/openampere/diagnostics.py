@@ -591,14 +591,16 @@ class Diagnostics:
         from .drivers.enphase.driver import WARN_DAYS, token_days_left
         title = "Zugangs-Token (Enphase)"
         # only the days left: the date would tell the day the owner made the token (#149)
-        days = token_days_left(getattr(self._driver(), "token_expires", None))
+        days = token_days_left(getattr(self._driver(), "token_expires", None), tz=self.runtime.tz)
         if days is None:
             return Check("enphase_token", title, "info", "Ablaufdatum nicht lesbar.")
         if days < 0:
-            return Check("enphase_token", title, "error", f"Seit {-days} Tagen abgelaufen.",
+            return Check("enphase_token", title, "error",
+                         "Seit gestern abgelaufen." if days == -1 else f"Seit {-days} Tagen abgelaufen.",
                          {"days_left": days}, hint="Hol bei Enphase ein neues Token und trag es beim Einrichten ein.")
         status = "warn" if days < WARN_DAYS else "ok"
-        return Check("enphase_token", title, status, f"Noch {days} Tage gültig.", {"days_left": days},
+        summary = "Läuft heute ab." if days == 0 else "Noch 1 Tag gültig." if days == 1 else f"Noch {days} Tage gültig."
+        return Check("enphase_token", title, status, summary, {"days_left": days},
                      hint="Hol rechtzeitig bei Enphase ein neues Token und trag es beim Einrichten ein."
                      if status == "warn" else "")
 

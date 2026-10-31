@@ -87,7 +87,8 @@ function InstallationPage({ snap, onBack, onNavigate }: { snap: Snapshot | null;
           <dt>{t("settings.installationPage.lastReading")}</dt><dd>{status?.last_update ? updatedLabel(status.last_update) : "–"}</dd>
           {tokenDays != null && <>
             <dt>{t("settings.installationPage.token")}</dt>
-            <dd>{tokenDays < 0 ? t("settings.installationPage.tokenExpired") : t("settings.installationPage.tokenDaysLeft", { count: tokenDays })}</dd>
+            <dd>{tokenDays < 0 ? t("settings.installationPage.tokenExpired") : tokenDays === 0 ? t("settings.installationPage.tokenToday")
+              : t("settings.installationPage.tokenDaysLeft", { count: tokenDays })}</dd>
           </>}
         </dl>
         {tokenDays != null && tokenDays < TOKEN_WARN_DAYS && (

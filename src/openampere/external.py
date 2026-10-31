@@ -146,7 +146,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
                 "grid_charging": charging.active, "control": {"enabled": control.enabled, "dry_run": control.dry_run},
                 # here and not only in /info: it changes with an update of the inverter, read at each new connection
                 "firmware": collector.device.firmware if collector.device else None,
-                "token_days_left": collector.token_days_left(),  # Enphase (#538), None for every other device
+                "token_days_left": collector.token_days_left(runtime.tz),  # Enphase (#538), None for every other device
                 "pv_external": pv_external()}  # the integration sets up again when it changes in the app
 
     def own_devices() -> list[dict]:
