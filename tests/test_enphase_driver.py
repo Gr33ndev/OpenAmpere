@@ -62,6 +62,8 @@ def test_the_days_left_are_calendar_days():
     assert token_days_left(evening - 3600, evening, berlin) == -1  # ran out an hour ago: no longer "today"
     assert token_days_left(evening + 10 * 86400, evening, berlin) == 10
     assert token_days_left(None, evening, berlin) is None
+    for huge in (1e13, 1e300, -1e13):  # a pasted text with an exp no date can hold: unknown, not a crash
+        assert token_days_left(huge, evening, berlin) is None
 
 
 async def test_the_diagnostics_say_today_and_a_token_that_ran_out_today(tmp_path):

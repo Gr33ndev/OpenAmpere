@@ -68,7 +68,10 @@ def token_days_left(expires: float | None, now: float | None = None, tz: tzinfo 
     if expires is None:
         return None
     now = time.time() if now is None else now
-    days = (datetime.fromtimestamp(expires, tz).date() - datetime.fromtimestamp(now, tz).date()).days
+    try:
+        days = (datetime.fromtimestamp(expires, tz).date() - datetime.fromtimestamp(now, tz).date()).days
+    except (ValueError, OverflowError, OSError):  # an exp far beyond any date (a pasted text, not Enphase's)
+        return None
     return min(days, -1) if expires <= now else days
 
 
