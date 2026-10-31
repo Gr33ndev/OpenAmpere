@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 
 from openampere import discovery
 from openampere.api import create_app
-from openampere.config import Config
+from openampere.config import build_config
 from openampere.diagnostics import Diagnostics
 from openampere.drivers import registry
 from openampere.drivers.enphase.driver import (INFO, PRODUCTION, CertificateChanged, EnphaseDriver, TokenRejected,
@@ -250,7 +250,7 @@ def test_every_driver_can_be_tested_in_the_setup(tmp_path):
 
 
 async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_its_expiry(tmp_path):
-    plant = ZoneInfo(Config().timezone)  # the zone of a new installation, the one the days are counted in
+    plant = ZoneInfo(build_config({})[0].timezone)  # the zone the runtime below counts the days in (also from the env)
     # runs out at noon in 20 days: the days left are calendar days (#553)
     token = jwt(datetime.combine(datetime.now(plant).date() + timedelta(days=20), datetime.min.time().replace(hour=12),
                                  tzinfo=plant).timestamp())
