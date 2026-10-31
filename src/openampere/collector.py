@@ -131,8 +131,8 @@ class Collector:
             return None
 
     def token_days_left(self) -> int | None:
-        """Whole days until the access token runs out (negative: since it ran out), None without one. What the app and
-        Home Assistant show: never the date, which would tell the day the owner made the token."""
+        """Whole days until the access token runs out (negative: since it ran out), None without one: what the app,
+        Home Assistant and the diagnostics show."""
         from .drivers.enphase.driver import token_days_left
         return token_days_left(self.token_expires())
 

@@ -109,6 +109,17 @@ async def test_no_token_sensor_for_a_device_without_one(hass: HomeAssistant, ent
     assert entity_id(hass, "sensor", "_token_days_left") is None
 
 
+def test_a_token_that_comes_or_goes_sets_the_integration_up_again() -> None:
+    """The sensor of the days left is made at the setup: a token added or removed later needs a new setup."""
+    from custom_components.openampere.coordinator import needs_reload
+    live = state()["live"]
+    assert not needs_reload(info(), live, status={"token_days_left": 12})  # set up by a version without the sensor
+    assert needs_reload({**info(), "token_sensor": False}, live, status={"token_days_left": 12})
+    assert needs_reload({**info(), "token_sensor": True}, live, status={"token_days_left": None})
+    assert not needs_reload({**info(), "token_sensor": True}, live, status={"token_days_left": -3})
+    assert not needs_reload({**info(), "token_sensor": False}, live, status={"firmware": "1.40"})  # an older OpenAmpere
+
+
 async def test_alarm_only_for_fault_codes_other_than_0(hass: HomeAssistant, entry, client) -> None:
     """#330: the inverter reports every fault word, all of them 0 without a fault."""
     await setup(hass, entry)

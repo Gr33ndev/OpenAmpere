@@ -113,7 +113,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         if not wallbox.get("read_only"):  # one OpenAmpere only shows does not tell the current set in it (#439)
             entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
     entities.append(FirmwareSensor(coordinator))
-    if ((coordinator.data or {}).get("status") or {}).get("token_days_left") is not None:  # Enphase (#538)
+    # Enphase (#538); remembered, so the integration sets up again when a token comes or goes (needs_reload)
+    coordinator.info["token_sensor"] = ((coordinator.data or {}).get("status") or {}).get("token_days_left") is not None
+    if coordinator.info["token_sensor"]:
         entities.append(TokenDaysSensor(coordinator))
     async_add_entities(entities)
 

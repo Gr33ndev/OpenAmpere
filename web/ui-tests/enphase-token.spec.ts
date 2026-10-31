@@ -13,7 +13,7 @@ test("my system shows the days left of the Enphase token and warns 30 days befor
   await withToken(api, 12);
   await open(page, "more/installation");
   await expect(page.getByText("Noch 12 Tage gültig")).toBeVisible();
-  await expect(page.locator(".notice.warn", { hasText: "entrez.enphaseenergy.com" })).toBeVisible();
+  await expect(page.locator(".notice.warn", { hasText: "Enphase-Konto" })).toBeVisible();
   await page.getByRole("button", { name: "Zur Verbindung" }).click();
   await expect(page.getByPlaceholder(/192\.168\.178\.50/)).toBeVisible();  // the connection form with the token field
 });
@@ -26,7 +26,7 @@ test("a token that ran out is an error, one with time left no warning", async ({
   await withToken(api, 200);
   await page.reload();
   await expect(page.getByText("Noch 200 Tage gültig")).toBeVisible();
-  await expect(page.locator(".notice", { hasText: "entrez" })).toHaveCount(0);
+  await expect(page.locator(".notice", { hasText: "Enphase-Konto" })).toHaveCount(0);
 });
 
 test("no token, no row", async ({ page }) => {

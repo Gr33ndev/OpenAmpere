@@ -646,21 +646,28 @@ async def test_wallbox_restart_then_charging_again_gives_no_duration(tmp_path, m
 
 async def test_the_enphase_token_is_reminded_once_two_weeks_before_it_runs_out(tmp_path, monkeypatch):
     """#538: the gateway refuses every request once its token ran out; the owner hears of it before."""
+    from datetime import datetime
+
     from openampere.drivers.enphase.driver import EnphaseDriver
     runtime, posts = make(tmp_path, monkeypatch)
     notifier = Notifier(runtime)
     runtime.collector.driver = driver = EnphaseDriver("192.0.2.1")
-    assert await notifier.check() == []  # no token
-    driver.token_expires = time.time() + 20 * 86400
-    assert await notifier.check() == []  # not yet
-    driver.token_expires = time.time() + 10 * 86400 + 3600
-    assert await notifier.check() == ["Enphase-Token läuft ab"]
-    assert "in 10 Tagen" in posts[-1][1]["message"] and "entrez.enphaseenergy.com" in posts[-1][1]["message"]
-    assert await notifier.check() == []  # once
-    assert await Notifier(runtime).check() == []  # also after a restart
-    driver.token_expires = time.time() - 86400  # another token that ran out already
-    assert await notifier.check() == ["Enphase-Token läuft ab"]
+    evening = datetime(2026, 6, 1, 20, 0, tzinfo=runtime.tz).timestamp()
+    assert await notifier.check(now=evening) == []  # no token
+    driver.token_expires = evening + 20 * 86400
+    assert await notifier.check(now=evening) == []  # not yet
+    driver.token_expires = evening + 10 * 86400
+    assert await notifier.check(now=evening) == ["Enphase-Token läuft ab"]
+    assert "in 10 Tagen" in posts[-1][1]["message"] and "mit deinem Enphase-Konto" in posts[-1][1]["message"]
+    assert await notifier.check(now=evening) == []  # once
+    assert await Notifier(runtime).check(now=evening) == []  # also after a restart
+    # another token, running out tomorrow at 18:00: less than 24 h, but "morgen", not "heute"
+    driver.token_expires = evening + 22 * 3600
+    assert await notifier.check(now=evening) == ["Enphase-Token läuft ab"]
+    assert "läuft morgen ab" in posts[-1][1]["message"]
+    driver.token_expires = evening - 60  # one that ran out already
+    assert await notifier.check(now=evening) == ["Enphase-Token läuft ab"]
     assert "ist abgelaufen" in posts[-1][1]["message"]
     runtime.config.notify.on_unreachable = False
-    driver.token_expires = time.time() + 86400 + 3600
-    assert await notifier.check() == []  # switched off with the messages about the connection
+    driver.token_expires = evening + 3 * 3600
+    assert await notifier.check(now=evening) == []  # switched off with the messages about the connection

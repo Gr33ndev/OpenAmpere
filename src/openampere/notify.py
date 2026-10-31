@@ -194,9 +194,12 @@ class Notifier:
                              "Hast du nichts geändert und kennst die neue Adresse nicht, stelle die Wallbox auf "
                              "„von Hand“ und prüfe ihre Adresse.", "warning")
 
-        expires, days = collector.token_expires(), collector.token_days_left()
-        if cfg.on_unreachable and expires is not None and days is not None and days <= TOKEN_NOTICE_DAYS:
-            if days < 0:
+        expires = collector.token_expires()
+        # calendar days in the plant's time zone: "heute" and "morgen" are read as such
+        days = (datetime.fromtimestamp(expires, tz).date() - datetime.fromtimestamp(now, tz).date()).days \
+            if expires is not None else None
+        if cfg.on_unreachable and days is not None and days <= TOKEN_NOTICE_DAYS:
+            if expires <= now:
                 text = "Das Zugangs-Token für dein Enphase-Gateway ist abgelaufen. OpenAmpere zeigt keine Werte mehr."
             elif days == 0:
                 text = "Das Zugangs-Token für dein Enphase-Gateway läuft heute ab. Danach zeigt OpenAmpere keine Werte mehr."
