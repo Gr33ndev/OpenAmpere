@@ -59,10 +59,13 @@ def test_values_in_the_other_word_order_are_left_out():
     """If the word order were the other way round, 230 V would read as thousands of volts, 11 kW as about 1.95 MW and
     16 A as about a million amperes: none of them is shown, and a charge with such a power is not taken as one."""
     regs = SimulatedWeidmueller(charging=True).regs
-    swapped = {**regs, **{a: regs[a + 1] for a in (400, 406, 418)}, **{a + 1: regs[a] for a in (400, 406, 418)}}
+    swapped_at = (305, 400, 406, 418, 430)
+    swapped = {**regs, **{a: regs[a + 1] for a in swapped_at}, **{a + 1: regs[a] for a in swapped_at}}
     reading = WeidmuellerAcSmartLive.interpret(swapped)
     assert reading.voltage_v[0] is None and reading.current_a[0] is None
     assert (reading.state, reading.charging, reading.power_w) == ("unknown", False, 0.0)
+    # 2.5 kWh would read as about 164 000 kWh, half an hour as years: neither reaches car sessions or messages
+    assert reading.session_kwh is None and reading.session_s is None
 
 
 async def test_the_check_reads_only_and_keeps_the_energy_counter_out(runtime):

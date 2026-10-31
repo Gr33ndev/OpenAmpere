@@ -29,13 +29,17 @@ All holding registers (FC03), unit id 255. "4 bytes" = two registers, low word f
 | 300 | Current offered to the car | U16, A | R | documented | Weidmüller document |
 | 301 | Vehicle state, letter A–F in the low byte (A no car, B connected, C/D charging, E/F error) | ASCII | R | documented | Weidmüller document |
 | 302 | State of the charge controller, 0–15 (3 waiting for authorisation, 11 charging, 12 paused, 14/15 error) | U16 | R | documented | Weidmüller document |
+| 303, 304 | Relay on, PWM to the car on | U16 | R | documented; read, not used | Weidmüller document |
 | 305–306 | Duration of the charge since the authorisation | 4 bytes, s | R | documented | Weidmüller document |
+| 307–311 | Available / maintenance, cable current limit (INT, −1 = error), lock closed, charge released, cable or socket | U16 | R | documented; read, not used | Weidmüller document |
 | 317 | Phases: 0 = one, 1 = three (stored) | U16 | R/W | documented; which one a satellite follows is open | Weidmüller document |
 | 318 | Phases set by the load management (not stored) | U16 | R/W | documented | Weidmüller document |
 | 319 | Installed phases (enum, 0 = one phase) | U16 | R | documented | Weidmüller document |
 | 400–405 | Voltage L1–L3 (RMS) | 4 bytes each, mV | R | documented | Weidmüller document |
 | 406–411 | Current L1–L3 (RMS) | 4 bytes each, mA | R | documented | Weidmüller document |
+| 412–417 | Average current L1–L3 | 4 bytes each, mA | R | documented; read, not used | Weidmüller document |
 | 418–419 | Active power, sum | 4 bytes, mW | R | documented | Weidmüller document |
+| 420–429 | Reactive and apparent power, power factor, frequency, energy of the last charge in Ws | 4 bytes each | R | documented; read by the check, not used | Weidmüller document |
 | 430–431 | Energy of the last (current) charge | 4 bytes, Wh | R | documented | Weidmüller document |
 | 432 | Temperature of the sensor | INT, unit not stated | R | documented, open (unit) | Weidmüller document |
 | 457–460 | Total energy | 8 bytes, Wh | R | documented; stays 0 on ECO and VALUE (derived) | Weidmüller document; evcc-io/evcc#35118 |
@@ -80,7 +84,7 @@ registers at 312–316, 433 and 703; OpenAmpere reads no block across them.
 |---|---|---|
 | Display only: never written, only the mode "manual"; its power counts in the house load like any wallbox. | Nothing confirmed on a real device; when OpenAmpere stops, the wallbox would charge on with its fallback current. | [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523) |
 | One short connection per read, closed right away. | The wallbox takes only one Modbus client; holding it would lock out the owner's app and other tools. | [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523); `wallbox/modbus.py` |
-| A voltage above 400 V, a current above 80 A and a power above 30 kW are not shown; with such a power the state is unknown. | That is what the other word order would give: better no value than a wrong one. | [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523) |
+| A voltage above 400 V, a current above 80 A, a power above 30 kW, a charge above 200 kWh or longer than a week are not shown; with such a power the state is unknown. | That is what the other word order would give: better no value than a wrong one. | [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523) |
 | The check keeps the total energy (457–460) out of the report, only whether it is plausible. | An exact counter identifies the owner. | [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523) |
 
 ## Open questions
@@ -92,6 +96,8 @@ registers at 312–316, 433 and 703; OpenAmpere reads no block across them.
 - The unit of the temperature (432).
 - Whether the wallbox reads the inverter itself on EKD systems (495, 5606) and so holds one of its Modbus connections.
 - Whether the AC SMART App works without the internet.
+- Whether it measures the voltages behind its contactor: then an idle wallbox would show one phase, and the live view
+  should take the installed phases from 319 instead.
 
 ## Sources
 

@@ -33,6 +33,8 @@ CHARGING_W = 100.0
 MAX_PLAUSIBLE_V = 400.0
 MAX_PLAUSIBLE_A = 80.0
 MAX_PLAUSIBLE_W = 30_000.0  # the AC SMART charges with at most 22 kW
+MAX_PLAUSIBLE_KWH = 200.0  # one charge
+MAX_PLAUSIBLE_S = 7 * 86400  # one charge
 
 
 def u32le(values: dict[int, int], address: int) -> int | None:
@@ -112,7 +114,7 @@ class WeidmuellerAcSmart(Wallbox):
             "voltage_v": voltages(values),
             "current_a": currents(values),
             "power_kw": None if power is None else round(power / 1000, 2),
-            "session_kwh": scaled32(values, 430, 0.001),
+            "session_kwh": plausible(scaled32(values, 430, 0.001), MAX_PLAUSIBLE_KWH),
             "phases_setting": {0: 1, 1: 3}.get(values.get(317)),
             "phases_load_management": {0: 1, 1: 3}.get(values.get(318)),
             "installed_phases": {0: 1, 1: 3}.get(values.get(319)),
@@ -171,9 +173,10 @@ class WeidmuellerAcSmartLive:
             r.active_phases = sum((a or 0) >= PHASE_ACTIVE_A for a in r.current_a)
         else:
             r.current_a = [0.0 if a is not None else None for a in r.current_a]
-        session = scaled32(values, 430, 0.001)  # Wh -> kWh
+        session = plausible(scaled32(values, 430, 0.001), MAX_PLAUSIBLE_KWH)  # Wh -> kWh
+        duration = u32le(values, 305)  # s since the authorisation
         r.session_kwh = session if r.connected else None
-        r.session_s = u32le(values, 305) if r.connected else None  # since the authorisation
+        r.session_s = duration if r.connected and duration is not None and duration <= MAX_PLAUSIBLE_S else None
         r.set_current_a = values.get(300) or None  # what it offers the car now
         limits = [a for a in (values.get(700), values.get(701), values.get(702)) if a]
         if limits and 6 <= min(limits) <= 80:
