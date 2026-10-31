@@ -15,17 +15,21 @@ from .base import DeviceInfo
 from .foxess.driver import FoxessDriver
 from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
 from .saj.driver import SajDriver
+from .senec.driver import SenecDriver
 from .solarmax.driver import SolarmaxDriver
 
 log = logging.getLogger(__name__)
 
-DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver}
+# SenecDriver is no ModbusDevice (HTTP), but has the same face; it is only used when chosen (AUTO_DETECT)
+DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver,
+                                          "senec": SenecDriver}  # type: ignore[dict-item]
 
 LABELS = {
     "auto": "Automatisch erkennen",
     "foxess": "FoxESS H3 / H3 Smart / H3 Pro",
     "saj": "SAJ H2 / HS2",
     "solarmax": "Solarmax MAX.STORAGE (nur Anzeige)",
+    "senec": "Senec.Home V3 / V2.1 (nur Anzeige)",
 }
 
 DETECT_TIMEOUT_S = 2.5
@@ -45,7 +49,7 @@ async def detect_driver(host: str, port: int, unit: int = 0, *, timeout: float =
     """Returns (info, connected driver) of the first driver that recognises the device; the caller owns the
     driver and must close it. Raises ConnectionError."""
     timeout = max(timeout, DETECT_TIMEOUT_S)  # never shorter than configured (slow proxies need more)
-    keys = [only] if only else list(DRIVERS)
+    keys = [only] if only else [key for key, cls in DRIVERS.items() if getattr(cls, "AUTO_DETECT", True)]
     for key in keys:
         cls = DRIVERS[key]
         for candidate_unit in ([unit] if unit else list(cls.DEFAULT_UNITS)):

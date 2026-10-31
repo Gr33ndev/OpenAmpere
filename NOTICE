@@ -19,6 +19,11 @@ Wallboxes are controlled by evcc (https://evcc.io, https://github.com/evcc-io/ev
 core, some device modules are proprietary). OpenAmpere only talks to evcc's documented REST API and
 contains no evcc code. Thanks to the evcc community.
 
+The local web interface of Senec storage systems (lala.cgi: request format, value types, keys, system types) follows the
+facts described by ha-senec-v3 (https://github.com/marq24/ha-senec-v3, Apache-2.0) and pysenec
+(https://github.com/mchwalisz/pysenec, Apache-2.0), and evcc's senec-home template (https://github.com/evcc-io/evcc,
+MIT License). OpenAmpere has its own implementation and contains no code of these projects.
+
 The local protocol of Tuya devices (version 3.5, used for the portable dé wallbox) follows the facts described by
 tinytuya (https://github.com/jasonacox/tinytuya, Copyright (c) 2024 Jason Cox, MIT License); OpenAmpere has its own
 implementation and contains no tinytuya code. The data points of the dé wallbox are based on facts from tuya-local

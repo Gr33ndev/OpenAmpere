@@ -241,7 +241,8 @@
   },
   "driver": {
     "chargeSlotInUse": "Charge time {CHARGE_SLOT} is already in use in the inverter. Please free it in the SAJ app, then OpenAmpere can charge from the grid.",
-    "solarmaxReadOnly": "For the Solarmax battery, OpenAmpere only shows the values and changes no settings."
+    "solarmaxReadOnly": "For the Solarmax battery, OpenAmpere only shows the values and changes no settings.",
+    "senecReadOnly": "For the Senec battery, OpenAmpere only shows the values and changes no settings."
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",
