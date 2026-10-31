@@ -15,6 +15,7 @@
     "networkHint": "Die ersten drei Zahlen deiner IP-Adressen, z. B. {example}",
     "noDeviceFound": "Kein Gerät gefunden. Prüfe das Netzwerk oder gib die Adresse unten von Hand ein.",
     "portHint": "Standard 502 – bei einem Modbus-Proxy dessen Port",
+    "portHintSenec": "Senec: 502 stehen lassen, OpenAmpere probiert die Ports 443 und 80 der Weboberfläche",
     "portHintMtec": "M-TEC: 502, bei älterer Firmware des WLAN-/LAN-Moduls 5743",
     "readOnlyDevice": "Für dieses Gerät zeigt OpenAmpere Werte an; Einstellungen ändern ist noch nicht möglich.",
     "sameSerialHint": "Zwei Treffer haben dieselbe Seriennummer: Einer davon ist vermutlich ein Modbus-Proxy oder Datenlogger, der den Wechselrichter weiterreicht. Beide funktionieren. Über einen Proxy können auch andere Programme gleichzeitig lesen.",

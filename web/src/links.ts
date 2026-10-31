@@ -26,6 +26,7 @@ const DRIVER_DOCS: Record<string, string> = {
   foxess: "foxess/h3.html",
   saj: "saj/h2-family.html",
   solarmax: "solarmax/max-storage.html",
+  senec: "senec/home-v3.html",
   mtec: "mtec/energy-butler.html",
 };
 /** The page about the inverter of a driver, null for a driver without one. */

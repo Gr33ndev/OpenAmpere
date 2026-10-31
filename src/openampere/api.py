@@ -644,7 +644,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "relocated": storage.get_meta("relocated"),
             "database": database,
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
-            "poll_interval": collector.interval,
+            "poll_interval": collector.poll_interval(),
             "device": device,
             "energy_step_wh": collector.energy_step_wh(),
             # what a meter at the inverter reads for a second PV inverter (SAJ Meter B), also before it is counted

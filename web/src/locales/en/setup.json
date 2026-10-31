@@ -15,6 +15,7 @@
     "networkHint": "The first three numbers of your IP addresses, e.g. {example}",
     "noDeviceFound": "No device found. Check the network or enter the address manually below.",
     "portHint": "Usually 502 – with a Modbus proxy, the proxy's port",
+    "portHintSenec": "Senec: leave 502, OpenAmpere tries ports 443 and 80 of the web interface",
     "portHintMtec": "M-TEC: 502, or 5743 with older firmware of the Wi-Fi/LAN module",
     "readOnlyDevice": "For this device OpenAmpere shows values; changing settings is not possible yet.",
     "sameSerialHint": "Two results have the same serial number: one of them is probably a Modbus proxy or data logger that passes the inverter through. Both work. Through a proxy, other programs can read at the same time.",
