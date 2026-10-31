@@ -10,7 +10,7 @@ import { BatteryIcon, CarIcon, HeaterIcon, HeatPumpIcon, PlugIcon } from "./icon
 import { BatteryPage, ChargingPage, LOW_RESERVE, type ChargingView } from "./SettingsPages";
 import { goBack, navigate } from "./route";
 import { Button, Notice, Segmented, Slider, toast } from "./ui";
-import { EVCC_URL, SponsorNotice, WallboxCard, type EvccView } from "./WallboxPage";
+import { EVCC_URL, EvccError, EvccNextToDirect, SponsorNotice, WallboxCard, type EvccView } from "./WallboxPage";
 import { NativeWallboxCard, type WallboxesView } from "./NativeWallbox";
 import { CarCards } from "./CarsPage";
 
@@ -242,7 +242,8 @@ export function DevicesTab({ page, snap }: { page: string | null; snap: Snapshot
           <p className="hint small-credit">{tx("devices.devicesTab.controlledBy", { link: <a href={EVCC_URL} target="_blank" rel="noreferrer">evcc</a> })}</p>
         </>
       )}
-      {evcc?.configured && evcc.error && <Notice kind="error">{evcc.error}</Notice>}
+      <EvccError view={evcc} direct={!!wallboxes.length} />
+      {!!wallboxes.length && <EvccNextToDirect view={evcc} />}
       <SponsorNotice sponsor={evcc?.state?.sponsor} />
       <CarCards />
       {!!own.length && (
