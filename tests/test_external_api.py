@@ -511,3 +511,15 @@ def test_a_made_up_wallbox_id_does_not_count_against_the_limits(runtime, web, mo
     monkeypatch.setattr(runtime.config.control, "enabled", True)
     for _ in range(61):
         assert app.put(f"{V1}/wallboxes/0a1b2c3d/mode", json={"mode": "now"}).status_code == 400
+
+
+def test_the_days_left_of_an_enphase_token_are_shown(runtime, web):
+    """#538: the app and Home Assistant show how long the token of an Enphase gateway is valid, in days like the
+    diagnostics; never the token."""
+    from openampere.drivers.enphase.driver import EnphaseDriver
+    client = app_client(web, new_token(web, "read"))
+    assert client.get(f"{V1}/state").json()["status"]["token_days_left"] is None  # no device with a token
+    runtime.collector.driver = EnphaseDriver("192.0.2.1")
+    runtime.collector.driver.token_expires = time.time() + 20 * 86400 + 3600
+    assert client.get(f"{V1}/state").json()["status"]["token_days_left"] == 20
+    assert TestClient(web.app).get("/api/status").json()["token_days_left"] == 20  # the app, also without login

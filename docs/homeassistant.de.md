@@ -73,7 +73,9 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 
 **Jede Minute:** Strompreis jetzt, Speicher-Einstellungen, Steuerung (Nur ansehen / Testen / Aktiv), Firmware des
 Wechselrichters (eine Diagnose-Entität; sie ändert sich nach einem Update des Wechselrichters und kann so eine
-Automation auslösen).
+Automation auslösen). Mit einem Enphase-Gateway außerdem „Enphase-Token gültig noch“, eine Diagnose-Entität in Tagen
+(0 am letzten Tag, negativ, sobald es abgelaufen ist), etwa für eine Automation, die dich erinnert; sie kommt und geht
+von selbst, wenn ein Token eingetragen oder entfernt wird.
 
 **Verbindung zum Wechselrichter weg:** Die Werte vom Wechselrichter sind „nicht verfügbar“, bis OpenAmpere wieder aktuelle Messwerte hat. So schalten Automationen nicht nach alten Werten. Strompreis und Steuerung bleiben verfügbar.
 

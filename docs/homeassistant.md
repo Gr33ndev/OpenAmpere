@@ -73,7 +73,9 @@ one connection, and every command from Home Assistant goes through the same chec
 | Per wallbox OpenAmpere only shows (FoxESS AC EV Charger): charging power, state, car plugged in, charging, reachable | The same device card, but no charging mode, no charging current and no set charging current: OpenAmpere writes nothing to it (#439). Its charging modes are a simulation in the OpenAmpere app only (#440). With real control switched on in the app (#465) it gets the charging mode like any wallbox OpenAmpere controls, after the integration is reloaded. |
 
 **Every minute:** current electricity price, battery settings, control (view only / test mode / active), firmware of
-the inverter (a diagnostic entity; it changes after an update of the inverter, so it can trigger an automation).
+the inverter (a diagnostic entity; it changes after an update of the inverter, so it can trigger an automation). With an
+Enphase gateway also "Enphase token valid for", a diagnostic entity in days (0 on the last day, negative once it ran
+out), e.g. for an automation that reminds you; it appears and disappears by itself when a token is set or removed.
 
 **Connection to the inverter lost:** the values read from the inverter become unavailable until OpenAmpere has current readings again, so automations do not act on old values. Price and control stay available.
 

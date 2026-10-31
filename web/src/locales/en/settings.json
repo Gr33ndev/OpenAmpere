@@ -539,7 +539,7 @@
     "settingOverwritten": "Setting overwritten",
     "storage": "Disk space and readings",
     "storageHint": "When readings cannot be stored or disk space runs low, and when it works again.",
-    "unreachableHint": "After 15 minutes without a connection, when it is back and when OpenAmpere has found the inverter at a new address.",
+    "unreachableHint": "After 15 minutes without a connection, when it is back, when OpenAmpere has found the inverter at a new address and 14 days before the Enphase access token runs out.",
     "wallbox": "Wallbox charging",
     "wallboxHint": "When a car starts charging at a wallbox or an evcc loadpoint and when charging ends, with the energy since plugging in. If the wallbox reports the car as full, the message comes at once. After a pause, for example while charging with surplus, and when OpenAmpere has just stopped charging itself, it comes only after 15 minutes."
   },
@@ -652,6 +652,16 @@
     "stringNamesAndSecondHint": "e.g. south roof, garage; second inverter on Meter B",
     "stringNamesHint": "e.g. south roof, garage",
     "temperature": "Temperature",
+    "token": "Access token (Enphase)",
+    "tokenDaysLeft": {
+      "one": "Valid for {count} more day",
+      "other": "Valid for {count} more days"
+    },
+    "tokenEnter": "Go to connection",
+    "tokenExpired": "Expired",
+    "tokenExpiredHint": "The Enphase access token has run out, so OpenAmpere shows no values. Get a new one with your Enphase account at entrez.enphaseenergy.com and enter it under Connection → Advanced.",
+    "tokenSoonHint": "The Enphase access token runs out soon. After that, OpenAmpere shows no values. Get a new one with your Enphase account at entrez.enphaseenergy.com and enter it under Connection → Advanced.",
+    "tokenToday": "Runs out today",
     "totalCharged": "Total charged",
     "totalDischarged": "Total discharged"
   },

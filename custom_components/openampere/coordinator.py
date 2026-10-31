@@ -126,8 +126,11 @@ def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, s
     """Set up before OpenAmpere had its first reading (e.g. everything starting after a power cut): the device and
     the PV inputs were unknown, so set up again once they are there (#220). Also when a wallbox was added or removed
     in OpenAmpere (#388), or a second PV inverter switched on, off or renamed (#419); an older OpenAmpere sends
-    neither."""
+    neither. And when the device got an access token or lost it (#538): the sensor of its days left comes or goes."""
     if status and "pv_external" in status and "pv_external" in info and status["pv_external"] != info["pv_external"]:
+        return True
+    if status and "token_days_left" in status and "token_sensor" in info \
+            and (status["token_days_left"] is not None) != info["token_sensor"]:
         return True
     if wallboxes is not None and "wallboxes" in info \
             and sorted(w["id"] for w in wallboxes) != sorted(w["id"] for w in info["wallboxes"]):
