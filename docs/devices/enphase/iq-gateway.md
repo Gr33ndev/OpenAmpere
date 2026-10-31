@@ -3,7 +3,8 @@
 > Not official manufacturer information: compiled by the OpenAmpere contributors, can be incomplete or wrong. No
 > affiliation with Enphase or EKD; not legal advice. See the [device knowledge README](../README.md).
 
-**Applies to:** Enphase IQ Gateway (Envoy, software 7 and later) with IQ Batteries and IQ microinverters · **Sold as:**
+**Applies to:** Enphase IQ Gateway (Envoy, software 7 and later) with IQ Batteries and IQ microinverters (or a string
+inverter with only the battery from Enphase) · **Sold as:**
 Enphase IQ Battery (EKD from late 2022) · **OpenAmpere:** driver `enphase` (`src/openampere/drivers/enphase/`),
 "register map" `enphase_local` · **Support:** display only · **Confirmed on a real device:** no (built from Enphase's
 tech brief, open projects and the simulator)
@@ -39,6 +40,7 @@ tech brief, open projects and the simulator)
 | The gateway announces itself over mDNS as `_enphase-envoy._tcp`; its label says "IQ Gateway" (older "Envoy"). | derived | Home Assistant manifest; evcc |
 | No rate limit is documented; Home Assistant polls every 60 s and pyenphase notes that the gateway can be slow to answer. | derived | home-assistant/core `enphase_envoy` (Apache-2.0); pyenphase (MIT) |
 | On software 7 and later the gateway answers `/ivp/livedata/status` without IQ Batteries too, with `meters.storage.agg_p_mw` 0. | derived | pyenphase and Home Assistant test fixtures |
+| EKD systems may have IQ7 or IQ8 microinverters (IQ8 only shipped in Germany from mid-2023), or a string inverter with only the battery from Enphase. With a string inverter and no production CT, the PV power from `production.json` misses the string inverter. | open | research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) (pv-magazine.de, 2023-06-26) |
 | A battery needs an IQ Gateway Metered; EKD's systems most likely have IQ Battery 3T/10T and no backup (System Controller). | documented (gateway), derived (models) | Enphase IQ Gateway datasheet; research in [#522](https://github.com/Gr33ndev/OpenAmpere/issues/522) |
 
 ## Decisions in OpenAmpere

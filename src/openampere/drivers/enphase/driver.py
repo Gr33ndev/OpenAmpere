@@ -53,8 +53,8 @@ def token_expiry(token: str) -> float | None:
     try:
         payload = token.split(".")[1]
         claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
-        exp = claims.get("exp")
-        return float(exp) if isinstance(exp, (int, float)) else None
+        # a pasted text can be valid JSON that is no object, and json takes Infinity and NaN
+        return finite(claims.get("exp")) if isinstance(claims, dict) else None
     except (IndexError, ValueError, TypeError):
         return None
 

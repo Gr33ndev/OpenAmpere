@@ -49,6 +49,15 @@ def test_the_expiry_of_the_token():
     assert token_expiry("not a token") is None and token_expiry("") is None
 
 
+@pytest.mark.parametrize("payload", [b"[1]", b'"text"', b'{"exp": Infinity}', b'{"exp": NaN}', b'{"exp": "soon"}'])
+def test_an_odd_token_has_no_expiry_and_does_not_stop_the_driver(payload):
+    """A pasted text that decodes to JSON but no object, or an exp that is not a finite number: no expiry, no crash
+    (the driver is made when the settings are saved and at every start)."""
+    token = "x." + base64.urlsafe_b64encode(payload).decode().rstrip("=") + ".y"
+    assert token_expiry(token) is None
+    assert EnphaseDriver("192.0.2.1", token=token).token_expires is None
+
+
 async def test_read_with_the_token_and_its_signs():
     sim = sunny(SimulatedEnphase(token="t1"))
     server, port = await serve(sim)
