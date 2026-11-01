@@ -103,7 +103,7 @@ jobs:
           rm -f .ai-review-summary.md
           install -m 0755 scripts/ai-review-trace.sh "$RUNNER_TEMP/ai-review-trace.sh"
       - id: review
-        uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
+        uses: anthropics/claude-code-action@d70510b174a1244958df0b03166a54912811f3e6 # v1.0.264
         # a failed first attempt gets a second one below, the check at the end decides
         continue-on-error: true
         with: &review
@@ -185,7 +185,7 @@ jobs:
         run: rm -f .ai-review-summary.md
       - id: retry
         if: ${{ !cancelled() && steps.fresh.outcome == 'success' }}
-        uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1.0.252
+        uses: anthropics/claude-code-action@d70510b174a1244958df0b03166a54912811f3e6 # v1.0.264
         continue-on-error: true
         with: *review
       - name: Show what the second attempt did
