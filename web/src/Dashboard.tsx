@@ -248,10 +248,12 @@ export function Dashboard({ snap, online, blocked, status }: {
   const { data: settings } = useResource<Settings>("/api/settings");
   const e = today?.energy_wh;
   const stale = useStale(snap, online, status);
-  // the powers from the live values, the status is read only every 15 s: otherwise a car that starts charging is
-  // counted in the house until the next status (#563)
+  const devices = status?.devices.items ?? [];
+  // the energy flow takes the powers from the live values, the status is read only every 15 s: otherwise a car that
+  // starts charging is counted in the house until the next status (#563). The device list keeps the status, whose
+  // power goes with its state
   const power = snap?.device_power;
-  const devices = (status?.devices.items ?? []).map((d) => (power && d.key in power ? { ...d, power_w: power[d.key] } : d));
+  const flowDevices = power ? devices.map((d) => (d.key in power ? { ...d, power_w: power[d.key] } : d)) : devices;
 
   return (
     <div className="page">
@@ -277,7 +279,7 @@ export function Dashboard({ snap, online, blocked, status }: {
       <StorageNotice storage={status?.storage} />
       <ImportHint />
       <SecondInverterHint status={status} external={settings?.values["pv.external"]} />
-      <EnergyFlow snap={snap} stale={stale} devices={devices} gridCharging={!!status?.devices.grid_charging}
+      <EnergyFlow snap={snap} stale={stale} devices={flowDevices} gridCharging={!!status?.devices.grid_charging}
         externalName={settings?.values["pv.external_name"]} />
 
       <div className="section-title">{t("overview.dashboard.todayTitle")}</div>

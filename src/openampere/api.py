@@ -928,7 +928,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     def live_values(snap: Snapshot) -> dict:
         # the powers of the devices with every snapshot: the energy flow takes them from the same moment, not from a
         # status read up to 15 s earlier that would put a car just starting to charge into the house (#563)
-        return {**snap.to_dict(), "device_power": {d["key"]: d["power_w"] for d in devices.live() if d["enabled"]}}
+        return {**snap.to_dict(), "device_power": devices.live_power()}
 
     @app.get("/api/live")
     def live():

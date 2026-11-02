@@ -24,18 +24,35 @@ class Devices:
 
     # ---- live --------------------------------------------------------------------
 
+    def _consumer_power(self, c) -> float:
+        state = self.surplus.states.get(c.id, State())
+        if c.adjustable:
+            power = state.actual_w if state.actual_w is not None else state.power_w
+        else:
+            power = c.power_w if state.on else 0
+        return float(power or 0)
+
+    def live_power(self) -> dict[str, float]:
+        """The power of each enabled device by its key, as in live(), without the car values (read from the database):
+        sent with every live snapshot for the energy flow (#563)."""
+        power = {f"c:{c.id}": self._consumer_power(c) for c in self.surplus.consumers if c.enabled}
+        for lp in (self.evcc.fresh() or {}).get("loadpoints", []):
+            power[f"evcc:{lp['id']}"] = lp["power_w"]
+        for wb in self.wallboxes.wallboxes if self.wallboxes else []:
+            if wb.enabled:
+                reading = self.wallboxes.fresh(wb)
+                power[f"w:{wb.id}"] = reading.power_w if reading else 0.0
+        return power
+
     def live(self) -> list[dict]:
         devices = []
         for c in self.surplus.consumers:
             state = self.surplus.states.get(c.id, State())
-            if c.adjustable:
-                power = state.actual_w if state.actual_w is not None else state.power_w
-            else:
-                power = c.power_w if state.on else 0
+            power = self._consumer_power(c)
             devices.append({
                 "key": f"c:{c.id}", "id": c.id, "source": "openampere", "name": c.name,
                 "kind": "heating_rod" if c.adjustable else "switch", "enabled": c.enabled,
-                "power_w": float(power or 0), "active": bool(power), "on": state.on,
+                "power_w": power, "active": bool(power), "on": state.on,
                 "temperature_c": state.temperature_c, "target_c": state.target_c, "status": state.status,
                 "error": state.error, "override": self.surplus.override(c.id), "connected": None,
                 "soc": None, "range_km": None, "addresses_lost": c.addresses_lost,

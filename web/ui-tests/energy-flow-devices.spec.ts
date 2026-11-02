@@ -13,4 +13,6 @@ test("the energy flow takes the devices' power from the live values", async ({ p
   await open(page, "");
   await expect(page.locator(".flow-node.house")).toHaveText("2,60 kW");
   await expect(page.locator(".flow")).toHaveAttribute("aria-label", /Carport 10,20 kW/);
+  // the device list stays with the status, whose power goes with its state (not "lädt mit 0,00 kW" after a stop)
+  await expect(page.locator(".device-row-compact", { hasText: "Carport" })).not.toContainText("10,20 kW");
 });
