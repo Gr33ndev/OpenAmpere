@@ -362,3 +362,24 @@ async def test_a_device_without_serial_number_set_up_in_the_settings_survives_a_
     restarted = Collector(FoxessDriver("127.0.0.1", port, 247), storage, 0.2, 30)
     assert restarted.known_serial is None
     storage.close()
+
+
+async def test_choosing_the_legacy_map_keeps_the_own_inverter(tmp_path):
+    """Review of #568: the owner sets the FoxESS legacy map by hand; it tells no serial number, but it is their own
+    inverter, not another device."""
+    from openampere.runtime import Runtime
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    runtime.collector.known_serial = OWN
+    server, port = await start(foxess(OWN, H3_LEGACY))
+    async with server:
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.driver": "foxess"},
+                                          same_device=True)
+            await wait_for(lambda: runtime.collector.wrong_device is not None)
+            await runtime.update_settings({"inverter.register_map": "foxess_h3_legacy"})
+            await wait_for(lambda: runtime.collector.latest is not None)
+            assert runtime.collector.wrong_device is None
+        finally:
+            await runtime.collector.stop()
+            runtime.storage.close()

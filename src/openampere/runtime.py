@@ -24,7 +24,8 @@ from .tariffs import Tariffs
 log = logging.getLogger(__name__)
 
 RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")}
-DEVICE_KEYS = ("inverter.host", "inverter.port", "inverter.unit", "inverter.driver")  # which device, not how to read it
+# which device the owner set up, not how to read it; the register map too: the FoxESS legacy map tells no serial number
+DEVICE_KEYS = ("inverter.host", "inverter.port", "inverter.unit", "inverter.driver", "inverter.register_map")
 
 
 def make_driver(config: Config):
