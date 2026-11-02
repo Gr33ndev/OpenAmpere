@@ -89,7 +89,7 @@
     },
     {
      "name": "anyio",
-     "version": "4.15.1",
+     "version": "4.16.0",
      "license": "MIT",
      "url": "https://github.com/agronholm/anyio",
      "texts": [
@@ -154,7 +154,7 @@
     },
     {
      "name": "opentelemetry-api",
-     "version": "1.45.1",
+     "version": "1.45.2",
      "license": "Apache-2.0",
      "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api",
      "texts": [
@@ -172,7 +172,7 @@
     },
     {
      "name": "pydantic",
-     "version": "2.14.1",
+     "version": "2.14.2",
      "license": "MIT",
      "url": "https://github.com/pydantic/pydantic",
      "texts": [
@@ -181,7 +181,7 @@
     },
     {
      "name": "pydantic_core",
-     "version": "2.50.1",
+     "version": "2.50.2",
      "license": "MIT",
      "url": "https://github.com/pydantic/pydantic",
      "texts": [
@@ -245,7 +245,7 @@
     },
     {
      "name": "websockets",
-     "version": "17.3",
+     "version": "17.4",
      "license": "BSD-3-Clause",
      "url": "https://github.com/python-websockets/websockets",
      "texts": [
