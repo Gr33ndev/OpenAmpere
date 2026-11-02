@@ -226,5 +226,5 @@ class Runtime:
             new_device = not same_device and any(get_value(old, k) != get_value(new, k) for k in DEVICE_KEYS)
             await self.collector.reconfigure(make_driver(new), new.inverter.poll_interval,
                                              release_connection=new.inverter.connection_mode == "per_poll",
-                                             new_device=new_device)
+                                             new_device=new.inverter.host if new_device else None)
         return self.settings_view()

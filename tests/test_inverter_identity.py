@@ -239,9 +239,12 @@ async def test_a_connection_changed_in_the_settings_takes_the_device_found_there
     async with server:
         collector = Collector(None, storage, 0.2, 30)
         try:
-            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2, new_device=True)
+            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2, new_device="127.0.0.1")
             await wait_for(lambda: collector.latest is not None)
             assert collector.wrong_device is None and collector.known_serial == OTHER
+            # stored at once: a restart right after setting it up keeps the new inverter
+            assert storage.get_meta("known_device") == {"serial": OTHER, "host": "127.0.0.1"}
+            assert Collector(None, storage, 1, 30).known_serial == OTHER
         finally:
             await collector.stop()
             storage.close()
