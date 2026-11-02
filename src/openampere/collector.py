@@ -111,7 +111,10 @@ class Collector:
         self.disconnected_since = None
         self.last_error = None
         self.latest = None
-        self.wrong_device = self._wrong_serial = None
+        # the owner changed the connection in the settings: the device found there is theirs (#567); a new address
+        # found by Rediscovery is the same serial number anyway
+        self.wrong_device = self._wrong_serial = self.known_serial = None
+        self.storage.set_meta(KNOWN_DEVICE, None)
         self.start()
 
     async def accept_device(self, host: str) -> bool:

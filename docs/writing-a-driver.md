@@ -53,6 +53,8 @@ In practice every inverter driver subclasses `ModbusDevice` from `modbus.py`, wh
 - `_read()` with retries for transient errors, `_read_block()` that falls back to single registers when the device
   rejects a block and remembers rejected addresses for `BAD_ADDRESS_TTL_S`, `_read_reg()`, `_probe()` and `_write()`;
 - `connect()`, which calls your `_detect()` once and afterwards only returns the cached `self.info`;
+- the identity check (#567): on every new connection the serial number is read again with your `_read_serial()`
+  before anything else is read or written, so nothing goes to another device that answers at the same address;
 - `disconnect()` (closes the socket but keeps `self.info`, used by the connection mode `per_poll`) and `close()`.
 
 Errors are classified so the rest of the app can react correctly:
@@ -202,8 +204,16 @@ Implement `_detect()`. It must only read, and it must raise `ConnectionError` wh
                                firmware=..., register_map="acme_x1", driver=self.KEY, unit=self._unit,
                                rated_power_w=words[1] or None, supports_control=False)
         return self.info
+
+    async def _read_serial(self) -> str | None:
+        words = await self._read(INFO_ADDRESS, INFO_LENGTH, READ_FUNCTION)
+        return ascii_text(words[2:12]) or None
 ```
 
+- **`_read_serial()` is required when `_detect()` sets a serial number.** Read it exactly as `_detect()` does. The base
+  class calls it on every new connection and refuses to read or write when it differs from the known serial number
+  (`WrongDevice`, #567); without it every new connection fails with `NotImplementedError`. A device without a serial
+  number needs no `_read_serial()`, but it cannot be told apart from another device at the same address.
 - `_probe()` tries the given function codes in order and only moves on when the device *rejects* the request.
   Transient errors propagate, and `ModbusDevice.connect()` turns them into a `ConnectionError`, so detection is
   retried later instead of guessing.
@@ -452,6 +462,7 @@ these facts, never code, graphics or texts.
 4. **Checklist** from the PR template, in particular for a driver:
    - [ ] "New device / new registers" ticked; sources named in `NOTICE` and on the device page in `docs/devices/`.
    - [ ] Detection only reads and does not claim other vendors' simulators.
+   - [ ] `_read_serial()` reads the serial number as `_detect()` does (if the device has one).
    - [ ] Snapshot follows the sign conventions; counters in Wh; `None` instead of guessed values.
    - [ ] Simulator and tests added; `.venv/bin/pytest` passes.
    - [ ] Driver registered in `DRIVERS`, `LABELS`, `config.py` and `web/src/api.ts`; `npm run build` passes.

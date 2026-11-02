@@ -222,3 +222,20 @@ async def test_automatic_detection_finds_a_replaced_inverter_of_another_make(tmp
             assert (await driver.connect()).driver == "saj"
         finally:
             await driver.close()
+
+
+async def test_a_connection_changed_in_the_settings_takes_the_device_found_there(tmp_path):
+    """Review of #568: an owner who sets up a replaced inverter in the settings does not get the notice."""
+    storage = Storage(tmp_path / "t.db")
+    storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    server, port = await start(foxess(OTHER))
+    async with server:
+        collector = Collector(None, storage, 0.2, 30)
+        try:
+            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2)
+            await wait_for(lambda: collector.latest is not None)
+            assert collector.wrong_device is None and collector.known_serial == OTHER
+            assert storage.get_meta("known_device") is None  # stored again by Rediscovery.remember
+        finally:
+            await collector.stop()
+            storage.close()
