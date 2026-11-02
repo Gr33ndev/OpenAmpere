@@ -532,6 +532,7 @@ details.help ul { padding-left: 18px; margin: 6px 0; }
 
 .import-hint { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .import-hint .actions { display: flex; gap: 18px; }
+.notice-actions { margin-top: 10px; }
 .import-hint .actions .link { min-height: 44px; }
 
 .readout { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--label); padding: 8px 12px;

@@ -43,6 +43,18 @@ class DetectionFailed(ConnectionError):
         self.message = message
 
 
+class WrongDevice(ConnectionError):
+    """Another device than the owner's inverter answers at the address (#567): a tablet in another network, or the
+    router gave the address to another device. Nothing is read or written until the right one answers again."""
+
+    def __init__(self, expected: str, found: str | None) -> None:
+        super().__init__(f"serial number {found!r} instead of {expected!r}")
+        self.expected, self.found = expected, found
+        self.message = ("Unter der eingestellten Adresse antwortet ein anderer Wechselrichter als bisher. OpenAmpere "
+                        "liest und steuert ihn nicht. Ist das Tablet oder der Server in einem anderen Netzwerk, "
+                        "verbindet sich OpenAmpere von selbst wieder, sobald es zurück ist.")
+
+
 class ModbusReadError(Exception):
     """Any failed Modbus request. .code is the Modbus exception code of the device's answer, if there was one."""
 
@@ -100,7 +112,7 @@ def friendly_error(err: BaseException) -> str:
         if err.errno in (111, 61):  # connection refused
             return "Das Gerät lehnt die Verbindung ab. Ist Modbus TCP aktiviert und der Port richtig?"
         return "Netzwerkfehler bei der Verbindung zum Wechselrichter."
-    if isinstance(err, DetectionFailed):
+    if isinstance(err, (DetectionFailed, WrongDevice)):
         return err.message
     return "Unerwarteter Fehler bei der Verbindung zum Wechselrichter (Details im Protokoll des Servers)."
 
@@ -147,6 +159,14 @@ class ModbusDevice:
         self._bad_addresses: dict[int, float] = {}  # address -> time until it is skipped
         # how the requests are framed on TCP: Modbus TCP, or RTU frames over TCP (M-TEC's Wi-Fi/LAN module, #520)
         self.framer = FramerType.SOCKET
+        # the serial number of the owner's inverter (the collector sets it from what it knows, #567); None: the one
+        # this driver detected
+        self.expected_serial: str | None = None
+        self._identity_checked = False  # the current TCP connection reaches that inverter
+        self._identity_lock = asyncio.Lock()
+        self._checker: asyncio.Task | None = None  # the task reading the serial number for that
+        self._detect_lock = asyncio.Lock()
+        self._detector: asyncio.Task | None = None  # the task detecting the device, which reads before info is set
 
     # ---- low level -------------------------------------------------------
 
@@ -167,12 +187,16 @@ class ModbusDevice:
                 self._client.close()
                 self._client = None
                 raise InverterBusy(f"{self._host}:{self._port} closed the connection right after connecting")
+            self._identity_checked = False  # a new connection can reach another device (#567)
         return self._client
 
     async def _read(self, address: int, count: int, function: int) -> list[int]:
         """Read registers; temporary failures (typical behind a Modbus proxy) are retried right away."""
+        if self.info is None and self._detector is not asyncio.current_task() and self._expected():
+            await self.connect()  # forgotten after another device answered: detected and compared again (#567)
         for attempt in range(1, self._attempts + 1):
             try:
+                await self.check_identity()
                 return await self._read_once(address, count, function)
             except ModbusTransientError as err:
                 raise_if_cancelled()
@@ -185,6 +209,8 @@ class ModbusDevice:
     async def _read_once(self, address: int, count: int, function: int) -> list[int]:
         async with self._lock:
             client = await self._ensure_connected()
+            if self._unchecked():  # the connection was renewed after the check: checked on the next attempt
+                raise ModbusTransientError(f"read {address}+{count}: new connection, not checked yet")
             reader = client.read_input_registers if function == 4 else client.read_holding_registers
             try:
                 response = await reader(address, count=count, device_id=self._unit)
@@ -200,8 +226,14 @@ class ModbusDevice:
 
     async def _write(self, reg: Reg, value: int) -> None:
         words = encode(reg, value)
+        # never to another device than the owner's inverter, also not the "safe" switch-off (#567)
+        if self.info is None:  # detection only reads; forgotten after another device answered: compared again
+            await self.connect()
+        await self.check_identity()
         async with self._lock:
             client = await self._ensure_connected()
+            if self._unchecked():  # the connection was renewed after the check
+                raise ModbusTransientError(f"write {reg.address}={value}: new connection, not checked yet")
             try:
                 if len(words) == 1:
                     response = await client.write_register(reg.address, words[0], device_id=self._unit)
@@ -232,28 +264,81 @@ class ModbusDevice:
     async def connect(self) -> DeviceInfo:
         if self.info is not None:  # already detected: only the TCP connection is re-established (lazily)
             return self.info
-        try:
-            return await self._detect()
-        except ModbusTransientError as err:
-            await self.close()  # free the connection slot right away; the inverter allows only a few
-            raise ConnectionError(f"device not answering during detection: {err}") from err
-        except BaseException:
-            await self.close()
-            raise
+        async with self._detect_lock:  # one detection at a time: a reader or writer waits for the running one
+            if self.info is not None:
+                return self.info
+            self._detector = asyncio.current_task()
+            try:
+                await self._detect()
+                return await self.match_detected()
+            except ModbusTransientError as err:
+                await self.close()  # free the connection slot right away; the inverter allows only a few
+                raise ConnectionError(f"device not answering during detection: {err}") from err
+            except BaseException:
+                await self.close()
+                raise
+            finally:
+                self._detector = None
 
     async def _detect(self) -> DeviceInfo:
         raise NotImplementedError
+
+    def _expected(self) -> str | None:
+        return self.expected_serial or (self.info.serial if self.info else None)
+
+    async def match_detected(self) -> DeviceInfo:
+        """After a detection: the device must be the owner's inverter, otherwise it is forgotten again."""
+        assert self.info is not None
+        expected, found = self._expected(), self.info.serial
+        if expected and found and found != expected:
+            self.expected_serial, self.info = expected, None  # still the owner's inverter that is expected
+            await self.close()
+            raise WrongDevice(expected, found)
+        self._identity_checked = True  # detection read the serial number on this connection
+        return self.info
+
+    async def _read_serial(self) -> str | None:
+        """The serial number as detection reads it (drivers whose detection reads one override this)."""
+        raise NotImplementedError
+
+    def _unchecked(self) -> bool:
+        """On this connection the device was not confirmed as the owner's inverter yet. A device whose detection
+        found no serial number (FoxESS legacy map) cannot be told apart and is not checked, as before."""
+        return (not self._identity_checked and self._checker is not asyncio.current_task() and self.info is not None
+                and bool(self.info.serial) and bool(self._expected()))
+
+    async def check_identity(self) -> None:
+        """Reads the serial number again on a new connection, before anything else is read or written (#567)."""
+        if not self._unchecked():
+            return
+        async with self._identity_lock:  # a second caller waits for the first check
+            if not self._unchecked():
+                return
+            expected = self._expected()
+            self._checker = asyncio.current_task()
+            try:
+                found = await self._read_serial()
+            finally:
+                self._checker = None
+            if found != expected:  # also none at all: the device told one before
+                # detected again once a device answers here, still expecting the owner's inverter
+                self.expected_serial, self.info = expected, None
+                await self.close()
+                raise WrongDevice(expected, found)
+            self._identity_checked = True
 
     async def disconnect(self) -> None:
         """Close the TCP connection but keep the detected device info (for "connect per poll" mode)."""
         if self._client is not None:
             self._client.close()
             self._client = None
+        self._identity_checked = False
 
     async def close(self) -> None:
         if self._client is not None:
             self._client.close()
             self._client = None
+        self._identity_checked = False
 
     # ---- reading ---------------------------------------------------------
 

@@ -640,7 +640,7 @@ export const DEMO_WRITE_ONLY = [
   "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test",
   "/api/cars/", "/api/cars/vehicles", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/outages/",
-  "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
+  "/api/setup/accept-device", "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];
 
 /** Endpoints the demo never reaches: setup (the demo is already set up), downloads (hidden in the demo), the live

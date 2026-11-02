@@ -85,5 +85,14 @@
   "secondInverterHint": {
     "hint": "Dein Speicher misst gerade {power} für einen zweiten PV-Wechselrichter (bei SAJ am Zähler „Meter B“). OpenAmpere zählt ihn erst mit, wenn du ihn einrichtest; bis dahin fehlt seine Leistung bei Erzeugung und Verbrauch.",
     "title": "Zweiter Wechselrichter?"
+  },
+  "wrongDevice": {
+    "title": "Unter der Adresse des Wechselrichters antwortet seit {time} ein anderes Gerät.",
+    "text": "Seine Seriennummer ist {found}, deine Anlage hat {expected}. OpenAmpere liest und steuert es nicht, damit keine Einstellung an einem fremden Gerät landet. Ist das Tablet oder der Server gerade in einem anderen Netzwerk, musst du nichts tun: Zurück im eigenen Netzwerk verbindet sich OpenAmpere von selbst. Hast du den Wechselrichter tauschen lassen, bestätige den neuen.",
+    "noSerial": "nicht lesbar",
+    "accept": "Das ist mein neuer Wechselrichter",
+    "acceptTitle": "Neuen Wechselrichter übernehmen?",
+    "acceptHint": "Bestätige das nur, wenn der Wechselrichter wirklich getauscht wurde und das Gerät in deinem eigenen Netzwerk ist. OpenAmpere liest und steuert dann dieses Gerät, mit allen Einstellungen, die du in OpenAmpere festgelegt hast.",
+    "acceptConfirm": "Übernehmen"
   }
 }

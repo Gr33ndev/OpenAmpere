@@ -85,5 +85,14 @@
   "secondInverterHint": {
     "hint": "Your storage system measures {power} for a second PV inverter right now (with SAJ at the meter “Meter B”). OpenAmpere counts it only once you set it up; until then its power is missing from generation and consumption.",
     "title": "Second inverter?"
+  },
+  "wrongDevice": {
+    "title": "Since {time}, another device answers at the inverter's address.",
+    "text": "Its serial number is {found}, your system has {expected}. OpenAmpere neither reads nor controls it, so no setting ends up on someone else's device. If the tablet or server is in another network right now, there is nothing to do: back in your own network, OpenAmpere connects by itself. If your inverter was replaced, confirm the new one.",
+    "noSerial": "not readable",
+    "accept": "This is my new inverter",
+    "acceptTitle": "Take over the new inverter?",
+    "acceptHint": "Only confirm this if the inverter really was replaced and the device is in your own network. OpenAmpere then reads and controls this device, with all the settings you made in OpenAmpere.",
+    "acceptConfirm": "Take over"
   }
 }

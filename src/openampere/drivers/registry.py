@@ -105,14 +105,31 @@ class AutoDriver:
         self._args = dict(host=host, port=port, unit=unit, timeout=timeout, register_map=register_map,
                           read_function=read_function)
         self._driver: ModbusDevice | None = None
+        self._expected_serial: str | None = None
+
+    @property
+    def expected_serial(self) -> str | None:
+        return self._expected_serial
+
+    @expected_serial.setter
+    def expected_serial(self, serial: str | None) -> None:
+        self._expected_serial = serial
+        if self._driver is not None:
+            self._driver.expected_serial = serial
 
     async def connect(self) -> DeviceInfo:
         if self._driver is None:
             a = self._args
             # keep the connection that detected the device instead of opening a second one
-            _info, self._driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
-                                                      register_map=a["register_map"],
-                                                      read_function=a["read_function"])
+            _info, driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
+                                                register_map=a["register_map"], read_function=a["read_function"])
+            driver.expected_serial = self._expected_serial
+            try:
+                await driver.match_detected()  # detected without knowing the owner's inverter (#567)
+            except BaseException:
+                await driver.close()
+                raise
+            self._driver = driver
         return await self._driver.connect()
 
     async def disconnect(self) -> None:

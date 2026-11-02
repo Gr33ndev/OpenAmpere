@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
 import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
-import { activeInputs, PV_INPUT_COLORS, useResource, useStale } from "./api";
+import { activeInputs, postJson, PV_INPUT_COLORS, refreshAll, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
 import { navigate } from "./route";
-import { Notice } from "./ui";
+import { Button, Dialog, Notice, toast } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
 import { energyKwh, kw, kwh, percent, time, updatedLabel, num } from "./format";
 import { t, tx } from "./i18n";
@@ -28,6 +28,41 @@ function StorageNotice({ storage }: { storage: Status["storage"] }) {
     return <Notice kind="warn">{t("overview.storageNotice.lowSpace", { free: `${num(storage.free_bytes / 1e6, 0)} MB`, place })}</Notice>;
   }
   return null;
+}
+
+/** Another device answers at the inverter's address (#567): nothing is read or controlled until the owner's inverter
+ *  answers again, or the owner says the other one is their new inverter. */
+function WrongDeviceNotice({ wrong }: { wrong: Status["wrong_device"] }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!wrong) return null;
+  const accept = async () => {
+    setAsking(false);
+    setBusy(true);
+    try {
+      await postJson("/api/setup/accept-device", {});
+      refreshAll();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Notice kind="error">
+      <strong>{t("overview.wrongDevice.title", { time: updatedLabel(wrong.since) })}</strong>{" "}
+      {t("overview.wrongDevice.text", { found: wrong.found ?? t("overview.wrongDevice.noSerial"), expected: wrong.expected })}
+      <div className="notice-actions">
+        <Button variant="secondary" busy={busy} onClick={() => setAsking(true)}>{t("overview.wrongDevice.accept")}</Button>
+      </div>
+      {asking && (
+        <Dialog title={t("overview.wrongDevice.acceptTitle")} confirm={t("overview.wrongDevice.acceptConfirm")} danger
+          onCancel={() => setAsking(false)} onConfirm={() => void accept()}>
+          <p>{t("overview.wrongDevice.acceptHint")}</p>
+        </Dialog>
+      )}
+    </Notice>
+  );
 }
 
 function Tile({ label, value, color }: { label: string; value: string; color: string }) {
@@ -273,6 +308,7 @@ export function Dashboard({ snap, online, blocked, status }: {
       )}
       {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
 
+      <WrongDeviceNotice wrong={status?.wrong_device} />
       {status?.clock_wrong && (
         <Notice kind="error">{t("overview.dashboard.clockWrong")}</Notice>
       )}

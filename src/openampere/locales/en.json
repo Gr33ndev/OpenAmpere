@@ -22,6 +22,7 @@
     "logShuttingDown": "OpenAmpere is shutting down",
     "logSwitchedByHand": "switched by hand",
     "noCurrentReadingsInverter": "No current readings from the inverter",
+    "noOtherInverterAnswers": "No other inverter answers at the address.",
     "noReadingsYet": "No readings yet",
     "notEnoughSpaceBackup": "Not enough free storage space for the backup.",
     "notEnoughSpaceFile": "Not enough free storage space for the file.",
