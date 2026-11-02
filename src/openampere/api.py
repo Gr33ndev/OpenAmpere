@@ -925,11 +925,16 @@ def create_app(runtime: Runtime) -> FastAPI:
         storage.delete_meta(ha_app.BACKUP_RESTORED)
         return {"ok": True}
 
+    def live_values(snap: Snapshot) -> dict:
+        # the powers of the devices with every snapshot: the energy flow takes them from the same moment, not from a
+        # status read up to 15 s earlier that would put a car just starting to charge into the house (#563)
+        return {**snap.to_dict(), "device_power": devices.live_power()}
+
     @app.get("/api/live")
     def live():
         if not collector.latest:
             raise HTTPException(503, "Noch keine Messwerte")
-        return collector.latest.to_dict()
+        return live_values(collector.latest)
 
     @app.websocket("/api/live/ws")
     async def live_ws(ws: WebSocket):
@@ -946,10 +951,10 @@ def create_app(runtime: Runtime) -> FastAPI:
 
         async def push():
             if collector.latest:
-                await ws.send_json(collector.latest.to_dict())
+                await ws.send_json(live_values(collector.latest))
             while True:
                 snap: Snapshot = await queue.get()
-                await ws.send_json(snap.to_dict())
+                await ws.send_json(live_values(snap))
 
         async def watch_close():
             # Returns as soon as the client disconnects or the server shuts down, even when no new

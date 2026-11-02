@@ -116,3 +116,29 @@ def test_surplus_order(tmp_path, authed):
     assert [c.name for c in surplus.consumers] == ["Pumpe", "Heizstab"]  # list follows the order
     assert not surplus.wallbox_first() and surplus.evcc_priority_soc() == 70
     assert client.put("/api/surplus-order", json={"order": ["battery"], "battery_soc": 50}).status_code == 400
+
+
+def test_live_values_carry_device_power(tmp_path, monkeypatch):
+    # the energy flow takes the devices' power from the live values, not from an older status (#563)
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.latest = Snapshot(timestamp=0, grid_power=11500, house_power=12800)
+    monkeypatch.setattr("openampere.evcc.Evcc.fresh", lambda self: FakeEvcc(10200).fresh())
+    client = TestClient(create_app(runtime))
+    live = client.get("/api/live").json()
+    assert live["house_power"] == 12800 and live["device_power"] == {"evcc:1": 10200}
+    with client.websocket_connect("/api/live/ws") as ws:
+        assert ws.receive_json()["device_power"] == {"evcc:1": 10200}
+
+
+def test_device_power_matches_the_live_view(tmp_path):
+    # the same power as the device list, for enabled devices only, without reading the car values (#563)
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    surplus = SurplusControl(runtime)
+    surplus.save([{"name": "Heizstab", "kind": "shelly2", "host": "rod.local", "power_w": 2000},
+                  {"name": "Pumpe", "kind": "shelly2", "host": "pump.local", "power_w": 500, "enabled": False}])
+    heater, pump = surplus.consumers
+    surplus.states[heater.id] = State(on=True)
+    surplus.states[pump.id] = State(on=True)
+    devices = Devices(runtime, surplus, FakeEvcc(7400))
+    assert devices.live_power() == {f"c:{heater.id}": 2000.0, "evcc:1": 7400}
+    assert devices.live_power() == {d["key"]: d["power_w"] for d in devices.live() if d["enabled"]}
