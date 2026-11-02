@@ -184,10 +184,14 @@ function RealControl({ wb, onChange }: { wb: NativeWallbox; onChange: (view: Wal
   };
   const mode = wb.online ? wb.reading?.work_mode : null;
   if (wb.control) {
+    // outside the work mode "controlled" the charger takes nothing from OpenAmpere (#564): only say that, not that
+    // OpenAmpere controls it
+    const blocked = !!mode && mode !== "controlled";
     return (
       <>
-        <Notice kind="warn">{t("devices.nativeWallbox.realControlOn")}</Notice>
-        {mode && mode !== "controlled" && <Notice kind="error">{t("devices.nativeWallbox.realControlNeedsControlled")}</Notice>}
+        {!blocked && <Notice kind="warn">{t("devices.nativeWallbox.realControlOn")}</Notice>}
+        {blocked && <Notice kind="error">{mode === "plug_and_charge" ? t("devices.nativeWallbox.realControlPlugAndCharge")
+          : t("devices.nativeWallbox.realControlNeedsControlled")}</Notice>}
         {wb.not_prepared && <Notice kind="error">{t("devices.nativeWallbox.realControlNotPrepared")}</Notice>}
         <Button variant="secondary" disabled={busy} onClick={() => void set(false)}>{t("devices.nativeWallbox.realControlOff")}</Button>
       </>

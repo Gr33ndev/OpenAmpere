@@ -357,3 +357,18 @@ test("real control of a FoxESS charger is switched on after a question and off a
   await expect(card.locator(".notice", { hasText: "Nur eine Simulation" })).toBeVisible();
   await expect(card.locator(".facts")).toContainText("über App oder Karte");
 });
+
+// #564: in plug and charge the charger takes nothing from OpenAmpere; the card says so, not that OpenAmpere controls it
+test("real control in plug and charge says why OpenAmpere does not control the charger", async ({ page, api }) => {
+  const base = await view();
+  const garage = base.wallboxes.find((w) => w.id === "demo0003") as NativeWallbox;
+  const reading = garage.reading as NonNullable<NativeWallbox["reading"]>;
+  const plugAndCharge: NativeWallbox = { ...garage, control: true, simulated: false, read_only: false, simulation: null,
+    reading: { ...reading, work_mode: "plug_and_charge" } };
+  api.override("/api/wallboxes", { ...base, wallboxes: [base.wallboxes[0], plugAndCharge] });
+  await open(page, "devices");
+  const card = page.locator(".card.wallbox", { hasText: "Garage" });
+  await expect(card.locator(".notice", { hasText: "lädt sie von selbst" })).toContainText("auf „Gesteuert“");
+  await expect(card).not.toContainText("OpenAmpere startet, stoppt und regelt diese Wallbox");
+  expect(await layoutProblems(page)).toEqual([]);
+});
