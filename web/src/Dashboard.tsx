@@ -248,7 +248,10 @@ export function Dashboard({ snap, online, blocked, status }: {
   const { data: settings } = useResource<Settings>("/api/settings");
   const e = today?.energy_wh;
   const stale = useStale(snap, online, status);
-  const devices = status?.devices.items ?? [];
+  // the powers from the live values, the status is read only every 15 s: otherwise a car that starts charging is
+  // counted in the house until the next status (#563)
+  const power = snap?.device_power;
+  const devices = (status?.devices.items ?? []).map((d) => (power && d.key in power ? { ...d, power_w: power[d.key] } : d));
 
   return (
     <div className="page">

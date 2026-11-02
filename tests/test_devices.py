@@ -116,3 +116,16 @@ def test_surplus_order(tmp_path, authed):
     assert [c.name for c in surplus.consumers] == ["Pumpe", "Heizstab"]  # list follows the order
     assert not surplus.wallbox_first() and surplus.evcc_priority_soc() == 70
     assert client.put("/api/surplus-order", json={"order": ["battery"], "battery_soc": 50}).status_code == 400
+
+
+def test_live_values_carry_device_power(tmp_path, monkeypatch):
+    # the energy flow takes the devices' power from the live values, not from an older status (#563)
+    monkeypatch.setattr(Devices, "live", lambda self: [{"key": "w:a", "enabled": True, "power_w": 10200.0},
+                                                       {"key": "c:b", "enabled": False, "power_w": 500.0}])
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.collector.latest = Snapshot(timestamp=0, grid_power=11500, house_power=12800)
+    client = TestClient(create_app(runtime))
+    live = client.get("/api/live").json()
+    assert live["house_power"] == 12800 and live["device_power"] == {"w:a": 10200.0}  # only devices shown
+    with client.websocket_connect("/api/live/ws") as ws:
+        assert ws.receive_json()["device_power"] == {"w:a": 10200.0}

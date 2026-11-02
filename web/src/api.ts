@@ -20,6 +20,7 @@ export type Snapshot = {
   timestamp: number;
   pv_power: number | null; // with a counted second PV inverter
   pv_external_power?: number | null; // second PV inverter the inverter measures (SAJ Meter B, #419), when counted
+  device_power?: Record<string, number>; // power of each device (key as in status.devices.items) at this moment (#563)
   house_power: number | null;
   grid_power: number | null; // + import
   battery_power: number | null; // + discharge
