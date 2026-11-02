@@ -239,10 +239,9 @@ async def test_a_connection_changed_in_the_settings_takes_the_device_found_there
     async with server:
         collector = Collector(None, storage, 0.2, 30)
         try:
-            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2)
+            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2, new_device=True)
             await wait_for(lambda: collector.latest is not None)
             assert collector.wrong_device is None and collector.known_serial == OTHER
-            assert storage.get_meta("known_device") is None  # stored again by Rediscovery.remember
         finally:
             await collector.stop()
             storage.close()
@@ -266,3 +265,28 @@ async def test_automatic_detection_keeps_its_driver_while_the_inverter_is_away()
             assert driver._driver is first
         finally:
             await driver.close()
+
+
+async def test_changing_only_how_to_read_keeps_refusing_another_device(tmp_path):
+    """Review of #568: a new timeout or poll interval while another device answers does not take that device over."""
+    from openampere.runtime import Runtime
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    runtime.collector.known_serial = OWN
+    server, port = await start(foxess(OTHER))
+    async with server:
+        try:
+            await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.driver": "foxess",
+                                           "inverter.poll_interval": 2}, same_device=True)
+            await wait_for(lambda: runtime.collector.wrong_device is not None)
+            await runtime.update_settings({"inverter.poll_interval": 3, "inverter.timeout": 5})
+            await asyncio.sleep(1.5)
+            assert runtime.collector.known_serial == OWN and runtime.collector.latest is None
+            await wait_for(lambda: runtime.collector.wrong_device is not None)
+            # the owner sets up another address: the device there is theirs
+            await runtime.update_settings({"inverter.port": port, "inverter.host": "localhost"})
+            await wait_for(lambda: runtime.collector.latest is not None)
+            assert runtime.collector.known_serial == OTHER
+        finally:
+            await runtime.collector.stop()
+            runtime.storage.close()

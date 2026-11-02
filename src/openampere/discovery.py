@@ -253,5 +253,5 @@ class Rediscovery:
         runtime.storage.log_control("inverter_relocated", {"from": {"host": inverter.host}, "to": {"host": host}},
                                     False, "ok")
         runtime.storage.set_meta("relocated", {"from": inverter.host, "to": host, "ts": now})
-        await runtime.update_settings({"inverter.host": host})
+        await runtime.update_settings({"inverter.host": host}, same_device=True)
         return host

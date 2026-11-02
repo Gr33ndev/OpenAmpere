@@ -99,8 +99,10 @@ class Collector:
         if self.driver is not None:
             await self.driver.close()
 
-    async def reconfigure(self, driver: InverterDriver | None, interval: float, *, release_connection: bool = False) -> None:
-        """Switch to a new inverter connection without restarting the app."""
+    async def reconfigure(self, driver: InverterDriver | None, interval: float, *, release_connection: bool = False,
+                          new_device: bool = False) -> None:
+        """Switch to a new inverter connection without restarting the app. new_device: the owner set up another
+        address or driver, so the device found there is theirs (#567)."""
         await self.stop()
         self.driver = driver
         self.interval = interval
@@ -111,10 +113,11 @@ class Collector:
         self.disconnected_since = None
         self.last_error = None
         self.latest = None
-        # the owner changed the connection in the settings: the device found there is theirs (#567); a new address
-        # found by Rediscovery is the same serial number anyway
-        self.wrong_device = self._wrong_serial = self.known_serial = None
-        self.storage.set_meta(KNOWN_DEVICE, None)
+        self.wrong_device = self._wrong_serial = None
+        if new_device:
+            # stored again with the new address once it answers (Rediscovery.remember); until then a wrong address
+            # still leaves the search for the owner's inverter
+            self.known_serial = None
         self.start()
 
     async def accept_device(self, host: str) -> bool:
