@@ -93,6 +93,7 @@
     "accept": "This is my new inverter",
     "acceptTitle": "Take over the new inverter?",
     "acceptHint": "Only confirm this if the inverter really was replaced and the device is in your own network. OpenAmpere then reads and controls this device, with all the settings you made in OpenAmpere.",
-    "acceptConfirm": "Take over"
+    "acceptConfirm": "Take over",
+    "noSerialHint": "This device reports no serial number. So OpenAmpere can no longer check later whether the same device still answers at the address. Best give it a fixed IP address in your router."
   }
 }

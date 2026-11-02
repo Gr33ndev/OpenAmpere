@@ -35,3 +35,14 @@ test("no notice while the own inverter answers", async ({ page }) => {
   await expect(page.locator(".page-head")).toBeVisible();
   await expect(page.locator(".notice", { hasText: "anderes Gerät" })).toHaveCount(0);
 });
+
+test("a device without serial number can be taken over with a warning", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  api.override("/api/status", { ...status, connected: false,
+    wrong_device: { since: Date.now() / 1000 - 600, found: null, expected: "60BH…01" } });
+  await open(page, "");
+  const notice = page.locator(".notice", { hasText: "anderes Gerät" });
+  await expect(notice).toContainText("nicht lesbar");
+  await notice.getByRole("button", { name: "Das ist mein neuer Wechselrichter" }).click();
+  await expect(page.getByRole("dialog")).toContainText("keine Seriennummer");
+});

@@ -290,7 +290,7 @@ class ModbusDevice:
         """After a detection: the device must be the owner's inverter, otherwise it is forgotten again."""
         assert self.info is not None
         expected, found = self._expected(), self.info.serial
-        if expected and found and found != expected:
+        if expected and found != expected:  # also none at all: the owner's inverter tells one
             self.expected_serial, self.info = expected, None  # still the owner's inverter that is expected
             await self.close()
             raise WrongDevice(expected, found)

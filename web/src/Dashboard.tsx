@@ -59,6 +59,7 @@ function WrongDeviceNotice({ wrong }: { wrong: Status["wrong_device"] }) {
         <Dialog title={t("overview.wrongDevice.acceptTitle")} confirm={t("overview.wrongDevice.acceptConfirm")} danger
           onCancel={() => setAsking(false)} onConfirm={() => void accept()}>
           <p>{t("overview.wrongDevice.acceptHint")}</p>
+          {!wrong.found && <p>{t("overview.wrongDevice.noSerialHint")}</p>}
         </Dialog>
       )}
     </Notice>

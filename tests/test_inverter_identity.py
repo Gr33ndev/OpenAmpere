@@ -13,7 +13,7 @@ from openampere.collector import Collector
 from openampere.drivers.base import WorkMode
 from openampere.drivers.foxess.driver import FoxessDriver
 from openampere.drivers.foxess.registers import H3_LEGACY, H3_NEW
-from openampere.drivers.modbus import WrongDevice
+from openampere.drivers.modbus import ModbusReadError, WrongDevice
 from openampere.drivers.registry import AutoDriver
 from openampere.drivers.saj.driver import SajDriver
 from openampere.simulator import SajSimulatedInverter, SimulatedInverter
@@ -164,3 +164,61 @@ def test_status_and_accept_in_the_app(tmp_path):
     entry = runtime.storage.control_log(10)[0]
     assert entry["action"] == "inverter_accepted"
     runtime.storage.close()
+
+
+async def test_a_detection_without_serial_number_is_not_the_known_inverter():
+    """Review of #568: a device whose detection finds no serial number (here the legacy map) is not the owner's
+    inverter that told one."""
+    server, port = await start(foxess(OTHER, H3_LEGACY))
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247)
+        driver.expected_serial = OWN
+        try:
+            with pytest.raises(WrongDevice) as err:
+                await driver.connect()
+            assert err.value.found is None
+        finally:
+            await driver.close()
+
+
+async def test_a_device_without_serial_number_is_reported_and_can_be_taken_over(tmp_path):
+    storage = Storage(tmp_path / "t.db")
+    storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    server, port = await start(foxess(OTHER, H3_LEGACY))
+    async with server:
+        collector = Collector(FoxessDriver("127.0.0.1", port, 247), storage, 0.2, 30)
+        collector.start()
+        try:
+            await wait_for(lambda: collector.wrong_device is not None)
+            assert collector.wrong_device["found"] is None and collector.latest is None
+            assert any(e["event"] == "anderes_geraet" for e in storage.get_meta("connection_events"))
+            assert await collector.accept_device("127.0.0.1")
+            await wait_for(lambda: collector.latest is not None)
+            assert collector.known_serial is None and storage.get_meta("known_device") is None
+        finally:
+            await collector.stop()
+            storage.close()
+
+
+async def test_automatic_detection_finds_a_replaced_inverter_of_another_make(tmp_path):
+    """Review of #568: after another device answered, the automatic driver detects the make again, so a SAJ that
+    replaced a FoxESS is reported with its own serial number and can be taken over."""
+    fox, saj = foxess(OWN), SajSimulatedInverter(serial="HST2103SIM000002")
+    fox_server, fox_port = await start(fox)
+    saj_server, saj_port = await start(saj)
+    async with fox_server, saj_server:
+        driver = AutoDriver("127.0.0.1", fox_port, 0)
+        try:
+            assert (await driver.connect()).serial == OWN
+            await driver.close()
+            driver._args["port"] = driver._driver._port = saj_port  # the same address reaches the SAJ now
+            # the SAJ answers the FoxESS driver's requests only with errors, nothing is read from it
+            with pytest.raises(ModbusReadError):
+                await driver.read()
+            with pytest.raises(WrongDevice) as err:  # reconnecting detects the make anew
+                await driver.connect()
+            assert err.value.found == "HST2103SIM000002"
+            driver.expected_serial = err.value.found  # the owner took it over
+            assert (await driver.connect()).driver == "saj"
+        finally:
+            await driver.close()

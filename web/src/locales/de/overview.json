@@ -93,6 +93,7 @@
     "accept": "Das ist mein neuer Wechselrichter",
     "acceptTitle": "Neuen Wechselrichter übernehmen?",
     "acceptHint": "Bestätige das nur, wenn der Wechselrichter wirklich getauscht wurde und das Gerät in deinem eigenen Netzwerk ist. OpenAmpere liest und steuert dann dieses Gerät, mit allen Einstellungen, die du in OpenAmpere festgelegt hast.",
-    "acceptConfirm": "Übernehmen"
+    "acceptConfirm": "Übernehmen",
+    "noSerialHint": "Dieses Gerät meldet keine Seriennummer. OpenAmpere kann deshalb später nicht mehr prüfen, ob unter der Adresse noch dasselbe Gerät antwortet. Gib ihm im Router am besten eine feste IP-Adresse."
   }
 }

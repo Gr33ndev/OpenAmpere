@@ -115,11 +115,12 @@ class Collector:
         self.start()
 
     async def accept_device(self, host: str) -> bool:
-        """The owner confirms that the other device at `host` is their (new) inverter. False if there is none."""
-        if self._wrong_serial is None:
+        """The owner confirms that the other device at `host` is their (new) inverter. False if there is none. One
+        without a serial number cannot be checked from then on, like a device whose detection finds none."""
+        if self.wrong_device is None:
             return False
         self.known_serial, self._wrong_serial, self.wrong_device = self._wrong_serial, None, None
-        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host})
+        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host} if self.known_serial else None)
         if self.driver is not None:
             await self.stop()  # at once, not after the waiting time of the next attempt
             self.start()
@@ -132,7 +133,7 @@ class Collector:
             self.known_serial = device.serial
 
     def _note_wrong_device(self, err: WrongDevice) -> None:
-        if self._wrong_serial != err.found:
+        if self.wrong_device is None or self._wrong_serial != err.found:
             log.warning("another device answers at the inverter's address (serial number %s instead of %s): not "
                         "read and not controlled", privacy.shorten(err.found), privacy.shorten(err.expected))
             self._event("anderes_geraet", f"{privacy.shorten(err.found)} statt {privacy.shorten(err.expected)}")

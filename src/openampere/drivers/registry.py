@@ -14,7 +14,7 @@ import logging
 from .base import DeviceInfo
 from .enphase.driver import EnphaseDriver
 from .foxess.driver import FoxessDriver
-from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError
+from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError, WrongDevice
 from .mtec.driver import MtecDriver
 from .saj.driver import SajDriver
 from .senec.driver import SenecDriver
@@ -118,19 +118,34 @@ class AutoDriver:
             self._driver.expected_serial = serial
 
     async def connect(self) -> DeviceInfo:
-        if self._driver is None:
-            a = self._args
-            # keep the connection that detected the device instead of opening a second one
-            _info, driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
-                                                register_map=a["register_map"], read_function=a["read_function"])
-            driver.expected_serial = self._expected_serial
+        if self._driver is not None:
+            # a new connection (after a lost one) must reach the same device (#567); another make may answer only with
+            # errors to this driver's requests, so it is detected anew unless it is the same make with another serial
             try:
-                await driver.match_detected()  # detected without knowing the owner's inverter (#567)
-            except BaseException:
-                await driver.close()
-                raise
-            self._driver = driver
-        return await self._driver.connect()
+                info = await self._driver.connect()
+                await self._driver.check_identity()
+                return info
+            except WrongDevice as err:
+                if err.found is not None:
+                    raise
+            except (ConnectionError, OSError, TimeoutError, ModbusReadError):
+                pass
+            # still the device detected before that is expected, also without the collector telling it
+            self._expected_serial = self._expected_serial or self._driver._expected()
+            await self._driver.close()
+            self._driver = None
+        a = self._args
+        # keep the connection that detected the device instead of opening a second one
+        info, driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
+                                           register_map=a["register_map"], read_function=a["read_function"])
+        driver.expected_serial = self._expected_serial
+        try:
+            await driver.match_detected()  # detected without knowing the owner's inverter (#567)
+        except BaseException:
+            await driver.close()
+            raise
+        self._driver = driver
+        return info
 
     async def disconnect(self) -> None:
         if self._driver is not None:
