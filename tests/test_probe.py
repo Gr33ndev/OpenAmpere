@@ -166,7 +166,7 @@ async def test_the_inverter_is_read_over_the_existing_connection(runtime):
         _unit = 247
         calls: list = []
 
-        async def _read_once(self, address, count, function):
+        async def read_once(self, address, count, function):
             self.calls.append((address, count, function))
             if address == 1:
                 err = ModbusIllegalError("read 1+1: Modbus exception 2")

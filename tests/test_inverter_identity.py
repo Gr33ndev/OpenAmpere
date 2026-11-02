@@ -383,3 +383,27 @@ async def test_choosing_the_legacy_map_keeps_the_own_inverter(tmp_path):
         finally:
             await runtime.collector.stop()
             runtime.storage.close()
+
+
+async def test_the_diagnostics_read_after_a_new_connection(tmp_path):
+    """Review of #568: the diagnostics and the device query read single requests over the collector's driver; after
+    a new connection (per poll, or a lost one) they are checked first instead of failing as not answering."""
+    from types import SimpleNamespace
+
+    from openampere.diagnostics import Diagnostics
+    own, other = foxess(OWN), foxess(OTHER)
+    own_server, own_port = await start(own)
+    other_server, other_port = await start(other)
+    async with own_server, other_server:
+        driver = FoxessDriver("127.0.0.1", own_port, 247)
+        diagnostics = SimpleNamespace(_driver=lambda: driver)
+        try:
+            await driver.connect()
+            await driver.disconnect()  # "per poll" after a reading
+            assert (await Diagnostics._try(diagnostics, 37609, 2, 4))["ok"]
+            await driver.disconnect()
+            driver._port = other_port
+            result = await Diagnostics._try(diagnostics, 37609, 2, 4)
+            assert not result["ok"] and result["error"] == "keine Antwort"
+        finally:
+            await driver.close()

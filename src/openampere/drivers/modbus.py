@@ -206,6 +206,14 @@ class ModbusDevice:
                 await asyncio.sleep(RETRY_DELAY_S)
         raise AssertionError("unreachable")
 
+    async def read_once(self, address: int, count: int, function: int) -> list[int]:
+        """One request without retries, for the diagnostics and the device query; checked like every read (#567).
+        Another device raises WrongDevice, a ConnectionError."""
+        if self.info is None and self._detector is not asyncio.current_task() and self._expected():
+            await self.connect()
+        await self.check_identity()
+        return await self._read_once(address, count, function)
+
     async def _read_once(self, address: int, count: int, function: int) -> list[int]:
         async with self._lock:
             client = await self._ensure_connected()
