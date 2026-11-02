@@ -59,8 +59,10 @@ class Collector:
         self.external_pv_w: float | None = None  # what that meter reads, also before the owner counts it
         # the serial number of the owner's inverter (#567): readings and writes only while it answers; a device
         # whose detection reads none is not checked. Older versions remembered it only with the firmware.
-        self.known_serial: str | None = ((storage.get_meta(KNOWN_DEVICE) or {}).get("serial")
-                                         or (storage.get_meta("firmware") or {}).get("serial"))
+        # A stored device without one (set up or taken over that way) keeps it so after a restart.
+        known = storage.get_meta(KNOWN_DEVICE)
+        self.known_serial: str | None = (known.get("serial") if isinstance(known, dict)
+                                         else (storage.get_meta("firmware") or {}).get("serial"))
         self.wrong_device: dict | None = None  # another device answers at the address: since, shortened numbers
         self._wrong_serial: str | None = None  # its full serial number, for accept_device()
         self._new_host: str | None = None  # the address of a device the owner just set up, until it answers
@@ -127,7 +129,7 @@ class Collector:
         if self.wrong_device is None:
             return False
         self.known_serial, self._wrong_serial, self.wrong_device = self._wrong_serial, None, None
-        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host} if self.known_serial else None)
+        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host})
         if self.driver is not None:
             await self.stop()  # at once, not after the waiting time of the next attempt
             self.start()
@@ -139,12 +141,14 @@ class Collector:
         self.wrong_device = self._wrong_serial = None
         if device.serial and not self.known_serial:
             self.known_serial = device.serial
-            if self._new_host is not None:  # set up by the owner: stored at once, not only by the next watchdog round
-                try:
-                    self.storage.set_meta(KNOWN_DEVICE, {"serial": device.serial, "host": self._new_host})
-                except Exception:  # noqa: BLE001 - must never disturb polling
-                    pass
-        self._new_host = None
+        if self._new_host is not None:
+            # set up by the owner: stored at once, not only by the next watchdog round, also without a serial number
+            # (otherwise a restart would expect the previous inverter's again)
+            try:
+                self.storage.set_meta(KNOWN_DEVICE, {"serial": device.serial, "host": self._new_host})
+            except Exception:  # noqa: BLE001 - must never disturb polling
+                pass
+            self._new_host = None
 
     def _note_wrong_device(self, err: WrongDevice) -> None:
         if self.wrong_device is None or self._wrong_serial != err.found:

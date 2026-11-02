@@ -194,7 +194,9 @@ async def test_a_device_without_serial_number_is_reported_and_can_be_taken_over(
             assert any(e["event"] == "anderes_geraet" for e in storage.get_meta("connection_events"))
             assert await collector.accept_device("127.0.0.1")
             await wait_for(lambda: collector.latest is not None)
-            assert collector.known_serial is None and storage.get_meta("known_device") is None
+            assert collector.known_serial is None
+            assert storage.get_meta("known_device") == {"serial": None, "host": "127.0.0.1"}
+            assert Collector(None, storage, 1, 30).known_serial is None  # also after a restart
         finally:
             await collector.stop()
             storage.close()
@@ -341,3 +343,22 @@ async def test_only_gateway_answers_in_a_row_count_as_another_make(monkeypatch):
     with pytest.raises(ConnectionError, match="detected anew"):
         await driver.connect()
     assert len(detections) == 1
+
+
+async def test_a_device_without_serial_number_set_up_in_the_settings_survives_a_restart(tmp_path):
+    """Review of #568: the previous inverter's serial number (also in the firmware note) must not come back."""
+    storage = Storage(tmp_path / "t.db")
+    storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    storage.note_firmware(OWN, "1.0")
+    server, port = await start(foxess(OTHER, H3_LEGACY))
+    async with server:
+        collector = Collector(None, storage, 0.2, 30)
+        try:
+            await collector.reconfigure(FoxessDriver("127.0.0.1", port, 247), 0.2, new_device="127.0.0.1")
+            await wait_for(lambda: collector.latest is not None)
+            assert storage.get_meta("known_device") == {"serial": None, "host": "127.0.0.1"}
+        finally:
+            await collector.stop()
+    restarted = Collector(FoxessDriver("127.0.0.1", port, 247), storage, 0.2, 30)
+    assert restarted.known_serial is None
+    storage.close()
