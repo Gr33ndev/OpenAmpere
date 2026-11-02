@@ -215,7 +215,14 @@ async def test_automatic_detection_finds_a_replaced_inverter_of_another_make(tmp
             # the SAJ answers the FoxESS driver's requests only with errors, nothing is read from it
             with pytest.raises(ModbusReadError):
                 await driver.read()
-            with pytest.raises(WrongDevice) as err:  # reconnecting detects the make anew
+            # the SAJ answers this unit as a gateway would ("target failed"): like a proxy whose inverter is gone for
+            # a moment, so the make is detected anew only on the third new connection in a row
+            first = driver._driver
+            for _ in range(2):
+                with pytest.raises(ModbusReadError):
+                    await driver.connect()
+                assert driver._driver is first
+            with pytest.raises(WrongDevice) as err:
                 await driver.connect()
             assert err.value.found == "HST2103SIM000002"
             driver.expected_serial = err.value.found  # the owner took it over
@@ -239,3 +246,23 @@ async def test_a_connection_changed_in_the_settings_takes_the_device_found_there
         finally:
             await collector.stop()
             storage.close()
+
+
+async def test_automatic_detection_keeps_its_driver_while_the_inverter_is_away():
+    """Review of #568: a timeout or network error is no reason to detect the make anew (traffic to other makes'
+    registers, and what the driver learned would be lost)."""
+    server, port = await start(foxess(OWN))
+    async with server:
+        driver = AutoDriver("127.0.0.1", port, 0)
+        try:
+            await driver.connect()
+            first = driver._driver
+            await driver.close()
+            server.close()
+            await server.wait_closed()
+            for _ in range(4):
+                with pytest.raises((ConnectionError, OSError)):
+                    await driver.connect()
+            assert driver._driver is first
+        finally:
+            await driver.close()

@@ -14,7 +14,8 @@ import logging
 from .base import DeviceInfo
 from .enphase.driver import EnphaseDriver
 from .foxess.driver import FoxessDriver
-from .modbus import DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusReadError, WrongDevice
+from .modbus import (DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusIllegalError, ModbusReadError,
+                     WrongDevice)
 from .mtec.driver import MtecDriver
 from .saj.driver import SajDriver
 from .senec.driver import SenecDriver
@@ -97,6 +98,10 @@ async def detect(host: str, port: int, unit: int = 0, *, timeout: float = DETECT
     return info
 
 
+GATEWAY_CODES = (10, 11)  # Modbus exceptions "gateway path unavailable" and "gateway target failed to respond"
+UNCONFIRMED_BEFORE_DETECTION = 3  # new connections in a row answered so before the make is detected anew (#567)
+
+
 class AutoDriver:
     """Detects the device on first connect and then behaves exactly like the matching driver."""
 
@@ -106,6 +111,7 @@ class AutoDriver:
                           read_function=read_function)
         self._driver: ModbusDevice | None = None
         self._expected_serial: str | None = None
+        self._unconfirmed = 0  # new connections in a row on which a gateway reported the device as not answering
 
     @property
     def expected_serial(self) -> str | None:
@@ -119,17 +125,29 @@ class AutoDriver:
 
     async def connect(self) -> DeviceInfo:
         if self._driver is not None:
-            # a new connection (after a lost one) must reach the same device (#567); another make may answer only with
-            # errors to this driver's requests, so it is detected anew unless it is the same make with another serial
+            # a new connection (after a lost one) must reach the same device (#567). Detected anew only when a device
+            # answers but cannot be confirmed: another make may answer only with errors to this driver's requests.
+            # Timeouts and network errors keep the driver (and what it learned): the same device is likely back later.
+            forgot = self._driver.info is None  # after another device answered
             try:
                 info = await self._driver.connect()
                 await self._driver.check_identity()
+                self._unconfirmed = 0
                 return info
             except WrongDevice as err:
-                if err.found is not None:
+                if err.found is not None:  # the same make with another serial number: nothing to detect
                     raise
-            except (ConnectionError, OSError, TimeoutError, ModbusReadError):
-                pass
+            except ModbusIllegalError:
+                pass  # it answers, but has no such register
+            except ModbusReadError as err:
+                # a gateway's "target failed" also comes from a proxy whose inverter is gone for a moment
+                self._unconfirmed += 1
+                if err.code not in GATEWAY_CODES or self._unconfirmed < UNCONFIRMED_BEFORE_DETECTION:
+                    raise
+            except (ConnectionError, OSError, TimeoutError):
+                if not forgot:
+                    raise
+            self._unconfirmed = 0
             # still the device detected before that is expected, also without the collector telling it
             self._expected_serial = self._expected_serial or self._driver._expected()
             await self._driver.close()
