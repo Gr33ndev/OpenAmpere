@@ -140,12 +140,17 @@ class AutoDriver:
             except ModbusIllegalError:
                 pass  # it answers, but has no such register
             except ModbusReadError as err:
-                # a gateway's "target failed" also comes from a proxy whose inverter is gone for a moment
+                # a gateway's "target failed" also comes from a proxy whose inverter is gone for a moment: only
+                # several in a row, with nothing else in between, count as another make
+                if err.code not in GATEWAY_CODES:
+                    self._unconfirmed = 0
+                    raise
                 self._unconfirmed += 1
-                if err.code not in GATEWAY_CODES or self._unconfirmed < UNCONFIRMED_BEFORE_DETECTION:
+                if self._unconfirmed < UNCONFIRMED_BEFORE_DETECTION:
                     raise
             except (ConnectionError, OSError, TimeoutError):
                 if not forgot:
+                    self._unconfirmed = 0
                     raise
             self._unconfirmed = 0
             # still the device detected before that is expected, also without the collector telling it

@@ -290,3 +290,51 @@ async def test_changing_only_how_to_read_keeps_refusing_another_device(tmp_path)
         finally:
             await runtime.collector.stop()
             runtime.storage.close()
+
+
+async def test_only_gateway_answers_in_a_row_count_as_another_make(monkeypatch):
+    """Review of #568: a timeout between gateway answers starts the count again (a proxy at night)."""
+    from openampere.drivers import registry
+    from openampere.drivers.modbus import ModbusTransientError
+
+    def gateway():
+        err = ModbusTransientError("target failed")
+        err.code = 11
+        return err
+
+    class Inner:
+        info = object()
+        expected_serial = OWN
+
+        def __init__(self, errors):
+            self.errors = errors
+
+        async def connect(self):
+            return self.info
+
+        async def check_identity(self):
+            raise self.errors.pop(0)
+
+        async def close(self):
+            pass
+
+        def _expected(self):
+            return OWN
+
+    detections = []
+
+    async def detect_driver(*args, **kwargs):
+        detections.append(args)
+        raise ConnectionError("detected anew")
+
+    monkeypatch.setattr(registry, "detect_driver", detect_driver)
+    driver = AutoDriver("127.0.0.1", 502, 0)
+    driver._driver = inner = Inner([gateway(), gateway(), ModbusTransientError("timeout"), gateway(), gateway()])
+    for _ in range(5):
+        with pytest.raises((ModbusReadError, ConnectionError)):
+            await driver.connect()
+    assert detections == [] and driver._driver is inner
+    inner.errors.append(gateway())  # the third in a row
+    with pytest.raises(ConnectionError, match="detected anew"):
+        await driver.connect()
+    assert len(detections) == 1
