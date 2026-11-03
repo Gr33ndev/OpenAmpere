@@ -13,6 +13,7 @@ from pymodbus import FramerType
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
+from ..privacy import shorten
 from .base import DeviceInfo, raise_if_cancelled
 from .regs import Reg, decode, encode
 
@@ -48,7 +49,8 @@ class WrongDevice(ConnectionError):
     router gave the address to another device. Nothing is read or written until the right one answers again."""
 
     def __init__(self, expected: str, found: str | None) -> None:
-        super().__init__(f"serial number {found!r} instead of {expected!r}")
+        # shortened: the text goes into the log, the connection events and the control log, which reports show
+        super().__init__(f"serial number {shorten(found)!r} instead of {shorten(expected)!r}")
         self.expected, self.found = expected, found
         self.message = ("Unter der eingestellten Adresse antwortet ein anderer Wechselrichter als bisher. OpenAmpere "
                         "liest und steuert ihn nicht. Ist das Tablet oder der Server in einem anderen Netzwerk, "

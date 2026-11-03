@@ -449,3 +449,15 @@ async def test_the_serial_number_is_not_retried_inside_each_attempt():
             assert len(calls) == 3  # one serial read per attempt, not three each
         finally:
             await driver.close()
+
+
+def test_another_device_leaves_no_full_serial_number_in_reports(tmp_path):
+    """Review of #568: the error text goes into the log, the connection events and the control log."""
+    from openampere import privacy
+    from openampere.runtime import Runtime
+    err = WrongDevice(OWN, OTHER)
+    assert OWN not in str(err) and OTHER not in str(err) and "60BH…02" in str(err)
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    assert privacy.for_report(runtime).apply(f"known {OWN}") == "known 60BH…01"
+    runtime.storage.close()
