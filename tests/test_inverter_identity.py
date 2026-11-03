@@ -407,3 +407,45 @@ async def test_the_diagnostics_read_after_a_new_connection(tmp_path):
             assert not result["ok"] and result["error"] == "keine Antwort"
         finally:
             await driver.close()
+
+
+async def test_a_fixed_driver_reports_a_device_that_rejects_the_serial_number(tmp_path):
+    """Review of #568: with the driver set to SAJ, a device that rejects the SAJ info block is another device (with
+    the notice), not only "register not there"."""
+    server, port = await start(SajSimulatedInverter(serial="HST2103SIM000001"))
+    other = foxess(OTHER)
+    other.unit = None  # a device that answers any unit id and rejects the SAJ info block
+    other_server, other_port = await start(other)
+    async with server, other_server:
+        driver = SajDriver("127.0.0.1", port, 1)
+        try:
+            await driver.connect()
+            await driver.close()
+            driver._port = other_port
+            with pytest.raises(WrongDevice) as err:
+                await driver.read()
+            assert err.value.found is None
+        finally:
+            await driver.close()
+
+
+async def test_the_serial_number_is_not_retried_inside_each_attempt():
+    """Review of #568: a read retries the identity check with its own attempts, the check itself reads once."""
+    from openampere.drivers.modbus import ModbusTransientError
+    server, port = await start(foxess(OWN))
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247)
+        try:
+            await driver.connect()
+            await driver.close()
+            calls = []
+
+            async def read_once(address, count, function):
+                calls.append(address)
+                raise ModbusTransientError("timeout")
+            driver._read_once = read_once
+            with pytest.raises(ModbusTransientError):
+                await driver._read(37609, 2, 4)
+            assert len(calls) == 3  # one serial read per attempt, not three each
+        finally:
+            await driver.close()

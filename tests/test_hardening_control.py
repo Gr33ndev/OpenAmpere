@@ -199,9 +199,9 @@ async def test_a_new_inverter_address_is_logged_before_it_is_used(monkeypatch, r
     seen = {}
     update = runtime.update_settings
 
-    async def update_settings(changes, source=None):
-        seen["log"] = runtime.storage.control_log()
-        return await update(changes, source)
+    async def update_settings(changes, source=None, **kwargs):
+        seen["log"], seen["kwargs"] = runtime.storage.control_log(), kwargs
+        return await update(changes, source, **kwargs)
     monkeypatch.setattr(runtime, "update_settings", update_settings)
 
     assert await discovery.Rediscovery(runtime).check(1000.0 + 300) == "192.0.2.7"
@@ -209,6 +209,7 @@ async def test_a_new_inverter_address_is_logged_before_it_is_used(monkeypatch, r
     assert entry["action"] == "inverter_relocated" and not entry["dry_run"]
     assert entry["details"] == {"from": {"host": "192.0.2.5"}, "to": {"host": "192.0.2.7"}}
     assert runtime.config.inverter.host == "192.0.2.7"
+    assert seen["kwargs"] == {"same_device": True}  # found by its serial number: still the known inverter (#567)
     assert "SN1" not in str(entry)
 
 

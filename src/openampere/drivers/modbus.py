@@ -194,14 +194,16 @@ class ModbusDevice:
         """Read registers; temporary failures (typical behind a Modbus proxy) are retried right away."""
         if self.info is None and self._detector is not asyncio.current_task() and self._expected():
             await self.connect()  # forgotten after another device answered: detected and compared again (#567)
-        for attempt in range(1, self._attempts + 1):
+        # the serial number of the identity check is read once per attempt of the read it guards, not retried in itself
+        attempts = 1 if self._checker is asyncio.current_task() else self._attempts
+        for attempt in range(1, attempts + 1):
             try:
                 await self.check_identity()
                 return await self._read_once(address, count, function)
             except ModbusTransientError as err:
                 raise_if_cancelled()
-                log.debug("attempt %d/%d failed: %s", attempt, self._attempts, err)
-                if attempt == self._attempts:
+                log.debug("attempt %d/%d failed: %s", attempt, attempts, err)
+                if attempt == attempts:
                     raise
                 await asyncio.sleep(RETRY_DELAY_S)
         raise AssertionError("unreachable")
@@ -326,6 +328,8 @@ class ModbusDevice:
             self._checker = asyncio.current_task()
             try:
                 found = await self._read_serial()
+            except ModbusIllegalError:
+                found = None  # it rejects where the owner's inverter tells its serial number
             finally:
                 self._checker = None
             if found != expected:  # also none at all: the device told one before
