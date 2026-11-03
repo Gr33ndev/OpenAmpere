@@ -90,20 +90,22 @@ Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je M
 
 ## Installation
 
-OpenAmpere läuft auf einem von zwei Wegen. Entscheide dich für einen: Es darf nur ein OpenAmpere mit dem
+OpenAmpere läuft auf einem von drei Wegen. Entscheide dich für einen: Es darf nur ein OpenAmpere mit dem
 Wechselrichter sprechen.
 
 1. **[Eigenständig](#weg-1-eigenständig)** auf einem Linux-Rechner mit Docker, z. B. einem Raspberry Pi, NAS oder
    Proxmox-Server. Nutzt du Home Assistant, kannst du es bei Bedarf über die Integration OpenAmpere (HACS) verbinden.
 2. **[Als Home-Assistant-App](#weg-2-home-assistant-app)**, wenn bei dir Home Assistant OS läuft (z. B. auf einem Home
    Assistant Green oder einem Raspberry Pi). OpenAmpere läuft dann in Home Assistant und öffnet sich in der Seitenleiste.
+3. **[Auf einem Android-Tablet](#weg-3-android-tablet)**, wenn du keinen Linux-Rechner hast. Das Tablet bleibt zu Hause
+   am Ladegerät und ist dein Server.
 
-| | Weg 1: eigenständig | Weg 2: Home-Assistant-App |
-|---|---|---|
-| Läuft auf | einem eigenen Linux-Rechner mit Docker | Home Assistant OS |
-| Öffnen | im Browser, auch als App auf dem Handy | in der Seitenleiste von Home Assistant und im Browser über die IP-Adresse |
-| Home Assistant | optional: die Integration über HACS installieren | die App bringt die Integration mit: kein HACS |
-| Updates | in OpenAmpere, per Knopfdruck oder nachts | über Home Assistant |
+| | Weg 1: eigenständig | Weg 2: Home-Assistant-App | Weg 3: Android-Tablet |
+|---|---|---|---|
+| Läuft auf | einem eigenen Linux-Rechner mit Docker | Home Assistant OS | einem Android-Tablet (ab Android 7) |
+| Öffnen | im Browser, auch als App auf dem Handy | in der Seitenleiste von Home Assistant und im Browser über die IP-Adresse | in der App auf dem Tablet und im Browser über die Adresse des Tablets |
+| Home Assistant | optional: die Integration über HACS installieren | die App bringt die Integration mit: kein HACS | optional: die Integration über HACS installieren |
+| Updates | in OpenAmpere, per Knopfdruck oder nachts | über Home Assistant | in OpenAmpere, per Knopfdruck oder nachts; die App installiert sie selbst |
 
 ### Weg 1: eigenständig
 
@@ -207,6 +209,13 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere-ha-app:<version> --owner
 
 Home Assistant selbst prüft das nicht, wenn es die App installiert oder aktualisiert. Wer sichergehen will, führt den Befehl oben aus.
 
+Die [Android-App](#weg-3-android-tablet) (`openampere-<version>.apk`) ist mit dem Schlüssel des
+Projekts signiert. Android installiert ein Update nur, wenn es mit demselben Schlüssel signiert ist wie die installierte
+App, und die App prüft das selbst vor jedem Update. Der SHA-256-Fingerabdruck des Zertifikats ist
+`26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886`; `apksigner verify --print-certs openampere-<version>.apk` (Android SDK) zeigt ihn bei
+„Signer #1 certificate SHA-256 digest“. Wie die Scripts hat die APK einen Herkunftsnachweis:
+`gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>`.
+
 **Der Update-Helfer prüft das automatisch.** Bevor er eine neue Version startet (Knopf in der App oder nachts), prüft er das Image mit [cosign](https://docs.sigstore.dev/cosign/) gegen den Release-Workflow dieses Repositorys, ein Konto braucht es dafür nicht. Eine ältere Version als die laufende startet er nicht, auch wenn sie echt ist: Ältere Versionen können bekannte Fehler haben (diesen Schutz bekommen bestehende Installationen, wenn sie das Install-Script einmal erneut ausführen). Schlägt die Prüfung fehl, wird die neue Version nicht gestartet, die bisherige läuft weiter, und die App zeigt einen Hinweis. Installationen von vor 0.10.1 bekommen diesen Helfer, wenn sie das Install-Script einmal erneut ausführen. Nur für den Notfall schaltet `OPENAMPERE_VERIFY_IMAGES=nein` beim Dienst `updater` die Prüfung ab.
 
 `install.sh`, `updater.sh` und `tailscale.sh` hängen an jedem Release, zusammen mit `SHA256SUMS`. Auch sie haben einen signierten Herkunftsnachweis (`openampere-<version>.intoto.jsonl`); nach dem Herunterladen prüft `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>`, ob ein Script vom Release-Workflow dieses Repositorys stammt, und zwar aus dieser Version. Die Website liefert die Scripts des neuesten Releases aus (mit derselben `SHA256SUMS`), eine Änderung auf `main` erreicht neue Installationen also erst mit einem Release.
@@ -287,6 +296,22 @@ Wunsch auch die Steuerung von Speicher, Laden aus dem Netz und Heizstab.
 Updates der App aktualisieren auch die Integration. Steuer-Entitäten sind verfügbar, solange in OpenAmpere die
 Steuerung eingeschaltet ist. Hattest du die Integration vorher über HACS? Dann in HACS entfernen und die App neu
 starten; ab dann hält die App sie aktuell.
+
+### Weg 3: Android-Tablet
+
+Für ein Tablet mit Android 7.0 oder neuer, das immer zu Hause im WLAN und am Ladegerät bleibt. Die App bringt den
+ganzen Server mit; einen Rechner, Docker oder Home Assistant brauchst du nicht.
+
+1. **Herunterladen:** Auf dem Tablet die [neueste Version](https://github.com/Gr33ndev/OpenAmpere/releases/latest)
+   öffnen und unter „Assets“ die Datei herunterladen, die auf `.apk` endet.
+2. **Installieren:** Die Datei antippen und erlauben, dass der Browser Apps installieren darf.
+3. **Öffnen:** OpenAmpere starten, Benachrichtigungen und die Ausnahme vom Energiesparen erlauben, ein Passwort
+   festlegen. Der Einrichtungsassistent sucht den Wechselrichter.
+
+Handy und Computer im Heimnetz öffnen OpenAmpere unter `http://<Adresse des Tablets>:8080`. Updates installiert die App
+selbst. Was das Tablet braucht, wie es durchläuft und was dort anders ist, steht in der Anleitung
+[docs/android.de.md](docs/android.de.md). Die App ist mit dem Schlüssel des Projekts signiert, der SHA-256-Fingerabdruck
+des Zertifikats ist `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Release prüfen](#release-prüfen)).
 
 ### Betrieb hinter einem Modbus-Proxy
 

@@ -92,19 +92,21 @@ Full list: [docs/devices.md](docs/devices.md), with what is read and controlled 
 
 ## Installation
 
-OpenAmpere runs in one of two ways. Choose one of them: only one OpenAmpere may talk to the inverter.
+OpenAmpere runs in one of three ways. Choose one of them: only one OpenAmpere may talk to the inverter.
 
 1. **[Standalone](#way-1-standalone)** on a Linux computer with Docker, e.g. a Raspberry Pi, NAS or Proxmox server.
    If you use Home Assistant, you can connect it with the OpenAmpere integration (HACS) when you like.
 2. **[As a Home Assistant app](#way-2-home-assistant-app)**, if you run Home Assistant OS (e.g. on a Home Assistant
    Green or a Raspberry Pi). OpenAmpere then runs inside Home Assistant and opens in its sidebar.
+3. **[On an Android tablet](#way-3-android-tablet)**, if you have no Linux computer. The tablet stays at home on the
+   charger and is your server.
 
-| | Way 1: standalone | Way 2: Home Assistant app |
-|---|---|---|
-| Runs on | its own Linux computer with Docker | Home Assistant OS |
-| Opens | in the browser, also as an app on the phone | in the sidebar of Home Assistant, and in the browser by IP address |
-| Home Assistant | optional: install the integration via HACS | the app brings the integration along: no HACS |
-| Updates | in OpenAmpere, at the push of a button or at night | through Home Assistant |
+| | Way 1: standalone | Way 2: Home Assistant app | Way 3: Android tablet |
+|---|---|---|---|
+| Runs on | its own Linux computer with Docker | Home Assistant OS | an Android tablet (Android 7 or newer) |
+| Opens | in the browser, also as an app on the phone | in the sidebar of Home Assistant, and in the browser by IP address | in the app on the tablet, and in the browser by the tablet's address |
+| Home Assistant | optional: install the integration via HACS | the app brings the integration along: no HACS | optional: install the integration via HACS |
+| Updates | in OpenAmpere, at the push of a button or at night | through Home Assistant | in OpenAmpere, at the push of a button or at night; the app installs them itself |
 
 ### Way 1: standalone
 
@@ -208,6 +210,13 @@ gh attestation verify oci://ghcr.io/gr33ndev/openampere-ha-app:<version> --owner
 
 Home Assistant itself does not check this when it installs or updates the app; run the command above if you want to be sure.
 
+The [Android app](#way-3-android-tablet) (`openampere-<version>.apk`) is signed with the project's key. Android installs
+an update only when it is signed with the same key as the installed app, and the app checks this itself before every
+update. The SHA-256 fingerprint of the certificate is
+`26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886`; `apksigner verify --print-certs openampere-<version>.apk` (Android SDK) shows it at
+"Signer #1 certificate SHA-256 digest". Like the scripts, the APK has a build provenance:
+`gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>`.
+
 **The update helper checks this automatically.** Before it starts a new version (update button in the app or at night), it verifies the image with [cosign](https://docs.sigstore.dev/cosign/) against the release workflow of this repository; no account is needed. It does not start an older version than the one running, even a genuine one: older versions can have known flaws (existing installations get this protection by running the install script once more). If the check fails, the new version is not started and the previous one keeps running, with a message in the app. Installations from before 0.10.1 get this helper by running the install script once more. Only for emergencies, `OPENAMPERE_VERIFY_IMAGES=nein` in the `updater` service turns the check off.
 
 `install.sh`, `updater.sh` and `tailscale.sh` are attached to every release together with `SHA256SUMS`. They come with a signed build provenance as well (`openampere-<version>.intoto.jsonl`); after downloading, `gh attestation verify install.sh --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>` checks that a script comes from the release workflow of this repository and from that version. The website serves the scripts of the latest release (with the same `SHA256SUMS`), so a change on `main` reaches new installations only with a release.
@@ -287,6 +296,22 @@ it control of the battery, charging from the grid and the immersion heater.
 Updates of the app update the integration as well. Control entities are available while control is switched on in
 OpenAmpere. Had the integration through HACS before? Remove it in HACS and restart the app; from then on the app keeps
 it up to date.
+
+### Way 3: Android tablet
+
+For a tablet with Android 7.0 or newer that always stays at home in the Wi-Fi and on the charger. The app brings the
+whole server along; you need no computer, Docker or Home Assistant.
+
+1. **Download:** on the tablet, open the [latest version](https://github.com/Gr33ndev/OpenAmpere/releases/latest) and
+   download the file under "Assets" that ends in `.apk`.
+2. **Install:** tap the file and allow the browser to install apps.
+3. **Open:** start OpenAmpere, allow notifications and the battery optimisation exception, choose a password. The
+   setup assistant looks for the inverter.
+
+Phones and computers in the home network open OpenAmpere at `http://<address of the tablet>:8080`. The app installs
+updates itself. What the tablet needs, how to keep it running and what is different there is in the guide
+[docs/android.md](docs/android.md). The app is signed with the project's key; the SHA-256 fingerprint of the
+certificate is `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Verifying a release](#verifying-a-release)).
 
 ### Running behind a Modbus proxy
 

@@ -25,7 +25,7 @@ writes as safety-relevant (see below).
 | `web/` | React + Vite + TypeScript web app; `web/src/demo/` is an in-browser fake server for the public demo |
 | `web/src/locales/<lang>/` | App texts: `<area>.json` per area plus `meta.json`; `web/src/i18n.tsx` has `t()`/`tx()` |
 | `site/` | Project website: `pages/*.html` templates, `locales/<lang>/`, built by `scripts/build-site.sh` |
-| `android/` | Android app (#567, in progress): the server through Chaquopy in a foreground service, the web app in a WebView; `scripts/android-wheels.sh` builds pydantic-core, cryptography and cffi for it. See [android/README.md](android/README.md) |
+| `android/` | Android app (#567): the server through Chaquopy in a foreground service, the web app in a WebView; `scripts/android-wheels.sh` builds pydantic-core, cryptography and cffi for it. See [android/README.md](android/README.md) |
 | `custom_components/openampere/` | Home Assistant integration (HACS); tests in `tests_ha/` |
 | `ha-app/`, `repository.yaml` | Home Assistant app (#300): config for the Supervisor, start script of the image stage `ha-app`, `DOCS.md` (the English guide shown in Home Assistant; German: `docs/homeassistant-app.de.md`) |
 | `scripts/` | `install.sh` (end-user installer), `updater.sh` / `tailscale.sh` (helper containers), `release.sh`, `deps.sh`, `i18n_messages.py`, … |
@@ -113,24 +113,27 @@ check: remove the label `ai-review` and add it again, once), say so instead of c
 - **Legal/trademarks:** no code, graphics or texts from the Ampere.IQ app. Name companies and products only
   descriptively. Keep the "no affiliation" and "not legal advice" notes intact when editing README or website.
 
-## Three ways to run OpenAmpere
+## Four ways to run OpenAmpere
 
-Every change reaches owners in three ways, all built from the same release (#300). Think of all three:
+Every change reaches owners in four ways, all built from the same release (#300, #567). Think of all four:
 
 1. **Standalone with Docker** (`install.sh`): the default image, update and Tailscale helper containers.
 2. **Home Assistant app** (`ha-app/`, image stage `ha-app`): the same code in "app mode" (`ha_app.active()`,
    `SUPERVISOR_TOKEN`). Opened in the Home Assistant sidebar (ingress) and by IP on another port; no helper containers,
    updates come from Home Assistant.
-3. **Home Assistant integration** (`custom_components/openampere/`): installed through HACS for way 1, brought along
-   and installed by the app for way 2 (same version). It is only a client: it works only while an OpenAmpere server
-   runs (way 1 or 2) and talks to its external API, never to the inverter. Nothing the integration offers may bypass
-   the checks of the server.
+3. **Android app** (`android/`, an APK in every release): the same code through Chaquopy on a tablet in "Android mode"
+   (`android.active()`), the web app in a WebView. No helper containers, Docker or host; the app installs its own
+   updates through the same files as the update helper (`update/`).
+4. **Home Assistant integration** (`custom_components/openampere/`): installed through HACS for ways 1 and 3, brought
+   along and installed by the app for way 2 (same version). It is only a client: it works only while an OpenAmpere
+   server runs (way 1, 2 or 3) and talks to its external API, never to the inverter. Nothing the integration offers
+   may bypass the checks of the server.
 
 - **Web app:** only paths relative to the page (`appUrl()`, no `"/…"` in `fetch`, `href` or `src`); the app runs under
   the ingress address `/api/hassio_ingress/<token>/`. `window.location` is the address of Home Assistant there; use
   `status.home_assistant` for the direct address. `web/ui-tests/ingress.spec.ts` covers this.
-- **Backend:** a feature that needs a helper container, the host or Docker does not exist in the app; say so in the
-  app (as updates and remote access do). Through the sidebar only **admins of Home Assistant** count as logged in
+- **Backend:** a feature that needs a helper container, the host or Docker does not exist in the Home Assistant app
+  or on the tablet; say so in the app (as updates and remote access do). Through the sidebar only **admins of Home Assistant** count as logged in
   (`ha_admin`): `panel_admin` only hides the sidebar entry, the Supervisor forwards every user. Never trust a
   forwarded header for the sidebar itself. New files in the data folder end up in Home Assistant backups.
 - **Root in the app:** only `ha-app/start.sh` (and `openampere ha-integration` from it) runs as root; it must not read
@@ -143,9 +146,18 @@ Every change reaches owners in three ways, all built from the same release (#300
 - **App config:** new rights, ports, capabilities or file access go into `ha-app/config.yaml` and, if needed,
   `ha-app/apparmor.txt` (the profile limits capabilities and network types). `tests/test_ha_app_config.py` checks the
   config against the code.
+- **Tablet:** it can be switched off, run empty or leave the house at any moment, so continuous control only through
+  the watchdog (see below), and a gap in which OpenAmpere did not run is no outage. A new Python dependency needs an
+  Android build for 32- and 64-bit ARM (Chaquopy's index, or `scripts/android-wheels.sh`); the `android` CI job
+  builds the APK and `android-emulator` starts it. Texts of the app itself (notification, update messages) are in
+  `web/src/locales/<lang>/android.json`. The web app must run in the WebView of an old tablet (Chrome 91).
+- **Release key of the app:** never in the repository. Its certificate fingerprint (`android/signing-certificate.sha256`)
+  is published in README, README.de, GOVERNANCE.md, the guides and the website; `tests/test_android_fingerprint.py`
+  keeps them the same ([docs/android-signing.md](docs/android-signing.md)).
 - **Docs:** the installation is described per way (README, README.de, website): way 1 with "Connect Home Assistant"
-  (HACS), way 2 with "Sensors and control in Home Assistant" (no HACS). The app guide is `ha-app/DOCS.md` (English,
-  shown in Home Assistant) and `docs/homeassistant-app.de.md`.
+  (HACS), way 2 with "Sensors and control in Home Assistant" (no HACS), way 3 with the guide `docs/android.md` and
+  `docs/android.de.md`. The app guide is `ha-app/DOCS.md` (English, shown in Home Assistant) and
+  `docs/homeassistant-app.de.md`.
 
 ## Writing to the inverter (safety)
 

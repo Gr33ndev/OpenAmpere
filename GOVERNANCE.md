@@ -34,6 +34,8 @@ and every installation must run the install script again.
 The Android app (#567) is trusted through its signing key instead: Android installs an update only when it is signed
 with the same key as the installed app. The maintainer holds the key, in the GitHub environment `android-release`
 (only for version tags and `main`) and in an offline backup ([docs/android-signing.md](docs/android-signing.md)).
+The SHA-256 fingerprint of its certificate is
+`26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` (also in `android/signing-certificate.sha256`).
 Handing it over, or losing it, decides who can ship updates to tablets; a new maintainer gets it only together with
 the right to make releases.
 
