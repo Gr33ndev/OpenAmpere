@@ -327,6 +327,8 @@ class Collector:
                 raise_if_cancelled()
                 if isinstance(err, WrongDevice):
                     self._note_wrong_device(err)
+                else:  # that device is gone too (e.g. no Wi-Fi): nothing left to take over
+                    self.wrong_device = self._wrong_serial = None
                 try:
                     self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
                 except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling

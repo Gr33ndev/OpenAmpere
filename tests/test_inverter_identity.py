@@ -461,3 +461,22 @@ def test_another_device_leaves_no_full_serial_number_in_reports(tmp_path):
     runtime.storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
     assert privacy.for_report(runtime).apply(f"known {OWN}") == "known 60BH…01"
     runtime.storage.close()
+
+
+async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path):
+    """Review of #568: after the other device a timeout or no network: nothing to take over any more."""
+    storage = Storage(tmp_path / "t.db")
+    storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
+    server, port = await start(foxess(OTHER))
+    collector = Collector(FoxessDriver("127.0.0.1", port, 247), storage, 0.2, 30)
+    collector.start()
+    try:
+        await wait_for(lambda: collector.wrong_device is not None)
+        server.close()
+        await server.wait_closed()
+        await wait_for(lambda: collector.wrong_device is None, seconds=20)
+        assert not await collector.accept_device("127.0.0.1")
+        assert storage.get_meta("known_device")["serial"] == OWN
+    finally:
+        await collector.stop()
+        storage.close()
