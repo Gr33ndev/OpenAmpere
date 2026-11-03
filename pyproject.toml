@@ -17,6 +17,8 @@ dependencies = [
     "websockets>=12",
     "pyyaml>=6",
     "cryptography>=42",
+    # time zones where the system has none: the Android app (#567); on Linux Python keeps using the system's
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]

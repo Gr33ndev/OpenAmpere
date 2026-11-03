@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
+# SPDX-License-Identifier: MIT
+.gradle/
+build/
+local.properties
+# built by scripts/android-wheels.sh
+wheels/

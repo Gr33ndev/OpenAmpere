@@ -25,6 +25,7 @@ writes as safety-relevant (see below).
 | `web/` | React + Vite + TypeScript web app; `web/src/demo/` is an in-browser fake server for the public demo |
 | `web/src/locales/<lang>/` | App texts: `<area>.json` per area plus `meta.json`; `web/src/i18n.tsx` has `t()`/`tx()` |
 | `site/` | Project website: `pages/*.html` templates, `locales/<lang>/`, built by `scripts/build-site.sh` |
+| `android/` | Android app (#567, in progress): the server through Chaquopy in a foreground service, the web app in a WebView; `scripts/android-wheels.sh` builds pydantic-core for it. See [android/README.md](android/README.md) |
 | `custom_components/openampere/` | Home Assistant integration (HACS); tests in `tests_ha/` |
 | `ha-app/`, `repository.yaml` | Home Assistant app (#300): config for the Supervisor, start script of the image stage `ha-app`, `DOCS.md` (the English guide shown in Home Assistant; German: `docs/homeassistant-app.de.md`) |
 | `scripts/` | `install.sh` (end-user installer), `updater.sh` / `tailscale.sh` (helper containers), `release.sh`, `deps.sh`, `i18n_messages.py`, … |
@@ -49,6 +50,7 @@ cd web && npm run test:ui                                    # UI tests (Playwri
 scripts/build-site.sh                                        # website + demo into _site/ (needs web/node_modules)
 scripts/i18n_messages.py --missing                           # server messages without a key in locales/de.json
 scripts/deps.sh                                              # after dependency changes: lockfiles + license list (uv)
+cd android && ./gradlew assembleDebug                       # Android app (after npm run build and scripts/android-wheels.sh)
 ```
 
 CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo, check:i18n, check:devices), `ui` (Playwright), `docker`, `homeassistant`,

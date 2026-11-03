@@ -20,3 +20,13 @@ test("the steps for the phone on a connected server read as before", async ({ pa
   await open(page, "more/remote");
   await expect(page.locator(".steps-list li").first()).toHaveText("Die Tailscale-App installieren.");
 });
+
+// the WebView of old tablets (Chrome 91 in the Android 11 emulator) has no HTMLMetaElement.media: the app started
+// with an empty page there
+test("the app starts in a browser without HTMLMetaElement.media", async ({ page }) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(HTMLMetaElement.prototype, "media");
+  });
+  await open(page, "");
+  await expect(page.locator(".page-head")).toBeVisible();
+});
