@@ -31,11 +31,13 @@ LOCAL = "http://127.0.0.1:18080"  # adb forward to the app's port 8080
 SIMULATOR_PORT = 5020
 SDK = Path(os.environ.get("ANDROID_HOME", ""))
 EMULATOR_LOG = Path(tempfile.gettempdir()) / "openampere-smoke-emulator.log"
-# avdmanager and the emulator look for the AVD in different places on some systems: one place for both
-os.environ.setdefault("ANDROID_AVD_HOME", str(Path(tempfile.gettempdir()) / "openampere-smoke-avd"))
-# the whole test gives up after this, before the CI job's timeout (15 minutes), so the logs are still printed
-BUDGET_END = time.monotonic() + 12 * 60
-emulator: subprocess.Popen | None = None  # every wait gives up at once when it stopped (no KVM, a crash)
+SIMULATOR_LOG = Path(tempfile.gettempdir()) / "openampere-smoke-simulator.log"
+# the whole test gives up after this, well before the CI job's timeout (15 minutes, with setup and cleanup), so the
+# logs are still printed
+BUDGET_END = time.monotonic() + 9 * 60
+# every wait gives up at once when one of them stopped (no KVM, a crash, the simulator's port taken)
+emulator: subprocess.Popen | None = None
+simulator: subprocess.Popen | None = None
 
 
 def adb(*args: str, check: bool = True, timeout: float = 120) -> str:
@@ -48,6 +50,8 @@ def wait(what: str, condition, timeout: float, every: float = 2.0):
     while time.monotonic() < end:
         if emulator and emulator.poll() is not None:
             sys.exit(f"FAILED: {what}: the emulator stopped (exit code {emulator.returncode})")
+        if simulator and simulator.poll() is not None:
+            sys.exit(f"FAILED: {what}: the simulator stopped (exit code {simulator.returncode})")
         try:
             result = condition()
         except Exception:  # noqa: BLE001 - not there yet
@@ -75,6 +79,16 @@ def start_emulator(image: str, avd: str) -> None:
     print("ok: emulator image installed", flush=True)
     subprocess.run([str(tools / "avdmanager"), "create", "avd", "--force", "-n", avd, "-k", image, "-d", "pixel_c"],
                    check=True, input="no\n", text=True, stdout=subprocess.DEVNULL, timeout=120)
+    # avdmanager and the emulator look for AVDs in different folders on some systems (on the CI runner): tell the
+    # emulator where avdmanager put it
+    if "ANDROID_AVD_HOME" not in os.environ:
+        homes = [Path(os.environ.get("ANDROID_USER_HOME", Path.home() / ".android")) / "avd",
+                 Path.home() / ".android" / "avd", Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+                 / ".android" / "avd"]
+        found = next((home for home in homes if (home / f"{avd}.ini").exists()), None)
+        if not found:
+            sys.exit(f"FAILED: avdmanager created no {avd}.ini in {', '.join(map(str, homes))}")
+        os.environ["ANDROID_AVD_HOME"] = str(found)
     # without hardware acceleration the emulator takes hours to boot: stop here instead
     accel = subprocess.run([str(SDK / "emulator" / "emulator"), "-accel-check"], capture_output=True, text=True,
                            timeout=60)
@@ -96,9 +110,14 @@ def main() -> None:
     parser.add_argument("--avd", default="openampere-smoke")
     args = parser.parse_args()
 
+    global simulator
+    EMULATOR_LOG.unlink(missing_ok=True)  # only this run's
     simulator = subprocess.Popen([sys.executable, "-m", "openampere.simulator", "--port", str(SIMULATOR_PORT),
-                                  "--speed", "20"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                  "--speed", "20"], stdout=SIMULATOR_LOG.open("w"), stderr=subprocess.STDOUT)
     try:
+        time.sleep(2)  # an import error or a taken port shows before minutes go into booting the emulator
+        if simulator.poll() is not None:
+            sys.exit(f"FAILED: the simulator did not start (exit code {simulator.returncode})")
         start_emulator(args.image, args.avd)
         adb("install", "-r", str(args.apk))
         # as if the owner said yes to the app's first question (leave it out of battery optimisation); otherwise
@@ -147,8 +166,9 @@ def main() -> None:
              lambda: json.load(urllib.request.urlopen(f"{LOCAL}/api/status", timeout=5))["connected"], 120)
         print("smoke test passed", flush=True)
     except BaseException:
-        if EMULATOR_LOG.exists():
-            print(EMULATOR_LOG.read_text(errors="replace")[-3000:], flush=True)
+        for log in (SIMULATOR_LOG, EMULATOR_LOG):
+            if log.exists():
+                print(f"--- {log.name}", log.read_text(errors="replace")[-3000:], sep="\n", flush=True)
         if emulator and emulator.poll() is None:
             print(adb("logcat", "-d", "-s", "OpenAmpere:*", "python.stderr:*", check=False, timeout=30)[-6000:],
                   flush=True)
