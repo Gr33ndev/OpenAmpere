@@ -70,11 +70,13 @@ NDK="${ANDROID_NDK_HOME:-${ANDROID_HOME:?ANDROID_HOME or ANDROID_NDK_HOME must b
 BIN=$(echo "$NDK"/toolchains/llvm/prebuilt/*/bin)
 mkdir -p "$WORK" "$OUT"
 cd "$WORK"
-# maturin, and cffi of requirements.lock for cryptography's build, which runs it on the host to write its C code
-if [ ! -x tools/bin/python3.11 ] || ! tools/bin/python -c 'import cffi' 2>/dev/null; then
+# maturin, and cffi of requirements.lock for cryptography's build, which runs it on the host to write its C code;
+# made again when one of the locks changes them
+{ cat "$ROOT/android/requirements-build.lock"; pinned cffi; pinned pycparser; } > tools-requirements.txt
+if ! cmp -s tools-requirements.txt tools/requirements.txt; then
   rm -rf tools && python3.11 -m venv tools
-  { pinned cffi; pinned pycparser; } > tools-cffi.txt
-  tools/bin/pip -q install --require-hashes -r "$ROOT/android/requirements-build.lock" -r tools-cffi.txt
+  tools/bin/pip -q install --require-hashes -r tools-requirements.txt
+  cp tools-requirements.txt tools/requirements.txt
 fi
 
 PYDANTIC_CORE=$(source_archive pydantic-core)
