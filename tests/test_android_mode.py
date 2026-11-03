@@ -119,11 +119,9 @@ def test_a_restart_runs_the_command_again_except_in_the_app(tmp_path, monkeypatc
 def test_another_app_on_the_port_is_said_before_the_server_starts():
     import socket
 
-    with socket.socket() as other:
-        other.bind(("0.0.0.0", 0))
-        other.listen()
-        with pytest.raises(SystemExit, match=f"Port {other.getsockname()[1]} wird schon von einer anderen App"):
-            android.check_port(other.getsockname()[1])
+    port = _taken_port()
+    with pytest.raises(SystemExit, match=f"Port {port} wird schon von einer anderen App"):
+        android.check_port(port)
     with socket.socket() as free:
         free.bind(("0.0.0.0", 0))
         port = free.getsockname()[1]
@@ -135,3 +133,26 @@ def test_why_the_server_stopped_for_the_owner():
     assert android.stop_reason(SystemExit(0)) is None
     assert android.stop_reason(SystemExit("Kein Schreibzugriff auf …")) == "Kein Schreibzugriff auf …"
     assert "Fehlercode 1" in android.stop_reason(SystemExit(1))  # uvicorn could not open its port
+
+
+def test_the_reason_follows_the_language_of_the_tablet():
+    assert android.stop_reason(SystemExit(1), "en") == ("OpenAmpere stopped with error code 1. Please send a "
+                                                         "diagnostics report.")
+    with pytest.raises(SystemExit) as stop:
+        android.check_port(_taken_port())
+    assert android.stop_reason(stop.value, "en").startswith("Port ")
+    assert "is already used by another app" in android.stop_reason(stop.value, "en")
+    assert "wird schon von einer anderen App" in android.stop_reason(stop.value, "de")
+
+
+_held = []
+
+
+def _taken_port() -> int:
+    import socket
+
+    other = socket.socket()
+    other.bind(("0.0.0.0", 0))  # as another app on the tablet: on every interface, like the server
+    other.listen()
+    _held.append(other)  # kept open until the end of the test run
+    return other.getsockname()[1]

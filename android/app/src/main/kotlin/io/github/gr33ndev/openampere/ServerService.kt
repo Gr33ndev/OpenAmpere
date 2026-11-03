@@ -21,6 +21,7 @@ import android.util.Log
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
+import java.util.Locale
 
 /**
  * The server of OpenAmpere (#567), around the clock: a foreground service with a permanent notification, so Android
@@ -71,7 +72,8 @@ class ServerService : Service() {
         }, "openampere-stable").apply { isDaemon = true }.start()
         val reason: String? = try {
             if (!Python.isStarted()) Python.start(AndroidPlatform(this))
-            Python.getInstance().getModule("openampere_app").callAttr("run", filesDir.absolutePath)?.toString()
+            Python.getInstance().getModule("openampere_app")
+                .callAttr("run", filesDir.absolutePath, Locale.getDefault().language)?.toString()
         } catch (e: Throwable) {
             Log.e(TAG, "server failed", e)
             e.message ?: e.toString()

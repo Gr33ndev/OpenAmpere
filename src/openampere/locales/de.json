@@ -438,6 +438,7 @@
     "workModeKeepControlled": "Unter echter Steuerung muss der Betriebsmodus „Gesteuert“ bleiben. Schalte zuerst die echte Steuerung aus, dann kannst du ihn ändern."
   },
   "android": {
-    "portInUse": "Port {port} wird schon von einer anderen App auf dem Tablet benutzt. Bitte beende oder deinstalliere diese App und starte das Tablet neu."
+    "portInUse": "Port {port} wird schon von einer anderen App auf dem Tablet benutzt. Bitte beende oder deinstalliere diese App und starte das Tablet neu.",
+    "exitCode": "OpenAmpere wurde mit dem Fehlercode {code} beendet. Bitte schick einen Diagnosebericht."
   }
 }

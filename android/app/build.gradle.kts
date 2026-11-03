@@ -148,7 +148,9 @@ val androidTexts = tasks.register("androidTexts") {
         val order = german.mapValues { (_, text) -> Regex("""\{(\w+)\}""").findAll(text).map { it.groupValues[1] }.distinct().toList() }
         fun resource(text: String, names: List<String>): String {
             var out = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                .replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("%", "%%")
+                .replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
+            // % only means something to getString with arguments: doubled only in texts with placeholders
+            if (names.isNotEmpty()) out = out.replace("%", "%%")
             if (out.startsWith("@") || out.startsWith("?")) out = "\\" + out
             names.forEachIndexed { i, name -> out = out.replace("{$name}", "%${i + 1}\$s") }
             return out
@@ -159,7 +161,10 @@ val androidTexts = tasks.register("androidTexts") {
             file.writeText(
                 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- generated from web/src/locales/*/android.json -->\n<resources>\n" +
                     strings.toSortedMap().entries.joinToString("") { (name, text) ->
-                        "    <string name=\"$name\">${resource(text, order[name] ?: emptyList())}</string>\n"
+                        val names = order[name] ?: emptyList()
+                        // without placeholders a % is text, also for aapt
+                        val plain = if (names.isEmpty()) " formatted=\"false\"" else ""
+                        "    <string name=\"$name\"$plain>${resource(text, names)}</string>\n"
                     } + "</resources>\n",
             )
         }

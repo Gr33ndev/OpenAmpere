@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 import socket
 
+from . import i18n
+
 ENV = "OPENAMPERE_ANDROID"
 
 
@@ -30,11 +32,14 @@ def check_port(port: int) -> None:
                              f"deinstalliere diese App und starte das Tablet neu.") from None
 
 
-def stop_reason(stop: SystemExit) -> str | None:
-    """Why the server stopped, for the owner on the tablet: None if it stopped as asked (e.g. to start again after a
-    restored backup). The messages of SystemExit in the server are German sentences that say what to do."""
+def stop_reason(stop: SystemExit, lang: str | None = None) -> str | None:
+    """Why the server stopped, for the owner on the tablet, in the language of the tablet: None if it stopped as asked
+    (e.g. to start again after a restored backup). The messages of SystemExit in the server are German sentences that
+    say what to do, with keys in locales/."""
     if stop.code in (None, 0):
         return None
     if isinstance(stop.code, str):
-        return stop.code
-    return f"OpenAmpere wurde mit dem Fehlercode {stop.code} beendet. Bitte schick einen Diagnosebericht."
+        reason = stop.code
+    else:
+        reason = f"OpenAmpere wurde mit dem Fehlercode {stop.code} beendet. Bitte schick einen Diagnosebericht."
+    return i18n.translate(reason, lang)
