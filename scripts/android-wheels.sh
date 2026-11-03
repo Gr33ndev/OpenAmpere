@@ -57,10 +57,15 @@ check() {  # file, then the hashes it may have; a download that matches none is 
 }
 
 source_archive() {  # the source of a package; it must be the file requirements.lock pins (its hashes include the
-  # one of the source archive)
-  local file
+  # one of the source archive). Only downloaded: pip download would run the archive's build before the check
+  local file url
   file="$(echo "$1" | tr - _)-$(version "$1").tar.gz"
-  [ -f "$file" ] || tools/bin/pip -q download --no-deps --no-binary :all: "$1==$(version "$1")" -d . >&2
+  if [ ! -f "$file" ]; then
+    url=$(python3 -c 'import json, sys, urllib.request
+release = json.load(urllib.request.urlopen(f"https://pypi.org/pypi/{sys.argv[1]}/{sys.argv[2]}/json"))
+print(next(u["url"] for u in release["urls"] if u["packagetype"] == "sdist"))' "$1" "$(version "$1")")
+    curl -fsSL -o "$file" "$url"
+  fi
   # shellcheck disable=SC2046
   check "$file" $(pinned "$1" | sed -n 's/.*--hash=sha256:\([0-9a-f]*\).*/\1/p')
   echo "$file"
