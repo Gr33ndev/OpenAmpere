@@ -12,3 +12,11 @@ test("remote access on the tablet points to the Tailscale app", async ({ page, a
   await expect(page.getByText("install.sh")).toHaveCount(0); // no command for a Linux server
   expect(await layoutProblems(page)).toEqual([]);
 });
+
+// the Android notice has its own link text: the steps for the phone on a connected server keep theirs
+test("the steps for the phone on a connected server read as before", async ({ page, api }) => {
+  api.override("/api/remote", { available: true, state: "connected", port: 8080, mode: "kernel",
+    address: "http://openampere.example:8080", https: { state: "off" } });
+  await open(page, "more/remote");
+  await expect(page.locator(".steps-list li").first()).toHaveText("Die Tailscale-App installieren.");
+});

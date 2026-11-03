@@ -54,7 +54,7 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
         <div className="card">
           <Notice kind="info">
             {tx("settings.remotePage.android", { port: String(data.port),
-              link: <a href={DOWNLOAD_URL} target="_blank" rel="noopener">{t("settings.remotePage.tailscaleApp")}</a> })}
+              link: <a href={DOWNLOAD_URL} target="_blank" rel="noopener">{t("settings.remotePage.androidTailscaleApp")}</a> })}
           </Notice>
         </div>
       )}
