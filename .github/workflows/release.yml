@@ -169,7 +169,7 @@ jobs:
         run: |
           ndk=$(sed -n 's/^NDK_VERSION="\(.*\)".*/\1/p' scripts/android-wheels.sh)
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null
-      - name: pydantic-core for Android
+      - name: pydantic-core, cryptography and cffi for Android
         if: steps.app.outputs.apk == 'true'
         run: scripts/android-wheels.sh
       - name: Signed APK

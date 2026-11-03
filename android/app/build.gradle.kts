@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // The Android app (#567): the unchanged server of OpenAmpere in a foreground service (Chaquopy), the web app in a
 // WebView. Before building: `cd web && npm run build` (the web app goes into the Python package) and
-// `scripts/android-wheels.sh` (pydantic-core for Android).
+// `scripts/android-wheels.sh` (pydantic-core, cryptography and cffi for Android).
 import java.security.MessageDigest
 
 plugins {
@@ -86,24 +86,15 @@ tasks.configureEach {
 }
 
 // The packages of requirements.lock with their hashes (the Docker image's versions), so pip checks every file that
-// goes into the APK. Native packages come as Chaquopy's Android builds instead (cryptography and cffi only in older
-// versions, which pyproject.toml allows), with the SHA-256 of each file for the three ABIs; pydantic-core from
-// android/wheels/ (scripts/android-wheels.sh), with the hashes of the wheels built there.
+// goes into the APK. Native packages come as Chaquopy's Android builds instead (pyyaml), with the SHA-256 of each file
+// for the three ABIs; pydantic-core, cryptography and cffi, which Chaquopy has only in older versions or not at all,
+// from android/wheels/ (scripts/android-wheels.sh), in the version of requirements.lock with the hashes of the wheels
+// built there.
 val chaquopyWheels = mapOf(
-    "cryptography" to ("42.0.8" to listOf(
-        "efca75f2ad2b0e29e2c6994316af98b59fc8f28161065e599a816678f061258e", // arm64-v8a
-        "7e44183f6d297d75e415da20ead13bb193b9923a27a8f61c31af592f9651ab2b", // armeabi-v7a
-        "9edef96c41a8a7c48d565ee9a706cb436242a43531616a74819c1d7bf32c67b8", // x86_64
-    )),
-    "cffi" to ("1.17.1" to listOf(
-        "87f4d395d14d77f3cbe65a3468904b35214bd68c8c34233bc0fc6422a4c0052b",
-        "8495e21e45face6f5643b0c545fa171175aa41210c496481a211a41083e2377a",
-        "7da440706719d4cce43de1ccae1feba11b55871e2cf279949a97571155b02536",
-    )),
     "pyyaml" to ("6.0.3" to listOf(
-        "75013ba172066d8e009cf8c7a2fa7a2b2d9e83fc9913470d7f5f707872c4885d",
-        "7e4ac4964aaeebc6d8aeedadb05d8936e9e192d119ee011680da57b2cc2c519b",
-        "480ad0e88271416c9d297150dc722680b9ba95b216ed19ecf2f83e96d63ca1aa",
+        "75013ba172066d8e009cf8c7a2fa7a2b2d9e83fc9913470d7f5f707872c4885d", // arm64-v8a
+        "7e4ac4964aaeebc6d8aeedadb05d8936e9e192d119ee011680da57b2cc2c519b", // armeabi-v7a
+        "480ad0e88271416c9d297150dc722680b9ba95b216ed19ecf2f83e96d63ca1aa", // x86_64
     )),
 )
 val chaquopyLibraries = mapOf(
@@ -118,6 +109,7 @@ val chaquopyLibraries = mapOf(
         "752dc7ffa8337196a053d5a58a74c66a9f8b3cfe1afee122b97b5be7762b8a5d",
     )),
 )
+val builtWheels = setOf("pydantic-core", "cryptography", "cffi")
 val wheels: File = rootDir.resolve("wheels")
 fun sha256(file: File): String =
     MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
@@ -134,14 +126,14 @@ requirements.writeText(
             val version = line.substringAfter("==").substringBefore(" ")
             val hashes = when {
                 name in chaquopyWheels -> chaquopyWheels.getValue(name).let { (v, h) -> v to h }
-                name == "pydantic-core" -> version to (wheels.listFiles { f -> f.name.startsWith("pydantic_core-$version-") }
+                name in builtWheels -> version to (wheels.listFiles { f -> f.name.startsWith("${name.replace('-', '_')}-$version-") }
                     ?.map(::sha256)?.takeIf { it.isNotEmpty() }
-                    ?: error("no pydantic-core $version in $wheels: run scripts/android-wheels.sh"))
+                    ?: error("no $name $version in $wheels: run scripts/android-wheels.sh"))
                 else -> null
             }
             hashes?.let { (v, h) -> "$name==$v " + h.joinToString(" ") { "--hash=sha256:$it" } } ?: line
         } +
-        // the native libraries Chaquopy's builds of cffi and pyyaml bring along
+        // the native libraries of cffi (built against Chaquopy's libffi) and of Chaquopy's pyyaml
         chaquopyLibraries.entries.joinToString("\n", postfix = "\n") { (name, pin) ->
             "$name==${pin.first} " + pin.second.joinToString(" ") { "--hash=sha256:$it" }
         },

@@ -4,7 +4,7 @@
 """Generate the license list of what only the Android app (#567) ships, from a built APK.
 
 The APK has the same Python packages as the server (from requirements.lock), except Chaquopy's Android builds that
-android/app/build.gradle.kts pins (cryptography, cffi, pyyaml and the libraries they bring along), plus native parts
+android/app/build.gradle.kts pins (pyyaml and the native libraries of pyyaml and cffi), plus native parts
 only Android needs: Python itself, Chaquopy, OpenSSL, SQLite, the Kotlin standard library (android/licenses/
 components.json with their texts). Chaquopy's builds, with the texts from the APK, and the native parts go into
   - web/public/third-party-licenses-android.json (the app shows it on its licenses page on the tablet) and

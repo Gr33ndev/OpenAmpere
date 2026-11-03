@@ -124,8 +124,8 @@ jobs:
           retention-days: 7
 
   android:
-    # the Android app (#567): pydantic-core for Android, then the APK. Java 17, the Android SDK and Rust come with
-    # the runner; the NDK is installed in the version scripts/android-wheels.sh builds with
+    # the Android app (#567): pydantic-core, cryptography and cffi for Android, then the APK. Java 17, the Android SDK
+    # and Rust come with the runner; the NDK is installed in the version scripts/android-wheels.sh builds with
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -150,7 +150,7 @@ jobs:
         run: |
           ndk=$(sed -n 's/^NDK_VERSION="\(.*\)".*/\1/p' scripts/android-wheels.sh)
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null
-      - name: pydantic-core for Android
+      - name: pydantic-core, cryptography and cffi for Android
         run: scripts/android-wheels.sh
       - name: APK
         run: ./gradlew --no-daemon assembleDebug
