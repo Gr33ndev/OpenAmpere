@@ -38,7 +38,9 @@ class InstallReceiver : BroadcastReceiver() {
                     Updater.writeStatus(context, "confirm", context.getString(R.string.updates_confirmNoNotifications))
                 }
             }
-            PackageInstaller.STATUS_SUCCESS -> Updater.finished(context)
+            // the new version reports "done" and comes back to the front from BootReceiver (MY_PACKAGE_REPLACED),
+            // which Android may deliver before or after this: only one of them may take the marker
+            PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
                 val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "?"
                 Updater.failed(context, context.getString(R.string.updates_installFailed, reason))
