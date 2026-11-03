@@ -57,3 +57,20 @@ test("the license groups are titled in the language of the app", async ({ page, 
   await expect(page.locator(".section-title", { hasText: "App in the browser" })).toBeVisible();
   await expect(page.locator(".section-title", { hasText: "Nur in der Android-App" })).toHaveCount(0);
 });
+
+// the app waits for the owner to confirm the installation on the tablet: the dialog says so and can be closed
+test("the update dialog can be closed while Android waits for the owner", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  api.override("/api/status", { ...status, android: true });
+  api.override("/api/update", {
+    current: status.version, available: true, updater: true, requested: false, check: true, auto: false, android: true,
+    latest: { version: "99.0.0", url: null, notes: "", published: null }, checked: null, error: null,
+    status: { ts: Date.now() / 1000 + 3600, state: "confirm", message: "Tippe auf die Benachrichtigung „Update bereit“." },
+  });
+  await open(page, "");
+  await page.locator(".update-banner").getByRole("button", { name: "Aktualisieren" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator(".notice")).toContainText("Tippe auf die Benachrichtigung");
+  await dialog.getByRole("button", { name: "Schließen" }).click();
+  await expect(dialog).toHaveCount(0);
+});

@@ -26,6 +26,10 @@
     "checksumWrong": "The downloaded file does not match the checksum of the release. The update was not installed, please try again later.",
     "signatureWrong": "The downloaded app is not signed with the key of OpenAmpere. The update was not installed.",
     "notNewer": "Version {version} is not newer than the installed app. There is nothing to install.",
-    "installFailed": "Android did not install the update ({reason}). Please try again later."
+    "installFailed": "Android did not install the update ({reason}). Please try again later.",
+    "allowNoNotifications": "Android does not allow OpenAmpere to install updates yet. On the tablet, open Settings → Apps → OpenAmpere → \"Install unknown apps\", allow it there and start the update again.",
+    "confirmNoNotifications": "Android asks before it installs the update, but OpenAmpere may not show notifications. Allow them under Settings → Apps → OpenAmpere → Notifications and start the update again.",
+    "reopenTitle": "Version {version} is installed",
+    "reopenText": "Tap here to open OpenAmpere again."
   }
 }

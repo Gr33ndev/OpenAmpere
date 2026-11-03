@@ -26,6 +26,10 @@
     "checksumWrong": "Die heruntergeladene Datei passt nicht zur Prüfsumme des Releases. Das Update wurde nicht installiert, bitte versuche es später noch einmal.",
     "signatureWrong": "Die heruntergeladene App ist nicht mit dem Schlüssel von OpenAmpere signiert. Das Update wurde nicht installiert.",
     "notNewer": "Version {version} ist nicht neuer als die installierte App. Es gibt nichts zu installieren.",
-    "installFailed": "Android hat das Update nicht installiert ({reason}). Bitte versuche es später noch einmal."
+    "installFailed": "Android hat das Update nicht installiert ({reason}). Bitte versuche es später noch einmal.",
+    "allowNoNotifications": "Android erlaubt OpenAmpere noch nicht, Updates zu installieren. Öffne auf dem Tablet Einstellungen → Apps → OpenAmpere → „Unbekannte Apps installieren“, erlaube es dort und starte das Update dann noch einmal.",
+    "confirmNoNotifications": "Android fragt nach, bevor es das Update installiert, aber OpenAmpere darf keine Benachrichtigungen zeigen. Erlaube sie unter Einstellungen → Apps → OpenAmpere → Benachrichtigungen und starte das Update dann noch einmal.",
+    "reopenTitle": "Version {version} ist installiert",
+    "reopenText": "Tippe hier, um OpenAmpere wieder zu öffnen."
   }
 }

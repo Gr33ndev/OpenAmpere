@@ -81,6 +81,8 @@ class Updater(private val context: Context) {
     private fun update(version: String) {
         if (!newer(version)) return status("failed", text(R.string.updates_notNewer, version))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+            // without notifications (Android 13 lets the owner decline them) the text names the setting itself
+            if (!notificationsAllowed(context)) return status("failed", text(R.string.updates_allowNoNotifications))
             notify(
                 ALLOW_ID, text(R.string.updates_allowTitle), text(R.string.updates_allowText),
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
@@ -257,14 +259,22 @@ class Updater(private val context: Context) {
             writeStatus(context, "failed", message)
         }
 
-        /** The new version started (BootReceiver, MY_PACKAGE_REPLACED): the update the app asked for is done. */
-        fun finished(context: Context) {
+        fun installedVersion(context: Context): String =
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+
+        fun notificationsAllowed(context: Context) =
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()
+
+        /** The new version started (BootReceiver, MY_PACKAGE_REPLACED): the update the app asked for is done.
+         *  Returns whether there was one. */
+        fun finished(context: Context): Boolean {
             val marker = File(context.filesDir, "update/installing")
-            if (!marker.isFile) return
+            if (!marker.isFile) return false
             val version = marker.readText().trim()
             marker.delete()
             writeStatus(context, "done", context.getString(R.string.updates_done, version))
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(CONFIRM_ID)
+            return true
         }
 
         fun notify(context: Context, id: Int, title: String, body: String, intent: Intent) {

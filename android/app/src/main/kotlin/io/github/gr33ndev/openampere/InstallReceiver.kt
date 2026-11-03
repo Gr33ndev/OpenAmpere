@@ -21,11 +21,22 @@ class InstallReceiver : BroadcastReceiver() {
                 } else {
                     @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_INTENT)
                 } ?: return
-                Updater.notify(
-                    context, Updater.CONFIRM_ID, context.getString(R.string.updates_confirmTitle, version),
-                    context.getString(R.string.updates_confirmText), confirm,
-                )
-                Updater.writeStatus(context, "confirm", context.getString(R.string.updates_confirm, version))
+                // while the app is in front (the owner pressed "update" on the tablet) Android lets it open its
+                // dialog right away; otherwise this does nothing and the notification leads there
+                try {
+                    context.startActivity(Intent(confirm).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (e: Exception) {
+                    // not allowed from the background: the notification is the way
+                }
+                if (Updater.notificationsAllowed(context)) {
+                    Updater.notify(
+                        context, Updater.CONFIRM_ID, context.getString(R.string.updates_confirmTitle, version),
+                        context.getString(R.string.updates_confirmText), confirm,
+                    )
+                    Updater.writeStatus(context, "confirm", context.getString(R.string.updates_confirm, version))
+                } else {
+                    Updater.writeStatus(context, "confirm", context.getString(R.string.updates_confirmNoNotifications))
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> Updater.finished(context)
             else -> {

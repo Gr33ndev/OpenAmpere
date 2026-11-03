@@ -77,7 +77,9 @@ certificate, and hands it to Android's package installer, writing its progress t
 the owner first before Android 12, and for the first update of an app installed from the browser: a notification
 leads there. From then on the app is its own installer and updates without asking. The owner has to allow
 OpenAmpere to install apps once; a notification leads to that setting. After the update `BootReceiver` starts the
-server again and reports "done".
+server again and reports "done". Replacing the app closes it: if it was in front (a tablet on the wall), it comes back
+by itself before Android 10; from Android 10 Android does not let an app come to the front by itself, so a
+notification "Version … is installed" leads back to it.
 
 To try an update in the emulator, build a second APK with a higher version (`version` in `pyproject.toml`, back
 afterwards), serve a copy of the release (`repos/Gr33ndev/OpenAmpere/releases/tags/v<version>` with the assets'
