@@ -230,7 +230,7 @@ class Rediscovery:
         self.remember()
         known = runtime.storage.get_meta("known_device")
         inverter = runtime.config.inverter
-        if (collector.connected or not known or "inverter.host" in runtime.locked
+        if (collector.connected or not known or not known.get("serial") or "inverter.host" in runtime.locked
                 or known.get("host") != inverter.host or inverter.host.count(".") != 3):
             return None
         # the search is a Modbus one: a device read through its web interface (Senec, Enphase) is never found by it,
@@ -253,5 +253,5 @@ class Rediscovery:
         runtime.storage.log_control("inverter_relocated", {"from": {"host": inverter.host}, "to": {"host": host}},
                                     False, "ok")
         runtime.storage.set_meta("relocated", {"from": inverter.host, "to": host, "ts": now})
-        await runtime.update_settings({"inverter.host": host})
+        await runtime.update_settings({"inverter.host": host}, same_device=True)
         return host

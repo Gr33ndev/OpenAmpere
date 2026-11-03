@@ -88,7 +88,7 @@ class Diagnostics:
         driver = self._driver()
         started = time.monotonic()
         try:
-            words = await driver._read_once(address, count, function)
+            words = await driver.read_once(address, count, function)
             return {"ok": True, "words": words, "ms": round((time.monotonic() - started) * 1000)}
         except ModbusIllegalError as err:
             return {"ok": False, "error": "abgelehnt", "detail": str(err)}
@@ -654,7 +654,7 @@ class Diagnostics:
                 client.close()
         main_ok = True
         try:
-            await driver._read_once(30000, 1, 3)
+            await driver.read_once(30000, 1, 3)
         except Exception:  # noqa: BLE001
             main_ok = False
         # no extra connection: OpenAmpere works, but nothing else (evcc, Home Assistant ...) can read at the same time

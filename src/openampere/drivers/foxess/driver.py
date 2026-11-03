@@ -125,6 +125,12 @@ class FoxessDriver(ModbusDevice):
         log.info("connected: %s (map %s, fc%02d)", self.info, self.map.name, self.read_function)
         return self.info
 
+    async def _read_serial(self) -> str | None:
+        if self.map is not H3_NEW:
+            return None  # the legacy map has no serial number
+        hit = await self._probe(SERIAL_ADDRESS, MODEL_LENGTH, (self.read_function, 3, 4))
+        return _ascii(hit[1]) if hit else None
+
     # ---- reading ---------------------------------------------------------
 
     async def read_raw(self) -> dict[str, float]:

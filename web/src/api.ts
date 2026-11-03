@@ -46,6 +46,8 @@ export type Status = {
   /** days until the device's access token runs out (Enphase, #538; negative: since it ran out), null without one */
   token_days_left?: number | null;
   last_error: string | null;
+  /** another device answers at the inverter's address (#567): since when, serial numbers shortened; null if not */
+  wrong_device?: { since: number; found: string | null; expected: string } | null;
   last_update: number | null;
   stale: boolean;
   poll_interval: number;

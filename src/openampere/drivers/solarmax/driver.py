@@ -63,6 +63,11 @@ class SolarmaxDriver(ModbusDevice):
         log.info("connected: %s", self.info)
         return self.info
 
+    async def _read_serial(self) -> str | None:
+        start, count = STANDARD_BLOCK
+        raw = values({start + i: word for i, word in enumerate(await self._read(start, count, READ_FUNCTION))})
+        return str(int(raw["serial"])) if raw["serial"] else None
+
     async def read_raw(self) -> dict[str, float]:
         words = await self._read_block(*STANDARD_BLOCK)
         if self.has_counters and time.monotonic() >= self._counters_due:

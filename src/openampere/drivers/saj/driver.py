@@ -71,6 +71,10 @@ class SajDriver(ModbusDevice):
         log.info("connected: %s", self.info)
         return self.info
 
+    async def _read_serial(self) -> str | None:
+        words = await self._read(INFO_ADDRESS, INFO_LENGTH, READ_FUNCTION)
+        return ascii_text(words[3:13]) or ascii_text(words[13:23]) or None
+
     async def read_raw(self) -> dict[str, float]:
         words: dict[int, int] = {}
         for start, count in BLOCKS:

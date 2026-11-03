@@ -374,7 +374,8 @@
       "other": "{name}: set to {count} phases at {current} A."
     },
     "wallboxPhasesBack": "{name}: power of the wallbox set back, it chooses the phases itself again.",
-    "ratedPower": "Rated power of the inverter changed from {from} to {to} (type plate)."
+    "ratedPower": "Rated power of the inverter changed from {from} to {to} (type plate).",
+    "inverterAccepted": "New inverter taken over (serial number {from} → {to})."
   },
   "controlPage": {
     "emptyState": "No changes yet.",

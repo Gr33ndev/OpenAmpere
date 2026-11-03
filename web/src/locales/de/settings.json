@@ -374,7 +374,8 @@
       "other": "{name}: auf {count} Phasen mit {current} A gestellt."
     },
     "wallboxPhasesBack": "{name}: Leistung der Wallbox zurückgestellt, sie wählt die Phasen wieder selbst.",
-    "ratedPower": "Nennleistung des Wechselrichters von {from} auf {to} geändert (Typenschild)."
+    "ratedPower": "Nennleistung des Wechselrichters von {from} auf {to} geändert (Typenschild).",
+    "inverterAccepted": "Neuen Wechselrichter übernommen (Seriennummer {from} → {to})."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",

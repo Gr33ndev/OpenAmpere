@@ -85,6 +85,9 @@ class MtecDriver(ModbusDevice):
         log.info("connected: %s", self.info)
         return self.info
 
+    async def _read_serial(self) -> str | None:
+        return ascii_text(await self._read(10000, 8, READ_FUNCTION)) or None
+
     async def read_raw(self) -> dict[str, float]:
         words: dict[int, int] = {}
         for start, count in BLOCKS:

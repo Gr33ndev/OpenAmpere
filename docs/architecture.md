@@ -32,7 +32,7 @@ OpenAmpere is a locally running, open-source app for solar systems with battery 
 
 | Component | Purpose |
 |---|---|
-| `drivers/modbus.py` | Base for all drivers: one persistent, serialized connection. Transient errors such as timeouts or proxy dropouts are retried. Rejections by the device (illegal address) lead to reading registers individually; registers are only blocked if the device really rejects them. |
+| `drivers/modbus.py` | Base for all drivers: one persistent, serialized connection. Transient errors such as timeouts or proxy dropouts are retried. Rejections by the device (illegal address) lead to reading registers individually; registers are only blocked if the device really rejects them. On every new connection the serial number is read again before anything else; another device at the address is neither read nor written (`WrongDevice`, #567). |
 | `drivers/registry.py` | List of drivers and automatic detection, read-only: FoxESS at device address 247, then SAJ at 1 and 2, then Solarmax at 1, then M-TEC at 252, 255 and 247 (plain Modbus TCP, then RTU frames over TCP); Senec (HTTP, `drivers/senec/`) and Enphase (HTTPS with a token, `drivers/enphase/`) only when chosen. |
 | `drivers/foxess/` | FoxESS H3 / H3 Smart / H3 Pro. New or old register map and function code are detected automatically. |
 | `drivers/saj/` | SAJ H2 / HS2. Display only for now. |

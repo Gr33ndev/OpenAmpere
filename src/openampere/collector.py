@@ -9,7 +9,8 @@ import logging
 import time
 
 from .drivers.base import DeviceInfo, InverterDriver, Snapshot, raise_if_cancelled
-from .drivers.modbus import friendly_error
+from .drivers.modbus import WrongDevice, friendly_error
+from . import privacy
 from .outages import Outages
 from .storage import Storage
 
@@ -19,6 +20,8 @@ MAX_TRANSIENT = 3  # consecutive temporary errors tolerated before the inverter 
 # below this, the owner is warned: SQLite needs room for its journal, and a full disk stops the history (#170)
 LOW_DISK_BYTES = 200 * 1024 * 1024
 STORAGE_LOG_EVERY_S = 3600  # while writing keeps failing, repeat the error in the log only this often
+WRONG_DEVICE_GONE_AFTER = 3  # other errors in a row after which another device counts as gone (#567)
+KNOWN_DEVICE = "known_device"  # meta: serial number and address of the owner's inverter (#351, #567)
 
 
 def storage_problem(err: BaseException) -> str:
@@ -55,6 +58,16 @@ class Collector:
         self.external_pv = False  # count an extra PV inverter the inverter measures (setting pv.external, #419)
         self.rated_power = (0, 0)  # (reported, confirmed) rated power the owner confirmed (grid.rated_power_w, #492)
         self.external_pv_w: float | None = None  # what that meter reads, also before the owner counts it
+        # the serial number of the owner's inverter (#567): readings and writes only while it answers; a device
+        # whose detection reads none is not checked. Older versions remembered it only with the firmware.
+        # A stored device without one (set up or taken over that way) keeps it so after a restart.
+        known = storage.get_meta(KNOWN_DEVICE)
+        self.known_serial: str | None = (known.get("serial") if isinstance(known, dict)
+                                         else (storage.get_meta("firmware") or {}).get("serial"))
+        self.wrong_device: dict | None = None  # another device answers at the address: since, shortened numbers
+        self._wrong_serial: str | None = None  # its full serial number, for accept_device()
+        self._new_host: str | None = None  # the address of a device the owner just set up, until it answers
+        self._other_errors = 0  # other errors in a row since another device answered
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
 
@@ -91,8 +104,10 @@ class Collector:
         if self.driver is not None:
             await self.driver.close()
 
-    async def reconfigure(self, driver: InverterDriver | None, interval: float, *, release_connection: bool = False) -> None:
-        """Switch to a new inverter connection without restarting the app."""
+    async def reconfigure(self, driver: InverterDriver | None, interval: float, *, release_connection: bool = False,
+                          new_device: str | None = None) -> None:
+        """Switch to a new inverter connection without restarting the app. new_device: the address of another
+        device the owner set up (address, port, unit id or driver), so the device found there is theirs (#567)."""
         await self.stop()
         self.driver = driver
         self.interval = interval
@@ -103,7 +118,58 @@ class Collector:
         self.disconnected_since = None
         self.last_error = None
         self.latest = None
+        self.wrong_device = self._wrong_serial = None
+        if new_device is not None:
+            # stored with the new address as soon as it answers (_note_identity), so a restart right after keeps it;
+            # until then the stored one stays, e.g. for a wrong port or unit id
+            self.known_serial, self._new_host = None, new_device
         self.start()
+
+    async def accept_device(self, host: str) -> bool:
+        """The owner confirms that the other device at `host` is their (new) inverter. False if there is none. One
+        without a serial number cannot be checked from then on, like a device whose detection finds none."""
+        if self.wrong_device is None:
+            return False
+        self.known_serial, self._wrong_serial, self.wrong_device = self._wrong_serial, None, None
+        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host})
+        if self.driver is not None:
+            await self.stop()  # at once, not after the waiting time of the next attempt
+            self.start()
+        return True
+
+    def _note_identity(self, device: DeviceInfo) -> None:
+        """The first inverter seen is the owner's (stored with its address here after a new setup, otherwise by
+        Rediscovery.remember)."""
+        self.wrong_device = self._wrong_serial = None
+        if device.serial and not self.known_serial:
+            self.known_serial = device.serial
+        if self._new_host is not None:
+            # set up by the owner: stored at once, not only by the next watchdog round, also without a serial number
+            # (otherwise a restart would expect the previous inverter's again)
+            try:
+                self.storage.set_meta(KNOWN_DEVICE, {"serial": device.serial, "host": self._new_host})
+            except Exception:  # noqa: BLE001 - must never disturb polling
+                pass
+            self._new_host = None
+
+    def _note_wrong_device(self, err: WrongDevice) -> None:
+        self._other_errors = 0
+        if self.wrong_device is None or self._wrong_serial != err.found:
+            log.warning("another device answers at the inverter's address (serial number %s instead of %s): not "
+                        "read and not controlled", privacy.shorten(err.found), privacy.shorten(err.expected))
+            self._event("anderes_geraet", f"{privacy.shorten(err.found)} statt {privacy.shorten(err.expected)}")
+        self._wrong_serial = err.found
+        self.wrong_device = {"since": (self.wrong_device or {}).get("since") or time.time(),
+                             "found": privacy.shorten(err.found), "expected": privacy.shorten(err.expected)}
+
+    def _note_other_error(self) -> None:
+        """Another error after another device: that device is gone too (e.g. no Wi-Fi) and there is nothing left to
+        take over, but not after a single timeout, which a weak link or a proxy gives now and then."""
+        if self.wrong_device is None:
+            return
+        self._other_errors += 1
+        if self._other_errors >= WRONG_DEVICE_GONE_AFTER:
+            self.wrong_device = self._wrong_serial = None
 
     @property
     def stale(self) -> bool:
@@ -223,6 +289,8 @@ class Collector:
         while True:
             try:
                 if not self.connected:
+                    self.driver.expected_serial = self.known_serial
+                    # a driver checks the device behind every new connection against it before reading (#567)
                     self.device = await self.driver.connect()
                     self.device.confirm_rated_power(*self.rated_power)
                 if self.external_pv:
@@ -236,6 +304,7 @@ class Collector:
                 log.debug("reading took %.0f ms", (time.monotonic() - started) * 1000)
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
+                    self._note_identity(self.device)
                     log.info("inverter connected")
                     self.connected_at = time.time()
                     self._event("verbunden")
@@ -268,6 +337,10 @@ class Collector:
                 raise
             except Exception as err:  # keep running whatever the inverter does
                 raise_if_cancelled()
+                if isinstance(err, WrongDevice):
+                    self._note_wrong_device(err)
+                else:
+                    self._note_other_error()
                 try:
                     self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
                 except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling

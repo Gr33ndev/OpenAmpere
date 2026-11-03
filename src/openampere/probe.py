@@ -264,7 +264,7 @@ class Probe:
         block = Block(address, count)
         started = time.monotonic()
         try:
-            block.words, block.ok = await driver._read_once(address, count, function), True
+            block.words, block.ok = await driver.read_once(address, count, function), True
             block.ms = round((time.monotonic() - started) * 1000)
         except ModbusReadError as err:
             block.exception = err.code

@@ -176,7 +176,9 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")
-        for serial in {device.serial if device else None, stored}:
+        known_device = runtime.storage.get_meta("known_device")  # the owner's inverter, also after a new one (#567)
+        expected = known_device.get("serial") if isinstance(known_device, dict) else None
+        for serial in {device.serial if device else None, stored, expected, runtime.collector.known_serial}:
             if serial:
                 known[serial] = shorten(serial)
     pseudonyms = Pseudonyms(config.inverter.host, known)

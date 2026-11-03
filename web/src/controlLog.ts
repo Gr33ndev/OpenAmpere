@@ -258,6 +258,8 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
       return t("settings.controlLog.update", { from: version(details.from), to: version(details.to) });
     case "inverter_relocated": // found by its serial number after an address change (#351)
       return t("settings.controlLog.inverterRelocated", { from: str(from.host) || unknown(), to: str(to.host) || unknown() });
+    case "inverter_accepted": // another device at the address, confirmed by the owner as their new inverter (#567)
+      return t("settings.controlLog.inverterAccepted", { from: str(from.serial) || unknown(), to: str(to.serial) || unknown() });
     case "wallbox_relocated": // found by its device ID, taken only after it answered there with its local key
       return t("settings.controlLog.wallboxRelocated", {
         name: str(details.name) || unknown(), from: str(from.host) || unknown(), to: str(to.host) || unknown(),

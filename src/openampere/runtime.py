@@ -24,6 +24,8 @@ from .tariffs import Tariffs
 log = logging.getLogger(__name__)
 
 RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")}
+# which device the owner set up, not how to read it; the register map too: the FoxESS legacy map tells no serial number
+DEVICE_KEYS = ("inverter.host", "inverter.port", "inverter.unit", "inverter.driver", "inverter.register_map")
 
 
 def make_driver(config: Config):
@@ -153,8 +155,9 @@ class Runtime:
         """Counts saved changes, so a second device editing an outdated form is noticed."""
         return int(self.storage.get_meta("settings_revision") or 0)
 
-    async def update_settings(self, changes: dict, source: str | None = None) -> dict:
-        """source: who changed them if not the web app, for the control log (#305)."""
+    async def update_settings(self, changes: dict, source: str | None = None, *, same_device: bool = False) -> dict:
+        """source: who changed them if not the web app, for the control log (#305). same_device: a new address of
+        the owner's inverter, found by its serial number (#351)."""
         clean = validate(changes)
         blocked = set(clean) & self.locked
         if blocked:
@@ -219,6 +222,10 @@ class Runtime:
             await self.cloud_import.stop()
             self.cloud_import.reset()
         if any(get_value(old, k) != get_value(new, k) for k in RECONNECT_KEYS):
+            # the owner set up another device: the one found there is theirs; not for a timeout or the poll interval,
+            # which would take over whatever answers at the address now (#567)
+            new_device = not same_device and any(get_value(old, k) != get_value(new, k) for k in DEVICE_KEYS)
             await self.collector.reconfigure(make_driver(new), new.inverter.poll_interval,
-                                             release_connection=new.inverter.connection_mode == "per_poll")
+                                             release_connection=new.inverter.connection_mode == "per_poll",
+                                             new_device=new.inverter.host if new_device else None)
         return self.settings_view()

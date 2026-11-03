@@ -22,6 +22,7 @@
     "logShuttingDown": "OpenAmpere wird beendet",
     "logSwitchedByHand": "von Hand geschaltet",
     "noCurrentReadingsInverter": "Keine aktuellen Messwerte vom Wechselrichter",
+    "noOtherInverterAnswers": "Unter der Adresse antwortet kein anderer Wechselrichter.",
     "noReadingsYet": "Noch keine Messwerte",
     "notEnoughSpaceBackup": "Nicht genug freier Speicherplatz für die Sicherung.",
     "notEnoughSpaceFile": "Nicht genug freier Speicherplatz für die Datei.",

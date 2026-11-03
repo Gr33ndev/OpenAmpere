@@ -638,6 +638,8 @@ def create_app(runtime: Runtime) -> FastAPI:
             "configured": collector.configured,
             "connected": collector.connected,
             "last_error": collector.last_error,
+            # another device answers at the inverter's address (#567): since when, serial numbers shortened
+            "wrong_device": collector.wrong_device,
             "last_update": latest.timestamp if latest else None,
             "stale": collector.stale,
             "timezone": runtime.config.timezone,
@@ -703,6 +705,16 @@ def create_app(runtime: Runtime) -> FastAPI:
     async def setup_test(target: Target):
         return await discovery.test_connection(runtime, target.host.strip(), target.port, target.unit, target.driver,
                                                token=target.token.strip())
+
+    @app.post("/api/setup/accept-device")
+    async def setup_accept_device(request: Request):
+        """The other device at the address is the owner's new inverter (#567): read and controlled from now on."""
+        wrong = collector.wrong_device
+        if wrong is None or not await collector.accept_device(runtime.config.inverter.host):
+            raise HTTPException(409, "Unter der Adresse antwortet kein anderer Wechselrichter.")
+        storage.log_control("inverter_accepted", {"from": {"serial": wrong["expected"]}, "to": {"serial": wrong["found"]},
+                                                  **by(request)}, False, "ok")
+        return {"ok": True}
 
     # ---- battery control -------------------------------------------------
 
