@@ -1,5 +1,7 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
+import type { Status } from "../src/api";
+import { demoRequest } from "../src/demo/server";
 import { expect, layoutProblems, open, test } from "./fixtures";
 
 // #567: on the tablet there is no Tailscale helper, remote access goes through the Tailscale app for Android
@@ -29,4 +31,19 @@ test("the app starts in a browser without HTMLMetaElement.media", async ({ page 
   });
   await open(page, "");
   await expect(page.locator(".page-head")).toBeVisible();
+});
+
+// on the tablet the licenses page also lists what only the Android app ships (scripts/android_licenses.py)
+test("the licenses page on the tablet lists the parts of the Android app", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  api.override("/api/status", { ...status, android: true });
+  await open(page, "more/licenses");
+  await expect(page.locator(".section-title", { hasText: "Nur in der Android-App" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Chaquopy/ })).toBeVisible();
+});
+
+test("the licenses page elsewhere has no Android part", async ({ page }) => {
+  await open(page, "more/licenses");
+  await expect(page.locator(".section-title").first()).toBeVisible();
+  await expect(page.locator(".section-title", { hasText: "Nur in der Android-App" })).toHaveCount(0);
 });

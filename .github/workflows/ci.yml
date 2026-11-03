@@ -157,6 +157,8 @@ jobs:
         working-directory: android
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+      - name: Licenses of the APK up to date
+        run: python3 scripts/android_licenses.py android/app/build/outputs/apk/debug/app-debug.apk --check
 
   docker:
     runs-on: ubuntu-latest

@@ -3,7 +3,9 @@ name: Release
 # A version tag (e.g. v0.2.0, made with scripts/release.sh) builds the Docker image for x86 and ARM
 # (Raspberry Pi), publishes it as ghcr.io/<owner>/openampere (and the Home Assistant app as
 # ghcr.io/<owner>/openampere-ha-app) with an SBOM and a signed build provenance attestation and creates a GitHub release with notes from the commits since the previous tag and the
-# install scripts plus SHA256SUMS attached, with a signed build provenance for them (.intoto.jsonl, #203).
+# install scripts plus SHA256SUMS attached, with a signed build provenance for them (.intoto.jsonl, #203). The Android
+# app (#567) is built, signed with the release key and attached as openampere-<version>.apk, in SHA256SUMS and the
+# provenance as well.
 # "Run workflow" with a tag only (re)writes that release.
 on:
   push:
@@ -105,10 +107,82 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
+  android:
+    # the Android app (#567), signed with the release key (secrets, docs/android-signing.md). Its certificate must be
+    # the one in android/signing-certificate.sha256: Android only installs updates signed with the same key. Also
+    # on a run by hand, from the tag: the release job attests only files built in this run
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0  # for the check below
+      # the release key signs what is built here: only a version tag made by scripts/release.sh whose commit is on
+      # main, as in the release job (GHSA-3xmc-fc67-chgq)
+      - name: The tag is a version tag of main
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::Not a version tag"; exit 1; }
+          [ "$(git cat-file -t "refs/tags/$TAG" 2>/dev/null)" = tag ] \
+            || { echo "::error::$TAG is not an annotated tag of this repository"; exit 1; }
+          py=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          [ "v$py" = "$TAG" ] || { echo "::error::pyproject.toml has $py, the tag is $TAG"; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" != push ]; then
+            git fetch -q origin +refs/heads/main:refs/remotes/origin/main
+            git merge-base --is-ancestor "refs/tags/$TAG^{commit}" refs/remotes/origin/main \
+              || { echo "::error::$TAG is not on main"; exit 1; }
+          fi
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Web app (goes into the app)
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Android NDK
+        run: |
+          ndk=$(sed -n 's/^NDK_VERSION="\(.*\)".*/\1/p' scripts/android-wheels.sh)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null
+      - name: pydantic-core for Android
+        run: scripts/android-wheels.sh
+      - name: Signed APK
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          OPENAMPERE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE" ] || { echo "::error::The secret ANDROID_KEYSTORE is missing (docs/android-signing.md)"; exit 1; }
+          export OPENAMPERE_KEYSTORE="$RUNNER_TEMP/release.jks"
+          echo "$KEYSTORE" | base64 --decode > "$OPENAMPERE_KEYSTORE"
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          rm -f "$OPENAMPERE_KEYSTORE"
+      - name: Signed with the release key
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          found=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          expected=$(cat android/signing-certificate.sha256)
+          echo "certificate $found, expected $expected"
+          [ -n "$found" ] && [ "$found" = "$expected" ] \
+            || { echo "::error::The APK is not signed with the release key"; exit 1; }
+          mkdir apk && cp "$apk" "apk/openampere-${TAG#v}.apk"
+      - name: Licenses of the APK up to date
+        run: python3 scripts/android_licenses.py apk/*.apk --check
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apk
+          path: apk/
+          if-no-files-found: error
+
   release:
-    needs: image
+    needs: [image, android]
     # after a successful image build, or on its own when started by hand
-    if: always() && (needs.image.result == 'success' || github.event_name == 'workflow_dispatch')
+    if: always() && needs.android.result == 'success' && (needs.image.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write  # create the release
@@ -145,7 +219,13 @@ jobs:
               git show "refs/tags/$TAG:scripts/$f" > "assets/$f"
             fi
           done
-          (cd assets && sha256sum *.sh > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: apk
+          path: assets
+      - name: Checksums
+        run: |
+          (cd assets && sha256sum *.sh openampere-*.apk > SHA256SUMS && cat SHA256SUMS)
       # check with: gh attestation verify install.sh --repo Gr33ndev/OpenAmpere \
       #   --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>
       - id: attest

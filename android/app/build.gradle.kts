@@ -34,9 +34,25 @@ android {
         }
     }
 
+    // The release key (#567): Android installs an update only when it is signed with the same key as the installed
+    // app, so this key is what owners trust. It lives only as secrets of the release workflow and in the
+    // maintainers' offline backup (docs/android-signing.md); without these variables a release build is unsigned.
+    val keystore: String? = System.getenv("OPENAMPERE_KEYSTORE")
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("OPENAMPERE_KEYSTORE_PASSWORD")
+                keyAlias = "openampere"
+                keyPassword = System.getenv("OPENAMPERE_KEYSTORE_PASSWORD") // PKCS12: one password for both
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
         }
     }
 

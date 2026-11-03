@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
 import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
-import { ADVISORIES_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
+import { ADVISORIES_URL, ANDROID_LICENSES_DATA_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
 import { amountInput, ct, dayOf, isoDate, kw, num, percent, timeZone, todayIso, updatedLabel } from "./format";
 import { decimalInput, parseDecimal as toNumber, parseWatts } from "./decimal";
@@ -1180,6 +1180,10 @@ export function ChangelogPage({ onBack }: PageProps) {
 
 export function LicensesPage({ onBack }: PageProps) {
   const { data, error, reload } = useResource<LicenseData>(LICENSES_DATA_URL);
+  const { data: status } = useResource<Status>("/api/status");
+  // on the tablet also what only the Android app ships (#567)
+  const { data: android } = useResource<Pick<LicenseData, "groups">>(status?.android ? ANDROID_LICENSES_DATA_URL : null);
+  const groups = [...(data?.groups ?? []), ...(android?.groups ?? [])];
   return (
     <SubPage title={t("common.openSourceLicenses")} onBack={onBack}>
       {!data && <LoadState error={error} onRetry={reload} />}
@@ -1189,7 +1193,7 @@ export function LicensesPage({ onBack }: PageProps) {
             {t("settings.licensesPage.intro")}
           </p>
           <div className="card menu"><LicenseRow pkg={data.self} /></div>
-          {data.groups.map((g) => (
+          {groups.map((g) => (
             <div key={g.title}>
               <div className="section-title">{g.title}</div>
               <div className="card menu">
