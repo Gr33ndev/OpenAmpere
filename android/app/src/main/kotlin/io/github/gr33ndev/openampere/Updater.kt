@@ -9,7 +9,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -42,11 +41,22 @@ class Updater(private val context: Context) {
         }?.readText()?.trim() ?: ""
 
     fun start() {
-        thread(name = "openampere-updater", isDaemon = true) {
-            folder.mkdirs()
+        folder.mkdirs()
+        // the sign of life in a thread of its own, as scripts/updater.sh: a long download must not make the server
+        // think the updater is gone (updates.UPDATER_ALIVE_S)
+        thread(name = "openampere-updater-alive", isDaemon = true) {
             while (true) {
                 try {
                     File(folder, "updater-alive").writeText((System.currentTimeMillis() / 1000).toString())
+                } catch (e: Exception) {
+                    Log.e(TAG, "updater-alive", e)
+                }
+                Thread.sleep(POLL_MS)
+            }
+        }
+        thread(name = "openampere-updater", isDaemon = true) {
+            while (true) {
+                try {
                     request()?.let(::update)
                 } catch (e: Exception) {
                     Log.e(TAG, "updater", e)
@@ -109,30 +119,52 @@ class Updater(private val context: Context) {
         }
         status("restarting", text(R.string.updates_installing, version))
         File(folder, "installing").writeText(version) // BootReceiver says "done" after the new version started
-        install(apk, version)
+        try {
+            install(apk, version)
+        } catch (e: Exception) { // e.g. installing apps was switched off meanwhile, or no space left
+            Log.w(TAG, "install of $version failed", e)
+            apk.delete()
+            failed(context, text(R.string.updates_installFailed, e.message ?: e.javaClass.simpleName))
+        }
     }
 
+    /** Compared by Android's version number, as Android does (android/app/build.gradle.kts): a final version is
+     *  newer than its release candidates. [version] is a final version (STABLE). */
     private fun newer(version: String): Boolean {
-        val installed = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return true
-        val (a, b) = listOf(version, installed).map { v -> v.substringBefore('-').split(".").map { it.toIntOrNull() ?: 0 } }
-        return a.zip(b).firstOrNull { (x, y) -> x != y }?.let { (x, y) -> x > y } ?: false
+        val (major, minor, patch) = version.split(".").map { it.toLong() }
+        val code = (major * 1_000_000 + minor * 1_000 + patch) * 10 + 9
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        @Suppress("DEPRECATION")
+        val installed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
+        return code > installed
     }
 
-    /** The certificates of the downloaded app are the installed app's: anything else Android would refuse anyway,
-     *  but with a message nobody understands. */
+    /** The downloaded app is signed with the installed app's key, or with a key it was rotated to from that one
+     *  (Android 9 and later, docs/android-signing.md): anything else Android would refuse anyway, but with a message
+     *  nobody understands. */
     @Suppress("DEPRECATION")
     private fun sameSigner(apk: File): Boolean {
         val pm = context.packageManager
-        fun certs(info: PackageInfo?): Set<String> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info?.signingInfo?.apkContentsSigners.orEmpty().map { it.toCharsString() }.toSet()
-        } else {
-            info?.signatures.orEmpty().map { it.toCharsString() }.toSet()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val flags = PackageManager.GET_SIGNING_CERTIFICATES
+            val installed = pm.getPackageInfo(context.packageName, flags).signingInfo?.apkContentsSigners.orEmpty()
+                .map { it.toCharsString() }.toSet()
+            val downloaded = pm.getPackageArchiveInfo(apk.path, flags)
+            val signing = downloaded?.signingInfo ?: return false
+            if (downloaded.packageName != context.packageName || installed.isEmpty()) return false
+            val current = signing.apkContentsSigners.map { it.toCharsString() }.toSet()
+            val history = if (signing.hasPastSigningCertificates()) {
+                signing.signingCertificateHistory.map { it.toCharsString() }.toSet()
+            } else {
+                emptySet()
+            }
+            return current == installed || (installed.size == 1 && installed.first() in history)
         }
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES
-        else PackageManager.GET_SIGNATURES
-        val installed = certs(pm.getPackageInfo(context.packageName, flags))
+        val flags = PackageManager.GET_SIGNATURES
+        val installed = pm.getPackageInfo(context.packageName, flags).signatures.orEmpty().map { it.toCharsString() }.toSet()
         val downloaded = pm.getPackageArchiveInfo(apk.path, flags)
-        return downloaded?.packageName == context.packageName && installed.isNotEmpty() && certs(downloaded) == installed
+        return downloaded?.packageName == context.packageName && installed.isNotEmpty() &&
+            downloaded.signatures.orEmpty().map { it.toCharsString() }.toSet() == installed
     }
 
     private fun install(apk: File, version: String) {
@@ -217,6 +249,12 @@ class Updater(private val context: Context) {
             val folder = File(context.filesDir, "update").apply { mkdirs() }
             val json = JSONObject().put("ts", System.currentTimeMillis() / 1000).put("state", state).put("message", message)
             File(folder, "status.json.tmp").apply { writeText(json.toString()) }.renameTo(File(folder, "status.json"))
+        }
+
+        /** The update failed: said in the dialog, and no "done" for it after a later update by hand. */
+        fun failed(context: Context, message: String) {
+            File(context.filesDir, "update/installing").delete()
+            writeStatus(context, "failed", message)
         }
 
         /** The new version started (BootReceiver, MY_PACKAGE_REPLACED): the update the app asked for is done. */

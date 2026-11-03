@@ -30,7 +30,7 @@ class InstallReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_SUCCESS -> Updater.finished(context)
             else -> {
                 val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "?"
-                Updater.writeStatus(context, "failed", context.getString(R.string.updates_installFailed, reason))
+                Updater.failed(context, context.getString(R.string.updates_installFailed, reason))
             }
         }
     }
