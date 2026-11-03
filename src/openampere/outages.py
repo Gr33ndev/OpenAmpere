@@ -44,17 +44,19 @@ def off_grid(snap: Snapshot) -> bool | None:
 def gap_reason(current: dict) -> str:
     """Why there were no readings for a while during an outage:
     - "inverter_off": OpenAmpere kept running and asked in vain, so it had power and only the inverter was gone
-      (switched off, or the connection was lost) (#93)
+      (switched off, or the connection was lost) (#93). On a tablet (#567) that is no proof: it runs on its own
+      battery while the router is dark as well, so there it needs a charged battery before
     - "battery_empty": OpenAmpere was not running either and the charge was low before
     - "no_data": no readings, but the battery was charged, or OpenAmpere runs on a tablet (#567): the tablet has a
       battery of its own and is switched off or taken away, so OpenAmpere not running says nothing about the house
     """
+    soc = current.get("soc_last")
+    low = soc is None or soc <= EMPTY_SOC
     if current.get("polled_in_gap"):
-        return "inverter_off"
+        return "battery_empty" if android.active() and low else "inverter_off"
     if android.active():
         return "no_data"
-    soc = current.get("soc_last")
-    return "battery_empty" if soc is None or soc <= EMPTY_SOC else "no_data"
+    return "battery_empty" if low else "no_data"
 
 
 def _single_reading(outage: dict) -> bool:

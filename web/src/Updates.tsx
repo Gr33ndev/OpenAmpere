@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Status } from "./api";
 import { getJson, postJson, putJson, useResource } from "./api";
-import { t } from "./i18n";
+import { t, tx } from "./i18n";
+import { REPO_URL } from "./links";
 import { navigate } from "./route";
 import { Button, Notice, SwitchRow, toast } from "./ui";
 
@@ -125,7 +126,8 @@ export function UpdatesCard() {
         ) : data.home_assistant ? (
           <Notice kind="info">{t("shell.updatesCard.homeAssistantHint")}</Notice>
         ) : data.android ? (
-          <Notice kind="info">{t("shell.updatesCard.androidHint")}</Notice>
+          <Notice kind="info">{tx("shell.updatesCard.androidHint", { link: <a href={data.latest?.url ?? `${REPO_URL}/releases/latest`}
+            target="_blank" rel="noopener noreferrer">{t("shell.updatesCard.androidDownloadPage")}</a> })}</Notice>
         ) : (
           <Notice kind="info">
             {t("shell.updatesCard.updateHelperHint")}

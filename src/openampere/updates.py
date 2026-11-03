@@ -125,7 +125,8 @@ class Updates:
             raise RuntimeError("Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.")
         if android.active():
             raise RuntimeError("Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Bitte lade sie auf "
-                               "dem Tablet herunter und installiere sie.")
+                               "dem Tablet von der Download-Seite von OpenAmpere auf GitHub herunter (die Datei endet "
+                               "auf .apk) und installiere sie.")
         if not self.updater_ready(now):
             raise RuntimeError("Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.")
         self.request_file.parent.mkdir(parents=True, exist_ok=True)

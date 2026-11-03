@@ -31,7 +31,7 @@ def test_updates_come_as_a_new_version_of_the_app(tmp_path, tablet):
     updates = Updates(Runtime({}, Storage(tmp_path / "t.db")), "1.0.0")
     view = updates.view()
     assert view["android"] is True and "home_assistant" not in view
-    with pytest.raises(RuntimeError, match="OpenAmpere-App"):
+    with pytest.raises(RuntimeError, match="GitHub"):
         updates.request()
     assert not updates.request_file.exists()  # no update helper on the tablet would ever pick it up
 
@@ -62,13 +62,18 @@ def test_a_gap_on_the_tablet_is_missing_data_not_an_empty_battery(tmp_path, tabl
     assert done["dark_since"] == 10 and done["gap_reason"] == "no_data"
 
 
-def test_a_gap_while_the_tablet_kept_asking_is_still_the_inverter(tmp_path, tablet):
+def test_a_gap_while_the_tablet_kept_asking_needs_a_charged_battery_for_the_inverter(tmp_path, tablet):
+    """The tablet runs on while the router is dark as well: asking in vain does not prove that the house had power."""
     outages = Outages(Storage(tmp_path / "t.db"))
     outages.observe(reading(0, True, 12))
     outages.observe(reading(10, True, 10))
     outages.unreachable(600)
-    done = outages.observe(reading(4000, False, 11))
-    assert done["gap_reason"] == "inverter_off"
+    assert outages.observe(reading(4000, False, 11))["gap_reason"] == "battery_empty"
+
+    outages.observe(reading(5000, True, 80))
+    outages.observe(reading(5010, True, 80))
+    outages.unreachable(5600)
+    assert outages.observe(reading(9000, False, 78))["gap_reason"] == "inverter_off"
 
 
 def test_status_says_android(tmp_path, monkeypatch):
