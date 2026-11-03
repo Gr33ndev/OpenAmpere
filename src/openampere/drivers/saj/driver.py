@@ -9,7 +9,8 @@ import math
 import time
 from datetime import datetime
 
-from ..base import BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot, WorkMode
+from ..base import (MAX_PLAUSIBLE_W, SENTINELS, BatterySettings, DeviceInfo, EnergyCounters, ExportLimit, PvInput, Snapshot,
+                    WorkMode)
 from ..modbus import DeviceRefused, ModbusDevice, ModbusIllegalError, ModbusReadError, ascii_text
 from ..regs import Reg, counter_step_wh, decode
 from .registers import (APP_MODE_ADDRESS, APP_MODE_TIME, APP_MODES, BACKUP_SOC_ADDRESS, BLOCKS, CHARGE_ENABLE_ADDRESS, CHARGE_SLOT,
@@ -327,6 +328,18 @@ def to_settings(raw: dict[str, float], settings: list[int] | None = None, backup
                            backup_soc=backup)
 
 
+def house_power(raw: dict[str, float]) -> float | None:
+    """The house from the balance at the inverter: grid + PV + Meter B + battery. The inverter's own 0x40A0 matched
+    it on one device (#419), but on another it was far off while the battery charged or discharged (#576). It is kept
+    as the fallback when a value of the balance is missing or not real."""
+    def real(key: str) -> bool:
+        return key in raw and raw[key] not in SENTINELS and abs(raw[key]) <= MAX_PLAUSIBLE_W
+    if not all(real(key) for key in ("grid_power", "pv_power", "battery_power", "meter_b_pv_power")):
+        return raw.get("house_power")
+    meter_b = max(0.0, raw["meter_b_pv_power"])  # like pv_external_power: standby at night counts as 0
+    return max(0.0, raw["grid_power"] + raw["pv_power"] + meter_b + raw["battery_power"])
+
+
 def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None = None) -> Snapshot:
     """grid_source pins the grid counters to the summed ("sum") or phase-1 ("l1") registers: switching
     between them from one reading to the next would look like a huge energy jump."""
@@ -358,7 +371,7 @@ def to_snapshot(raw: dict[str, float], timestamp: float, grid_source: str | None
         pv_power=pv_power,
         # the meter's direction depends on how it is installed; at night the extra inverter draws a few watts
         pv_external_power=None if g("meter_b_pv_power") is None else max(0.0, g("meter_b_pv_power")),
-        house_power=g("house_power"),
+        house_power=house_power(raw),
         grid_power=g("grid_power"),
         battery_power=g("battery_power"),
         battery_soc=round(raw["battery_soc"], 1) if "battery_soc" in raw else None,

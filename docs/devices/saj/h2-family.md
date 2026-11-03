@@ -77,11 +77,11 @@ All reads use FC03, all writes FC06 (one register at a time). Device address (un
 | 0x4074 / 0x4075 / 0x4076 | PV2 voltage / current / power | as PV1 | R | derived | community |
 | 0x4077 / 0x4078 / 0x4079 | PV3 voltage / current / power | as PV1 | R | derived | community |
 | 0x407A / 0x407B / 0x407C | PV4 voltage / current / power | as PV1 | R | derived | community |
-| 0x40A0 | House consumption | I16, W | R | derived | community |
+| 0x40A0 | House consumption as the inverter computes it. On one device it matched the balance (grid + PV + Meter B + battery, [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419)); on a 0x005E with a second inverter at Meter B it was far off while the battery charged or discharged (about 0.5 kW too high while charging at about 1 kW, half the balance while discharging). OpenAmpere uses it only as a fallback | I16, W | R | derived | community; [#576](https://github.com/Gr33ndev/OpenAmpere/issues/576) |
 | 0x40A3 | Power measured by a second meter at the inverter (Meter B, "CT PV power"): an extra PV inverter without its own connection. Not part of 0x40A5; on one device the balance only closed with it. Negative values (standby at night, meter direction) are counted as 0. | I16, W | R | derived | stanus74/home-assistant-saj-h2-modbus ("CT_PVPowerWatt"); one owner's measurements, [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419) |
 | 0x40A5 | PV power of the inverter itself, total (if missing, the sum of PV1–4); without Meter B (0x40A3) | I16, W | R | derived | community |
-| 0x40A6 | Battery power | I16, W, + = discharging | R | open | evcc-io/evcc saj-h2 template; sign not yet checked on a device |
-| 0x40AD | Grid power (system meter) | I16, W, + = import | R | open | evcc-io/evcc saj-h2 template; sign not yet checked on a device |
+| 0x40A6 | Battery power. On a 0x005E the state of charge rose while it was negative | I16, W, + = discharging | R | derived | evcc-io/evcc saj-h2 template; an owner's app screenshots in [#576](https://github.com/Gr33ndev/OpenAmpere/issues/576) |
+| 0x40AD | Grid power (system meter). On a 0x005E it was positive in the evening without PV and with the battery idle | I16, W, + = import | R | derived | evcc-io/evcc saj-h2 template; an owner's app screenshots in [#576](https://github.com/Gr33ndev/OpenAmpere/issues/576) |
 
 ### Energy counters
 
@@ -175,6 +175,7 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 | 0x8F01 counts as rated power only within the power class in the name of the type (0x0055–0x005D, e.g. "5-10K": 5 to 10 kW). Otherwise (outside the class, 0x005E, an unknown type) the export limit is written only after the owner confirmed the rated power from the type plate in the app, also a lower one; the confirmed value is then the base of the per-mille conversion and of the charging power, as long as the device reports the value it was confirmed for. | The meaning of 0x8F01 has no source, and a wrong base makes the export limit wrong by the same factor while the read-back still matches. | [#492](https://github.com/Gr33ndev/OpenAmpere/issues/492) |
 | The live blocks are read with every poll: 0x4004 (14), 0x4022 (11), 0x4069 (20), 0x40A0 (14), 0x40BF (64), 0x4167 (16), 0xA000 (18). A block the device rejects is skipped. | Optional blocks (summed counters) must not break the reading. | initial driver |
 | Meter B (0x40A3) is read with every poll (it is in the block 0x40A0) but counted as solar power only when the owner switches on the second inverter in "Meine Anlage"; it is then shown as its own source. The app points to the switch when the meter reads power. | Not every system uses Meter B for an extra PV inverter, and the owner can name it. | [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419) |
+| The live house power is the balance grid (0x40AD) + PV (0x40A5) + Meter B (0x40A3, negative as 0) + battery (0x40A6), at least 0; 0x40A0 only when one of them is missing or not real. Meter B is part of it whether or not the owner counts the second inverter as solar power, like in 0x40A0 on the device of #419. | 0x40A0 did not match the balance on every device; the energy values already come from the balance ([#346](https://github.com/Gr33ndev/OpenAmpere/issues/346)). | [#576](https://github.com/Gr33ndev/OpenAmpere/issues/576) |
 | No energy counter for Meter B is known: OpenAmpere integrates its power (not across gaps over 2 minutes) into a counter of its own. The quarter hours add it to PV (and so to the consumption) and keep it in `pv_external`; Home Assistant gets it as its own lifetime counter. | Without it, generation, consumption, self-sufficiency and savings would be too low. | [#419](https://github.com/Gr33ndev/OpenAmpere/issues/419) |
 | Grid counters: the summed counters (all phases) if the device has them, otherwise L1. The source is fixed after the first reading. | Switching between them would look like a huge energy jump. | initial driver; [devices.md](../../devices.md) |
 | Energy counters are treated with a 10 Wh step (0.01 kWh). | Resolution of the SAJ counters; the app shows the matching decimals. | [#194](https://github.com/Gr33ndev/OpenAmpere/issues/194), [#195](https://github.com/Gr33ndev/OpenAmpere/issues/195) |
@@ -201,8 +202,9 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
 
 ## Open questions
 
-- Sign of the battery power 0x40A6 (+ = discharging per evcc) and of the grid power 0x40AD (+ = import per evcc) on a
-  real device ([registers.md](../../registers.md), evcc-io/evcc saj-h2 template).
+- Sign of the battery power 0x40A6 (+ = discharging per evcc) and of the grid power 0x40AD (+ = import per evcc) in
+  raw register values of a real device; so far only seen in the app ([#576](https://github.com/Gr33ndev/OpenAmpere/issues/576)).
+- What 0x40A0 computes, and why it is off on some devices while the battery runs ([#576](https://github.com/Gr33ndev/OpenAmpere/issues/576)).
 - Whether the PV energy counter 0x40BF/0x40C5 covers all MPPTs ([registers.md](../../registers.md)).
 - Whether 0x8F01 is the rated power in W on every type: diagnostics reports from devices of different power classes
   would settle it ([#492](https://github.com/Gr33ndev/OpenAmpere/issues/492)).
