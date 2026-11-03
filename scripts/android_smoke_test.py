@@ -41,8 +41,14 @@ simulator: subprocess.Popen | None = None
 
 
 def adb(*args: str, check: bool = True, timeout: float = 120) -> str:
-    return subprocess.run([str(SDK / "platform-tools" / "adb"), *args], capture_output=True, text=True,
-                          check=check, timeout=timeout).stdout
+    """check=False also for a timeout: in cleanup and log printing a hanging adb must not hide the real error."""
+    try:
+        return subprocess.run([str(SDK / "platform-tools" / "adb"), *args], capture_output=True, text=True,
+                              check=check, timeout=timeout).stdout
+    except subprocess.TimeoutExpired:
+        if check:
+            raise
+        return ""
 
 
 def wait(what: str, condition, timeout: float, every: float = 2.0):
