@@ -13,6 +13,7 @@ that still shows power flowing to or from the grid is not off-grid, whatever the
 
 from __future__ import annotations
 
+from . import android
 from .drivers.base import Snapshot
 from .storage import Storage
 
@@ -45,10 +46,13 @@ def gap_reason(current: dict) -> str:
     - "inverter_off": OpenAmpere kept running and asked in vain, so it had power and only the inverter was gone
       (switched off, or the connection was lost) (#93)
     - "battery_empty": OpenAmpere was not running either and the charge was low before
-    - "no_data": no readings, but the battery was charged
+    - "no_data": no readings, but the battery was charged, or OpenAmpere runs on a tablet (#567): the tablet has a
+      battery of its own and is switched off or taken away, so OpenAmpere not running says nothing about the house
     """
     if current.get("polled_in_gap"):
         return "inverter_off"
+    if android.active():
+        return "no_data"
     soc = current.get("soc_last")
     return "battery_empty" if soc is None or soc <= EMPTY_SOC else "no_data"
 

@@ -18,7 +18,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from . import ha_app
+from . import android, ha_app
 from .outbound import read_within
 from .runtime import Runtime
 
@@ -102,6 +102,8 @@ class Updates:
                 "checked": self.checked or None, "error": self.error}
         if ha_app.active():
             view["home_assistant"] = True  # updates come through Home Assistant
+        elif android.active():
+            view["android"] = True  # a new version of the app on the tablet (#567), no update helper
         return view
 
     async def check(self, force: bool = False, now: float | None = None) -> None:
@@ -121,6 +123,9 @@ class Updates:
         now = time.time() if now is None else now
         if ha_app.active():
             raise RuntimeError("Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.")
+        if android.active():
+            raise RuntimeError("Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Bitte lade sie auf "
+                               "dem Tablet herunter und installiere sie.")
         if not self.updater_ready(now):
             raise RuntimeError("Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.")
         self.request_file.parent.mkdir(parents=True, exist_ok=True)

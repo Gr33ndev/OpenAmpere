@@ -150,6 +150,7 @@
     "title": "Updates",
     "upToDate": "OpenAmpere ist auf dem neuesten Stand.",
     "updateHelperHint": "Für Updates per Knopfdruck einmal das Install-Script erneut ausführen, das richtet den Update-Helfer ein:",
-    "updateTo": "Auf {version} aktualisieren"
+    "updateTo": "Auf {version} aktualisieren",
+    "androidHint": "Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Lade sie auf dem Tablet herunter und installiere sie, deine Daten und Einstellungen bleiben dabei erhalten."
   }
 }
