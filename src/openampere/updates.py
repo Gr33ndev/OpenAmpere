@@ -4,7 +4,8 @@
 
 The app looks up the latest release every few hours (it can be switched off). Installing needs the small updater
 container that install.sh sets up: the app only writes a request file into the data folder, the updater pulls the
-new image and restarts the containers (see scripts/updater.sh). The app itself never gets access to Docker.
+new image and restarts the containers (see scripts/updater.sh). The app itself never gets access to Docker. In the
+Android app (#567) the app's own updater (android/.../Updater.kt) plays the updater's part through the same files.
 """
 
 from __future__ import annotations
@@ -103,7 +104,7 @@ class Updates:
         if ha_app.active():
             view["home_assistant"] = True  # updates come through Home Assistant
         elif android.active():
-            view["android"] = True  # a new version of the app on the tablet (#567), no update helper
+            view["android"] = True  # a new version of the app on the tablet (#567), installed by the app itself
         return view
 
     async def check(self, force: bool = False, now: float | None = None) -> None:
@@ -123,7 +124,7 @@ class Updates:
         now = time.time() if now is None else now
         if ha_app.active():
             raise RuntimeError("Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.")
-        if android.active():
+        if android.active() and not self.updater_ready(now):  # the app's updater is not running (an older app)
             raise RuntimeError("Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Bitte lade sie auf "
                                "dem Tablet von der Download-Seite von OpenAmpere auf GitHub herunter (die Datei endet "
                                "auf .apk) und installiere sie.")

@@ -50,6 +50,7 @@ class ServerService : Service() {
         if (!running) {
             running = true
             Thread(::serve, "openampere").start()
+            Updater(this).start()
         }
     }
 

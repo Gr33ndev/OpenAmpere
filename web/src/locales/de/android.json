@@ -8,5 +8,28 @@
     "starting": "OpenAmpere startet …",
     "stopped": "OpenAmpere läuft nicht",
     "stoppedHint": "OpenAmpere konnte mehrmals hintereinander nicht starten und versucht es nicht mehr von selbst. Öffne die App noch einmal, dann startet OpenAmpere einen neuen Versuch."
+  },
+  "updates": {
+    "channel": "Updates",
+    "downloading": "Lade Version {version} herunter …",
+    "verifying": "Prüfe die heruntergeladene Version {version} …",
+    "installing": "Installiere Version {version} …",
+    "confirm": "Android fragt nach, bevor es das Update installiert: Tippe auf die Benachrichtigung „Update auf Version {version} bereit“ und dann auf „Installieren“.",
+    "confirmTitle": "Update auf Version {version} bereit",
+    "confirmText": "Tippe hier, um es zu installieren.",
+    "done": "Version {version} ist installiert.",
+    "allowTitle": "Updates erlauben",
+    "allowText": "Tippe hier und erlaube OpenAmpere, Apps zu installieren. Nur so kann es Updates installieren.",
+    "notAllowed": "Android erlaubt OpenAmpere noch nicht, Updates zu installieren. Tippe auf die Benachrichtigung „Updates erlauben“, schalte die Einstellung ein und starte das Update dann noch einmal.",
+    "noFile": "Für Version {version} gibt es noch keine App-Datei. Bitte versuche es später noch einmal.",
+    "downloadFailed": "Die neue Version ließ sich nicht herunterladen. Bitte prüfe die Internetverbindung des Tablets und versuche es später noch einmal.",
+    "checksumWrong": "Die heruntergeladene Datei passt nicht zur Prüfsumme des Releases. Das Update wurde nicht installiert, bitte versuche es später noch einmal.",
+    "signatureWrong": "Die heruntergeladene App ist nicht mit dem Schlüssel von OpenAmpere signiert. Das Update wurde nicht installiert.",
+    "notNewer": "Version {version} ist nicht neuer als die installierte App. Es gibt nichts zu installieren.",
+    "installFailed": "Android hat das Update nicht installiert ({reason}). Bitte versuche es später noch einmal.",
+    "allowNoNotifications": "Android erlaubt OpenAmpere noch nicht, Updates zu installieren. Öffne auf dem Tablet Einstellungen → Apps → OpenAmpere → „Unbekannte Apps installieren“, erlaube es dort und starte das Update dann noch einmal.",
+    "confirmNoNotifications": "Android fragt nach, bevor es das Update installiert, aber OpenAmpere darf keine Benachrichtigungen zeigen. Erlaube sie unter Einstellungen → Apps → OpenAmpere → Benachrichtigungen und starte das Update dann noch einmal.",
+    "reopenTitle": "Version {version} ist installiert",
+    "reopenText": "Tippe hier, um OpenAmpere wieder zu öffnen."
   }
 }

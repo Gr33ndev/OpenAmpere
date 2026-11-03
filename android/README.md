@@ -71,6 +71,34 @@ here; CI checks both. It lists the native parts (`licenses/components.json`, ver
 Kotlin) and the Chaquopy builds pinned in `app/build.gradle.kts`, so the weekly update of `requirements.lock` never
 changes it; regenerate it after changing those pins.
 
+## Updates
+
+`Updater` plays the part of the Docker update helper (`scripts/updater.sh`) through the same files in the data
+folder: it writes `update/updater-alive`, so the server offers the update button and the update at night as on the
+other ways, takes the version from the request file, downloads `openampere-<version>.apk` and `SHA256SUMS` from the
+release of Gr33ndev/OpenAmpere only, checks the SHA-256 and that the APK is signed with the installed app's
+certificate, and hands it to Android's package installer, writing its progress to `update/status.json`. Android asks
+the owner first before Android 12, and for the first update of an app installed from the browser: a notification
+leads there. From then on the app is its own installer and updates without asking. The owner has to allow
+OpenAmpere to install apps once; a notification leads to that setting. After the update `BootReceiver` starts the
+server again and reports "done". Replacing the app closes it: if it was in front (a tablet on the wall), it comes back
+by itself before Android 10; from Android 10 Android does not let an app come to the front by itself, so a
+notification "Version … is installed" leads back to it.
+
+To try an update in the emulator, build a second APK with a higher version (`version` in `pyproject.toml`, back
+afterwards), serve a copy of the release (`repos/Gr33ndev/OpenAmpere/releases/tags/v<version>` with the assets'
+`browser_download_url`, and the files under `Gr33ndev/OpenAmpere/releases/download/v<version>/`) with
+`python3 -m http.server 8000`, then:
+
+```bash
+adb reverse tcp:8000 tcp:8000
+adb shell appops set io.github.gr33ndev.openampere REQUEST_INSTALL_PACKAGES allow
+adb shell run-as io.github.gr33ndev.openampere sh -c 'echo http://127.0.0.1:8000 > files/update/test-github'
+adb shell run-as io.github.gr33ndev.openampere sh -c 'echo "{\"to\": \"<version>\"}" > files/update/request'
+```
+
+`update/test-github` only counts in debug builds.
+
 ## Not yet
 
-The built-in updater and an emulator test in CI (step 4 of #567), the guide and the website (step 5).
+An emulator test in CI (step 4 of #567), the guide and the website (step 5).

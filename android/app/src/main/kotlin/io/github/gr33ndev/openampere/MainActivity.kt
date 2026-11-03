@@ -99,6 +99,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        frontFile(this).writeText("1")
         // the server gave up: opening the app again is a new attempt
         if (ServerService.stopReason(this) != null) {
             ServerService.start(this)
@@ -108,6 +109,9 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        // an update ends the process while the app is in front, without onPause: then the note stays. The screen
+        // going off (a tablet on the wall at night, when updates run) pauses the app too: it stays in front then
+        if ((getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive) frontFile(this).delete()
         main.removeCallbacks(watch)
         super.onPause()
     }
@@ -300,6 +304,11 @@ class MainActivity : Activity() {
     private fun quote(text: String) = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
     companion object {
+        private fun frontFile(context: Context) = java.io.File(context.filesDir, "app-in-front")
+
+        /** The app was in front when it was closed (by an update): BootReceiver brings it back. */
+        fun wasInFront(context: Context) = frontFile(context).isFile
+
         private const val HOST = "127.0.0.1"
         private val SERVER = "http://$HOST:${ServerService.PORT}/"
         private const val WATCH_MS = 5_000L

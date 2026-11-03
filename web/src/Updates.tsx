@@ -12,9 +12,9 @@ export type UpdateView = {
   current: string; available: boolean; updater: boolean; requested: boolean; check: boolean; auto: boolean;
   /** the Home Assistant app (#300): updates come through Home Assistant */
   home_assistant?: boolean;
-  android?: boolean; // the Android app on a tablet (#567): a new version of the app, no update helper
+  android?: boolean; // the Android app on a tablet (#567): its own updater installs the new version of the app
   latest: { version: string; url: string | null; notes: string; published: string | null } | null;
-  status: { ts: number; state: "pulling" | "verifying" | "restarting" | "done" | "failed"; message: string } | null;
+  status: { ts: number; state: "pulling" | "verifying" | "restarting" | "confirm" | "done" | "failed"; message: string } | null;
   checked: number | null; error: string | null;
 };
 
@@ -35,7 +35,9 @@ async function install(): Promise<boolean> {
 /** While the updater replaces the app: progress, then reload once the new version answers. */
 function Installing({ version, from, onClose }: { version: string; from: string; onClose: () => void }) {
   const [message, setMessage] = useState(() => t("shell.installing.preparingUpdate"));
-  const [result, setResult] = useState<"done" | "failed" | null>(null);
+  // "confirm": the Android app waits for the owner to confirm the installation on the tablet (#567); the dialog can
+  // be closed, and it goes on watching in case the owner confirms with it open
+  const [result, setResult] = useState<"done" | "failed" | "confirm" | null>(null);
   const started = useRef(Date.now() / 1000);
   useEffect(() => {
     const timer = window.setInterval(async () => {
@@ -45,7 +47,8 @@ function Installing({ version, from, onClose }: { version: string; from: string;
         const view = await getJson<UpdateView>("/api/update");
         if (view.status && view.status.ts >= started.current - 5) {
           setMessage(view.status.message);
-          if (view.status.state === "failed" || view.status.state === "done") setResult(view.status.state);
+          const state = view.status.state;
+          setResult(state === "failed" || state === "done" || state === "confirm" ? state : null);
         }
       } catch {
         setMessage(t("shell.installing.restarting"));
@@ -57,7 +60,8 @@ function Installing({ version, from, onClose }: { version: string; from: string;
     <div className="overlay">
       <div className="dialog" role="dialog" aria-modal="true" aria-label={t("shell.installing.title")}>
         <h2>{t("shell.installing.updateToVersion", { version })}</h2>
-        {result === "failed" ? <Notice kind="error">{message}</Notice> : <p>{message}</p>}
+        {result === "failed" ? <Notice kind="error">{message}</Notice>
+          : result === "confirm" ? <Notice kind="info">{message}</Notice> : <p>{message}</p>}
         {!result && <p className="hint">{t("shell.installing.takesMinutes")}</p>}
         {result && <Button variant="secondary" onClick={onClose}>{t("shell.installing.close")}</Button>}
       </div>
@@ -138,7 +142,7 @@ export function UpdatesCard() {
         {!data.available && latest && <p className="hint">{t("shell.updatesCard.upToDate")}</p>}
         <SwitchRow label={t("shell.updatesCard.autoCheck")} hint={t("shell.updatesCard.autoCheckHint")}
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
-        {!data.home_assistant && !data.android && (
+        {!data.home_assistant && (data.updater || !data.android) && (
           <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
             checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
         )}
