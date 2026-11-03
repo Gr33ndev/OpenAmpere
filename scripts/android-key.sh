@@ -14,6 +14,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STORE="${1:?usage: scripts/android-key.sh <file.jks>}"
 [ -e "$STORE" ] && { echo "$STORE exists already: never make a second key for the same app" >&2; exit 1; }
+# the key of the app exists once it has a fingerprint here, also after its working copy was deleted (the backup
+# is the key from then on): a second key would make every update fail on the tablets
+[ -e "$ROOT/android/signing-certificate.sha256" ] && {
+  echo "The app has a release key already (android/signing-certificate.sha256): restore it from the backup" \
+    "(docs/android-signing.md) instead of making a new one." >&2
+  exit 1
+}
 
 keytool -genkeypair -keystore "$STORE" -storetype PKCS12 -alias openampere -keyalg RSA -keysize 4096 \
   -validity 36500 -dname "CN=OpenAmpere, O=OpenAmpere contributors"
