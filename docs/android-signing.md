@@ -49,8 +49,9 @@ The fingerprint is published in the README, on the website with the install guid
 step 5), so owners can check the first install. GOVERNANCE.md also says who holds the key: handing it over decides who
 can ship updates to tablets, like the account and repository names do for the Docker image.
 
-A pre-release tag (`v1.2.3-rc.1`) gets an APK as well, with a `versionCode` below the final version, so the final
-version is still an update for a tablet that installed the release candidate.
+A release candidate (`v1.2.3-rc.1` to `-rc.8`, the only pre-release form `scripts/release.sh` and the workflow
+accept) gets an APK as well, with a `versionCode` below the final version, so the final version is still an update
+for a tablet that installed the release candidate.
 
 ## If the key is ever exposed
 

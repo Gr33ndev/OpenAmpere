@@ -24,12 +24,12 @@ android {
         minSdk = 24 // Android 7.0, the oldest Chaquopy supports: old tablets
         targetSdk = 35
         // every release gets a higher number, which Android needs for an update: 0.37.0 -> 370009, its release
-        // candidates 0.37.0-rc.1 -> 370001 ... -rc.8 -> 370008, below the final version
-        versionCode = Regex("""^(\d+)\.(\d+)\.(\d+)(\D\D*?(\d*))?$""").matchEntire(appVersion)!!
-            .destructured.let { (major, minor, patch, suffix, candidate) ->
-                val step = if (suffix.isEmpty()) 9 else (candidate.toIntOrNull() ?: 0).coerceIn(0, 8)
-                (major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()) * 10 + step
-            }
+        // candidates 0.37.0-rc.1 -> 370001 ... -rc.8 -> 370008, below the final version. scripts/release.sh and the
+        // release workflow allow only these forms
+        versionCode = Regex("""^(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-8]))?$""").matchEntire(appVersion)
+            ?.destructured?.let { (major, minor, patch, candidate) ->
+                (major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()) * 10 + (candidate.toIntOrNull() ?: 9)
+            } ?: error("version $appVersion in pyproject.toml: only X.Y.Z or X.Y.Z-rc.1 to -rc.8")
         versionName = appVersion
         ndk {
             // 32-bit ARM for many old tablets; x86_64 for the emulator

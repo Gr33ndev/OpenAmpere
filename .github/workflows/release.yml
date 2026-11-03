@@ -126,7 +126,8 @@ jobs:
       # main, as in the release job (GHSA-3xmc-fc67-chgq)
       - name: The tag is a version tag of main
         run: |
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::Not a version tag"; exit 1; }
+          # X.Y.Z or a release candidate X.Y.Z-rc.N (1 to 8): the Android app numbers its versions from it
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-8])?$ ]] || { echo "::error::Not a version tag"; exit 1; }
           [ "$(git cat-file -t "refs/tags/$TAG" 2>/dev/null)" = tag ] \
             || { echo "::error::$TAG is not an annotated tag of this repository"; exit 1; }
           py=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
@@ -205,7 +206,8 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::Not a version tag"; exit 1; }
+          # X.Y.Z or a release candidate X.Y.Z-rc.N (1 to 8): the Android app numbers its versions from it
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-8])?$ ]] || { echo "::error::Not a version tag"; exit 1; }
           [ "$(git cat-file -t "refs/tags/$TAG" 2>/dev/null)" = tag ] \
             || { echo "::error::$TAG is not an annotated tag of this repository"; exit 1; }
           if [ "$EVENT" != push ]; then
