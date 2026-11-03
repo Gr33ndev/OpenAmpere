@@ -25,9 +25,15 @@ cat <<TEXT
 Certificate SHA-256: $fingerprint
 Written to android/signing-certificate.sha256 (commit it; the release workflow checks the APK against it).
 
-Secrets of the release workflow (the password is asked for):
-  base64 < "$STORE" | gh secret set ANDROID_KEYSTORE --repo Gr33ndev/OpenAmpere
-  gh secret set ANDROID_KEYSTORE_PASSWORD --repo Gr33ndev/OpenAmpere
+The environment android-release, open only for v* tags and main, holds the secrets (docs/android-signing.md):
+  gh api -X PUT repos/Gr33ndev/OpenAmpere/environments/android-release \
+    -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
+  gh api -X POST repos/Gr33ndev/OpenAmpere/environments/android-release/deployment-branch-policies -f name='v*' -f type=tag
+  gh api -X POST repos/Gr33ndev/OpenAmpere/environments/android-release/deployment-branch-policies -f name=main -f type=branch
+
+Secrets of the release workflow, in that environment only (the password is asked for):
+  base64 < "$STORE" | gh secret set ANDROID_KEYSTORE --env android-release --repo Gr33ndev/OpenAmpere
+  gh secret set ANDROID_KEYSTORE_PASSWORD --env android-release --repo Gr33ndev/OpenAmpere
 
 Now back up $STORE and the password offline, in two places (docs/android-signing.md).
 TEXT

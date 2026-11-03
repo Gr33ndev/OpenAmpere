@@ -31,6 +31,12 @@ the repository `OpenAmpere` must therefore never be renamed, transferred or dele
 someone else, whose release workflow would then pass the check. A move needs a new release of the update helper first,
 and every installation must run the install script again.
 
+The Android app (#567) is trusted through its signing key instead: Android installs an update only when it is signed
+with the same key as the installed app. The maintainer holds the key, in the GitHub environment `android-release`
+(only for version tags and `main`) and in an offline backup ([docs/android-signing.md](docs/android-signing.md)).
+Handing it over, or losing it, decides who can ship updates to tablets; a new maintainer gets it only together with
+the right to make releases.
+
 ## Becoming a maintainer
 
 People who contribute regularly and carefully, for example drivers, reviews or helping others in issues, can be invited as maintainers. With a second maintainer, changes to drivers and control functions will need a review by someone other than the author.

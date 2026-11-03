@@ -23,10 +23,13 @@ android {
         applicationId = "io.github.gr33ndev.openampere"
         minSdk = 24 // Android 7.0, the oldest Chaquopy supports: old tablets
         targetSdk = 35
-        // 0.37.0 -> 37000; every release gets a higher number, which Android needs for an update
-        versionCode = appVersion.split(".").let { (major, minor, patch) ->
-            major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()
-        }
+        // every release gets a higher number, which Android needs for an update: 0.37.0 -> 370009, its release
+        // candidates 0.37.0-rc.1 -> 370001 ... -rc.8 -> 370008, below the final version
+        versionCode = Regex("""^(\d+)\.(\d+)\.(\d+)(\D\D*?(\d*))?$""").matchEntire(appVersion)!!
+            .destructured.let { (major, minor, patch, suffix, candidate) ->
+                val step = if (suffix.isEmpty()) 9 else (candidate.toIntOrNull() ?: 0).coerceIn(0, 8)
+                (major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()) * 10 + step
+            }
         versionName = appVersion
         ndk {
             // 32-bit ARM for many old tablets; x86_64 for the emulator

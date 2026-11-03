@@ -17,9 +17,14 @@ scripts/android-key.sh openampere-release.jks
 ```
 
 The script asks for a password (keytool), writes the certificate's SHA-256 to `android/signing-certificate.sha256`
-and prints the commands that set the secrets of the release workflow (`ANDROID_KEYSTORE` as base64,
-`ANDROID_KEYSTORE_PASSWORD`). Commit the fingerprint file. It refuses to overwrite an existing file: never make a
-second key for the same app.
+and prints the commands for the rest. Commit the fingerprint file. It refuses to overwrite an existing file: never make
+a second key for the same app.
+
+The secrets (`ANDROID_KEYSTORE` as base64, `ANDROID_KEYSTORE_PASSWORD`) go into the GitHub environment
+`android-release`, never into the repository's secrets: a repository secret reaches every workflow run of every
+branch, so anyone who can push a branch could change a workflow to print it. The environment's deployment rule admits
+only `v*` tags and `main` (for a run by hand), and only the `android` job of the release workflow uses it. The
+script prints the commands that create the environment and set the secrets in it.
 
 ## Backup
 
@@ -40,8 +45,12 @@ gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere \
 apksigner verify --print-certs openampere-<version>.apk   # SHA-256 as in android/signing-certificate.sha256
 ```
 
-The fingerprint is published in the README and on the website with the install guide (#567, step 5), so owners can
-check the first install.
+The fingerprint is published in the README, on the website with the install guide and in GOVERNANCE.md (#567,
+step 5), so owners can check the first install. GOVERNANCE.md also says who holds the key: handing it over decides who
+can ship updates to tablets, like the account and repository names do for the Docker image.
+
+A pre-release tag (`v1.2.3-rc.1`) gets an APK as well, with a `versionCode` below the final version, so the final
+version is still an update for a tablet that installed the release candidate.
 
 ## If the key is ever exposed
 

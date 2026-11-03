@@ -112,6 +112,9 @@ jobs:
     # the one in android/signing-certificate.sha256: Android only installs updates signed with the same key. Also
     # on a run by hand, from the tag: the release job attests only files built in this run
     runs-on: ubuntu-latest
+    # the key's secrets live in this environment, whose deployment rule admits only v* tags and main (a run by
+    # hand): a workflow on any other branch cannot read them (docs/android-signing.md)
+    environment: android-release
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
@@ -158,9 +161,9 @@ jobs:
         run: |
           [ -n "$KEYSTORE" ] || { echo "::error::The secret ANDROID_KEYSTORE is missing (docs/android-signing.md)"; exit 1; }
           export OPENAMPERE_KEYSTORE="$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$OPENAMPERE_KEYSTORE"' EXIT
           echo "$KEYSTORE" | base64 --decode > "$OPENAMPERE_KEYSTORE"
           (cd android && ./gradlew --no-daemon assembleRelease)
-          rm -f "$OPENAMPERE_KEYSTORE"
       - name: Signed with the release key
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
