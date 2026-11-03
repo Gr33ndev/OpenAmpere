@@ -29,7 +29,10 @@ def imy(packages: dict[str, tuple[str, str]]) -> bytes:
 def test_chaquopy_builds_whatever_the_lock_says(tmp_path):
     """The packages build.gradle.kts pins from Chaquopy's index are listed with the texts from the APK; the others
     come from requirements.lock like the server's and are in its list, so a weekly lock update changes nothing here."""
-    assert {"cryptography", "cffi", "pyyaml"} <= android_licenses.chaquopy_builds()
+    builds = android_licenses.chaquopy_builds()
+    assert {"pyyaml", "chaquopy-libffi"} <= builds
+    # built by scripts/android-wheels.sh in the lock's versions (#571): in the server's list
+    assert not {"pydantic-core", "cryptography", "cffi"} & builds
     apk = tmp_path / "app.apk"
     with zipfile.ZipFile(apk, "w") as z:
         z.writestr("assets/chaquopy/requirements-common.imy",

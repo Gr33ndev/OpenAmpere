@@ -31,16 +31,20 @@ Needs JDK 17, the Android SDK (`ANDROID_HOME`) with NDK 27.2.12479018, Rust (rus
 
 ```bash
 cd web && npm ci && npm run build && cd ..   # the web app goes into the Python package
-scripts/android-wheels.sh                    # pydantic-core for Android into android/wheels/ (a few minutes)
+scripts/android-wheels.sh                    # pydantic-core, cryptography, cffi into android/wheels/ (minutes)
 cd android && ./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Chaquopy's package index has Android builds of most packages, but not of `pydantic-core` (Rust, needed by FastAPI);
-`scripts/android-wheels.sh` builds it for each ABI against Chaquopy's Python. `cryptography` and `cffi` come in the
-older versions Chaquopy has (pyproject.toml allows them), `pyyaml` as Chaquopy's build. pip checks every file that
-goes into the APK: the hashes of `requirements.lock`, and in `app/build.gradle.kts` those of Chaquopy's builds and of
-the wheels built here. The script checks its downloads as well; maturin comes from `android/requirements-build.lock`
-(`scripts/lock.sh`).
+Chaquopy's package index has Android builds of most packages, but not of `pydantic-core` (Rust, needed by FastAPI),
+and `cryptography` and `cffi` only in old versions. `scripts/android-wheels.sh` builds these three in the versions of
+`requirements.lock`, like the Docker image has them, for each ABI against Chaquopy's Python: `cryptography` against
+the OpenSSL that Chaquopy's Python brings along (headers and libraries from its package on Maven Central), so the
+app has only one OpenSSL, and `cffi` against Chaquopy's `chaquopy-libffi`. `pyyaml` comes as Chaquopy's build. pip
+checks every file that goes into the APK: the hashes of `requirements.lock`, and in `app/build.gradle.kts` those of
+Chaquopy's builds and of the wheels built here. The script checks its downloads as well (the source archives against
+`requirements.lock`, Chaquopy's Python and libffi against fixed hashes); maturin comes from
+`android/requirements-build.lock` (`scripts/lock.sh`), the `cffi` that writes cryptography's C code on the computer
+from `requirements.lock`.
 
 ## Trying it in the emulator
 
