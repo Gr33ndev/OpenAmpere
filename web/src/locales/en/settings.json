@@ -673,7 +673,10 @@
     "version": "Version {version}"
   },
   "licensesPage": {
-    "intro": "OpenAmpere is free software under the MIT License and builds on these open source components. Thanks to everyone who develops them!"
+    "intro": "OpenAmpere is free software under the MIT License and builds on these open source components. Thanks to everyone who develops them!",
+    "groupWeb": "App in the browser",
+    "groupServer": "Server",
+    "groupAndroid": "Only in the Android app"
   },
   "more": {
     "appearanceHint": "Light, dark, language, time zone",

@@ -57,6 +57,16 @@ The emulator reaches the computer at `10.0.2.2`: start the simulator there (`pyt
 (`chrome://inspect`). An Android 14 image (`system-images;android-34;google_apis;arm64-v8a`) shows the limits
 of newer versions, e.g. starting the server from the background.
 
+## Release
+
+The release workflow builds the APK from the version tag, signs it with the release key and attaches it as
+`openampere-<version>.apk` with its checksum and build provenance (docs/android-signing.md). The license list of what
+only the app ships comes from the APK: `python3 scripts/android_licenses.py <apk>` writes
+`web/public/third-party-licenses-android.json` (shown on the tablet's licenses page) and `THIRD_PARTY_LICENSES.md`
+here; CI checks both. It lists the native parts (`licenses/components.json`, versions updated by hand with Chaquopy or
+Kotlin) and the Chaquopy builds pinned in `app/build.gradle.kts`, so the weekly update of `requirements.lock` never
+changes it; regenerate it after changing those pins.
+
 ## Not yet
 
-Release signing, the built-in updater and the CI release job (step 4 of #567), the guide and the website (step 5).
+The built-in updater and an emulator test in CI (step 4 of #567), the guide and the website (step 5).

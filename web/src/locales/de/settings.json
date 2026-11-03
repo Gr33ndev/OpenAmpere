@@ -673,7 +673,10 @@
     "version": "Version {version}"
   },
   "licensesPage": {
-    "intro": "OpenAmpere ist freie Software unter der MIT-Lizenz und baut auf diesen Open-Source-Komponenten auf. Danke an alle, die sie entwickeln!"
+    "intro": "OpenAmpere ist freie Software unter der MIT-Lizenz und baut auf diesen Open-Source-Komponenten auf. Danke an alle, die sie entwickeln!",
+    "groupWeb": "App im Browser",
+    "groupServer": "Server",
+    "groupAndroid": "Nur in der Android-App"
   },
   "more": {
     "appearanceHint": "Hell, dunkel, Sprache, Zeitzone",

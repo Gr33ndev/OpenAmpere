@@ -23,10 +23,13 @@ android {
         applicationId = "io.github.gr33ndev.openampere"
         minSdk = 24 // Android 7.0, the oldest Chaquopy supports: old tablets
         targetSdk = 35
-        // 0.37.0 -> 37000; every release gets a higher number, which Android needs for an update
-        versionCode = appVersion.split(".").let { (major, minor, patch) ->
-            major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()
-        }
+        // every release gets a higher number, which Android needs for an update: 0.37.0 -> 370009, its release
+        // candidates 0.37.0-rc.1 -> 370001 ... -rc.8 -> 370008, below the final version. scripts/release.sh and the
+        // release workflow allow only these forms
+        versionCode = Regex("""^(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-8]))?$""").matchEntire(appVersion)
+            ?.destructured?.let { (major, minor, patch, candidate) ->
+                (major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()) * 10 + (candidate.toIntOrNull() ?: 9)
+            } ?: error("version $appVersion in pyproject.toml: only X.Y.Z or X.Y.Z-rc.1 to -rc.8")
         versionName = appVersion
         ndk {
             // 32-bit ARM for many old tablets; x86_64 for the emulator
@@ -34,9 +37,25 @@ android {
         }
     }
 
+    // The release key (#567): Android installs an update only when it is signed with the same key as the installed
+    // app, so this key is what owners trust. It lives only as secrets of the release workflow and in the
+    // maintainers' offline backup (docs/android-signing.md); without these variables a release build is unsigned.
+    val keystore: String? = System.getenv("OPENAMPERE_KEYSTORE")
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("OPENAMPERE_KEYSTORE_PASSWORD")
+                keyAlias = "openampere"
+                keyPassword = System.getenv("OPENAMPERE_KEYSTORE_PASSWORD") // PKCS12: one password for both
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
         }
     }
 

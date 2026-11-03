@@ -11,6 +11,11 @@ set -eu
 cd "$(dirname "$0")/.."
 version=${1:?Version angeben, z. B. scripts/release.sh 0.2.0}
 case "$version" in v*) version=${version#v} ;; esac
+# X.Y.Z or a release candidate X.Y.Z-rc.N, N from 1 to 8: the Android app derives its version number from it (#567),
+# and the release workflow refuses other tags
+case "$version" in *[!0-9.rc-]*) version=invalid ;; esac  # one line, only these characters
+printf '%s\n' "$version" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-8])?' \
+  || { echo "Version wie 0.2.0 oder 0.2.0-rc.1 (rc.1 bis rc.8) angeben." >&2; exit 1; }
 summary="changelog/$version.json"
 [ -z "$(git status --porcelain --untracked-files=all -- . ":(exclude)$summary")" ] \
   || { echo "Erst alle Änderungen committen (außer $summary)." >&2; exit 1; }

@@ -1,0 +1,9 @@
+[
+  {"name": "Python", "version": "3.11", "license": "PSF-2.0", "url": "https://www.python.org/", "file": "python.txt"},
+  {"name": "Chaquopy", "version": "17.2.0", "license": "MIT", "url": "https://chaquo.com/chaquopy/", "file": "chaquopy.txt"},
+  {"name": "Kotlin standard library", "version": "2.2.10", "license": "Apache-2.0", "url": "https://kotlinlang.org/", "file": "kotlin.txt"},
+  {"name": "OpenSSL", "version": "3", "license": "Apache-2.0", "url": "https://www.openssl.org/", "file": "openssl.txt"},
+  {"name": "SQLite", "version": "3", "license": "Public domain", "url": "https://www.sqlite.org/", "file": "sqlite.txt"},
+  {"name": "bzip2", "version": "1.0.8", "license": "bzip2-1.0.6", "url": "https://sourceware.org/bzip2/", "file": "bzip2.txt"},
+  {"name": "XZ Utils (liblzma)", "version": "5.4.6", "license": "Public domain", "url": "https://tukaani.org/xz/", "file": "xz.txt"}
+]

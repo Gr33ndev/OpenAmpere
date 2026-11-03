@@ -123,7 +123,9 @@ def render(python: list[dict], npm: list[dict]) -> str:
 
 def render_json(python: list[dict], npm: list[dict]) -> str:
     own = {"name": "OpenAmpere", "license": "MIT", "texts": [(ROOT / "LICENSE").read_text(encoding="utf-8").strip()]}
-    groups = [{"title": "App im Browser", "packages": npm}, {"title": "Server", "packages": python}]
+    # the app shows each group under its translated title, found by the id (the title is for reading the file)
+    groups = [{"id": "web", "title": "App im Browser", "packages": npm},
+              {"id": "server", "title": "Server", "packages": python}]
     return json.dumps({"self": own, "groups": groups}, ensure_ascii=False, indent=1) + "\n"
 
 
