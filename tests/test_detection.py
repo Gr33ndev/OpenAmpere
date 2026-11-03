@@ -223,11 +223,14 @@ def test_saj_house_power_is_the_balance():
     from openampere.drivers.saj.driver import to_snapshot
     charging = {"grid_power": 0.0, "pv_power": 300.0, "meter_b_pv_power": 1400.0, "battery_power": -1100.0,
                 "house_power": 1100.0}
-    assert to_snapshot(charging, 0).house_power == 600
+    assert to_snapshot(charging, 0).count_external_pv(True).house_power == 600
+    # the owner does not count Meter B: neither is the house, like the solar power and the stored energy
+    assert to_snapshot(charging, 0).count_external_pv(False).house_power == 0
+    assert to_snapshot({**charging, "grid_power": 900.0}, 0).count_external_pv(False).house_power == 100
     discharging = {**charging, "pv_power": 200.0, "meter_b_pv_power": 1500.0, "battery_power": 1400.0}
     assert to_snapshot(discharging, 0).house_power == 3100
     night = {"grid_power": 600.0, "pv_power": 0.0, "meter_b_pv_power": -4.0, "battery_power": 0.0, "house_power": 650.0}
     assert to_snapshot(night, 0).house_power == 600  # Meter B in standby counts as 0
     # a value of the balance missing or not real: the inverter's own value
-    assert to_snapshot({**charging, "grid_power": -32768.0}, 0).house_power == 1100
+    assert to_snapshot({**charging, "grid_power": -32768.0}, 0).count_external_pv(False).house_power == 1100
     assert to_snapshot({k: v for k, v in charging.items() if k != "meter_b_pv_power"}, 0).house_power == 1100
