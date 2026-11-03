@@ -162,6 +162,15 @@ class Collector:
         self.wrong_device = {"since": (self.wrong_device or {}).get("since") or time.time(),
                              "found": privacy.shorten(err.found), "expected": privacy.shorten(err.expected)}
 
+    def _note_other_error(self) -> None:
+        """Another error after another device: that device is gone too (e.g. no Wi-Fi) and there is nothing left to
+        take over, but not after a single timeout, which a weak link or a proxy gives now and then."""
+        if self.wrong_device is None:
+            return
+        self._other_errors += 1
+        if self._other_errors >= WRONG_DEVICE_GONE_AFTER:
+            self.wrong_device = self._wrong_serial = None
+
     @property
     def stale(self) -> bool:
         """True when the last reading is too old to be shown as live."""
@@ -330,12 +339,8 @@ class Collector:
                 raise_if_cancelled()
                 if isinstance(err, WrongDevice):
                     self._note_wrong_device(err)
-                elif self.wrong_device is not None:
-                    # that device is gone too (e.g. no Wi-Fi): nothing left to take over; not after a single timeout,
-                    # which a weak link or a proxy gives now and then
-                    self._other_errors += 1
-                    if self._other_errors >= WRONG_DEVICE_GONE_AFTER:
-                        self.wrong_device = self._wrong_serial = None
+                else:
+                    self._note_other_error()
                 try:
                     self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
                 except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling

@@ -485,17 +485,18 @@ async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path, m
 
 
 def test_a_single_timeout_keeps_the_notice(tmp_path):
-    """Review of #568: one timeout does not end the notice, its time or the owner's open dialog."""
-    from openampere.drivers.modbus import ModbusTransientError
+    """Review of #568: one timeout does not end the notice, its time or the owner's open dialog; three other errors
+    in a row do (the collector's loop calls these two for every failed attempt)."""
     storage = Storage(tmp_path / "t.db")
     collector = Collector(None, storage, 1, 30)
     collector._note_wrong_device(WrongDevice(OWN, OTHER))
     since = collector.wrong_device["since"]
     events = len(storage.get_meta("connection_events"))
-    for err in (ModbusTransientError("timeout"), WrongDevice(OWN, OTHER), ModbusTransientError("timeout")):
-        if isinstance(err, WrongDevice):
-            collector._note_wrong_device(err)
-        else:
-            collector._other_errors += 1
+    collector._note_other_error()  # a timeout while detecting again
+    collector._note_wrong_device(WrongDevice(OWN, OTHER))
+    collector._note_other_error()
+    collector._note_other_error()
     assert collector.wrong_device["since"] == since and len(storage.get_meta("connection_events")) == events
+    collector._note_other_error()  # the third in a row
+    assert collector.wrong_device is None and collector._wrong_serial is None
     storage.close()
