@@ -21,6 +21,7 @@ import os
 import secrets
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -29,16 +30,20 @@ PACKAGE = "io.github.gr33ndev.openampere"
 LOCAL = "http://127.0.0.1:18080"  # adb forward to the app's port 8080
 SIMULATOR_PORT = 5020
 SDK = Path(os.environ.get("ANDROID_HOME", ""))
+EMULATOR_LOG = Path(tempfile.gettempdir()) / "openampere-smoke-emulator.log"
+emulator: subprocess.Popen | None = None  # every wait gives up at once when it stopped (no KVM, a crash)
 
 
-def adb(*args: str, check: bool = True) -> str:
+def adb(*args: str, check: bool = True, timeout: float = 120) -> str:
     return subprocess.run([str(SDK / "platform-tools" / "adb"), *args], capture_output=True, text=True,
-                          check=check).stdout
+                          check=check, timeout=timeout).stdout
 
 
 def wait(what: str, condition, timeout: float, every: float = 2.0):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
+        if emulator and emulator.poll() is not None:
+            sys.exit(f"FAILED: {what}: the emulator stopped (exit code {emulator.returncode})")
         try:
             result = condition()
         except Exception:  # noqa: BLE001 - not there yet
@@ -58,22 +63,26 @@ def server_pid() -> str | None:
     return None
 
 
-def start_emulator(image: str, avd: str) -> subprocess.Popen:
+def start_emulator(image: str, avd: str) -> None:
+    global emulator
     tools = SDK / "cmdline-tools" / "latest" / "bin"
     subprocess.run([str(tools / "sdkmanager"), "--install", image, "emulator", "platform-tools"], check=True,
-                   input="y\n" * 10, text=True, stdout=subprocess.DEVNULL)
+                   input="y\n" * 10, text=True, stdout=subprocess.DEVNULL, timeout=600)
+    print("ok: emulator image installed", flush=True)
     subprocess.run([str(tools / "avdmanager"), "create", "avd", "--force", "-n", avd, "-k", image, "-d", "pixel_c"],
-                   check=True, input="no\n", text=True, stdout=subprocess.DEVNULL)
+                   check=True, input="no\n", text=True, stdout=subprocess.DEVNULL, timeout=120)
+    # without hardware acceleration the emulator takes hours to boot: stop here instead
+    accel = subprocess.run([str(SDK / "emulator" / "emulator"), "-accel-check"], capture_output=True, text=True,
+                           timeout=60)
+    if accel.returncode != 0:
+        sys.exit(f"FAILED: no hardware acceleration for the emulator:\n{accel.stdout}{accel.stderr}")
     emulator = subprocess.Popen([str(SDK / "emulator" / "emulator"), "-avd", avd, "-no-window", "-no-audio",
                                  "-no-boot-anim", "-no-snapshot", "-gpu", "swiftshader_indirect"],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    adb("wait-for-device")
-    wait("emulator booted", lambda: adb("shell", "getprop", "sys.boot_completed").strip() == "1", 600)
+                                stdout=EMULATOR_LOG.open("w"), stderr=subprocess.STDOUT)
+    wait("emulator booted", lambda: adb("shell", "getprop", "sys.boot_completed", timeout=10).strip() == "1", 300)
     # root (google_apis images allow it): to kill the server's process as Android would; adb restarts for it
     adb("root", check=False)
-    adb("wait-for-device")
-    wait("adb as root", lambda: adb("shell", "id", "-u").strip() == "0", 60)
-    return emulator
+    wait("adb as root", lambda: adb("shell", "id", "-u", timeout=10).strip() == "0", 60)
 
 
 def main() -> None:
@@ -85,9 +94,12 @@ def main() -> None:
 
     simulator = subprocess.Popen([sys.executable, "-m", "openampere.simulator", "--port", str(SIMULATOR_PORT),
                                   "--speed", "20"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    emulator = start_emulator(args.image, args.avd)
     try:
+        start_emulator(args.image, args.avd)
         adb("install", "-r", str(args.apk))
+        # as if the owner said yes to the app's first question (leave it out of battery optimisation); otherwise
+        # that system dialog is in front instead of the app
+        adb("shell", "dumpsys", "deviceidle", "whitelist", f"+{PACKAGE}")
         adb("shell", "am", "start", "-n", f"{PACKAGE}/.MainActivity")
         adb("forward", "tcp:18080", "tcp:8080")
         wait("server answers in the app", lambda: urllib.request.urlopen(f"{LOCAL}/api/health", timeout=3).status == 200,
@@ -96,6 +108,12 @@ def main() -> None:
         if status.get("android") is not True:
             sys.exit(f"FAILED: the server does not run in Android mode: {status.get('android')}")
         print(f"ok: version {status['version']} in Android mode", flush=True)
+        page = urllib.request.urlopen(f"{LOCAL}/", timeout=5).read().decode()
+        if '<div id="root">' not in page:
+            sys.exit("FAILED: the server does not deliver the web app")
+        wait("the app shows the web app in front",
+             lambda: any(f"{PACKAGE}/.MainActivity" in line and "ResumedActivity" in line
+                         for line in adb("shell", "dumpsys", "activity", "activities").splitlines()), 30)
 
         # set up like an owner: a password (made here, used only in this emulator), then the inverter
         jar = http.cookiejar.CookieJar()
@@ -124,13 +142,21 @@ def main() -> None:
         wait("and reads the inverter again",
              lambda: json.load(urllib.request.urlopen(f"{LOCAL}/api/status", timeout=5))["connected"], 120)
         print("smoke test passed", flush=True)
-    except SystemExit:
-        print(adb("logcat", "-d", "-s", "OpenAmpere:*", "python.stderr:*", check=False)[-6000:], flush=True)
+    except BaseException:
+        if EMULATOR_LOG.exists():
+            print(EMULATOR_LOG.read_text(errors="replace")[-3000:], flush=True)
+        if emulator and emulator.poll() is None:
+            print(adb("logcat", "-d", "-s", "OpenAmpere:*", "python.stderr:*", check=False, timeout=30)[-6000:],
+                  flush=True)
         raise
     finally:
-        adb("emu", "kill", check=False)
-        emulator.wait(timeout=60)
         simulator.terminate()
+        if emulator:
+            adb("emu", "kill", check=False, timeout=30)
+            try:
+                emulator.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                emulator.kill()
 
 
 if __name__ == "__main__":
