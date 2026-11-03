@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Status } from "./api";
 import { getJson, postJson, putJson, useResource } from "./api";
-import { t } from "./i18n";
+import { t, tx } from "./i18n";
+import { REPO_URL } from "./links";
 import { navigate } from "./route";
 import { Button, Notice, SwitchRow, toast } from "./ui";
 
@@ -11,6 +12,7 @@ export type UpdateView = {
   current: string; available: boolean; updater: boolean; requested: boolean; check: boolean; auto: boolean;
   /** the Home Assistant app (#300): updates come through Home Assistant */
   home_assistant?: boolean;
+  android?: boolean; // the Android app on a tablet (#567): a new version of the app, no update helper
   latest: { version: string; url: string | null; notes: string; published: string | null } | null;
   status: { ts: number; state: "pulling" | "verifying" | "restarting" | "done" | "failed"; message: string } | null;
   checked: number | null; error: string | null;
@@ -123,6 +125,9 @@ export function UpdatesCard() {
           <Button busy={busy} onClick={async () => setInstalling(await install())}>{t("shell.updatesCard.updateTo", { version: latest })}</Button>
         ) : data.home_assistant ? (
           <Notice kind="info">{t("shell.updatesCard.homeAssistantHint")}</Notice>
+        ) : data.android ? (
+          <Notice kind="info">{tx("shell.updatesCard.androidHint", { link: <a href={data.latest?.url ?? `${REPO_URL}/releases/latest`}
+            target="_blank" rel="noopener noreferrer">{t("shell.updatesCard.androidDownloadPage")}</a> })}</Notice>
         ) : (
           <Notice kind="info">
             {t("shell.updatesCard.updateHelperHint")}
@@ -133,7 +138,7 @@ export function UpdatesCard() {
         {!data.available && latest && <p className="hint">{t("shell.updatesCard.upToDate")}</p>}
         <SwitchRow label={t("shell.updatesCard.autoCheck")} hint={t("shell.updatesCard.autoCheckHint")}
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
-        {!data.home_assistant && (
+        {!data.home_assistant && !data.android && (
           <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
             checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
         )}

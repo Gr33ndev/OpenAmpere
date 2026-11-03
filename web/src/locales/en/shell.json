@@ -150,6 +150,8 @@
     "title": "Updates",
     "upToDate": "OpenAmpere is up to date.",
     "updateHelperHint": "For one-tap updates, run the install script once more. It sets up the update helper:",
-    "updateTo": "Update to {version}"
+    "updateTo": "Update to {version}",
+    "androidHint": "On the tablet, an update comes as a new version of the OpenAmpere app. On the tablet, open {link}, download the file that ends in .apk there and install it.",
+    "androidDownloadPage": "the download page of OpenAmpere on GitHub"
   }
 }

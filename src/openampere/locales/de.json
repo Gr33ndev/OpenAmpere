@@ -341,7 +341,8 @@
     "noSupportedDeviceFound": "Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?"
   },
   "remote": {
-    "tailscaleNotSetUp": "Tailscale ist nicht eingerichtet. Bitte einmal das Install-Script erneut ausführen und die Frage nach dem Zugriff von unterwegs mit Ja beantworten."
+    "tailscaleNotSetUp": "Tailscale ist nicht eingerichtet. Bitte einmal das Install-Script erneut ausführen und die Frage nach dem Zugriff von unterwegs mit Ja beantworten.",
+    "tailscaleOnAndroid": "Auf dem Tablet richtest du den Zugriff von unterwegs mit der App Tailscale für Android ein."
   },
   "runtime": {
     "enterCommissioningDate": "Bitte das Datum der Inbetriebnahme angeben.",
@@ -385,7 +386,8 @@
   },
   "updates": {
     "updateHelperIsnT": "Der Update-Helfer läuft nicht. Bitte einmal das Install-Script erneut ausführen.",
-    "updatesComeViaHomeAssistant": "Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere."
+    "updatesComeViaHomeAssistant": "Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.",
+    "updatesComeAsNewApp": "Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Bitte lade sie auf dem Tablet von der Download-Seite von OpenAmpere auf GitHub herunter (die Datei endet auf .apk) und installiere sie."
   },
   "wallbox": {
     "atMostWallboxes": "Höchstens {MAX_WALLBOXES} Wallboxen.",

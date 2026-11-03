@@ -8,7 +8,7 @@ import { REPO_URL } from "./links";
 import { Button, copyText, Dialog, LearnMore, LoadState, Notice, SubPage, toast } from "./ui";
 
 type RemoteView = {
-  available: boolean; port: number; mode?: "kernel" | "userspace" | null; home_assistant?: boolean;
+  available: boolean; port: number; mode?: "kernel" | "userspace" | null; home_assistant?: boolean; android?: boolean;
   state: "unavailable" | "off" | "starting" | "login" | "approval" | "connected" | "stopping" | "failed";
   login_url?: string | null; address?: string | null; name?: string | null; ip?: string | null; account?: string | null;
   https?: { state: "off" | "starting" | "enable" | "on" | "failed"; url?: string | null; enable_url?: string; error?: string };
@@ -50,7 +50,15 @@ export function RemotePage({ onBack }: { onBack: () => void }) {
       {data?.state === "unavailable" && data.home_assistant && (
         <div className="card"><Notice kind="info">{t("settings.remotePage.homeAssistant")}</Notice></div>
       )}
-      {data?.state === "unavailable" && !data.home_assistant && (
+      {data?.state === "unavailable" && data.android && (
+        <div className="card">
+          <Notice kind="info">
+            {tx("settings.remotePage.android", { port: String(data.port),
+              link: <a href={DOWNLOAD_URL} target="_blank" rel="noopener">{t("settings.remotePage.androidTailscaleApp")}</a> })}
+          </Notice>
+        </div>
+      )}
+      {data?.state === "unavailable" && !data.home_assistant && !data.android && (
         <div className="card">
           <Notice kind="info">
             {t("settings.remotePage.notInstalled")}

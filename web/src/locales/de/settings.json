@@ -811,9 +811,11 @@
     "privacy": "OpenAmpere schaltet das Senden von Protokolldaten an Tailscale ab und stellt nichts öffentlich ins Internet. Einstellungen ändern geht auch von unterwegs nur mit deinem Passwort.",
     "setUpStep": "Auf {button} tippen.",
     "tailscaleApp": "Tailscale-App",
+    "androidTailscaleApp": "der App Tailscale",
     "tailscaleOverview": "Tailscale-Übersicht",
     "userspaceMode": "Tailscale läuft auf diesem Rechner ohne eigene Netzwerkschnittstelle. Dann erreichen die Geräte in deinem Tailscale-Netz auch andere Dienste dieses Rechners, die nur für ihn selbst gedacht sind. Teile das Tailscale-Netz nur mit eigenen Geräten oder beschränke den Zugriff in den Tailscale-Regeln (ACLs). Das Install-Script noch einmal auszuführen hilft, wenn der Rechner eine eigene Schnittstelle erlaubt.",
-    "whatIsTailscale": "Was ist Tailscale?"
+    "whatIsTailscale": "Was ist Tailscale?",
+    "android": "Von unterwegs erreichst du OpenAmpere auf dem Tablet mit {link}: Installiere sie auf dem Tablet und auf deinem Handy und melde dich in beiden mit demselben Konto an. Dann öffnest du auf dem Handy die Tailscale-Adresse des Tablets mit Port {port}."
   },
   "restoreCard": {
     "checking": "Die Sicherung wird hochgeladen und geprüft …",

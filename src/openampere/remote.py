@@ -16,7 +16,7 @@ import re
 import time
 from pathlib import Path
 
-from . import ha_app
+from . import android, ha_app
 from .runtime import Runtime
 from .updates import request_file
 
@@ -91,6 +91,8 @@ class Remote:
             view = {"available": False, "state": "unavailable", "port": port}
             if ha_app.active():  # no Tailscale helper in the Home Assistant app: remote access through Home Assistant
                 view["home_assistant"] = True
+            elif android.active():  # no Tailscale helper on the tablet: the Tailscale app for Android (#567)
+                view["android"] = True
             return view
         status = self.status()
         backend = status.get("BackendState")
@@ -129,6 +131,9 @@ class Remote:
         now = time.time() if now is None else now
         if action not in ACTIONS:
             raise ValueError("Unbekannte Aktion.")
+        if not self.helper_ready(now) and android.active():
+            raise RuntimeError("Auf dem Tablet richtest du den Zugriff von unterwegs mit der App Tailscale für "
+                               "Android ein.")
         if not self.helper_ready(now):
             raise RuntimeError("Tailscale ist nicht eingerichtet. Bitte einmal das Install-Script erneut ausführen "
                                "und die Frage nach dem Zugriff von unterwegs mit Ja beantworten.")

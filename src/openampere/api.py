@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.requests import HTTPConnection
 from pydantic import BaseModel, Field
 
-from . import discovery, cloud_import, external, ha_app, health, i18n, privacy, probe
+from . import android, discovery, cloud_import, external, ha_app, health, i18n, privacy, probe
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
 from .config import PRIVATE, SECRETS, restore_settings
@@ -640,6 +640,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "last_error": collector.last_error,
             # another device answers at the inverter's address (#567): since when, serial numbers shortened
             "wrong_device": collector.wrong_device,
+            "android": android.active(),  # runs in the Android app on a tablet (#567)
             "last_update": latest.timestamp if latest else None,
             "stale": collector.stale,
             "timezone": runtime.config.timezone,

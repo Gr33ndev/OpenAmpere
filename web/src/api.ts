@@ -48,6 +48,7 @@ export type Status = {
   last_error: string | null;
   /** another device answers at the inverter's address (#567): since when, serial numbers shortened; null if not */
   wrong_device?: { since: number; found: string | null; expected: string } | null;
+  android?: boolean; // runs in the Android app on a tablet (#567)
   last_update: number | null;
   stale: boolean;
   poll_interval: number;
