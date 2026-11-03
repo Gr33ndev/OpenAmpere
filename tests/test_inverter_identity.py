@@ -463,8 +463,10 @@ def test_another_device_leaves_no_full_serial_number_in_reports(tmp_path):
     runtime.storage.close()
 
 
-async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path):
-    """Review of #568: after the other device a timeout or no network: nothing to take over any more."""
+async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path, monkeypatch):
+    """Review of #568: after the other device no network several times in a row: nothing to take over any more."""
+    from openampere import collector as collector_module
+    monkeypatch.setattr(collector_module, "WRONG_DEVICE_GONE_AFTER", 1)
     storage = Storage(tmp_path / "t.db")
     storage.set_meta("known_device", {"serial": OWN, "host": "127.0.0.1"})
     server, port = await start(foxess(OTHER))
@@ -480,3 +482,20 @@ async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path):
     finally:
         await collector.stop()
         storage.close()
+
+
+def test_a_single_timeout_keeps_the_notice(tmp_path):
+    """Review of #568: one timeout does not end the notice, its time or the owner's open dialog."""
+    from openampere.drivers.modbus import ModbusTransientError
+    storage = Storage(tmp_path / "t.db")
+    collector = Collector(None, storage, 1, 30)
+    collector._note_wrong_device(WrongDevice(OWN, OTHER))
+    since = collector.wrong_device["since"]
+    events = len(storage.get_meta("connection_events"))
+    for err in (ModbusTransientError("timeout"), WrongDevice(OWN, OTHER), ModbusTransientError("timeout")):
+        if isinstance(err, WrongDevice):
+            collector._note_wrong_device(err)
+        else:
+            collector._other_errors += 1
+    assert collector.wrong_device["since"] == since and len(storage.get_meta("connection_events")) == events
+    storage.close()

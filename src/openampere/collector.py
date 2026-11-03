@@ -20,6 +20,7 @@ MAX_TRANSIENT = 3  # consecutive temporary errors tolerated before the inverter 
 # below this, the owner is warned: SQLite needs room for its journal, and a full disk stops the history (#170)
 LOW_DISK_BYTES = 200 * 1024 * 1024
 STORAGE_LOG_EVERY_S = 3600  # while writing keeps failing, repeat the error in the log only this often
+WRONG_DEVICE_GONE_AFTER = 3  # other errors in a row after which another device counts as gone (#567)
 KNOWN_DEVICE = "known_device"  # meta: serial number and address of the owner's inverter (#351, #567)
 
 
@@ -66,6 +67,7 @@ class Collector:
         self.wrong_device: dict | None = None  # another device answers at the address: since, shortened numbers
         self._wrong_serial: str | None = None  # its full serial number, for accept_device()
         self._new_host: str | None = None  # the address of a device the owner just set up, until it answers
+        self._other_errors = 0  # other errors in a row since another device answered
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
 
@@ -151,6 +153,7 @@ class Collector:
             self._new_host = None
 
     def _note_wrong_device(self, err: WrongDevice) -> None:
+        self._other_errors = 0
         if self.wrong_device is None or self._wrong_serial != err.found:
             log.warning("another device answers at the inverter's address (serial number %s instead of %s): not "
                         "read and not controlled", privacy.shorten(err.found), privacy.shorten(err.expected))
@@ -327,8 +330,12 @@ class Collector:
                 raise_if_cancelled()
                 if isinstance(err, WrongDevice):
                     self._note_wrong_device(err)
-                else:  # that device is gone too (e.g. no Wi-Fi): nothing left to take over
-                    self.wrong_device = self._wrong_serial = None
+                elif self.wrong_device is not None:
+                    # that device is gone too (e.g. no Wi-Fi): nothing left to take over; not after a single timeout,
+                    # which a weak link or a proxy gives now and then
+                    self._other_errors += 1
+                    if self._other_errors >= WRONG_DEVICE_GONE_AFTER:
+                        self.wrong_device = self._wrong_serial = None
                 try:
                     self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
                 except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling
