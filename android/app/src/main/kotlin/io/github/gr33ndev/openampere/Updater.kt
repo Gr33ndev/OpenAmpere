@@ -270,9 +270,10 @@ class Updater(private val context: Context) {
         fun finished(context: Context): Boolean {
             val marker = File(context.filesDir, "update/installing")
             if (!marker.isFile) return false
-            val version = marker.readText().trim()
             marker.delete()
-            writeStatus(context, "done", context.getString(R.string.updates_done, version))
+            // the version that runs now: an update Android asked about and nobody confirmed leaves its marker,
+            // and a later update by hand must not be reported as that version
+            writeStatus(context, "done", context.getString(R.string.updates_done, installedVersion(context)))
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(CONFIRM_ID)
             return true
         }

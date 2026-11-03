@@ -109,8 +109,9 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
-        // an update ends the process while the app is in front, without onPause: then the note stays
-        frontFile(this).delete()
+        // an update ends the process while the app is in front, without onPause: then the note stays. The screen
+        // going off (a tablet on the wall at night, when updates run) pauses the app too: it stays in front then
+        if ((getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive) frontFile(this).delete()
         main.removeCallbacks(watch)
         super.onPause()
     }
