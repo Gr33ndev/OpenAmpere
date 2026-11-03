@@ -43,6 +43,8 @@ class MainActivity : Activity() {
     private var upload: ValueCallback<Array<Uri>>? = null
     private var pendingSave: ((Uri) -> Unit)? = null
     private var waiting = false
+    private var clearHistory = false
+    private var stopped = false // shows why the server gave up
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,14 @@ class MainActivity : Activity() {
                 if (isServer(request.url)) return false
                 openOutside(request.url)
                 return true
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                // the starting page must not stay behind the web app: Back would lead to it
+                if (clearHistory && url.startsWith(SERVER)) {
+                    clearHistory = false
+                    view.clearHistory()
+                }
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -87,6 +97,30 @@ class MainActivity : Activity() {
         askOnce()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // the server gave up: opening the app again is a new attempt
+        if (ServerService.stopReason(this) != null) {
+            ServerService.start(this)
+            waitForServer()
+        }
+        main.post(watch)
+    }
+
+    override fun onPause() {
+        main.removeCallbacks(watch)
+        super.onPause()
+    }
+
+    /** While the web app is shown: if the server gave up meanwhile, the reason instead of the web app's "no
+     *  connection". */
+    private val watch: Runnable = object : Runnable {
+        override fun run() {
+            if (!waiting && !stopped && ServerService.stopReason(this@MainActivity) != null) waitForServer()
+            main.postDelayed(this, WATCH_MS)
+        }
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         web.saveState(outState)
@@ -103,24 +137,39 @@ class MainActivity : Activity() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, url))
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.no_browser, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.shell_noBrowser, Toast.LENGTH_LONG).show()
         }
     }
 
-    /** Shows "OpenAmpere is starting" until the server answers, then the web app. */
+    /** Shows "OpenAmpere is starting" until the server answers, then the web app; if the server gave up, why. */
     private fun waitForServer() {
         if (waiting) return
         waiting = true
-        val text = Html.escapeHtml(getString(R.string.starting))
-        web.loadDataWithBaseURL(null, STARTING_PAGE.replace("TEXT", text), "text/html", "utf-8", null)
+        stopped = false
+        page(Html.escapeHtml(getString(R.string.shell_starting)))
         thread(name = "wait-for-server") {
-            while (!answers()) Thread.sleep(1_000)
+            var reason: String? = null
+            while (!answers()) {
+                reason = ServerService.stopReason(this)
+                if (reason != null) break
+                Thread.sleep(1_000)
+            }
             main.post {
                 waiting = false
-                web.loadUrl(SERVER)
+                if (reason != null) {
+                    stopped = true
+                    page("<b>${Html.escapeHtml(getString(R.string.shell_stopped))}</b><p>${Html.escapeHtml(reason)}</p>" +
+                        "<p>${Html.escapeHtml(getString(R.string.shell_stoppedHint))}</p>")
+                } else {
+                    clearHistory = true
+                    web.loadUrl(SERVER)
+                }
             }
         }
     }
+
+    private fun page(html: String) =
+        web.loadDataWithBaseURL(null, STARTING_PAGE.replace("TEXT", html), "text/html", "utf-8", null)
 
     private fun answers(): Boolean = try {
         (URL("${SERVER}api/health").openConnection() as HttpURLConnection).run {
@@ -166,7 +215,7 @@ class MainActivity : Activity() {
                 } catch (e: Exception) {
                     false
                 }
-                main.post { toast(if (ok) R.string.saved else R.string.save_failed) }
+                main.post { toast(if (ok) R.string.shell_saved else R.string.shell_saveFailed) }
             }
         }
     }
@@ -182,7 +231,7 @@ class MainActivity : Activity() {
             startActivityForResult(intent, REQUEST_SAVE)
         } catch (e: ActivityNotFoundException) {
             pendingSave = null
-            toast(R.string.save_failed)
+            toast(R.string.shell_saveFailed)
         }
     }
 
@@ -215,7 +264,7 @@ class MainActivity : Activity() {
                     } catch (e: Exception) {
                         false
                     }
-                    toast(if (ok) R.string.saved else R.string.save_failed)
+                    toast(if (ok) R.string.shell_saved else R.string.shell_saveFailed)
                 }
             }
         }
@@ -253,11 +302,13 @@ class MainActivity : Activity() {
     companion object {
         private const val HOST = "127.0.0.1"
         private val SERVER = "http://$HOST:${ServerService.PORT}/"
+        private const val WATCH_MS = 5_000L
         private const val REQUEST_UPLOAD = 1
         private const val REQUEST_SAVE = 2
         private const val REQUEST_NOTIFICATIONS = 3
         private const val STARTING_PAGE = """<!doctype html><meta name="viewport" content="width=device-width">
 <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;
-color:#e2e8f0;font:18px sans-serif;text-align:center;padding:24px;box-sizing:border-box">TEXT</body>"""
+color:#e2e8f0;font:18px/1.5 sans-serif;text-align:center;padding:24px;box-sizing:border-box">
+<div style="max-width:32em">TEXT</div></body>"""
     }
 }

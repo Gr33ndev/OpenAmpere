@@ -3,6 +3,8 @@
 // The Android app (#567): the unchanged server of OpenAmpere in a foreground service (Chaquopy), the web app in a
 // WebView. Before building: `cd web && npm run build` (the web app goes into the Python package) and
 // `scripts/android-wheels.sh` (pydantic-core for Android).
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     id("com.chaquo.python")
@@ -64,22 +66,112 @@ tasks.configureEach {
     if (name.startsWith("merge") && name.endsWith("PythonSources")) dependsOn(stagePython)
 }
 
-// The packages of requirements.lock (the Docker image's versions), except where Chaquopy only has an older Android
-// build; pyproject.toml allows these. pydantic-core comes from android/wheels/ (scripts/android-wheels.sh).
-val chaquopyVersions = mapOf("cryptography" to "42.0.8", "cffi" to "1.17.1")
+// The packages of requirements.lock with their hashes (the Docker image's versions), so pip checks every file that
+// goes into the APK. Native packages come as Chaquopy's Android builds instead (cryptography and cffi only in older
+// versions, which pyproject.toml allows), with the SHA-256 of each file for the three ABIs; pydantic-core from
+// android/wheels/ (scripts/android-wheels.sh), with the hashes of the wheels built there.
+val chaquopyWheels = mapOf(
+    "cryptography" to ("42.0.8" to listOf(
+        "efca75f2ad2b0e29e2c6994316af98b59fc8f28161065e599a816678f061258e", // arm64-v8a
+        "7e44183f6d297d75e415da20ead13bb193b9923a27a8f61c31af592f9651ab2b", // armeabi-v7a
+        "9edef96c41a8a7c48d565ee9a706cb436242a43531616a74819c1d7bf32c67b8", // x86_64
+    )),
+    "cffi" to ("1.17.1" to listOf(
+        "87f4d395d14d77f3cbe65a3468904b35214bd68c8c34233bc0fc6422a4c0052b",
+        "8495e21e45face6f5643b0c545fa171175aa41210c496481a211a41083e2377a",
+        "7da440706719d4cce43de1ccae1feba11b55871e2cf279949a97571155b02536",
+    )),
+    "pyyaml" to ("6.0.3" to listOf(
+        "75013ba172066d8e009cf8c7a2fa7a2b2d9e83fc9913470d7f5f707872c4885d",
+        "7e4ac4964aaeebc6d8aeedadb05d8936e9e192d119ee011680da57b2cc2c519b",
+        "480ad0e88271416c9d297150dc722680b9ba95b216ed19ecf2f83e96d63ca1aa",
+    )),
+)
+val chaquopyLibraries = mapOf(
+    "chaquopy-libffi" to ("3.3" to listOf(
+        "86873c2f8e5e43b07b72233bf35e06ad8dae41ba98e0556202d61d00d7ad952f",
+        "8e9c18da8173747ffd7a26df408b4137e9756f856a247c617fa43270f86baef8",
+        "bf5e4a533efe7c1b2687c8db33e5c93c102de12aea40d860570e5ec11e29dc31",
+    )),
+    "chaquopy-libyaml" to ("0.2.5" to listOf(
+        "77f594d82adf2a1baf5f8340324ef06b7f54b1b0725b7d9b4ce8367e270ad5a2",
+        "99bbbe319e99ef092ab8677f644b9203b71f7bdc499dec75974c67effede5752",
+        "752dc7ffa8337196a053d5a58a74c66a9f8b3cfe1afee122b97b5be7762b8a5d",
+    )),
+)
+val wheels: File = rootDir.resolve("wheels")
+fun sha256(file: File): String =
+    MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+
 val requirements: File = layout.buildDirectory.file("requirements-android.txt").get().asFile
 requirements.parentFile.mkdirs()
 requirements.writeText(
-    repo.resolve("requirements.lock").readLines()
-        .map { it.trim().removeSuffix("\\").trim() }
-        .filter { it.isNotEmpty() && !it.startsWith("#") && !it.startsWith("--hash") }
+    // one block per package: "name==version ; marker" followed by its "--hash=" lines
+    repo.resolve("requirements.lock").readText().replace("\\\n", " ").lines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
         .joinToString("\n", postfix = "\n") { line ->
             val name = line.substringBefore("==")
-            chaquopyVersions[name]?.let { "$name==$it" } ?: line
+            val version = line.substringAfter("==").substringBefore(" ")
+            val hashes = when {
+                name in chaquopyWheels -> chaquopyWheels.getValue(name).let { (v, h) -> v to h }
+                name == "pydantic-core" -> version to (wheels.listFiles { f -> f.name.startsWith("pydantic_core-$version-") }
+                    ?.map(::sha256)?.takeIf { it.isNotEmpty() }
+                    ?: error("no pydantic-core $version in $wheels: run scripts/android-wheels.sh"))
+                else -> null
+            }
+            hashes?.let { (v, h) -> "$name==$v " + h.joinToString(" ") { "--hash=sha256:$it" } } ?: line
         } +
-        // Android has no time zone database for Python (Linux has it in /usr/share/zoneinfo)
-        "tzdata==2026.6\n",
+        // the native libraries Chaquopy's builds of cffi and pyyaml bring along
+        chaquopyLibraries.entries.joinToString("\n", postfix = "\n") { (name, pin) ->
+            "$name==${pin.first} " + pin.second.joinToString(" ") { "--hash=sha256:$it" }
+        },
 )
+
+// The texts of the app (notification, starting page, messages) come from the locale files of the web app, like all
+// texts (#567): web/src/locales/<lang>/android.json -> res/values-<lang>/strings.xml, key android.<group>.<name> as
+// R.string.<group>_<name> (web/scripts/check-i18n.mjs checks them). The default for other device languages is
+// English, with German where English has no text yet. {placeholders} become %1$s, %2$s in the order of the German text.
+val locales: File = repo.resolve("web/src/locales")
+val generatedRes: File = layout.buildDirectory.dir("generated/locales").get().asFile
+val androidTexts = tasks.register("androidTexts") {
+    inputs.files(fileTree(locales) { include("*/android.json") })
+    outputs.dir(generatedRes)
+    doLast {
+        fun flatten(node: Map<*, *>, prefix: String = ""): Map<String, String> = node.entries.flatMap { (key, value) ->
+            if (value is Map<*, *>) flatten(value, "$prefix${key}_").entries.map { it.toPair() }
+            else listOf("$prefix$key" to value.toString())
+        }.toMap()
+        fun texts(lang: String): Map<String, String> = locales.resolve("$lang/android.json").takeIf { it.isFile }
+            ?.let { flatten(groovy.json.JsonSlurper().parse(it) as Map<*, *>) } ?: emptyMap()
+        val german = texts("de")
+        val order = german.mapValues { (_, text) -> Regex("""\{(\w+)\}""").findAll(text).map { it.groupValues[1] }.distinct().toList() }
+        fun resource(text: String, names: List<String>): String {
+            var out = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("%", "%%")
+            if (out.startsWith("@") || out.startsWith("?")) out = "\\" + out
+            names.forEachIndexed { i, name -> out = out.replace("{$name}", "%${i + 1}\$s") }
+            return out
+        }
+        fun write(folder: String, strings: Map<String, String>) {
+            val file = generatedRes.resolve("$folder/strings.xml")
+            file.parentFile.mkdirs()
+            file.writeText(
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- generated from web/src/locales/*/android.json -->\n<resources>\n" +
+                    strings.toSortedMap().entries.joinToString("") { (name, text) ->
+                        "    <string name=\"$name\">${resource(text, order[name] ?: emptyList())}</string>\n"
+                    } + "</resources>\n",
+            )
+        }
+        generatedRes.deleteRecursively()
+        write("values", german + texts("en").filterKeys { it in german })
+        locales.listFiles { f -> f.isDirectory && f.resolve("android.json").isFile }!!.forEach { lang ->
+            write("values-${lang.name}", texts(lang.name).filterKeys { it in german })
+        }
+    }
+}
+android.sourceSets.getByName("main").res.srcDir(generatedRes)
+tasks.named("preBuild") { dependsOn(androidTexts) }
 
 chaquopy {
     defaultConfig {

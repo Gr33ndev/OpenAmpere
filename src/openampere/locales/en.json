@@ -436,5 +436,8 @@
     "realControlOn": "real control switched on",
     "fallbackNotTaken": "The wallbox did not take the fallback current of 6 A. OpenAmpere therefore does not control it.",
     "workModeKeepControlled": "Under real control the work mode must stay “Controlled”. Switch real control off first, then you can change it."
+  },
+  "android": {
+    "portInUse": "Port {port} is already used by another app on the tablet. Please close or uninstall that app and restart the tablet."
   }
 }

@@ -1,0 +1,12 @@
+{
+  "shell": {
+    "channelServer": "OpenAmpere is running",
+    "noBrowser": "No browser found to open the link.",
+    "running": "Reads your solar system around the clock. In the home network: this tablet's address with port {port}.",
+    "saveFailed": "The file could not be saved. Please try again.",
+    "saved": "File saved.",
+    "starting": "OpenAmpere is starting …",
+    "stopped": "OpenAmpere is not running",
+    "stoppedHint": "OpenAmpere could not start several times in a row and no longer tries by itself. Open the app again and OpenAmpere makes a new attempt."
+  }
+}

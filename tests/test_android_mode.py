@@ -114,3 +114,24 @@ def test_a_restart_runs_the_command_again_except_in_the_app(tmp_path, monkeypatc
     monkeypatch.setattr(entry.os, "umask", lambda mask: 0)
     entry.main()
     assert bool(calls) is not on_tablet  # the same command again only outside the app
+
+
+def test_another_app_on_the_port_is_said_before_the_server_starts():
+    import socket
+
+    with socket.socket() as other:
+        other.bind(("0.0.0.0", 0))
+        other.listen()
+        with pytest.raises(SystemExit, match=f"Port {other.getsockname()[1]} wird schon von einer anderen App"):
+            android.check_port(other.getsockname()[1])
+    with socket.socket() as free:
+        free.bind(("0.0.0.0", 0))
+        port = free.getsockname()[1]
+    android.check_port(port)  # free again: no error
+
+
+def test_why_the_server_stopped_for_the_owner():
+    assert android.stop_reason(SystemExit()) is None  # as asked, e.g. a restart after a restored backup
+    assert android.stop_reason(SystemExit(0)) is None
+    assert android.stop_reason(SystemExit("Kein Schreibzugriff auf …")) == "Kein Schreibzugriff auf …"
+    assert "Fehlercode 1" in android.stop_reason(SystemExit(1))  # uvicorn could not open its port

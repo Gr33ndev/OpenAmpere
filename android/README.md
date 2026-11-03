@@ -8,12 +8,18 @@ to run OpenAmpere, for owners without a Linux server.
 ## How it works
 
 - **Server:** [Chaquopy](https://chaquo.com/chaquopy/) puts Python 3.11 and the `openampere` package (with the built
-  web app) into the APK. `ServerService` runs it in a foreground service with a permanent notification, keeps the CPU
-  and Wi-Fi awake, and starts it again in a new process when it stops (crash, or a restart it asked for, such as after
-  a restored backup). `BootReceiver` starts it after the tablet was switched on and after an update.
+  web app) into the APK. `ServerService` runs it in a foreground service in a process of its own (`:server`) with a
+  permanent notification and keeps the CPU and Wi-Fi awake. When the server stops (crash, or a restart it asked for,
+  such as after a restored backup), only that process is started again, by an exact alarm 5 s later: from Android 12
+  only an exact alarm may start a foreground service from the background. A server that fails three times within a
+  minute of starting (another app on port 8080, a database of a newer version) is not started again: the reason is in
+  a notification and on the app's page until the app is opened again or the tablet starts. `BootReceiver` starts it
+  after the tablet was switched on and after an update.
 - **Android mode:** `openampere_app.py` sets `OPENAMPERE_ANDROID` (see `src/openampere/android.py`), the data folder in
   the app's private storage and the fixed port 8080. Other devices in the home network open the web app at the
   tablet's address with port 8080, as on the other ways.
+- **Texts:** notification, starting page and messages come from `web/src/locales/<lang>/android.json` like every text
+  of the app; the build turns them into Android resources (`R.string.<group>_<name>`), `npm run check:i18n` checks them.
 - **App:** `MainActivity` shows the web app of `127.0.0.1:8080` in a WebView. Links to other sites open in the browser;
   files the web app offers are saved where the owner picks (Android's "save as" dialog, no storage permission).
 - **Minimum:** Android 7.0 (API 24), 32-bit and 64-bit ARM. The WebView of old tablets can be old: the web app must not
@@ -31,7 +37,10 @@ cd android && ./gradlew assembleDebug        # app/build/outputs/apk/debug/app-d
 
 Chaquopy's package index has Android builds of most packages, but not of `pydantic-core` (Rust, needed by FastAPI);
 `scripts/android-wheels.sh` builds it for each ABI against Chaquopy's Python. `cryptography` and `cffi` come in the
-older versions Chaquopy has (pyproject.toml allows them); Android also needs `tzdata` for time zones.
+older versions Chaquopy has (pyproject.toml allows them), `pyyaml` as Chaquopy's build. pip checks every file that
+goes into the APK: the hashes of `requirements.lock`, and in `app/build.gradle.kts` those of Chaquopy's builds and of
+the wheels built here. The script checks its downloads as well; maturin comes from `android/requirements-build.lock`
+(`scripts/lock.sh`).
 
 ## Trying it in the emulator
 
@@ -45,7 +54,8 @@ adb forward tcp:18080 tcp:8080      # the web app of the emulator at http://127.
 
 The emulator reaches the computer at `10.0.2.2`: start the simulator there (`python -m openampere.simulator --port
 5020`) and set up the inverter `10.0.2.2`, port 5020. Debug builds can be inspected with Chrome on the computer
-(`chrome://inspect`).
+(`chrome://inspect`). An Android 14 image (`system-images;android-34;google_apis;arm64-v8a`) shows the limits
+of newer versions, e.g. starting the server from the background.
 
 ## Not yet
 

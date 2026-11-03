@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 // Checks the translations in src/locales/<lang>/<area>.json (#104). German (de) is the reference.
-// - every key used in the code with t("…") or tx("…") exists in German, and every German key is used
+// - every key used in the code with t("…") or tx("…") exists in German, and every German key is used; the Android
+//   app (#567) uses android.<group>.<name> as R.string.<group>_<name> (android/app/build.gradle.kts makes them)
 // - every other language only has keys that exist in German, with the same {placeholders} and plural forms
 // - every language has a meta.json with its name
 // Prints how much of each language is translated; missing texts appear in German in the app.
@@ -47,6 +48,17 @@ const problem = (text) => { console.error(text); problems++; };
 const used = new Set();
 for (const file of files(SRC)) {
   for (const match of readFileSync(file, "utf8").matchAll(/\btx?\(\s*"([\w.]+)"/g)) used.add(match[1]);
+}
+
+const ANDROID = new URL("../../android/app/src/main/kotlin/", import.meta.url).pathname;
+const kotlin = (dir) => readdirSync(dir).flatMap((name) => {
+  const path = join(dir, name);
+  return statSync(path).isDirectory() ? kotlin(path) : name.endsWith(".kt") ? [path] : [];
+});
+for (const file of existsSync(ANDROID) ? kotlin(ANDROID) : []) {
+  for (const match of readFileSync(file, "utf8").matchAll(/\bR\.string\.(\w+)/g)) {
+    used.add(`android.${match[1].replaceAll("_", ".")}`);
+  }
 }
 
 const reference = language(REFERENCE);

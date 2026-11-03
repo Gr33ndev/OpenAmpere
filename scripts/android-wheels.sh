@@ -21,15 +21,37 @@ version() {  # the pinned version from requirements.lock, so the app has the sam
   sed -n "s/^$1==\([^ ]*\).*/\1/p" "$ROOT/requirements.lock" | head -1
 }
 
+# SHA-256 of Chaquopy's Python for each ABI (Maven Central publishes only SHA-1 and MD5 for them)
+target_sha256() {
+  case $1 in
+    arm64-v8a) echo 399b58d04898f2c7d5f0044e141bdf3818552e538e5f36d06d7fe0bebc298582 ;;
+    armeabi-v7a) echo 7516b90fcb8a5a2df70e5f9899aab7e63fa43efa0455c3ba7b846ae54d70ee2c ;;
+    x86_64) echo a479a9c74ca9e900f30b6089ffd23a10d74fe7a9f427d967bceddf8f3fe206f1 ;;
+  esac
+}
+
+check() {  # file, then the hashes it may have; a download that matches none is removed
+  local sum
+  sum=$(python3 -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$1")
+  for allowed in "${@:2}"; do [ "$sum" = "$allowed" ] && return 0; done
+  rm -f "$1"
+  echo "$1: unexpected SHA-256 $sum" >&2
+  exit 1
+}
+
 NDK="${ANDROID_NDK_HOME:-${ANDROID_HOME:?ANDROID_HOME or ANDROID_NDK_HOME must be set}/ndk/$NDK_VERSION}"
 BIN=$(echo "$NDK"/toolchains/llvm/prebuilt/*/bin)
 mkdir -p "$WORK" "$OUT"
 cd "$WORK"
-[ -x tools/bin/maturin ] || { python3 -m venv tools && tools/bin/pip -q install "maturin>=1.9,<2"; }
+[ -x tools/bin/maturin ] || { python3 -m venv tools && tools/bin/pip -q install --require-hashes -r "$ROOT/android/requirements-build.lock"; }
 
 PYDANTIC_CORE=$(version pydantic-core)
 [ -f "pydantic_core-$PYDANTIC_CORE.tar.gz" ] || \
   tools/bin/pip -q download --no-deps --no-binary :all: "pydantic-core==$PYDANTIC_CORE" -d .
+# the source must be the file requirements.lock pins (its hashes include the one of the source archive)
+# shellcheck disable=SC2046
+check "pydantic_core-$PYDANTIC_CORE.tar.gz" $(sed -n "/^pydantic-core==/,/^[^ ]/p" "$ROOT/requirements.lock" \
+  | sed -n 's/.*--hash=sha256:\([0-9a-f]*\).*/\1/p')
 
 for abi in $ABIS; do
   case $abi in
@@ -40,6 +62,7 @@ for abi in $ABIS; do
   esac
   zip="target-$PYTHON_TARGET-$abi.zip"
   [ -f "$zip" ] || curl -fsSLO "https://repo.maven.apache.org/maven2/com/chaquo/python/target/$PYTHON_TARGET/$zip"
+  check "$zip" "$(target_sha256 "$abi")"
   rm -rf "python-$abi" && mkdir "python-$abi" && unzip -q "$zip" "jniLibs/*" -d "python-$abi"
   # PyO3 reads the target Python from this file: Chaquopy's Python has no _sysconfigdata to read it from
   cat > "pyo3-$abi.txt" <<CONFIG
