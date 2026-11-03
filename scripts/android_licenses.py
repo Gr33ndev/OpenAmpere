@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: MIT
 """Generate the license list of what only the Android app (#567) ships, from a built APK.
 
-The APK has the same Python packages as the server, partly in other builds or versions (Chaquopy's cryptography and
-cffi), plus packages and native parts only Android needs: Python itself, Chaquopy, OpenSSL, SQLite, the Kotlin
-standard library (android/licenses/components.json with their texts) and Chaquopy's libraries. Everything that is not
-already in web/public/third-party-licenses.json with the same version goes into
+The APK has the same Python packages as the server (from requirements.lock), except Chaquopy's Android builds that
+android/app/build.gradle.kts pins (cryptography, cffi, pyyaml and the libraries they bring along), plus native parts
+only Android needs: Python itself, Chaquopy, OpenSSL, SQLite, the Kotlin standard library (android/licenses/
+components.json with their texts). Chaquopy's builds, with the texts from the APK, and the native parts go into
   - web/public/third-party-licenses-android.json (the app shows it on its licenses page on the tablet) and
   - android/THIRD_PARTY_LICENSES.md.
 
@@ -20,16 +20,17 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 import sys
 import zipfile
 from email.parser import HeaderParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SERVER_JSON = ROOT / "web" / "public" / "third-party-licenses.json"
 ANDROID_JSON = ROOT / "web" / "public" / "third-party-licenses-android.json"
 ANDROID_MD = ROOT / "android" / "THIRD_PARTY_LICENSES.md"
 COMPONENTS = ROOT / "android" / "licenses"
+GRADLE = ROOT / "android" / "app" / "build.gradle.kts"
 LICENSE_NAMES = ("LICENSE", "LICENCE", "COPYING", "NOTICE", "AUTHORS")
 TITLE = "Nur in der Android-App"
 
@@ -72,11 +73,16 @@ def components() -> list[dict]:
              "texts": [(COMPONENTS / e["file"]).read_text(encoding="utf-8").strip()]} for e in entries]
 
 
+def chaquopy_builds() -> set[str]:
+    """The packages build.gradle.kts takes from Chaquopy's index instead of requirements.lock: "name" to ("version" ...
+    Fixed there, so the weekly update of the lock (which changes the server list) never changes this list."""
+    return {name for name in re.findall(r'^\s*"([a-z0-9-]+)" to \("[^"]+"', GRADLE.read_text(encoding="utf-8"),
+                                        re.MULTILINE)}
+
+
 def only_android(apk: Path) -> list[dict]:
-    server = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
-    known = {(p["name"].lower().replace("_", "-"), p["version"]) for g in server["groups"] for p in g["packages"]}
-    extra = [p for p in apk_packages(apk) if (p["name"].lower().replace("_", "-"), p["version"]) not in known]
-    return components() + extra
+    builds = chaquopy_builds()
+    return components() + [p for p in apk_packages(apk) if p["name"].lower().replace("_", "-") in builds]
 
 
 def render_md(packages: list[dict]) -> str:

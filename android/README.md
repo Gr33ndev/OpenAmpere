@@ -63,7 +63,9 @@ The release workflow builds the APK from the version tag, signs it with the rele
 `openampere-<version>.apk` with its checksum and build provenance (docs/android-signing.md). The license list of what
 only the app ships comes from the APK: `python3 scripts/android_licenses.py <apk>` writes
 `web/public/third-party-licenses-android.json` (shown on the tablet's licenses page) and `THIRD_PARTY_LICENSES.md`
-here; CI checks both. The versions in `licenses/components.json` are updated by hand with Chaquopy or Kotlin.
+here; CI checks both. It lists the native parts (`licenses/components.json`, versions updated by hand with Chaquopy or
+Kotlin) and the Chaquopy builds pinned in `app/build.gradle.kts`, so the weekly update of `requirements.lock` never
+changes it; regenerate it after changing those pins.
 
 ## Not yet
 

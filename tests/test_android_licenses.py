@@ -26,20 +26,21 @@ def imy(packages: dict[str, tuple[str, str]]) -> bytes:
     return buffer.getvalue()
 
 
-def test_only_what_the_server_list_does_not_have(tmp_path):
-    server = json.loads(android_licenses.SERVER_JSON.read_text(encoding="utf-8"))
-    known = server["groups"][-1]["packages"][0]  # a package of the server in the same version
+def test_chaquopy_builds_whatever_the_lock_says(tmp_path):
+    """The packages build.gradle.kts pins from Chaquopy's index are listed with the texts from the APK; the others
+    come from requirements.lock like the server's and are in its list, so a weekly lock update changes nothing here."""
+    assert {"cryptography", "cffi", "pyyaml"} <= android_licenses.chaquopy_builds()
     apk = tmp_path / "app.apk"
     with zipfile.ZipFile(apk, "w") as z:
         z.writestr("assets/chaquopy/requirements-common.imy",
-                   imy({known["name"]: (known["version"], "same"), "only-android": ("1.0", "MIT text")}))
-        z.writestr("assets/chaquopy/requirements-arm64-v8a.imy", imy({"only-android": ("1.0", "MIT text")}))
+                   imy({"pyyaml": ("6.0.3", "MIT text"), "fastapi": ("9.9.9", "same as the server's")}))
+        z.writestr("assets/chaquopy/requirements-arm64-v8a.imy", imy({"pyyaml": ("6.0.3", "MIT text")}))
     packages = android_licenses.only_android(apk)
     names = [p["name"] for p in packages]
     assert "Python" in names and "Chaquopy" in names  # the native parts from android/licenses/
-    assert names.count("only-android") == 1 and known["name"] not in names
-    extra = next(p for p in packages if p["name"] == "only-android")
-    assert extra["version"] == "1.0" and extra["license"] == "MIT" and extra["texts"] == ["MIT text"]
+    assert names.count("pyyaml") == 1 and "fastapi" not in names
+    pyyaml = next(p for p in packages if p["name"] == "pyyaml")
+    assert pyyaml["version"] == "6.0.3" and pyyaml["license"] == "MIT" and pyyaml["texts"] == ["MIT text"]
 
 
 def test_every_native_part_has_its_text():
