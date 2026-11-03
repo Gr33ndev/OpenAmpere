@@ -100,7 +100,8 @@ def main() -> None:
     parser.add_argument("--check", action="store_true", help="exit 1 if the generated files are outdated")
     args = parser.parse_args()
     packages = only_android(args.apk)
-    outputs = {ANDROID_JSON: json.dumps({"groups": [{"title": TITLE, "packages": packages}]}, ensure_ascii=False,
+    outputs = {ANDROID_JSON: json.dumps({"groups": [{"id": "android", "title": TITLE, "packages": packages}]},
+                                        ensure_ascii=False,
                                         indent=1) + "\n",
                ANDROID_MD: render_md(packages)}
     if args.check:

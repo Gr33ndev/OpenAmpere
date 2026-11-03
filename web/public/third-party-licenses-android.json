@@ -1,6 +1,7 @@
 {
  "groups": [
   {
+   "id": "android",
    "title": "Nur in der Android-App",
    "packages": [
     {

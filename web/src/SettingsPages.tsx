@@ -1093,7 +1093,17 @@ function CloudImportCard() {
 // ---------------------------------------------------------------------------
 
 type LicensePackage = { name: string; version?: string; license: string; url?: string; texts: string[] };
-type LicenseData = { self: LicensePackage; groups: { title: string; packages: LicensePackage[] }[] };
+type LicenseData = { self: LicensePackage; groups: { id?: string; title: string; packages: LicensePackage[] }[] };
+
+/** The title of a group of the license files in the language of the app; the file's own title is German. */
+function licenseGroupTitle(group: LicenseData["groups"][number]): string {
+  switch (group.id) {
+    case "web": return t("settings.licensesPage.groupWeb");
+    case "server": return t("settings.licensesPage.groupServer");
+    case "android": return t("settings.licensesPage.groupAndroid");
+    default: return group.title;
+  }
+}
 
 function LicenseRow({ pkg }: { pkg: LicensePackage }) {
   const [open, setOpen] = useState(false);
@@ -1195,7 +1205,7 @@ export function LicensesPage({ onBack }: PageProps) {
           <div className="card menu"><LicenseRow pkg={data.self} /></div>
           {groups.map((g) => (
             <div key={g.title}>
-              <div className="section-title">{g.title}</div>
+              <div className="section-title">{licenseGroupTitle(g)}</div>
               <div className="card menu">
                 {g.packages.map((p) => <LicenseRow key={p.name} pkg={p} />)}
               </div>

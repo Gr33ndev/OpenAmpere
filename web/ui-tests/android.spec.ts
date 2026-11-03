@@ -47,3 +47,13 @@ test("the licenses page elsewhere has no Android part", async ({ page }) => {
   await expect(page.locator(".section-title").first()).toBeVisible();
   await expect(page.locator(".section-title", { hasText: "Nur in der Android-App" })).toHaveCount(0);
 });
+
+test("the license groups are titled in the language of the app", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  api.override("/api/status", { ...status, android: true });
+  await page.addInitScript(() => localStorage.setItem("openampere.lang", "en"));
+  await open(page, "more/licenses");
+  await expect(page.locator(".section-title", { hasText: "Only in the Android app" })).toBeVisible();
+  await expect(page.locator(".section-title", { hasText: "App in the browser" })).toBeVisible();
+  await expect(page.locator(".section-title", { hasText: "Nur in der Android-App" })).toHaveCount(0);
+});
