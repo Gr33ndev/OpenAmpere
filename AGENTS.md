@@ -51,10 +51,11 @@ scripts/build-site.sh                                        # website + demo in
 scripts/i18n_messages.py --missing                           # server messages without a key in locales/de.json
 scripts/deps.sh                                              # after dependency changes: lockfiles + license list (uv)
 cd android && ./gradlew assembleDebug                       # Android app (after npm run build and scripts/android-wheels.sh)
+python3 scripts/android_smoke_test.py <apk>                  # the APK in an emulator: server, simulator, restart
 ```
 
 CI runs: `backend` (ruff, pytest + license list), `web` (lint, build, check:demo, check:i18n, check:devices), `ui` (Playwright), `docker`, `homeassistant`,
-`hassfest`, `hacs`, and `check` (Conventional Commits for the PR title and every commit).
+`hassfest`, `hacs`, `android` (APK), `android-emulator` (smoke test), and `check` (Conventional Commits for the PR title and every commit).
 `AI review` (not required) comments on pull requests from this repository following `.github/claude-review.md`;
 when a rule here changes, check whether that file needs the change too.
 

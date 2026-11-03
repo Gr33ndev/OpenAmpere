@@ -99,6 +99,14 @@ adb shell run-as io.github.gr33ndev.openampere sh -c 'echo "{\"to\": \"<version>
 
 `update/test-github` only counts in debug builds.
 
+## Smoke test
+
+`scripts/android_smoke_test.py <apk>` starts an emulator (`--image`, default Android 11 x86_64; on an Apple computer
+`system-images;android-30;google_apis;arm64-v8a`), installs the APK and checks that the server starts in Android
+mode, reads the simulator on the computer (`10.0.2.2`), shows live values and comes back after its process was
+killed. CI runs it on every change (job `android-emulator`, with the runner's KVM). It needs `openampere` installed
+for the simulator and a `google_apis` image (it uses `adb root` to kill the process as Android would).
+
 ## Not yet
 
-An emulator test in CI (step 4 of #567), the guide and the website (step 5).
+The guide and the website (step 5 of #567).
