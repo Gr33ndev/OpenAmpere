@@ -14,7 +14,7 @@ export type UpdateView = {
   home_assistant?: boolean;
   android?: boolean; // the Android app on a tablet (#567): a new version of the app, no update helper
   latest: { version: string; url: string | null; notes: string; published: string | null } | null;
-  status: { ts: number; state: "pulling" | "verifying" | "restarting" | "done" | "failed"; message: string } | null;
+  status: { ts: number; state: "pulling" | "verifying" | "restarting" | "confirm" | "done" | "failed"; message: string } | null;
   checked: number | null; error: string | null;
 };
 
@@ -138,7 +138,7 @@ export function UpdatesCard() {
         {!data.available && latest && <p className="hint">{t("shell.updatesCard.upToDate")}</p>}
         <SwitchRow label={t("shell.updatesCard.autoCheck")} hint={t("shell.updatesCard.autoCheckHint")}
           checked={data.check} onChange={(v) => void setting("updates.check", v)} />
-        {!data.home_assistant && !data.android && (
+        {!data.home_assistant && (data.updater || !data.android) && (
           <SwitchRow label={t("shell.updatesCard.autoInstall")} hint={t("shell.updatesCard.autoInstallHint")}
             checked={data.auto} disabled={!data.check || !data.updater} onChange={(v) => void setting("updates.auto", v)} />
         )}

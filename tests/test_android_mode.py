@@ -31,9 +31,23 @@ def test_updates_come_as_a_new_version_of_the_app(tmp_path, tablet):
     updates = Updates(Runtime({}, Storage(tmp_path / "t.db")), "1.0.0")
     view = updates.view()
     assert view["android"] is True and "home_assistant" not in view
-    with pytest.raises(RuntimeError, match="GitHub"):
+    with pytest.raises(RuntimeError, match="GitHub"):  # an app without its updater: download it by hand
         updates.request()
-    assert not updates.request_file.exists()  # no update helper on the tablet would ever pick it up
+    assert not updates.request_file.exists()  # nobody would ever pick it up
+
+
+def test_the_updater_of_the_app_gets_the_request(tmp_path, tablet):
+    """The app's own updater (Updater.kt) plays the part of the Docker update helper through the same files."""
+    import json
+    import time
+
+    updates = Updates(Runtime({"storage": {"path": str(tmp_path / "t.db")}}, Storage(tmp_path / "t.db")), "1.0.0")
+    updates.latest = {"version": "1.1.0"}
+    updates.folder.mkdir(parents=True)
+    (updates.folder / "updater-alive").write_text(str(time.time()))
+    assert updates.view()["updater"] is True
+    updates.request()
+    assert json.loads(updates.request_file.read_text())["to"] == "1.1.0"
 
 
 def test_remote_access_through_the_tailscale_app(tmp_path, tablet):
