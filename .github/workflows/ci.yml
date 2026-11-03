@@ -170,7 +170,7 @@ jobs:
     # reads the simulator and comes back after its process was killed. KVM of the runner, no extra action
     needs: android
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # about 6 minutes when it works; the script gives up on its own before this
+    timeout-minutes: 15  # a few minutes when it works; the script gives up after 12 minutes, with its logs
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -190,9 +190,7 @@ jobs:
           name: apk
           path: apk
       - name: Smoke test in the emulator (Android 11)
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
-        run: python3 scripts/android_smoke_test.py apk/app-debug.apk --image "system-images;android-30;google_apis;x86_64"
+        run: JAVA_HOME="$JAVA_HOME_17_X64" python3 scripts/android_smoke_test.py apk/app-debug.apk --image "system-images;android-30;google_apis;x86_64"
 
   docker:
     runs-on: ubuntu-latest

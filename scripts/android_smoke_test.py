@@ -31,6 +31,10 @@ LOCAL = "http://127.0.0.1:18080"  # adb forward to the app's port 8080
 SIMULATOR_PORT = 5020
 SDK = Path(os.environ.get("ANDROID_HOME", ""))
 EMULATOR_LOG = Path(tempfile.gettempdir()) / "openampere-smoke-emulator.log"
+# avdmanager and the emulator look for the AVD in different places on some systems: one place for both
+os.environ.setdefault("ANDROID_AVD_HOME", str(Path(tempfile.gettempdir()) / "openampere-smoke-avd"))
+# the whole test gives up after this, before the CI job's timeout (15 minutes), so the logs are still printed
+BUDGET_END = time.monotonic() + 12 * 60
 emulator: subprocess.Popen | None = None  # every wait gives up at once when it stopped (no KVM, a crash)
 
 
@@ -40,7 +44,7 @@ def adb(*args: str, check: bool = True, timeout: float = 120) -> str:
 
 
 def wait(what: str, condition, timeout: float, every: float = 2.0):
-    end = time.monotonic() + timeout
+    end = min(time.monotonic() + timeout, BUDGET_END)
     while time.monotonic() < end:
         if emulator and emulator.poll() is not None:
             sys.exit(f"FAILED: {what}: the emulator stopped (exit code {emulator.returncode})")
@@ -52,7 +56,7 @@ def wait(what: str, condition, timeout: float, every: float = 2.0):
             print(f"ok: {what}", flush=True)
             return result
         time.sleep(every)
-    sys.exit(f"FAILED: {what} (after {timeout:.0f} s)")
+    sys.exit(f"FAILED: {what} (after {timeout:.0f} s or the time for the whole test)")
 
 
 def server_pid() -> str | None:
@@ -67,7 +71,7 @@ def start_emulator(image: str, avd: str) -> None:
     global emulator
     tools = SDK / "cmdline-tools" / "latest" / "bin"
     subprocess.run([str(tools / "sdkmanager"), "--install", image, "emulator", "platform-tools"], check=True,
-                   input="y\n" * 10, text=True, stdout=subprocess.DEVNULL, timeout=600)
+                   input="y\n" * 10, text=True, stdout=subprocess.DEVNULL, timeout=300)
     print("ok: emulator image installed", flush=True)
     subprocess.run([str(tools / "avdmanager"), "create", "avd", "--force", "-n", avd, "-k", image, "-d", "pixel_c"],
                    check=True, input="no\n", text=True, stdout=subprocess.DEVNULL, timeout=120)
