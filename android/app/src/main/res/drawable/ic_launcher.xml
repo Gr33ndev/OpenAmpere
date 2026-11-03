@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- web/public/icon.svg -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillColor="#0f172a"
+        android:pathData="M14,0h36a14,14 0,0 1,14 14v36a14,14 0,0 1,-14 14h-36a14,14 0,0 1,-14 -14v-36a14,14 0,0 1,14 -14z" />
+    <path android:fillColor="#facc15" android:pathData="M36,8 L18,36h12l-4,20 20,-30H34z" />
+</vector>

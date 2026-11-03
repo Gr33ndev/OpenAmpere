@@ -123,6 +123,35 @@ jobs:
           path: web/playwright-report
           retention-days: 7
 
+  android:
+    # the Android app (#567): pydantic-core for Android, then the APK. Java 17, the Android SDK and Rust come with
+    # the runner; the NDK is installed in the version scripts/android-wheels.sh builds with
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"  # maturin prepares the build for Chaquopy's Python 3.11 with the same version
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Web app (goes into the app)
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Android NDK
+        run: |
+          ndk=$(sed -n 's/^NDK_VERSION="\(.*\)".*/\1/p' scripts/android-wheels.sh)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null
+      - name: pydantic-core for Android
+        run: scripts/android-wheels.sh
+      - name: APK
+        run: ./gradlew --no-daemon assembleDebug
+        working-directory: android
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+
   docker:
     runs-on: ubuntu-latest
     steps:

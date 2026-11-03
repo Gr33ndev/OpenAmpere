@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
+<!-- SPDX-License-Identifier: MIT -->
+<resources>
+    <string name="app_name" translatable="false">OpenAmpere</string>
+    <string name="channel_server">OpenAmpere is running</string>
+    <string name="notification_running">Reads your solar system around the clock. In the home network: this tablet\'s address with port %1$d.</string>
+    <string name="starting">OpenAmpere is starting …</string>
+    <string name="no_browser">No browser found to open the link.</string>
+    <string name="saved">File saved.</string>
+    <string name="save_failed">The file could not be saved. Please try again.</string>
+</resources>

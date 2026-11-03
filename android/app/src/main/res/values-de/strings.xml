@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
+<!-- SPDX-License-Identifier: MIT -->
+<resources>
+    <string name="channel_server">OpenAmpere läuft</string>
+    <string name="notification_running">Liest deine Solaranlage rund um die Uhr. Im Heimnetz: Adresse dieses Tablets mit Port %1$d.</string>
+    <string name="starting">OpenAmpere startet …</string>
+    <string name="no_browser">Kein Browser gefunden, der den Link öffnen kann.</string>
+    <string name="saved">Datei gespeichert.</string>
+    <string name="save_failed">Die Datei ließ sich nicht speichern. Bitte versuche es noch einmal.</string>
+</resources>

@@ -83,3 +83,34 @@ def test_status_says_android(tmp_path, monkeypatch):
     assert client.get("/api/status").json()["android"] is False
     monkeypatch.setenv(android.ENV, "1")
     assert client.get("/api/status").json()["android"] is True
+
+
+@pytest.mark.parametrize("on_tablet", [False, True])
+def test_a_restart_runs_the_command_again_except_in_the_app(tmp_path, monkeypatch, on_tablet):
+    """After a restored backup the server starts itself again. In the app, os.execv would replace the app's process:
+    there main() returns and the app starts the server again in a new process."""
+    import openampere.__main__ as entry
+    from openampere import api, runtime as runtime_module
+
+    monkeypatch.setenv("OPENAMPERE_STORAGE_PATH", str(tmp_path / "t.db"))
+    monkeypatch.setenv("OPENAMPERE_CONFIG", str(tmp_path / "config.yaml"))
+    if on_tablet:
+        monkeypatch.setenv(android.ENV, "1")
+    else:
+        monkeypatch.delenv(android.ENV, raising=False)
+    monkeypatch.setattr("sys.argv", ["openampere"])
+    monkeypatch.setattr(entry.logs, "setup", lambda: None)
+    monkeypatch.setattr(api, "create_app", lambda runtime: None)
+
+    def serve(coroutine):
+        coroutine.close()
+        started.restart_requested = True
+
+    started = runtime_module.Runtime.from_files(None)
+    monkeypatch.setattr(runtime_module.Runtime, "from_files", classmethod(lambda cls, path: started))
+    monkeypatch.setattr(entry.asyncio, "run", serve)
+    calls = []
+    monkeypatch.setattr(entry.os, "execv", lambda *args: calls.append(args))
+    monkeypatch.setattr(entry.os, "umask", lambda mask: 0)
+    entry.main()
+    assert bool(calls) is not on_tablet  # the same command again only outside the app

@@ -670,7 +670,8 @@ export function applyTheme(theme: Theme) {
   else document.documentElement.dataset.theme = theme;
   // status bar colour of the installed app follows the chosen design
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
-    const scheme = meta.media.includes("dark") ? "dark" : "light";
+    // the attribute, not meta.media: that property needs Chrome 93, and old tablets have older WebViews (#567)
+    const scheme = meta.getAttribute("media")?.includes("dark") ? "dark" : "light";
     meta.content = THEME_COLORS[theme === "auto" ? scheme : theme];
   });
 }

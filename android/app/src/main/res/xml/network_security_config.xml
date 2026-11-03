@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- the app talks plain HTTP only to the server in its own process; everything else stays HTTPS -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

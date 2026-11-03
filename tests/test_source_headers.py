@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-PATTERNS = ["*.py", "*.sh", "*.ts", "*.tsx", "*.mjs", "*.css", "*.html", "Dockerfile"]
+PATTERNS = ["*.py", "*.sh", "*.ts", "*.tsx", "*.mjs", "*.css", "*.html", "*.kt", "*.kts", "Dockerfile"]
 COPYRIGHT = "SPDX-FileCopyrightText: Copyright the OpenAmpere contributors"
 LICENSE = "SPDX-License-Identifier: MIT"
 

@@ -194,6 +194,10 @@ def main() -> None:
     if runtime.restart_requested:  # e.g. a restored backup: the same command again, in this process (#165)
         logging.info("starting OpenAmpere again")
         runtime.storage.close()
+        from . import android
+
+        if android.active():  # the app starts it again in a new process: os.execv would replace the app (#567)
+            return
         os.execv(sys.executable, sys.orig_argv)
 
 
