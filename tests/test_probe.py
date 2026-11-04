@@ -56,6 +56,16 @@ def recording(sim) -> list[int]:
     return functions
 
 
+async def closed(sim) -> bool:
+    """Whether the device saw its connection closed: it notices on a later turn of the event loop, and on Python 3.11
+    (the Android app's) the server's wait_closed() does not wait for its connections, as 3.12 does."""
+    for _ in range(100):
+        if sim.connections == 0:
+            return True
+        await asyncio.sleep(0.01)
+    return False
+
+
 def test_blocks_of():
     assert probe.blocks_of(100, 130) == [(100, 60), (160, 60), (220, 10)]
 
@@ -67,12 +77,12 @@ async def test_reads_blocks_with_function_3_only_and_reports_rejections(runtime)
     async with server:
         result = await Probe(runtime).read("127.0.0.1", port, 247, 3, MODEL_ADDRESS, 32)
         missing = await Probe(runtime).read("127.0.0.1", port, 247, 4, 1, 2)  # nothing there
+        assert await closed(sim)  # the connection is closed again
     assert set(functions) == {3, 4}  # never a writing function code
     assert [b.ok for b in result.blocks] == [True]
     texts = [t for _, _, t in text_runs(result.blocks[0].words)]
     assert texts == ["H3-10.0-Smart", SERIAL]
     assert missing.blocks[0].error == "rejected" and missing.blocks[0].exception == 2
-    assert sim.connections == 0  # the connection is closed again
 
 
 async def test_limits(runtime):
