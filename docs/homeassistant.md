@@ -27,8 +27,8 @@ one connection, and every command from Home Assistant goes through the same chec
    **With the [Home Assistant app](../ha-app/DOCS.md) (way 2), skip steps 2 and 3:** the app installs the integration
    itself, no HACS needed. Restart Home Assistant once when it asks for it. Then **Settings → Devices & services**
    shows **Discovered: OpenAmpere**; confirm it and pair as in step 4, without entering an address.
-2. **Standalone (way 1): install the integration via HACS.** The button opens the repository directly in your Home
-   Assistant:
+2. **Standalone (way 1) or Android tablet (way 3): install the integration via HACS.** The button opens the repository
+   directly in your Home Assistant:
 
    [![In HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Gr33ndev&repository=OpenAmpere&category=integration)
 

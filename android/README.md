@@ -2,8 +2,9 @@
 <!-- SPDX-License-Identifier: MIT -->
 # OpenAmpere for Android
 
-The Android app (#567) runs the unchanged server of OpenAmpere on a tablet and shows the web app. It is the fourth way
-to run OpenAmpere, for owners without a Linux server.
+The Android app (#567) runs the unchanged server of OpenAmpere on a tablet and shows the web app. It is a way to run
+OpenAmpere for owners without a Linux server. The guide for owners is [docs/android.de.md](../docs/android.de.md)
+(English: [docs/android.md](../docs/android.md)).
 
 ## How it works
 
@@ -106,7 +107,3 @@ adb shell run-as io.github.gr33ndev.openampere sh -c 'echo "{\"to\": \"<version>
 mode, reads the simulator on the computer (`10.0.2.2`), shows live values and comes back after its process was
 killed. CI runs it on every change (job `android-emulator`, with the runner's KVM). It needs `openampere` installed
 for the simulator and a `google_apis` image (it uses `adb root` to kill the process as Android would).
-
-## Not yet
-
-The guide and the website (step 5 of #567).

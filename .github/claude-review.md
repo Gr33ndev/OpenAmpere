@@ -60,10 +60,12 @@ Do not report what CI already checks: ruff, Biome, TypeScript, the build, Conven
 - **Configurable in the app**, not only in a file.
 - **Tests:** new logic has tests; a bug fix has a test that fails without the fix; simulator tests stop the collector
   in `finally`; a UI bug has a test in `web/ui-tests/`; a new page is in `PAGES` of `web/ui-tests/fixtures.ts`.
-- **Three ways to run** (Docker, Home Assistant app, integration): paths relative to the page in the web app (no
-  `"/…"` in `fetch`, `href`, `src`); a feature needing a helper container, the host or Docker says in the app that it
-  does not exist in app mode; sidebar access only for Home Assistant admins; new rights or ports in
-  `ha-app/config.yaml`; the integration only uses the external API and bypasses no check of the server.
+- **Four ways to run** (Docker, Home Assistant app, Android app, integration): paths relative to the page in the web
+  app (no `"/…"` in `fetch`, `href`, `src`); a feature needing a helper container, the host or Docker says in the app
+  that it does not exist in app mode or on the tablet; sidebar access only for Home Assistant admins; new rights or
+  ports in `ha-app/config.yaml`; a new Python dependency has an Android build (the `android` job); the integration only
+  uses the external API and bypasses no check of the server; the app's certificate fingerprint is the same wherever it
+  is published.
 - **Database:** a new step in `MIGRATIONS` plus `SCHEMA_VERSION + 1`, `SCHEMA` untouched, a test with an existing
   database.
 - **Package data:** new data files of the Python package under `[tool.setuptools.package-data]`.

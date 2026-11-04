@@ -17,11 +17,13 @@
   "general": {
     "title": "General",
     "whatIsQ": "What is OpenAmpere?",
-    "whatIsA": "A free app that reads the values of your solar system and battery directly from the inverter, without a cloud and without an account. It runs on a small computer in your home, for example a Raspberry Pi, and you open it in the browser or on your phone. The <a href=\"{{root}}demo/?lang={{lang}}\">demo</a> shows what it looks like.",
+    "whatIsA": "A free app that reads the values of your solar system and battery directly from the inverter, without a cloud and without an account. It runs on a small computer in your home, for example a Raspberry Pi, or on an old Android tablet, and you open it in the browser or on your phone. The <a href=\"{{root}}demo/?lang={{lang}}\">demo</a> shows what it looks like.",
     "byEkdQ": "Is this an app by EKD, or a replacement on EKD's behalf?",
     "byEkdA": "No. OpenAmpere is a private open source project. It was neither commissioned, authorized nor supported by EKD, the insolvency administration, FoxESS, SAJ or Kiwigrid.",
     "costQ": "What does OpenAmpere cost?",
-    "costA": "Nothing. There are no subscriptions, no ads and no donations. All you need is a computer that runs permanently in your home network. A Raspberry Pi with power supply and memory card costs about 80 to 120 euros.",
+    "costA": "Nothing. There are no subscriptions, no ads and no donations. All you need is a computer that runs permanently in your home network. A Raspberry Pi with power supply and memory card costs about 80 to 120 euros. An old Android tablet will do as well.",
+    "tabletQ": "I have no computer for it. Will an old tablet do?",
+    "tabletA": "Yes. An Android tablet with Android 7.0 or newer can run OpenAmpere itself; the app brings everything along. It then stays at home in the Wi-Fi and always on the charger; the screen may be off. Phones and computers open OpenAmpere in the browser as usual. How it works is under <a href=\"{{root}}#android\">Installation</a> and in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/android.md\">guide for the tablet</a>.",
     "dataQ": "Where does my data go?",
     "dataA": "The values of your system stay on your computer at home. OpenAmpere collects no usage data. Only the update check is switched on from the start: every 6 hours, OpenAmpere asks GitHub whether there is a new version. No data from your system is sent. You can switch this off in the app under More → About OpenAmpere with the switch “Check for updates”. Everything else only goes out if you set it up yourself: spot-market electricity prices for a dynamic tariff, notifications to your phone, remote access, importing your history from the Ampere.IQ cloud and fetching meter readings from your grid operator."
   },

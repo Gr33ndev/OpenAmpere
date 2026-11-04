@@ -17,11 +17,13 @@
   "general": {
     "title": "Allgemein",
     "whatIsQ": "Was ist OpenAmpere?",
-    "whatIsA": "Eine kostenlose App, die die Werte deiner Solaranlage und deines Speichers direkt vom Wechselrichter liest, ohne Cloud und ohne Konto. Sie läuft auf einem kleinen Rechner bei dir zu Hause, zum Beispiel einem Raspberry Pi, und du öffnest sie im Browser oder auf dem Handy. Wie das aussieht, zeigt die <a href=\"{{root}}demo/?lang={{lang}}\">Demo</a>.",
+    "whatIsA": "Eine kostenlose App, die die Werte deiner Solaranlage und deines Speichers direkt vom Wechselrichter liest, ohne Cloud und ohne Konto. Sie läuft auf einem kleinen Rechner bei dir zu Hause, zum Beispiel einem Raspberry Pi, oder auf einem alten Android-Tablet, und du öffnest sie im Browser oder auf dem Handy. Wie das aussieht, zeigt die <a href=\"{{root}}demo/?lang={{lang}}\">Demo</a>.",
     "byEkdQ": "Ist das eine App von EKD oder ein Ersatz im Auftrag von EKD?",
     "byEkdA": "Nein. OpenAmpere ist ein privates Open-Source-Projekt. Es wurde von EKD, der Insolvenzverwaltung, FoxESS, SAJ oder Kiwigrid weder beauftragt noch autorisiert oder unterstützt.",
     "costQ": "Was kostet OpenAmpere?",
-    "costA": "Nichts. Es gibt keine Abos, keine Werbung und keine Spenden. Du brauchst nur einen Rechner, der dauerhaft im Heimnetz läuft. Ein Raspberry Pi kostet mit Netzteil und Speicherkarte etwa 80 bis 120 Euro.",
+    "costA": "Nichts. Es gibt keine Abos, keine Werbung und keine Spenden. Du brauchst nur einen Rechner, der dauerhaft im Heimnetz läuft. Ein Raspberry Pi kostet mit Netzteil und Speicherkarte etwa 80 bis 120 Euro. Ein altes Android-Tablet tut es auch.",
+    "tabletQ": "Ich habe keinen Rechner dafür. Geht auch ein altes Tablet?",
+    "tabletA": "Ja. Ein Android-Tablet mit Android 7.0 oder neuer kann OpenAmpere selbst ausführen, die App bringt alles mit. Es bleibt dann zu Hause im WLAN und immer am Ladegerät, der Bildschirm darf aus sein. Handy und Computer öffnen OpenAmpere wie sonst im Browser. Wie es geht, steht unter <a href=\"{{root}}#android\">Installation</a> und in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/android.de.md\">Anleitung für das Tablet</a>.",
     "dataQ": "Wohin gehen meine Daten?",
     "dataA": "Die Werte deiner Anlage bleiben auf deinem Rechner zu Hause. OpenAmpere sammelt keine Nutzungsdaten. Ab Werk eingeschaltet ist nur die Suche nach Updates: Alle 6 Stunden fragt OpenAmpere bei GitHub nach, ob es eine neue Version gibt. Dabei werden keine Daten deiner Anlage gesendet. Du kannst das in der App unter Mehr → Über OpenAmpere mit dem Schalter „Nach Updates suchen“ ausschalten. Alles andere geht nur nach außen, wenn du es selbst einrichtest: Börsenstrompreise für einen dynamischen Tarif, Benachrichtigungen aufs Handy, der Zugriff von unterwegs, die Übernahme des Verlaufs aus der Ampere.IQ-Cloud und das Abholen der Zählerwerte beim Netzbetreiber."
   },
