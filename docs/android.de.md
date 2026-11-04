@@ -158,7 +158,7 @@ Schlüssel signiert ist wie die installierte App. Der SHA-256-Fingerabdruck des 
 ```
 
 Wer es von Hand prüfen will, braucht einen Computer mit dem Android SDK: `apksigner verify --print-certs
-openampere-<version>.apk` muss bei „Signer #1 certificate SHA-256 digest“ diesen Wert zeigen. Außerdem hat jede Datei
+openampere-<version>.apk` muss bei „certificate SHA-256 digest“ diesen Wert zeigen. Außerdem hat jede Datei
 eines Release einen signierten Herkunftsnachweis, den die [GitHub CLI](https://cli.github.com) prüft:
 
 ```bash
