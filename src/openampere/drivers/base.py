@@ -134,9 +134,14 @@ class Snapshot:
     alarms: list[int] = field(default_factory=list)
     totals: EnergyCounters = field(default_factory=EnergyCounters)
     today: EnergyCounters = field(default_factory=EnergyCounters)
+    # house_power is a balance that includes pv_external_power (SAJ, #576): count_external_pv takes it out again when
+    # the owner does not count the extra inverter, so the house matches the solar power and the stored energy
+    house_with_external: bool = False
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        del data["house_with_external"]
+        return data
 
     def sanitize(self) -> Snapshot:
         """Drops values that cannot be real: sentinels for "not available" (0x7FFF, 0x8000, 0xFFFF) and
@@ -165,6 +170,8 @@ class Snapshot:
         part of the inverter's own PV power: without it the solar power, and the house in the energy balance, are too
         low."""
         if not counted:
+            if self.house_with_external and self.house_power is not None and self.pv_external_power is not None:
+                self.house_power = max(0.0, self.house_power - self.pv_external_power)
             self.pv_external_power = None
         elif self.pv_external_power is not None and self.pv_power is not None:
             self.pv_power += self.pv_external_power
