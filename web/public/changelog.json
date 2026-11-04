@@ -1,6 +1,97 @@
 {
   "versions": [
     {
+      "version": "0.38.0",
+      "date": "2026-11-04",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "android",
+            "text": "The app installs its updates itself (#573)"
+          },
+          {
+            "scope": "android",
+            "text": "Build current cryptography and cffi for the app (#574)"
+          },
+          {
+            "scope": "android",
+            "text": "Signed APK in every release, with its licenses (#572)"
+          },
+          {
+            "scope": "android",
+            "text": "App project that runs the server on a tablet (#570)"
+          },
+          {
+            "scope": null,
+            "text": "Prepare the server for the coming Android tablet app (#569)"
+          },
+          {
+            "scope": null,
+            "text": "Never read or write another device at the inverter's address (#568)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "saj",
+            "text": "Show the right house consumption while the battery runs (#577)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Say why real control does nothing in plug and charge (#566)"
+          },
+          {
+            "scope": "overview",
+            "text": "Show a starting charge at the wallbox, not in the house (#565)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Validate the Gradle wrapper with Gradle's own action (#580)"
+          },
+          {
+            "scope": null,
+            "text": "The android tablet as the third way to install, with its guide (#578)"
+          },
+          {
+            "scope": null,
+            "text": "Smoke test of the Android app in an emulator (#575)"
+          },
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#562)"
+          },
+          {
+            "scope": null,
+            "text": "Bump actions/setup-python from 7.0.0 to 7.1.0 (#561)"
+          },
+          {
+            "scope": null,
+            "text": "Bump anthropics/claude-code-action from 1.0.252 to 1.0.264 (#560)"
+          },
+          {
+            "scope": null,
+            "text": "Bump ossf/scorecard-action from 2.4.4 to 2.5.0 (#559)"
+          },
+          {
+            "scope": null,
+            "text": "Bump docker/login-action from 4.6.0 to 4.7.0 (#558)"
+          },
+          {
+            "scope": null,
+            "text": "Bump astral-sh/setup-uv from 10.3.0 to 10.3.3 (#557)"
+          },
+          {
+            "scope": "docker",
+            "text": "Bump node from `143494b` to `c6ad9e9` (#555)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.37.0",
       "date": "2026-11-01",
       "first": false,

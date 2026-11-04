@@ -4,6 +4,36 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.38.0 (2026-11-04)
+
+### Neu
+
+- **android:** The app installs its updates itself (#573)
+- **android:** Build current cryptography and cffi for the app (#574)
+- **android:** Signed APK in every release, with its licenses (#572)
+- **android:** App project that runs the server on a tablet (#570)
+- Prepare the server for the coming Android tablet app (#569)
+- Never read or write another device at the inverter's address (#568)
+
+### Behoben
+
+- **saj:** Show the right house consumption while the battery runs (#577)
+- **wallbox:** Say why real control does nothing in plug and charge (#566)
+- **overview:** Show a starting charge at the wallbox, not in the house (#565)
+
+### Weitere Änderungen
+
+- Validate the Gradle wrapper with Gradle's own action (#580)
+- The android tablet as the third way to install, with its guide (#578)
+- Smoke test of the Android app in an emulator (#575)
+- **deps:** Update Python dependencies (#562)
+- Bump actions/setup-python from 7.0.0 to 7.1.0 (#561)
+- Bump anthropics/claude-code-action from 1.0.252 to 1.0.264 (#560)
+- Bump ossf/scorecard-action from 2.4.4 to 2.5.0 (#559)
+- Bump docker/login-action from 4.6.0 to 4.7.0 (#558)
+- Bump astral-sh/setup-uv from 10.3.0 to 10.3.3 (#557)
+- **docker:** Bump node from `143494b` to `c6ad9e9` (#555)
+
 ## 0.37.0 (2026-11-01)
 
 ### Neu
@@ -164,20 +194,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 - **wallbox:** Refuse only the inverter's own port in the wallbox check (#418)
 - **diagnostics:** Show an export limit above the rated power as no limit (#416)
 - **wallbox:** Name the inverter's address in the wallbox check (#414)
-
-## 0.31.0 (2026-10-16)
-
-### Neu
-
-- **homeassistant:** Set the highest charging current of a wallbox's mode (#410)
-- **report:** Hide and show single lines with a tap on the legend (#408)
-- **wallbox:** Choose the highest current per mode and keep solar charging through clouds (#407)
-
-### Behoben
-
-- **notify:** Report an inverter fault only after it has lasted 30 minutes (#406)
-- **report:** Show every day or month of the period in the bar charts (#405)
-
-### Weitere Änderungen
-
-- **pages:** Let a running deployment finish instead of cancelling it (#399)
