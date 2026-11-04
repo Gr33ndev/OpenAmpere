@@ -189,8 +189,8 @@ jobs:
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          # the whole output in the log: apksigner prints its errors there too, and newer versions name a signer by
-          # its SDK range ("Signer (minSdkVersion=…) certificate …") instead of "Signer #1"; every signer must match
+          # the whole output in the log: apksigner prints its errors there too, and v0.38.0 stopped here with no line
+          # "Signer #1 certificate …" found (#581). Any "Signer … certificate" line counts; every signer must match
           out=$("$apksigner" verify --print-certs "$apk" 2>&1) \
             || { echo "$out"; echo "::error::apksigner does not verify the APK"; exit 1; }
           echo "$out"
