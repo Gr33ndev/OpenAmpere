@@ -79,8 +79,14 @@ your tablet stops the app completely then.
 
 ## Control when the tablet fails
 
-When OpenAmpere controls the inverter continuously, for example for grid charging, it uses the inverter's remote
-control with a time limit of 3 minutes. If the tablet fails, the inverter goes back to its own mode after that.
+When OpenAmpere controls the inverter continuously, for example for grid charging, it ends by itself if the tablet
+fails:
+
+- **FoxESS:** OpenAmpere uses the inverter's remote control with a time limit of 3 minutes. After that the inverter
+  goes back to its own mode.
+- **SAJ** (the older Ampere.StoragePro): OpenAmpere charges through a charge time slot in the inverter that ends by
+  itself after at most 10 minutes. Your own values for this slot are put back as soon as OpenAmpere runs again.
+
 Settings OpenAmpere changed permanently (for example the backup reserve) stay until OpenAmpere runs again.
 
 When OpenAmpere controls a **FoxESS wallbox**, the wallbox charges on with 6 A if the tablet fails, until the car is

@@ -81,9 +81,16 @@ wenn dein Tablet die App dann ganz beendet.
 
 ## Steuerung, wenn das Tablet ausfällt
 
-Steuert OpenAmpere den Wechselrichter dauerhaft, etwa beim Laden aus dem Netz, nutzt es dessen Fernsteuerung mit einer
-Zeitgrenze von 3 Minuten. Fällt das Tablet aus, kehrt der Wechselrichter danach von selbst zu seinem eigenen Betrieb
-zurück. Einstellungen, die OpenAmpere dauerhaft geändert hat (zum Beispiel die Notstrom-Reserve), bleiben, bis
+Steuert OpenAmpere den Wechselrichter dauerhaft, etwa beim Laden aus dem Netz, endet das von selbst, wenn das Tablet
+ausfällt:
+
+- **FoxESS:** OpenAmpere nutzt die Fernsteuerung des Wechselrichters mit einer Zeitgrenze von 3 Minuten. Danach kehrt
+  der Wechselrichter zu seinem eigenen Betrieb zurück.
+- **SAJ** (die älteren Ampere.StoragePro): OpenAmpere lädt über ein Ladezeitfenster im Wechselrichter, das nach
+  höchstens 10 Minuten von selbst endet. Deine eigenen Werte für dieses Zeitfenster setzt OpenAmpere zurück, sobald es
+  wieder läuft.
+
+Einstellungen, die OpenAmpere dauerhaft geändert hat (zum Beispiel die Notstrom-Reserve), bleiben, bis
 OpenAmpere wieder läuft.
 
 Steuert OpenAmpere eine **FoxESS-Wallbox**, lädt sie bei einem Ausfall mit 6 A weiter, bis das Auto voll ist oder du
