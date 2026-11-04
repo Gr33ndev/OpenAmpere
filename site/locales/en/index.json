@@ -104,7 +104,7 @@
       "featuresAll": "The same on all three: live values, analysis, electricity tariff, control, wallbox, Home Assistant, push notifications",
       "open": "Open",
       "open1": "In the browser of phone and computer",
-      "open2": "In the Home Assistant sidebar",
+      "open2": "In the Home Assistant sidebar, with a password also directly in the browser",
       "open3": "On the tablet and in the browser of phone and computer",
       "homeAssistant": "Home Assistant",
       "homeAssistantHacs": "Through the integration (HACS)",
@@ -119,8 +119,8 @@
       "remote3": "With the Tailscale app on tablet and phone",
       "care": "Keep in mind",
       "care1": "The computer runs around the clock",
-      "care2": "Home Assistant runs around the clock",
-      "care3": "The tablet always stays at home on the charger and on the Wi-Fi. While it was off, readings are missing, and the gap does not count as a power cut"
+      "care2": "Home Assistant runs around the clock. The app is new and still marked as experimental",
+      "care3": "The app is new. The tablet always stays at home on the charger and on the Wi-Fi. While it was off, readings are missing, and the gap does not count as a power cut"
     }
   },
   "homeAssistant": {

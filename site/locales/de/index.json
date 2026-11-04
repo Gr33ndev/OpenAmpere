@@ -104,7 +104,7 @@
       "featuresAll": "Bei allen drei gleich: Live-Werte, Auswertung, Stromtarif, Steuerung, Wallbox, Home Assistant, Push-Nachrichten",
       "open": "Öffnen",
       "open1": "Im Browser von Handy und Computer",
-      "open2": "In der Seitenleiste von Home Assistant",
+      "open2": "In der Seitenleiste von Home Assistant, mit einem Passwort auch direkt im Browser",
       "open3": "Auf dem Tablet und im Browser von Handy und Computer",
       "homeAssistant": "Home Assistant",
       "homeAssistantHacs": "Über die Integration (HACS)",
@@ -119,8 +119,8 @@
       "remote3": "Mit der App Tailscale auf Tablet und Handy",
       "care": "Worauf achten",
       "care1": "Der Rechner läuft rund um die Uhr",
-      "care2": "Home Assistant läuft rund um die Uhr",
-      "care3": "Das Tablet bleibt immer zu Hause am Ladegerät und im WLAN. War es aus, fehlen für diese Zeit Messwerte, und die Lücke zählt nicht als Stromausfall"
+      "care2": "Home Assistant läuft rund um die Uhr. Die App ist neu und noch als experimentell gekennzeichnet",
+      "care3": "Die App ist neu. Das Tablet bleibt immer zu Hause am Ladegerät und im WLAN. War es aus, fehlen für diese Zeit Messwerte, und die Lücke zählt nicht als Stromausfall"
     }
   },
   "homeAssistant": {
