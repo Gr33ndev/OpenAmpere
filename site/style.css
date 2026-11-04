@@ -245,6 +245,20 @@ div.notice > :last-child { margin-bottom: 0; }
 .matrix td:nth-child(3), .matrix thead th:nth-child(3) { white-space: nowrap; }
 .matrix td:nth-child(2) { min-width: 150px; }
 .matrix td:nth-child(4) { min-width: 260px; }
+/* the three ways compared (start page): narrower, every column wraps */
+.matrix.compare { min-width: 600px; table-layout: fixed; }
+.matrix.compare thead td { border-top: 0; }
+.matrix.compare td { white-space: normal; min-width: 0; }
+.matrix.compare tr > :first-child { width: 16%; }
+/* on a phone one block per row, each value under the name of its way */
+@media (max-width: 720px) {
+  .matrix.compare { min-width: 0; table-layout: auto; }
+  .matrix.compare thead { display: none; }
+  .matrix.compare tr, .matrix.compare tr > *, .matrix.compare tr > :first-child { display: block; width: auto; }
+  .matrix.compare tbody th { padding-bottom: 4px; }
+  .matrix.compare td { border-top: 0; padding-top: 4px; }
+  .matrix.compare td[data-way]::before { content: attr(data-way); display: block; font-size: 13px; color: var(--label); }
+}
 .matrix td small { display: block; margin-top: 6px; color: var(--label); font-size: 13px; line-height: 1.45; }
 .state { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .state.ok { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-text); }
