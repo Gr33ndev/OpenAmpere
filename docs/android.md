@@ -39,8 +39,10 @@ manufacturer). If the case gets thicker or the screen lifts, unplug the tablet a
 4. **Set up:** choose a password. The setup assistant then looks for the inverter in your home network, or you enter
    its IP address.
 
-While OpenAmpere runs, Android shows a permanent notification "OpenAmpere läuft" (OpenAmpere is running). It has to
-stay: it tells Android that the app is needed. After the tablet restarts, OpenAmpere starts by itself.
+While OpenAmpere runs, Android shows a permanent notification "OpenAmpere" with the text "Liest deine Solaranlage
+rund um die Uhr …" (reads your solar system around the clock; in English on an English tablet). It has to stay: it tells
+Android that the app is needed. Don't switch off the category "OpenAmpere läuft" (OpenAmpere is running) in the
+notification settings of OpenAmpere. After the tablet restarts, OpenAmpere starts by itself.
 
 ## Opening it from other devices
 
@@ -155,8 +157,8 @@ gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere \
 
 ## Problems
 
-- **"Port 8080 wird schon von einer anderen App auf dem Tablet benutzt"** (port 8080 is used by another app): stop or
-  uninstall that app and open OpenAmpere again.
+- **"Port 8080 wird schon von einer anderen App auf dem Tablet benutzt"** (port 8080 is used by another app): close or
+  uninstall that app and restart the tablet, as the message says.
 - **"OpenAmpere läuft nicht"** (OpenAmpere is not running): OpenAmpere failed to start several times in a row. The app
   shows the reason and tries again the next time you open it. If restarting the tablet does not help, please open an
   [issue](https://github.com/Gr33ndev/OpenAmpere/issues) with the text the app shows.

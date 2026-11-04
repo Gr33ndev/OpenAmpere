@@ -120,8 +120,10 @@ def verify_commands(text: str) -> list[str]:
     return commands
 
 
-# the image, the image of the Home Assistant app (#359, only in the READMEs) and the attached files
-@pytest.mark.parametrize(("name", "count"), [("README.md", 3), ("README.de.md", 3), (".github/workflows/release.yml", 2)])
+# the image, the image of the Home Assistant app (#359, only in the READMEs), the attached files and the Android app
+# (#567, also in its guides)
+@pytest.mark.parametrize(("name", "count"), [("README.md", 4), ("README.de.md", 4), ("docs/android.md", 1),
+                                             ("docs/android.de.md", 1), (".github/workflows/release.yml", 2)])
 def test_every_documented_check_pins_the_release_tag(name, count):
     commands = verify_commands((ROOT / name).read_text())
     assert len(commands) == count

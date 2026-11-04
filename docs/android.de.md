@@ -40,8 +40,9 @@ Strom und benutze es nicht weiter.
 4. **Einrichten:** Lege ein Passwort fest. Der Einrichtungsassistent sucht dann den Wechselrichter in deinem
    Heimnetz, oder du gibst seine IP-Adresse ein.
 
-Solange OpenAmpere läuft, zeigt Android eine dauerhafte Benachrichtigung „OpenAmpere läuft“. Sie muss bleiben: Daran
-erkennt Android, dass die App gebraucht wird. Nach einem Neustart des Tablets startet OpenAmpere von selbst.
+Solange OpenAmpere läuft, zeigt Android eine dauerhafte Benachrichtigung „OpenAmpere“ mit dem Text „Liest deine
+Solaranlage rund um die Uhr …“. Sie muss bleiben: Daran erkennt Android, dass die App gebraucht wird. Schalte in den
+Benachrichtigungs-Einstellungen von OpenAmpere die Kategorie „OpenAmpere läuft“ nicht aus. Nach einem Neustart des Tablets startet OpenAmpere von selbst.
 
 ## Von anderen Geräten öffnen
 
@@ -161,7 +162,7 @@ gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere \
 ## Probleme
 
 - **„Port 8080 wird schon von einer anderen App auf dem Tablet benutzt“:** Beende oder deinstalliere diese App und
-  öffne OpenAmpere wieder.
+  starte das Tablet neu, wie die Meldung sagt.
 - **„OpenAmpere läuft nicht“:** OpenAmpere konnte mehrmals hintereinander nicht starten. Die App zeigt den Grund an,
   beim nächsten Öffnen versucht sie es noch einmal. Hilft ein Neustart des Tablets nicht, schreib bitte ein
   [Issue](https://github.com/Gr33ndev/OpenAmpere/issues) mit dem Text, den die App zeigt.
