@@ -189,12 +189,13 @@ jobs:
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          # the whole output in the log: apksigner prints its errors there too, and v0.38.0 stopped here with no line
-          # "Signer #1 certificate …" found (#581). Any "Signer … certificate" line counts; every signer must match
+          # the whole output in the log: apksigner prints its errors there too. It names a signer by the scheme
+          # ("V2 Signer: certificate …", as for v0.38.0, #581) or by number ("Signer #1 certificate …"); every signer
+          # must match. "Source Stamp Signer" lines are not signers of the APK
           out=$("$apksigner" verify --print-certs "$apk" 2>&1) \
             || { echo "$out"; echo "::error::apksigner does not verify the APK"; exit 1; }
           echo "$out"
-          found=$(printf '%s\n' "$out" | sed -n 's/^Signer.* certificate SHA-256 digest: //p' | sort -u)
+          found=$(printf '%s\n' "$out" | sed -nE 's/^(V[0-9.]+ )?Signer[^:]*:? certificate SHA-256 digest: //p' | sort -u)
           expected=$(cat android/signing-certificate.sha256)
           echo "certificate $found, expected $expected"
           [ -n "$found" ] && [ "$found" = "$expected" ] \

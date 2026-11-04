@@ -214,7 +214,7 @@ The [Android app](#way-3-android-tablet) (`openampere-<version>.apk`) is signed 
 an update only when it is signed with the same key as the installed app, and the app checks this itself before every
 update. The SHA-256 fingerprint of the certificate is
 `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886`; `apksigner verify --print-certs openampere-<version>.apk` (Android SDK) shows it at
-"Signer #1 certificate SHA-256 digest". Like the scripts, the APK has a build provenance:
+"certificate SHA-256 digest". Like the scripts, the APK has a build provenance:
 `gh attestation verify openampere-<version>.apk --repo Gr33ndev/OpenAmpere --signer-workflow Gr33ndev/OpenAmpere/.github/workflows/release.yml --source-ref refs/tags/v<version>`.
 
 **The update helper checks this automatically.** Before it starts a new version (update button in the app or at night), it verifies the image with [cosign](https://docs.sigstore.dev/cosign/) against the release workflow of this repository; no account is needed. It does not start an older version than the one running, even a genuine one: older versions can have known flaws (existing installations get this protection by running the install script once more). If the check fails, the new version is not started and the previous one keeps running, with a message in the app. Installations from before 0.10.1 get this helper by running the install script once more. Only for emergencies, `OPENAMPERE_VERIFY_IMAGES=nein` in the `updater` service turns the check off.

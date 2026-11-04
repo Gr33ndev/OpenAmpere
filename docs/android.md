@@ -153,7 +153,7 @@ the installed app. The SHA-256 fingerprint of the certificate is:
 ```
 
 To check by hand you need a computer with the Android SDK: `apksigner verify --print-certs openampere-<version>.apk`
-must show this value at "Signer #1 certificate SHA-256 digest". Every file of a release also has a signed build
+must show this value at "certificate SHA-256 digest". Every file of a release also has a signed build
 provenance, which the [GitHub CLI](https://cli.github.com) checks:
 
 ```bash
