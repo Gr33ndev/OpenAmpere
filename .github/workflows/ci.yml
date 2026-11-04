@@ -30,6 +30,22 @@ jobs:
           cd web && npm ci && cd ..
           python scripts/third_party_licenses.py --check
 
+  backend-py311:
+    # the Android app runs the same server on Chaquopy's Python 3.11 (#567), the image on 3.12: ruff's py311 target
+    # does not catch a call that is new in 3.12, so the tests run on 3.11 as well
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install (pinned)
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - name: Tests
+        run: pytest -q
+
   homeassistant:
     # the Home Assistant integration (custom_components/openampere, #76): its own Python and pinned test tools
     runs-on: ubuntu-latest
