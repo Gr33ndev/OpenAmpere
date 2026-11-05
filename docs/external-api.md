@@ -366,7 +366,8 @@ limit. Answer: `{"wallboxes": [...]}`. At most 60 changes per hour per wallbox.
 
 ## Errors
 
-Errors are JSON with a German explanation for the owner in `detail`, which your app can show as it is:
+Errors are JSON with a German explanation for the owner in `detail`, which your app can show as it is (except for
+`422`, see below):
 
 ```json
 {"detail": "Dieser Zugang darf nur lesen.", "code": "read_only"}
@@ -379,6 +380,7 @@ Errors are JSON with a German explanation for the owner in `detail`, which your 
 | `421` | An HTTP request used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
 | `403` | Plain HTTP (`https_required`), a `read` token tried to write (`read_only`), or control is switched off in OpenAmpere |
 | `404` | Pairing request expired or unknown |
+| `422` | The body is not a JSON object (an array, a number, broken JSON or no body). Here `detail` is FastAPI's technical list in English, not a text for the owner: a bug in your app. |
 | `428` | Needs a confirmation that only OpenAmpere itself can ask for |
 | `429` | Too many changes or pairing requests; `detail` says how long to wait |
 | `502` | The inverter refused the write or did not confirm it |
