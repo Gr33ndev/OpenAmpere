@@ -1610,6 +1610,10 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries.append(entry)
         return {"entries": entries}
 
+    # the history for other apps (#588): the same functions, so both answer alike
+    external.register_history(app, summary=energy_summary, energy=energy_timeline, power=power_timeline,
+                              pv_inputs=pv_inputs_timeline, temperatures=temperatures_timeline)
+
     # ---- compatibility with the former cloud customer API (read-only subset)
 
     @app.get("/api/v1/customer/installation")

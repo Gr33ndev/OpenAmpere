@@ -531,3 +531,37 @@ def test_the_days_left_of_an_enphase_token_are_shown(runtime, web):
     runtime.collector.driver.token_expires = noon_in(runtime, 20)
     assert client.get(f"{V1}/state").json()["status"]["token_days_left"] == 20
     assert TestClient(web.app).get("/api/status").json()["token_days_left"] == 20  # the app, also without login
+
+
+HISTORY = [  # (path for other apps, path of the web app, query)
+    ("summary", "/api/energy/summary", "period=day&date=2026-06-01"),
+    ("energy", "/api/energy/timeline", "period=day&date=2026-06-01&resolution=60m"),
+    ("power", "/api/power/timeline", "date=2026-06-01&step=300"),
+    ("pv-inputs", "/api/pv/inputs", "period=day&date=2026-06-01&mode=power"),
+    ("temperatures", "/api/temperatures/timeline", "date=2026-06-01"),
+]
+
+
+def test_other_apps_read_the_history_like_the_web_app(runtime, web):
+    """#588: the same answers as in the web app, with a read token and only over HTTPS."""
+    from datetime import datetime
+
+    from openampere.drivers.base import EnergyCounters, PvInput
+
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=runtime.tz).timestamp()
+    for i, ts in enumerate((base + 10, base + 600, base + 905, base + 1810)):
+        runtime.storage.add_snapshot(Snapshot(
+            timestamp=ts, pv_power=1000, house_power=500, grid_power=-500, battery_power=0, battery_soc=50 + i,
+            pv_inputs=[PvInput(power=600), PvInput(power=400)], temperatures={"inverter": 40 + i},
+            totals=EnergyCounters(pv=1000 + 100 * i, load=400 + 50 * i, grid_import=0, grid_export=600 + 50 * i,
+                                  battery_charge=0, battery_discharge=0)))
+    reader = app_client(web, new_token(web, "read", "Dashboard"))
+    for name, own, query in HISTORY:
+        response = reader.get(f"{V1}/history/{name}?{query}")
+        assert response.status_code == 200, (name, response.text)
+        assert response.json() == web.get(f"{own}?{query}").json(), name
+        assert response.json() != {}, name
+    assert reader.get(f"{V1}/history/power?date=2026-06-01").json()["entries"], "the readings are there"
+    assert reader.get(f"{V1}/history/summary?period=decade").status_code == 400
+    assert app_client(web).get(f"{V1}/history/energy").status_code == 401
+    assert app_client(web, new_token(web, "read", "Plain"), https=False).get(f"{V1}/history/energy").status_code == 403

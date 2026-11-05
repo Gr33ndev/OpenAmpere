@@ -5,6 +5,7 @@
 Only over HTTPS and only with a token (see apitokens). The data is the same as in the web app; the commands are a
 fixed list: battery mode and limits, grid charging on/off with its target, the mode of the own devices and the
 charging mode of the wallboxes OpenAmpere controls itself with the highest current of that mode (#388, #409).
+The history (register_history, #588) is read-only and the same as in the web app.
 Writing needs a "control" token and the control switch in OpenAmpere; everything goes through the same checks as in
 the app and is logged with the token's name.
 Deliberately not available: the control switch and test mode, the feed-in limit, remote power, settings, tariffs,
@@ -17,6 +18,7 @@ import asyncio
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict
 
@@ -111,6 +113,16 @@ class RateLimit:
         except Exception:
             self.give_back(taken)
             raise
+
+
+def register_history(app: FastAPI, **routes: Callable) -> None:
+    """The history for other apps (#588), with a "read" token: the functions of the web app's /api/energy/summary,
+    /api/energy/timeline, /api/power/timeline, /api/pv/inputs and /api/temperatures/timeline, with their parameters
+    and answers. The middleware checks HTTPS and the token as for every path under PREFIX."""
+    paths = {"summary": "summary", "energy": "energy", "power": "power", "pv_inputs": "pv-inputs",
+             "temperatures": "temperatures"}
+    for name, endpoint in routes.items():
+        app.add_api_route(f"{PREFIX}/history/{paths[name]}", endpoint, methods=["GET"], name=f"external_history_{name}")
 
 
 def bearer(value: str | None) -> str | None:
