@@ -86,6 +86,8 @@ certificate and the digits differ.
 
 Limits against misuse: at most 3 open requests per device and 10 in total, at most 10 starts per device and 30 in
 total per hour. Beyond that `pair/start` answers `429`.
+OpenAmpere keeps at most 10 tokens. With 10 already there, the owner cannot approve until they remove one; your
+app then sees `pending` until the request expires.
 
 ### Connection code
 
