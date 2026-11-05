@@ -118,7 +118,11 @@ def test_commands_need_a_control_token_and_the_control_switch(runtime, web, monk
     assert client.put(f"{V1}/battery", json={"min_soc_on_grid": 30}).json()["written"] == {"min_soc_on_grid": 30}
     assert calls == [({"min_soc_on_grid": 30}, "Home Assistant (Zugang für Apps)")]
     # not released for other apps
-    assert client.put(f"{V1}/battery", json={"export_limit_w": 0}).status_code == 400
+    response = client.put(f"{V1}/battery", json={"export_limit_w": 0})
+    assert response.status_code == 400
+    # the message names every field the command takes (#590)
+    for field in ("work_mode", *control.SOC_FIELDS, control.BACKUP_SOC):
+        assert field in response.json()["detail"], field
     assert client.put(f"{V1}/grid-charging", json={"power_w": 9000}).status_code == 400
     assert client.put(f"{V1}/grid-charging", json={"enabled": True}).status_code == 400  # never set up in the app
     assert client.put(f"{V1}/devices/nope/mode", json={"mode": "boost"}).status_code == 400
