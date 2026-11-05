@@ -98,7 +98,7 @@ Alternatively, the owner creates a token under **Mehr → Verbundene Apps** and 
 
 The host is the address the owner's browser used; your app should let the owner change it. A host name instead of
 an IP address works only after the owner added it under **Mehr → Zugriffsschutz → Eigene Adressen**; otherwise
-every request gets `421`.
+every HTTP request gets `421`.
 
 ### Example client
 
@@ -279,8 +279,7 @@ and after every new reading of the inverter (every `poll_interval` seconds) Open
 ```
 
 The settings (`battery_settings`, `grid_charging`, `price_ct`) are not part of it; read `/state` after a command or
-every few minutes. A connection without a valid token, over plain `ws://` or with a host name that is not allowed
-(see [Errors](#errors)) is refused in the handshake with HTTP `403`. An open connection whose token the owner removes
+every few minutes. A connection without a valid token or over plain `ws://` is refused in the handshake with HTTP `403`. An open connection whose token the owner removes
 is closed with code `1008`. Reconnect with a growing pause (the integration waits 5, 10, 30, then
 60 seconds). OpenAmpere shows which apps are connected live.
 
@@ -377,7 +376,7 @@ Errors are JSON with a German explanation for the owner in `detail`, which your 
 |---|---|
 | `400` | Invalid value or command; `detail` says what is wrong |
 | `401` | Token invalid or removed (`"code": "token_invalid"`): pair again |
-| `421` | The app used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
+| `421` | An HTTP request used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
 | `403` | Plain HTTP (`https_required`), a `read` token tried to write (`read_only`), or control is switched off in OpenAmpere |
 | `404` | Pairing request expired or unknown |
 | `428` | Needs a confirmation that only OpenAmpere itself can ask for |
