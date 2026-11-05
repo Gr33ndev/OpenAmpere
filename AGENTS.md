@@ -30,7 +30,7 @@ writes as safety-relevant (see below).
 | `ha-app/`, `repository.yaml` | Home Assistant app (#300): config for the Supervisor, start script of the image stage `ha-app`, `DOCS.md` (the English guide shown in Home Assistant; German: `docs/homeassistant-app.de.md`) |
 | `scripts/` | `install.sh` (end-user installer), `updater.sh` / `tailscale.sh` (helper containers), `release.sh`, `deps.sh`, `i18n_messages.py`, … |
 | `tests/` | pytest suite for the backend |
-| `docs/` | `architecture.md`, `devices/` (what we know per device, with status and source), `devices.md`, `writing-a-driver.md`; German user guides are `*.de.md` |
+| `docs/` | `architecture.md`, `devices/` (what we know per device, with status and source), `devices.md`, `writing-a-driver.md`, `external-api.md` (interface for other apps); German user guides are `*.de.md` |
 
 ## Commands
 
@@ -143,6 +143,8 @@ Every change reaches owners in four ways, all built from the same release (#300,
   its token elsewhere); a new certificate means pairing again.
 - **Home Assistant:** new values or controls the integration should offer go into `custom_components/` with tests in
   `tests_ha/`; the integration talks to the external API only. Both ways get the change with the next release.
+  Other apps use the same API: a change to it (`external.py`, `apitokens.py`) goes into
+  [docs/external-api.md](docs/external-api.md) in the same PR, and an incompatible one needs a new `API_VERSION`.
 - **App config:** new rights, ports, capabilities or file access go into `ha-app/config.yaml` and, if needed,
   `ha-app/apparmor.txt` (the profile limits capabilities and network types). `tests/test_ha_app_config.py` checks the
   config against the code.

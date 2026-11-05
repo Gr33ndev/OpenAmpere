@@ -32,9 +32,13 @@
  * site/locales/<lang>/docs.json. Reserved placeholders of that template, besides the ones above:
  *   {{home}}       the way back to the page's language root, e.g. "../../../" ({{root}} is the site's root as above)
  *   {{doc}}        the rendered page
- *   {{docTitle}}   its first heading and " | " for the <title>, empty on the overview (README.md)
+ *   {{docTitle}}   its first heading and " | " for the <title>, empty on an overview (README.md, a page that is its own)
  *   {{docSource}}  the Markdown file on GitHub
- * A link to another page of docs/devices/ stays relative (.md → .html), a link to any other file of the repository
+ *   {{docOverview}} the address of the section's overview below {{home}}
+ * The interface for other apps (docs/external-api.md, #588) is a page of its own section in the same template, at
+ * docs/external-api.html: in its frame every {{docs.…}} of the template reads apidocs.… instead (site/locales/<lang>/
+ * apidocs.json), and its overview is the page itself.
+ * A link to another page on the website stays relative (.md → .html), a link to any other file of the repository
  * goes to the file on GitHub, a link with another scheme than https:// is left out (its text stays). A link to a file
  * or heading that does not exist is reported as a warning.
  *
@@ -65,13 +69,14 @@ const REFERENCE = "de";
 const SITE_URL = (process.env.SITE_URL ?? "https://gr33ndev.github.io/OpenAmpere/").replace(/\/?$/, "/");
 const out = process.argv[2] ?? "_site";
 const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}/g;
-const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog", "devicesMatrix", "devicesList", "home", "doc", "docTitle", "docSource"]);
+const RESERVED = new Set(["root", "lang", "contentLang", "alternates", "languageSwitch", "changelog", "devicesMatrix", "devicesList", "home", "doc", "docTitle", "docSource", "docOverview"]);
 const CHANGELOG_FILE = "web/public/changelog.json";
 const CHANGELOG_KEYS = ["version", "first", "attention", "new", "fixed", "faster", "otherChanges"].map((k) => `changelog.list.${k}`);
 const ISSUES = "https://github.com/Gr33ndev/OpenAmpere/issues/";
 const ADVISORIES = "https://github.com/Gr33ndev/OpenAmpere/security/advisories/";
 const REPO_FILES = "https://github.com/Gr33ndev/OpenAmpere/blob/main/";
 const DOCS = "docs/devices";
+const API_DOC = "docs/external-api.md";
 const DOC_TEMPLATE = "site/doc.html";
 
 // tags a text value may contain, with the attributes each may have (#355)
@@ -194,7 +199,8 @@ function markdownFiles(dir, prefix = "") {
     return entry.isDirectory() ? markdownFiles(dir, path) : entry.name.endsWith(".md") ? [path] : [];
   }).sort();
 }
-const docOut = (file) => `${DOCS}/${file.replace(/(^|\/)README\.md$/, "$1index.md").replace(/\.md$/, ".html")}`;
+/** Where a page (its path in the repository) lies on the website. */
+const docOut = (file) => file.replace(/(^|\/)README\.md$/, "$1index.md").replace(/\.md$/, ".html");
 const decode = (value) => {
   try {
     return decodeURIComponent(value);
@@ -203,7 +209,13 @@ const decode = (value) => {
   }
 };
 const anchors = []; // [file, target file, heading id] of every link to a heading of a page, checked when all are rendered
-/** Where the link href of the Markdown file `from` (relative to DOCS) points on the website, null for none. */
+// every page on the website, by its path in the repository
+const docFiles = docTemplate ? [
+  ...(existsSync(DOCS) ? markdownFiles(DOCS).map((file) => ({ file: `${DOCS}/${file}`, section: "docs", overview: `${DOCS}/` })) : []),
+  ...(existsSync(API_DOC) ? [{ file: API_DOC, section: "apidocs", overview: docOut(API_DOC) }] : []),
+] : [];
+const published = new Set(docFiles.map((doc) => doc.file));
+/** Where the link href of the Markdown file `from` (its path in the repository) points on the website, null for none. */
 function docLink(from, href) {
   if (/^https:\/\//i.test(href)) return href;
   if (href.startsWith("#")) {
@@ -211,28 +223,28 @@ function docLink(from, href) {
     return href;
   }
   const [path, hash] = href.split(/#(.*)/s);
-  const target = posix.normalize(posix.join(posix.dirname(`${DOCS}/${from}`), decode(path)));
+  const target = posix.normalize(posix.join(posix.dirname(from), decode(path)));
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:|^\//.test(href) || target === ".." || target.startsWith("../")) {
-    warnings.push(`${DOCS}/${from}: the link to ${href} is left out (only https:// and files of the repository)`);
+    warnings.push(`${from}: the link to ${href} is left out (only https:// and files of the repository)`);
     return null;
   }
-  if (!existsSync(target)) warnings.push(`${DOCS}/${from}: the link to ${href} leads nowhere (${target} does not exist)`);
-  if (target.startsWith(`${DOCS}/`) && target.endsWith(".md")) {
-    const file = target.slice(DOCS.length + 1);
-    if (hash) anchors.push([from, file, decode(hash)]);
-    return posix.relative(posix.dirname(docOut(from)), docOut(file)) + (hash ? `#${hash}` : "");
+  if (!existsSync(target)) warnings.push(`${from}: the link to ${href} leads nowhere (${target} does not exist)`);
+  if (published.has(target)) {
+    if (hash) anchors.push([from, target, decode(hash)]);
+    return posix.relative(posix.dirname(docOut(from)), docOut(target)) + (hash ? `#${hash}` : "");
   }
   return REPO_FILES + target.split("/").map(encodeURIComponent).join("/") + (hash ? `#${hash}` : "");
 }
 // rendered once, the same in every language
-const docs = docTemplate && existsSync(DOCS) ? markdownFiles(DOCS).map((file) => {
-  const { html, title, ids } = renderMarkdown(readFileSync(join(DOCS, file), "utf8"), { link: (href) => docLink(file, href) });
-  if (!title) errors.push(`${DOCS}/${file}: the page has no heading "# …" for its title`);
-  return { file, out: docOut(file), html, title: title ?? file, ids };
-}) : [];
+const docs = docFiles.map(({ file, section, overview }) => {
+  const { html, title, ids } = renderMarkdown(readFileSync(file, "utf8"), { link: (href) => docLink(file, href) });
+  if (!title) errors.push(`${file}: the page has no heading "# …" for its title`);
+  return { file, section, overview, out: docOut(file), html, title: title ?? file, ids };
+});
 for (const [from, file, id] of anchors) {
   const target = docs.find((doc) => doc.file === file);
-  if (target && !target.ids.includes(id)) warnings.push(`${DOCS}/${from}: the link to ${file}#${id} leads to no heading`);
+  // shown relative to the device knowledge, as the links between its pages are written
+  if (target && !target.ids.includes(id)) warnings.push(`${from}: the link to ${posix.relative(DOCS, file)}#${id} leads to no heading`);
 }
 const changelogUsed = Object.values(templates).some((template) => template.includes("{{changelog}}"));
 const changelog = changelogUsed ? readJson(CHANGELOG_FILE).versions ?? [] : [];
@@ -250,6 +262,15 @@ if (support) {
   for (const key of support.errors.length ? [] : siteKeys(support.data)) {
     if (lookup(REFERENCE, key) === undefined) errors.push(`{{devicesMatrix}} needs ${key} in site/locales/${REFERENCE}/`);
     used.add(key);
+  }
+}
+// the page of the interface for other apps reads its frame from apidocs.json (see above)
+const docSections = { docs: (template) => template, apidocs: (template) => template.replaceAll("{{docs.", "{{apidocs.") };
+if (docTemplate && existsSync(API_DOC)) {
+  for (const [, name] of docSections.apidocs(docTemplate).matchAll(PLACEHOLDER)) {
+    if (!name.startsWith("apidocs.")) continue;
+    if (lookup(REFERENCE, name) === undefined) errors.push(`${DOC_TEMPLATE}: {{${name}}} is missing in site/locales/${REFERENCE}/`);
+    used.add(name);
   }
 }
 const germanKeys = Object.entries(texts[REFERENCE] ?? {}).flatMap(([file, node]) => keysOf(node, file));
@@ -346,9 +367,10 @@ if (!errors.length) {
       const path = (code) => `${langPrefix(code)}${doc.out.replace(/index\.html$/, "")}`;
       const name = posix.basename(doc.out);
       const generated = { ...vars, root: home + root, home, alternates: alternates(path), doc: doc.html,
-        docTitle: doc.out === `${DOCS}/index.html` ? "" : `${escapeText(doc.title)} | `, docSource: `${REPO_FILES}${DOCS}/${doc.file}`,
+        docTitle: doc.out === `${DOCS}/index.html` || doc.out === doc.overview ? "" : `${escapeText(doc.title)} | `, docSource: `${REPO_FILES}${doc.file}`,
+        docOverview: doc.overview,
         languageSwitch: languageSwitch((code) => (code === lang ? (name === "index.html" ? "./" : name) : home + root + path(code))) };
-      output.push([join(dir, posix.dirname(doc.out)), name, render(docTemplate, generated)]);
+      output.push([join(dir, posix.dirname(doc.out)), name, render(docSections[doc.section](docTemplate), generated)]);
     }
     if (!language.translated) warnings.push(`${lang}: no site translation in site/locales/${lang}/, all ${missing.size} texts in German`);
     else if (missing.size) warnings.push(`${lang}: ${missing.size} text(s) missing, shown in German: ${[...missing].join(", ")}`);

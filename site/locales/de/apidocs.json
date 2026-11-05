@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "Schnittstelle für andere Apps | OpenAmpere",
+    "description": "Wie Dashboards, Skripte und andere Apps die Werte von OpenAmpere lesen und es steuern: Kopplung, Zugang, Endpunkte und Befehle."
+  },
+  "head": {
+    "overview": "Für Entwickler",
+    "note": "Diese Seite ist technisch und auf Englisch. Sie richtet sich an Entwickler, die OpenAmpere mit einer eigenen App, einem Dashboard oder einem Skript verbinden wollen. Für Home Assistant brauchst du sie nicht, die Integration erledigt das für dich."
+  },
+  "foot": {
+    "source": "Diese Seite auf GitHub ansehen und verbessern"
+  }
+}
