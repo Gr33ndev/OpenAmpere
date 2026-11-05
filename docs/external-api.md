@@ -43,7 +43,8 @@ Pairing works like numeric comparison when pairing Bluetooth devices. Your app a
 from the certificate the app sees and two random numbers. If someone sits in between, the app sees a different
 certificate and the digits differ.
 
-1. **Ask the owner for the address and the HTTPS port.**
+1. **Ask the owner for the address and the HTTPS port.** Prefer the IP address: a host name needs to be allowed in
+   OpenAmpere first (see [Errors](#errors)).
 2. **Read the certificate.** Open a TLS connection without verification and compute the SHA-256 of the certificate
    in DER form (`fingerprint`, 64 hex characters). Keep it; from now on accept only this certificate.
 3. **Commit to a random number.** Create 32 random bytes `app_nonce` and send their SHA-256 as hex:
@@ -95,7 +96,74 @@ Alternatively, the owner creates a token under **Mehr → Verbundene Apps** and 
 {"host": "192.168.x.x", "port": 8443, "fingerprint": "<64 hex characters>", "token": "oa_…"}
 ```
 
-The host is the address the owner's browser used; your app should let the owner change it.
+The host is the address the owner's browser used; your app should let the owner change it. A host name instead of
+an IP address works only after the owner added it under **Mehr → Zugriffsschutz → Eigene Adressen**; otherwise
+every request gets `421`.
+
+### Example client
+
+Pairing and one reading in Python, with nothing but the standard library. A real app keeps the token and the
+fingerprint and skips the pairing next time; for live values it opens the WebSocket (`/ws`) with the same header and
+the same certificate check.
+
+```python
+import hashlib
+import http.client
+import json
+import secrets
+import ssl
+import time
+
+HOST, PORT = "192.168.x.x", 8443  # ask the owner
+
+
+def connect(fingerprint=None):
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE  # instead: exactly this certificate, checked below
+    conn = http.client.HTTPSConnection(HOST, PORT, context=context, timeout=20)
+    conn.connect()
+    seen = hashlib.sha256(conn.sock.getpeercert(binary_form=True)).hexdigest()
+    if fingerprint and seen != fingerprint:
+        conn.close()
+        raise RuntimeError("OpenAmpere shows a different certificate: pair again")
+    return conn, seen
+
+
+def call(method, path, fingerprint, body=None, token=None):
+    conn, _ = connect(fingerprint)
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    conn.request(method, "/api/external/v1" + path, json.dumps(body) if body is not None else None, headers)
+    response = conn.getresponse()
+    data = json.loads(response.read() or b"{}")
+    conn.close()
+    if response.status >= 400:
+        raise RuntimeError(f"{response.status}: {data.get('detail')}")
+    return data
+
+
+# pairing: once, then store HOST, PORT, fingerprint and token
+_, fingerprint = connect()
+app_nonce = secrets.token_bytes(32)
+start = call("POST", "/pair/start", fingerprint,
+             {"name": "My dashboard", "commitment": hashlib.sha256(app_nonce).hexdigest()})
+request, poll = f"/pair/{start['request_id']}", {"poll_key": start["poll_key"]}
+call("POST", request + "/reveal", fingerprint, {**poll, "nonce": app_nonce.hex()})
+digest = hashlib.sha256(bytes.fromhex(fingerprint) + app_nonce + bytes.fromhex(start["nonce"])).digest()
+print("Compare in OpenAmpere (Mehr → Verbundene Apps):", f"{int.from_bytes(digest[:4], 'big') % 1_000_000:06d}")
+while (status := call("POST", request + "/status", fingerprint, poll))["status"] == "pending":
+    time.sleep(2)
+if status["status"] != "approved":
+    raise SystemExit("The owner rejected the request.")
+token = status["token"]
+
+# reading
+state = call("GET", "/state", fingerprint, token=token)
+live = state["live"] or {}
+print(f"PV {live.get('pv_power')} W, battery {live.get('battery_soc')} %, grid {live.get('grid_power')} W")
+```
 
 ## Reading
 
@@ -211,8 +279,9 @@ and after every new reading of the inverter (every `poll_interval` seconds) Open
 ```
 
 The settings (`battery_settings`, `grid_charging`, `price_ct`) are not part of it; read `/state` after a command or
-every few minutes. Without a valid token the connection is closed with code `1008`; the same happens to an open
-connection when the owner removes the token. Reconnect with a growing pause (the integration waits 5, 10, 30, then
+every few minutes. A connection without a valid token, over plain `ws://` or with a host name that is not allowed
+(see [Errors](#errors)) is refused in the handshake with HTTP `403`. An open connection whose token the owner removes
+is closed with code `1008`. Reconnect with a growing pause (the integration waits 5, 10, 30, then
 60 seconds). OpenAmpere shows which apps are connected live.
 
 ### History
@@ -243,7 +312,7 @@ Battery settings. Send only what you want to change.
 | Field | Values |
 |---|---|
 | `work_mode` | `self_use`, `feed_in_first`, `backup`, `peak_shaving`; only those in `device.work_modes` if that is not `null` |
-| `min_soc` | Lower limit in backup operation, 0–100 % |
+| `min_soc` | Lowest state of charge during a power outage (off-grid), 0–100 % |
 | `min_soc_on_grid` | Backup reserve, 10–100 %, at least `min_soc` |
 | `max_soc` | Charge limit, 10–100 %, above `min_soc_on_grid` |
 | `backup_soc` | Reserve in the backup mode, only if `device.backup_reserve`; not above `max_soc` |
@@ -308,6 +377,7 @@ Errors are JSON with a German explanation for the owner in `detail`, which your 
 |---|---|
 | `400` | Invalid value or command; `detail` says what is wrong |
 | `401` | Token invalid or removed (`"code": "token_invalid"`): pair again |
+| `421` | The app used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
 | `403` | Plain HTTP (`https_required`), a `read` token tried to write (`read_only`), or control is switched off in OpenAmpere |
 | `404` | Pairing request expired or unknown |
 | `428` | Needs a confirmation that only OpenAmpere itself can ask for |
