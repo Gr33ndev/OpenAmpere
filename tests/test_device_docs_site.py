@@ -164,6 +164,27 @@ def test_every_page_of_the_knowledge_is_on_the_website(tmp_path):
 
 
 @needs_node
+def test_the_interface_for_other_apps_is_on_the_website(tmp_path):
+    out = tmp_path / "out"
+    result = build_pages(ROOT, out)
+    assert result.returncode == 0, result.stderr
+    assert "docs/external-api.md" not in result.stderr, result.stderr
+    page = (out / "docs" / "external-api.html").read_text()
+    # its own frame (apidocs.json), not the one of the device knowledge
+    assert "<title>Schnittstelle für andere Apps | OpenAmpere</title>" in page
+    assert "Gerätewissen |" not in page and 'href="../docs/external-api.html">Für Entwickler</a>' in page
+    assert '<article class="doc" lang="en">' in page and 'href="../style.css"' in page
+    # a page of the device knowledge stays on the website, a source file goes to GitHub
+    assert 'href="devices/index.html"' in page
+    assert 'href="https://github.com/Gr33ndev/OpenAmpere/blob/main/src/openampere/external.py"' in page
+    assert 'href="https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/external-api.md"' in page
+    english = (out / "en" / "docs" / "external-api.html").read_text()
+    assert "<title>Interface for other apps | OpenAmpere</title>" in english and ">For developers</a>" in english
+    for name in ("index.html", "faq.html", "docs/devices/foxess/h3.html"):
+        assert "external-api.html" in (out / name).read_text(), name
+
+
+@needs_node
 def test_a_link_that_leads_nowhere_is_reported(tmp_path):
     repo = tmp_path / "repo"
     shutil.copytree(ROOT / "site", repo / "site")

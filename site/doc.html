@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- SPDX-FileCopyrightText: Copyright the OpenAmpere contributors -->
 <!-- SPDX-License-Identifier: MIT -->
-<!-- A page of the device knowledge (#512), filled with a file of docs/devices/ by scripts/build-site-pages.mjs -->
+<!-- A page of the device knowledge (#512) or of the interface for other apps (#588), filled with a Markdown file by
+     scripts/build-site-pages.mjs -->
 <html lang="{{contentLang}}">
 <head>
   <meta charset="utf-8" />
@@ -32,7 +33,7 @@
   </header>
 
   <main class="wrap doc-page">
-    <p class="eyebrow doc-crumb"><a href="{{home}}docs/devices/">{{docs.head.overview}}</a></p>
+    <p class="eyebrow doc-crumb"><a href="{{home}}{{docOverview}}">{{docs.head.overview}}</a></p>
     <p class="doc-note">{{docs.head.note}}</p>
     <article class="doc" lang="en">
 {{doc}}
@@ -45,6 +46,7 @@
       <p><a href="{{home}}impressum.html">{{common.footer.imprint}}</a> ·
         <a href="{{home}}changelog.html">{{common.footer.changelog}}</a> ·
         <a href="{{home}}docs/devices/">{{common.footer.docs}}</a> ·
+        <a href="{{home}}docs/external-api.html">{{common.footer.api}}</a> ·
         <a href="https://github.com/Gr33ndev/OpenAmpere">{{common.footer.source}}</a> ·
         <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/LICENSE">{{common.footer.license}}</a> ·
         <a href="https://github.com/Gr33ndev/OpenAmpere/blob/main/SECURITY.md">{{common.footer.security}}</a></p>

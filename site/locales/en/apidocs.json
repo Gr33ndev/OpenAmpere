@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "Interface for other apps | OpenAmpere",
+    "description": "How dashboards, scripts and other apps read the values of OpenAmpere and control it: pairing, access, endpoints and commands."
+  },
+  "head": {
+    "overview": "For developers",
+    "note": "This page is technical. It is meant for developers who want to connect OpenAmpere with their own app, dashboard or script. You don't need it for Home Assistant; the integration does this for you."
+  },
+  "foot": {
+    "source": "View and improve this page on GitHub"
+  }
+}
