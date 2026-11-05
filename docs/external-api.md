@@ -314,7 +314,7 @@ Battery settings. Send only what you want to change.
 | `min_soc` | Lowest state of charge during a power outage (off-grid), 0–100 % |
 | `min_soc_on_grid` | Backup reserve, 10–100 %, at least `min_soc` |
 | `max_soc` | Charge limit, 10–100 %, above `min_soc_on_grid` |
-| `backup_soc` | Reserve in the backup mode, only if `device.backup_reserve`; not above `max_soc` |
+| `backup_soc` | Reserve in the backup mode, 10–100 %, only if `device.backup_reserve`; not above `max_soc` |
 
 The answer is `{"dry_run", "written", "warning"}`. A backup reserve below 10 % can only be set in OpenAmpere itself,
 after a warning (`428`).
