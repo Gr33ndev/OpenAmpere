@@ -64,7 +64,8 @@ Do not report what CI already checks: ruff, Biome, TypeScript, the build, Conven
   app (no `"/…"` in `fetch`, `href`, `src`); a feature needing a helper container, the host or Docker says in the app
   that it does not exist in app mode or on the tablet; sidebar access only for Home Assistant admins; new rights or
   ports in `ha-app/config.yaml`; a new Python dependency has an Android build (the `android` job); the integration only
-  uses the external API and bypasses no check of the server; the app's certificate fingerprint is the same wherever it
+  uses the external API and bypasses no check of the server; a change to the external API is described in
+  `docs/external-api.md`; the app's certificate fingerprint is the same wherever it
   is published.
 - **Database:** a new step in `MIGRATIONS` plus `SCHEMA_VERSION + 1`, `SCHEMA` untouched, a test with an existing
   database.
