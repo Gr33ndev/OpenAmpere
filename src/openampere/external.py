@@ -5,6 +5,7 @@
 Only over HTTPS and only with a token (see apitokens). The data is the same as in the web app; the commands are a
 fixed list: battery mode and limits, grid charging on/off with its target, the mode of the own devices and the
 charging mode of the wallboxes OpenAmpere controls itself with the highest current of that mode (#388, #409).
+The history (register_history, #588) is read-only and the same as in the web app.
 Writing needs a "control" token and the control switch in OpenAmpere; everything goes through the same checks as in
 the app and is logged with the token's name.
 Deliberately not available: the control switch and test mode, the feed-in limit, remote power, settings, tariffs,
@@ -17,10 +18,11 @@ import asyncio
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict
 
-from fastapi import Body, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 
 from .apitokens import ApiTokens, Pairing
 from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
@@ -36,6 +38,9 @@ PREFIX = "/api/external/v1"
 # writes per hour: inverter settings end up in its non-volatile memory; an automation in a loop must not wear it out
 BATTERY_WRITES_PER_HOUR = 6
 OTHER_WRITES_PER_HOUR = 60
+# reads of the history per token and minute (#588): a year's summary or a day's power curve reads many rows, and a
+# dashboard stuck in a loop must not keep a Raspberry Pi or a tablet busy
+HISTORY_READS_PER_MINUTE = 30
 # /state waits at most this long for the battery settings, then answers with the last ones: behind a slow Modbus
 # proxy a reading can take longer than Home Assistant waits for the answer (#336)
 SETTINGS_WAIT_S = 5.0
@@ -111,6 +116,42 @@ class RateLimit:
         except Exception:
             self.give_back(taken)
             raise
+
+
+class ReadLimit:
+    """Reads per key in a sliding minute, in memory (a restart may start over: reads change nothing)."""
+
+    def __init__(self, per_minute: int) -> None:
+        self.per_minute = per_minute
+        self._reads: dict[str, deque] = {}
+
+    def check(self, key: str, now: float | None = None) -> None:
+        now = time.time() if now is None else now
+        reads = self._reads.setdefault(key, deque())
+        while reads and reads[0] <= now - 60:
+            reads.popleft()
+        if len(reads) >= self.per_minute:
+            per_minute, wait = self.per_minute, int(reads[0] + 60 - now) + 1
+            raise HTTPException(429, f"Zu viele Abfragen des Verlaufs (höchstens {per_minute} pro Minute). "
+                                     f"Bitte in {wait} s erneut versuchen.")
+        reads.append(now)
+
+
+def register_history(app: FastAPI, **routes: Callable) -> None:
+    """The history for other apps (#588), with a "read" token: the functions of the web app's /api/energy/summary,
+    /api/energy/timeline, /api/power/timeline, /api/pv/inputs and /api/temperatures/timeline, with their parameters
+    and answers. The middleware checks HTTPS and the token as for every path under PREFIX; the reads are limited per
+    token (HISTORY_READS_PER_MINUTE, for all five together)."""
+    paths = {"summary": "summary", "energy": "energy", "power": "power", "pv_inputs": "pv-inputs",
+             "temperatures": "temperatures"}
+    limit = ReadLimit(HISTORY_READS_PER_MINUTE)
+
+    def limited(request: Request) -> None:
+        limit.check(request.state.token["id"])
+
+    for name, endpoint in routes.items():
+        app.add_api_route(f"{PREFIX}/history/{paths[name]}", endpoint, methods=["GET"], name=f"external_history_{name}",
+                          dependencies=[Depends(limited)])
 
 
 def bearer(value: str | None) -> str | None:

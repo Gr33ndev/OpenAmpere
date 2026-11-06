@@ -287,8 +287,110 @@ is closed with code `1008`. Reconnect with a growing pause (the integration wait
 
 ### History
 
-Not available through this interface yet: only live values and today's counters. Time series (power of a day, energy
-per day, month or year) are planned in #588.
+The history a `read` token may see, with the same answers as the charts in the web app (#588). All of them are
+`GET` requests with query parameters; times in the answers are the start of each bucket.
+
+Parameters shared by several endpoints:
+
+- `period`: `day` (default), `week`, `month` or `year`.
+- `date`: a day in the period as `YYYY-MM-DD`, default today. Also `YYYY-Www` for a week, `YYYY-MM` for a month and
+  `YYYY` for a year. Days and weeks follow the time zone of the installation; a week starts on Monday.
+- `resolution`: `15m`, `60m`, `day` or `month`.
+
+An unknown period or a date that cannot be read answers `400`; a parameter outside its values (`step`, `resolution`,
+`mode`) answers `422` with FastAPI's technical list (see [Errors](#errors)).
+
+**At most 30 reads of the history per minute and token**, for all five endpoints together. Beyond that the answer is
+`429`, with the seconds to wait in the message. Live values (`/state`, `/ws`) do not count.
+
+**What is kept:** energy per quarter hour is kept for good, so `summary`, `energy` and the energy of `pv-inputs` work
+for any period OpenAmpere has recorded (or imported from the former cloud). The single readings behind `power`, the
+power curve of `pv-inputs` and `temperatures` are kept for 30 days by default (the owner can change that); older
+days answer with empty `entries`.
+
+#### `GET /history/summary`
+
+Energy of a period, the shares and the money, as the report in the app shows them.
+
+```http
+GET /api/external/v1/history/summary?period=month&date=2026-06
+```
+
+```json
+{
+  "period": "month", "from": 1780264800, "to": 1782856800, "quarters": 2880,
+  "partial_since": null, "recorded_since": null,
+  "energy_wh": {"pv": 1200000, "load": 900000, "grid_import": 150000, "grid_export": 450000,
+                "battery_charge": 200000, "battery_discharge": 180000, "pv_external": null},
+  "autarky": 0.83, "self_consumption": 0.63,
+  "money": {"savings_eur": 210.5, "feed_in_eur": 36.0, "grid_cost_eur": 45.3, "base_fee_eur": 12.0,
+            "net_cost_eur": 21.3, "incomplete": false}
+}
+```
+
+- `energy_wh`: energy in Wh. `load` is the consumption of the house (as `consumption` in `live.today`), not the
+  inverter's own load counter. `pv_external`: a counted second PV inverter, otherwise `null`; it is part of `pv`.
+- `quarters`: quarter hours with data, including the one that is running.
+- `recorded_since`: on the first day of recording, when recording started; the values then come from the inverter's
+  daily counters and are complete. `partial_since`: the values cover only the time since then.
+- `autarky`: share of the consumption not drawn from the grid, `self_consumption`: share of the solar energy used in
+  the house; 0–1, `null` without consumption or solar energy.
+- `money`: from the owner's tariffs. `savings_eur`: self-used solar energy at the price of that moment plus the feed-in
+  pay; `net_cost_eur`: grid power plus base fee minus feed-in pay. `incomplete`: prices were missing for part of the
+  period.
+
+#### `GET /history/energy`
+
+Energy per bucket, for bar charts. Parameters: `period`, `date`, `resolution` (default `15m`).
+
+```json
+{"period": "day", "resolution": "60m", "from": 1780351200, "to": 1780437600,
+ "entries": [{"ts": 1780351200, "pv": 0, "load": 350, "grid_import": 350, "grid_export": 0,
+              "battery_charge": 0, "battery_discharge": 0, "pv_external": null, "soc": 42}]}
+```
+
+Each entry has the energy of the bucket in Wh (fields as in `summary`) and `soc`, the state of charge at the end of
+the bucket. A bucket without data is missing, not zero. The quarter hour that is running is included.
+
+#### `GET /history/power`
+
+Power curve of one day. Parameters: `date`, `step` (seconds per point, 10–3600, default 60).
+
+```json
+{"from": 1780351200, "to": 1780437600, "step": 300,
+ "entries": [{"ts": 1780394400, "pv": 4200, "house": 600, "grid": -2100, "battery": -1500, "soc": 64,
+              "pv_external": null}]}
+```
+
+Averages per step in W, with the signs of `live`: `grid` + import, − export; `battery` + discharging, − charging. A
+step without readings is missing. For a quarter hour with no readings but a stored state of charge (for example a day
+imported from the former cloud) there is an entry with only `soc`.
+
+#### `GET /history/pv-inputs`
+
+Per PV input (module array). Parameters: `period`, `date`, `mode` (`energy`, default, or `power`, only with
+`period=day`), `resolution` (default `60m`, for `energy`).
+
+```json
+{"mode": "energy", "inputs": [1, 2], "labels": ["Süddach", "Modulfeld 2"],
+ "entries": [{"ts": 1780394400, "values": [2100, 1400]}], "totals_wh": [21000, 14000]}
+```
+
+- `inputs`: the numbers of the inputs, **counted from 1** (`index` in `/info` counts from 0). Inputs the owner hid are left out,
+  and so are inputs without any yield in the period, unless no input had any (at night, or a day without data).
+- `labels`: the owner's names, in the same order.
+- `entries[].values`: per input, energy in Wh per bucket (`energy`) or average power in W per 5 minutes (`power`).
+- `totals_wh`: energy of each input over the period, `null` with `mode=power`.
+
+#### `GET /history/temperatures`
+
+Temperatures of one day. Parameters: `date`, `step` (seconds, 60–3600, default 300).
+
+```json
+{"entries": [{"ts": 1780394400, "inverter": 41.5, "battery": 24.0, "cell_max": 24.5, "cell_min": 23.5}]}
+```
+
+Averages per step in °C, `null` for what the device does not provide.
 
 ## Controlling
 
@@ -382,9 +484,9 @@ Errors are JSON with a German explanation for the owner in `detail`, which your 
 | `421` | An HTTP request used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
 | `403` | Plain HTTP (`https_required`), a `read` token tried to write (`read_only`), or control is switched off in OpenAmpere |
 | `404` | Pairing request expired or unknown |
-| `422` | The body is not a JSON object (an array, a number, broken JSON or no body). Here `detail` is FastAPI's technical list in English, not a text for the owner: a bug in your app. |
+| `422` | The body is not a JSON object (an array, a number, broken JSON or no body), or a query parameter of the history is outside its values. Here `detail` is FastAPI's technical list in English, not a text for the owner: a bug in your app. |
 | `428` | Needs a confirmation that only OpenAmpere itself can ask for |
-| `429` | Too many changes or pairing requests; `detail` says how long to wait |
+| `429` | Too many changes, pairing requests or reads of the history; `detail` says how long to wait |
 | `502` | The inverter refused the write or did not confirm it |
 | `503` | OpenAmpere is not connected to the inverter |
 
@@ -394,6 +496,8 @@ certificate silently: ask the owner to pair again.
 ## Good manners
 
 - Read with `/ws` instead of polling `/state` every few seconds.
+- Read the history when it is shown or once per quarter hour, not with every live value: `power` with a small
+  `step` reads every reading of the day.
 - Send a command only when the owner or a rule of your app really changes something, not on every reading.
 - Show `status.stale` and `status.connected`; old values shown as current are worse than none.
 - Store the token like a password. Whoever has a `control` token can change the battery settings.
