@@ -6,7 +6,8 @@ urllib follows redirects and keeps headers such as Authorization and Cookie, als
 OpenAmpere talks to with credentials answer directly, so a redirect is refused (urllib raises HTTPError for it).
 
 The socket timeout only limits the wait for each piece of an answer: a device that sends its answer byte by byte would
-hold a request open as long as it likes. `read_within` also limits the whole request.
+hold a request open as long as it likes. `read_within` also limits the whole request; `Deadline` does the same for
+an e-mail (mail.py).
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ def open_without_redirect(request: urllib.request.Request, timeout: float, conte
     return opener.open(request, timeout=timeout)
 
 
-class _Deadline:
+class Deadline:
     """Cuts the connections of one request once it has taken `seconds` in total."""
 
     def __init__(self, seconds: float) -> None:
@@ -79,7 +80,7 @@ class _Deadline:
             self._socks.clear()
 
 
-def _connection(cls: type[http.client.HTTPConnection], deadline: _Deadline):
+def _connection(cls: type[http.client.HTTPConnection], deadline: Deadline):
     def connection(*args, **kwargs) -> http.client.HTTPConnection:
         conn = cls(*args, **kwargs)
         conn._create_connection = deadline.connect
@@ -88,7 +89,7 @@ def _connection(cls: type[http.client.HTTPConnection], deadline: _Deadline):
 
 
 class _DeadlineHTTPHandler(urllib.request.HTTPHandler):
-    def __init__(self, deadline: _Deadline) -> None:
+    def __init__(self, deadline: Deadline) -> None:
         super().__init__()
         self._deadline = deadline
 
@@ -97,7 +98,7 @@ class _DeadlineHTTPHandler(urllib.request.HTTPHandler):
 
 
 class _DeadlineHTTPSHandler(urllib.request.HTTPSHandler):
-    def __init__(self, deadline: _Deadline, context: ssl.SSLContext | None) -> None:
+    def __init__(self, deadline: Deadline, context: ssl.SSLContext | None) -> None:
         super().__init__(context=context)
         self._deadline = deadline
 
@@ -120,7 +121,7 @@ def fetch_within(request: urllib.request.Request, *, timeout: float, deadline: f
                  handlers: tuple[urllib.request.BaseHandler, ...] = ()) -> tuple[int, str, Message, bytes]:
     """Like read_within, also returns the status and the address the answer came from (after redirects).
     `handlers`: further urllib handlers, e.g. one that keeps the cookies of a login."""
-    cut = _Deadline(deadline)
+    cut = Deadline(deadline)
     handlers = (_DeadlineHTTPHandler(cut), _DeadlineHTTPSHandler(cut, context), *handlers,
                 *(() if redirect else (NoRedirect,)))
     try:

@@ -158,7 +158,10 @@
     "ntfyCredentialsNotInAddress": "User name and password don't belong in the ntfy address. Please enter the address without them. For a protected topic, put a token from ntfy into the field “Access token”.",
     "ratedPowerAtLeast": "The rated power from the type plate must be at least {MIN_RATED_POWER_W} W.",
     "settingTChangedApp": "The setting {key} can't be changed in the app.",
-    "certificateFingerprintInvalid": "The certificate fingerprint is not valid. Please test the connection in the setup again and save it."
+    "certificateFingerprintInvalid": "The certificate fingerprint is not valid. Please test the connection in the setup again and save it.",
+    "mailServerNameOnly": "Mail server: please enter only the name, without https://, port or path, for example smtp.example.com.",
+    "mailSenderAddress": "Sender: please enter an e-mail address, for example name@example.com.",
+    "mailRecipientAddresses": "Recipients: please enter only e-mail addresses, one per line, for example name@example.com."
   },
   "consumers": {
     "addressNotFound": "address not found",
@@ -314,6 +317,26 @@
     "integrationInstalled": "The OpenAmpere integration is installed. Please restart Home Assistant once (Settings → System → Restart). Then Settings → Devices & services shows “Discovered: OpenAmpere”.",
     "integrationUpdated": "The OpenAmpere integration is now at version {version}. Please restart Home Assistant once so that it takes effect."
   },
+  "mail": {
+    "enterServer": "Please enter the name of the mail server, for example smtp.example.com, without https:// and without a port.",
+    "enterSender": "Please enter a sender address, usually the e-mail address of the mailbox.",
+    "enterRecipient": "Please enter at least one recipient address.",
+    "enterPassword": "Please enter the password of the mailbox.",
+    "loginRefused": "The mail server refused the user name or password. Please check both. Some providers require a separate app password for programs, or SMTP to be switched on in the mailbox settings.",
+    "noStarttls": "The mail server offers no encryption (STARTTLS) on this port. Without it, OpenAmpere does not send the password. Please try port 465 with “TLS” or port 587 with “STARTTLS”.",
+    "noLogin": "The mail server does not allow logging in on this port. Please check port and encryption: usually port 587 with “STARTTLS” or port 465 with “TLS”.",
+    "senderRefused": "The mail server does not accept the sender address. It usually has to be the e-mail address of the mailbox you log in with.",
+    "recipientsRefused": "The mail server refused the recipient addresses. Please check the addresses.",
+    "noAnswer": "The mail server does not answer. Please check name and port, and whether the encryption fits the port (587: “STARTTLS”, 465: “TLS”). Some routers or internet providers block outgoing e-mail.",
+    "certificateInvalid": "The certificate of the mail server is invalid or does not match its name. Please enter the name exactly as your provider gives it.",
+    "encryptionMismatch": "The encryption does not fit the port. Usual are port 587 with “STARTTLS” or port 465 with “TLS”.",
+    "disconnected": "The mail server closed the connection. Often the encryption does not fit the port (587: “STARTTLS”, 465: “TLS”).",
+    "rejected": "The mail server rejected the e-mail (error {smtp_code}).",
+    "serverNotFound": "There is no mail server with this name. Please check the name, for example smtp.example.com.",
+    "connectionRefused": "The mail server does not accept connections on this port. Usual are port 587 with “STARTTLS” or port 465 with “TLS”.",
+    "notReachable": "OpenAmpere cannot reach the mail server. Please check name, port and the internet connection.",
+    "notSent": "The e-mail could not be sent."
+  },
   "mypv": {
     "immersionHeaterNotResponding": "Immersion heater not responding: {err}",
     "immersionHeaterRejectsPower": "The immersion heater rejects the power setting. Is its control mode set to “Modbus TCP”?",
@@ -323,7 +346,8 @@
     "noRodAtAddress": "No my-PV heating rod answers at {host}:{port}. Please check the address."
   },
   "notify": {
-    "ntfyAddressMustForm": "The ntfy address must have the form https://server/topic."
+    "ntfyAddressMustForm": "The ntfy address must have the form https://server/topic.",
+    "enterMailServerFirst": "Please enter a mail server first."
   },
   "probe": {
     "addressInHomeNetwork": "Please enter an address in your home network.",

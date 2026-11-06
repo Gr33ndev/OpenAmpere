@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
+from . import mail
 from .secretbox import PREFIX as ENCRYPTED_PREFIX
 
 
@@ -122,6 +123,14 @@ class CloudConfig:
 class NotifyConfig:
     ntfy_url: str = ""  # e.g. https://ntfy.sh/<own secret topic> or an own ntfy server
     ntfy_token: str = ""  # optional access token for protected topics
+    # e-mail through the owner's own mail server (#594); no server = no e-mail
+    mail_host: str = ""
+    mail_port: int = 587
+    mail_security: str = "starttls"  # starttls (usually port 587) | tls (from the start, usually port 465)
+    mail_user: str = ""
+    mail_password: str = ""
+    mail_from: str = ""  # empty: the user name, if it is an e-mail address
+    mail_to: list = field(default_factory=list)  # empty: to the sender
     on_unreachable: bool = True
     on_alarm: bool = True
     on_overwritten: bool = True
@@ -219,6 +228,13 @@ EDITABLE: dict[str, tuple] = {
     "grid.rated_power_reported_w": ("int", 0, 65_535),
     "notify.ntfy_url": ("url",),
     "notify.ntfy_token": ("secret",),
+    "notify.mail_host": ("str", 253),
+    "notify.mail_port": ("int", 1, 65535),
+    "notify.mail_security": ("choice", "starttls", "tls"),
+    "notify.mail_user": ("str", 254),
+    "notify.mail_password": ("secret",),
+    "notify.mail_from": ("str", 254),
+    "notify.mail_to": ("strlist", 5, 254),
     "notify.on_unreachable": ("bool",),
     "notify.on_alarm": ("bool",),
     "notify.on_overwritten": ("bool",),
@@ -247,14 +263,18 @@ SECRETS = {key for key, rule in EDITABLE.items() if rule[0] == "secret"}
 AUDITED = ("control.enabled", "control.dry_run", "grid.feed_in_rule", "grid.rated_power_w", "pv.installed_kwp",
            "server.allowed_hosts")
 SECRET_TARGETS = {"inverter.token": ("inverter.host",), "inverter.cert_sha256": ("inverter.host",), "evcc.password": ("evcc.url",), "notify.ntfy_token": ("notify.ntfy_url",),
+                  # the password goes only to the server it was entered for; another port or user name of the same
+                  # server keeps it (switching the encryption changes the port)
+                  "notify.mail_password": ("notify.mail_host",),
                   "meter.password": ("meter.provider", "meter.username")}
 
 # Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
 # are only shown after login: the meter portal login and meter numbers, and the ntfy address (its topic is the only
-# protection of the push messages). Facts about the plant (size, battery, commissioning date) stay readable: whoever
+# protection of the push messages), the e-mail addresses and the mail server (often on the owner's own domain). Facts about the plant (size, battery, commissioning date) stay readable: whoever
 # is on the home network is at the house anyway, and the dashboard and the household need them.
 # The own host names (#437) are a domain of the owner as often as not.
-PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "server.allowed_hosts"}
+PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_host", "notify.mail_user",
+           "notify.mail_from", "notify.mail_to", "server.allowed_hosts"}
 
 # Never taken from a backup, the current value stays: a crafted backup could allow a name of an attacker and so open
 # the way for DNS rebinding (#437).
@@ -354,6 +374,9 @@ LABELS = {
     "timezone": "Zeitzone", "notify.ntfy_url": "ntfy-Adresse", "evcc.url": "evcc-Adresse",
     "cloud.api_key": "API-Schlüssel der EKD-Cloud",
     "evcc.password": "Admin-Passwort von evcc", "notify.ntfy_token": "ntfy-Zugangs-Token",
+    "notify.mail_host": "Mailserver", "notify.mail_port": "Port des Mailservers",
+    "notify.mail_user": "Benutzername des Postfachs", "notify.mail_password": "Passwort des Postfachs",
+    "notify.mail_from": "Absender", "notify.mail_to": "Empfänger",
     "meter.provider": "Netzbetreiber", "meter.username": "E-Mail für das Kundenportal",
     "meter.password": "Passwort für das Kundenportal",
     "server.allowed_hosts": "Eigene Adressen",
@@ -468,6 +491,17 @@ def validate(changes: dict) -> dict:
             # a password in the address would be shown in the settings, kept in backups and quoted in errors
             raise ValueError("Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie "
                              "eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.")
+        if key == "notify.mail_host" and value and not mail.HOST.fullmatch(value):
+            raise ValueError("Mailserver: bitte nur den Namen eintragen, ohne https://, Port oder Pfad, zum Beispiel "
+                             "smtp.example.de.")
+        if key == "notify.mail_from" and value and not mail.ADDRESS.fullmatch(value):
+            raise ValueError("Absender: bitte eine E-Mail-Adresse eintragen, zum Beispiel name@example.de.")
+        if key == "notify.mail_to":
+            value = [v for v in value if v]
+            wrong = next((v for v in value if not mail.ADDRESS.fullmatch(v)), None)
+            if wrong is not None:
+                raise ValueError("Empfänger: bitte nur E-Mail-Adressen eintragen, eine pro Zeile, zum Beispiel "
+                                 "name@example.de.")
         label = LABELS.get(key, key)
         if kind == "url" and "@" in urlsplit(value).netloc:
             # like the ntfy address: an address can be shown without login, kept in backups and quoted in errors (#353)
