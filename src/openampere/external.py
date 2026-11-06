@@ -291,7 +291,7 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
         require_control()
         unknown = set(changes) - {"work_mode", *SOC_FIELDS, BACKUP_SOC}
         if unknown or not changes:
-            raise HTTPException(400, "Erlaubt sind work_mode, min_soc, max_soc und min_soc_on_grid.")
+            raise HTTPException(400, "Erlaubt sind work_mode, min_soc, max_soc, min_soc_on_grid und backup_soc.")
         try:
             with limits.counted([f"battery:{key}" for key in changes], BATTERY_WRITES_PER_HOUR):
                 result = await battery.write(changes, source=source(request))

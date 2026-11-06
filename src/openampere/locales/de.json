@@ -286,7 +286,7 @@
   },
   "external": {
     "allowedEnabledTargetSoc": "Erlaubt sind enabled und target_soc.",
-    "allowedWorkModeMin": "Erlaubt sind work_mode, min_soc, max_soc und min_soc_on_grid.",
+    "allowedWorkModeMin": "Erlaubt sind work_mode, min_soc, max_soc, min_soc_on_grid und backup_soc.",
     "controlTurnedOffOpenampere": "Die Steuerung ist in OpenAmpere ausgeschaltet (Mehr → Steuerung und Protokoll).",
     "requestNotFoundExpired": "Anfrage nicht gefunden oder abgelaufen.",
     "setUpChargingGrid": "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten (Geräte → Speicher → Laden aus dem Netz).",
