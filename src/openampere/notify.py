@@ -156,6 +156,7 @@ class Notifier:
         # failed logins), only after a change or a test e-mail
         self.login_refused: tuple | None = None
         self.delivery: asyncio.Task | None = None
+        self.closing = False  # shutting down: no new sends
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
@@ -239,15 +240,21 @@ class Notifier:
         return config is not None and self.login_refused is not None and _login(config) == self.login_refused
 
     async def close(self) -> None:
-        """On shutdown: no further sends; the queue is kept in the database for the next start."""
+        """On shutdown: no further sends; the queue is kept in the database for the next start. A send already
+        running (in its thread, which cannot be cancelled) is waited for, so it leaves the queue when it went out and
+        is not sent again after the restart; the time limit of a send bounds the wait."""
+        self.closing = True
         if self.delivery is not None and not self.delivery.done():
-            self.delivery.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self.delivery
+            try:
+                await asyncio.wait_for(asyncio.shield(self.delivery), mail.DEADLINE_S + 5)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                self.delivery.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self.delivery
 
     def deliver_soon(self, now: float | None = None) -> None:
         """Starts sending the queued messages in the background, unless that runs already."""
-        if self.outbox and (self.delivery is None or self.delivery.done()):
+        if self.outbox and not self.closing and (self.delivery is None or self.delivery.done()):
             self.delivery = asyncio.get_running_loop().create_task(self.deliver(now))
 
     async def deliver(self, now: float | None = None) -> None:
@@ -264,7 +271,8 @@ class Notifier:
         if not on["mail"]:
             self.mail_error = self.mail_error_since = None
         for channel in ("mail", "ntfy"):
-            while now >= self.retry_at.get(channel, 0) and not (channel == "mail" and self._mail_paused()):
+            while (not self.closing and now >= self.retry_at.get(channel, 0)
+                   and not (channel == "mail" and self._mail_paused())):
                 entry = next((e for e in self.outbox if e["channel"] == channel), None)
                 if entry is None:
                     break

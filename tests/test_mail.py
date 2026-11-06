@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Notifications by e-mail (#594), against a fake mail server on 127.0.0.1: no real network."""
 
+import asyncio
 import base64
 import datetime
 import email
@@ -402,13 +403,24 @@ async def test_a_failed_e_mail_is_retried_and_its_error_shown(tmp_path, monkeypa
         runtime.storage.close()
 
 
-async def test_close_stops_the_delivery(tmp_path, monkeypatch, server, tls_pair):
-    fake = server(silent=True)
+async def test_close_waits_for_the_running_send_and_starts_no_other(tmp_path, monkeypatch, server, tls_pair):
+    """A send that went out leaves the queue, so it is not sent again after a restart; the next one waits for it."""
+    fake = server()
     runtime, notifier, _ = make_notifier(tmp_path, monkeypatch, tls_pair[1], fake.port)
+    real = mail.send
+
+    def slow(*args, **kwargs):
+        time.sleep(0.3)
+        real(*args, **kwargs)
+
+    monkeypatch.setattr(mail, "send", slow)
     try:
-        await notifier.push("Titel", "Text")
+        await notifier.push("Erste", "Text")
+        await notifier.push("Zweite", "Text")
+        await asyncio.sleep(0.05)  # the first send is running
         await notifier.close()
-        assert notifier.delivery.cancelled() and notifier.mail_status()["queued"] == 1  # kept for the next start
+        assert [m["Subject"] for m in fake.messages] == ["OpenAmpere: Erste"]
+        assert [e["title"] for e in Notifier(runtime).outbox] == ["Zweite"]  # kept for the next start
     finally:
         runtime.storage.close()
 
