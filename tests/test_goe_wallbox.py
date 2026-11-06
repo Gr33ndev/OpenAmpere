@@ -49,6 +49,16 @@ def test_states(car, state, connected):
     assert (reading.state, reading.connected) == (state, connected)
 
 
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), 10 ** 400, "NaN"])
+def test_values_that_are_no_number_are_left_out(bad):
+    """JSON allows NaN and huge numbers: never an error that would stop the read."""
+    status = {**SimulatedGoe(charging=True).v2(), "car": bad, "amp": bad, "ama": bad, "wh": bad, "api": 2}
+    status["nrg"] = [bad] * 16
+    reading = GoeChargerLive.interpret(status)
+    assert (reading.state, reading.power_w, reading.set_current_a, reading.max_current_a) == ("unknown", 0.0, None, None)
+    assert reading.voltage_v == [None] * 3
+
+
 def test_implausible_power_is_no_charge():
     """A total in another unit (e.g. 0.01 W) would read as megawatts: not shown, the charge as unknown."""
     status = {**SimulatedGoe(charging=True).v2(), "api": 2}

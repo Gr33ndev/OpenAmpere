@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import http.client
 import json
+import math
 import urllib.error
 import urllib.request
 
@@ -58,14 +59,12 @@ class NotGoe(ValueError):
 def _num(value) -> float | None:
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value)
-        except ValueError:
-            return None
-    return None
+    try:
+        number = float(value) if isinstance(value, (int, float, str)) else None
+    except (ValueError, OverflowError):
+        return None
+    # JSON allows NaN and Infinity (1e400): no measurement, and int() of it would fail
+    return number if number is not None and math.isfinite(number) else None
 
 
 def _plausible(value: float | None, limit: float) -> float | None:
