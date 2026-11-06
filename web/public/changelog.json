@@ -1,6 +1,49 @@
 {
   "versions": [
     {
+      "version": "0.39.0",
+      "date": "2026-11-06",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "api",
+            "text": "History for other apps (#592)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "api",
+            "text": "Name backup_soc in the 400 message of put /battery (#591)"
+          },
+          {
+            "scope": "release",
+            "text": "Also read the \"V2 Signer\" line of apksigner (#583)"
+          },
+          {
+            "scope": "release",
+            "text": "Read the APK certificate from any apksigner signer line (#582)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": null,
+            "text": "Describe the interface for other apps, also on the website (#589)"
+          },
+          {
+            "scope": null,
+            "text": "Run the backend tests on python 3.11 as well (#585)"
+          },
+          {
+            "scope": "site",
+            "text": "Compare the three ways to run openampere in one table (#587)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.38.0",
       "date": "2026-11-04",
       "first": false,
