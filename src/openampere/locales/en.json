@@ -436,7 +436,9 @@
     "modbusWriteError": "The wallbox refused the setting with an error (error number {code}). Try again in a few minutes. If it still fails, create a report under More → Diagnostics.",
     "realControlOn": "real control switched on",
     "fallbackNotTaken": "The wallbox did not take the fallback current of 6 A. OpenAmpere therefore does not control it.",
-    "workModeKeepControlled": "Under real control the work mode must stay “Controlled”. Switch real control off first, then you can change it."
+    "workModeKeepControlled": "Under real control the work mode must stay “Controlled”. Switch real control off first, then you can change it.",
+    "goeNotAnswering": "The wallbox at {host} does not answer. Check the address and whether it is connected to the home network over Wi-Fi or a cable.",
+    "notGoe": "A device answers at {host}, but not like a go-e Charger. Check the address. If it is your go-e Charger, switch on the local HTTP API in the go-e app (v2, on older devices v1)."
   },
   "android": {
     "portInUse": "Port {port} is already used by another app on the tablet. Please close or uninstall that app and restart the tablet.",

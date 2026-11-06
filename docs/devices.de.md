@@ -35,6 +35,7 @@ Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte
 | [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Noch nicht bestätigt |
 | [FoxESS AC EV Charger („Ampere.ChargePro“)](devices/foxess/ac-charger.md) | ✅ Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt |
 | [Weidmüller AC SMART („AMPERE.Charge“)](devices/weidmueller/ac-smart.md) | Noch nicht bestätigt |
+| [go-e Charger](devices/goe/charger.md) | Noch nicht bestätigt |
 | [Mobile dé-Wallbox (Tuya-WLAN)](devices/tuya/de-portable.md) | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
 | [Wallbox über evcc](devices/topics/wallboxes.md) | Noch nicht bestätigt |
 | [Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Noch nicht bestätigt |

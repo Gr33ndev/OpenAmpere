@@ -198,7 +198,7 @@ class WallboxCheckRequest(BaseModel):
 
 class WallboxTestRequest(BaseModel):
     """A wallbox OpenAmpere reads itself, read once from the setup form."""
-    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart)$")
+    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart|goe)$")
     host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
     local_key: str = Field("", max_length=64)  # Tuya
     port: int | None = Field(None, ge=1, le=65535)  # Modbus; None: the model's usual port
@@ -1323,8 +1323,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/wallboxes/test")
     async def wallbox_test(request: WallboxTestRequest):
         """Reads a wallbox once with the address and key from the form (a stored key if none is given); a Modbus
-        wallbox with its port and unit id, only read (#439)."""
-        if WALLBOX_MODELS[request.model].protocol == "modbus":
+        wallbox with its port and unit id, only read (#439); a go-e Charger with a GET for its status (#597)."""
+        if WALLBOX_MODELS[request.model].protocol in ("modbus", "http"):
             try:
                 reading = await wallboxes.test(request.model, request.host, request.port, request.unit)
             except WallboxUnreachable as err:
@@ -1342,7 +1342,11 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"reading": {k: v for k, v in asdict(reading).items() if k != "lifetime_kwh"}}
 
     @app.post("/api/wallboxes/search")
-    async def wallbox_search():
+    async def wallbox_search(body: dict = Body(default={})):
+        """Tuya wallboxes that announce themselves; with {"model": "goe"} go-e Chargers that answer their status
+        request in the local networks (#597), also in the Home Assistant app (no multicast needed)."""
+        if isinstance(body, dict) and body.get("model") == "goe":
+            return {"available": True, "devices": await discovery.find_goe()}
         if ha_app.active():
             return {"available": False, "devices": []}
         try:

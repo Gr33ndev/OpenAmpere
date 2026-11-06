@@ -33,6 +33,7 @@ The evidence is on each device page. What EKD sold the devices as: [sales names 
 | [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Not yet confirmed |
 | [FoxESS AC EV Charger ("Ampere.ChargePro")](devices/foxess/ac-charger.md) | ✅ Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed |
 | [Weidmüller AC SMART ("AMPERE.Charge")](devices/weidmueller/ac-smart.md) | Not yet confirmed |
+| [go-e Charger](devices/goe/charger.md) | Not yet confirmed |
 | [Portable dé wallbox (Tuya Wi-Fi)](devices/tuya/de-portable.md) | ✅ Monitoring confirmed; control not yet confirmed |
 | [Wallbox through evcc](devices/topics/wallboxes.md) | Not yet confirmed |
 | [Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Not yet confirmed |
