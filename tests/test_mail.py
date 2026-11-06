@@ -7,6 +7,7 @@ import base64
 import datetime
 import email
 import functools
+import inspect
 import ipaddress
 import socket
 import ssl
@@ -423,6 +424,30 @@ async def test_close_waits_for_the_running_send_and_starts_no_other(tmp_path, mo
         assert [e["title"] for e in Notifier(runtime).outbox] == ["Zweite"]  # kept for the next start
     finally:
         runtime.storage.close()
+
+
+async def test_close_does_not_wait_long_for_a_hanging_send(tmp_path, monkeypatch, server, tls_pair):
+    """Docker and Home Assistant stop the process after 30 s: shutting down must not wait for a silent mail server."""
+    fake = server(silent=True)
+    runtime, notifier, _ = make_notifier(tmp_path, monkeypatch, tls_pair[1], fake.port)
+    monkeypatch.setattr(notify_module, "CLOSE_WAIT_S", 0.2)
+    try:
+        await notifier.push("Titel", "Text")
+        await asyncio.sleep(0.05)
+        start = time.monotonic()
+        await notifier.close()
+        assert time.monotonic() - start < 1 and notifier.delivery.cancelled()
+        assert notifier.mail_status()["queued"] == 1  # kept for the next start
+    finally:
+        runtime.storage.close()
+
+
+def test_the_notifier_closes_after_the_safety_steps_of_a_shutdown():
+    """Releasing the inverter and the wallboxes comes first; waiting for an e-mail must not hold them up."""
+    source = inspect.getsource(create_app)
+    steps = source[source.index("steps = ("):source.index("for step in steps")]
+    assert steps.rstrip().endswith("notifier.close)  # last: it may wait a few seconds for an e-mail being sent")
+    assert "notifier.close" not in source[:source.index("steps = (")].split("async def lifespan")[1]
 
 
 async def test_old_messages_are_dropped(tmp_path, monkeypatch, server, tls_pair):

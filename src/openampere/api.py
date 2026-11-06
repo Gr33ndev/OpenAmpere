@@ -292,14 +292,14 @@ def create_app(runtime: Runtime) -> FastAPI:
         yield
         watchdog_task.cancel()
         fast_task.cancel()
-        await notifier.close()
         # each step on its own, the remote control of the inverter first: an error in one must not skip the others;
         # a wallbox keeps charging as it is (it has no watchdog, and a restart for an update should not stop the car),
         # except one whose watchdog would charge on with its fallback current: let go of, a charge started stopped (#465)
         steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop, wallboxes.wait,
                  lambda: wallboxes.release_real("OpenAmpere wird beendet"),
                  lambda: runtime.cloud_import.stop(status="running"),  # keeps running after the next start
-                 collector.stop)
+                 collector.stop,
+                 notifier.close)  # last: it may wait a few seconds for an e-mail being sent
         for step in steps:
             try:
                 await step()

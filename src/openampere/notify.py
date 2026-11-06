@@ -50,6 +50,10 @@ STOP_SLACK_S = 60
 RETRY_S = 5 * 60  # a channel that failed is tried again after this time
 OUTBOX_MAX_AGE_S = 24 * 3600  # older messages are no longer worth sending
 OUTBOX_MAX = 50  # per channel; the oldest go first
+# on shutdown, how long a running send is waited for: well within the 30 s Docker and Home Assistant give a stop, and
+# after the steps that release the inverter and the wallboxes (api.lifespan). A send that takes longer may go out
+# again after the restart: a duplicate e-mail is the smaller harm
+CLOSE_WAIT_S = 5.0
 LATE_S = 5 * 60  # a message delivered this late by ntfy says when it happened (an e-mail has its date)
 
 
@@ -241,12 +245,12 @@ class Notifier:
 
     async def close(self) -> None:
         """On shutdown: no further sends; the queue is kept in the database for the next start. A send already
-        running (in its thread, which cannot be cancelled) is waited for, so it leaves the queue when it went out and
-        is not sent again after the restart; the time limit of a send bounds the wait."""
+        running (in its thread, which cannot be cancelled) is waited for up to CLOSE_WAIT_S, so it leaves the queue
+        when it went out and is not sent again after the restart."""
         self.closing = True
         if self.delivery is not None and not self.delivery.done():
             try:
-                await asyncio.wait_for(asyncio.shield(self.delivery), mail.DEADLINE_S + 5)
+                await asyncio.wait_for(asyncio.shield(self.delivery), CLOSE_WAIT_S)
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 self.delivery.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
