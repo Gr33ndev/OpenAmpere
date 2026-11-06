@@ -290,6 +290,7 @@
     "controlTurnedOffOpenampere": "Control is turned off in OpenAmpere: „Mehr → Steuerung und Protokoll“ (More → Control and log).",
     "requestNotFoundExpired": "Request not found or expired.",
     "setUpChargingGrid": "Please set up charging from the grid in OpenAmpere once first: „Geräte → Speicher → Laden aus dem Netz“ (Devices → Battery → Charging from the grid).",
+    "tooManyHistoryReads": "Too many reads of the history (at most {per_minute} per minute). Please try again in {wait} s.",
     "tooManyChangesShort": "Too many changes in a short time (at most {per_hour} per hour). Please try again in {wait} min.",
     "lowReserveOnlyInApp": "A backup power reserve below 10 % can only be set in OpenAmpere itself, after a warning."
   },

@@ -290,6 +290,7 @@
     "controlTurnedOffOpenampere": "Die Steuerung ist in OpenAmpere ausgeschaltet (Mehr → Steuerung und Protokoll).",
     "requestNotFoundExpired": "Anfrage nicht gefunden oder abgelaufen.",
     "setUpChargingGrid": "Laden aus dem Netz bitte zuerst einmal in OpenAmpere einrichten (Geräte → Speicher → Laden aus dem Netz).",
+    "tooManyHistoryReads": "Zu viele Abfragen des Verlaufs (höchstens {per_minute} pro Minute). Bitte in {wait} s erneut versuchen.",
     "tooManyChangesShort": "Zu viele Änderungen in kurzer Zeit (höchstens {per_hour} pro Stunde). Bitte in {wait} min erneut versuchen.",
     "lowReserveOnlyInApp": "Eine Notstrom-Reserve unter 10 % lässt sich nur in OpenAmpere selbst einstellen, nach einer Warnung."
   },

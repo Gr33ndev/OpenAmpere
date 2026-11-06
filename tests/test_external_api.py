@@ -565,3 +565,28 @@ def test_other_apps_read_the_history_like_the_web_app(runtime, web):
     assert reader.get(f"{V1}/history/summary?period=decade").status_code == 400
     assert app_client(web).get(f"{V1}/history/energy").status_code == 401
     assert app_client(web, new_token(web, "read", "Plain"), https=False).get(f"{V1}/history/energy").status_code == 403
+
+
+def test_history_reads_are_limited_per_token(runtime, web, monkeypatch):
+    """#588: a dashboard in a loop must not keep a small computer busy; another app keeps its own reads."""
+    monkeypatch.setattr(external, "HISTORY_READS_PER_MINUTE", 3)
+    web = login(TestClient(create_app(runtime), base_url="https://testserver"))  # the limit is read on start
+    dashboard = app_client(web, new_token(web, "read", "Dashboard"))
+    for path in ("summary", "energy", "power"):  # all five count together
+        assert dashboard.get(f"{V1}/history/{path}").status_code == 200
+    response = dashboard.get(f"{V1}/history/temperatures")
+    assert response.status_code == 429 and "höchstens 3 pro Minute" in response.json()["detail"]
+    assert dashboard.get(f"{V1}/state").status_code == 200  # only the history
+    assert web.get("/api/energy/summary").status_code == 200  # not the web app
+    assert app_client(web, new_token(web, "read", "Other")).get(f"{V1}/history/summary").status_code == 200
+
+
+def test_read_limit_window():
+    limit = external.ReadLimit(2)
+    limit.check("a", now=1000)
+    limit.check("a", now=1010)
+    with pytest.raises(external.HTTPException) as err:
+        limit.check("a", now=1030)
+    assert err.value.status_code == 429 and "in 31 s" in err.value.detail
+    limit.check("b", now=1030)
+    limit.check("a", now=1061)  # the first read is a minute old

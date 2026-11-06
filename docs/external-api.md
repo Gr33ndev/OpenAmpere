@@ -297,7 +297,11 @@ Parameters shared by several endpoints:
   `YYYY` for a year. Days and weeks follow the time zone of the installation; a week starts on Monday.
 - `resolution`: `15m`, `60m`, `day` or `month`.
 
-An unknown period or a date that cannot be read answers `400`.
+An unknown period or a date that cannot be read answers `400`; a parameter outside its values (`step`, `resolution`,
+`mode`) answers `422` with FastAPI's technical list (see [Errors](#errors)).
+
+**At most 30 reads of the history per minute and token**, for all five endpoints together. Beyond that the answer is
+`429`, with the seconds to wait in the message. Live values (`/state`, `/ws`) do not count.
 
 **What is kept:** energy per quarter hour is kept for good, so `summary`, `energy` and the energy of `pv-inputs` work
 for any period OpenAmpere has recorded (or imported from the former cloud). The single readings behind `power`, the
@@ -372,8 +376,8 @@ Per PV input (module array). Parameters: `period`, `date`, `mode` (`energy`, def
  "entries": [{"ts": 1780394400, "values": [2100, 1400]}], "totals_wh": [21000, 14000]}
 ```
 
-- `inputs`: the numbers of the inputs, **counted from 1** (`index` in `/info` counts from 0). Inputs the owner hid and
-  inputs without any yield in the period are left out.
+- `inputs`: the numbers of the inputs, **counted from 1** (`index` in `/info` counts from 0). Inputs the owner hid are left out,
+  and so are inputs without any yield in the period, unless no input had any (at night, or a day without data).
 - `labels`: the owner's names, in the same order.
 - `entries[].values`: per input, energy in Wh per bucket (`energy`) or average power in W per 5 minutes (`power`).
 - `totals_wh`: energy of each input over the period, `null` with `mode=power`.
@@ -480,9 +484,9 @@ Errors are JSON with a German explanation for the owner in `detail`, which your 
 | `421` | An HTTP request used a host name that OpenAmpere does not know (protection against DNS rebinding); no `code` field. Use the IP address, or the owner adds the name under **Mehr → Zugriffsschutz → Eigene Adressen**. |
 | `403` | Plain HTTP (`https_required`), a `read` token tried to write (`read_only`), or control is switched off in OpenAmpere |
 | `404` | Pairing request expired or unknown |
-| `422` | The body is not a JSON object (an array, a number, broken JSON or no body). Here `detail` is FastAPI's technical list in English, not a text for the owner: a bug in your app. |
+| `422` | The body is not a JSON object (an array, a number, broken JSON or no body), or a query parameter of the history is outside its values. Here `detail` is FastAPI's technical list in English, not a text for the owner: a bug in your app. |
 | `428` | Needs a confirmation that only OpenAmpere itself can ask for |
-| `429` | Too many changes or pairing requests; `detail` says how long to wait |
+| `429` | Too many changes, pairing requests or reads of the history; `detail` says how long to wait |
 | `502` | The inverter refused the write or did not confirm it |
 | `503` | OpenAmpere is not connected to the inverter |
 
