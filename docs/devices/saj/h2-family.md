@@ -220,8 +220,9 @@ All U32 (two registers), 0.01 kWh (OpenAmpere: ×10 → Wh, counter step 10 Wh).
   ([#380](https://github.com/Gr33ndev/OpenAmpere/issues/380), [#381](https://github.com/Gr33ndev/OpenAmpere/issues/381))?
 - Meaning of 0x402C: a diagnostics report in which the off-grid depth, 0x3651 and 0x3644 all differ would settle it;
   meaning of 0x4029 and 0x402B ([#334](https://github.com/Gr33ndev/OpenAmpere/issues/334)).
-- OpenAmpere's writes to 0x3644–0x3647, 0x3651, 0x365A/0x365C and the charge slot are not yet confirmed on a real
-  device ([#378](https://github.com/Gr33ndev/OpenAmpere/issues/378)).
+- OpenAmpere's writes to 0x3645–0x3647, 0x3651, 0x365A/0x365C and the charge slot are not yet confirmed on a real
+  device ([#378](https://github.com/Gr33ndev/OpenAmpere/issues/378)); writing 0x3644 was confirmed on a 0x005E, whether
+  the battery keeps to it is open ([#601](https://github.com/Gr33ndev/OpenAmpere/issues/601)).
 - Which lowest off-grid limit an SAJ accepts; if a device rejects 0 %, the limit must come from the driver
   ([#69](https://github.com/Gr33ndev/OpenAmpere/issues/69)).
 - Settled: the old [registers.md](../../registers.md) said 0x3644/0x3645 are not in a public SAJ protocol and that
