@@ -3,6 +3,7 @@
 """go-e Charger over its local HTTP API (#597): shown, found by the search, never written."""
 
 import asyncio
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
@@ -134,6 +135,14 @@ async def test_search_finds_only_go_e_chargers():
     assert found == [{"host": "127.0.0.1", "api": 2}]
     assert {m for m, _ in charger.requests} == {"GET"}
     assert await discovery.find_goe(["127.0.0.1"], port) == []  # nothing listens any more
+
+
+async def test_search_looks_up_the_local_networks_off_the_event_loop(monkeypatch):
+    loop_thread = threading.get_ident()
+    called = []
+    monkeypatch.setattr(discovery, "local_prefixes", lambda: called.append(threading.get_ident()) or [])
+    assert await discovery.find_goe() == []
+    assert called and called[0] != loop_thread
 
 
 async def test_endpoints(tmp_path, monkeypatch, authed):

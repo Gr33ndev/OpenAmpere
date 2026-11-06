@@ -133,7 +133,8 @@ async def find_goe(hosts: list[str] | None = None, port: int = goe.PORT) -> list
     that answer the status request like a go-e Charger. Only that GET request, nothing is written. `hosts`: instead of
     the local networks (tests)."""
     if hosts is None:
-        hosts = [h for prefix in local_prefixes() for h in parse_prefix(prefix)]
+        # a request to the Supervisor in the Home Assistant app, a name lookup elsewhere: not on the event loop
+        hosts = [h for prefix in await asyncio.to_thread(local_prefixes) for h in parse_prefix(prefix)]
     semaphore = asyncio.Semaphore(128)
 
     async def check(host: str) -> str | None:
