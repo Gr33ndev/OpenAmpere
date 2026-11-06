@@ -452,7 +452,7 @@ If a Modbus proxy sits in between, the device address set in the proxy applies.
 
 A FoxESS H3 (also sold as "Ampere.StoragePro E3") allows only very few Modbus TCP connections at a time. When all are taken, it accepts OpenAmpere's connection and closes it right away. Usually they are taken by another program that reads the inverter (Home Assistant or another smart home system with a Modbus setup of its own, a dashboard with its own collector such as Grafana, a script of your own or a second OpenAmpere installation) or by the previous IQ box. The network search then shows the device as "Modbus-Gerät, gerade belegt" (Modbus device, currently busy), because a busy device can also be a wallbox; the connection test and **Mehr → Verbindung** (More → Connection) show this message.
 
-On an SAJ (the older "Ampere.StoragePro"; seen on a "3P-X E2") too, the previous IQ box keeps the connection busy all the time, and OpenAmpere cannot connect to the inverter. The message you see may be a different one. Disconnect the IQ box from the network as in step 2 below. OpenAmpere connects a few minutes later.
+On some SAJ systems (the older "Ampere.StoragePro"; seen on a "3P-X E2") too, the previous IQ box keeps the connection busy all the time, and OpenAmpere cannot connect to the inverter. On another "3P-X E2" OpenAmpere read the inverter while the box kept running. The message you see may be a different one. If OpenAmpere cannot connect, disconnect the IQ box from the network as in step 2 below. OpenAmpere connects a few minutes later.
 
 Go in this order:
 
@@ -460,7 +460,7 @@ Go in this order:
 2. **Then disconnect the IQ box from the network** if you no longer need it: unplug the box's LAN cable or switch the box off, not the inverter. First make sure the box is not needed for anything else, such as control by the grid operator (see [Before disconnecting](#before-disconnecting-does-the-grid-operator-need-the-box)). OpenAmpere then connects by itself. The inverter keeps working with its stored settings. Afterwards, check in OpenAmpere under **Mehr → Meine Anlage → Einspeisebegrenzung** (More → My system → Export limit) that the value shown is right. As long as the IQ box is connected, it also overwrites settings you change in OpenAmpere (see [The previous Smartbox resets settings](#the-previous-smartbox-resets-settings)).
 
 Other options:
-- **Pro Abfrage** (per poll, see the next section) only helps if the other device or program releases its connection now and then. The IQ box does not.
+- **Pro Abfrage** (per poll, see the next section) only helps if the other device or program releases its connection now and then. On a FoxESS H3 the IQ box does not. On one SAJ OpenAmpere read the inverter next to the box with this setting; why it worked there is not known yet.
 - **Modbus proxy**, for advanced users only: a proxy holds one connection to the inverter, and all others connect to the proxy (see [Running behind a Modbus proxy](#running-behind-a-modbus-proxy)). The IQ box may set itself back to the inverter's address, though; then the slot is taken again.
 
 If the network search shows the inverter with its model and serial number and, at a second address, "Modbus-Gerät, gerade belegt" (Modbus device, currently busy), the second device is usually the wallbox on systems from EKD: the IQ box holds its connection as well while it has power. A wallbox that announces itself in the network is shown as "FoxESS-Wallbox".
