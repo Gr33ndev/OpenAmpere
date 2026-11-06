@@ -6,7 +6,8 @@ import { expect, layoutProblems, open, test } from "./fixtures";
 
 // #164: without login /api/settings sends null for values that identify the owner or give access to data and lists
 // them under "hidden"; the pages show a login hint instead of empty fields that could be saved over the real values
-const PRIVATE = ["meter.username", "meter.meter_ids", "notify.ntfy_url"] as const;
+const PRIVATE = ["meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_user", "notify.mail_from",
+  "notify.mail_to"] as const;
 
 async function loggedOut(api: { override(path: string, body: unknown): void }) {
   const settings = await demoRequest<Settings>("GET", "/api/settings");

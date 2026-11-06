@@ -145,7 +145,7 @@ class Runtime:
         for key in SECRETS:
             value = get_value(self.config, key)
             # the end of a long key helps to recognise it, a password shows nothing of itself
-            hint = f"…{value[-4:]}" if authenticated and len(value) >= 8 and not key.endswith(".password") else None
+            hint = f"…{value[-4:]}" if authenticated and len(value) >= 8 and not key.endswith("password") else None
             secrets[key] = {"set": bool(value), "hint": hint}
         return {"values": values, "secrets": secrets, "locked": sorted(self.locked & set(EDITABLE)),
                 "hidden": sorted(hidden), "revision": self.settings_revision}

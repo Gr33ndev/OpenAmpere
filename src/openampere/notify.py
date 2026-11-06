@@ -2,7 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Push notifications through ntfy (https://ntfy.sh or an own server): free apps for iPhone and Android,
 no account needed, works without HTTPS on the OpenAmpere server. Each event is sent once, not on
-every check."""
+every check. The same messages can go by e-mail through the owner's own mail server (mail.py, #594).
+
+E-mails are queued and sent in the background, so a slow mail server never holds up the background jobs (grid
+charging among them). A message one channel could not deliver while the other took it is tried again on that
+channel every few minutes, for up to a day; a message no channel took is not counted as sent, its event is checked
+again (as ntfy alone always did)."""
 
 from __future__ import annotations
 
@@ -15,6 +20,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from . import mail
 from .collector import LOW_DISK_BYTES
 from .drivers.enphase.driver import token_days_left
 from .outbound import open_without_redirect
@@ -39,6 +45,10 @@ SHOWN_MIN_KWH = 0.05  # less is "0,0 kWh": not shown, and not worth leaving out 
 AGAIN_WITHIN_S = 12 * 3600
 # a stop shows only with a later read of the wallbox, so a check may still see the car charging after it
 STOP_SLACK_S = 60
+RETRY_S = 5 * 60  # a channel that failed is tried again after this time
+OUTBOX_MAX_AGE_S = 24 * 3600  # older messages are no longer worth sending
+OUTBOX_MAX = 50  # per channel; the oldest go first
+LATE_S = 5 * 60  # a message delivered this late by ntfy says when it happened (an e-mail has its date)
 
 
 @dataclass
@@ -129,7 +139,14 @@ class Notifier:
         self.evcc = evcc  # evcc.Evcc
         self.wallboxes = wallboxes  # wallbox.native.NativeWallboxes
         self.sent: dict[str, object] = runtime.storage.get_meta("notify_state") or {}
-        self.last_error: str | None = None
+        self.last_error: str | None = None  # of ntfy
+        # messages still to be sent: {"channel": "mail" | "ntfy", "ts", "title", "message", "tags"}
+        stored = runtime.storage.get_meta("notify_outbox")
+        self.outbox: list[dict] = stored if isinstance(stored, list) else []
+        self.mail_error: str | None = None
+        self.mail_error_since: float | None = None
+        self.retry_at: dict[str, float] = {}
+        self.delivery: asyncio.Task | None = None
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
         self.last_charge: dict[str, ChargePoint] = {}  # per charge point: as last seen charging, for the summary
@@ -142,7 +159,37 @@ class Notifier:
         except Exception as err:  # noqa: BLE001 - e.g. disk full (#170): kept in memory, so nothing is sent twice
             log.debug("could not store the notification state: %s", err)
 
+    def _store_outbox(self) -> None:
+        try:
+            self.runtime.storage.set_meta("notify_outbox", self.outbox)
+        except Exception as err:  # noqa: BLE001 - e.g. disk full (#170): kept in memory
+            log.debug("could not store the notification outbox: %s", err)
+
+    def _queue(self, channel: str, now: float, title: str, message: str, tags: str) -> None:
+        self.outbox.append({"channel": channel, "ts": now, "title": title, "message": message, "tags": tags})
+        mine = [e for e in self.outbox if e["channel"] == channel]
+        for entry in mine[:-OUTBOX_MAX]:
+            self.outbox.remove(entry)
+        self._store_outbox()
+
     async def push(self, title: str, message: str, tags: str = "") -> bool:
+        """To every channel switched on; True if at least one took the message. An e-mail is queued (sent in the
+        background), ntfy is sent at once and queued only when it failed while an e-mail took the message."""
+        now = time.time()
+        cfg = self.runtime.config.notify
+        taken = False
+        if mail.settings(cfg) is not None:
+            self._queue("mail", now, title, message, tags)
+            taken = True
+        if cfg.ntfy_url:
+            if await self.push_ntfy(title, message, tags):
+                taken = True
+            elif taken:
+                self._queue("ntfy", now, title, message, tags)
+        self.deliver_soon(now)
+        return taken
+
+    async def push_ntfy(self, title: str, message: str, tags: str = "") -> bool:
         cfg = self.runtime.config.notify
         if not cfg.ntfy_url:
             return False
@@ -155,11 +202,76 @@ class Notifier:
             log.warning("notification failed: %s", err)
             return False
 
+    async def send_mail(self, title: str, message: str, now: float) -> None:
+        """Sends one e-mail now (in a thread); raises mail.MailError."""
+        config = mail.settings(self.runtime.config.notify)
+        if config is None:
+            raise mail.MailError("Bitte zuerst einen Mailserver eintragen.")
+        try:
+            await asyncio.to_thread(mail.send, config, title, message, now, self.runtime.tz)
+        except mail.MailError as err:
+            self.mail_error_since = self.mail_error_since or time.time()
+            self.mail_error = str(err)
+            raise
+        self.mail_error = self.mail_error_since = None
+        self.retry_at.pop("mail", None)  # it works (again): the queued ones go now
+        self.deliver_soon()
+
+    def mail_status(self) -> dict:
+        """For the app: whether e-mails wait and why the last one failed."""
+        return {"error": self.mail_error, "since": self.mail_error_since,
+                "queued": sum(1 for e in self.outbox if e["channel"] == "mail")}
+
+    def deliver_soon(self, now: float | None = None) -> None:
+        """Starts sending the queued messages in the background, unless that runs already."""
+        if self.outbox and (self.delivery is None or self.delivery.done()):
+            self.delivery = asyncio.get_running_loop().create_task(self.deliver(now))
+
+    async def deliver(self, now: float | None = None) -> None:
+        """Sends the queued messages, oldest first. A channel that fails waits RETRY_S; a message older than
+        OUTBOX_MAX_AGE_S, or for a channel switched off since, is dropped."""
+        cfg = self.runtime.config.notify
+        now = time.time() if now is None else now
+        on = {"mail": mail.settings(cfg) is not None, "ntfy": bool(cfg.ntfy_url)}
+        keep = [e for e in self.outbox if on.get(e["channel"]) and now - e["ts"] < OUTBOX_MAX_AGE_S]
+        if len(keep) != len(self.outbox):
+            log.info("%d queued notifications dropped (too old or channel switched off)", len(self.outbox) - len(keep))
+            self.outbox = keep
+            self._store_outbox()
+        if not on["mail"]:
+            self.mail_error = self.mail_error_since = None
+        for channel in ("mail", "ntfy"):
+            while now >= self.retry_at.get(channel, 0):
+                entry = next((e for e in self.outbox if e["channel"] == channel), None)
+                if entry is None:
+                    break
+                if channel == "mail":
+                    try:
+                        await self.send_mail(entry["title"], entry["message"], entry["ts"])
+                        ok = True
+                    except mail.MailError as err:
+                        log.warning("e-mail notification failed: %s", err)
+                        ok = False
+                else:
+                    message = entry["message"]
+                    if now - entry["ts"] >= LATE_S:
+                        at = datetime.fromtimestamp(entry["ts"], self.runtime.tz)
+                        message += f"\n\nGemeldet am {at:%d.%m.} um {at:%H:%M} Uhr, verspätet zugestellt."
+                    ok = await self.push_ntfy(entry["title"], message, entry["tags"])
+                if not ok:
+                    self.retry_at[channel] = now + RETRY_S
+                    break
+                self.retry_at.pop(channel, None)
+                if entry in self.outbox:
+                    self.outbox.remove(entry)
+                    self._store_outbox()
+
     async def check(self, now: float | None = None) -> list[str]:
         """Evaluates all events; returns the titles sent (for tests)."""
         now = time.time() if now is None else now
         cfg = self.runtime.config.notify
-        if not cfg.ntfy_url:
+        self.deliver_soon(now)
+        if not cfg.ntfy_url and mail.settings(cfg) is None:
             return []
         sent: list[str] = []
         collector = self.runtime.collector

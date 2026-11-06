@@ -5,6 +5,7 @@ import type { Settings } from "./api";
 import { postJson, putJson, useOnServerChange, useResource } from "./api";
 import { t, tx } from "./i18n";
 import { LoginToSee } from "./AuthScreens";
+import { NotifyMail } from "./NotifyMail";
 import { QrCode } from "./QrCode";
 import type { PageProps } from "./SettingsPages";
 import { Button, copyText, Field, LearnMore, LoadState, Notice, SubPage, SwitchRow, toast } from "./ui";
@@ -241,6 +242,8 @@ export function NotifyPage({ onBack }: PageProps) {
             </LearnMore>
           </div>
           </>}
+
+          <NotifyMail settings={data} save={save} />
 
           <div className="section-title">{t("settings.notifyPage.eventsTitle")}</div>
           <div className="card form">

@@ -17,7 +17,8 @@ device's limits.
 1. **The inverter and the battery:** settings, control commands, the export limit. Wrong writes can affect the device,
    the warranty or the grid connection rules. This is the most important asset.
 2. **Credentials:** the access password, passwords for grid operator portals and evcc, the password of a car's brand
-   account (EU Data Act portal, #401), the ntfy token, cloud API keys, tokens of other apps.
+   account (EU Data Act portal, #401), the ntfy token, the password of the mailbox for e-mail notifications, cloud
+   API keys, tokens of other apps.
 3. **Personal data:** energy history, readings and settings that identify a household (e.g. meter numbers).
 4. **The server:** the machine OpenAmpere runs on, and the update path to it.
 
@@ -42,7 +43,8 @@ does not make this worse and cannot prevent it.
  internet ─────────────┬────────────────────────────────────────────────────────────────
                        │ VPN (Tailscale)        outbound HTTPS: grid operator, aWATTar,
                        │                        ntfy, cloud import, update check,
-                       │                        car manufacturer (EU Data Act portal)
+                       │                        car manufacturer (EU Data Act portal),
+                       │                        SMTP to the owner's mail server
  home network ─────────┼────────────────────────────────────────────────────────────────
    browser ── HTTP ──▶ [1] web app API ─┐
    other app ─ HTTPS ─▶ [2] external API ┤   OpenAmpere container (non-root)

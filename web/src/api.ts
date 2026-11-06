@@ -105,7 +105,7 @@ export type EnergyEntry = Counters & { ts: number; soc: number | null };
 export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null;
   pv_external?: number | null };
 
-export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "evcc.password" | "meter.password" | "inverter.token"
+export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "notify.mail_password" | "evcc.password" | "meter.password" | "inverter.token"
   | "inverter.cert_sha256";
 export type Settings = {
   values: {
@@ -140,6 +140,12 @@ export type Settings = {
     "grid.rated_power_w": number;
     "grid.rated_power_reported_w": number;
     "notify.ntfy_url": string | null; // null without login (see hidden)
+    "notify.mail_host": string; // empty: no e-mail (#594)
+    "notify.mail_port": number;
+    "notify.mail_security": "starttls" | "tls";
+    "notify.mail_user": string | null; // null without login (see hidden)
+    "notify.mail_from": string | null; // null without login (see hidden)
+    "notify.mail_to": string[] | null; // null without login (see hidden)
     "notify.on_unreachable": boolean;
     "notify.on_alarm": boolean;
     "notify.on_overwritten": boolean;
