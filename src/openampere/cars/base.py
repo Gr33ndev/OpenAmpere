@@ -8,6 +8,7 @@ and keeps its own login session. Errors carry a German message that the app show
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from typing import ClassVar
@@ -17,9 +18,10 @@ class SourceError(Exception):
     """Temporary problem (service unreachable, unexpected answer): try again later. .message is the text written for
     the owner, shown in the app."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, wait_s: float | None = None) -> None:
         super().__init__(message)
         self.message = message
+        self.wait_s = wait_s  # the source says when to look again (e.g. a daily limit), else the usual back-off
 
 
 class SourceAuthError(SourceError):
@@ -53,9 +55,17 @@ class Delivery:
     newest: float | None = None
 
 
+EMAIL = re.compile(r"[^@\s]{1,128}@[^@\s]{1,125}")
+
+
 class Source(ABC):
     key: ClassVar[str]  # stored with the car, e.g. "vw_euda"
     label: ClassVar[str]
+    # "password": e-mail and password of the brand account. "device": a client ID, and the owner confirms the login
+    # in a browser (start_login, finish_login); the source's login token is kept in the place of the password, and the
+    # source may renew it (it sets self.password, the cars store the new one)
+    login_kind: ClassVar[str] = "password"
+    every_s: ClassVar[float | None] = None  # look at this pace instead of after each expected delivery
 
     def __init__(self, brand: str, username: str, password: str) -> None:
         self.brand = brand
@@ -73,4 +83,19 @@ class Source(ABC):
     @classmethod
     @abstractmethod
     def info(cls) -> dict:
-        """For the app: key, label and the brands with their names."""
+        """For the app: key, label, login and the brands with their names."""
+
+    @classmethod
+    def valid_username(cls, username: str) -> bool:
+        return bool(EMAIL.fullmatch(username))
+
+    @classmethod
+    def start_login(cls, brand: str, username: str) -> dict:
+        """Only login "device": the address and code the owner confirms in a browser, plus what finish_login needs
+        (kept by OpenAmpere, never sent to the app); "expires_at" and "interval" in seconds."""
+        raise NotImplementedError
+
+    @classmethod
+    def finish_login(cls, brand: str, username: str, pending: dict) -> str | None:
+        """Only login "device": the login to keep once the owner confirmed it, None while the source still waits."""
+        raise NotImplementedError

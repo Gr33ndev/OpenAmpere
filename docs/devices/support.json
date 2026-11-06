@@ -309,6 +309,23 @@
       "page": "docs/devices/cars/vw-eu-data-act.md"
     },
     {
+      "id": "bmw-cars",
+      "name": {
+        "de": "Autos von BMW und MINI",
+        "en": "BMW and MINI cars"
+      },
+      "does": {
+        "de": "Nur Anzeige über BMW CarData mit dem Konto der Marke (Cloud, freiwillig, Anmeldung im Browser bestätigt): Ladestand, Reichweite und Kilometerstand, etwa alle 40 Minuten.",
+        "en": "Monitoring only, through BMW CarData with the brand account (cloud, optional, login confirmed in a browser): state of charge, range and odometer, about every 40 minutes."
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "home": false,
+      "page": "docs/devices/cars/bmw-cardata.md"
+    },
+    {
       "id": "home-assistant",
       "name": {
         "de": "Home Assistant",

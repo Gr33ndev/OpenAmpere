@@ -3,7 +3,8 @@
 """Cars and what their manufacturer says about them (#401): state of charge, range and odometer.
 
 An AC wallbox does not know how full the car is, only the car does. Its manufacturer offers the data to the owner,
-for the Volkswagen group through the EU Data Act portal (vw_euda.py). Every source is a module (see base.Source)
+for the Volkswagen group through the EU Data Act portal (vw_euda.py), for BMW and MINI through BMW CarData
+(bmw_cardata.py, #595). Every source is a module (see base.Source)
 listed in SOURCES. OpenAmpere only reads: nothing is sent to the car and the wallbox control does not use the values.
 
 - A car may be linked to a wallbox OpenAmpere controls (wallbox/native.py). While the car is plugged in there, the
@@ -12,6 +13,9 @@ listed in SOURCES. OpenAmpere only reads: nothing is sent to the car and the wal
   odometer) are taken from the stored deliveries when they are shown, so a late delivery still counts.
 - The login is kept, the password encrypted with secret.key. A login the source refused is not tried again by itself
   (the account could be locked) until it is changed or the owner asks for the data.
+- A source with login_kind "device" (BMW) gets no password: the owner confirms the login in a browser with a code
+  (start_login, finish_login), and the token the source gives back is kept in the place of the password. The source
+  renews it now and then; the new one is stored right away (_renewed).
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from .base import CarData, Delivery, Source, SourceAuthError, SourceError, SourceSetupError
+from .bmw_cardata import BmwCarData
 from .vw_euda import VwEuDataAct
 
 if TYPE_CHECKING:
@@ -36,7 +41,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-SOURCES: dict[str, type[Source]] = {s.key: s for s in (VwEuDataAct,)}
+SOURCES: dict[str, type[Source]] = {s.key: s for s in (VwEuDataAct, BmwCarData)}
 MAX_CARS = 3
 CARS = "cars"  # meta: the cars, passwords encrypted
 NEXT_DELIVERY_S = 16 * 60  # the portal stores a dataset every 15 minutes, a minute later it can be read
@@ -54,7 +59,7 @@ SAVE_KWH_STEP = 0.05
 SETTLE_AFTER_S = 86400  # an ended charge gets its values kept a day later: the late deliveries are there by then
 KEEP_POINTS_S = 90 * 86400  # the deliveries themselves are kept this long; the charges keep their values
 PRUNE_EVERY_S = 3600
-EMAIL = re.compile(r"[^@\s]{1,128}@[^@\s]{1,125}")
+MAX_LOGINS = 5  # logins in a browser that are running at the same time
 VIN = re.compile(r"[A-Z0-9]{11,17}")
 
 __all__ = ["SOURCES", "Car", "CarData", "Cars", "Delivery", "Source", "SourceAuthError", "SourceError",
@@ -84,6 +89,18 @@ class Live:
     after: float | None = None  # the newest delivery read
     refused: tuple | None = None  # the login the source refused
     task: asyncio.Task | None = None
+
+
+@dataclass
+class Pending:
+    """A login the owner confirms in a browser (source login_kind "device"): what finish_login needs, kept only here."""
+    source: str
+    brand: str
+    username: str
+    data: dict
+    token: str | None = None
+    next_at: float = 0.0
+    error: str | None = None
 
 
 @dataclass
@@ -119,10 +136,13 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[Car]:
             raise ValueError(f"{car.name}: Diese Datenquelle kennt OpenAmpere nicht.")
         if car.brand not in {b["key"] for b in source.info()["brands"]}:
             raise ValueError(f"{car.name}: Diese Marke kennt OpenAmpere noch nicht.")
-        if not EMAIL.fullmatch(car.username):
-            raise ValueError(f"{car.name}: Bitte die E-Mail-Adresse des Kontos der Marke angeben.")
-        if not car.password and car.id not in keyless or len(car.password) > 200:
-            raise ValueError(f"{car.name}: Bitte das Passwort des Kontos der Marke angeben.")
+        device = source.login_kind == "device"
+        if not source.valid_username(car.username):
+            raise ValueError(f"{car.name}: Bitte die Client-ID aus dem Portal der Marke angeben." if device
+                             else f"{car.name}: Bitte die E-Mail-Adresse des Kontos der Marke angeben.")
+        if not car.password and car.id not in keyless or len(car.password) > (8192 if device else 200):
+            raise ValueError(f"{car.name}: Bitte die Anmeldung im Browser bestätigen." if device
+                             else f"{car.name}: Bitte das Passwort des Kontos der Marke angeben.")
         if car.vin and not VIN.fullmatch(car.vin):
             raise ValueError(f"{car.name}: Die Fahrzeug-Identifizierungsnummer ist ungültig.")
         if car.wallbox_id and not re.fullmatch(r"[0-9a-f]{8}", car.wallbox_id):
@@ -149,6 +169,7 @@ class Cars:
         self._charges: dict[str, Charge] | None = None  # car id -> running charge; read from the database once
         self._pruned = 0.0
         self._unreadable: set[str] = set()
+        self._logins: dict[str, Pending] = {}
 
     # ---- settings ------------------------------------------------------------------
 
@@ -186,19 +207,29 @@ class Cars:
         return [car for car in self.cars if car.enabled]
 
     def save(self, raw: list) -> list[Car]:
-        """A password or VIN sent empty keeps the stored one (the app never gets the password back)."""
+        """A password or VIN sent empty keeps the stored one (the app never gets the password back). A source with
+        login "device" takes no password from the app, only the token of a login confirmed in the browser (`login`)."""
         stored = {car.id: car for car in self.cars}
         if not isinstance(raw, list):
             raise ValueError("Ungültige Angaben bei einem Auto.")
-        items = []
+        items, used = [], []
         for item in raw:
-            if isinstance(item, dict) and item.get("id") in stored:
-                old = stored[item["id"]]
+            if isinstance(item, dict):
+                old = stored.get(item.get("id"))
+                login = (str(item.get("source", old.source if old else "")), str(item.get("brand", old.brand if old else "")),
+                         str(item.get("username", old.username if old else "")).strip())
                 # another account: its car has to be chosen again, the old one's VIN is not kept
-                same = (item.get("source", old.source), item.get("brand", old.brand),
-                        str(item.get("username", old.username)).strip()) == (old.source, old.brand, old.username)
-                item = {**item, "password": item.get("password") or old.password,
-                        "vin": item.get("vin") or (old.vin if same else "")}
+                same = old is not None and login == (old.source, old.brand, old.username)
+                password = item.get("password") or (old.password if old else "")
+                source = self.sources.get(login[0])
+                if source is not None and source.login_kind == "device":
+                    pending = self._logins.get(str(item.get("login") or ""))
+                    if pending and pending.token and (pending.source, pending.brand, pending.username) == login:
+                        password = pending.token
+                        used.append(str(item["login"]))
+                    else:
+                        password = old.password if same else ""
+                item = {**item, "password": password, "vin": item.get("vin") or (old.vin if same else "")}
             items.append(item)
         cars = validate(items, keyless={car.id for car in stored.values() if not car.password})
         wallboxes = {wb.id for wb in self.wallboxes.wallboxes} if self.wallboxes else set()
@@ -220,6 +251,8 @@ class Cars:
                     (old.source, old.brand, old.username, old.password, old.vin):
                 self.live.pop(old.id, None)  # asked afresh, also a login that was refused
         self.runtime.storage.set_meta(CARS, [self._sealed(asdict(car)) for car in cars])
+        for login in used:
+            self._logins.pop(login, None)
         return cars
 
     # ---- the source ------------------------------------------------------------------
@@ -232,20 +265,101 @@ class Cars:
             self._clients[login] = (self.sources[source](brand, username, password), threading.Lock())
         return self._clients[login]
 
-    async def vehicles(self, source: str, brand: str, username: str, password: str, car_id: str | None = None) -> list[dict]:
-        """The cars of an account, for choosing one in the app; a stored password if none is given."""
+    async def vehicles(self, source: str, brand: str, username: str, password: str, car_id: str | None = None,
+                       login: str | None = None) -> list[dict]:
+        """The cars of an account, for choosing one in the app; a stored password if none is given. A source with
+        login "device": the token of the login confirmed in the browser, or the stored one of the same account."""
         stored = next((car for car in self.cars if car.id == car_id), None) if car_id else None
-        password = password or (stored.password if stored else "")
-        if source not in self.sources:
+        kind = self.sources.get(source)
+        if kind is None:
             raise ValueError("Diese Datenquelle kennt OpenAmpere nicht.")
-        if not EMAIL.fullmatch(username or "") or not password:
-            raise ValueError("Bitte E-Mail-Adresse und Passwort des Kontos der Marke angeben.")
-        client, lock = self._client(source, brand, username, password)
+        pending = self._logins.get(login or "")
+        if kind.login_kind == "device":
+            if pending and pending.token and (pending.source, pending.brand, pending.username) == (source, brand, username):
+                password = pending.token
+            elif stored and (stored.source, stored.brand, stored.username) == (source, brand, username):
+                password, pending = stored.password, None
+            else:
+                raise ValueError("Bitte zuerst die Anmeldung im Browser bestätigen.")
+            if not kind.valid_username(username or "") or not password:
+                raise ValueError("Bitte zuerst die Anmeldung im Browser bestätigen.")
+        else:
+            password, pending = password or (stored.password if stored else ""), None
+            if not kind.valid_username(username or "") or not password:
+                raise ValueError("Bitte E-Mail-Adresse und Passwort des Kontos der Marke angeben.")
+        account = (source, brand, username, password)
+        client, lock = self._client(*account)
 
         def ask() -> list[dict]:
             with lock:
                 return client.vehicles()
-        return await asyncio.to_thread(ask)
+        try:
+            return await asyncio.to_thread(ask)
+        finally:
+            if pending is not None:
+                pending.token = client.password  # renewed while asking: the one to store with the car
+            self._renewed(account, client)
+
+    def _renewed(self, login: tuple, client: Source) -> None:
+        """The source renewed its login token (BMW, with every use; the old one may be void now): stored at once
+        with every car of that login, and the client kept under the new one."""
+        if client.password == login[3]:
+            return
+        entry = self._clients.pop(login, None)
+        if entry is not None:
+            self._clients[(*login[:3], client.password)] = entry
+        raw, changed = self.runtime.storage.get_meta(CARS) or [], False
+        for i, item in enumerate(raw):
+            if (isinstance(item, dict) and (item.get("source"), item.get("brand"), item.get("username")) == login[:3]
+                    and self._opened(item).get("password") == login[3]):
+                raw[i] = self._sealed({**item, "password": client.password})
+                changed = True
+        if changed:
+            self.runtime.storage.set_meta(CARS, raw)
+            log.info("the renewed login of a car source was stored")
+
+    # ---- a login in the owner's browser (source login_kind "device") ------------------------------------
+
+    async def start_login(self, source: str, brand: str, username: str) -> dict:
+        """Asks the source for a code the owner confirms in a browser: the address and the code for the app."""
+        kind = self.sources.get(source)
+        if kind is None or kind.login_kind != "device":
+            raise ValueError("Diese Datenquelle kennt OpenAmpere nicht.")
+        if brand not in {b["key"] for b in kind.info()["brands"]}:
+            raise ValueError("Diese Marke kennt OpenAmpere noch nicht.")
+        if not kind.valid_username(username):
+            raise ValueError("Bitte die Client-ID aus dem Portal der Marke angeben.")
+        data = await asyncio.to_thread(kind.start_login, brand, username)
+        now = time.time()
+        self._logins = {k: p for k, p in self._logins.items() if p.data["expires_at"] > now or p.token}
+        while len(self._logins) >= MAX_LOGINS:
+            self._logins.pop(next(iter(self._logins)))
+        login = secrets.token_urlsafe(16)
+        self._logins[login] = Pending(source, brand, username, data, next_at=now + data["interval"])
+        return {"login": login, "url": data["url"], "code": data["code"],
+                "expires_in": round(data["expires_at"] - now), "interval": data["interval"]}
+
+    async def finish_login(self, login: str) -> bool:
+        """Whether the owner confirmed the login in the browser; asks the source at most at the pace it named."""
+        pending = self._logins.get(login)
+        if pending is None:
+            raise ValueError("Diese Anmeldung gibt es nicht mehr. Bitte neu starten.")
+        if pending.token:
+            return True
+        if pending.error:
+            raise ValueError(pending.error)
+        now = time.time()
+        if now < pending.next_at:
+            return False
+        pending.next_at = now + pending.data["interval"]
+        kind = self.sources[pending.source]
+        try:
+            token = await asyncio.to_thread(kind.finish_login, pending.brand, pending.username, pending.data)
+        except SourceError as err:
+            pending.error = err.message  # asked again, the answer stays the same: no further request
+            raise ValueError(err.message) from None
+        pending.token = token
+        return token is not None
 
     # ---- reading, in the background ------------------------------------------------------
 
@@ -291,7 +405,8 @@ class Cars:
     async def poll(self, car: Car, live: Live, now: float | None = None) -> Live:
         if live.after is None:
             live.after = self.runtime.storage.car_last_ts(car.id) or 0.0
-        client, lock = self._client(car.source, car.brand, car.username, car.password)
+        account = (car.source, car.brand, car.username, car.password)
+        client, lock = self._client(*account)
 
         def look() -> Delivery:
             with lock:
@@ -308,12 +423,16 @@ class Cars:
             return live
         except SourceError as err:
             self._failed(car, live, "error", err.message, time.time())
+            if err.wait_s:
+                live.next_at = max(live.next_at, time.time() + err.wait_s)
             return live
         except Exception as err:  # noqa: BLE001 - an unexpected answer: shown, and tried again later
             log.warning("car %s: reading the data failed: %s", car.id, type(err).__name__)
             self._failed(car, live, "error", "Unerwartete Antwort der Datenquelle. Bitte später nochmal versuchen.",
                          time.time())
             return live
+        finally:
+            self._renewed(account, client)
         now = time.time() if now is None else now
         rows = [asdict(d) for d in delivery.data if not d.empty()]
         if rows:
@@ -324,7 +443,9 @@ class Cars:
             log.info("car %s: data from the source again", car.id)
         has_data = bool(rows) or self.runtime.storage.car_last_ts(car.id) is not None
         live.status, live.error, live.failures, live.checked = ("ok" if has_data else "waiting"), None, 0, now
-        if delivery.newest is None:
+        if client.every_s:
+            live.next_at = now + client.every_s
+        elif delivery.newest is None:
             live.next_at = now + FIRST_DATA_WAIT_S
         else:
             due = delivery.newest + NEXT_DELIVERY_S

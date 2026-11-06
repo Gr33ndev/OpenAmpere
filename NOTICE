@@ -56,6 +56,12 @@ License), which is itself based on ioBroker.vw-connect (https://github.com/TA2k/
 OpenAmpere has its own implementation and contains no code of either. OpenAmpere is not affiliated with the
 Volkswagen group or its brands.
 
+The data of BMW and MINI cars is read from BMW CarData (customer.bmwgroup.com, api-cardata.bmwgroup.com) with a login
+the owner confirms in a browser. Endpoints, scopes and limits follow the BMW Group's public CarData documentation; the
+names of the telematic keys and the meaning of their values are based on facts from evcc's vehicle/bmw/cardata
+(https://github.com/evcc-io/evcc, MIT License); OpenAmpere has its own implementation and contains no code of evcc.
+OpenAmpere is not affiliated with the BMW Group or its brands.
+
 my-PV heating rods are controlled through the manufacturer's Modbus TCP interface (power setpoint only).
 
 The Home Assistant buttons on the website (site/badges/*.svg) are the badges of My Home Assistant

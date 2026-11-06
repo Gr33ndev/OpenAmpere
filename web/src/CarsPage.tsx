@@ -1,16 +1,17 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { postJson, putJson, useResource } from "./api";
 import { num, updatedLabel } from "./format";
-import { t } from "./i18n";
+import { t, tx } from "./i18n";
 import type { WallboxesView } from "./NativeWallbox";
 import { navigate } from "./route";
 import { Button, Dialog, Field, LoadState, Notice, SubPage, Switch, toast } from "./ui";
 
 /** Cars and what their manufacturer says about them (#401): state of charge, range and odometer, read from the
- *  EU Data Act portal of the Volkswagen group. The portal delivers about every 15 minutes, some 15 minutes late, so
- *  every value is shown with its age. OpenAmpere only reads; the charges come from a wallbox it controls. */
+ *  EU Data Act portal of the Volkswagen group or from BMW CarData (#595). The values arrive every 15 to 40 minutes,
+ *  often late, so every value is shown with its age. OpenAmpere only reads; the charges come from a wallbox it
+ *  controls. */
 
 export type CarValues = {
   soc: number | null; soc_ts: number | null; range_km: number | null; range_km_ts: number | null;
@@ -26,9 +27,13 @@ export type Car = {
   status: "ok" | "waiting" | "setup" | "auth" | "error" | null; error: string | null; checked: number | null;
   values: CarValues; charge: CarCharge | null;
 };
-type Source = { key: string; label: string; brands: { key: string; label: string }[] };
+/** login "password": e-mail and password of the brand account; "device": a client ID, and the owner confirms the
+ *  login in a browser with a code (BMW CarData). */
+type Source = { key: string; label: string; login: "password" | "device";
+  brands: { key: string; label: string; portal?: string }[] };
 export type CarsView = { cars: Car[]; sources: Source[]; max: number };
 type Vehicle = { vin: string; name: string };
+type DeviceLogin = { login: string; url: string; code: string; expires_in: number; interval: number };
 
 export const PORTAL_URL = "https://eu-data-act.drivesomethinggreater.com";
 
@@ -112,10 +117,10 @@ export function CarCards() {
 }
 
 type Draft = { id?: string; name: string; source: string; brand: string; username: string; password: string; vin: string;
-  wallbox_id: string; enabled: boolean };
+  wallbox_id: string; enabled: boolean; login?: string };
 const toItem = (c: Car | Draft) => ({ id: c.id, name: c.name, source: c.source, brand: c.brand, username: c.username ?? "",
   password: "password" in c ? c.password : "", vin: "vin" in c ? c.vin : "", wallbox_id: c.wallbox_id ?? "",
-  enabled: c.enabled });
+  enabled: c.enabled, login: "login" in c ? c.login : undefined });
 
 /** Settings (Mehr → Verbindung → Auto): the cars, their account at the manufacturer and their wallbox. */
 export function CarsPage({ onBack }: { onBack: () => void }) {
@@ -164,12 +169,14 @@ export function CarsPage({ onBack }: { onBack: () => void }) {
     if (saved?.vin_set && saved.enabled) void fetchNow(saved.id);
   };
   const source = view?.sources[0];
+  const sourceOf = (key: string) => view?.sources.find((s) => s.key === key);
   const loggedOut = !!view && view.cars.some((c) => c.username === undefined);
 
   return (
     <SubPage title={t("devices.cars.title")} onBack={onBack}>
       <p className="hint">{t("devices.cars.intro")}</p>
       <PortalGuide />
+      {view?.sources.filter((s) => s.login === "device").map((s) => <CarDataGuide key={s.key} source={s} />)}
       {!view && <LoadState error={error} onRetry={reload} />}
       {loggedOut && <Notice kind="info">{t("devices.cars.loginToChange")}</Notice>}
       {view && !loggedOut && view.cars.map((car) => draft?.id === car.id ? (
@@ -181,7 +188,7 @@ export function CarsPage({ onBack }: { onBack: () => void }) {
           <div className="wallbox-head">
             <div>
               <strong>{car.name}</strong>
-              <div className="hint">{[source?.brands.find((b) => b.key === car.brand)?.label, car.vin_end && `…${car.vin_end}`,
+              <div className="hint">{[sourceOf(car.source)?.brands.find((b) => b.key === car.brand)?.label, car.vin_end && `…${car.vin_end}`,
                 car.wallbox].filter(Boolean).join(" · ")}</div>
               <div className="hint">{statusLine(car)}{car.values.ts != null ? ` · ${t("devices.cars.lastData", { age: age(car.values.ts) })}` : ""}</div>
             </div>
@@ -189,7 +196,8 @@ export function CarsPage({ onBack }: { onBack: () => void }) {
               onChange={(on) => void save((view?.cars ?? []).map((c) => toItem(c.id === car.id ? { ...c, enabled: on } : c)))} />
           </div>
           {car.error && <Notice kind={car.status === "error" ? "warn" : "error"}>{car.error}</Notice>}
-          {!car.password_set && <Notice kind="warn">{t("devices.cars.passwordLost")}</Notice>}
+          {!car.password_set && <Notice kind="warn">{sourceOf(car.source)?.login === "device"
+            ? t("devices.cars.passwordLostDevice") : t("devices.cars.passwordLost")}</Notice>}
           <div className="button-row">
             <Button variant="secondary" onClick={() => setDraft({ id: car.id, name: car.name, source: car.source, brand: car.brand,
               username: car.username ?? "", password: "", vin: "", wallbox_id: car.wallbox ? car.wallbox_id ?? "" : "", enabled: car.enabled })}>
@@ -241,6 +249,87 @@ function PortalGuide() {
   );
 }
 
+/** The one-time steps in the BMW or MINI portal: the client ID and the access to the CarData API (#595). */
+function CarDataGuide({ source }: { source: Source }) {
+  return (
+    <details className="advanced">
+      <summary>{t("devices.cars.bmwGuideTitle")}</summary>
+      <ol className="steps-list">
+        <li>{t("devices.cars.bmwGuideStep1")} {source.brands.filter((b) => b.portal).map((b, i) => (
+          <span key={b.key}>{i > 0 && " · "}<a href={b.portal} target="_blank" rel="noreferrer">{b.label}</a></span>))}</li>
+        <li>{t("devices.cars.bmwGuideStep2")}</li>
+        <li>{t("devices.cars.bmwGuideStep3")}</li>
+        <li>{t("devices.cars.bmwGuideStep4")}</li>
+      </ol>
+      <p className="hint">{t("devices.cars.bmwGuideLimits")}</p>
+    </details>
+  );
+}
+
+/** The login the owner confirms in a browser: OpenAmpere asks for a code, shows it with the address, and asks at the
+ *  pace the manufacturer named until it is confirmed or the code expires. */
+function DeviceLoginField({ source, brand, clientId, done, onDone, onStart }: {
+  source: string; brand: string; clientId: string; done: boolean; onDone: (login: string) => void;
+  onStart: () => void;
+}) {
+  const [pending, setPending] = useState<DeviceLogin | null>(null);
+  const [starting, setStarting] = useState(false);
+  const finished = useRef(onDone);  // the parent's callback changes with every render: the asking goes on
+  finished.current = onDone;
+  useEffect(() => {
+    if (!pending || done) return;
+    const until = Date.now() + pending.expires_in * 1000;
+    let timer = 0, stopped = false;
+    const ask = async () => {
+      if (Date.now() > until) {
+        toast(t("devices.cars.loginExpired"), "error");
+        setPending(null);
+        return;
+      }
+      try {
+        const result = await postJson<{ done: boolean }>(`/api/cars/login/${encodeURIComponent(pending.login)}`, {});
+        if (stopped) return;
+        if (result.done) { finished.current(pending.login); return; }
+      } catch (e) {
+        if (stopped) return;
+        toast((e as Error).message, "error");
+        setPending(null);
+        return;
+      }
+      timer = window.setTimeout(() => void ask(), pending.interval * 1000);
+    };
+    timer = window.setTimeout(() => void ask(), pending.interval * 1000);
+    return () => { stopped = true; window.clearTimeout(timer); };
+  }, [pending, done]);
+
+  const start = async () => {
+    setStarting(true);
+    onStart();
+    try {
+      setPending(await postJson<DeviceLogin>("/api/cars/login", { source, brand, username: clientId.trim() }));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setStarting(false);
+    }
+  };
+  return (
+    <>
+      <Button variant="secondary" busy={starting} disabled={!clientId.trim()} onClick={() => void start()}>
+        {pending || done ? t("devices.cars.loginAgain") : t("devices.cars.loginStart")}</Button>
+      {pending && !done && (
+        <Notice kind="info">
+          <p>{tx("devices.cars.loginStep", {
+            link: <a href={pending.url} target="_blank" rel="noreferrer">{t("devices.cars.loginLink")}</a>,
+            code: <strong>{pending.code}</strong> })}</p>
+          <p>{t("devices.cars.loginWaiting")}</p>
+        </Notice>
+      )}
+      {done && <Notice kind="info">{t("devices.cars.loginDone")}</Notice>}
+    </>
+  );
+}
+
 /** The fields of a car: the account, then the car chosen from it, then its wallbox. */
 function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
   view: CarsView; wallboxes: WallboxesView | null; draft: Draft; busy: boolean; onSave: (d: Draft) => void;
@@ -252,14 +341,20 @@ function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
   const stored = draft.id ? view.cars.find((c) => c.id === draft.id) : undefined;
   const source = view.sources.find((s) => s.key === d.source) ?? view.sources[0];
   const set = (changes: Partial<Draft>) => setD({ ...d, ...changes });
-  const login = (changes: Partial<Draft>) => { set({ ...changes, vin: "" }); setVehicles(null); };
-  const passwordKnown = !!d.password || !!stored?.password_set;
+  const login = (changes: Partial<Draft>) => { set({ ...changes, vin: "", login: undefined }); setVehicles(null); };
+  const device = source?.login === "device";
+  // another account: its car has to be chosen again (the server forgets the old one's VIN)
+  const loginChanged = !!stored && (d.source !== stored.source || d.brand !== stored.brand
+    || d.username.trim() !== (stored.username ?? ""));
+  const passwordKnown = device ? !!d.login || (!!stored?.password_set && !loginChanged)
+    : !!d.password || !!stored?.password_set;
 
   const load = async () => {
     setLoading(true);
     try {
       const result = await postJson<{ vehicles: Vehicle[] }>("/api/cars/vehicles",
-        { source: d.source, brand: d.brand, username: d.username.trim(), password: d.password, id: d.id ?? null });
+        { source: d.source, brand: d.brand, username: d.username.trim(), password: device ? "" : d.password,
+          id: d.id ?? null, login: d.login ?? null });
       setVehicles(result.vehicles);
       if (result.vehicles.length === 1) set({ vin: result.vehicles[0].vin });
     } catch (e) {
@@ -270,8 +365,6 @@ function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
   };
   const taken = new Set(view.cars.filter((c) => c.id !== d.id).map((c) => c.wallbox_id));
   const free = (wallboxes?.wallboxes ?? []).filter((w) => !taken.has(w.id));
-  // another account: its car has to be chosen again (the server forgets the old one's VIN)
-  const loginChanged = !!stored && (d.brand !== stored.brand || d.username.trim() !== (stored.username ?? ""));
   const vinChosen = !!d.vin || (!!stored?.vin_set && !vehicles && !loginChanged);
 
   return (
@@ -280,16 +373,39 @@ function CarForm({ view, wallboxes, draft, busy, onSave, onCancel }: {
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
       <Field label={t("devices.cars.brand")} hint={source?.label}>
-        <select className="input" value={d.brand} onChange={(e) => login({ brand: e.target.value })}>
-          {source?.brands.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+        <select className="input" value={`${d.source}/${d.brand}`} onChange={(e) => {
+          const [key, brand] = e.target.value.split("/");
+          login({ source: key, brand, ...(key !== d.source ? { username: "", password: "" } : {}) });
+        }}>
+          {view.sources.map((s) => (
+            <optgroup key={s.key} label={s.label}>
+              {s.brands.map((b) => <option key={b.key} value={`${s.key}/${b.key}`}>{b.label}</option>)}
+            </optgroup>
+          ))}
         </select>
       </Field>
-      <Field label={t("devices.cars.email")} hint={t("devices.cars.emailHint")}>
-        <input className="input" type="email" autoComplete="off" value={d.username} onChange={(e) => login({ username: e.target.value })} />
-      </Field>
-      <Field label={t("common.password")} hint={stored?.password_set ? t("settings.gridMeterPage.savedKeep") : undefined}>
-        <input className="input" type="password" autoComplete="off" value={d.password} onChange={(e) => login({ password: e.target.value })} />
-      </Field>
+      {device ? (
+        <>
+          <Field label={t("devices.cars.clientId")} hint={t("devices.cars.clientIdHint")}>
+            <input className="input" autoComplete="off" spellCheck={false} value={d.username}
+              onChange={(e) => login({ username: e.target.value })} />
+          </Field>
+          {stored?.password_set && !loginChanged && !d.login && <p className="hint">{t("devices.cars.loginKept")}</p>}
+          <DeviceLoginField key={`${d.source}/${d.brand}/${d.username.trim()}`} source={d.source} brand={d.brand}
+            clientId={d.username} done={!!d.login} onStart={() => set({ login: undefined })}
+            onDone={(id) => setD((current) => ({ ...current, login: id }))} />
+          <p className="hint">{t("devices.cars.loginHint")}</p>
+        </>
+      ) : (
+        <>
+          <Field label={t("devices.cars.email")} hint={t("devices.cars.emailHint")}>
+            <input className="input" type="email" autoComplete="off" value={d.username} onChange={(e) => login({ username: e.target.value })} />
+          </Field>
+          <Field label={t("common.password")} hint={stored?.password_set ? t("settings.gridMeterPage.savedKeep") : undefined}>
+            <input className="input" type="password" autoComplete="off" value={d.password} onChange={(e) => login({ password: e.target.value })} />
+          </Field>
+        </>
+      )}
       <Button variant="secondary" busy={loading} disabled={!d.username.trim() || !passwordKnown} onClick={() => void load()}>
         {t("devices.cars.loadVehicles")}</Button>
       {vehicles && (
