@@ -249,6 +249,25 @@
       "page": "docs/devices/weidmueller/ac-smart.md"
     },
     {
+      "id": "goe",
+      "name": "go-e Charger",
+      "does": {
+        "de": "Nur Anzeige über die lokale HTTP API (in der go-e App einschalten): Zustand, Ladeleistung, Strom und Spannung je Phase, Energie des Ladevorgangs. Steuern kann sie weiter evcc.",
+        "en": "Monitoring only over the local HTTP API (switched on in the go-e app): state, charging power, current and voltage per phase, energy of the charge. evcc can still control it."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "tellUs",
+      "page": "docs/devices/goe/charger.md"
+    },
+    {
       "id": "de-tuya",
       "name": {
         "de": "Mobile dé-Wallbox (Tuya-WLAN)",

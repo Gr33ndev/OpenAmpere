@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
-"""Find and test inverters in the local network (setup wizard)."""
+"""Find and test inverters in the local network (setup wizard), and go-e Chargers for the wallbox setup (#597)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from .drivers import registry
 from .drivers.modbus import DeviceUnreachable, InverterBusy, friendly_error
 from .outbound import in_home_network
 from .runtime import Runtime
+from .wallbox import goe
+from .wallbox.base import WallboxUnreachable
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +126,33 @@ async def scan(runtime: Runtime, prefix: str, port: int = 502, unit: int = 0) ->
 
     # several hosts at a time, each with one connection: a host that does not answer takes about 45 s (#549)
     return list(await asyncio.gather(*(identify(host) for host in found)))
+
+
+async def find_goe(hosts: list[str] | None = None, port: int = goe.PORT) -> list[dict]:
+    """go-e Chargers in the home network (#597): the hosts of the local networks with the port of its HTTP API open
+    that answer the status request like a go-e Charger. Only that GET request, nothing is written. `hosts`: instead of
+    the local networks (tests)."""
+    if hosts is None:
+        # a request to the Supervisor in the Home Assistant app, a name lookup elsewhere: not on the event loop
+        hosts = [h for prefix in await asyncio.to_thread(local_prefixes) for h in parse_prefix(prefix)]
+    semaphore = asyncio.Semaphore(128)
+
+    async def check(host: str) -> str | None:
+        async with semaphore:
+            return host if await _port_open(host, port, 0.7) else None
+
+    found = [h for h in await asyncio.gather(*(check(h) for h in hosts)) if h]
+    asking = asyncio.Semaphore(DETECT_PARALLEL)
+
+    async def ask(host: str) -> dict | None:
+        async with asking:
+            try:
+                status = await goe.GoeHttp(host, port).status()
+            except WallboxUnreachable:
+                return None
+        return {"host": host, "api": status["api"]}
+
+    return [d for d in await asyncio.gather(*(ask(h) for h in found)) if d]
 
 
 async def test_connection(runtime: Runtime, host: str, port: int, unit: int, driver: str = "auto", *,

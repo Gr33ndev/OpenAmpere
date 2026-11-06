@@ -244,6 +244,26 @@ evcc is still the way (with an evcc sponsor token).
 
 Technical details: [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md).
 
+## Setting up the go-e Charger
+
+OpenAmpere **only shows** a go-e Charger (#597): whether a car is plugged in, the charging power, current and voltage
+per phase, and the energy of the charge. It only asks for the charger's status and never changes anything on it; the
+only charging mode is **Von Hand** (manual). Its power counts in the house load like any wallbox. To control it, evcc
+is still the way.
+
+1. In the go-e app, switch on the **local HTTP API** (API v2 on newer chargers, API v1 on older ones). Where the switch
+   is depends on the version of the app, usually in the advanced settings of the connection or internet settings.
+2. Under **direkt → Wallbox hinzufügen oder prüfen** (Add or check a wallbox), choose the go-e Charger at
+   **Welche Wallbox hast du?**.
+3. **go-e Charger im Heimnetz suchen** (search) finds it if the API is on; otherwise enter its IP address from the list
+   of devices in your router. No key, port or unit ID is needed.
+4. **Verbindung prüfen** (check the connection), then **Speichern** (save).
+
+- The search also works in the Home Assistant app: it asks every address of the home network on port 80.
+- Nothing is confirmed on a real charger yet. Please tell us in an issue whether the values match the go-e app.
+
+Technical details: [devices/goe/charger.md](devices/goe/charger.md).
+
 ## Checking other wallboxes (read-only)
 
 For more wallboxes OpenAmpere is preparing the direct way. Under **direkt → Wallbox hinzufügen oder prüfen**, choose

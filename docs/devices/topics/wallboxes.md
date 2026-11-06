@@ -16,7 +16,8 @@ diagnostics) · **Support:** control through evcc; OCPP read-only · **Confirmed
   to it ([foxess/ac-charger.md](../foxess/ac-charger.md), [#439](https://github.com/Gr33ndev/OpenAmpere/issues/439)); its charging modes
   only simulate the control and log what OpenAmpere would set ([#440](https://github.com/Gr33ndev/OpenAmpere/issues/440)).
   It also only shows the Weidmüller AC SMART ("AMPERE.Charge") over Modbus TCP ([weidmueller/ac-smart.md](../weidmueller/ac-smart.md),
-  [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523)).
+  [#523](https://github.com/Gr33ndev/OpenAmpere/issues/523)), and the go-e Charger over its local HTTP API
+  ([goe/charger.md](../goe/charger.md), [#597](https://github.com/Gr33ndev/OpenAmpere/issues/597)).
   Several of them, and an evcc wallbox next to them, share the place "wallbox" in the order of the solar surplus; one
   OpenAmpere only shows counts in the house load but is never acted on.
 - Which wallboxes work is decided by evcc. Many need a paid evcc sponsor token; the public trial token runs out after

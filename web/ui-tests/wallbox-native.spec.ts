@@ -132,6 +132,25 @@ test("the Weidmüller AC SMART is only shown, without a simulation", async ({ pa
   await expect(page.getByLabel("Port")).toHaveValue("502");
 });
 
+// #597: a go-e Charger is only shown, found by its HTTP API, without a key, port or unit id
+test("a go-e Charger is found by the search and asks for no key or port", async ({ page, api }) => {
+  api.override("/api/wallboxes/search", { available: true, devices: [{ host: "192.168.178.70", api: 2 }] });
+  await open(page, "more/wallbox");
+  await page.getByRole("button", { name: "direkt", exact: true }).click();
+  await page.getByRole("button", { name: "Wallbox hinzufügen oder prüfen" }).click();
+  await page.getByLabel("Welche Wallbox hast du?").selectOption("goe");
+  await expect(page.getByText("OpenAmpere liest den go-e Charger nur")).toBeVisible();
+  await expect(page.getByText("lokale HTTP API ein")).toBeVisible();
+  await expect(page.getByLabel("Local Key")).toHaveCount(0);
+  await expect(page.getByLabel("Port")).toHaveCount(0);
+  await expect(page.getByText("als Simulation")).toHaveCount(0);
+  await page.getByRole("button", { name: "go-e Charger im Heimnetz suchen" }).click();
+  await expect(page.getByText("go-e Charger unter 192.168.178.70")).toBeVisible();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.getByLabel("IP-Adresse")).toHaveValue("192.168.178.70");
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
 // one form for every wallbox: what is asked depends on the wallbox chosen
 test("the local key is asked only for a Tuya wallbox, the FoxESS check stays in the same form", async ({ page }) => {
   await open(page, "more/wallbox");

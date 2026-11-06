@@ -54,11 +54,12 @@ export type WallboxSimulation = {
   state: "charging" | "waiting" | "no_surplus" | "above_limit" | "off" | "finished" | "no_car" | "unknown";
   current_a: number | null; phases: number | null; power_w: number;
 };
-export type WallboxModel = { key: string; label: string; protocol: "tuya" | "modbus"; read_only?: boolean;
+export type WallboxModel = { key: string; label: string; protocol: "tuya" | "modbus" | "http"; read_only?: boolean;
   /** read only until the owner switches on real control of the added wallbox (#465) */
   controllable?: boolean; simulated?: boolean; modes?: WallboxMode[]; sold_by?: string[]; port?: number; unit?: number };
 export type WallboxesView = { wallboxes: NativeWallbox[]; models: WallboxModel[]; max: number; search: boolean };
-type Found = { device_id: string; host: string; product_key: string | null };
+/** Tuya: a device that announced itself; go-e (#597): a host that answered like one, without a device ID. */
+type Found = { device_id?: string; host: string; product_key?: string | null };
 
 const MODES: [WallboxMode, string][] = [["manual", t("devices.nativeWallbox.modeManual")], ["off", t("common.off")],
   ["pv", t("devices.modes.solar")], ["minpv", t("devices.modes.minSolar")], ["now", t("devices.modes.fast")]];
@@ -355,7 +356,7 @@ type Draft = { id?: string; name: string; model: string; host: string; device_id
 /** Address, port and unit id of a wallbox found by the read-only check, to show it in OpenAmpere (#439). */
 export type Prefill = { host: string; port: number | null; unit: number };
 const empty = (model: WallboxModel | undefined, key: string, prefill?: Prefill | null): Draft => ({
-  name: model?.protocol === "modbus" ? t("devices.nativeWallbox.defaultNameFixed") : t("devices.nativeWallbox.defaultName"),
+  name: model?.protocol !== "tuya" ? t("devices.nativeWallbox.defaultNameFixed") : t("devices.nativeWallbox.defaultName"),
   model: key, host: prefill?.host ?? "", device_id: "", local_key: "", max_current_a: "16", mode: "manual", enabled: true,
   mode_current_a: {}, stop_after_min: "10", port: String(prefill?.port ?? model?.port ?? ""),
   unit: String(prefill?.unit ?? model?.unit ?? "") });
@@ -539,7 +540,8 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
   const search = async () => {
     setSearching(true);
     try {
-      const result = await postJson<{ available: boolean; devices: Found[] }>("/api/wallboxes/search", {});
+      const result = await postJson<{ available: boolean; devices: Found[] }>("/api/wallboxes/search",
+        http ? { model: d.model } : {});
       if (!result.available) toast(t("devices.nativeWallbox.searchUnavailable"), "error");
       setFound(result.available ? result.devices : null);
     } catch (e) {
@@ -551,6 +553,7 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
   const model = view.models.find((m) => m.key === d.model);
   const tuya = model?.protocol === "tuya";
   const modbus = model?.protocol === "modbus";
+  const http = model?.protocol === "http";
   const readOnly = !!model?.read_only;
   const shownOnly = readOnly && !model?.simulated; // a simulated control (#440) uses the limit and the waiting time
   const keyMissing = tuya && !d.local_key && !stored?.local_key_set;
@@ -580,18 +583,22 @@ function WallboxForm({ view, draft, busy, onSave, onCancel }: {
         <input className="input" value={d.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
       </Field>
       {readOnly && <Notice kind="info">{model?.controllable ? t("devices.nativeWallbox.controllableIntro")
-        : t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
+        : http ? t("devices.nativeWallbox.readOnlyIntroGoe") : t("devices.nativeWallbox.readOnlyIntro")}</Notice>}
       {modbus && <DeviceSearch label={t("devices.wallboxDirect.search")}
         onUse={(f) => set({ host: f.host, ...(f.port ? { port: String(f.port) } : {}) })} />}
       {tuya && <TuyaKeyGuide />}
-      {tuya && (view.search ? (
+      {http && <Notice kind="info">{t("devices.nativeWallbox.goeApi")}</Notice>}
+      {(tuya || http) && (view.search || http ? (
         <>
-          <Button variant="secondary" busy={searching} onClick={() => void search()}>{t("devices.nativeWallbox.search")}</Button>
-          {found && !found.length && <p className="hint">{t("devices.nativeWallbox.nothingFound")}</p>}
+          <Button variant="secondary" busy={searching} onClick={() => void search()}>
+            {http ? t("devices.nativeWallbox.searchGoe") : t("devices.nativeWallbox.search")}</Button>
+          {found && !found.length && <p className="hint">
+            {http ? t("devices.nativeWallbox.nothingFoundGoe") : t("devices.nativeWallbox.nothingFound")}</p>}
           {found?.map((f) => (
-            <div className="button-row" key={f.device_id}>
-              <span>{t("devices.nativeWallbox.foundAt", { host: f.host })}</span>
-              <Button variant="secondary" onClick={() => set({ host: f.host, device_id: f.device_id })}>{t("devices.nativeWallbox.use")}</Button>
+            <div className="button-row" key={f.device_id || f.host}>
+              <span>{http ? t("devices.nativeWallbox.foundAtGoe", { host: f.host })
+                : t("devices.nativeWallbox.foundAt", { host: f.host })}</span>
+              <Button variant="secondary" onClick={() => set({ host: f.host, device_id: f.device_id ?? "" })}>{t("devices.nativeWallbox.use")}</Button>
             </div>
           ))}
         </>
