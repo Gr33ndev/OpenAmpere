@@ -768,7 +768,8 @@
       "one": "Eine Nachricht wartet. OpenAmpere versucht es alle fünf Minuten wieder, einen Tag lang.",
       "other": "{count} Nachrichten warten. OpenAmpere versucht es alle fünf Minuten wieder, einen Tag lang."
     },
-    "switchOff": "E-Mails ausschalten"
+    "switchOff": "E-Mails ausschalten",
+    "paused": "Damit dein Postfach nicht wegen vieler falscher Anmeldungen gesperrt wird, versucht OpenAmpere es erst wieder, wenn du die Einstellungen änderst oder eine Test-E-Mail sendest."
   },
   "pairingCard": {
     "allow": "Code stimmt – erlauben",

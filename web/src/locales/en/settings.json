@@ -768,7 +768,8 @@
       "one": "One message is waiting. OpenAmpere tries again every five minutes, for one day.",
       "other": "{count} messages are waiting. OpenAmpere tries again every five minutes, for one day."
     },
-    "switchOff": "Switch off e-mails"
+    "switchOff": "Switch off e-mails",
+    "paused": "So that your mailbox is not locked after many failed logins, OpenAmpere tries again only once you change the settings or send a test e-mail."
   },
   "pairingCard": {
     "allow": "Code matches – allow",

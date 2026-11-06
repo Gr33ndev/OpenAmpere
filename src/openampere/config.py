@@ -270,11 +270,11 @@ SECRET_TARGETS = {"inverter.token": ("inverter.host",), "inverter.cert_sha256": 
 
 # Settings that identify a person or give access to their data (#164). Reads are open on the home network, so these
 # are only shown after login: the meter portal login and meter numbers, and the ntfy address (its topic is the only
-# protection of the push messages) and the e-mail addresses. Facts about the plant (size, battery, commissioning date) stay readable: whoever
+# protection of the push messages), the e-mail addresses and the mail server (often on the owner's own domain). Facts about the plant (size, battery, commissioning date) stay readable: whoever
 # is on the home network is at the house anyway, and the dashboard and the household need them.
 # The own host names (#437) are a domain of the owner as often as not.
-PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_user", "notify.mail_from",
-           "notify.mail_to", "server.allowed_hosts"}
+PRIVATE = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_host", "notify.mail_user",
+           "notify.mail_from", "notify.mail_to", "server.allowed_hosts"}
 
 # Never taken from a backup, the current value stays: a crafted backup could allow a name of an attacker and so open
 # the way for DNS rebinding (#437).

@@ -7,7 +7,7 @@ import { t } from "./i18n";
 import { LoginToSee } from "./AuthScreens";
 import { Button, Field, HOST_INPUT, LearnMore, Notice, Unsaved, toast } from "./ui";
 
-export type MailStatus = { mail: { error: string | null; since: number | null; queued: number } };
+export type MailStatus = { mail: { error: string | null; since: number | null; queued: number; paused: boolean } };
 
 type Security = "starttls" | "tls";
 type Form = { host: string; port: number; security: Security; user: string; from: string; to: string };
@@ -19,7 +19,7 @@ const lines = (text: string) => text.split(/[\s,;]+/).map((line) => line.trim())
 
 function formOf(values: Settings["values"]): Form {
   return {
-    host: values["notify.mail_host"], port: values["notify.mail_port"], security: values["notify.mail_security"],
+    host: values["notify.mail_host"] ?? "", port: values["notify.mail_port"], security: values["notify.mail_security"],
     user: values["notify.mail_user"] ?? "", from: values["notify.mail_from"] ?? "",
     to: (values["notify.mail_to"] ?? []).join("\n"),
   };
@@ -97,7 +97,8 @@ export function NotifyMail({ settings, save }: {
         {configured && mail?.error && (
           <Notice kind="warn">
             <p className="flush"><strong>{t("settings.notifyMail.failed")}</strong> {mail.error}</p>
-            {mail.queued > 0 && <p className="flush">{t("settings.notifyMail.queued", { count: mail.queued })}</p>}
+            {mail.paused && <p className="flush">{t("settings.notifyMail.paused")}</p>}
+            {!mail.paused && mail.queued > 0 && <p className="flush">{t("settings.notifyMail.queued", { count: mail.queued })}</p>}
           </Notice>
         )}
         <Field label={t("settings.notifyMail.server")} hint={t("settings.notifyMail.serverHint")} locked={locked("notify.mail_host")}>

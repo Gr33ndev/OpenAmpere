@@ -83,7 +83,7 @@ Es darf nur ein OpenAmpere mit dem Wechselrichter sprechen. Zwei stören sich ge
    Installation stoppen, im Terminal auf dem Server: `cd /opt/openampere && sudo docker compose down`
 2. **In der App:** den Einrichtungsassistenten durchgehen und dann unter **Mehr → Daten & Sicherung → Sicherung
    wiederherstellen** die Datei auswählen. OpenAmpere startet neu, mit deinem Verlauf und deinen Einstellungen.
-3. **Gespeicherte Zugangsdaten neu eintragen**, zum Beispiel für das Kundenportal des Netzbetreibers, ntfy, evcc oder
+3. **Gespeicherte Zugangsdaten neu eintragen**, zum Beispiel für das Kundenportal des Netzbetreibers, ntfy, das Postfach für E-Mails, evcc oder
    den Ampere.IQ-Import. Aus Sicherheitsgründen stehen sie nicht in der heruntergeladenen Sicherung. Das gilt auch für
    den Local Key einer Wallbox, die OpenAmpere selbst steuert: In der Sicherung steht er nur verschlüsselt mit dem
    Schlüssel der alten Installation. Die Wallbox behält ihre Einstellungen und zeigt unter **Mehr → Verbindung →

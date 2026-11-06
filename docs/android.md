@@ -131,7 +131,7 @@ From Docker or the Home Assistant app to the tablet:
 3. Install the app on the tablet and choose a password. You don't need the setup assistant.
 4. Under **Mehr → Daten & Sicherung**, pick the file at **Sicherung wiederherstellen** (restore backup).
 
-Passwords and keys for other services (evcc, ntfy, customer portal, local key of a wallbox) are not in the backup;
+Passwords and keys for other services (evcc, ntfy, the mailbox for e-mails, customer portal, local key of a wallbox) are not in the backup;
 enter them again on the tablet. Connected apps such as Home Assistant need the new address.
 
 The other way round works the same: download a backup on the tablet, stop or uninstall the app, restore the backup in

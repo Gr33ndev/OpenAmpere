@@ -136,7 +136,7 @@ Von Docker oder der Home-Assistant-App auf das Tablet:
 3. Die App auf dem Tablet installieren und ein Passwort festlegen. Den Einrichtungsassistenten brauchst du nicht.
 4. Unter **Mehr → Daten & Sicherung** bei **Sicherung wiederherstellen** die Datei auswählen.
 
-Passwörter und Schlüssel für andere Dienste (evcc, ntfy, Kundenportal, Local Key einer Wallbox) sind nicht in der
+Passwörter und Schlüssel für andere Dienste (evcc, ntfy, Postfach für E-Mails, Kundenportal, Local Key einer Wallbox) sind nicht in der
 Sicherung; trage sie auf dem Tablet neu ein. Verbundene Apps wie Home Assistant brauchen die neue Adresse.
 
 Umgekehrt geht es genauso: Sicherung auf dem Tablet herunterladen, die App beenden oder deinstallieren, Sicherung im

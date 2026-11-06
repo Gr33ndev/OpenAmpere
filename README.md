@@ -351,7 +351,7 @@ then it is safer to only block its internet access (see above). This is not lega
 
 The commands in this and the following sections are for an installation with the script in the default folder `/opt/openampere`. If you chose a different folder, replace `/opt/openampere` with your folder.
 
-**Backup in the app:** under **Mehr → Daten & Sicherung** (More → Data & backup), **Datensicherung herunterladen** (Download backup) downloads the complete database with all readings and settings as one file (`openampere-backup-<date>.db`). You need to be logged in for this. Passwords and API keys, for example for evcc, ntfy, the customer portal of the grid operator or the Ampere.IQ import, are not included. Keep the file in another place, for example on your computer or a USB stick.
+**Backup in the app:** under **Mehr → Daten & Sicherung** (More → Data & backup), **Datensicherung herunterladen** (Download backup) downloads the complete database with all readings and settings as one file (`openampere-backup-<date>.db`). You need to be logged in for this. Passwords and API keys, for example for evcc, ntfy, the mailbox for e-mail notifications, the customer portal of the grid operator or the Ampere.IQ import, are not included. Keep the file in another place, for example on your computer or a USB stick.
 
 **Backing up everything:** all data of OpenAmpere is in the folder `data` in the installation folder. Besides the database, it contains the file `secret.key`, the key for the stored passwords and API keys. If you back up this folder, you have everything. In a terminal on the server:
 

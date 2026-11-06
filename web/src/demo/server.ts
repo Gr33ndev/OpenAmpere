@@ -563,7 +563,7 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
   "/api/status": status,
   "/api/auth/status": () => ({ configured: true, authenticated: true }),
   "/api/settings": () => settings,
-  "/api/notify/status": () => ({ mail: { error: null, since: null, queued: 0 } }),
+  "/api/notify/status": () => ({ mail: { error: null, since: null, queued: 0, paused: false } }),
   "/api/energy/summary": energySummary,
   "/api/energy/timeline": energyTimeline,
   "/api/power/timeline": powerTimeline,

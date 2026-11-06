@@ -140,7 +140,7 @@ export type Settings = {
     "grid.rated_power_w": number;
     "grid.rated_power_reported_w": number;
     "notify.ntfy_url": string | null; // null without login (see hidden)
-    "notify.mail_host": string; // empty: no e-mail (#594)
+    "notify.mail_host": string | null; // empty: no e-mail (#594); null without login (see hidden)
     "notify.mail_port": number;
     "notify.mail_security": "starttls" | "tls";
     "notify.mail_user": string | null; // null without login (see hidden)

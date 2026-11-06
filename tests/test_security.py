@@ -154,7 +154,7 @@ PRIVATE_VALUES = {"meter.provider": "netze_bw", "meter.username": "owner@example
                   "meter.meter_ids": ["METER-AAA", "METER-BBB"], "notify.ntfy_url": "https://ntfy.sh/secret-topic-xyz",
                   "pv.installed_kwp": 9.5, "pv.commissioning_date": "2020-06-01", "battery.capacity_kwh": 10.0,
                   "cloud.api_key": "super-secret-key-wxyz"}
-HIDDEN = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_user", "notify.mail_from", "notify.mail_to",
+HIDDEN = {"meter.username", "meter.meter_ids", "notify.ntfy_url", "notify.mail_host", "notify.mail_user", "notify.mail_from", "notify.mail_to",
           "server.allowed_hosts"}
 
 

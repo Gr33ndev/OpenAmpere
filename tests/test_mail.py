@@ -339,7 +339,7 @@ async def test_an_event_goes_by_e_mail_once(tmp_path, monkeypatch, server, tls_p
         assert await firmware(notifier, runtime, now) == ["Neue Firmware am Wechselrichter"]
         assert await firmware(notifier, runtime, now + 60) == []  # once
         assert [m["Subject"] for m in fake.messages] == ["OpenAmpere: Neue Firmware am Wechselrichter"]
-        assert notifier.mail_status() == {"error": None, "since": None, "queued": 0}
+        assert notifier.mail_status() == {"error": None, "since": None, "queued": 0, "paused": False}
     finally:
         runtime.storage.close()
 
@@ -358,7 +358,8 @@ async def test_check_does_not_wait_for_the_mail_server(tmp_path, monkeypatch, se
         runtime.storage.close()
 
 
-async def test_a_failed_e_mail_is_retried_and_its_error_shown(tmp_path, monkeypatch, server, tls_pair):
+async def test_a_refused_login_is_not_tried_again_with_the_same_settings(tmp_path, monkeypatch, server, tls_pair):
+    """Many failed logins can lock the owner's mailbox: after a refused one, only a change or a test e-mail retries."""
     fake = server()
     runtime, notifier, _ = make_notifier(tmp_path, monkeypatch, tls_pair[1], fake.port)
     runtime.config.notify.mail_password = "wrong"
@@ -366,17 +367,48 @@ async def test_a_failed_e_mail_is_retried_and_its_error_shown(tmp_path, monkeypa
     try:
         assert await firmware(notifier, runtime, now) == ["Neue Firmware am Wechselrichter"]
         status = notifier.mail_status()
-        assert "Passwort abgelehnt" in status["error"] and status["queued"] == 1
+        assert "Passwort abgelehnt" in status["error"] and status["queued"] == 1 and status["paused"]
+        await firmware(notifier, runtime, now + 2 * RETRY_S)
+        assert len(fake.logins) == 1  # not tried again
+        runtime.config.notify.mail_password = PASSWORD  # changed: tried again at the next retry
+        assert not notifier.mail_status()["paused"]
+        await firmware(notifier, runtime, now + 3 * RETRY_S)
+        assert len(fake.messages) == 1 and notifier.mail_status()["queued"] == 0
+    finally:
+        runtime.storage.close()
+
+
+async def test_a_failed_e_mail_is_retried_and_its_error_shown(tmp_path, monkeypatch, server, tls_pair):
+    fake = server(silent=True)  # does not answer: tried again
+    runtime, notifier, _ = make_notifier(tmp_path, monkeypatch, tls_pair[1], fake.port)
+    monkeypatch.setattr(mail, "send", functools.partial(mail.send.func, context=tls_pair[1], deadline=0.5))
+    now = time.time()
+    try:
+        assert await firmware(notifier, runtime, now) == ["Neue Firmware am Wechselrichter"]
+        status = notifier.mail_status()
+        assert "antwortet nicht" in status["error"] and status["queued"] == 1 and not status["paused"]
         # kept over a restart
         notifier = Notifier(runtime)
         assert notifier.mail_status()["queued"] == 1
-        runtime.config.notify.mail_password = PASSWORD
+        fake = server()
+        runtime.config.notify.mail_port = fake.port
         notifier.retry_at["mail"] = now + RETRY_S
         await firmware(notifier, runtime, now + 60)  # not yet: waits for the retry
         assert fake.messages == []
         await firmware(notifier, runtime, now + RETRY_S)
-        assert len(fake.messages) == 1 and notifier.mail_status() == {"error": None, "since": None, "queued": 0}
+        assert len(fake.messages) == 1 and notifier.mail_status() == {"error": None, "since": None, "queued": 0, "paused": False}
         assert fake.messages[0]["Subject"] == "OpenAmpere: Neue Firmware am Wechselrichter"
+    finally:
+        runtime.storage.close()
+
+
+async def test_close_stops_the_delivery(tmp_path, monkeypatch, server, tls_pair):
+    fake = server(silent=True)
+    runtime, notifier, _ = make_notifier(tmp_path, monkeypatch, tls_pair[1], fake.port)
+    try:
+        await notifier.push("Titel", "Text")
+        await notifier.close()
+        assert notifier.delivery.cancelled() and notifier.mail_status()["queued"] == 1  # kept for the next start
     finally:
         runtime.storage.close()
 

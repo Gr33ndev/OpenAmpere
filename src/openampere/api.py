@@ -292,6 +292,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         yield
         watchdog_task.cancel()
         fast_task.cancel()
+        await notifier.close()
         # each step on its own, the remote control of the inverter first: an error in one must not skip the others;
         # a wallbox keeps charging as it is (it has no watchdog, and a restart for an update should not stop the car),
         # except one whose watchdog would charge on with its fallback current: let go of, a charge started stopped (#465)

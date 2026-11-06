@@ -12,8 +12,10 @@ again (as ntfy alone always did)."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
+import smtplib
 import time
 import urllib.parse
 import urllib.request
@@ -95,6 +97,10 @@ def charge_ended(point: ChargePoint, seconds: float | None) -> str:
     return text
 
 
+def _login(config: mail.MailSettings) -> tuple:
+    return config.host, config.port, config.security, config.user, config.password
+
+
 def send(url: str, token: str, title: str, message: str, tags: str = "") -> None:
     """Publishes as JSON to the server root (UTF-8 safe, unlike HTTP headers): https://ntfy.sh/topic."""
     if "@" in url:  # never part of a topic; urllib would take user name and password for the host name and quote
@@ -146,6 +152,9 @@ class Notifier:
         self.mail_error: str | None = None
         self.mail_error_since: float | None = None
         self.retry_at: dict[str, float] = {}
+        # the mail settings a login was refused with: not tried again with them (a mailbox can be locked after many
+        # failed logins), only after a change or a test e-mail
+        self.login_refused: tuple | None = None
         self.delivery: asyncio.Task | None = None
         self.fault_since: float | None = None  # first reading of the current fault, any code
         self.charging_at: dict[str, float] = {}  # per charge point: last check that saw it charging
@@ -212,15 +221,29 @@ class Notifier:
         except mail.MailError as err:
             self.mail_error_since = self.mail_error_since or time.time()
             self.mail_error = str(err)
+            if isinstance(err.__context__, smtplib.SMTPAuthenticationError):
+                self.login_refused = _login(config)
             raise
-        self.mail_error = self.mail_error_since = None
+        self.mail_error = self.mail_error_since = self.login_refused = None
         self.retry_at.pop("mail", None)  # it works (again): the queued ones go now
         self.deliver_soon()
 
     def mail_status(self) -> dict:
         """For the app: whether e-mails wait and why the last one failed."""
         return {"error": self.mail_error, "since": self.mail_error_since,
-                "queued": sum(1 for e in self.outbox if e["channel"] == "mail")}
+                "queued": sum(1 for e in self.outbox if e["channel"] == "mail"), "paused": self._mail_paused()}
+
+    def _mail_paused(self) -> bool:
+        """The login was refused with the current settings: no new try until they change or a test e-mail works."""
+        config = mail.settings(self.runtime.config.notify)
+        return config is not None and self.login_refused is not None and _login(config) == self.login_refused
+
+    async def close(self) -> None:
+        """On shutdown: no further sends; the queue is kept in the database for the next start."""
+        if self.delivery is not None and not self.delivery.done():
+            self.delivery.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.delivery
 
     def deliver_soon(self, now: float | None = None) -> None:
         """Starts sending the queued messages in the background, unless that runs already."""
@@ -241,7 +264,7 @@ class Notifier:
         if not on["mail"]:
             self.mail_error = self.mail_error_since = None
         for channel in ("mail", "ntfy"):
-            while now >= self.retry_at.get(channel, 0):
+            while now >= self.retry_at.get(channel, 0) and not (channel == "mail" and self._mail_paused()):
                 entry = next((e for e in self.outbox if e["channel"] == channel), None)
                 if entry is None:
                     break

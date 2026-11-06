@@ -13,7 +13,7 @@ async function withMail(api: { override(path: string, body: unknown): void }, va
 
 test("a failed e-mail and the waiting messages are shown", async ({ page, api }) => {
   await withMail(api, { "notify.mail_host": "smtp.example.com", "notify.mail_user": "owner@example.com" });
-  api.override("/api/notify/status", { mail: { error: "Der Mailserver antwortet nicht.", since: 1, queued: 2 } });
+  api.override("/api/notify/status", { mail: { error: "Der Mailserver antwortet nicht.", since: 1, queued: 2, paused: false } });
   await open(page, "more/notify");
   await expect(page.getByText("Die letzte E-Mail ließ sich nicht senden: Der Mailserver antwortet nicht.")).toBeVisible();
   await expect(page.getByText("2 Nachrichten warten.", { exact: false })).toBeVisible();

@@ -351,7 +351,7 @@ abklemmst. Bis dahin ist es sicherer, nur ihren Internetzugang zu sperren (siehe
 
 Die Befehle in diesem und den nächsten Abschnitten gelten für eine Installation mit dem Script im Standardordner `/opt/openampere`. Hast du einen anderen Ordner gewählt, ersetze `/opt/openampere` durch deinen Ordner.
 
-**Sicherung in der App:** Unter **Mehr → Daten & Sicherung** lädt **Datensicherung herunterladen** die komplette Datenbank mit allen Messwerten und Einstellungen als eine Datei herunter (`openampere-backup-<Datum>.db`). Dafür musst du angemeldet sein. Passwörter und API-Schlüssel, etwa für evcc, ntfy, das Kundenportal des Netzbetreibers oder den Ampere.IQ-Import, sind nicht enthalten. Bewahre die Datei an einem anderen Ort auf, zum Beispiel auf deinem Computer oder einem USB-Stick.
+**Sicherung in der App:** Unter **Mehr → Daten & Sicherung** lädt **Datensicherung herunterladen** die komplette Datenbank mit allen Messwerten und Einstellungen als eine Datei herunter (`openampere-backup-<Datum>.db`). Dafür musst du angemeldet sein. Passwörter und API-Schlüssel, etwa für evcc, ntfy, das Postfach für E-Mail-Benachrichtigungen, das Kundenportal des Netzbetreibers oder den Ampere.IQ-Import, sind nicht enthalten. Bewahre die Datei an einem anderen Ort auf, zum Beispiel auf deinem Computer oder einem USB-Stick.
 
 **Alles sichern:** Alle Daten von OpenAmpere liegen im Ordner `data` im Installationsordner. Dazu gehört neben der Datenbank die Datei `secret.key`, der Schlüssel für die gespeicherten Passwörter und API-Schlüssel. Wer diesen Ordner sichert, hat alles. Auf dem Server im Terminal:
 

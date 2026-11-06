@@ -77,7 +77,7 @@ Only one OpenAmpere may talk to the inverter. Two of them disturb each other.
    server: `cd /opt/openampere && sudo docker compose down`
 2. **In the app:** go through the setup wizard, then restore the backup under **More → Data & backup → Restore
    backup**. OpenAmpere restarts with your history and settings.
-3. **Enter stored credentials again**, for example for the customer portal of the grid operator, ntfy, evcc or the
+3. **Enter stored credentials again**, for example for the customer portal of the grid operator, ntfy, the mailbox for e-mails, evcc or the
    Ampere.IQ import. For safety, they are not part of the downloaded backup. The same goes for the local key of a
    wallbox OpenAmpere controls itself: the backup holds it only encrypted with the key of the old installation. The
    wallbox keeps its settings and shows **Local Key neu eintragen** (Enter the local key again) under **More →
