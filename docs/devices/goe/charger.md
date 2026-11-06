@@ -48,6 +48,8 @@ API v2: `GET http://<address>/api/status?filter=car,nrg,wh,amp,ama,fwv,cdi`. API
 | No login on the local network. | documented | go-e API v1 and v2 descriptions |
 | `filter` in the query (comma separated) works from firmware 051.4; go-e advises to read the whole status only rarely. | documented | go-e API v2 description |
 | Hardware generations by the name they report over OCPP: V3 "go-eCharger" (HOME), V4 "go-eCharger_V4" (Gemini), V5 "go-eCharger_V5" (Gemini 2.0), "go-eCharger_Pro". Which generation HOME fix and Gemini flex are is open. | documented (names); open (variants) | go-e OCPP description |
+| API v2 exists from hardware V3 (HOME) on; the older hardware V2 has only API v1 (firmware 033 and later). | documented (v2 for V3 and newer); derived (V2 only v1) | go-e API v1 and v2 descriptions; a forum post of a Homey developer |
+| The charger comes in an 11 kW and a 22 kW variant (API v2 key `var`): at most 22 kW, which is why OpenAmpere takes a total above 30 kW as a wrong unit. | documented | go-e API v2 description |
 | API v1: go-e recommends at least 5 s between two requests; no rate limit on the local network. OpenAmpere reads every 10 s. | documented | go-e API v1 description |
 | How many HTTP clients may read at the same time is not documented. HTTP holds no connection between requests, so evcc and OpenAmpere reading the same charger should work. | open | – |
 | evcc tells the APIs apart the same way: API v2 if `/api/status` answers, otherwise API v1. | derived | evcc documentation and `charger/go-e/` (MIT) |
