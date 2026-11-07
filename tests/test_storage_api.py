@@ -454,3 +454,19 @@ def test_power_timeline_shows_the_average_power_of_imported_quarter_hours(tmp_pa
     assert values == [(base, 4000.0, 1200.0, -2000.0, -800.0, True),
                       (base + 900, 0.0, 1600.0, 600.0, 1000.0, True),
                       (base + 1800, 200.0, None, None, None, True)]
+
+
+def test_power_timeline_keeps_a_gap_of_openampere_itself(tmp_path):
+    """#600: quarter hours OpenAmpere filled itself after a gap in its readings (energy spread evenly) get no average
+    power on a day with readings; on a day whose readings are gone (retention) they do."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 6, 0, tzinfo=TZ).timestamp()
+    storage.add_snapshot(snap(base + 10, 1000, 400))
+    storage.add_snapshot(snap(base + 4 * 3600 + 10, 5000, 2000))  # four hours without readings, spread over 16 quarters
+    assert len(storage.energy(base, base + 4 * 3600)) == 16
+    client = TestClient(create_app(Runtime({}, storage)))
+    entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+    assert entries and not any(e.get("quarter") for e in entries)
+    storage.prune(1)  # the readings of that day are gone; its quarter hours are all that is left
+    entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+    assert len(entries) == 16 and all(e["quarter"] and e["pv"] == 1000.0 for e in entries)

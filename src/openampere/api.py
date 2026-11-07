@@ -1577,10 +1577,12 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries.append(entry)
         # a quarter hour without local readings, e.g. a day imported from the cloud (#468) or older than the readings
         # are kept: the average power of the quarter hour from its energy (Wh × 4 = W, #600) and its state of charge,
-        # with the signs of the live values; "quarter" tells the app that this point is such an average
+        # with the signs of the live values; "quarter" tells the app that this point is such an average. OpenAmpere's own
+        # quarter hours on a day with readings are a gap it spread its counters over evenly (no readings, e.g. the
+        # tablet was off): a flat line there would be made up, so they stay a gap
         read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
         for row in storage.energy(start, end):
-            if row["ts"] // 900 * 900 in read:
+            if row["ts"] // 900 * 900 in read or (buckets and row.get("source") == "local"):
                 continue
             entry = {"ts": row["ts"], "pv": _quarter_power(row, "pv"), "house": _quarter_power(row, "load"),
                      "grid": _quarter_power(row, "grid_import", "grid_export"),
