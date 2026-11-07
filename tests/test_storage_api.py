@@ -427,10 +427,79 @@ def test_power_timeline_shows_the_imported_state_of_charge(tmp_path):
     storage.add_snapshot(snap(base + 1800 + 60, 1000, 400))  # local readings from the third quarter hour on
     client = TestClient(create_app(Runtime({}, storage)))
     entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
-    imported = [e for e in entries if e["pv"] is None]
+    imported = [e for e in entries if e.get("quarter")]
     assert [(e["ts"], e["soc"]) for e in imported] == [(base, 40.0), (base + 900, 42.0)]
     assert [e["ts"] for e in entries] == sorted(e["ts"] for e in entries)
-    assert all(e["ts"] >= base + 1800 for e in entries if e["pv"] is not None)  # the local quarter hour: readings only
-    # a step longer than a quarter hour: the quarter hours of an hour with readings get no empty entries
+    assert all(e["ts"] >= base + 1800 for e in entries if not e.get("quarter"))  # the local quarter hour: readings only
+    # a step longer than a quarter hour: the quarter hours of an hour with readings get no extra entries
     hourly = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 3600}).json()["entries"]
-    assert [(e["ts"], e["soc"]) for e in hourly if e["pv"] is None] == [(base, 40.0), (base + 900, 42.0)]
+    assert [(e["ts"], e["soc"]) for e in hourly if e.get("quarter")] == [(base, 40.0), (base + 900, 42.0)]
+
+
+def test_power_timeline_shows_the_average_power_of_imported_quarter_hours(tmp_path):
+    """#600: a quarter hour without local readings gets its average power from the stored energy (Wh × 4), with the
+    signs of the live values: grid + import, − export; battery + discharging, − charging."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.import_energy([
+        {"ts": int(base), "pv": 1000.0, "load": 300.0, "grid_import": 0.0, "grid_export": 500.0,
+         "battery_charge": 200.0, "battery_discharge": 0.0},
+        {"ts": int(base + 900), "pv": 0.0, "load": 400.0, "grid_import": 150.0, "grid_export": 0.0,
+         "battery_charge": 0.0, "battery_discharge": 250.0},
+        {"ts": int(base + 1800), "pv": 50.0, "load": None},  # only part of the flows: the others stay empty
+    ], "cloud")
+    entries = TestClient(create_app(Runtime({}, storage))).get(
+        "/api/power/timeline", params={"date": "2026-06-01", "step": 60}).json()["entries"]
+    values = [(e["ts"], e["pv"], e["house"], e["grid"], e["battery"], e["quarter"]) for e in entries]
+    assert values == [(base, 4000.0, 1200.0, -2000.0, -800.0, True),
+                      (base + 900, 0.0, 1600.0, 600.0, 1000.0, True),
+                      (base + 1800, 200.0, None, None, None, True)]
+
+
+def test_power_timeline_keeps_a_gap_of_openampere_itself(tmp_path):
+    """#600: quarter hours OpenAmpere filled itself after a gap in its readings (energy spread evenly) stay a gap, also
+    once the readings around them are pruned; its own quarter hours with readings get their averages once pruned."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 6, 0, tzinfo=TZ).timestamp()
+    pv = 1000
+    for i in range(4):  # an hour with readings: four quarter hours with different energy
+        pv += 100 * (i + 1)
+        storage.add_snapshot(snap(base + i * 900 + 10, pv, 400 + 50 * i))
+    storage.add_snapshot(snap(base + 3600 + 10, pv + 100, 600))
+    storage.add_snapshot(snap(base + 5 * 3600 + 10, pv + 4100, 2000))  # four hours without readings: 16 equal quarters
+    storage.add_snapshot(snap(base + 5 * 3600 + 910, pv + 4200, 2100))
+    client = TestClient(create_app(Runtime({}, storage)))
+
+    def get():
+        return client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+
+    entries = get()
+    assert entries and not any(e.get("quarter") for e in entries)
+    # retention cuts partway through the day: everything before the last reading is pruned
+    with storage._db:
+        storage._db.execute("DELETE FROM samples WHERE ts < ?", (base + 5 * 3600 + 900,))
+    quarters = [e["ts"] for e in get() if e.get("quarter")]
+    assert quarters == [base + i * 900 for i in range(4)] + [base + 5 * 3600]  # the spread gap (07:00–11:00) stays one
+
+
+def test_power_timeline_tells_a_spread_gap_from_equal_quarter_hours(tmp_path):
+    """#600: once pruned, quarter hours with exactly the same energy (0.1 kWh counters at night) keep their averages, as
+    they have a state of charge; a spread gap across midnight stays a gap on both days."""
+    storage = Storage(tmp_path / "t.db")
+    flows = {"pv": 0.0, "load": 100.0, "grid_import": 100.0, "grid_export": 0.0, "battery_charge": 0.0,
+             "battery_discharge": 0.0}
+    base = datetime(2026, 6, 1, 23, 0, tzinfo=TZ).timestamp()
+    with storage._db:
+        rows = [(base + i * 900, 60.0) for i in range(3)]  # 23:00–23:30 measured: equal energy, each with soc
+        rows += [(base + 2700 + i * 900, None) for i in range(4)] + [(base + 2700 + 4 * 900, 55.0)]  # spread 23:45–00:45
+        storage._db.executemany(
+            f"INSERT INTO energy_15m(ts, {', '.join(flows)}, soc, source) VALUES (?, {', '.join('?' * len(flows))}, ?, 'local')",
+            [(ts, *(v * (2 if ts >= base + 2700 else 1) for v in flows.values()), soc) for ts, soc in rows])
+    client = TestClient(create_app(Runtime({}, storage)))
+
+    def quarters(date):
+        entries = client.get("/api/power/timeline", params={"date": date, "step": 300}).json()["entries"]
+        return [e["ts"] for e in entries if e.get("quarter")]
+
+    assert quarters("2026-06-01") == [base, base + 900, base + 1800]
+    assert quarters("2026-06-02") == []

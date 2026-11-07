@@ -105,6 +105,15 @@ def add_part(total: float | None, part: float | None) -> float | None:
     return total if part is None else (total or 0.0) + part
 
 
+def _quarter_power(row: dict, plus: str, minus: str | None = None) -> float | None:
+    """Average power in W of a quarter hour from its energy in Wh (#600), `plus` minus `minus` for a flow with two
+    directions; None if the quarter hour has neither."""
+    values = [row.get(plus), row.get(minus) if minus else None]
+    if values[0] is None and values[1] is None:
+        return None
+    return ((values[0] or 0.0) - (values[1] or 0.0)) * 4
+
+
 def ratios(flows: dict) -> dict:
     """Autarky = share of consumption not drawn from the grid; self-consumption = share of PV used locally."""
     load, pv = flows.get("load") or 0, flows.get("pv") or 0
@@ -1566,13 +1575,37 @@ def create_app(runtime: Runtime) -> FastAPI:
                 values = [r[key] for r in rows if r[key] is not None]
                 entry[key] = sum(values) / len(values) if values else None
             entries.append(entry)
-        # a quarter hour without local readings, e.g. a day imported from the cloud (#468): the state of charge stored
-        # per quarter hour, so the line is drawn there as well; the power values stay empty
+        # a quarter hour without local readings, e.g. a day imported from the cloud (#468) or older than the readings
+        # are kept: the average power of the quarter hour from its energy (Wh × 4 = W, #600) and its state of charge,
+        # with the signs of the live values; "quarter" tells the app that this point is such an average. A gap in
+        # OpenAmpere's own readings (e.g. the tablet was off) has its counters spread evenly over its quarter hours; a flat
+        # line there would be made up, so it stays a gap: after the oldest reading still kept every own quarter hour
+        # without readings is such a gap; before it (pruned) the spread shows as neighbours with exactly the same energy
+        # of which at least one has no state of charge (only the last quarter of a spread gets one, every quarter hour
+        # with readings has one), looked up across midnight as well
         read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
-        for row in storage.energy(start, end):
-            if row.get("soc") is not None and row["ts"] // 900 * 900 not in read:
-                entries.append({"ts": row["ts"], **dict.fromkeys(("pv", "house", "grid", "battery", EXTERNAL)),
-                                "soc": row["soc"]})
+        kept_since = storage.first_sample_ts()
+        rows = storage.energy(start - 900, end + 900)
+        own = {row["ts"]: (tuple(row.get(f) for f in (*FLOWS, EXTERNAL)), row.get("soc"))
+               for row in rows if row.get("source") == "local"}
+
+        def spread(ts: int) -> bool:
+            values, soc = own[ts]
+            return any(n is not None and n[0] == values and (soc is None or n[1] is None)
+                       for n in (own.get(ts - 900), own.get(ts + 900)))
+
+        for row in rows:
+            ts = row["ts"]
+            if not start <= ts < end or ts // 900 * 900 in read:
+                continue
+            if ts in own and ((kept_since is not None and ts + 900 > kept_since) or spread(ts)):
+                continue
+            entry = {"ts": row["ts"], "pv": _quarter_power(row, "pv"), "house": _quarter_power(row, "load"),
+                     "grid": _quarter_power(row, "grid_import", "grid_export"),
+                     "battery": _quarter_power(row, "battery_discharge", "battery_charge"),
+                     "soc": row.get("soc"), EXTERNAL: _quarter_power(row, EXTERNAL), "quarter": True}
+            if any(entry[k] is not None for k in ("pv", "house", "grid", "battery", "soc")):
+                entries.append(entry)
         entries.sort(key=lambda e: e["ts"])
         return {"from": start, "to": end, "step": step, "entries": entries}
 

@@ -103,7 +103,7 @@ export type Summary = {
 
 export type EnergyEntry = Counters & { ts: number; soc: number | null };
 export type PowerEntry = { ts: number; pv: number | null; house: number | null; grid: number | null; battery: number | null; soc: number | null;
-  pv_external?: number | null };
+  pv_external?: number | null; quarter?: boolean };
 
 export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "notify.mail_password" | "evcc.password" | "meter.password" | "inverter.token"
   | "inverter.cert_sha256";

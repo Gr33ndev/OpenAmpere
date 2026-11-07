@@ -164,7 +164,7 @@
     "socRightAxis": "Ladestand (rechte Achse)",
     "legendHint": "Tippe auf einen Eintrag, um seine Linie aus- oder wieder einzublenden.",
     "externalPart": "davon {name}",
-    "onlyQuarterHours": "Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden. Die Arbeit siehst du unter „{view}“.",
+    "quarterAverage": "Für diesen Tag sind nicht alle Messwerte gespeichert, etwa weil er aus der Cloud importiert wurde oder älter ist, als die Messwerte aufbewahrt werden. Wo sie fehlen, zeigen die Linien die mittlere Leistung jeder Viertelstunde. Die Arbeit siehst du unter „{view}“.",
     "socImportPending": "Den Ladestand dieses Tages holt der laufende Import aus der EKD-Cloud noch, er erscheint hier später."
   },
   "temperatureSection": {

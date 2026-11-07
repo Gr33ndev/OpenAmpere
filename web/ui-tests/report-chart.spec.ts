@@ -144,15 +144,47 @@ test("a PV input is hidden with the legend of its chart", async ({ page, api }) 
   await drawn(chart, "#a78bfa", "West now from the axis", 2);
 });
 
-// #468: a day imported from the cloud has no local readings; the "Leistung" view draws its state of charge
-test("the power view of an imported day shows the state of charge", async ({ page, api }) => {
+/** Pixels of a colour (a css variable) anywhere in the plot: more than a few means a line of that colour is drawn. */
+async function pixels(chart: Locator, color: string) {
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart.locator("canvas")).toBeVisible();
+  return chart.evaluate((el, color) => {
+    const canvas = el.querySelector("canvas")!;
+    const probe = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+    probe.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(color).trim();
+    probe.fillRect(0, 0, 1, 1);
+    const rgb = [...probe.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) if (data[i + 3] > 200 && rgb.every((v, k) => Math.abs(data[i + k] - v) < 8)) n++;
+    return n;
+  }, color);
+}
+
+// #468, #600: a day imported from the cloud has no local readings; the "Leistung" view draws the average power of each
+// quarter hour and its state of charge, and says that these are averages
+test("the power view of an imported day shows the average power of the quarter hours", async ({ page, api }) => {
   await page.clock.install({ time: new Date("2026-10-07T12:00:00") });
-  const quarter = (h: number, soc: number) => ({ ts: new Date(2026, 9, 7, h).getTime() / 1000, pv: null, house: null,
-    grid: null, battery: null, soc });
-  api.override("/api/power/timeline", { from: 0, to: 0, step: 300, entries: [quarter(8, 40), quarter(9, 45), quarter(10, 52)] });
+  const quarter = (h: number, m: number, pv: number, soc: number) => ({ ts: new Date(2026, 9, 7, h, m).getTime() / 1000,
+    pv, house: 600, grid: 600 - pv, battery: 0, soc, pv_external: null, quarter: true });
+  api.override("/api/power/timeline", { from: 0, to: 0, step: 300, entries: [quarter(8, 0, 400, 40), quarter(8, 15, 2000, 42),
+    quarter(8, 30, 4000, 45), quarter(8, 45, 3000, 47), quarter(9, 0, 3500, 52)] });
   await open(page, "report");
   await expect(page.locator(".legend").first().getByRole("button", { name: "Ladestand (rechte Achse)" })).toBeVisible();
-  await expect(page.getByText("Für diesen Tag gibt es keine Leistungswerte, nur den Ladestand der Viertelstunden.",
+  await expect(page.getByText("Wo sie fehlen, zeigen die Linien die mittlere Leistung jeder Viertelstunde.",
     { exact: false })).toBeVisible();
+  const chart = page.locator(".chart").first();
+  await expect.poll(() => pixels(chart, "--pv"), { message: "the solar line is drawn" }).toBeGreaterThan(20);
   expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("a day with all its readings has no hint about quarter-hour averages", async ({ page, api }) => {
+  await page.clock.install({ time: new Date("2026-10-07T12:00:00") });
+  const at = (h: number) => new Date(2026, 9, 7, h).getTime() / 1000;
+  api.override("/api/power/timeline", { from: 0, to: 0, step: 300, entries: [
+    { ts: at(10), pv: 1000, house: 400, grid: 0, battery: 600, soc: 50 },
+    { ts: at(11), pv: 1200, house: 500, grid: 0, battery: 700, soc: 55 }] });
+  await open(page, "report");
+  await expect(page.getByText("Netz über null heißt Bezug")).toBeVisible();
+  await expect(page.getByText("mittlere Leistung jeder Viertelstunde", { exact: false })).toHaveCount(0);
 });
