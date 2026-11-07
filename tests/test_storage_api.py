@@ -480,3 +480,26 @@ def test_power_timeline_keeps_a_gap_of_openampere_itself(tmp_path):
         storage._db.execute("DELETE FROM samples WHERE ts < ?", (base + 5 * 3600 + 900,))
     quarters = [e["ts"] for e in get() if e.get("quarter")]
     assert quarters == [base + i * 900 for i in range(4)] + [base + 5 * 3600]  # the spread gap (07:00–11:00) stays one
+
+
+def test_power_timeline_tells_a_spread_gap_from_equal_quarter_hours(tmp_path):
+    """#600: once pruned, quarter hours with exactly the same energy (0.1 kWh counters at night) keep their averages, as
+    they have a state of charge; a spread gap across midnight stays a gap on both days."""
+    storage = Storage(tmp_path / "t.db")
+    flows = {"pv": 0.0, "load": 100.0, "grid_import": 100.0, "grid_export": 0.0, "battery_charge": 0.0,
+             "battery_discharge": 0.0}
+    base = datetime(2026, 6, 1, 23, 0, tzinfo=TZ).timestamp()
+    with storage._db:
+        rows = [(base + i * 900, 60.0) for i in range(3)]  # 23:00–23:30 measured: equal energy, each with soc
+        rows += [(base + 2700 + i * 900, None) for i in range(4)] + [(base + 2700 + 4 * 900, 55.0)]  # spread 23:45–00:45
+        storage._db.executemany(
+            f"INSERT INTO energy_15m(ts, {', '.join(flows)}, soc, source) VALUES (?, {', '.join('?' * len(flows))}, ?, 'local')",
+            [(ts, *(v * (2 if ts >= base + 2700 else 1) for v in flows.values()), soc) for ts, soc in rows])
+    client = TestClient(create_app(Runtime({}, storage)))
+
+    def quarters(date):
+        entries = client.get("/api/power/timeline", params={"date": date, "step": 300}).json()["entries"]
+        return [e["ts"] for e in entries if e.get("quarter")]
+
+    assert quarters("2026-06-01") == [base, base + 900, base + 1800]
+    assert quarters("2026-06-02") == []

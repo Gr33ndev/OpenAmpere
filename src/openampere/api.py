@@ -1580,17 +1580,25 @@ def create_app(runtime: Runtime) -> FastAPI:
         # with the signs of the live values; "quarter" tells the app that this point is such an average. A gap in
         # OpenAmpere's own readings (e.g. the tablet was off) has its counters spread evenly over its quarter hours; a flat
         # line there would be made up, so it stays a gap: after the oldest reading still kept every own quarter hour
-        # without readings is such a gap, before it (pruned) the spread shows as neighbours with exactly the same energy
+        # without readings is such a gap; before it (pruned) the spread shows as neighbours with exactly the same energy
+        # of which at least one has no state of charge (only the last quarter of a spread gets one, every quarter hour
+        # with readings has one), looked up across midnight as well
         read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
         kept_since = storage.first_sample_ts()
-        rows = storage.energy(start, end)
-        own = {row["ts"]: tuple(row.get(f) for f in (*FLOWS, EXTERNAL)) for row in rows if row.get("source") == "local"}
+        rows = storage.energy(start - 900, end + 900)
+        own = {row["ts"]: (tuple(row.get(f) for f in (*FLOWS, EXTERNAL)), row.get("soc"))
+               for row in rows if row.get("source") == "local"}
+
+        def spread(ts: int) -> bool:
+            values, soc = own[ts]
+            return any(n is not None and n[0] == values and (soc is None or n[1] is None)
+                       for n in (own.get(ts - 900), own.get(ts + 900)))
+
         for row in rows:
             ts = row["ts"]
-            if ts in own and ((kept_since is not None and ts + 900 > kept_since)
-                              or own[ts] in (own.get(ts - 900), own.get(ts + 900))):
+            if not start <= ts < end or ts // 900 * 900 in read:
                 continue
-            if ts // 900 * 900 in read:
+            if ts in own and ((kept_since is not None and ts + 900 > kept_since) or spread(ts)):
                 continue
             entry = {"ts": row["ts"], "pv": _quarter_power(row, "pv"), "house": _quarter_power(row, "load"),
                      "grid": _quarter_power(row, "grid_import", "grid_export"),
