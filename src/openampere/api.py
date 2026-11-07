@@ -1577,15 +1577,20 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries.append(entry)
         # a quarter hour without local readings, e.g. a day imported from the cloud (#468) or older than the readings
         # are kept: the average power of the quarter hour from its energy (Wh × 4 = W, #600) and its state of charge,
-        # with the signs of the live values; "quarter" tells the app that this point is such an average. OpenAmpere's own
-        # quarter hours count only before its oldest reading still kept (pruned): after it, a quarter hour without
-        # readings is a gap it spread its counters over evenly (e.g. the tablet was off), and a flat line there would be
-        # made up, so it stays a gap
+        # with the signs of the live values; "quarter" tells the app that this point is such an average. A gap in
+        # OpenAmpere's own readings (e.g. the tablet was off) has its counters spread evenly over its quarter hours; a flat
+        # line there would be made up, so it stays a gap: after the oldest reading still kept every own quarter hour
+        # without readings is such a gap, before it (pruned) the spread shows as neighbours with exactly the same energy
         read = {row["ts"] // 900 * 900 for rows in buckets.values() for row in rows}
         kept_since = storage.first_sample_ts()
-        for row in storage.energy(start, end):
-            own = row.get("source") == "local" and kept_since is not None and row["ts"] + 900 > kept_since
-            if row["ts"] // 900 * 900 in read or own:
+        rows = storage.energy(start, end)
+        own = {row["ts"]: tuple(row.get(f) for f in (*FLOWS, EXTERNAL)) for row in rows if row.get("source") == "local"}
+        for row in rows:
+            ts = row["ts"]
+            if ts in own and ((kept_since is not None and ts + 900 > kept_since)
+                              or own[ts] in (own.get(ts - 900), own.get(ts + 900))):
+                continue
+            if ts // 900 * 900 in read:
                 continue
             entry = {"ts": row["ts"], "pv": _quarter_power(row, "pv"), "house": _quarter_power(row, "load"),
                      "grid": _quarter_power(row, "grid_import", "grid_export"),

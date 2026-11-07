@@ -366,8 +366,8 @@ Averages per step in W, with the signs of `live`: `grid` + import, − export; `
 step without readings is missing. A quarter hour with no readings but with stored energy or state of charge (a day
 imported from the former cloud, or older than the readings are kept) has one entry at its start with
 `"quarter": true`: the average power of that quarter hour from its energy (Wh × 4) and its state of charge. Values
-the quarter hour has no energy for are `null`. A gap in the readings after the oldest reading still kept (OpenAmpere
-did not run) stays missing.
+the quarter hour has no energy for are `null`. A gap in OpenAmpere's own readings (it did not run) stays missing, also
+once the readings around it are no longer kept.
 
 #### `GET /history/pv-inputs`
 

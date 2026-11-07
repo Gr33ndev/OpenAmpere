@@ -457,21 +457,26 @@ def test_power_timeline_shows_the_average_power_of_imported_quarter_hours(tmp_pa
 
 
 def test_power_timeline_keeps_a_gap_of_openampere_itself(tmp_path):
-    """#600: quarter hours OpenAmpere filled itself after a gap in its readings (energy spread evenly) get no average
-    power on a day with readings; on a day whose readings are gone (retention) they do."""
+    """#600: quarter hours OpenAmpere filled itself after a gap in its readings (energy spread evenly) stay a gap, also
+    once the readings around them are pruned; its own quarter hours with readings get their averages once pruned."""
     storage = Storage(tmp_path / "t.db")
     base = datetime(2026, 6, 1, 6, 0, tzinfo=TZ).timestamp()
-    storage.add_snapshot(snap(base + 10, 1000, 400))
-    storage.add_snapshot(snap(base + 4 * 3600 + 10, 5000, 2000))  # four hours without readings, spread over 16 quarters
-    assert len(storage.energy(base, base + 4 * 3600)) == 16
+    pv = 1000
+    for i in range(4):  # an hour with readings: four quarter hours with different energy
+        pv += 100 * (i + 1)
+        storage.add_snapshot(snap(base + i * 900 + 10, pv, 400 + 50 * i))
+    storage.add_snapshot(snap(base + 3600 + 10, pv + 100, 600))
+    storage.add_snapshot(snap(base + 5 * 3600 + 10, pv + 4100, 2000))  # four hours without readings: 16 equal quarters
+    storage.add_snapshot(snap(base + 5 * 3600 + 910, pv + 4200, 2100))
     client = TestClient(create_app(Runtime({}, storage)))
-    entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+
+    def get():
+        return client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
+
+    entries = get()
     assert entries and not any(e.get("quarter") for e in entries)
-    # the readings up to the second snapshot are pruned (retention cuts partway through a day): the quarter hours before
-    # the oldest reading still kept get their averages, the readings after it stay
+    # retention cuts partway through the day: everything before the last reading is pruned
     with storage._db:
-        storage._db.execute("DELETE FROM samples WHERE ts < ?", (base + 4 * 3600,))
-    entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
-    quarters = [e for e in entries if e.get("quarter")]
-    assert len(quarters) == 16 and all(e["pv"] == 1000.0 for e in quarters)
-    assert any(not e.get("quarter") for e in entries)
+        storage._db.execute("DELETE FROM samples WHERE ts < ?", (base + 5 * 3600 + 900,))
+    quarters = [e["ts"] for e in get() if e.get("quarter")]
+    assert quarters == [base + i * 900 for i in range(4)] + [base + 5 * 3600]  # the spread gap (07:00–11:00) stays one
