@@ -993,6 +993,68 @@ class SimulatedWeidmueller(SimulatedInverter):
         return super().handle(pdu)
 
 
+class SimulatedGoe:
+    """go-e Charger over its local HTTP API (wallbox/goe.py, #597), keys and units as OpenAmpere assumes them (not yet
+    confirmed on a device). `api`: 2 answers GET /api/status (with `filter`) and /status, 1 only /status like hardware
+    V2 or a charger whose HTTP API v2 is switched off. `charging`: a car charges at 16 A on three phases. Every request
+    is kept in `requests` as (method, path): the live view must only ask for the status. Everything else gets 404, so
+    a write (/api/set, /mqtt) is never taken."""
+
+    def __init__(self, *, api: int = 2, charging: bool = False, firmware: str = "56.9") -> None:
+        self.api, self.charging, self.firmware = api, charging, firmware
+        self.requests: list[tuple[str, str]] = []
+
+    def v2(self) -> dict:
+        """Voltages in V, currents in A, powers in W, the energy of the charge in Wh."""
+        on = self.charging
+        amps, power = (16.0, 11040.0) if on else (0.0, 0.0)
+        return {"car": 2 if on else 1, "amp": 16, "ama": 16, "alw": True, "fwv": self.firmware,
+                "nrg": [230, 231, 232, 0, amps, amps, amps, power / 3, power / 3, power / 3, 0, power, 99, 99, 99, 0],
+                "wh": 2500.0 if on else 0.0, "eto": 1234567,
+                "cdi": {"type": 1, "value": 1_800_000} if on else {"type": 0}, "err": 0, "sse": "123456"}
+
+    def v1(self) -> dict:
+        """Values as strings or whole numbers: currents in 0.1 A, phase powers in 0.1 kW, the total in 0.01 kW, the
+        energy of the charge in 10 Ws."""
+        on = self.charging
+        return {"version": "B", "car": "2" if on else "1", "amp": "16", "fwv": f"0{self.firmware}",
+                "nrg": [230, 231, 232, 0, *([160] * 3 if on else [0] * 3), *([37] * 3 if on else [0] * 3), 0,
+                        1104 if on else 0, 99, 99, 99, 0],
+                "dws": "900000" if on else "0", "eto": "12345", "sse": "123456"}
+
+    def answer(self, path: str) -> dict | None:
+        route, _, query = path.partition("?")
+        if route == "/status":
+            return self.v1()
+        if route == "/api/status" and self.api == 2:
+            values = self.v2()
+            keys = next((v.split(",") for k, _, v in (p.partition("=") for p in query.split("&")) if k == "filter"),
+                        None)
+            return {k: v for k, v in values.items() if keys is None or k in keys}
+        return None
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            head = await reader.readuntil(b"\r\n\r\n")
+            method, path = head.decode("latin-1").split("\r\n")[0].split(" ")[:2]
+            self.requests.append((method, path))
+            answer = self.answer(path) if method == "GET" else None
+            if answer is None:
+                writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                return
+            data = json.dumps(answer).encode()
+            writer.write(f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(data)}\r\n"
+                         "Connection: close\r\n\r\n".encode() + data)
+        except (asyncio.IncompleteReadError, asyncio.LimitOverrunError, ConnectionError, ValueError):
+            pass
+        finally:
+            try:
+                await writer.drain()
+            except ConnectionError:
+                pass
+            writer.close()
+
+
 class SimulatedTuyaCharger:
     """The portable dé wallbox over Tuya LAN 3.5 (wallbox/de_tuya.py): data points like an owner's status reads,
     the session key exchange of tuya.py, and only one connection at a time like the real device. `plugged`: a car is
@@ -1109,13 +1171,16 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
     parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "enphase", "mypv", "foxess-charger",
-                                             "weidmueller", "de-tuya"],
+                                             "weidmueller", "de-tuya", "goe"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
-                             "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device)")
+                             "de-tuya = portable dé wallbox over Tuya LAN 3.5, port 6668 like the device, "
+                             "goe = go-e Charger over its local HTTP API)")
     parser.add_argument("--local-key", default="0123456789abcdef", help="de-tuya: the 16-character local key")
-    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger, weidmueller: a car charges at 16 A")
+    parser.add_argument("--plugged", action="store_true", help="de-tuya: a car is connected; foxess-charger, weidmueller, goe: a car charges at 16 A")
+    parser.add_argument("--goe-api", type=int, choices=[1, 2], default=2,
+                        help="goe: 2 answers /api/status and /status, 1 only /status (hardware V2, API v2 off)")
     parser.add_argument("--map", choices=["new", "legacy"], default="new", help="FoxESS register map to emulate")
     parser.add_argument("--unit", type=int, default=None,
                         help="Modbus unit id (default: FoxESS 247, SAJ and Solarmax 1)")
@@ -1137,7 +1202,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("senec", "enphase", "mypv", "foxess-charger", "weidmueller", "de-tuya"):
+    if args.vendor in ("senec", "enphase", "mypv", "foxess-charger", "weidmueller", "de-tuya", "goe"):
         pass
     elif args.vendor == "mtec":
         sim = MtecSimulatedInverter(unit=args.unit or 252, rtu=args.rtu, max_connections=args.max_connections,
@@ -1209,6 +1274,18 @@ def main() -> None:
                 await server.serve_forever()
         try:
             asyncio.run(run_weidmueller())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "goe":
+        async def run_goe() -> None:
+            charger = SimulatedGoe(api=args.goe_api, charging=args.plugged)
+            server = await asyncio.start_server(charger.serve_client, args.host, args.port)
+            log.info("simulating a go-e Charger (HTTP API v%d, read-only) on %s:%d", args.goe_api, args.host, args.port)
+            async with server:
+                await server.serve_forever()
+        try:
+            asyncio.run(run_goe())
         except KeyboardInterrupt:
             pass
         return

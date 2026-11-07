@@ -43,7 +43,7 @@
     "homeAssistantTitle": "Home Assistant",
     "homeAssistantText": "All values live in Home Assistant, including the energy dashboard, and control of the battery from there if you want. <a href=\"#installation\">Learn more</a>",
     "notificationsTitle": "Alerts, diagnostics, export",
-    "notificationsText": "A message on your phone via ntfy when something is wrong. A diagnostics check tests whether the app reads your device correctly. All values are available as a CSV file."
+    "notificationsText": "A message on your phone via ntfy or by e-mail when something is wrong. A diagnostics check tests whether the app reads your device correctly. All values are available as a CSV file."
   },
   "howItWorks": {
     "title": "How it works",

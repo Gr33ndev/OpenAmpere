@@ -66,8 +66,8 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); Steuerung noch nicht bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); control not yet confirmed; H2, HS2 and AS2 not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur das Ändern der Notstrom-Reserve bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); of the control only changing the backup reserve confirmed so far; H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",
@@ -247,6 +247,25 @@
       "state": "read",
       "next": "deviceReport",
       "page": "docs/devices/weidmueller/ac-smart.md"
+    },
+    {
+      "id": "goe",
+      "name": "go-e Charger",
+      "does": {
+        "de": "Nur Anzeige über die lokale HTTP API (in der go-e App einschalten): Zustand, Ladeleistung, Strom und Spannung je Phase, Energie des Ladevorgangs. Steuern kann sie weiter evcc.",
+        "en": "Monitoring only over the local HTTP API (switched on in the go-e app): state, charging power, current and voltage per phase, energy of the charge. evcc can still control it."
+      },
+      "short": {
+        "de": "nur Anzeige",
+        "en": "monitoring only"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "tellUs",
+      "page": "docs/devices/goe/charger.md"
     },
     {
       "id": "de-tuya",

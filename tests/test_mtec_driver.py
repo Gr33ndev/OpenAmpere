@@ -3,6 +3,7 @@
 """M-TEC Energy-Butler GEN3 (#520): read only, plain Modbus TCP or RTU frames over TCP, unit 252, 255 or 247."""
 
 import asyncio
+import random
 import time
 from datetime import datetime
 
@@ -23,6 +24,7 @@ async def serve(sim):
 
 
 def sunny(sim):
+    random.seed(594)  # the model draws clouds and load spikes from the global random: the same values in every test order
     sim.energy.step(datetime(2026, 6, 1, 13, 0), 60)
     sim.update_registers()
     return sim

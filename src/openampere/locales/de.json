@@ -180,7 +180,10 @@
     "ntfyCredentialsNotInAddress": "Benutzername und Passwort gehören nicht in die ntfy-Adresse. Bitte die Adresse ohne sie eintragen. Für ein geschütztes Thema gehört ein Token von ntfy in das Feld „Zugangs-Token“.",
     "ratedPowerAtLeast": "Die Nennleistung vom Typenschild muss mindestens {MIN_RATED_POWER_W} W betragen.",
     "settingTChangedApp": "Die Einstellung {key} kann in der App nicht geändert werden.",
-    "certificateFingerprintInvalid": "Der Fingerabdruck des Zertifikats ist ungültig. Bitte die Verbindung beim Einrichten noch einmal prüfen und speichern."
+    "certificateFingerprintInvalid": "Der Fingerabdruck des Zertifikats ist ungültig. Bitte die Verbindung beim Einrichten noch einmal prüfen und speichern.",
+    "mailServerNameOnly": "Mailserver: bitte nur den Namen eintragen, ohne https://, Port oder Pfad, zum Beispiel smtp.example.de.",
+    "mailSenderAddress": "Absender: bitte eine E-Mail-Adresse eintragen, zum Beispiel name@example.de.",
+    "mailRecipientAddresses": "Empfänger: bitte nur E-Mail-Adressen eintragen, eine pro Zeile, zum Beispiel name@example.de."
   },
   "consumers": {
     "addressNotFound": "Adresse nicht gefunden",
@@ -336,6 +339,26 @@
     "integrationInstalled": "Die Integration OpenAmpere ist installiert. Bitte Home Assistant einmal neu starten (Einstellungen → System → Neu starten). Danach steht unter Einstellungen → Geräte & Dienste „Entdeckt: OpenAmpere“.",
     "integrationUpdated": "Die Integration OpenAmpere ist jetzt auf Version {version}. Bitte Home Assistant einmal neu starten, damit sie aktiv wird."
   },
+  "mail": {
+    "enterServer": "Bitte den Namen des Mailservers eintragen, zum Beispiel smtp.example.de, ohne https:// und ohne Port.",
+    "enterSender": "Bitte eine Absenderadresse eintragen, meist die E-Mail-Adresse des Postfachs.",
+    "enterRecipient": "Bitte mindestens eine Empfängeradresse eintragen.",
+    "enterPassword": "Bitte das Passwort des Postfachs eintragen.",
+    "loginRefused": "Der Mailserver hat Benutzername oder Passwort abgelehnt. Bitte beide prüfen. Manche Anbieter verlangen für Programme ein eigenes App-Passwort oder dass SMTP in den Einstellungen des Postfachs eingeschaltet ist.",
+    "noStarttls": "Der Mailserver bietet an diesem Port keine Verschlüsselung (STARTTLS) an. Ohne sie sendet OpenAmpere das Passwort nicht. Bitte Port 465 mit „TLS“ oder Port 587 mit „STARTTLS“ versuchen.",
+    "noLogin": "Der Mailserver erlaubt an diesem Port keine Anmeldung. Bitte Port und Verschlüsselung prüfen: üblich sind Port 587 mit „STARTTLS“ oder Port 465 mit „TLS“.",
+    "senderRefused": "Der Mailserver nimmt die Absenderadresse nicht an. Meist muss sie die E-Mail-Adresse des Postfachs sein, mit dem du dich anmeldest.",
+    "recipientsRefused": "Der Mailserver hat die Empfängeradressen abgelehnt. Bitte die Adressen prüfen.",
+    "noAnswer": "Der Mailserver antwortet nicht. Bitte Name und Port prüfen und ob die Verschlüsselung zum Port passt (587: „STARTTLS“, 465: „TLS“). Manche Router oder Internetanbieter sperren ausgehende E-Mails.",
+    "certificateInvalid": "Das Zertifikat des Mailservers ist ungültig oder passt nicht zu seinem Namen. Bitte den Namen so eintragen, wie ihn dein Anbieter angibt.",
+    "encryptionMismatch": "Die Verschlüsselung passt nicht zum Port. Üblich sind Port 587 mit „STARTTLS“ oder Port 465 mit „TLS“.",
+    "disconnected": "Der Mailserver hat die Verbindung beendet. Oft passt die Verschlüsselung nicht zum Port (587: „STARTTLS“, 465: „TLS“).",
+    "rejected": "Der Mailserver hat die E-Mail abgelehnt (Fehler {smtp_code}).",
+    "serverNotFound": "Den Mailserver gibt es unter diesem Namen nicht. Bitte den Namen prüfen, zum Beispiel smtp.example.de.",
+    "connectionRefused": "Der Mailserver nimmt an diesem Port keine Verbindung an. Üblich sind Port 587 mit „STARTTLS“ oder Port 465 mit „TLS“.",
+    "notReachable": "OpenAmpere erreicht den Mailserver nicht. Bitte Name, Port und die Internetverbindung prüfen.",
+    "notSent": "Die E-Mail ließ sich nicht senden."
+  },
   "mypv": {
     "immersionHeaterNotResponding": "Heizstab antwortet nicht: {err}",
     "immersionHeaterRejectsPower": "Heizstab lehnt die Leistungsvorgabe ab. Ist die Ansteuerung auf „Modbus TCP“ gestellt?",
@@ -345,7 +368,8 @@
     "noRodAtAddress": "Unter {host}:{port} antwortet kein Heizstab von my-PV. Bitte die Adresse prüfen."
   },
   "notify": {
-    "ntfyAddressMustForm": "Die ntfy-Adresse muss die Form https://server/thema haben."
+    "ntfyAddressMustForm": "Die ntfy-Adresse muss die Form https://server/thema haben.",
+    "enterMailServerFirst": "Bitte zuerst einen Mailserver eintragen."
   },
   "probe": {
     "addressInHomeNetwork": "Bitte eine Adresse im Heimnetz angeben.",
@@ -458,7 +482,9 @@
     "modbusWriteError": "Die Wallbox hat die Einstellung mit einer Fehlermeldung abgelehnt (Fehlernummer {code}). Versuche es in ein paar Minuten noch einmal. Klappt es dann nicht, erstelle unter Mehr → Diagnose einen Bericht.",
     "realControlOn": "echte Steuerung eingeschaltet",
     "fallbackNotTaken": "Die Wallbox hat den Ersatzstrom von 6 A nicht übernommen. OpenAmpere steuert sie deshalb nicht.",
-    "workModeKeepControlled": "Unter echter Steuerung muss der Betriebsmodus „Gesteuert“ bleiben. Schalte zuerst die echte Steuerung aus, dann kannst du ihn ändern."
+    "workModeKeepControlled": "Unter echter Steuerung muss der Betriebsmodus „Gesteuert“ bleiben. Schalte zuerst die echte Steuerung aus, dann kannst du ihn ändern.",
+    "goeNotAnswering": "Die Wallbox unter {host} antwortet nicht. Prüfe die Adresse und ob sie im WLAN oder per Kabel mit dem Heimnetz verbunden ist.",
+    "notGoe": "Unter {host} antwortet ein Gerät, aber nicht wie ein go-e Charger. Prüfe die Adresse. Ist es dein go-e Charger, schalte in der go-e App die lokale HTTP API ein (v2, bei älteren Geräten v1)."
   },
   "android": {
     "portInUse": "Port {port} wird schon von einer anderen App auf dem Tablet benutzt. Bitte beende oder deinstalliere diese App und starte das Tablet neu.",

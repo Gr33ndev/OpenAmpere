@@ -43,7 +43,7 @@
     "homeAssistantTitle": "Home Assistant",
     "homeAssistantText": "Alle Werte live in Home Assistant, auch im Energie-Dashboard, und auf Wunsch den Speicher von dort steuern. <a href=\"#installation\">Mehr dazu</a>",
     "notificationsTitle": "Hinweise, Diagnose, Export",
-    "notificationsText": "Nachricht aufs Handy über ntfy, wenn etwas nicht stimmt. Eine Diagnose prüft, ob die App dein Gerät richtig liest. Alle Werte gibt es als CSV-Datei."
+    "notificationsText": "Nachricht aufs Handy über ntfy oder per E-Mail, wenn etwas nicht stimmt. Eine Diagnose prüft, ob die App dein Gerät richtig liest. Alle Werte gibt es als CSV-Datei."
   },
   "howItWorks": {
     "title": "So funktioniert es",

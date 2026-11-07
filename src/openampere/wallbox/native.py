@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 # SPDX-License-Identifier: MIT
 """Wallboxes OpenAmpere reads and controls itself, without evcc (#318): the portable dé wallbox over Tuya, the
-FoxESS AC EV Charger over Modbus TCP, shown (#439), simulated (#440) and, once its owner agrees, controlled (#465), and
-the Weidmüller AC SMART over Modbus TCP, only shown (#523).
+FoxESS AC EV Charger over Modbus TCP, shown (#439), simulated (#440) and, once its owner agrees, controlled (#465), the
+Weidmüller AC SMART over Modbus TCP, only shown (#523), and the go-e Charger over its local HTTP API, only shown (#597).
 
-- Every model is a class in MODELS with the same face: key, label, protocol ("tuya" or "modbus"), the modes it
-  offers, read_only, and interpret() that turns what the wallbox answered into a base.Reading. reader() gives what a
-  wallbox is read with (tuya.TuyaDevice, or modbus.ModbusWallbox with one short connection per read, closed
-  afterwards); both read with status() and fail with an error that has a German message. Only a model that is not
+- Every model is a class in MODELS with the same face: key, label, protocol ("tuya", "modbus" or "http"), the modes
+  it offers, read_only, and interpret() that turns what the wallbox answered into a base.Reading. reader() gives what a
+  wallbox is read with (tuya.TuyaDevice, modbus.ModbusWallbox with one short connection per read, closed afterwards,
+  or goe.GoeHttp, which only sends GET requests for the status); all read with status() and fail with an error that
+  has a German message. Only a model that is not
   read_only, or is `controllable`, has set_current() and start(); only the Tuya connection (device()) and a
   ModbusWallbox made with the model's `writable` registers in _write() can write.
 - A `controllable` model (the FoxESS charger, #465) is read only and simulated until the owner switches on real
@@ -70,12 +71,13 @@ from ..runtime import Runtime
 from .base import NotPrepared, ReadBackFailed, Reading, WallboxUnreachable
 from .de_tuya import DeTuyaCharger
 from .foxess import FoxEssChargerLive
+from .goe import GoeChargerLive, GoeHttp
 from .modbus import ModbusWallbox
 from .weidmueller import WeidmuellerAcSmartLive
 
 log = logging.getLogger(__name__)
 
-MODELS = {m.key: m for m in (DeTuyaCharger, FoxEssChargerLive, WeidmuellerAcSmartLive)}
+MODELS = {m.key: m for m in (DeTuyaCharger, FoxEssChargerLive, WeidmuellerAcSmartLive, GoeChargerLive)}
 UNREACHABLE = (tuya.TuyaError, WallboxUnreachable)  # both carry a German .message for the owner
 
 MAX_WALLBOXES = 4
@@ -246,6 +248,8 @@ def validate(raw: list, keyless: Collection[str] = ()) -> list[NativeWallbox]:
             wb.local_key, wb.device_id = "", ""  # neither is used: nothing stored that is not needed
         else:
             wb.port = wb.unit = None
+            if model.protocol == "http":  # found by its address only, no key (#597)
+                wb.local_key, wb.device_id = "", ""
         if wb.device_id and not DEVICE_ID.fullmatch(wb.device_id):
             raise ValueError(f"{wb.name}: Die Geräte-ID besteht aus 10 bis 40 Buchstaben und Ziffern.")
         if needs_key(wb) and len(wb.local_key.encode()) != 16 and not (not wb.local_key and wb.id in keyless):
@@ -539,11 +543,14 @@ class NativeWallboxes:
         """The Tuya connection, the only one that can write (to a model that is not read only)."""
         return tuya.TuyaDevice(wb.host, wb.local_key)
 
-    def reader(self, wb: NativeWallbox) -> tuya.TuyaDevice | ModbusWallbox:
-        """What a wallbox is read with: status() of either. A Modbus wallbox gets a connection that cannot write."""
+    def reader(self, wb: NativeWallbox) -> tuya.TuyaDevice | ModbusWallbox | GoeHttp:
+        """What a wallbox is read with: status() of each. A Modbus wallbox gets a connection that cannot write, a go-e
+        Charger a reader that only asks for its status."""
         model = MODELS[wb.model]
         if model.protocol == "modbus":
             return ModbusWallbox(wb.host, wb.port or model.port, wb.unit or model.unit, model.ranges, model.optional)
+        if model.protocol == "http":
+            return GoeHttp(wb.host, model.port)
         return self.device(wb)
 
     @contextlib.asynccontextmanager
@@ -565,13 +572,17 @@ class NativeWallboxes:
             yield
 
     async def test(self, model_key: str, host: str, port: int | None, unit: int | None) -> Reading:
-        """Reads a Modbus wallbox once with the details from the setup form (the Tuya one is read in api.py)."""
+        """Reads a Modbus or HTTP wallbox once with the details from the setup form (the Tuya one is read in
+        api.py)."""
         model = MODELS.get(model_key)
-        if model is None or model.protocol != "modbus":
+        if model is None or model.protocol not in ("modbus", "http"):
             raise WallboxUnreachable("Diese Wallbox kennt OpenAmpere noch nicht.")
-        host, port, unit = host.strip(), port or model.port, unit or model.unit
+        host = host.strip()
         if not HOST.fullmatch(host) or not in_home_network(host):
             raise WallboxUnreachable("Bitte die IP-Adresse der Wallbox im Heimnetz angeben.")
+        if model.protocol == "http":
+            return model.interpret(await GoeHttp(host, model.port).status())
+        port, unit = port or model.port, unit or model.unit
         if self.is_inverter(host, port):
             raise WallboxUnreachable("Das ist die Adresse deines Wechselrichters. Bitte gib die Adresse der Wallbox "
                                      "ein, du findest sie zum Beispiel in der Geräteliste deines Routers.")

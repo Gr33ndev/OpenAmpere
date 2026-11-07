@@ -45,6 +45,7 @@ from .charging import GridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
 from .devices import Devices
+from .mail import MailError
 from .notify import Notifier
 from .remote import Remote
 from .updates import Updates
@@ -150,7 +151,8 @@ MAX_HOST_SHOWN = 64  # the Host header comes from the client
 OVERWRITE_SHOWN_S = 7 * 86400  # the app explains a setting another device overwrote for this long
 PROTECTED_READS = ("/api/backup", "/api/control/log", "/api/control/log/report", "/api/diagnostics", "/api/wallbox/ocpp", "/api/gridmeter", "/api/remote",
                    "/api/tokens", "/api/evcc/sessions",  # last two: when and how far the car was driven
-                   "/api/cars/sessions")
+                   "/api/cars/sessions",
+                   "/api/notify/status")  # whether e-mails of the owner fail, shown next to the private mail settings
 PUBLIC_WRITES = ("/api/auth/login", "/api/auth/setup", "/api/auth/logout")
 
 
@@ -198,7 +200,7 @@ class WallboxCheckRequest(BaseModel):
 
 class WallboxTestRequest(BaseModel):
     """A wallbox OpenAmpere reads itself, read once from the setup form."""
-    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart)$")
+    model: str = Field("de_tuya", pattern="^(de_tuya|foxess_ac|weidmueller_ac_smart|goe)$")
     host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
     local_key: str = Field("", max_length=64)  # Tuya
     port: int | None = Field(None, ge=1, le=65535)  # Modbus; None: the model's usual port
@@ -296,7 +298,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         steps = (lambda: charging.stop("OpenAmpere wird beendet"), surplus.stop, wallboxes.wait,
                  lambda: wallboxes.release_real("OpenAmpere wird beendet"),
                  lambda: runtime.cloud_import.stop(status="running"),  # keeps running after the next start
-                 collector.stop)
+                 collector.stop,
+                 notifier.close)  # last: it may wait a few seconds for an e-mail being sent
         for step in steps:
             try:
                 await step()
@@ -1217,9 +1220,26 @@ def create_app(runtime: Runtime) -> FastAPI:
     async def notify_test():
         if not runtime.config.notify.ntfy_url:
             raise HTTPException(400, "Bitte zuerst eine ntfy-Adresse eintragen.")
-        if not await notifier.push("OpenAmpere", "Test: Benachrichtigungen funktionieren.", "tada"):
+        if not await notifier.push_ntfy("OpenAmpere", "Test: Benachrichtigungen funktionieren.", "tada"):
             raise HTTPException(502, notifier.last_error or "Senden fehlgeschlagen")
         return {"ok": True}
+
+    @app.post("/api/notify/mail/test")
+    async def notify_mail_test():
+        """Sends a test e-mail with the saved settings at once (#594); the error as a text for the owner."""
+        try:
+            await notifier.send_mail("Test-E-Mail", "Test: Benachrichtigungen per E-Mail funktionieren. Ab jetzt "
+                                     "bekommst du die Nachrichten von OpenAmpere auch auf diesem Weg.", time.time())
+        except MailError as err:
+            raise HTTPException(502, str(err)) from None
+        return {"ok": True}
+
+    @app.get("/api/notify/status")
+    def notify_status(request: Request):
+        """Whether e-mails wait to be sent and why the last one failed, in the language of the app."""
+        status = notifier.mail_status()
+        return {"mail": {**status, "error": i18n.translate(status["error"] or "", request.headers.get(i18n.HEADER))
+                         or None}}
 
     @app.get("/api/diagnostics")
     def get_diagnostics():
@@ -1323,8 +1343,8 @@ def create_app(runtime: Runtime) -> FastAPI:
     @app.post("/api/wallboxes/test")
     async def wallbox_test(request: WallboxTestRequest):
         """Reads a wallbox once with the address and key from the form (a stored key if none is given); a Modbus
-        wallbox with its port and unit id, only read (#439)."""
-        if WALLBOX_MODELS[request.model].protocol == "modbus":
+        wallbox with its port and unit id, only read (#439); a go-e Charger with a GET for its status (#597)."""
+        if WALLBOX_MODELS[request.model].protocol in ("modbus", "http"):
             try:
                 reading = await wallboxes.test(request.model, request.host, request.port, request.unit)
             except WallboxUnreachable as err:
@@ -1342,7 +1362,11 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"reading": {k: v for k, v in asdict(reading).items() if k != "lifetime_kwh"}}
 
     @app.post("/api/wallboxes/search")
-    async def wallbox_search():
+    async def wallbox_search(body: dict = Body(default={})):
+        """Tuya wallboxes that announce themselves; with {"model": "goe"} go-e Chargers that answer their status
+        request in the local networks (#597), also in the Home Assistant app (no multicast needed)."""
+        if isinstance(body, dict) and body.get("model") == "goe":
+            return {"available": True, "devices": await discovery.find_goe()}
         if ha_app.active():
             return {"available": False, "devices": []}
         try:

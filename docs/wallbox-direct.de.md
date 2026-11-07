@@ -247,6 +247,26 @@ Hausverbrauch. Steuern lässt sie sich weiter über evcc (mit einem Sponsortoken
 
 Technische Einzelheiten (Englisch): [devices/weidmueller/ac-smart.md](devices/weidmueller/ac-smart.md).
 
+## go-e Charger einrichten
+
+OpenAmpere **zeigt einen go-e Charger nur an** (#597): ob ein Auto angesteckt ist, die Ladeleistung, Strom und
+Spannung je Phase und die Energie des Ladevorgangs. Es fragt nur den Zustand des Chargers ab und ändert nie etwas an
+ihm; der einzige Lademodus ist **Von Hand**. Seine Leistung zählt wie bei jeder Wallbox zum Hausverbrauch. Steuern
+lässt er sich weiter über evcc.
+
+1. In der go-e App die **lokale HTTP API** einschalten (API v2 bei neueren Chargern, API v1 bei älteren). Wo der
+   Schalter ist, hängt von der Version der App ab, meist in den erweiterten Einstellungen zur Verbindung oder zum
+   Internet.
+2. Unter **direkt → Wallbox hinzufügen oder prüfen** bei **Welche Wallbox hast du?** den go-e Charger wählen.
+3. **go-e Charger im Heimnetz suchen** findet ihn, wenn die API eingeschaltet ist; sonst seine IP-Adresse aus der
+   Geräteliste deines Routers eintragen. Einen Schlüssel, Port oder eine Geräteadresse braucht er nicht.
+4. **Verbindung prüfen**, dann **Speichern**.
+
+- Die Suche geht auch in der Home-Assistant-App: Sie fragt jede Adresse im Heimnetz auf Port 80.
+- An einem echten Charger ist noch nichts bestätigt. Sag uns bitte in einem Issue, ob die Werte zur go-e App passen.
+
+Technische Einzelheiten (Englisch): [devices/goe/charger.md](devices/goe/charger.md).
+
 ## Andere Wallboxen prüfen (nur lesen)
 
 Für weitere Wallboxen bereitet OpenAmpere den direkten Weg vor. Unter **direkt → Wallbox hinzufügen oder prüfen**
