@@ -39,6 +39,7 @@ Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte
 | [Mobile dé-Wallbox (Tuya-WLAN)](devices/tuya/de-portable.md) | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
 | [Wallbox über evcc](devices/topics/wallboxes.md) | Noch nicht bestätigt |
 | [Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Noch nicht bestätigt |
+| [Autos von BMW und MINI](devices/cars/bmw-cardata.md) | Noch nicht bestätigt |
 
 <!-- /generated:confirmed -->
 
@@ -129,6 +130,7 @@ deinstallierst, stelle diese Geräte auf der Seite **Geräte** auf **Aus**.
 | Auto | Verbindung | Anzeige | Steuerung | Hinweise |
 |---|---|---|---|---|
 | Volkswagen, Audi, Škoda, SEAT, CUPRA | EU-Data-Act-Portal des Volkswagen-Konzerns mit dem Konto der Marke (Cloud, freiwillig); muss einmal im Browser eingerichtet werden | Ladestand, Reichweite, Kilometerstand, eingesteckt und lädt, alle 15 Minuten und mindestens 15 Minuten alt; Ladevorgänge an einer Wallbox, die OpenAmpere steuert | keine (nur lesen) | Einrichtung: [car.de.md](car.de.md). Details (englisch): [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+| BMW, MINI | BMW CarData mit dem Konto der Marke (Cloud, freiwillig); eine Client-ID aus dem Portal der Marke und eine einmal im Browser bestätigte Anmeldung, kein Passwort; nur für den Hauptnutzer des Autos | Ladestand, Reichweite, Kilometerstand, eingesteckt und lädt, Ladeziel, etwa alle 40 Minuten (BMW erlaubt 50 Abfragen am Tag je Konto), nur so frisch wie die letzte Meldung des Autos; Ladevorgänge an einer Wallbox, die OpenAmpere steuert | keine (nur lesen) | Noch nicht mit einem echten Auto bestätigt. Einrichtung: [car.de.md](car.de.md#bmw-und-mini). Details (englisch): [devices/cars/bmw-cardata.md](devices/cars/bmw-cardata.md). |
 
 ## Dein Gerät fehlt oder verhält sich anders?
 

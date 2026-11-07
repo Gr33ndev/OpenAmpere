@@ -237,7 +237,7 @@ class VwEuDataAct(Source):
 
     @classmethod
     def info(cls) -> dict:
-        return {"key": cls.key, "label": cls.label,
+        return {"key": cls.key, "label": cls.label, "login": cls.login_kind,
                 "brands": [{"key": key, "label": label} for key, (label, _, _) in BRANDS.items()]}
 
     # ---- addresses -------------------------------------------------------------

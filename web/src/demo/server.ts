@@ -458,9 +458,12 @@ function cars() {
   const values = { soc: 64, soc_ts: t - 1260, range_km: 281, range_km_ts: t - 1260, odometer_km: 18_437,
     odometer_km_ts: t - 1260, plugged: false, plugged_ts: t - 1260, charging: false, charging_ts: t - 1260,
     target_soc: 80, target_soc_ts: t - 1260, ts: t - 1260 };
-  return { max: 3, sources: [{ key: "vw_euda", label: "EU-Data-Act-Portal (Volkswagen-Konzern)", brands: [
+  return { max: 3, sources: [{ key: "vw_euda", label: "EU-Data-Act-Portal (Volkswagen-Konzern)", login: "password", brands: [
     { key: "volkswagen", label: "Volkswagen" }, { key: "audi", label: "Audi" }, { key: "skoda", label: "Škoda" },
-    { key: "seat", label: "SEAT" }, { key: "cupra", label: "CUPRA" }] }],
+    { key: "seat", label: "SEAT" }, { key: "cupra", label: "CUPRA" }] },
+  { key: "bmw_cardata", label: "BMW CarData (BMW, MINI)", login: "device", brands: [
+    { key: "bmw", label: "BMW", portal: "https://www.bmw.de/de-de/mybmw/vehicle-overview" },
+    { key: "mini", label: "MINI", portal: "https://www.mini.de/de-de/mymini/vehicle-overview" }] }],
   cars: [{ id: "democar1", name: "CUPRA Born", source: "vw_euda", brand: "cupra", enabled: true, wallbox_id: "demo0001",
     wallbox: "Mobile Wallbox", password_set: true, vin_set: true, username: "demo@example.org", vin_end: "0001",
     status: "ok", error: null, checked: t - 300, values,
@@ -644,7 +647,7 @@ export const DEMO_WRITE_ONLY = [
   "/api/auth/login", "/api/auth/logout", "/api/auth/password", "/api/auth/setup", "/api/backup/restore", "/api/consumers/",
   "/api/database/damaged", "/api/database/ha-backup", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
   "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test",
-  "/api/cars/", "/api/cars/vehicles", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
+  "/api/cars/", "/api/cars/login", "/api/cars/login/", "/api/cars/vehicles", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
   "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/notify/mail/test", "/api/outages/",
   "/api/setup/accept-device", "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];

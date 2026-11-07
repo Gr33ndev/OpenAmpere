@@ -37,6 +37,7 @@ The evidence is on each device page. What EKD sold the devices as: [sales names 
 | [Portable dé wallbox (Tuya Wi-Fi)](devices/tuya/de-portable.md) | ✅ Monitoring confirmed; control not yet confirmed |
 | [Wallbox through evcc](devices/topics/wallboxes.md) | Not yet confirmed |
 | [Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Not yet confirmed |
+| [BMW and MINI cars](devices/cars/bmw-cardata.md) | Not yet confirmed |
 
 <!-- /generated:confirmed -->
 
@@ -122,6 +123,7 @@ devices to **Aus** (Off) on the **Geräte** (Devices) page.
 | Car | Connection | Read | Control | Notes |
 |---|---|---|---|---|
 | Volkswagen, Audi, Škoda, SEAT, CUPRA | The Volkswagen group's EU Data Act portal with the owner's brand account (cloud, optional); needs a one-time setup in a browser | State of charge, range, odometer, plug and charging state, every 15 minutes and at least 15 minutes late; charges at a wallbox OpenAmpere controls | none (read-only) | Setup: [car.md](car.md). Details: [devices/cars/vw-eu-data-act.md](devices/cars/vw-eu-data-act.md). |
+| BMW, MINI | BMW CarData with the owner's account (cloud, optional); a client ID from the brand's portal and a login confirmed once in a browser, no password; the owner must be the primary user of the car | State of charge, range, odometer, plug and charging state, charge limit, about every 40 minutes (BMW allows 50 requests a day per account), only as fresh as the car's last report; charges at a wallbox OpenAmpere controls | none (read-only) | Not yet confirmed with a real car. Setup: [car.md](car.md#bmw-and-mini). Details: [devices/cars/bmw-cardata.md](devices/cars/bmw-cardata.md). |
 
 ## Your device is missing or behaves differently?
 

@@ -1395,12 +1395,31 @@ def create_app(runtime: Runtime) -> FastAPI:
         try:
             found = await cars.vehicles(str(body.get("source") or ""), str(body.get("brand") or ""),
                                         str(body.get("username") or "").strip(), str(body.get("password") or ""),
-                                        str(body.get("id") or "") or None)
+                                        str(body.get("id") or "") or None, str(body.get("login") or "") or None)
         except ValueError as err:
             raise HTTPException(400, str(err)) from None
         except SourceError as err:
             raise HTTPException(400, err.message) from None
         return {"vehicles": found}
+
+    @app.post("/api/cars/login")
+    async def car_login_start(body: dict = Body(...)):
+        """A source whose login the owner confirms in a browser (BMW CarData, #595): the address and the code."""
+        try:
+            return await cars.start_login(str(body.get("source") or ""), str(body.get("brand") or ""),
+                                          str(body.get("username") or "").strip())
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
+        except SourceError as err:
+            raise HTTPException(400, err.message) from None
+
+    @app.post("/api/cars/login/{login}")
+    async def car_login_finish(login: str):
+        """Whether the owner confirmed it; the app asks again at the interval the start named."""
+        try:
+            return {"done": await cars.finish_login(login)}
+        except ValueError as err:
+            raise HTTPException(400, str(err)) from None
 
     @app.post("/api/cars/{car_id}/refresh")
     async def car_refresh(car_id: str):
