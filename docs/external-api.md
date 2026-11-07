@@ -306,7 +306,7 @@ An unknown period or a date that cannot be read answers `400`; a parameter outsi
 **What is kept:** energy per quarter hour is kept for good, so `summary`, `energy` and the energy of `pv-inputs` work
 for any period OpenAmpere has recorded (or imported from the former cloud). The single readings behind `power`, the
 power curve of `pv-inputs` and `temperatures` are kept for 30 days by default (the owner can change that); older
-days answer with empty `entries`.
+days answer with empty `entries`, except `power`, which then has the average of each quarter hour (see there).
 
 #### `GET /history/summary`
 
@@ -363,8 +363,10 @@ Power curve of one day. Parameters: `date`, `step` (seconds per point, 10–3600
 ```
 
 Averages per step in W, with the signs of `live`: `grid` + import, − export; `battery` + discharging, − charging. A
-step without readings is missing. For a quarter hour with no readings but a stored state of charge (for example a day
-imported from the former cloud) there is an entry with only `soc`.
+step without readings is missing. A quarter hour with no readings but with stored energy or state of charge (a day
+imported from the former cloud, or older than the readings are kept) has one entry at its start with
+`"quarter": true`: the average power of that quarter hour from its energy (Wh × 4) and its state of charge. Values
+the quarter hour has no energy for are `null`.
 
 #### `GET /history/pv-inputs`
 

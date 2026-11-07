@@ -427,10 +427,30 @@ def test_power_timeline_shows_the_imported_state_of_charge(tmp_path):
     storage.add_snapshot(snap(base + 1800 + 60, 1000, 400))  # local readings from the third quarter hour on
     client = TestClient(create_app(Runtime({}, storage)))
     entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
-    imported = [e for e in entries if e["pv"] is None]
+    imported = [e for e in entries if e.get("quarter")]
     assert [(e["ts"], e["soc"]) for e in imported] == [(base, 40.0), (base + 900, 42.0)]
     assert [e["ts"] for e in entries] == sorted(e["ts"] for e in entries)
-    assert all(e["ts"] >= base + 1800 for e in entries if e["pv"] is not None)  # the local quarter hour: readings only
-    # a step longer than a quarter hour: the quarter hours of an hour with readings get no empty entries
+    assert all(e["ts"] >= base + 1800 for e in entries if not e.get("quarter"))  # the local quarter hour: readings only
+    # a step longer than a quarter hour: the quarter hours of an hour with readings get no extra entries
     hourly = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 3600}).json()["entries"]
-    assert [(e["ts"], e["soc"]) for e in hourly if e["pv"] is None] == [(base, 40.0), (base + 900, 42.0)]
+    assert [(e["ts"], e["soc"]) for e in hourly if e.get("quarter")] == [(base, 40.0), (base + 900, 42.0)]
+
+
+def test_power_timeline_shows_the_average_power_of_imported_quarter_hours(tmp_path):
+    """#600: a quarter hour without local readings gets its average power from the stored energy (Wh × 4), with the
+    signs of the live values: grid + import, − export; battery + discharging, − charging."""
+    storage = Storage(tmp_path / "t.db")
+    base = datetime(2026, 6, 1, 12, 0, tzinfo=TZ).timestamp()
+    storage.import_energy([
+        {"ts": int(base), "pv": 1000.0, "load": 300.0, "grid_import": 0.0, "grid_export": 500.0,
+         "battery_charge": 200.0, "battery_discharge": 0.0},
+        {"ts": int(base + 900), "pv": 0.0, "load": 400.0, "grid_import": 150.0, "grid_export": 0.0,
+         "battery_charge": 0.0, "battery_discharge": 250.0},
+        {"ts": int(base + 1800), "pv": 50.0, "load": None},  # only part of the flows: the others stay empty
+    ], "cloud")
+    entries = TestClient(create_app(Runtime({}, storage))).get(
+        "/api/power/timeline", params={"date": "2026-06-01", "step": 60}).json()["entries"]
+    values = [(e["ts"], e["pv"], e["house"], e["grid"], e["battery"], e["quarter"]) for e in entries]
+    assert values == [(base, 4000.0, 1200.0, -2000.0, -800.0, True),
+                      (base + 900, 0.0, 1600.0, 600.0, 1000.0, True),
+                      (base + 1800, 200.0, None, None, None, True)]
