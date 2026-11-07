@@ -307,7 +307,8 @@ whole server along; you need no computer, Docker or Home Assistant.
 
 1. **Download:** on the tablet, open the [latest version](https://github.com/Gr33ndev/OpenAmpere/releases/latest) and
    download the file under "Assets" that ends in `.apk`.
-2. **Install:** tap the file and allow the browser to install apps.
+2. **Install:** tap the file and allow the browser to install apps. If Google Play Protect warns, see
+   [the guide](docs/android.md#if-google-play-protect-warns).
 3. **Open:** start OpenAmpere, allow notifications and the battery optimisation exception, choose a password. The
    setup assistant looks for the inverter.
 

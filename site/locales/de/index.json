@@ -83,7 +83,7 @@
     "tabletTitle": "Tablet vorbereiten",
     "tabletText": "Du brauchst ein Tablet mit Android 7.0 oder neuer, das immer zu Hause im WLAN und am Ladegerät bleibt. Der Bildschirm darf aus sein. Am Wechselrichter muss Modbus TCP eingeschaltet sein, wie bei Weg 1.",
     "apkTitle": "App installieren",
-    "apkText": "Öffne diese Seite auf dem Tablet und tippe auf den Knopf. Lade unter „Assets“ die Datei herunter, die auf .apk endet, tippe sie an und erlaube dem Browser, Apps zu installieren. Die App gibt es nur hier, nicht bei Google Play.",
+    "apkText": "Öffne diese Seite auf dem Tablet und tippe auf den Knopf. Lade unter „Assets“ die Datei herunter, die auf .apk endet, tippe sie an und erlaube dem Browser, Apps zu installieren. Die App gibt es nur hier, nicht bei Google Play. Warnt Google Play Protect, steht in der Anleitung unten, was zu tun ist.",
     "apkButton": "Neueste Version herunterladen",
     "apkOpenTitle": "Einrichten",
     "apkOpenText": "OpenAmpere öffnen und erlauben, dass es Benachrichtigungen zeigt und vom Energiesparen ausgenommen ist. Dann ein Passwort festlegen; der Assistent sucht den Wechselrichter. Handy und Computer öffnen OpenAmpere danach im Browser unter der Adresse des Tablets mit Port 8080. Updates installiert die App selbst.",

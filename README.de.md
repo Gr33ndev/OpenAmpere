@@ -307,7 +307,8 @@ ganzen Server mit; einen Rechner, Docker oder Home Assistant brauchst du nicht.
 
 1. **Herunterladen:** Auf dem Tablet die [neueste Version](https://github.com/Gr33ndev/OpenAmpere/releases/latest)
    öffnen und unter „Assets“ die Datei herunterladen, die auf `.apk` endet.
-2. **Installieren:** Die Datei antippen und erlauben, dass der Browser Apps installieren darf.
+2. **Installieren:** Die Datei antippen und erlauben, dass der Browser Apps installieren darf. Warnt Google Play
+   Protect, steht in der [Anleitung](docs/android.de.md#wenn-google-play-protect-warnt), was zu tun ist.
 3. **Öffnen:** OpenAmpere starten, Benachrichtigungen und die Ausnahme vom Energiesparen erlauben, ein Passwort
    festlegen. Der Einrichtungsassistent sucht den Wechselrichter.
 

@@ -53,6 +53,36 @@ A release candidate (`v1.2.3-rc.1` to `-rc.8`, the only pre-release form `script
 accept) gets an APK as well, with a `versionCode` below the final version, so the final version is still an update
 for a tablet that installed the release candidate.
 
+## Google developer verification
+
+Certified Android devices install and update only apps registered by a verified developer: in a few countries since
+September 2026, everywhere from 2027 ([Google's guide](https://developer.android.com/developer-verification/guides)).
+OpenAmpere is registered (#608):
+
+- The maintainer has an account in the [Android Developer Console](https://android.google.com/developerconsole) (for
+  apps outside Google Play), "full distribution", verified as an individual. The account for students and hobbyists
+  allows only 20 devices.
+- The package name `io.github.gr33ndev.openampere` is registered there with the fingerprint from
+  `android/signing-certificate.sha256`.
+- Ownership was proven once: the console gives a snippet that goes into `assets/adi-registration.properties` of an
+  APK signed with the release key. The maintainer added it to a release APK and signed that copy on their own computer
+  with the key from the offline backup; the copy was only uploaded to the console. The snippet is not committed, and
+  no workflow gets the key for this.
+
+Nothing changes for releases: every APK signed with the same key counts as registered. Only a new key (see below) or
+a new package name has to be registered again, with a new proof. A device checks the registration before installing;
+on a Google Play emulator image, `adb logcat` shows `VerificationCheck: … Result: Pass` for a registered app.
+
+The developer account decides, like the key, who can ship the app to devices: GOVERNANCE.md says who holds it.
+
+## Google Play Protect
+
+Play Protect checks apps from outside the Play Store when they are installed and may warn or block them. Its verdict
+comes from Google's servers and names no reason; the developer verification does not change it. A wrong verdict can
+only be appealed with Google's [Play Protect appeal](https://support.google.com/googleplay/android-developer/contact/protectappeals)
+(one per enforcement action, no answer; the APK has to be on VirusTotal first, the form asks for its hash there).
+`docs/android.md` tells owners what to do when Play Protect warns. #608 has what happened with 0.39.0.
+
 ## If the key is ever exposed
 
 Remove the secrets and say so in a security advisory (docs/security-advisories.md) and in the README. From Android 9

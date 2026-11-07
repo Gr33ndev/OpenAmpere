@@ -33,7 +33,7 @@ Strom und benutze es nicht weiter.
    „Assets“ auf die Datei, die auf `.apk` endet (`openampere-<Version>.apk`).
 2. **Installieren:** Tippe auf die heruntergeladene Datei. Android fragt beim ersten Mal, ob der Browser Apps
    installieren darf: Erlaube es in der Einstellung, die sich öffnet, und tippe dann auf **Installieren**.
-   Google Play Protect kennt die App nicht und fragt eventuell nach. Tippe dann auf **Trotzdem installieren**.
+   Warnt Google Play Protect, lies [Wenn Google Play Protect warnt](#wenn-google-play-protect-warnt).
 3. **Öffnen:** Starte OpenAmpere. Die App fragt einmal, ob sie Benachrichtigungen zeigen darf (ab Android 13) und ob
    sie vom Energiesparen ausgenommen werden darf. **Erlaube beides.** Ohne die Ausnahme vom Energiesparen legt Android
    OpenAmpere schlafen und es fehlen Messwerte.
@@ -43,6 +43,26 @@ Strom und benutze es nicht weiter.
 Solange OpenAmpere läuft, zeigt Android eine dauerhafte Benachrichtigung „OpenAmpere“ mit dem Text „Liest deine
 Solaranlage rund um die Uhr …“. Sie muss bleiben: Daran erkennt Android, dass die App gebraucht wird. Schalte in den
 Benachrichtigungs-Einstellungen von OpenAmpere die Kategorie „OpenAmpere läuft“ nicht aus. Nach einem Neustart des Tablets startet OpenAmpere von selbst.
+
+## Wenn Google Play Protect warnt
+
+OpenAmpere gibt es nicht im Play Store, deshalb prüft Google Play Protect die Datei beim Installieren. Es fragt
+eventuell, ob es die App vorher prüfen darf: Erlaube es. Es kann auch warnen, die App sei schädlich, und die
+Installation blockieren (auf Englisch „Harmful app blocked – This app may be harmful“). Google bewertet die Datei so
+auf seinen eigenen Servern, ohne einen Grund zu nennen. Wir halten das für einen Fehler und haben Google um eine
+Prüfung gebeten ([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). Die App ist bei Googles
+Entwickler-Verifizierung registriert und wird aus dem öffentlichen Quellcode gebaut.
+
+1. Achte darauf, dass die Datei von der [Release-Seite von OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases)
+   stammt und du sie selbst heruntergeladen hast. Installiere nie eine OpenAmpere-Datei, die dir jemand geschickt hat.
+   Wenn du sichergehen willst, prüfe die Datei an einem Computer wie unter
+   [Release prüfen](../README.de.md#release-prüfen) beschrieben.
+2. Tippe auf **Trotzdem installieren**. Das ist der kleine Text direkt unter der Warnung, nicht der große Knopf ganz
+   unten im Fenster. Hast du den großen Knopf getippt, tippe die heruntergeladene Datei noch einmal an.
+
+Bietet dein Tablet kein „Trotzdem installieren“ an, schalte Play Protect dafür nicht aus. Schreib uns in einem
+[Issue](https://github.com/Gr33ndev/OpenAmpere/issues), welches Tablet und welche Android-Version du hast. Bis dahin
+läuft OpenAmpere auf einem Computer oder kleinen Server mit Docker ([Weg 1](../README.de.md#weg-1-eigenständig)).
 
 ## Von anderen Geräten öffnen
 
@@ -108,6 +128,10 @@ und installiert sie dann.
   die Benachrichtigung und dann auf **Installieren**.
 - Nach dem Update startet OpenAmpere von selbst wieder. War die App vorne, bringt dich ab Android 10 die
   Benachrichtigung „Version … ist installiert“ zurück zu ihr.
+- **Warnt Google Play Protect** bei einem Update, oder meldet OpenAmpere, dass die Installation des Updates nicht
+  geklappt hat: Lade die neue Version von der [Release-Seite](https://github.com/Gr33ndev/OpenAmpere/releases/latest)
+  herunter und installiere sie wie unter [Wenn Google Play Protect warnt](#wenn-google-play-protect-warnt)
+  beschrieben. Sie wird über die vorhandene App installiert, deine Daten bleiben erhalten.
 
 Zurück auf eine ältere Version geht auf Android nur durch Deinstallieren, und dabei gehen die Daten verloren. Lade
 deshalb vor dem Deinstallieren eine Sicherung herunter. Möchtest du Updates lieber mit
