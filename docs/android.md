@@ -55,7 +55,8 @@ verification and built from the public source code.
 1. Make sure the file comes from the [release page of OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases)
    and you downloaded it yourself. Never install an OpenAmpere file someone sent you. If you want to be sure, check
    the file on a computer as described in [Verifying a release](../README.md#verifying-a-release).
-2. Tap **Install anyway**. It is the small text below the warning, not the big "Got it" button. If you tapped
+2. Tap **Install anyway**. It is the small text right below the warning, not the big "Got it" button at the
+   bottom of the window. If you tapped
    "Got it", tap the downloaded file again.
 
 If your tablet offers no "Install anyway", don't switch Play Protect off for it. Tell us in an
@@ -122,6 +123,10 @@ signature and then installs it.
   and then **Install** each time.
 - After the update OpenAmpere starts again by itself. If the app was in front, from Android 10 the notification
   "Version … ist installiert" leads back to it.
+- **If Google Play Protect warns** during an update, or OpenAmpere reports that installing the update failed: download
+  the new version from the [release page](https://github.com/Gr33ndev/OpenAmpere/releases/latest) and install it as
+  described in [If Google Play Protect warns](#if-google-play-protect-warns). It installs over the existing app;
+  your data stays.
 
 Going back to an older version only works on Android by uninstalling, which loses the data. So download a backup
 before uninstalling. If you prefer to follow updates with [Obtainium](https://github.com/ImranR98/Obtainium), add

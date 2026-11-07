@@ -57,8 +57,8 @@ Entwickler-Verifizierung registriert und wird aus dem öffentlichen Quellcode ge
    stammt und du sie selbst heruntergeladen hast. Installiere nie eine OpenAmpere-Datei, die dir jemand geschickt hat.
    Wenn du sichergehen willst, prüfe die Datei an einem Computer wie unter
    [Release prüfen](../README.de.md#release-prüfen) beschrieben.
-2. Tippe auf **Trotzdem installieren**. Das ist der kleine Text unter der Warnung, nicht der große Knopf darunter. Hast
-   du den großen Knopf getippt, tippe die heruntergeladene Datei noch einmal an.
+2. Tippe auf **Trotzdem installieren**. Das ist der kleine Text direkt unter der Warnung, nicht der große Knopf ganz
+   unten im Fenster. Hast du den großen Knopf getippt, tippe die heruntergeladene Datei noch einmal an.
 
 Bietet dein Tablet kein „Trotzdem installieren“ an, schalte Play Protect dafür nicht aus. Schreib uns in einem
 [Issue](https://github.com/Gr33ndev/OpenAmpere/issues), welches Tablet und welche Android-Version du hast. Bis dahin
@@ -128,6 +128,10 @@ und installiert sie dann.
   die Benachrichtigung und dann auf **Installieren**.
 - Nach dem Update startet OpenAmpere von selbst wieder. War die App vorne, bringt dich ab Android 10 die
   Benachrichtigung „Version … ist installiert“ zurück zu ihr.
+- **Warnt Google Play Protect** bei einem Update, oder meldet OpenAmpere, dass die Installation des Updates nicht
+  geklappt hat: Lade die neue Version von der [Release-Seite](https://github.com/Gr33ndev/OpenAmpere/releases/latest)
+  herunter und installiere sie wie unter [Wenn Google Play Protect warnt](#wenn-google-play-protect-warnt)
+  beschrieben. Sie wird über die vorhandene App installiert, deine Daten bleiben erhalten.
 
 Zurück auf eine ältere Version geht auf Android nur durch Deinstallieren, und dabei gehen die Daten verloren. Lade
 deshalb vor dem Deinstallieren eine Sicherung herunter. Möchtest du Updates lieber mit
