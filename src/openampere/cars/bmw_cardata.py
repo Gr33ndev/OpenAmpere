@@ -148,8 +148,10 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
         if state[0] > after:
             data = deliveries.setdefault(state[0], CarData(ts=state[0]))
             data.charging = state[1].upper() in CHARGING
-            if state[1].upper() in PLUGGED:
-                data.plugged = True  # charging, waiting or finished: the cable is in; else the plug key says it
+            plug = first(PLUG)
+            if data.charging and (plug is None or plug[0] < state[0]):
+                data.plugged = True  # charging: the cable is in. Otherwise the plug key says it (a "finished" state
+                # may be sent again after unplugging)
     return [deliveries[ts] for ts in sorted(deliveries) if not deliveries[ts].empty()], newest
 
 

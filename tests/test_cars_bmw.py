@@ -240,6 +240,18 @@ def test_an_old_value_of_the_first_key_does_not_hide_a_newer_one_of_the_second()
     assert [(d.soc, d.range_km, d.plugged) for d in data] == [(40, 150, True)]  # the same time: the first key
 
 
+def test_a_finished_charge_sent_again_after_unplugging_is_not_plugged_in():
+    telematic = {"vehicle.body.chargingPort.status": {"timestamp": iso(T0), "value": "DISCONNECTED"},
+                 "vehicle.drivetrain.electricEngine.charging.hvStatus":
+                     {"timestamp": iso(T0 + 600), "value": "FINISHED_FULLY_CHARGED"}}
+    data, _ = interpret(telematic, after=0, now=T0 + 660)
+    assert [(d.ts, d.plugged, d.charging) for d in data] == [(T0, False, None), (T0 + 600, None, False)]
+    same = {**telematic, "vehicle.drivetrain.electricEngine.charging.hvStatus":
+            {"timestamp": iso(T0), "value": "CHARGING"}}
+    data, _ = interpret(same, after=0, now=T0 + 60)
+    assert [(d.plugged, d.charging) for d in data] == [(False, True)]  # the same time: the plug key counts
+
+
 def test_an_older_known_hv_status_does_not_hide_a_newer_unknown_status():
     status, hv = "vehicle.drivetrain.electricEngine.charging.status", "vehicle.drivetrain.electricEngine.charging.hvStatus"
     charging = {status: {"timestamp": iso(T0), "value": "CHARGINGACTIVE"}, hv: {"timestamp": iso(T0), "value": "CHARGING"}}
