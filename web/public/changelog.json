@@ -1,6 +1,56 @@
 {
   "versions": [
     {
+      "version": "0.40.0",
+      "date": "2026-11-07",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "cars",
+            "text": "Read bmw and mini cars (#606)"
+          },
+          {
+            "scope": "report",
+            "text": "Show the average power of quarter hours without readings (#607)"
+          },
+          {
+            "scope": "notify",
+            "text": "Send notifications by e-mail (#599)"
+          },
+          {
+            "scope": "wallbox",
+            "text": "Read a go-e charger natively (#598)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": [
+          {
+            "scope": "android",
+            "text": "Explain play protect warnings and the developer verification (#609)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump @vitejs/plugin-react from 6.1.2 to 6.2.1 in /web in the vite group (#603)"
+          },
+          {
+            "scope": "deps-web",
+            "text": "Bump @biomejs/biome from 2.6.3 to 2.6.4 in /web (#604)"
+          },
+          {
+            "scope": null,
+            "text": "Mark writing the on-grid depth as confirmed on the saj 3p-x e2 (#602)"
+          },
+          {
+            "scope": "saj",
+            "text": "Confirm the house power balance on a 0x005e (#593)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.39.0",
       "date": "2026-11-06",
       "first": false,

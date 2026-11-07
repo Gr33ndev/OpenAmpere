@@ -4,6 +4,23 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.40.0 (2026-11-07)
+
+### Neu
+
+- **cars:** Read bmw and mini cars (#606)
+- **report:** Show the average power of quarter hours without readings (#607)
+- **notify:** Send notifications by e-mail (#599)
+- **wallbox:** Read a go-e charger natively (#598)
+
+### Weitere Änderungen
+
+- **android:** Explain play protect warnings and the developer verification (#609)
+- **deps-web:** Bump @vitejs/plugin-react from 6.1.2 to 6.2.1 in /web in the vite group (#603)
+- **deps-web:** Bump @biomejs/biome from 2.6.3 to 2.6.4 in /web (#604)
+- Mark writing the on-grid depth as confirmed on the saj 3p-x e2 (#602)
+- **saj:** Confirm the house power balance on a 0x005e (#593)
+
 ## 0.39.0 (2026-11-06)
 
 ### Neu
@@ -182,18 +199,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - Run the ai review with opus 5.5 (#447)
-
-## 0.32.1 (2026-10-17)
-
-### Behoben
-
-- **setup:** Tell a busy wallbox apart from a busy inverter in the network search (#434)
-- **wallbox:** Name the old smartbox as the usual reason the wallbox check cannot connect (#432)
-- **diagnostics:** Warn that a report with the full serial number must not be posted publicly (#430)
-- **wallbox:** Tell unresolvable names, refused connections and silent hosts apart (#429)
-
-### Weitere Änderungen
-
-- Post the ai review summary from the workflow and retry a silent run (#436)
-- **deps-web:** Bump vite from 8.3.3 to 8.3.4 in /web in the vite group (#425)
-- Review pull requests automatically with claude (#424)
