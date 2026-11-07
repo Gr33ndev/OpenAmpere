@@ -122,8 +122,8 @@ Every change reaches owners in four ways, all built from the same release (#300,
    `SUPERVISOR_TOKEN`). Opened in the Home Assistant sidebar (ingress) and by IP on another port; no helper containers,
    updates come from Home Assistant.
 3. **Android app** (`android/`, an APK in every release): the same code through Chaquopy on a tablet in "Android mode"
-   (`android.active()`), the web app in a WebView. No helper containers, Docker or host; the app installs its own
-   updates through the same files as the update helper (`update/`).
+   (`android.active()`), the web app in a WebView. No helper containers, Docker or host, and no updater: Google Play Protect
+   blocks apps that may install packages (#610), so a new version is a download the owner installs.
 4. **Home Assistant integration** (`custom_components/openampere/`): installed through HACS for ways 1 and 3, brought
    along and installed by the app for way 2 (same version). It is only a client: it works only while an OpenAmpere
    server runs (way 1, 2 or 3) and talks to its external API, never to the inverter. Nothing the integration offers

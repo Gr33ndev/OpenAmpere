@@ -81,7 +81,9 @@ Play Protect checks apps from outside the Play Store when they are installed and
 comes from Google's servers and names no reason; the developer verification does not change it. A wrong verdict can
 only be appealed with Google's [Play Protect appeal](https://support.google.com/googleplay/android-developer/contact/protectappeals)
 (one per enforcement action, no answer; the APK has to be on VirusTotal first, the form asks for its hash there).
-`docs/android.md` tells owners what to do when Play Protect warns. #608 has what happened with 0.39.0.
+`docs/android.md` tells owners what to do when Play Protect warns. #608 has what happened with 0.39.0 and 0.40.0: Play
+Protect classifies an app that may install packages as harmful, which is why the app has no updater since #610
+(android/README.md, "Updates").
 
 ## If the key is ever exposed
 

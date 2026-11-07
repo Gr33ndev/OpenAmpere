@@ -36,18 +36,25 @@ def test_updates_come_as_a_new_version_of_the_app(tmp_path, tablet):
     assert not updates.request_file.exists()  # nobody would ever pick it up
 
 
-def test_the_updater_of_the_app_gets_the_request(tmp_path, tablet):
-    """The app's own updater (Updater.kt) plays the part of the Docker update helper through the same files."""
-    import json
+def test_the_app_has_no_updater(tmp_path, tablet):
+    """Play Protect blocks apps that may install packages (#610): a sign of life an older app's updater left behind
+    must not bring back the update button or the updates at night."""
+    import asyncio
     import time
 
-    updates = Updates(Runtime({"storage": {"path": str(tmp_path / "t.db")}}, Storage(tmp_path / "t.db")), "1.0.0")
+    runtime = Runtime({"storage": {"path": str(tmp_path / "t.db")}, "updates": {"auto": True}}, Storage(tmp_path / "t.db"))
+    updates = Updates(runtime, "1.0.0")
     updates.latest = {"version": "1.1.0"}
+    updates.checked = time.time()  # no lookup on GitHub
     updates.folder.mkdir(parents=True)
     (updates.folder / "updater-alive").write_text(str(time.time()))
-    assert updates.view()["updater"] is True
-    updates.request()
-    assert json.loads(updates.request_file.read_text())["to"] == "1.1.0"
+    assert updates.view()["updater"] is False
+    with pytest.raises(RuntimeError, match="GitHub"):
+        updates.request()
+    night = time.mktime((2026, 11, 8, 3, 0, 0, 0, 0, -1))
+    updates.checked = night
+    asyncio.run(updates.tick(night))
+    assert not updates.request_file.exists()
 
 
 def test_remote_access_through_the_tailscale_app(tmp_path, tablet):

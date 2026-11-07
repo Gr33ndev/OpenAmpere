@@ -69,10 +69,9 @@ does not make this worse and cannot prevent it.
    contain no credentials, no password hash and no app tokens, and a restored backup keeps the current password, sessions,
    tokens and secrets.
 5. **App → updater:** the app cannot reach Docker. It can only write a request file; the updater decides what to pull
-   and verifies the image before starting it, and rolls back if the new version does not become healthy. In the
-   Android app the server writes the same request file; the app's updater takes only a stable version newer than the
-   installed one, downloads it only from the project's GitHub release, checks it against the release's SHA256SUMS and
-   the installed app's signing key (or a key rotated from it), and Android verifies the signature once more.
+   and verifies the image before starting it, and rolls back if the new version does not become healthy. The
+   Android app has no updater (#610): the owner downloads the new APK from the project's release, and Android installs
+   it over the old one only if it is signed with the same key.
 6. **Release pipeline → users:** images and release files carry Sigstore-signed build provenance from the release
    workflow; dependencies are pinned by hash, actions by commit. The Android app is also signed with a release key
    that Android checks on every update: its secrets live in an environment only version tags and `main` can use, the
@@ -121,7 +120,7 @@ Based on the OWASP Top 10 (2021) and the CWE Top 25.
 | Security misconfiguration (A05) | Secure defaults; no debug endpoints; warnings in the app and the guides against port forwarding. |
 | Vulnerable and outdated components (A06) | Dependabot alerts and updates, weekly lockfile upgrades, OpenSSF Scorecard. |
 | Authentication failures (A07, CWE-307) | Lockout after 5 failed logins, minimum password length, sessions expire, password stored as scrypt hash. |
-| Software and data integrity failures (A08, CWE-494) | Hash-pinned dependencies and actions, signed build provenance, the updater verifies images, the Android app is signed with a release key whose certificate the release checks and its updater installs only an APK from the project's release that matches its SHA256SUMS and is signed with the installed app's key (Android checks the signature again), backups are checked before restoring. |
+| Software and data integrity failures (A08, CWE-494) | Hash-pinned dependencies and actions, signed build provenance, the updater verifies images, the Android app is signed with a release key whose certificate the release checks and Android installs a new version over it only with the same key, backups are checked before restoring. |
 | Logging and monitoring failures (A09) | Control log of every write; diagnostics reports pseudonymise addresses and serial numbers; credentials are never returned by the API. |
 | Server-side request forgery (A10, CWE-918) | Outgoing addresses (Shelly, evcc, my-PV) can only be set by a logged-in user. The car portal and its login service are fixed in the code; the login follows redirects only between these two hosts, so the brand password and its cookies go nowhere else. |
 | Path traversal (CWE-22) | Storage paths are validated; uploads are size-limited and checked before use. |

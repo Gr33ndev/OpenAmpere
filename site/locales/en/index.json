@@ -86,7 +86,7 @@
     "apkText": "Open this page on the tablet and tap the button. Under \"Assets\", download the file that ends in .apk, tap it and allow the browser to install apps. The app is only available here, not on Google Play. If Google Play Protect warns, the guide below says what to do.",
     "apkButton": "Download the latest version",
     "apkOpenTitle": "Set up",
-    "apkOpenText": "Open OpenAmpere and allow it to show notifications and to be left out of battery optimisation. Then choose a password; the assistant looks for the inverter. Phones and computers then open OpenAmpere in the browser at the tablet's address with port 8080. The app installs updates itself.",
+    "apkOpenText": "Open OpenAmpere and allow it to show notifications and to be left out of battery optimisation. Then choose a password; the assistant looks for the inverter. Phones and computers then open OpenAmpere in the browser at the tablet's address with port 8080. New versions are downloaded and installed the same way; the app shows when one is out.",
     "apkFingerprint": "The app is signed with the project's key. SHA-256 fingerprint of the certificate:",
     "apkGuide": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/android.md\">Guide for the tablet</a>: what it needs, keeping it running, updates, moving and backup.",
     "compare": {

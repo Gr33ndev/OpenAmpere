@@ -19,7 +19,7 @@ class BootReceiver : BroadcastReceiver() {
                 context.startActivity(Intent(open).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } else {
                 Updater.notify(
-                    context, Updater.CONFIRM_ID, context.getString(R.string.updates_reopenTitle, Updater.installedVersion(context)),
+                    context, Updater.REOPEN_ID, context.getString(R.string.updates_reopenTitle, Updater.installedVersion(context)),
                     context.getString(R.string.updates_reopenText), open,
                 )
             }

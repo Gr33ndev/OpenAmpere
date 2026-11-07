@@ -4,8 +4,9 @@
 
 The app looks up the latest release every few hours (it can be switched off). Installing needs the small updater
 container that install.sh sets up: the app only writes a request file into the data folder, the updater pulls the
-new image and restarts the containers (see scripts/updater.sh). The app itself never gets access to Docker. In the
-Android app (#567) the app's own updater (android/.../Updater.kt) plays the updater's part through the same files.
+new image and restarts the containers (see scripts/updater.sh). The app itself never gets access to Docker. The
+Android app (#567) has no updater since #610 (Google Play Protect blocks apps that may install packages): there a new
+version is a download of the new app, which the app says with a link to the release.
 """
 
 from __future__ import annotations
@@ -83,6 +84,8 @@ class Updates:
         return bool(new and now and new > now)
 
     def updater_ready(self, now: float | None = None) -> bool:
+        if android.active():
+            return False  # the app has no updater (#610); a sign of life left by an older app does not count
         try:
             alive = float((self.folder / "updater-alive").read_text().strip())
         except (OSError, ValueError):
@@ -104,7 +107,7 @@ class Updates:
         if ha_app.active():
             view["home_assistant"] = True  # updates come through Home Assistant
         elif android.active():
-            view["android"] = True  # a new version of the app on the tablet (#567), installed by the app itself
+            view["android"] = True  # a new version of the app on the tablet (#567), downloaded by the owner (#610)
         return view
 
     async def check(self, force: bool = False, now: float | None = None) -> None:
@@ -124,7 +127,7 @@ class Updates:
         now = time.time() if now is None else now
         if ha_app.active():
             raise RuntimeError("Updates kommen über Home Assistant: Einstellungen → Apps → OpenAmpere.")
-        if android.active() and not self.updater_ready(now):  # the app's updater is not running (an older app)
+        if android.active():  # the app has no updater (#610): the new version is a download
             raise RuntimeError("Auf dem Tablet kommt ein Update als neue Version der OpenAmpere-App. Bitte lade sie auf "
                                "dem Tablet von der Download-Seite von OpenAmpere auf GitHub herunter (die Datei endet "
                                "auf .apk) und installiere sie.")

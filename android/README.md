@@ -74,31 +74,24 @@ changes it; regenerate it after changing those pins.
 
 ## Updates
 
-`Updater` plays the part of the Docker update helper (`scripts/updater.sh`) through the same files in the data
-folder: it writes `update/updater-alive`, so the server offers the update button and the update at night as on the
-other ways, takes the version from the request file, downloads `openampere-<version>.apk` and `SHA256SUMS` from the
-release of Gr33ndev/OpenAmpere only, checks the SHA-256 and that the APK is signed with the installed app's
-certificate, and hands it to Android's package installer, writing its progress to `update/status.json`. Android asks
-the owner first before Android 12, and for the first update of an app installed from the browser: a notification
-leads there. From then on the app is its own installer and updates without asking. The owner has to allow
-OpenAmpere to install apps once; a notification leads to that setting. After the update `BootReceiver` starts the
-server again and reports "done". Replacing the app closes it: if it was in front (a tablet on the wall), it comes back
-by itself before Android 10; from Android 10 Android does not let an app come to the front by itself, so a
-notification "Version … is installed" leads back to it.
+The app has no updater (#610). Up to 0.40 an `Updater` in the app downloaded and installed new versions; Google Play
+Protect classifies every app from outside the Play Store with `REQUEST_INSTALL_PACKAGES` or
+`UPDATE_PACKAGES_WITHOUT_USER_ACTION` as harmful (`generic_malware`), even a new release it has never seen, and blocks
+its installation (tests in #608). So the manifest asks for neither, and the server in Android mode never sees an
+updater (`updates.py`): the app shows a new version with a link to the release, and the owner installs the APK like the
+first time. Never add either permission again, nor a library that brings one along: check the merged manifest of a
+release APK (`aapt2 dump permissions`).
 
-To try an update in the emulator, build a second APK with a higher version (`version` in `pyproject.toml`, back
-afterwards), serve a copy of the release (`repos/Gr33ndev/OpenAmpere/releases/tags/v<version>` with the assets'
-`browser_download_url`, and the files under `Gr33ndev/OpenAmpere/releases/download/v<version>/`) with
-`python3 -m http.server 8000`, then:
+What is left of `Updater`: after every update `BootReceiver` reports "done" in the web app (so a failure the 0.40
+updater left, e.g. refused by Play Protect, does not stay on the update card after an update by hand), and after the
+update a 0.40 app starts for the next version (its marker `update/installing`), if the app was in front (a tablet on
+the wall), brings it back (before Android 10 by itself, from Android 10 through a notification "Version …
+is installed", since Android does not let an app come to the front by itself). `BootReceiver` starts the server again
+after every update, also one installed by hand.
 
-```bash
-adb reverse tcp:8000 tcp:8000
-adb shell appops set io.github.gr33ndev.openampere REQUEST_INSTALL_PACKAGES allow
-adb shell run-as io.github.gr33ndev.openampere sh -c 'echo http://127.0.0.1:8000 > files/update/test-github'
-adb shell run-as io.github.gr33ndev.openampere sh -c 'echo "{\"to\": \"<version>\"}" > files/update/request'
-```
-
-`update/test-github` only counts in debug builds.
+To see Play Protect's verdict on an APK, use an emulator with a Google Play image (`google_apis_playstore`), sign in to
+a Google account there, copy the APK to `Download` and install it from the Files app; `adb logcat | grep VerifyApps`
+shows the `JIT scan response`.
 
 ## Smoke test
 

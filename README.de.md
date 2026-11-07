@@ -312,8 +312,8 @@ ganzen Server mit; einen Rechner, Docker oder Home Assistant brauchst du nicht.
 3. **Öffnen:** OpenAmpere starten, Benachrichtigungen und die Ausnahme vom Energiesparen erlauben, ein Passwort
    festlegen. Der Einrichtungsassistent sucht den Wechselrichter.
 
-Handy und Computer im Heimnetz öffnen OpenAmpere unter `http://<Adresse des Tablets>:8080`. Updates installiert die App
-selbst. Was das Tablet braucht, wie es durchläuft und was dort anders ist, steht in der Anleitung
+Handy und Computer im Heimnetz öffnen OpenAmpere unter `http://<Adresse des Tablets>:8080`. Neue Versionen lädst
+und installierst du genauso; die App zeigt an, wenn eine da ist. Was das Tablet braucht, wie es durchläuft und was dort anders ist, steht in der Anleitung
 [docs/android.de.md](docs/android.de.md). Die App ist mit dem Schlüssel des Projekts signiert, der SHA-256-Fingerabdruck
 des Zertifikats ist `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Release prüfen](#release-prüfen)).
 
