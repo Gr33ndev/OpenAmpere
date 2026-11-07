@@ -418,6 +418,28 @@ async def test_the_daily_limit_waits_hours(tmp_path, bmw):
     assert live.next_at >= live.checked + bmw_cardata.LIMIT_WAIT_S
 
 
+async def test_an_unexpected_error_keeps_the_pace(tmp_path, bmw, monkeypatch):
+    runtime, cars = setup_cars(tmp_path)
+    runtime.storage.set_meta("cars", [{**CAR, "id": "ab12cd34", "password": bmw.login()}])
+    car = cars.cars[0]
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("unexpected")
+    monkeypatch.setattr(BmwCarData, "fetch", broken)
+    live = await cars.poll(car, cars.live.setdefault(car.id, cars_module.Live()))
+    assert live.status == "error" and live.next_at >= live.checked + bmw_cardata.EVERY_S
+
+
+def test_an_answer_cut_off_is_a_temporary_error(monkeypatch):
+    from http.client import IncompleteRead
+
+    def cut(*args, **kwargs):
+        raise IncompleteRead(b"{")
+    monkeypatch.setattr(bmw_cardata, "fetch_within", cut)
+    with pytest.raises(SourceError, match="nicht erreichbar"):
+        bmw_cardata._send("GET", "https://api-cardata.bmwgroup.com/x")
+
+
 async def test_missing_access_to_the_api_is_a_setup_step(tmp_path, bmw, monkeypatch):
     client = BmwCarData("bmw", CLIENT_ID, bmw.login(), timeout=5)
 

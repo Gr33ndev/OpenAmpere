@@ -26,6 +26,7 @@ import re
 import secrets
 import time
 from datetime import datetime, timezone
+from http.client import HTTPException
 from typing import NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlparse
@@ -180,7 +181,7 @@ def _send(method: str, url: str, *, form: dict | None = None, body: dict | None 
             raw = b""
         finally:
             err.close()
-    except (URLError, TimeoutError, OSError) as err:
+    except (URLError, TimeoutError, OSError, HTTPException) as err:  # also an answer cut off (IncompleteRead)
         raise SourceError("BMW CarData ist gerade nicht erreichbar.") from err
     if len(raw) > MAX_ANSWER_BYTES:
         raise SourceError("BMW CarData hat eine unerwartet große Antwort geschickt.")

@@ -429,6 +429,7 @@ class Cars:
             log.warning("car %s: reading the data failed: %s", car.id, type(err).__name__)
             self._failed(car, live, "error", "Unerwartete Antwort der Datenquelle. Bitte später nochmal versuchen.",
                          time.time())
+            live.next_at = max(live.next_at, self._paced(car, client, time.time()))
             return live
         finally:
             self._renewed(account, client)
