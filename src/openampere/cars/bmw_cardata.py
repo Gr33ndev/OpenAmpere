@@ -50,6 +50,7 @@ CONTAINER_NAME, CONTAINER_PURPOSE = "OpenAmpere", "v1"
 EVERY_S = 40 * 60  # 36 looks a day: room in BMW's 50 requests for the setup and for asking now
 MIN_GAP_S = 60  # asking now more often than this answers from the last look
 LIMIT_WAIT_S = 3 * 3600  # after BMW's daily limit was reached
+UNMAPPED_WAIT_S = 6 * 3600  # the car is no longer mapped to the account: the owner has to act in the portal
 MAX_ANSWER_BYTES = 1024 ** 2
 DEADLINE_S = 60
 
@@ -63,6 +64,7 @@ CHARGE_STATE = ("vehicle.drivetrain.electricEngine.charging.status",
 CHARGING = {"CHARGINGACTIVE", "CHARGING"}
 PLUGGED_NOT_CHARGING = {"INITIALIZATION", "CHARGINGPAUSED", "CHARGINGENDED", "WAITING_FOR_CHARGING",
                         "FINISHED_FULLY_CHARGED", "FINISHED_NOT_FULL"}
+PLUGGED = CHARGING | PLUGGED_NOT_CHARGING
 KEYS = (*SOC, *TARGET_SOC, *RANGE, *ODOMETER, *PLUG, *CHARGE_STATE)
 
 
@@ -129,11 +131,15 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
     put(RANGE, "range_km", lambda v: (n if (n := _number(v)) is not None and n >= 0 else None))
     put(ODOMETER, "odometer_km", lambda v: (n if (n := _number(v)) is not None and n >= 0 else None))
     put(PLUG, "plugged", lambda v: v.upper() == "CONNECTED")
-    state = first(CHARGE_STATE)
-    if state is not None and state[0] > after and (state[1].upper() in CHARGING | PLUGGED_NOT_CHARGING):
-        data = deliveries.setdefault(state[0], CarData(ts=state[0]))
-        data.charging = state[1].upper() in CHARGING
-        data.plugged = True  # charging, waiting or finished: the cable is in
+    # the first key whose value is known; another value (e.g. NOCHARGING, CHARGINGERROR) only says "not charging"
+    state = next((found[n] for n in CHARGE_STATE if n in found and found[n][1].upper() in CHARGING | PLUGGED), None)
+    if state is not None:
+        if state[0] > after:
+            data = deliveries.setdefault(state[0], CarData(ts=state[0]))
+            data.charging = state[1].upper() in CHARGING
+            data.plugged = True  # charging, waiting or finished: the cable is in
+    elif (other := first(CHARGE_STATE)) is not None and other[0] > after:
+        deliveries.setdefault(other[0], CarData(ts=other[0])).charging = False  # the plug key says whether it is in
     return [deliveries[ts] for ts in sorted(deliveries) if not deliveries[ts].empty()], newest
 
 
@@ -359,12 +365,17 @@ class BmwCarData(Source):
         last = self._last_look.get(vin)
         if last and now - last[0] < MIN_GAP_S:  # asked again right away: BMW's requests are few
             return Delivery(data=[], newest=last[1].newest)
+        kept = self._container
         container = self._container_id()
         answer = self._api("GET", f"/customers/vehicles/{quote(vin)}/telematicData?containerId={quote(container)}")
-        if answer is None:  # the container is gone (deleted in the portal): a new one next time
+        if answer is None and kept:  # the kept container may be gone (deleted in the portal): looked up once more
             self._container = None
-            raise SourceError("BMW CarData kennt den Datencontainer nicht mehr. OpenAmpere legt beim nächsten Mal "
-                              "einen neuen an.")
+            container = self._container_id()
+            answer = self._api("GET", f"/customers/vehicles/{quote(vin)}/telematicData?containerId={quote(container)}")
+        if answer is None:  # also with a container just looked up: the car is not (or no longer) in the account
+            raise SourceSetupError("BMW kennt das Auto in diesem Konto nicht mehr. Bitte im Portal von BMW oder MINI "
+                                   "prüfen, ob das Auto noch mit dem Konto verknüpft ist und du sein Hauptnutzer bist.",
+                                   wait_s=UNMAPPED_WAIT_S)
         telematic = answer.get("telematicData") if isinstance(answer, dict) else None
         data, newest = interpret(telematic if isinstance(telematic, dict) else {}, after, now)
         delivery = Delivery(data=data, newest=newest)

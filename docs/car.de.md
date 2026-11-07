@@ -80,7 +80,7 @@ Gut zu wissen bei BMW und MINI:
 - **Die Anmeldung gilt zwei Wochen** und verlängert sich bei jedem Abruf. War OpenAmpere länger aus (z. B. das
   Tablet), musst du sie unter **Ändern → Neu anmelden** wieder bestätigen. OpenAmpere speichert nur diesen
   Anmeldeschlüssel, verschlüsselt wie ein Passwort.
-- **BMW erlaubt 50 Abfragen am Tag** für das ganze Konto. OpenAmpere fragt etwa alle 40 Minuten. Nutzt du BMW
+- **BMW erlaubt 50 Abfragen am Tag** für das ganze Konto. OpenAmpere fragt etwa alle 40 Minuten, bei zwei Autos im selben Konto jedes etwa alle 80 Minuten. Nutzt du BMW
   CarData auch in evcc oder Home Assistant, teilen sie sich diese Abfragen; ist das Tageslimit erreicht, wartet
   OpenAmpere ein paar Stunden.
 - **Neue Werte gibt es nur, wenn das Auto welche schickt**, etwa beim Fahren und Laden. Ein geparktes Auto, das

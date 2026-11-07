@@ -203,14 +203,31 @@ def test_the_values_newer_than_the_last_look_make_one_delivery_per_time_stamp():
     assert interpret(telematic, after=T0 + 1200, now=T0 + 3600) == ([], T0 + 1200)
 
 
-def test_a_time_stamp_in_the_future_counts_as_now_and_unknown_states_are_left_out():
+def test_a_time_stamp_in_the_future_counts_as_now_and_an_unknown_state_is_not_charging():
     telematic = {"vehicle.drivetrain.batteryManagement.header": {"timestamp": iso(T0 + 7200), "value": "101"},
                  "vehicle.drivetrain.lastRemainingRange": {"timestamp": iso(T0), "value": "90"},
                  "vehicle.drivetrain.electricEngine.charging.hvStatus": {"timestamp": iso(T0), "value": "SOMETHING"},
                  "vehicle.body.chargingPort.combinedStatus": {"timestamp": "kaputt", "value": "CONNECTED"}}
     data, newest = interpret(telematic, after=0, now=T0 + 60)
     assert newest == T0 + 60
-    assert [(d.ts, d.soc, d.range_km, d.plugged, d.charging) for d in data] == [(T0, None, 90, None, None)]
+    assert [(d.ts, d.soc, d.range_km, d.plugged, d.charging) for d in data] == [(T0, None, 90, None, False)]
+
+
+def test_unplugging_after_a_charge_ends_the_charge():
+    def at(ts, status, port):
+        return {"vehicle.drivetrain.electricEngine.charging.status": {"timestamp": iso(ts), "value": status},
+                "vehicle.body.chargingPort.status": {"timestamp": iso(ts), "value": port}}
+    charging, _ = interpret(at(T0, "CHARGINGACTIVE", "CONNECTED"), after=0, now=T0 + 60)
+    assert [(d.plugged, d.charging) for d in charging] == [(True, True)]
+    unplugged, _ = interpret(at(T0 + 600, "NOCHARGING", "DISCONNECTED"), after=T0, now=T0 + 660)
+    assert [(d.plugged, d.charging) for d in unplugged] == [(False, False)]
+
+
+def test_an_unknown_charging_status_falls_back_to_the_hv_status():
+    telematic = {"vehicle.drivetrain.electricEngine.charging.status": {"timestamp": iso(T0), "value": "NEWVALUE"},
+                 "vehicle.drivetrain.electricEngine.charging.hvStatus": {"timestamp": iso(T0), "value": "CHARGING"}}
+    data, _ = interpret(telematic, after=0, now=T0 + 60)
+    assert [(d.plugged, d.charging) for d in data] == [(True, True)]
 
 
 def test_validation_of_the_client_id():
@@ -318,11 +335,32 @@ def test_a_container_deleted_in_the_portal_is_created_again_next_time(bmw):
     client.fetch(VIN, 0)
     bmw.containers.clear()
     client._last_look.clear()
-    with pytest.raises(SourceError, match="Datencontainer"):
-        client.fetch(VIN, 0)
-    client._last_look.clear()
-    client.fetch(VIN, 0)
+    client.fetch(VIN, 0)  # no error: looked up again and created within the same look
     assert len(bmw.containers) == 1
+
+
+def test_a_car_no_longer_in_the_account_waits_for_the_owner(bmw):
+    client = BmwCarData("bmw", CLIENT_ID, bmw.login(), timeout=5)
+    client.fetch(VIN, 0)
+    client._last_look.clear()
+    calls = len(bmw.api_calls)
+    with pytest.raises(SourceSetupError, match="nicht mehr") as raised:
+        client.fetch("WBAOTHERCAR000003", 0)
+    assert raised.value.wait_s == bmw_cardata.UNMAPPED_WAIT_S
+    assert len(bmw.api_calls) - calls == 3  # the 404, the containers once more, the 404 again
+    with pytest.raises(SourceSetupError):
+        BmwCarData("bmw", CLIENT_ID, bmw.login(), timeout=5).fetch("WBAOTHERCAR000003", 0)
+
+
+async def test_cars_of_one_account_share_its_pace(tmp_path, bmw):
+    runtime, cars = setup_cars(tmp_path)
+    token = bmw.login()
+    runtime.storage.set_meta("cars", [{**CAR, "id": "ab12cd34", "password": token},
+                                      {**CAR, "id": "ef56ab78", "name": "Zweiter", "password": token}])
+    car = cars.cars[0]
+    live = await cars.poll(car, cars.live.setdefault(car.id, cars_module.Live()))
+    assert live.status == "waiting" and live.error is None
+    assert live.next_at >= live.checked + 2 * bmw_cardata.EVERY_S
 
 
 def test_only_cars_of_which_the_account_is_the_primary_user_are_listed(bmw):

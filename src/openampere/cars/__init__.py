@@ -419,12 +419,11 @@ class Cars:
             return live
         except SourceSetupError as err:
             self._failed(car, live, "setup", err.message, time.time())
-            live.next_at = time.time() + SETUP_WAIT_S
+            live.next_at = max(time.time() + SETUP_WAIT_S, self._paced(car, client, time.time(), err.wait_s))
             return live
         except SourceError as err:
             self._failed(car, live, "error", err.message, time.time())
-            if err.wait_s:
-                live.next_at = max(live.next_at, time.time() + err.wait_s)
+            live.next_at = max(live.next_at, self._paced(car, client, time.time(), err.wait_s))
             return live
         except Exception as err:  # noqa: BLE001 - an unexpected answer: shown, and tried again later
             log.warning("car %s: reading the data failed: %s", car.id, type(err).__name__)
@@ -444,13 +443,22 @@ class Cars:
         has_data = bool(rows) or self.runtime.storage.car_last_ts(car.id) is not None
         live.status, live.error, live.failures, live.checked = ("ok" if has_data else "waiting"), None, 0, now
         if client.every_s:
-            live.next_at = now + client.every_s
+            live.next_at = self._paced(car, client, now)
         elif delivery.newest is None:
             live.next_at = now + FIRST_DATA_WAIT_S
         else:
             due = delivery.newest + NEXT_DELIVERY_S
             live.next_at = max(now + MIN_WAIT_S, due) if due > now else now + LATE_WAIT_S
         return live
+
+    def _paced(self, car: Car, client: Source, now: float, wait_s: float | None = None) -> float:
+        """The next look for a source with a daily limit per account (BMW): its pace is shared by every car of the
+        same login, so two cars look half as often each; a wait the source asked for (wait_s) comes on top."""
+        if not client.every_s:
+            return now + (wait_s or 0)
+        sharing = sum(1 for c in self.enabled() if c.vin and (c.source, c.brand, c.username) ==
+                      (car.source, car.brand, car.username))
+        return now + max(wait_s or 0, client.every_s * max(1, sharing))
 
     def _failed(self, car: Car, live: Live, status: str, message: str, now: float) -> None:
         if live.status != status or live.error != message:

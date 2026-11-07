@@ -77,7 +77,7 @@ Good to know for BMW and MINI:
 - **The login lasts two weeks** and is renewed with every fetch. If OpenAmpere was off for longer (e.g. the tablet),
   confirm it again under **Ändern → Neu anmelden** (Change → Log in again). OpenAmpere stores only this login key,
   encrypted like a password.
-- **BMW allows 50 requests a day** for the whole account. OpenAmpere asks about every 40 minutes. If you also use BMW
+- **BMW allows 50 requests a day** for the whole account. OpenAmpere asks about every 40 minutes; two cars of the same account each every 80 minutes. If you also use BMW
   CarData in evcc or Home Assistant, they share these requests; once the daily limit is reached, OpenAmpere waits a
   few hours.
 - **New values come only when the car sends some**, for example while driving and charging. A parked car that sleeps

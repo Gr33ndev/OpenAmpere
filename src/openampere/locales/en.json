@@ -65,9 +65,9 @@
   "cars": {
     "atMostCars": "At most {MAX_CARS} cars.",
     "bmwAnswerTooLarge": "BMW CarData sent an unexpectedly large answer.",
+    "bmwCarUnmapped": "BMW no longer knows the car in this account. Please check in the BMW or MINI portal whether the car is still linked to the account and you are its primary user.",
     "bmwClientIdMissing": "Please enter the client ID from the BMW or MINI portal.",
     "bmwClientIdUnknown": "BMW does not know this client ID or it has no access to the CarData API. Please request access to the CarData API in the portal, then create a new client ID and enter it here.",
-    "bmwContainerGone": "BMW CarData no longer knows the data container. OpenAmpere creates a new one next time.",
     "bmwDailyLimit": "BMW allows no further requests today (50 a day for the whole account). OpenAmpere tries again in a few hours.",
     "bmwDataNotReleased": "BMW does not release the data. Please check in the portal that access to the CarData API is granted and that the account is the primary user of the car.",
     "bmwError": "BMW CarData reports an error ({status}).",
