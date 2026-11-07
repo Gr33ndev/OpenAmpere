@@ -16,23 +16,23 @@ import java.io.File
  * What is left of the app's own updater (#567). Up to 0.40 the app downloaded and installed new versions itself; Google
  * Play Protect classifies every app from outside the Play Store that may install packages as harmful (#610), so the
  * app no longer can. New versions come as a download like the first install; the server sees no updater and says so
- * (updates.py). What stays is the end of an update a 0.40 app started: it left the marker `update/installing`, and
- * the new version reports "done" and comes back to the front (BootReceiver).
+ * (updates.py). What stays: after every update the new version reports "done" (replacing a failure the 0.40 updater
+ * may have left), and after an update the 0.40 app started itself (its marker `update/installing`) it comes back to
+ * the front (BootReceiver).
  */
 object Updater {
     const val REOPEN_ID = 3
     private const val CHANNEL = "updates"
 
-    /** The new version started (BootReceiver, MY_PACKAGE_REPLACED) after an update the old app started: returns
-     *  whether there was one, and says "done" in the update dialog of the web app. */
+    /** A new version replaced the app (BootReceiver, MY_PACKAGE_REPLACED): says "done" in the web app, also after an
+     *  update by hand, so a failure the 0.40 updater wrote before (e.g. refused by Play Protect) does not stay on the
+     *  update card. Returns whether the old app had started this update itself (its marker). */
     fun finished(context: Context): Boolean {
-        val marker = File(context.filesDir, "update/installing")
-        if (!marker.isFile) return false
-        marker.delete()
         writeStatus(context, "done", context.getString(R.string.updates_done, installedVersion(context)))
         // the old app's "update ready" notification, if Android asked before installing (same id)
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(REOPEN_ID)
-        return true
+        val marker = File(context.filesDir, "update/installing")
+        return marker.isFile && marker.delete()
     }
 
     fun installedVersion(context: Context): String =

@@ -82,9 +82,10 @@ updater (`updates.py`): the app shows a new version with a link to the release, 
 first time. Never add either permission again, nor a library that brings one along: check the merged manifest of a
 release APK (`aapt2 dump permissions`).
 
-What is left of `Updater` ends the update a 0.40 app starts for the next version: it left the marker
-`update/installing`; after the new version replaced the app, `BootReceiver` reports "done" and, if the app was in front
-(a tablet on the wall), brings it back (before Android 10 by itself, from Android 10 through a notification "Version …
+What is left of `Updater`: after every update `BootReceiver` reports "done" in the web app (so a failure the 0.40
+updater left, e.g. refused by Play Protect, does not stay on the update card after an update by hand), and after the
+update a 0.40 app starts for the next version (its marker `update/installing`), if the app was in front (a tablet on
+the wall), brings it back (before Android 10 by itself, from Android 10 through a notification "Version …
 is installed", since Android does not let an app come to the front by itself). `BootReceiver` starts the server again
 after every update, also one installed by hand.
 
