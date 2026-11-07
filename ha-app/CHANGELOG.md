@@ -4,6 +4,12 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.41.0 (2026-11-07)
+
+### Neu
+
+- **android:** Drop the built-in updater, play protect blocks it (#611)
+
 ## 0.40.0 (2026-11-07)
 
 ### Neu
@@ -182,20 +188,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
 - Put the review instructions into the ai review prompt and skip bot actors (#450)
 - **deps:** Update Python dependencies (#448)
-
-## 0.33.0 (2026-10-18)
-
-### Neu
-
-- **cars:** Read the state of charge of vw group cars from the eu data act portal (#441)
-- **wallbox:** Simulate the surplus control for the foxess ac ev charger without writing (#443)
-- **wallbox:** Show the foxess ac ev charger live in the app, read only (#442)
-- **security:** Set own host names for the access check in the app (#438)
-
-### Behoben
-
-- **wallbox:** End the simulation when manual is saved with the setup (#446)
-
-### Weitere Änderungen
-
-- Run the ai review with opus 5.5 (#447)

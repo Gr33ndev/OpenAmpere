@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "version": "0.41.0",
+      "date": "2026-11-07",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": "android",
+            "text": "Drop the built-in updater, play protect blocks it (#611)"
+          }
+        ],
+        "fix": [],
+        "perf": [],
+        "other": []
+      },
+      "breaking": []
+    },
+    {
       "version": "0.40.0",
       "date": "2026-11-07",
       "first": false,
