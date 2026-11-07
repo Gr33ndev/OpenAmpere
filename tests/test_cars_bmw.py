@@ -252,6 +252,15 @@ def test_a_finished_charge_sent_again_after_unplugging_is_not_plugged_in():
     assert [(d.plugged, d.charging) for d in data] == [(False, True)]  # the same time: the plug key counts
 
 
+def test_unplugging_without_a_new_charge_state_ends_the_charge():
+    telematic = {"vehicle.drivetrain.electricEngine.charging.hvStatus": {"timestamp": iso(T0), "value": "CHARGING"},
+                 "vehicle.body.chargingPort.status": {"timestamp": iso(T0 + 600), "value": "DISCONNECTED"}}
+    data, _ = interpret(telematic, after=0, now=T0 + 660)
+    assert [(d.ts, d.plugged, d.charging) for d in data] == [(T0, None, True), (T0 + 600, False, False)]
+    data, _ = interpret(telematic, after=T0, now=T0 + 660)
+    assert [(d.ts, d.plugged, d.charging) for d in data] == [(T0 + 600, False, False)]
+
+
 def test_an_older_known_hv_status_does_not_hide_a_newer_unknown_status():
     status, hv = "vehicle.drivetrain.electricEngine.charging.status", "vehicle.drivetrain.electricEngine.charging.hvStatus"
     charging = {status: {"timestamp": iso(T0), "value": "CHARGINGACTIVE"}, hv: {"timestamp": iso(T0), "value": "CHARGING"}}

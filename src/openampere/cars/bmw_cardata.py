@@ -141,6 +141,7 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
     # the newest of the two charge keys (an older known value must not hide a newer one); with the same time stamp
     # the first known value. A value not known (e.g. NOCHARGING, CHARGINGERROR) only says "not charging".
     states = [found[n] for n in CHARGE_STATE if n in found]
+    state, plug = None, first(PLUG)
     if states:
         latest = max(ts for ts, _ in states)
         same = [v for v in states if v[0] == latest]
@@ -148,10 +149,12 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
         if state[0] > after:
             data = deliveries.setdefault(state[0], CarData(ts=state[0]))
             data.charging = state[1].upper() in CHARGING
-            plug = first(PLUG)
             if data.charging and (plug is None or plug[0] < state[0]):
                 data.plugged = True  # charging: the cable is in. Otherwise the plug key says it (a "finished" state
                 # may be sent again after unplugging)
+    if (plug is not None and plug[0] > after and plug[1].upper() != "CONNECTED"
+            and (state is None or state[0] < plug[0])):
+        deliveries[plug[0]].charging = False  # unplugged after the last charge state: no longer charging
     return [deliveries[ts] for ts in sorted(deliveries) if not deliveries[ts].empty()], newest
 
 
