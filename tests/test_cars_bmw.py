@@ -196,9 +196,11 @@ def test_the_values_newer_than_the_last_look_make_one_delivery_per_time_stamp():
     }
     data, newest = interpret(telematic, after=T0, now=T0 + 3600)
     assert newest == T0 + 1200
-    # the header wins over "displayed"; the odometer is older than the last look; the charge state has its own time
+    # the newer "displayed" wins over the header; the odometer is older than the last look; the charge state has its
+    # own time
     assert [(d.ts, d.soc, d.range_km, d.plugged, d.charging, d.odometer_km, d.target_soc) for d in data] == [
-        (T0 + 600, 64, 180, False, None, None, None), (T0 + 1200, None, None, True, True, None, None)]
+        (T0 + 600, None, 180, False, None, None, None), (T0 + 900, 70, None, None, None, None, None),
+        (T0 + 1200, None, None, True, True, None, None)]
     # nothing new: nothing stored again
     assert interpret(telematic, after=T0 + 1200, now=T0 + 3600) == ([], T0 + 1200)
 
@@ -221,6 +223,21 @@ def test_unplugging_after_a_charge_ends_the_charge():
     assert [(d.plugged, d.charging) for d in charging] == [(True, True)]
     unplugged, _ = interpret(at(T0 + 600, "NOCHARGING", "DISCONNECTED"), after=T0, now=T0 + 660)
     assert [(d.plugged, d.charging) for d in unplugged] == [(False, False)]
+
+
+def test_an_old_value_of_the_first_key_does_not_hide_a_newer_one_of_the_second():
+    telematic = {
+        "vehicle.drivetrain.batteryManagement.header": {"timestamp": iso(T0), "value": "40"},
+        "vehicle.powertrain.electric.battery.stateOfCharge.displayed": {"timestamp": iso(T0 + 600), "value": "55"},
+        "vehicle.drivetrain.electricEngine.kombiRemainingElectricRange": {"timestamp": iso(T0), "value": "150"},
+        "vehicle.drivetrain.lastRemainingRange": {"timestamp": iso(T0 + 600), "value": "200"},
+        "vehicle.body.chargingPort.status": {"timestamp": iso(T0), "value": "CONNECTED"},
+        "vehicle.body.chargingPort.combinedStatus": {"timestamp": iso(T0 + 600), "value": "DISCONNECTED"}}
+    data, _ = interpret(telematic, after=T0, now=T0 + 660)
+    assert [(d.ts, d.soc, d.range_km, d.plugged) for d in data] == [(T0 + 600, 55, 200, False)]
+    same = {k: {**v, "timestamp": iso(T0)} for k, v in telematic.items()}
+    data, _ = interpret(same, after=0, now=T0 + 60)
+    assert [(d.soc, d.range_km, d.plugged) for d in data] == [(40, 150, True)]  # the same time: the first key
 
 
 def test_an_older_known_hv_status_does_not_hide_a_newer_unknown_status():

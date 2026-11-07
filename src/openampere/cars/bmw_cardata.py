@@ -117,7 +117,13 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
     deliveries: dict[float, CarData] = {}
 
     def first(names: tuple[str, ...]) -> tuple[float, str] | None:
-        return next((found[n] for n in names if n in found), None)
+        """The newest of the keys for one value (an old one a model sent once must not hide a newer one); with the
+        same time stamp the first key."""
+        best = None
+        for value in (found[n] for n in names if n in found):
+            if best is None or value[0] > best[0]:
+                best = value
+        return best
 
     def put(names: tuple[str, ...], field: str, convert) -> None:
         value = first(names)
