@@ -312,8 +312,8 @@ whole server along; you need no computer, Docker or Home Assistant.
 3. **Open:** start OpenAmpere, allow notifications and the battery optimisation exception, choose a password. The
    setup assistant looks for the inverter.
 
-Phones and computers in the home network open OpenAmpere at `http://<address of the tablet>:8080`. The app installs
-updates itself. What the tablet needs, how to keep it running and what is different there is in the guide
+Phones and computers in the home network open OpenAmpere at `http://<address of the tablet>:8080`. New versions are
+downloaded and installed the same way; the app shows when one is out. What the tablet needs, how to keep it running and what is different there is in the guide
 [docs/android.md](docs/android.md). The app is signed with the project's key; the SHA-256 fingerprint of the
 certificate is `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Verifying a release](#verifying-a-release)).
 

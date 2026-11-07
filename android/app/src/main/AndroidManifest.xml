@@ -19,9 +19,8 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- the tablet is the server: Android must not put OpenAmpere to sleep (asked once in the app) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- the built-in updater (#567): installing the new APK, from Android 12 without asking once it installed the app -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- no REQUEST_INSTALL_PACKAGES or UPDATE_PACKAGES_WITHOUT_USER_ACTION: Google Play Protect blocks every app from
+         outside the Play Store that may install packages as harmful (#610); new versions come as a download -->
 
     <application
         android:allowBackup="false"
@@ -51,11 +50,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Local server for a solar system with battery storage: reads and controls the inverter in the home network around the clock" />
         </service>
-
-        <receiver
-            android:name=".InstallReceiver"
-            android:exported="false"
-            android:process=":server" />
 
         <receiver
             android:name=".BootReceiver"

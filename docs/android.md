@@ -47,10 +47,11 @@ notification settings of OpenAmpere. After the tablet restarts, OpenAmpere start
 ## If Google Play Protect warns
 
 OpenAmpere is not in the Play Store, so Google Play Protect checks the file when you install it. It may ask to scan
-the app first: allow it. It may also show **"Harmful app blocked – This app may be harmful"**. Google rates the file
-this way on its own servers without giving a reason. We consider this a mistake and asked Google to review it
-([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). The app is registered with Google's developer
-verification and built from the public source code.
+the app first: allow it. Versions up to 0.40 may then show **"Harmful app blocked – This app may be harmful"**:
+Google rates every app from outside the Play Store as harmful if it may install apps, and those versions could install
+their own updates ([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). Newer versions cannot, and in our tests
+Play Protect lets them through ([#610](https://github.com/Gr33ndev/OpenAmpere/issues/610)). The app is registered with
+Google's developer verification and built from the public source code. If Play Protect still warns:
 
 1. Make sure the file comes from the [release page of OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases)
    and you downloaded it yourself. Never install an OpenAmpere file someone sent you. If you want to be sure, check
@@ -86,7 +87,7 @@ your tablet stops the app completely then.
 
 ## What is different on the tablet
 
-- **Updates** are installed by the app itself, see [Updates](#updates).
+- **Updates** are a download of the new app, see [Updates](#updates); there are no updates at night.
 - **Access from outside:** install the [Tailscale](https://tailscale.com) app on the tablet and on your phone and sign
   in with the same account in both. Then open the Tailscale address of the tablet with port 8080 on the phone. The
   Tailscale helper of way 1 does not exist on the tablet.
@@ -113,20 +114,18 @@ full or you stop charging at the wallbox. It is the same with a server.
 
 ## Updates
 
-OpenAmpere shows new versions as on the other ways ("Version … ist da"). A tap on **Aktualisieren** (Update) installs
-it, at night by itself if you want. The app downloads the new version from GitHub only, checks its checksum and its
-signature and then installs it.
+OpenAmpere shows new versions as on the other ways ("Version … ist da"). On the tablet the app cannot install them
+itself: Google Play Protect blocks every app from outside the Play Store that may install apps as harmful
+([#610](https://github.com/Gr33ndev/OpenAmpere/issues/610)). So an update works like the first installation:
 
-- **For the first update** you allow OpenAmpere once to install apps: a notification leads to the setting. Then
-  Android asks once more ("Update auf Version … bereit", then **Install**).
-- **From Android 12** OpenAmpere installs further updates without asking. On older Android you tap the notification
-  and then **Install** each time.
-- After the update OpenAmpere starts again by itself. If the app was in front, from Android 10 the notification
-  "Version … ist installiert" leads back to it.
-- **If Google Play Protect warns** during an update, or OpenAmpere reports that installing the update failed: download
-  the new version from the [release page](https://github.com/Gr33ndev/OpenAmpere/releases/latest) and install it as
-  described in [If Google Play Protect warns](#if-google-play-protect-warns). It installs over the existing app;
-  your data stays.
+1. Under **Mehr → Über OpenAmpere** (More → About), tap the link to the download page, or open the
+   [latest version](https://github.com/Gr33ndev/OpenAmpere/releases/latest) in the browser on the tablet.
+2. Download the file that ends in `.apk`, tap it and then **Update**. Play Protect may first ask to scan the app;
+   allow it.
+3. The new version installs over the old one. Your data and settings stay, and OpenAmpere starts again by itself.
+
+If a tablet still has version 0.40 or older, its built-in updater installs the next version once more as before;
+from then on updates come as a download.
 
 Going back to an older version only works on Android by uninstalling, which loses the data. So download a backup
 before uninstalling. If you prefer to follow updates with [Obtainium](https://github.com/ImranR98/Obtainium), add

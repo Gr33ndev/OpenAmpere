@@ -86,7 +86,7 @@
     "apkText": "Öffne diese Seite auf dem Tablet und tippe auf den Knopf. Lade unter „Assets“ die Datei herunter, die auf .apk endet, tippe sie an und erlaube dem Browser, Apps zu installieren. Die App gibt es nur hier, nicht bei Google Play. Warnt Google Play Protect, steht in der Anleitung unten, was zu tun ist.",
     "apkButton": "Neueste Version herunterladen",
     "apkOpenTitle": "Einrichten",
-    "apkOpenText": "OpenAmpere öffnen und erlauben, dass es Benachrichtigungen zeigt und vom Energiesparen ausgenommen ist. Dann ein Passwort festlegen; der Assistent sucht den Wechselrichter. Handy und Computer öffnen OpenAmpere danach im Browser unter der Adresse des Tablets mit Port 8080. Updates installiert die App selbst.",
+    "apkOpenText": "OpenAmpere öffnen und erlauben, dass es Benachrichtigungen zeigt und vom Energiesparen ausgenommen ist. Dann ein Passwort festlegen; der Assistent sucht den Wechselrichter. Handy und Computer öffnen OpenAmpere danach im Browser unter der Adresse des Tablets mit Port 8080. Neue Versionen lädst und installierst du genauso; die App zeigt an, wenn eine da ist.",
     "apkFingerprint": "Die App ist mit dem Schlüssel des Projekts signiert. SHA-256-Fingerabdruck des Zertifikats:",
     "apkGuide": "<a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/android.de.md\">Anleitung für das Tablet</a>: was es braucht, wie es durchläuft, Updates, Umzug und Sicherung.",
     "compare": {

@@ -47,11 +47,13 @@ Benachrichtigungs-Einstellungen von OpenAmpere die Kategorie „OpenAmpere läuf
 ## Wenn Google Play Protect warnt
 
 OpenAmpere gibt es nicht im Play Store, deshalb prüft Google Play Protect die Datei beim Installieren. Es fragt
-eventuell, ob es die App vorher prüfen darf: Erlaube es. Es kann auch warnen, die App sei schädlich, und die
-Installation blockieren (auf Englisch „Harmful app blocked – This app may be harmful“). Google bewertet die Datei so
-auf seinen eigenen Servern, ohne einen Grund zu nennen. Wir halten das für einen Fehler und haben Google um eine
-Prüfung gebeten ([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). Die App ist bei Googles
-Entwickler-Verifizierung registriert und wird aus dem öffentlichen Quellcode gebaut.
+eventuell, ob es die App vorher prüfen darf: Erlaube es. Bei Versionen bis 0.40 kann es danach warnen, die App sei
+schädlich, und die Installation blockieren (auf Englisch „Harmful app blocked – This app may be harmful“): Google
+bewertet jede App außerhalb des Play Stores als schädlich, die Apps installieren darf, und diese Versionen konnten ihre
+Updates selbst installieren ([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). Neuere Versionen können das
+nicht mehr, und in unseren Tests lässt Play Protect sie durch ([#610](https://github.com/Gr33ndev/OpenAmpere/issues/610)).
+Die App ist bei Googles Entwickler-Verifizierung registriert und wird aus dem öffentlichen Quellcode gebaut. Warnt
+Play Protect trotzdem:
 
 1. Achte darauf, dass die Datei von der [Release-Seite von OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases)
    stammt und du sie selbst heruntergeladen hast. Installiere nie eine OpenAmpere-Datei, die dir jemand geschickt hat.
@@ -89,7 +91,7 @@ wenn dein Tablet die App dann ganz beendet.
 
 ## Was auf dem Tablet anders ist
 
-- **Updates** installiert die App selbst, siehe [Updates](#updates).
+- **Updates** lädst du als neue App herunter, siehe [Updates](#updates); Updates in der Nacht gibt es nicht.
 - **Zugriff von unterwegs:** Installiere die App [Tailscale](https://tailscale.com) auf dem Tablet und auf deinem Handy
   und melde dich in beiden mit demselben Konto an. Dann öffnest du auf dem Handy die Tailscale-Adresse des Tablets mit
   Port 8080. Den Tailscale-Helfer von Weg 1 gibt es auf dem Tablet nicht.
@@ -118,20 +120,20 @@ das Laden an der Wallbox beendest. Das ist bei einem Server genauso.
 
 ## Updates
 
-Neue Versionen zeigt OpenAmpere wie auf den anderen Wegen an („Version … ist da“). Ein Tipp auf **Aktualisieren**
-installiert sie, auf Wunsch auch nachts von selbst. Die App lädt die neue Version nur von GitHub, prüft ihre Prüfsumme und ihre Signatur
-und installiert sie dann.
+Neue Versionen zeigt OpenAmpere wie auf den anderen Wegen an („Version … ist da“). Auf dem Tablet kann die App sie
+nicht selbst installieren: Google Play Protect blockiert jede App außerhalb des Play Stores, die Apps installieren darf,
+als schädlich ([#610](https://github.com/Gr33ndev/OpenAmpere/issues/610)). Ein Update geht deshalb wie die erste
+Installation:
 
-- **Beim ersten Update** musst du OpenAmpere einmal erlauben, Apps zu installieren: Eine Benachrichtigung führt zu der
-  Einstellung. Danach fragt Android noch einmal nach („Update auf Version … bereit“, dann **Installieren**).
-- **Ab Android 12** installiert OpenAmpere weitere Updates ohne Nachfrage. Auf älterem Android tippst du jedes Mal auf
-  die Benachrichtigung und dann auf **Installieren**.
-- Nach dem Update startet OpenAmpere von selbst wieder. War die App vorne, bringt dich ab Android 10 die
-  Benachrichtigung „Version … ist installiert“ zurück zu ihr.
-- **Warnt Google Play Protect** bei einem Update, oder meldet OpenAmpere, dass die Installation des Updates nicht
-  geklappt hat: Lade die neue Version von der [Release-Seite](https://github.com/Gr33ndev/OpenAmpere/releases/latest)
-  herunter und installiere sie wie unter [Wenn Google Play Protect warnt](#wenn-google-play-protect-warnt)
-  beschrieben. Sie wird über die vorhandene App installiert, deine Daten bleiben erhalten.
+1. Tippe unter **Mehr → Über OpenAmpere** auf den Link zur Download-Seite, oder öffne auf dem Tablet im Browser die
+   [neueste Version](https://github.com/Gr33ndev/OpenAmpere/releases/latest).
+2. Lade die Datei herunter, die auf `.apk` endet, tippe sie an und dann auf **Aktualisieren**. Play Protect fragt
+   eventuell, ob es die App vorher prüfen darf: Erlaube es.
+3. Die neue Version wird über die alte installiert. Deine Daten und Einstellungen bleiben, und OpenAmpere startet von
+   selbst wieder.
+
+Hat ein Tablet noch Version 0.40 oder älter, installiert sein eingebauter Updater die nächste Version noch einmal wie
+bisher; danach kommen Updates als Download.
 
 Zurück auf eine ältere Version geht auf Android nur durch Deinstallieren, und dabei gehen die Daten verloren. Lade
 deshalb vor dem Deinstallieren eine Sicherung herunter. Möchtest du Updates lieber mit
