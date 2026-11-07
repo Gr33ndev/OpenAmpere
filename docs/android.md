@@ -31,8 +31,8 @@ manufacturer). If the case gets thicker or the screen lifts, unplug the tablet a
    [latest version of OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases/latest) in the browser and tap the
    file under "Assets" that ends in `.apk` (`openampere-<version>.apk`).
 2. **Install:** tap the downloaded file. The first time, Android asks whether the browser may install apps: allow it in
-   the setting that opens, then tap **Install**. Google Play Protect does not know the app and may ask; then tap
-   **Install anyway**.
+   the setting that opens, then tap **Install**. If Google Play Protect warns, read
+   [If Google Play Protect warns](#if-google-play-protect-warns).
 3. **Open:** start OpenAmpere. The app asks once whether it may show notifications (from Android 13) and whether it may
    be left out of battery optimisation. **Allow both.** Without that exception Android puts OpenAmpere to sleep and
    readings go missing.
@@ -43,6 +43,24 @@ While OpenAmpere runs, Android shows a permanent notification "OpenAmpere" with 
 rund um die Uhr …" (reads your solar system around the clock; in English on an English tablet). It has to stay: it tells
 Android that the app is needed. Don't switch off the category "OpenAmpere läuft" (OpenAmpere is running) in the
 notification settings of OpenAmpere. After the tablet restarts, OpenAmpere starts by itself.
+
+## If Google Play Protect warns
+
+OpenAmpere is not in the Play Store, so Google Play Protect checks the file when you install it. It may ask to scan
+the app first: allow it. It may also show **"Harmful app blocked – This app may be harmful"**. Google rates the file
+this way on its own servers without giving a reason. We consider this a mistake and asked Google to review it
+([#608](https://github.com/Gr33ndev/OpenAmpere/issues/608)). The app is registered with Google's developer
+verification and built from the public source code.
+
+1. Make sure the file comes from the [release page of OpenAmpere](https://github.com/Gr33ndev/OpenAmpere/releases)
+   and you downloaded it yourself. Never install an OpenAmpere file someone sent you. If you want to be sure, check
+   the file on a computer as described in [Verifying a release](../README.md#verifying-a-release).
+2. Tap **Install anyway**. It is the small text below the warning, not the big "Got it" button. If you tapped
+   "Got it", tap the downloaded file again.
+
+If your tablet offers no "Install anyway", don't switch Play Protect off for it. Tell us in an
+[issue](https://github.com/Gr33ndev/OpenAmpere/issues) which tablet and Android version you have. Until then,
+OpenAmpere runs on a computer or a small server with Docker ([way 1](../README.md#way-1-standalone)).
 
 ## Opening it from other devices
 

@@ -37,7 +37,10 @@ with the same key as the installed app. The maintainer holds the key, in the Git
 The SHA-256 fingerprint of its certificate is
 `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` (also in `android/signing-certificate.sha256`).
 Handing it over, or losing it, decides who can ship updates to tablets; a new maintainer gets it only together with
-the right to make releases.
+the right to make releases. The package name is registered with this key through Google's developer verification
+(#608), in the maintainer's account in the Android Developer Console: certified Android devices install and update
+only registered apps. Like the key, the registration has to move to a new maintainer's own verified account before
+they make releases; the move goes through Google, with a proof signed by the key.
 
 ## Becoming a maintainer
 

@@ -83,7 +83,7 @@
     "tabletTitle": "Prepare the tablet",
     "tabletText": "You need a tablet with Android 7.0 or newer that always stays at home in the Wi-Fi and on the charger. The screen may be off. Modbus TCP must be switched on at the inverter, as for way 1.",
     "apkTitle": "Install the app",
-    "apkText": "Open this page on the tablet and tap the button. Under \"Assets\", download the file that ends in .apk, tap it and allow the browser to install apps. The app is only available here, not on Google Play.",
+    "apkText": "Open this page on the tablet and tap the button. Under \"Assets\", download the file that ends in .apk, tap it and allow the browser to install apps. The app is only available here, not on Google Play. If Google Play Protect warns, the guide below says what to do.",
     "apkButton": "Download the latest version",
     "apkOpenTitle": "Set up",
     "apkOpenText": "Open OpenAmpere and allow it to show notifications and to be left out of battery optimisation. Then choose a password; the assistant looks for the inverter. Phones and computers then open OpenAmpere in the browser at the tablet's address with port 8080. The app installs updates itself.",
