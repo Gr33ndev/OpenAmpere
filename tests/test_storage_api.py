@@ -467,6 +467,11 @@ def test_power_timeline_keeps_a_gap_of_openampere_itself(tmp_path):
     client = TestClient(create_app(Runtime({}, storage)))
     entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
     assert entries and not any(e.get("quarter") for e in entries)
-    storage.prune(1)  # the readings of that day are gone; its quarter hours are all that is left
+    # the readings up to the second snapshot are pruned (retention cuts partway through a day): the quarter hours before
+    # the oldest reading still kept get their averages, the readings after it stay
+    with storage._db:
+        storage._db.execute("DELETE FROM samples WHERE ts < ?", (base + 4 * 3600,))
     entries = client.get("/api/power/timeline", params={"date": "2026-06-01", "step": 300}).json()["entries"]
-    assert len(entries) == 16 and all(e["quarter"] and e["pv"] == 1000.0 for e in entries)
+    quarters = [e for e in entries if e.get("quarter")]
+    assert len(quarters) == 16 and all(e["pv"] == 1000.0 for e in quarters)
+    assert any(not e.get("quarter") for e in entries)
