@@ -223,6 +223,16 @@ def test_unplugging_after_a_charge_ends_the_charge():
     assert [(d.plugged, d.charging) for d in unplugged] == [(False, False)]
 
 
+def test_an_older_known_hv_status_does_not_hide_a_newer_unknown_status():
+    status, hv = "vehicle.drivetrain.electricEngine.charging.status", "vehicle.drivetrain.electricEngine.charging.hvStatus"
+    charging = {status: {"timestamp": iso(T0), "value": "CHARGINGACTIVE"}, hv: {"timestamp": iso(T0), "value": "CHARGING"}}
+    data, _ = interpret(charging, after=0, now=T0 + 60)
+    assert [d.charging for d in data] == [True]
+    unplugged = {**charging, status: {"timestamp": iso(T0 + 600), "value": "NOCHARGING"}}
+    data, _ = interpret(unplugged, after=T0, now=T0 + 660)
+    assert [(d.ts, d.plugged, d.charging) for d in data] == [(T0 + 600, None, False)]
+
+
 def test_an_unknown_charging_status_falls_back_to_the_hv_status():
     telematic = {"vehicle.drivetrain.electricEngine.charging.status": {"timestamp": iso(T0), "value": "NEWVALUE"},
                  "vehicle.drivetrain.electricEngine.charging.hvStatus": {"timestamp": iso(T0), "value": "CHARGING"}}

@@ -131,15 +131,18 @@ def interpret(telematic: dict, after: float, now: float) -> tuple[list[CarData],
     put(RANGE, "range_km", lambda v: (n if (n := _number(v)) is not None and n >= 0 else None))
     put(ODOMETER, "odometer_km", lambda v: (n if (n := _number(v)) is not None and n >= 0 else None))
     put(PLUG, "plugged", lambda v: v.upper() == "CONNECTED")
-    # the first key whose value is known; another value (e.g. NOCHARGING, CHARGINGERROR) only says "not charging"
-    state = next((found[n] for n in CHARGE_STATE if n in found and found[n][1].upper() in CHARGING | PLUGGED), None)
-    if state is not None:
+    # the newest of the two charge keys (an older known value must not hide a newer one); with the same time stamp
+    # the first known value. A value not known (e.g. NOCHARGING, CHARGINGERROR) only says "not charging".
+    states = [found[n] for n in CHARGE_STATE if n in found]
+    if states:
+        latest = max(ts for ts, _ in states)
+        same = [v for v in states if v[0] == latest]
+        state = next((v for v in same if v[1].upper() in PLUGGED), same[0])
         if state[0] > after:
             data = deliveries.setdefault(state[0], CarData(ts=state[0]))
             data.charging = state[1].upper() in CHARGING
-            data.plugged = True  # charging, waiting or finished: the cable is in
-    elif (other := first(CHARGE_STATE)) is not None and other[0] > after:
-        deliveries.setdefault(other[0], CarData(ts=other[0])).charging = False  # the plug key says whether it is in
+            if state[1].upper() in PLUGGED:
+                data.plugged = True  # charging, waiting or finished: the cable is in; else the plug key says it
     return [deliveries[ts] for ts in sorted(deliveries) if not deliveries[ts].empty()], newest
 
 
