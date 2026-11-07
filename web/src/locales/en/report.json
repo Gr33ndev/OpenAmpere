@@ -164,7 +164,7 @@
     "socRightAxis": "State of charge (right axis)",
     "legendHint": "Tap an entry to hide or show its line again.",
     "externalPart": "of which {name}",
-    "onlyQuarterHours": "There are no power values for this day, only the state of charge per quarter hour. Choose “{view}” to see the energy.",
+    "quarterAverage": "Not all readings of this day are stored, for example because it was imported from the cloud or is older than readings are kept. Where they are missing, the lines show the average power of each quarter hour. Choose “{view}” to see the energy.",
     "socImportPending": "The running import from the EKD cloud has not fetched the state of charge of this day yet; it shows here later."
   },
   "temperatureSection": {

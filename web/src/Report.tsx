@@ -319,9 +319,9 @@ export function Report() {
       <p className="hint">{t("report.report.legendHint")}</p>
       {showPower && <p className="hint">{t("report.report.signHint")}</p>}
       {socPending && <p className="hint">{t("report.report.socImportPending")}</p>}
-      {/* a day with only quarter-hour values (imported, or older than the raw readings are kept): no power curve (#468) */}
-      {showPower && rows.length > 0 && rows.every((r) => (r as PowerEntry).pv == null && (r as PowerEntry).house == null) && (
-        <p className="hint">{t("report.report.onlyQuarterHours", { view: t("report.report.energyQuarterHours") })}</p>
+      {/* quarter hours without readings (imported, or older than the readings are kept) are averages (#468, #600) */}
+      {showPower && rows.some((r) => (r as PowerEntry).quarter) && (
+        <p className="hint">{t("report.report.quarterAverage", { view: t("report.report.energyQuarterHours") })}</p>
       )}
       {period === "day" && summary?.recorded_since && (
         <p className="hint">{t("report.report.recordingSince", {
