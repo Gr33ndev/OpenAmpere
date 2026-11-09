@@ -72,7 +72,7 @@ class CarDataService:
 
             def _tokens(self):
                 service.issued += 1
-                service.refresh = f"R{service.issued}"
+                service.refresh = f"refresh-token-{service.issued}"  # long: never part of the encrypted text by chance
                 return self._send(200, {"access_token": f"A{service.issued}", "token_type": "Bearer",
                                         "expires_in": 3600, "refresh_token": service.refresh, "id_token": "I",
                                         "gcid": "G1", "scope": bmw_cardata.SCOPE})
@@ -161,7 +161,7 @@ class CarDataService:
     def login(self) -> str:
         """A login as OpenAmpere keeps it, as if the owner had confirmed it just now."""
         self.issued += 1
-        self.refresh = f"R{self.issued}"
+        self.refresh = f"refresh-token-{self.issued}"  # long: never part of the encrypted text by chance
         return json.dumps({"refresh_token": self.refresh, "gcid": "G1"})
 
 
