@@ -6,7 +6,7 @@
 **Applies to:** M-TEC Energy-Butler GEN3 hybrid inverters (a Solinteg inverter, also sold as Wattsonic, Sunways,
 A-Tronix, SunEnergyBox) · **Sold as:** M-TEC Energy-Butler (EKD from late 2022) · **OpenAmpere:** driver `mtec`
 (`src/openampere/drivers/mtec/`), register map `mtec_gen3` · **Support:** display only · **Confirmed on a real
-device:** no (built from M-TEC's register document, open projects and the simulator)
+device:** partly (detected and read in the Home Assistant app; port, framing, unit id and signs not yet)
 
 ## Summary
 
@@ -68,6 +68,7 @@ in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, a
 | The module shows up in the router as "espressif"; the data also goes to M-TEC's cloud at least once a minute. | derived | owners' reports; croedel/M-TEC-API README |
 | Writing (operating mode 50000, export limit 25100/25103, SoC floors 52502–52505, EMS setpoints 50202–50210) is used by projects without a documented watchdog: the values are probably stored. | derived, open | MTECmqtt (LGPL, facts only), evcc, Solinteg plugin |
 | M-TEC is still in business; owners use the "M-TEC Energy Butler" app and the portal energybutler.mtec-portal.com. In 2023 M-TEC removed the grid export settings from the portal for owners; installers still have them. | documented (store listings), derived (forum) | App Store and Google Play listings; forum.iobroker.net topic 64236 |
+| An Energy-Butler GEN3 was detected on its own by the Home Assistant app of OpenAmpere, which reads its data. Which port, framing and unit id answered, and whether the signs are right, is not recorded. | confirmed (detection and reading), open (signs) | owner report by e-mail, summarised in [#617](https://github.com/Gr33ndev/OpenAmpere/issues/617) |
 
 ## Decisions in OpenAmpere
 

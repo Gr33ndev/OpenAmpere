@@ -24,16 +24,16 @@ The evidence is on each device page. What EKD sold the devices as: [sales names 
 |---|---|
 | [FoxESS H3, newer firmware](devices/foxess/h3.md) | ✅ Monitoring and control confirmed |
 | [FoxESS H3, older firmware / H3 Smart / H3 Pro](devices/foxess/h3.md) | Not yet confirmed |
-| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); of the control only changing the backup reserve confirmed so far; H2, HS2 and AS2 not yet confirmed |
-| [Solarmax MAX.STORAGE ("AMPERE.Storage")](devices/solarmax/max-storage.md) | Not yet confirmed |
-| [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Not yet confirmed |
+| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Monitoring confirmed and in daily use on a "3P-X E2" (older "Ampere.StoragePro"); of the control only the backup reserve confirmed so far (taken over and kept); H2, HS2 and AS2 not yet confirmed |
+| [Solarmax MAX.STORAGE ("AMPERE.Storage")](devices/solarmax/max-storage.md) | Monitoring confirmed (detection, live values, grid direction); battery direction only by the owner's word |
+| [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Detection and monitoring confirmed (in the Home Assistant app); signs not yet |
 | [Senec.Home V3 / V2.1](devices/senec/home-v3.md) | Not yet confirmed |
 | [Enphase IQ Gateway with IQ Battery](devices/enphase/iq-gateway.md) | Not yet confirmed |
 | [Immersion heater, heat pump (SG-Ready)](devices/topics/consumers.md) | Not yet confirmed |
 | [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Not yet confirmed |
 | [FoxESS AC EV Charger ("Ampere.ChargePro")](devices/foxess/ac-charger.md) | ✅ Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed |
 | [Weidmüller AC SMART ("AMPERE.Charge")](devices/weidmueller/ac-smart.md) | Not yet confirmed |
-| [go-e Charger](devices/goe/charger.md) | Not yet confirmed |
+| [go-e Charger](devices/goe/charger.md) | Confirmed: found and shown; values while charging still open |
 | [Portable dé wallbox (Tuya Wi-Fi)](devices/tuya/de-portable.md) | ✅ Monitoring confirmed; control not yet confirmed |
 | [Wallbox through evcc](devices/topics/wallboxes.md) | Not yet confirmed |
 | [Cars of the Volkswagen group (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Not yet confirmed |
