@@ -66,8 +66,8 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur das Ändern der Notstrom-Reserve bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); of the control only changing the backup reserve confirmed so far; H2, HS2 and AS2 not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur die Notstrom-Reserve bestätigt (wird übernommen und eingehalten); H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); of the control only the backup reserve confirmed so far (taken over and kept); H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",
@@ -89,8 +89,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Noch nicht bestätigt",
-        "en": "Not yet confirmed"
+        "de": "Anzeige bestätigt (Erkennung, Live-Werte, Netzrichtung); Richtung der Batterie nur laut Besitzer",
+        "en": "Monitoring confirmed (detection, live values, grid direction); battery direction only by the owner's word"
       },
       "state": "read",
       "next": "deviceReport",
@@ -111,8 +111,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Noch nicht bestätigt",
-        "en": "Not yet confirmed"
+        "de": "Erkennung und Anzeige bestätigt (in der Home-Assistant-App); Vorzeichen noch nicht",
+        "en": "Detection and monitoring confirmed (in the Home Assistant app); signs not yet"
       },
       "state": "read",
       "next": "deviceReport",
@@ -260,8 +260,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Noch nicht bestätigt",
-        "en": "Not yet confirmed"
+        "de": "Bestätigt: wird gefunden und angezeigt; Werte beim Laden noch offen",
+        "en": "Confirmed: found and shown; values while charging still open"
       },
       "state": "read",
       "next": "tellUs",

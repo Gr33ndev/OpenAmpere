@@ -6,8 +6,8 @@
 
 **Applies to:** Solarmax MAX.STORAGE and MAX.STORAGE Ultimate hybrid inverters · **Sold as:** "AMPERE.Storage" (EKD,
 the 10 kW Ultimate, about 2022–2023) · **OpenAmpere:** driver `solarmax` (`src/openampere/drivers/solarmax/`),
-register map `solarmax_max_storage` · **Support:** display only · **Confirmed on a real device:** no (built from the
-manufacturer's register list and the simulator)
+register map `solarmax_max_storage` · **Support:** display only · **Confirmed on a real device:** partly (detection,
+live values and the grid sign from a diagnostics report; the battery sign only by the owner's word)
 
 ## Summary
 
@@ -36,7 +36,7 @@ All input registers (FC04), unit id 1. 32-bit values: low word at the lower addr
 | 112–113 | PV power (DC) of the whole plant, other connected inverters included | I32, W | R | documented | Solarmax list |
 | 114–115 | Battery power, **+ = charging**, − = discharging | I32, W | R | documented, derived (type) | Solarmax list; evcc (scale −1) |
 | 116–117 | House consumption ("Eigenverbrauchsleistung") | I32, W | R | documented | Solarmax list |
-| 118–119 | Grid power, **+ = export**, − = import | I32, W | R | documented, derived (type) | Solarmax list; evcc (scale −1) |
+| 118–119 | Grid power, **+ = export**, − = import | I32, W | R | documented, derived (type), confirmed (sign) | Solarmax list; evcc (scale −1); [#596](https://github.com/Gr33ndev/OpenAmpere/issues/596) |
 | 120–121 | AC power of the whole PV plant | I32, W | R | documented | Solarmax list |
 | 122 | State of charge | U16, % | R | documented | Solarmax list; evcc |
 | 123 | Usable battery capacity | U16, whole kWh | R | documented | Solarmax list |
@@ -68,6 +68,7 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 | The app and the device's web interface keep working inside the home network by IP address; the cloud portal came back in 2025 as a paid subscription run by another company, and the old Solarmax apps are no longer in the App Store. | derived | photovoltaikforum.com threads 243977 and 252527 (2025); research in [#519](https://github.com/Gr33ndev/OpenAmpere/issues/519) |
 | EKD switched the storage function off remotely in September 2025 and released it after a fuse was fitted in the battery line. How the registers look while it is switched off is not known. | derived (shutdown), open (registers) | [names.md](../topics/names.md#behaviour); photovoltaikforum.com thread 252527 |
 | "AMPERE.Storage" is the 10 kW variant (three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs); MAX.STORAGE Ultimate also exists with 6, 8, 12 and 15 kW, and the list covers the older MAX.STORAGE too. Register 105 tells them apart. | documented | EKD datasheet "AMPERE.Storage" (2022-07); Solarmax datasheet MAX.STORAGE Ultimate (2021-12) |
+| On the first owner's device (OpenAmpere 0.41.0, Docker) detection at unit 1 over port 502 with FC04 worked and 100–126 read. With no PV and the battery idle, the diagnostics showed grid power of about −3 kW and the same house power in Solarmax's signs: 118 is negative for import, as the list says. The "Connectivity+" registers 130–143 and 150–159 answered with zeros, not with an exception, so this device has no energy history. The owner says the directions of the flows are right as far as they could tell. | confirmed (detection, live values, grid sign, zeros without "Connectivity+"), open (battery sign) | owner's diagnostics report by e-mail, summarised in [#596](https://github.com/Gr33ndev/OpenAmpere/issues/596) |
 
 ## Decisions in OpenAmpere
 
@@ -82,12 +83,12 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 
 ## Open questions
 
-- Whether port 502 answers with factory settings, and whether 100–126 really read without "Connectivity+".
-- The signs of 114 and 118 on a real device (the list and evcc agree; no owner's report yet).
-- What 130–159 return without "Connectivity+": an exception or zeros.
+- Whether port 502 answers with factory settings on every device (it did on the first owner's).
+- The sign of 114 on a real device: the list and evcc agree and the first owner says the directions are right, but no
+  report yet shows the battery charging or discharging ([#596](https://github.com/Gr33ndev/OpenAmpere/issues/596)).
 - What 103, 114, 123 and 124 show while EKD's switch-off is active, and whether PV keeps producing then.
 - Whether 116 is the whole house consumption when a second inverter is in the house.
-- Which firmware EKD's units run; the list is for 3.4.4 and later.
+- Which firmware EKD's units run; the list is for 3.4.4 and later (the first owner's unit is within it).
 - What the type plate says, and whether EKD's units carry "AMPERE" on the housing.
 
 ## Sources

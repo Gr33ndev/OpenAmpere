@@ -26,16 +26,16 @@ Die Belege stehen auf der Seite des Geräts. Unter welchem Namen EKD die Geräte
 |---|---|
 | [FoxESS H3, neuere Firmware](devices/foxess/h3.md) | ✅ Anzeige und Steuerung bestätigt |
 | [FoxESS H3, ältere Firmware / H3 Smart / H3 Pro](devices/foxess/h3.md) | Noch nicht bestätigt |
-| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur das Ändern der Notstrom-Reserve bestätigt; H2, HS2 und AS2 noch nicht bestätigt |
-| [Solarmax MAX.STORAGE („AMPERE.Storage“)](devices/solarmax/max-storage.md) | Noch nicht bestätigt |
-| [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Noch nicht bestätigt |
+| [SAJ H2 / HS2](devices/saj/h2-family.md) | ✅ Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur die Notstrom-Reserve bestätigt (wird übernommen und eingehalten); H2, HS2 und AS2 noch nicht bestätigt |
+| [Solarmax MAX.STORAGE („AMPERE.Storage“)](devices/solarmax/max-storage.md) | Anzeige bestätigt (Erkennung, Live-Werte, Netzrichtung); Richtung der Batterie nur laut Besitzer |
+| [M-TEC Energy-Butler GEN3](devices/mtec/energy-butler.md) | Erkennung und Anzeige bestätigt (in der Home-Assistant-App); Vorzeichen noch nicht |
 | [Senec.Home V3 / V2.1](devices/senec/home-v3.md) | Noch nicht bestätigt |
 | [Enphase IQ Gateway mit IQ Battery](devices/enphase/iq-gateway.md) | Noch nicht bestätigt |
 | [Heizstab, Wärmepumpe (SG-Ready)](devices/topics/consumers.md) | Noch nicht bestätigt |
 | [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Noch nicht bestätigt |
 | [FoxESS AC EV Charger („Ampere.ChargePro“)](devices/foxess/ac-charger.md) | ✅ Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt |
 | [Weidmüller AC SMART („AMPERE.Charge“)](devices/weidmueller/ac-smart.md) | Noch nicht bestätigt |
-| [go-e Charger](devices/goe/charger.md) | Noch nicht bestätigt |
+| [go-e Charger](devices/goe/charger.md) | Bestätigt: wird gefunden und angezeigt; Werte beim Laden noch offen |
 | [Mobile dé-Wallbox (Tuya-WLAN)](devices/tuya/de-portable.md) | ✅ Anzeige bestätigt; Steuerung noch nicht bestätigt |
 | [Wallbox über evcc](devices/topics/wallboxes.md) | Noch nicht bestätigt |
 | [Autos des Volkswagen-Konzerns (Volkswagen, Audi, Škoda, SEAT, CUPRA)](devices/cars/vw-eu-data-act.md) | Noch nicht bestätigt |

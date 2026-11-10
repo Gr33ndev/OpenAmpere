@@ -5,8 +5,8 @@
 
 **Applies to:** go-e Charger wallboxes (HOME, Gemini and later; older hardware only through API v1) · **Sold as:** go-e
 Charger (not sold by EKD) · **OpenAmpere:** wallbox module `goe` (`src/openampere/wallbox/goe.py`) · **Support:**
-display only (live view, found by the search in the wallbox setup) · **Confirmed on a real device:** no (built from
-go-e's public API descriptions and the simulator)
+display only (live view, found by the search in the wallbox setup) · **Confirmed on a real device:** partly (found by the
+search and shown in the live view; the values while a car charges not yet)
 
 ## Summary
 
@@ -55,6 +55,7 @@ API v2: `GET http://<address>/api/status?filter=car,nrg,wh,amp,ama,fwv,cdi`. API
 | evcc tells the APIs apart the same way: API v2 if `/api/status` answers, otherwise API v1. | derived | evcc documentation and `charger/go-e/` (MIT) |
 | Modbus TCP: off by default, switched on in the app (needs a restart of the charger), port 502, unit id 1, firmware 040 and newer; the unit of the total power differs between go-e's two descriptions (0.01 kW and 0.01 W). | documented; open (unit) | go-e Modbus descriptions (v1 and v2) |
 | V4 announces itself over mDNS as `_go-e_go-eCharger_V4._tcp` and `_http._tcp`, host name `go-echarger_<serial>`. Not used: the search asks the HTTP API instead, which also works in the Home Assistant app. | derived | a forum post of a Homey developer |
+| On a real charger with OpenAmpere 0.41.0 (Docker), the search in the wallbox setup found the charger and the live view showed it without problems. Whether a car was charging, and so whether power, current and voltage are right, is not recorded. | confirmed (found and shown), open (values while charging) | owner report by e-mail, summarised in [#616](https://github.com/Gr33ndev/OpenAmpere/issues/616) |
 
 ## Decisions in OpenAmpere
 
