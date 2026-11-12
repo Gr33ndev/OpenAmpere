@@ -48,6 +48,9 @@ export type InverterReading = {
   left_out?: boolean;
   /** part of a parallel system: its values are already in the first inverter's, it is only shown */
   in_first?: boolean;
+  /** whether it ever reported PV / a battery (null: not known yet): drawn also while it does not answer */
+  has_pv?: boolean | null;
+  has_battery?: boolean | null;
   pv_power?: number | null;
   pv_external_power?: number | null;
   battery_power?: number | null;

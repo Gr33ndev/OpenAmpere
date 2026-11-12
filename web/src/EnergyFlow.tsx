@@ -42,14 +42,17 @@ function perInverter(snap: Snapshot | null, external: number | null, externalLab
   if (parts.length < 2) return { suns: null, batteries: null };
   const name = (p: InverterReading) => inverterName(p.name, all.indexOf(p));
   const live = (p: InverterReading) => p.connected;
-  // a battery inverter without PV of its own (it reports no solar power) gets no sun
-  const suns: Sun[] = parts.filter((p) => !(p.connected && p.pv_power == null)).map((p) => ({
+  // what it has, as the server remembers it; without that, what it reports now (a battery inverter without PV of its
+  // own reports no solar power, a PV inverter off at night must not get a battery)
+  const hasPv = (p: InverterReading) => p.has_pv ?? (p.connected && p.pv_power != null);
+  const hasBattery = (p: InverterReading) => p.has_battery ?? (p.connected && (p.battery_soc != null || p.battery_power != null));
+  const suns: Sun[] = parts.filter(hasPv).map((p) => ({
     key: p.id, label: name(p),
     power: live(p) && p.pv_power != null ? Math.max(0, p.pv_power - (p.pv_external_power ?? 0)) : null,
   }));
   if (external != null) suns.push({ key: "external", power: external, label: externalLabel });
-  // one that does not answer may have a battery: shown, without values
-  const batteries: Battery[] = parts.filter((p) => !p.connected || p.battery_soc != null || p.battery_power != null)
+  // one with a battery that does not answer: shown, without values
+  const batteries: Battery[] = parts.filter(hasBattery)
     .map((p) => ({ key: p.id, label: name(p), power: live(p) ? p.battery_power ?? null : null,
                    soc: live(p) ? p.battery_soc ?? null : null }));
   return { suns: suns.length > 1 && suns.length <= MAX_SUNS ? suns : null,

@@ -139,7 +139,8 @@ def test_pv_and_battery_add_up_the_grid_is_the_first_inverters():
     assert [p["id"] for p in snap.inverters] == ["main", "wr2"]
     assert snap.inverters[1] | {"alarms": []} == {"id": "wr2", "name": "Garage", "connected": True, "pv_power": 2000,
                                                   "pv_external_power": None, "battery_power": 500,
-                                                  "battery_soc": 80, "grid_power": -480, "alarms": []}
+                                                  "battery_soc": 80, "grid_power": -480, "alarms": [],
+                                                  "has_pv": None, "has_battery": None}
     assert own.pv_power == 3000 and own.inverters == []  # the first inverter's own reading is left as it was
 
 
@@ -201,7 +202,7 @@ def test_a_further_inverter_without_a_recent_reading_leaves_the_sums_missing():
     assert snap.house_power is None
     assert snap.grid_power == -500  # still the first one's: the further one does not measure the grid
     assert snap.totals.pv is None and snap.totals.consumption is None and snap.totals.grid_import == 500
-    assert snap.inverters[1] == {"id": "wr2", "name": "Garage", "connected": False}
+    assert snap.inverters[1] == {"id": "wr2", "name": "Garage", "connected": False, "has_pv": None, "has_battery": None}
 
 
 def test_a_pv_inverter_without_battery_adds_only_pv():
@@ -385,7 +386,8 @@ def test_an_inverter_away_for_long_is_left_out_and_the_others_are_recorded():
     assert snap.pv_power == 3000 and snap.battery_power == -1000 and snap.battery_soc == 40
     assert snap.house_power == 1500
     assert snap.totals.pv == 1050  # its part counted so far stays
-    assert snap.inverters[1] == {"id": "wr2", "name": "Garage", "connected": False, "left_out": True}
+    assert snap.inverters[1] == {"id": "wr2", "name": "Garage", "connected": False, "left_out": True,
+                                 "has_pv": None, "has_battery": None}
     assert sums.state["wr2"]["last"] == {}  # counts again from its next reading
 
 
@@ -457,3 +459,21 @@ def test_the_parallel_setting_is_kept():
     clean = validate({"inverters": [{"host": "192.168.1.31", "in_first": True}]})
     assert clean["inverters"][0]["in_first"] is True
     assert build_config({}, clean)[0].inverters[0].in_first is True
+
+
+async def test_what_an_inverter_has_is_kept_for_when_it_does_not_answer(tmp_path):
+    """#619: a PV inverter that is off at night must not be drawn with a battery; kept over a restart."""
+    from openampere.inverters import ExtraCollector
+
+    storage = Storage(tmp_path / "t.db")
+    entry = ExtraInverter(id="wr2", host="192.168.1.31")
+    pv_only = ExtraCollector(entry, None, storage, 10)
+    await pv_only._reading(reading(800, None, None))
+    assert (pv_only.has_pv, pv_only.has_battery) == (True, False)
+    again = ExtraCollector(entry, None, storage, 10)  # a restart, before it answers
+    assert (again.has_pv, again.has_battery) == (True, False)
+    part = combine(reading(1000, 0, 50), [Extra(entry, None, fresh=False)])
+    assert part.inverters[0]["has_battery"] is True  # the first inverter's from its reading
+    again.latest = None
+    snap = combine(reading(1000, 0, 50), [again])
+    assert snap.inverters[1]["has_battery"] is False and snap.inverters[1]["has_pv"] is True

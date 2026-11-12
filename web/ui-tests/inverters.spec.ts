@@ -17,7 +17,7 @@ test("the energy flow shows each inverter with its own values", async ({ page })
 
 test("an inverter without current values is shown as such", async ({ page, api }) => {
   api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 1000, battery_power: 0, battery_soc: 50 },
-    { id: "wr2", name: "Garage", connected: false }] });
+    { id: "wr2", name: "Garage", connected: false, has_pv: true, has_battery: true }] });
   await open(page, "");
   await expect(page.locator(".flow .flow-node.battery-more")).toContainText("Garage");  // its battery, without values
   await expect(page.locator(".flow .flow-node.battery-more")).toContainText("–");
@@ -210,4 +210,20 @@ test("the grid charging mark is on the first inverter's battery wherever it is d
   await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(2);
   await expect(page.locator(".flow .charge-source.grid")).toHaveCount(0);
   await expect(page.locator(".flow .charge-source.sun")).toHaveCount(2);
+});
+
+test("an inverter already in the first one is named below the energy flow with its values", async ({ page, api }) => {
+  api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 3000, battery_power: 0, battery_soc: 50 },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 2100, battery_power: 0, battery_soc: 48, in_first: true }] });
+  await open(page, "");
+  await expect(page.getByText("„Garage“ (im ersten Wechselrichter enthalten): Solar 2,10 kW · Speicher 48 %")).toBeVisible();
+});
+
+test("a PV inverter that is off at night gets no battery", async ({ page, api }) => {
+  api.live({ inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 0, battery_power: 300, battery_soc: 50, has_pv: true, has_battery: true },
+    { id: "wr2", name: "Dach", connected: false, has_pv: true, has_battery: false }] });
+  await open(page, "");
+  await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(0);
+  await expect(page.locator(".flow .flow-node.sun-more")).toContainText("Dach");  // its sun stays, without values
 });

@@ -122,12 +122,15 @@ class ExtraCollector(Collector):
         self.external_pv = external_pv
         self.rated_power = (entry.rated_power_reported_w, entry.rated_power_w)
         self.created = time.time()
-        # PV inputs it reported at most: its places in the combined list stay its own, also after a restart or a
-        # change of the settings (kept with its address: another device there starts again)
+        # what it has, from what it reported so far: the PV inputs at most (its places in the combined list stay its
+        # own), whether it has PV and a battery (the app draws them also while it does not answer, and never a battery
+        # for a PV inverter that is off at night). Kept with its address over a restart; another device starts again.
         self.inputs_key = f"inverter_inputs:{entry.id}"
         kept = storage.get_meta(self.inputs_key)
-        self.input_count = (int(kept.get("count") or 0) if isinstance(kept, dict) and kept.get("host") == entry.host
-                            else 0)
+        kept = kept if isinstance(kept, dict) and kept.get("host") == entry.host else {}
+        self.input_count = int(kept.get("count") or 0)
+        self.has_pv: bool | None = kept.get("pv")  # None: not known yet
+        self.has_battery: bool | None = kept.get("battery")
 
     @property
     def name(self) -> str:
@@ -146,10 +149,14 @@ class ExtraCollector(Collector):
 
     async def _reading(self, snap: Snapshot) -> None:
         self.own = self.latest = snap
-        if len(snap.pv_inputs) > self.input_count:
-            self.input_count = len(snap.pv_inputs)
+        count = max(self.input_count, len(snap.pv_inputs))
+        has_pv = bool(self.has_pv) or snap.pv_power is not None
+        has_battery = bool(self.has_battery) or snap.battery_soc is not None or snap.battery_power is not None
+        if (count, has_pv, has_battery) != (self.input_count, self.has_pv, self.has_battery):
+            self.input_count, self.has_pv, self.has_battery = count, has_pv, has_battery
             try:
-                self.storage.set_meta(self.inputs_key, {"host": self.entry.host, "count": self.input_count})
+                self.storage.set_meta(self.inputs_key, {"host": self.entry.host, "count": count, "pv": has_pv,
+                                                        "battery": has_battery})
             except Exception:  # noqa: BLE001 - must never disturb polling
                 pass
 
@@ -186,10 +193,17 @@ def combined_soc(parts: list[tuple[Snapshot, float]]) -> float | None:
     return sum(soc for soc, _ in socs) / len(socs)
 
 
-def _part(inverter_id: str, name: str, snap: Snapshot | None, left_out: bool = False, in_first: bool = False) -> dict:
+def _part(inverter_id: str, name: str, snap: Snapshot | None, left_out: bool = False, in_first: bool = False,
+          extra=None) -> dict:
     """What the app shows of one inverter. left_out: away for long, not part of the combined values. in_first: its
-    values are already in the first inverter's (a parallel system), it is only shown."""
+    values are already in the first inverter's (a parallel system), it is only shown. has_pv / has_battery: whether
+    it ever reported them (None: not known yet), so the app draws them also while it does not answer."""
     flags = {**({"left_out": True} if left_out else {}), **({"in_first": True} if in_first else {})}
+    if extra is not None:
+        flags.update(has_pv=getattr(extra, "has_pv", None), has_battery=getattr(extra, "has_battery", None))
+    elif snap is not None:  # the first inverter: its current reading
+        flags.update(has_pv=snap.pv_power is not None,
+                     has_battery=snap.battery_soc is not None or snap.battery_power is not None)
     if snap is None:
         return {"id": inverter_id, "name": name, "connected": False, **flags}
     return {"id": inverter_id, "name": name, "connected": True, **flags, "pv_power": snap.pv_power,
@@ -264,7 +278,7 @@ def combine(own: Snapshot, extras: list[ExtraCollector], main_name: str = "", ma
     counters.forget({e.entry.id for e, _ in readings})
     snap = copy.deepcopy(own)
     snap.inverters = [_part(MAIN_INVERTER, main_name, own)] + [
-        _part(e.entry.id, e.name, r, e.entry.id in gone and not e.entry.in_first, e.entry.in_first)
+        _part(e.entry.id, e.name, r, e.entry.id in gone and not e.entry.in_first, e.entry.in_first, e)
         for e, r in everyone]
     missing = any(r is None for _, r in readings)
     present = [(e, r) for e, r in readings if r is not None]

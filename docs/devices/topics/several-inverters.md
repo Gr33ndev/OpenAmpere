@@ -9,8 +9,8 @@
 ## Summary
 
 - OpenAmpere reads the first inverter as before and up to five further ones, each over its own connection and
-  checked by its own serial number. The app and the stored history show the combined values; the overview also shows
-  each inverter on its own.
+  checked by its own serial number. The stored history shows the combined values; the energy flow draws a sun and
+  a battery for each inverter and gives the sums in a line below it.
 - Inverters at one house connection usually all measure the same grid point. Their grid readings are not added up.
 - An inverter's own house value counts the other batteries as consumption, so the combined house power is the
   balance of grid, PV and battery.
@@ -32,5 +32,5 @@
 | The combined house power is the balance grid + PV + battery. | Each inverter's own house value counts the other batteries as consumption. | [#619](https://github.com/Gr33ndev/OpenAmpere/issues/619), [#620](https://github.com/Gr33ndev/OpenAmpere/pull/620) |
 | The energy of a further inverter is counted by the differences of its counters, from the moment it is set up. | Its lifetime counters would otherwise land in one quarter hour; a restart (counter 0) or a reset would count as energy. | [#620](https://github.com/Gr33ndev/OpenAmpere/pull/620) |
 | A further inverter without readings for five minutes is left out of the combined values until it answers again; the app and a notification say so. Before that the combined values are missing. | A short gap is spread by the storage; a long one would otherwise stop recording the first inverter's energy too. | [#620](https://github.com/Gr33ndev/OpenAmpere/pull/620) |
-| A further inverter can be marked "Werte stecken schon im ersten Wechselrichter": it is shown on its own, but nothing of it is added. | In a parallel system the first inverter may already report the values of all; adding the others would count them twice. Which systems do this is not known, so the owner decides. | [#619](https://github.com/Gr33ndev/OpenAmpere/issues/619) |
+| A further inverter can be marked "Werte stecken schon im ersten Wechselrichter": nothing of it is added, the energy flow does not draw it, and its values are shown in a line below the flow. | In a parallel system the first inverter may already report the values of all; adding the others would count them twice. Which systems do this is not known, so the owner decides. | [#619](https://github.com/Gr33ndev/OpenAmpere/issues/619) |
 | Battery settings can be changed per inverter. Grid charging and the export limit act on the first inverter only; the app says so, and warns that grid charging can move energy between the batteries. | Coordinated control of several batteries and the export limit of the whole connection are still to be settled. | [#619](https://github.com/Gr33ndev/OpenAmpere/issues/619) |

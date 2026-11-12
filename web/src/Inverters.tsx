@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import type { ExtraInverter, InverterStatus, Settings, Snapshot, Status } from "./api";
 import { inverterName, MAIN_INVERTER } from "./api";
-import { num } from "./format";
+import { kw, num, percent } from "./format";
 import { t } from "./i18n";
 import { type Detected, ConnectionForm } from "./Setup";
 import { Button, Dialog, Field, Notice, Segmented, Slider, SwitchRow, toast, Unsaved } from "./ui";
@@ -205,8 +205,8 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
   );
 }
 
-/** Below the energy flow, which draws each inverter (#619): why sums are missing or an inverter is left out.
- *  Nothing while all answer. */
+/** Below the energy flow, which draws each inverter (#619): why sums are missing or an inverter is left out, and
+ *  the inverters whose values are already in the first one (a parallel system), which the flow does not draw. */
 export function InverterHints({ snap }: { snap: Snapshot | null }) {
   const readings = snap?.inverters ?? [];
   return (
@@ -215,6 +215,12 @@ export function InverterHints({ snap }: { snap: Snapshot | null }) {
         <p key={r.id} className="hint">{t("overview.inverterCards.leftOutHint", { name: inverterName(r.name, index) })}</p>
       ) : null)}
       {readings.some((r) => !r.connected && !r.left_out && !r.in_first) && <p className="hint">{t("overview.inverterCards.missingHint")}</p>}
+      {readings.map((r, index) => r.in_first ? (
+        <p key={r.id} className="hint center">{r.connected
+          ? t("overview.inverterCards.inFirstLine", { name: inverterName(r.name, index), pv: kw(r.pv_power ?? null),
+              soc: percent(r.battery_soc ?? null) })
+          : t("overview.inverterCards.inFirstOffline", { name: inverterName(r.name, index) })}</p>
+      ) : null)}
     </>
   );
 }
