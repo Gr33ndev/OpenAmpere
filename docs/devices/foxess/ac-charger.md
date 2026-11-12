@@ -24,8 +24,9 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
   owners' reports confirm the registers ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318)).
 - Modbus TCP: registers are holding registers read with FC03 (0x4000–0x4003 are write-only, FC06), unit id 1, port 502 (1502 also seen); port 502, unit id 1
   and FC03 confirmed on one charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
-- On EKD systems the previous smartbox blocks OpenAmpere's access to the charger while it is powered; with the box
-  cut from power the check reads the charger ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
+- On EKD systems the previous smartbox blocks access to the charger (by OpenAmpere and evcc) while it is connected
+  to the network; with the box cut from power, or only its LAN cable pulled, the charger can be read
+  ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431), [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#622](https://github.com/Gr33ndev/OpenAmpere/issues/622)).
 - In Modbus TCP mode the charger's watchdog fails in the unsafe direction: it keeps charging when the controller stops
   writing.
 - The register addresses come from FoxESS's protocol document V1.6, which FoxESS support gives to owners and an owner
@@ -108,6 +109,8 @@ Values while charging and single-phase models are not confirmed yet.
 | Current and power setpoints are held in RAM and lost on a power cut; configuration values are probably stored. Automatic 1/3-phase switching follows the power setpoint. | derived | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | The previous smartbox of EKD (Ampere.IQ) systems is a Modbus TCP client of the charger: its settings page lists the charger as "Ampere.ChargePro Bridge", Modbus TCP, host `EVC-<serial>.local`, unit id 1, port 502, marked as not configurable. So the box competes with OpenAmpere and evcc for the charger's connection(s). | derived | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427); [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
 | While the previous smartbox is powered, OpenAmpere cannot read the charger: the connection on port 502 is refused, or it is accepted but the answers carry foreign transaction ids and then time out. With the box cut from power the check reads all blocks at once on port 502, unit id 1, FC03; port 1502 refused. Whether the charger allows only one client or mishandles concurrent clients is open. | confirmed (one device) | owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| On a second EKD system every TCP connection to port 502 timed out (evcc's `foxess-evc` template) while the box was connected, although the charger answered ping. With only the box's LAN cable pulled (the box stayed powered) evcc connected and showed a running charge. So it is the box's network connection that blocks the charger; pulling its LAN cable is enough. | confirmed (second device) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#622](https://github.com/Gr33ndev/OpenAmpere/issues/622) |
+| On that charger, starting and stopping a charge from evcc had no effect while the charger was read. Likely causes: work mode not "controlled" (0x3000, see below) or the charger not in the Modbus TCP communication mode; not known yet. | open | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
 | Some chargers accept a single Modbus client only: a charger read by evcc may refuse a second connection or drop evcc's for a moment. The real number of connections is unknown. | open | [probe.py](../../../src/openampere/probe.py), [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | The installer's binding of the charger in the FoxESS app expires after 6 hours; owners can bind it to their own FoxESS cloud account. | derived | desk research in [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | OCPP: 1.6J works; 2.0.1 rejects charging profiles (FoxESS support recommends 1.6J). No phase switching over OCPP. After a server restart the charger can take many minutes to reconnect. In OCPP mode the FoxESS app/cloud and evcc lose control; the charge point id is the serial number. See [wallboxes](../topics/wallboxes.md). | derived | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
@@ -149,6 +152,8 @@ Values while charging and single-phase models are not confirmed yet.
   some firmware refuses every read with exception 6 outside the Modbus TCP mode. Only a real device can settle whether
   reads work in default mode ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318),
   [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)).
+- Why start and stop from evcc had no effect on one charger once the box was off the network (work mode or
+  communication mode; [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
 - Number of simultaneous Modbus connections: while the previous smartbox is powered OpenAmpere cannot read the
   charger, but whether it allows only one client or mishandles concurrent clients is open ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - Whether the previous smartbox only reads the charger or also controls it ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
