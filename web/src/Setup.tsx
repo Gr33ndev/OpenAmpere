@@ -173,6 +173,7 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
                   onChange={(e) => { setToken(e.target.value); reset(); }} />
               </Field>
             )}
+            {driver === "mtec" && <Notice kind="info">{t("setup.connectionForm.mtecSingleConnection")}</Notice>}
             <div className="field-row">
               <Field label={t("common.port")} hint={driver === "senec" ? t("setup.connectionForm.portHintSenec") : driver === "mtec" ? t("setup.connectionForm.portHintMtec") : driver === "enphase" ? t("setup.connectionForm.portHintEnphase") : t("setup.connectionForm.portHint")}>
                 <input className="input" type="number" value={port} onChange={(e) => { setPort(Number(e.target.value)); reset(); }} />

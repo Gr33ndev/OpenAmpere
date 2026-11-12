@@ -118,9 +118,14 @@ async def test_the_report_shows_the_raw_signs_and_the_backup_output(tmp_path):
                 if runtime.collector.latest:
                     break
                 await asyncio.sleep(0.1)
-            report = await Diagnostics(runtime).run()
+            report = await Diagnostics(runtime).run(connection_test=True)
+            connected = runtime.collector.connected
         finally:
             await runtime.collector.stop()
+    # the module takes one connection (#628): the test is skipped even when asked, and OpenAmpere stays connected
+    connections = {c["id"]: c for c in report["checks"]}["connections"]
+    assert connections["status"] == "skipped" and "nur eine Verbindung" in connections["summary"]
+    assert connected
     check = {c["id"]: c for c in report["checks"]}["mtec_values"]
     powers = check["details"]["powers_rounded_w"]
     assert powers["grid_power"] == round(-sim.energy.grid_w, -2) and "backup_power" in powers
