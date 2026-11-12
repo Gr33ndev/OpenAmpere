@@ -185,7 +185,8 @@ example a new PV inverter in `pv_external`).
   "pv_external": null,
   "devices": [{"id": "…", "name": "Heizstab", "kind": "mypv"}],
   "wallboxes": [{"id": "…", "name": "Garage", "model": "…", "read_only": false}],
-  "poll_interval": 10, "web_port": 8080
+  "poll_interval": 10, "web_port": 8080,
+  "inverter_controls": []
 }
 ```
 
@@ -197,6 +198,9 @@ example a new PV inverter in `pv_external`).
 - `pv_external`: `{"name": …}` if the owner counts a second PV inverter, otherwise `null`.
 - `devices`: heaters and relays OpenAmpere switches itself; `wallboxes`: wallboxes it reads itself. Wallboxes run
   through evcc are not part of this interface.
+- `inverter_controls`: with more than one inverter (#619), the further ones whose battery can be set, each with `id`,
+  `name`, `supports_control`, `work_modes` and `backup_reserve` like `device`. Their current settings are in
+  `inverter_battery_settings` of `/state` (by id), and `PUT /battery?inverter=<id>` changes them.
 
 ### `GET /state`
 
@@ -242,6 +246,7 @@ Everything at once: the same content as a [live message](#live-values-ws), plus 
 | `alarms` | The device's alarm codes |
 | `today` | Energy since midnight in Wh, see below |
 | `totals` | Lifetime counters in Wh, see below |
+| `inverters` | Empty with one inverter. With further inverters of the same installation (#619): one entry per inverter, the first with `id` `"main"`, each with `id`, `name`, `connected`, `has_pv` and `has_battery` (whether it ever reported them; `null` while not known) and, while it answers, `pv_power`, `pv_external_power`, `battery_power`, `battery_soc`, `grid_power` and `alarms`; `left_out: true` for one that has been away for more than 5 minutes; `in_first: true` for one whose values the first inverter already reports (a parallel system), which is shown but not part of the combined values. The fields above are then the combined values: PV and battery added up, the grid from the first inverter (plus those that measure a grid connection of their own), the house from the balance, the state of charge weighted by battery size; `pv_inputs` holds the inputs of all inverters, each inverter always at the same positions (empty while it has no reading). While a further inverter has had no reading for up to 5 minutes, the combined PV, battery, house, state of charge and the summed counters in `totals` and `today` are `null` (the gap is spread later). After that it is left out (`left_out`): the combined values and counters come back without it, so a lower sum then means an inverter is missing, not less power. Its counters count again from its next reading; what it produced while away is not in `totals`. Battery and temperature details are the first inverter's. |
 
 Fields of `today` and `totals`: `pv`, `consumption` (what the app shows as consumption), `grid_import`,
 `grid_export`, `battery_charge`, `battery_discharge`, `load` (the inverter's own load counter, which can count much
@@ -432,6 +437,11 @@ message. A command refused before anything was written does not count.
 
 Not every inverter accepts every command: `supports_control` in `/info` says whether OpenAmpere may control the
 device at all.
+
+With more than one inverter (#619) `PUT /battery?inverter=<id>` changes the battery of a further one (the ids and what
+each offers are in `inverter_controls` of `/info`, its settings in `inverter_battery_settings` of `/state`); without
+`inverter` it changes the first one. The limit of 6 changes per hour counts per inverter. `PUT /grid-charging` switches
+grid charging of all batteries together.
 
 ### `PUT /grid-charging`
 

@@ -29,19 +29,19 @@ from pydantic import BaseModel, Field
 from . import android, discovery, cloud_import, external, ha_app, health, i18n, privacy, probe
 from .apitokens import ApiTokens, Pairing, connection_code
 from .auth import CSRF_HEADER, DEVICE_COOKIE, DEVICE_TTL_S, SESSION_COOKIE, SESSION_TTL_S, Auth, host_allowed
-from .config import PRIVATE, SECRETS, restore_settings
+from .config import MAIN_INVERTER, PRIVATE, SECRETS, restore_settings
 from .drivers import registry
 from .control import (BatteryControl, ConfirmationRequired, ControlDisabled, ExportLimitControl, NotConnected,
                       WriteFailed)
 from .drivers.base import Snapshot
 from .periods import PERIODS, bucket_start, parse_anchor, period_bounds, to_ts
 from .runtime import Runtime
-from .storage import EXTERNAL, FLOWS, InvalidBackup, Storage
+from .storage import EXTERNAL, FLOWS, MAX_PV_INPUTS, InvalidBackup, Storage
 from .discovery import Rediscovery
 from .billing import Billing
 from .cars import Cars, SourceError
 from .gridmeter import GridMeter
-from .charging import GridCharging
+from .charging import AllGridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
 from .devices import Devices
@@ -234,9 +234,50 @@ def create_app(runtime: Runtime) -> FastAPI:
     installation_id = storage_installation_id(storage)
     battery = BatteryControl(runtime)
     export_limit = ExportLimitControl(runtime)
+    extra_batteries: dict[str, BatteryControl] = {}  # the further inverters' battery settings (#619)
+
+    def battery_of(inverter: str | None) -> BatteryControl:
+        """The battery settings of the first inverter, or of a further one by its id (#619)."""
+        if not inverter or inverter == MAIN_INVERTER:
+            return battery
+        extra = runtime.extra(inverter)
+        if extra is None:
+            raise HTTPException(404, "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden.")
+        control = extra_batteries.get(inverter)
+        if control is None or control.source is not extra:  # made again after a change of its settings
+            control = extra_batteries[inverter] = BatteryControl(runtime, extra)
+        return control
+
+    def battery_capacity() -> float:
+        """The size of all batteries: with further inverters (#619) the sum of their sizes when each is known (the
+        combined counters count all batteries), else the size entered for the battery."""
+        sizes = [runtime.config.inverter.capacity_kwh, *(e.entry.capacity_kwh for e in collector.extras)]
+        if collector.extras and all(size > 0 for size in sizes):
+            return sum(sizes)
+        return runtime.config.battery.capacity_kwh
+
+    def inverters_view(serial_shown: bool) -> list[dict]:
+        """Every inverter once there is more than one (#619): name, connection and device; empty with one."""
+        if not collector.extras:
+            return []
+        items = [{"id": MAIN_INVERTER, "name": runtime.config.inverter.name, "connected": collector.connected,
+                  "last_error": collector.last_error, "wrong_device": collector.wrong_device,
+                  "device": collector.device, "capacity_kwh": runtime.config.inverter.capacity_kwh, "own_grid": False,
+                  "in_first": False}]
+        items += [{"id": e.entry.id, "name": e.entry.name, "connected": e.connected, "last_error": e.last_error,
+                   "wrong_device": e.wrong_device, "device": e.device, "capacity_kwh": e.entry.capacity_kwh,
+                   "own_grid": e.entry.own_grid, "in_first": e.entry.in_first, "stale": not e.fresh()}
+                  for e in collector.extras]
+        for item in items:
+            device = item["device"]
+            item["device"] = dict(device.__dict__) if device else None
+            if item["device"] and not serial_shown:  # identifies the installation (#164)
+                item["device"]["serial"] = privacy.shorten(item["device"].get("serial"))
+        return items
 
     rediscovery = Rediscovery(runtime)
-    charging = GridCharging(runtime)
+    charging = AllGridCharging(runtime)  # every battery OpenAmpere controls (#619)
+    runtime.before_extras_change = charging.release_removed
     gridmeter = GridMeter(runtime)
     billing = Billing(runtime.storage, runtime.tariffs, gridmeter)
     evcc = Evcc(runtime)
@@ -624,7 +665,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         return tokens_view()
 
     external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
-                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps, wallboxes=wallboxes)
+                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps, wallboxes=wallboxes,
+                      battery_of=battery_of)
 
     # ---- live ------------------------------------------------------------
 
@@ -663,6 +705,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             "devices": {"grid_charging": charging.active, "items": [d for d in devices.live() if d["enabled"]]},
             "poll_interval": collector.poll_interval(),
             "device": device,
+            "inverters": inverters_view(logged_in(request)),  # with more than one (#619)
             # the access token of the device runs out (Enphase, #538); in days, as the diagnostics, whose report is
             # shared and must not tell the day the owner made the token (on the home network that is no secret)
             "token_days_left": collector.token_days_left(runtime.tz),
@@ -720,25 +763,34 @@ def create_app(runtime: Runtime) -> FastAPI:
                                                token=target.token.strip())
 
     @app.post("/api/setup/accept-device")
-    async def setup_accept_device(request: Request):
-        """The other device at the address is the owner's new inverter (#567): read and controlled from now on."""
-        wrong = collector.wrong_device
-        if wrong is None or not await collector.accept_device(runtime.config.inverter.host):
+    async def setup_accept_device(request: Request, inverter: str | None = Query(None, max_length=12)):
+        """The other device at the address is the owner's new inverter (#567): read and controlled from now on.
+        inverter: the id of a further inverter (#619); none for the first one."""
+        target, host, named = collector, runtime.config.inverter.host, {}
+        if inverter and inverter != MAIN_INVERTER:
+            target = runtime.extra(inverter)
+            if target is None:
+                raise HTTPException(404, "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden.")
+            host, named = target.entry.host, {"inverter": target.entry.name or target.entry.id}
+        wrong = target.wrong_device
+        if wrong is None or not await target.accept_device(host):
             raise HTTPException(409, "Unter der Adresse antwortet kein anderer Wechselrichter.")
         storage.log_control("inverter_accepted", {"from": {"serial": wrong["expected"]}, "to": {"serial": wrong["found"]},
-                                                  **by(request)}, False, "ok")
+                                                  **named, **by(request)}, False, "ok")
         return {"ok": True}
 
     # ---- battery control -------------------------------------------------
 
     @app.get("/api/battery/health")
     def battery_health():
-        return health.battery(storage, collector.latest, runtime.config.battery.capacity_kwh)
+        return health.battery(storage, collector.latest, battery_capacity())
 
     @app.get("/api/battery/settings")
-    async def get_battery_settings():
+    async def get_battery_settings(inverter: str | None = Query(None, max_length=12)):
+        """inverter: the id of a further inverter (#619); none for the first one."""
+        control = battery_of(inverter)
         try:
-            return await battery.read(shared=True)
+            return await control.read(shared=True)
         except NotConnected as err:
             raise HTTPException(503, str(err)) from None
         except Exception as err:  # e.g. timeout through a proxy; the technical text goes to the log, not to the app
@@ -746,10 +798,12 @@ def create_app(runtime: Runtime) -> FastAPI:
             raise HTTPException(504, "Der Wechselrichter antwortet nicht. Bitte gleich noch einmal versuchen.") from None
 
     @app.put("/api/battery/settings")
-    async def put_battery_settings(request: Request, changes: dict = Body(...)):
+    async def put_battery_settings(request: Request, changes: dict = Body(...),
+                                   inverter: str | None = Query(None, max_length=12)):
         confirm = changes.pop("confirm_low_reserve", False) is True  # the warning in the app was confirmed (#313)
+        control = battery_of(inverter)
         try:
-            return await battery.write(changes, source=actor(request), confirm_low_reserve=confirm)
+            return await control.write(changes, source=actor(request), confirm_low_reserve=confirm)
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
         except ConfirmationRequired as err:
@@ -1644,7 +1698,7 @@ def create_app(runtime: Runtime) -> FastAPI:
             entries = []
             for ts, rows in sorted(buckets.items()):
                 values = []
-                for i in range(1, 5):
+                for i in range(1, MAX_PV_INPUTS + 1):
                     column = [r.get(f"pv{i}") for r in rows if r.get(f"pv{i}") is not None]
                     values.append(sum(column) / len(column) if column else None)
                 entries.append({"ts": ts, "values": values})

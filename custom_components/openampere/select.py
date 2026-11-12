@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import OpenAmpereConfigEntry
 from .const import DEVICE_MODES, WALLBOX_MODES, WORK_MODES
 from .coordinator import OpenAmpereCoordinator
-from .entity import ControlEntity, WallboxEntity, controllable_wallboxes
+from .entity import ControlEntity, InverterControlEntity, WallboxEntity, controllable_wallboxes, inverter_controls
 from .helpers import send
 
 
@@ -22,6 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     if not coordinator.can_control:
         return  # read-only access
     entities: list[SelectEntity] = [WorkModeSelect(coordinator)]
+    entities += [InverterWorkModeSelect(coordinator, i) for i in inverter_controls(coordinator.info)]  # #619
     entities += [DeviceModeSelect(coordinator, d["id"]) for d in coordinator.info["devices"]]
     entities += [WallboxModeSelect(coordinator, w["id"]) for w in controllable_wallboxes(coordinator.info)]
     async_add_entities(entities)
@@ -40,6 +41,22 @@ class WorkModeSelect(ControlEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         await send(self.coordinator, self.coordinator.client.set_battery({"work_mode": option}))
+
+
+class InverterWorkModeSelect(InverterControlEntity, SelectEntity):
+    """The work mode of the battery of a further inverter (#619), only the modes of its device."""
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, inverter: dict) -> None:
+        super().__init__(coordinator, "work_mode", inverter["id"])
+        offered = inverter.get("work_modes")
+        self._attr_options = [mode for mode in WORK_MODES if not offered or mode in offered]
+
+    @property
+    def current_option(self) -> str | None:
+        return self.battery_settings.get("work_mode")
+
+    async def async_select_option(self, option: str) -> None:
+        await send(self.coordinator, self.coordinator.client.set_battery({"work_mode": option}, self._inverter_id))
 
 
 class DeviceModeSelect(ControlEntity, SelectEntity):

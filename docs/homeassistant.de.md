@@ -63,6 +63,7 @@ eine Verbindung, und jeder Befehl aus Home Assistant durchläuft dieselben Prüf
 | PV-Leistung, Hausverbrauch, Netzleistung, Speicherleistung | Netz: + Bezug, − Einspeisung. Speicher: + Entladen, − Laden |
 | Leistung je Modulfeld | Namen wie in OpenAmpere, ausgeblendete Felder fehlen |
 | Zweiter Wechselrichter: Leistung und Erzeugung | Nur wenn OpenAmpere einen zweiten PV-Wechselrichter mitzählt (SAJ „Meter B“, unter Mehr → Meine Anlage → Modulfelder benennen), mit seinem Namen. Er hat keinen eigenen Zähler: Die Erzeugung rechnet OpenAmpere aus seiner Leistung. Die PV-Leistung oben enthält ihn, die PV-Erzeugung (der Zähler des Wechselrichters) nicht. |
+| Pro Wechselrichter: PV-Leistung, Speicherleistung, Ladestand | Nur mit mehr als einem Wechselrichter (**Mehr → Verbindung → Weitere Wechselrichter**): eine Gerätekarte pro Wechselrichter, mit seinem Namen aus OpenAmpere („Wechselrichter 2“ ohne Namen). Die Werte oben sind dann die Summen aller Wechselrichter. Solange ein Wechselrichter keine aktuellen Werte liefert, sind seine Werte „nicht verfügbar“. Ein neuer oder umbenannter Wechselrichter erscheint von selbst; die Karte eines entfernten verschwindet mit seinem Verlauf. |
 | PV-Erzeugung, Verbrauch, Netzbezug, Einspeisung, Speicher geladen/entladen | Gesamtzähler in kWh, **passend fürs Energie-Dashboard**. Den Verbrauch rechnet OpenAmpere aus den anderen Zählern aus, wie in der App. |
 | Verbrauchszähler des Wechselrichters | Ausgeblendet. Der eigene Zähler des Wechselrichters zählt oft mehr, als im Haus verbraucht wurde. Ältere Versionen zeigten ihn als „Verbrauch“. |
 | Ladestand, Speicher-Gesundheit, -Spannung, -Strom, -Temperatur, Wechselrichter-Temperatur | |
@@ -94,7 +95,7 @@ das nicht, wähle **„Nur lesen“**.
 
 | Entität | |
 |---|---|
-| Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen |
+| Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen. Mit mehr als einem Wechselrichter steuern diese Werte den ersten; jeder weitere hat auf seiner Gerätekarte eigenen Betriebsmodus und eigene Grenzen. Laden aus dem Netz lädt alle Speicher. |
 | Notstrom-Reserve, Ladegrenze, Untergrenze im Notstrombetrieb | in %; bei SAJ zusätzlich die Reserve im Modus Notstromreserve |
 | Laden aus dem Netz, Ladeziel aus dem Netz | einmal in OpenAmpere einrichten (rechtliche Hinweise) |
 | Betriebsart je Heizstab/Schalter | Automatik (Überschuss), Aus, Boost |

@@ -13,12 +13,13 @@ from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity, Se
 from homeassistant.const import (PERCENTAGE, EntityCategory, UnitOfElectricCurrent, UnitOfElectricPotential,
                                  UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfTime)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator, firmware
-from .const import WALLBOX_STATES
-from .entity import OpenAmpereEntity, WallboxReadingEntity
+from .const import DOMAIN, WALLBOX_STATES
+from .entity import InverterEntity, OpenAmpereEntity, WallboxReadingEntity, inverter_list
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -112,12 +113,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         entities += [WallboxPowerSensor(coordinator, wallbox["id"]), WallboxStateSensor(coordinator, wallbox["id"])]
         if not wallbox.get("read_only"):  # one OpenAmpere only shows does not tell the current set in it (#439)
             entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
+    # every inverter on its own once there is more than one (#619); remembered, so a change sets up again
+    live = (coordinator.data or {}).get("live")
+    coordinator.info["inverters"] = inverter_list(live)
+    if live:  # without a reading yet (#220) nothing tells which inverters there are: keep every card
+        remove_old_inverters(hass, entry, coordinator.info)
+    for inverter in coordinator.info["inverters"]:
+        entities += [InverterSensor(coordinator, d, inverter["id"]) for d in INVERTER_SENSORS]
     entities.append(FirmwareSensor(coordinator))
     # Enphase (#538); remembered, so the integration sets up again when a token comes or goes (needs_reload)
     coordinator.info["token_sensor"] = ((coordinator.data or {}).get("status") or {}).get("token_days_left") is not None
     if coordinator.info["token_sensor"]:
         entities.append(TokenDaysSensor(coordinator))
     async_add_entities(entities)
+
+
+def remove_old_inverters(hass: HomeAssistant, entry: OpenAmpereConfigEntry, info: dict) -> None:
+    """Removes the device of an inverter removed in OpenAmpere (#619), with its entities: it would stay as
+    "unavailable", and a later inverter with the same id would take over its card and history."""
+    prefix = f"{info['installation_id']}_inverter_"
+    keep = {f"{prefix}{i['id']}" for i in info["inverters"]}
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+        ours = [ident for domain, ident in device.identifiers if domain == DOMAIN and ident.startswith(prefix)]
+        if ours and not set(ours) & keep:
+            registry.async_remove_device(device.id)
 
 
 class OpenAmpereSensor(OpenAmpereEntity, SensorEntity):
@@ -203,6 +223,30 @@ class ExternalPvSensor(OpenAmpereSensor):
     def __init__(self, coordinator: OpenAmpereCoordinator, description: OpenAmpereSensorDescription, name: str) -> None:
         super().__init__(coordinator, description)
         self._attr_translation_placeholders = {"name": name}
+
+
+# what each inverter reads (#619); the sensors above are the combined values of all
+INVERTER_SENSORS: tuple[OpenAmpereSensorDescription, ...] = (
+    OpenAmpereSensorDescription(key="inverter_pv_power", value=lambda r: r.get("pv_power"), **POWER),
+    OpenAmpereSensorDescription(key="inverter_battery_power", value=lambda r: r.get("battery_power"), **POWER),
+    OpenAmpereSensorDescription(key="inverter_battery_soc", value=lambda r: r.get("battery_soc"),
+                                native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY,
+                                state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=0),
+)
+
+
+class InverterSensor(InverterEntity, SensorEntity):
+    entity_description: OpenAmpereSensorDescription
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, description: OpenAmpereSensorDescription,
+                 inverter_id: str) -> None:
+        super().__init__(coordinator, description.key, inverter_id)
+        self.entity_description = description
+
+    @property
+    def native_value(self) -> Any:
+        reading = self.reading
+        return self.entity_description.value(reading) if reading else None
 
 
 class DevicePowerSensor(OpenAmpereEntity, SensorEntity):

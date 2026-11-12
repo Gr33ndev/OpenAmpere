@@ -173,6 +173,12 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
             value = str(car.get(field) or "").strip()
             if len(value) >= 3:  # a name like "ID" would replace every such word in the log
                 known[value] = name
+    for number, extra in enumerate(runtime.collector.extras, start=2):  # further inverters (#619)
+        known[extra.entry.host.strip()] = f"<Wechselrichter {number}>"
+        if not include_serial:
+            for serial in {extra.device.serial if extra.device else None, extra.known_serial}:
+                if serial:
+                    known[serial] = shorten(serial)
     if not include_serial:
         device = runtime.collector.device
         stored = (runtime.storage.get_meta("firmware") or {}).get("serial")
@@ -191,7 +197,7 @@ def for_report(runtime: Runtime, include_serial: bool = False) -> Pseudonyms:
 
 # the control log (#329): what the owner named (a person, an app access, a device), when something happens in the
 # owner's day, references of the grid operator and values that tell the size of the system (#149)
-LOG_NAMES = {"source", "name", "consumer", "loadpoint", "vehicle"}
+LOG_NAMES = {"source", "name", "consumer", "loadpoint", "vehicle", "inverter"}
 LOG_TIMES = {"outage", "time"}
 LOG_LEFT_OUT = {"grid_operator_confirmation"}
 LOG_HOSTS = {"server.allowed_hosts"}  # the owner's own host names (#437), often a domain of theirs

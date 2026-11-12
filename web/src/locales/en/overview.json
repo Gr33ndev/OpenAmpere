@@ -30,7 +30,9 @@
     "noData": "Energy flow, no data",
     "outdated": "outdated",
     "secondInverter": "Second inverter",
-    "solarPower": "Solar {power}"
+    "solarPower": "Solar {power}",
+    "totalBoth": "Together: solar {pv} · batteries {battery}, {soc}",
+    "totalSolar": "Together: solar {pv}"
   },
   "importHint": {
     "hide": "Hide",
@@ -94,6 +96,13 @@
     "acceptTitle": "Take over the new inverter?",
     "acceptHint": "Only confirm this if the inverter really was replaced and the device is in your own network. OpenAmpere then reads and controls this device, with all the settings you made in OpenAmpere.",
     "acceptConfirm": "Take over",
-    "noSerialHint": "This device reports no serial number. So OpenAmpere can no longer check later whether the same device still answers at the address. Best give it a fixed IP address in your router."
+    "noSerialHint": "This device reports no serial number. So OpenAmpere can no longer check later whether the same device still answers at the address. Best give it a fixed IP address in your router.",
+    "titleNamed": "Since {time}, another device answers at the address of “{name}”."
+  },
+  "inverterCards": {
+    "missingHint": "While an inverter sends no current values for a short time, the overview shows no total for solar power and batteries. A total without it would be too low.",
+    "leftOutHint": "“{name}” has not answered for a few minutes. Until it answers again, OpenAmpere does not add it to solar power and batteries. What it produced or stored in that time is missing from the report. Check that it is switched on and reachable in the network. If it got a new address, enter it under More → Connection → Further inverters.",
+    "inFirstLine": "“{name}” (included in the first inverter): solar {pv} · battery {soc}",
+    "inFirstOffline": "“{name}” (included in the first inverter) is not answering right now. The sums are not affected."
   }
 }

@@ -42,7 +42,8 @@
     "unknownAction": "Unknown action.",
     "unknownPeriod": "Unknown period",
     "unknownPermission": "Unknown permission.",
-    "wrongPassword": "Wrong password."
+    "wrongPassword": "Wrong password.",
+    "inverterNotFound": "This inverter does not exist (any more). Please reload the page."
   },
   "apitokens": {
     "enterNameEG": "Please enter a name, e.g. “Home Assistant”.",
@@ -153,7 +154,9 @@
     "logTestMode": "test mode is on",
     "logWouldCharge": "would charge ({reason}) – test mode",
     "unknownChargingType": "Unknown charging type.",
-    "reserveNotSetBack": "not set back: the backup power reserve was changed to {current} % in the meantime"
+    "reserveNotSetBack": "not set back: the backup power reserve was changed to {current} % in the meantime",
+    "chargingNoLongerCharged": "The battery is no longer charged from the grid",
+    "chargingInverterRemoved": "Inverter removed or marked as part of the first one"
   },
   "cli": {
     "noDatabaseFound": "No database found at {path}.",
@@ -183,7 +186,10 @@
     "certificateFingerprintInvalid": "The certificate fingerprint is not valid. Please test the connection in the setup again and save it.",
     "mailServerNameOnly": "Mail server: please enter only the name, without https://, port or path, for example smtp.example.com.",
     "mailSenderAddress": "Sender: please enter an e-mail address, for example name@example.com.",
-    "mailRecipientAddresses": "Recipients: please enter only e-mail addresses, one per line, for example name@example.com."
+    "mailRecipientAddresses": "Recipients: please enter only e-mail addresses, one per line, for example name@example.com.",
+    "tooManyInverters": "At most {MAX_EXTRA_INVERTERS} further inverters can be added.",
+    "sameInverterId": "Two further inverters have the same id.",
+    "inverterInvalid": "The details of the further inverter “{name}” are not valid. Please check the address, port and device address."
   },
   "consumers": {
     "addressNotFound": "address not found",
@@ -396,7 +402,9 @@
     "secretFromConfigFile": "The login details “{names}” are in the file config.yaml. So that they are not sent to another address, please change {where} in config.yaml as well, or enter the login details here again together with the new setting.",
     "secretFromEnvironment": "The login details “{names}” are set by an environment variable. So that they are not sent to another address, please change {where} where the environment variable is set.",
     "setEnvironmentVariableT": "Set by an environment variable, can't be changed in the app: {blocked}",
-    "enphaseCertificateOnlyWithToken": "The certificate of the Enphase gateway can only be saved together with the access token. Please enter the token in the setup again."
+    "enphaseCertificateOnlyWithToken": "The certificate of the Enphase gateway can only be saved together with the access token. Please enter the token in the setup again.",
+    "inverterTwice": "An inverter is already added at the address {host} (port {port}). Each inverter can only be added once.",
+    "firstInverterFirst": "Please set up the first inverter first. OpenAmpere adds further inverters to its values."
   },
   "secretbox": {
     "damagedDeleteFileEnter": "{key_path} is damaged. Delete the file and enter the login details in the app again."

@@ -99,6 +99,59 @@ class WallboxReadingEntity(WallboxEntity):
         return super().available and bool(self.wallbox["online"]) and self.wallbox.get("state") is not None
 
 
+def inverter_list(live: dict | None) -> list[dict[str, str]]:
+    """The inverters of an installation with more than one (#619): id and name, in their order; empty with one
+    inverter and on older OpenAmpere versions."""
+    return [{"id": i["id"], "name": i.get("name") or ""} for i in (live or {}).get("inverters") or []]
+
+
+class InverterEntity(OpenAmpereEntity):
+    """One inverter of an installation with more than one (#619): its own device, named like in OpenAmpere. A value
+    of it is unavailable while OpenAmpere has no current reading of it."""
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, key: str, inverter_id: str) -> None:
+        super().__init__(coordinator, key)
+        installation = coordinator.info["installation_id"]
+        self._inverter_id = inverter_id
+        self._attr_unique_id = f"{installation}_inverter_{inverter_id}_{key}"
+        # set up by the sensors; a platform set up before them reads the same list from the reading
+        inverters = coordinator.info.get("inverters") or inverter_list((coordinator.data or {}).get("live"))
+        index = next((n for n, i in enumerate(inverters) if i["id"] == inverter_id), 0)
+        name = inverters[index]["name"] if index < len(inverters) else ""
+        named = {"name": name} if name else {"translation_key": "inverter",
+                                             "translation_placeholders": {"number": str(index + 1)}}
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, f"{installation}_inverter_{inverter_id}")},
+                                            manufacturer="OpenAmpere", via_device=(DOMAIN, installation), **named)
+
+    @property
+    def reading(self) -> dict[str, Any] | None:
+        return next((i for i in self.live.get("inverters") or [] if i.get("id") == self._inverter_id), None)
+
+    @property
+    def available(self) -> bool:
+        reading = self.reading
+        return super().available and not self.stale and reading is not None and bool(reading.get("connected"))
+
+
+def inverter_controls(info: dict[str, Any]) -> list[dict[str, Any]]:
+    """The further inverters whose battery can be controlled (#619); missing on older OpenAmpere versions."""
+    return [i for i in info.get("inverter_controls") or [] if i.get("supports_control")]
+
+
+class InverterControlEntity(InverterEntity):
+    """Changes the battery of a further inverter (#619): only while the control switch in OpenAmpere is on and the
+    inverter answers."""
+
+    @property
+    def battery_settings(self) -> dict[str, Any]:
+        return (self.data.get("inverter_battery_settings") or {}).get(self._inverter_id) or {}
+
+    @property
+    def available(self) -> bool:
+        status = self.data.get("status") or {}
+        return super().available and bool((status.get("control") or {}).get("enabled"))
+
+
 class ControlEntity(OpenAmpereEntity):
     """Changes something: only while the control switch in OpenAmpere is on."""
 

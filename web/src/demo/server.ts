@@ -89,6 +89,7 @@ export function snapshot() {
   const pv1 = wobble(s.pv1), pv2 = wobble(s.pv2), house = wobble(s.load, 0.06);
   const pv = pv1 + pv2;
   const battery = s.battery;
+  const soc = Math.round(s.soc);
   const lifetime = cachedTotals();
   const today = energyOf(stepsOf(dayStart(new Date())));
   return {
@@ -97,7 +98,15 @@ export function snapshot() {
     house_power: house,
     grid_power: house - pv - battery,
     battery_power: battery,
-    battery_soc: Math.round(s.soc),
+    battery_soc: soc,
+    // two inverters, each with a battery of the same size (#619): the first one with the main roof, the garage with the
+    // second array; the values above are their sum
+    inverters: [
+      { id: "main", name: "Haus", connected: true, pv_power: pv1, pv_external_power: null, battery_power: Math.round(battery / 2),
+        battery_soc: Math.min(100, soc + 2), grid_power: house - pv - battery, alarms: [] },
+      { id: "wr2", name: "Garage", connected: true, pv_power: pv2, pv_external_power: null,
+        battery_power: battery - Math.round(battery / 2), battery_soc: Math.max(0, soc - 2), grid_power: house - pv - battery, alarms: [] },
+    ],
     pv_inputs: [
       { power: pv1, voltage: pv1 ? 520 + Math.random() * 20 : 0, current: pv1 ? Math.round((pv1 / 530) * 100) / 100 : 0 },
       { power: pv2, voltage: pv2 ? 380 + Math.random() * 20 : 0, current: pv2 ? Math.round((pv2 / 390) * 100) / 100 : 0 },
@@ -185,6 +194,10 @@ const settings = {
     "inverter.driver": "auto", "inverter.host": "wechselrichter.local", "inverter.port": 502, "inverter.unit": 0,
     "inverter.register_map": "auto", "inverter.read_function": "auto", "inverter.poll_interval": 10,
     "inverter.timeout": 3, "inverter.connection_mode": "persistent", "storage.raw_retention_days": 30,
+    "inverter.name": "Haus", "inverter.capacity_kwh": BATTERY_WH / 2000,
+    inverters: [{ id: "wr2", name: "Garage", driver: "saj", host: "garage-speicher.local", port: 502, unit: 0, register_map: "auto",
+      read_function: "auto", timeout: 3, connection_mode: "persistent", capacity_kwh: BATTERY_WH / 2000, own_grid: false,
+      in_first: false, rated_power_w: 0, rated_power_reported_w: 0 }],
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
     "tariff.feed_in_auto": true, "tariff.feed_in_full": false, "pv.commissioning_date": COMMISSIONED,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.external": false, "pv.external_name": "", "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",
@@ -207,15 +220,25 @@ const settings = {
   revision: 1,
 };
 
+const DEMO_DEVICE = { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
+  register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true, energy_step_wh: 10 };
+
 function status() {
   const latest = current();
   return {
     version: "Demo", configured: true, connected: true, last_error: null, last_update: latest ? now() : null,
     stale: false, poll_interval: 10, relocated: null, database: { damaged: null, restored: null, rollback: null, ha_backup: null }, timezone: "Europe/Berlin", web_build: null, clock_wrong: false,
     devices: { grid_charging: false, items: deviceItems() },
-    device: { manufacturer: "FoxESS", model: "H3-10.0-Smart (Demo)", serial: "DEMO000001", firmware: "1.50 / 1.20",
-      register_map: "foxess_h3_new", driver: "foxess", unit: 247, rated_power_w: RATED_W, supports_control: true,
-      energy_step_wh: 10 },
+    device: DEMO_DEVICE,
+    inverters: [
+      { id: "main", name: "Haus", connected: true, last_error: null, wrong_device: null, device: DEMO_DEVICE,
+        capacity_kwh: BATTERY_WH / 2000, own_grid: false },
+      { id: "wr2", name: "Garage", connected: true, last_error: null, wrong_device: null, stale: false,
+        device: { manufacturer: "SAJ", model: "H2-8K-T2 (Demo)", serial: "DEMO000002", firmware: "1.05", register_map: null,
+          driver: "saj", unit: 1, rated_power_w: 8000, supports_control: true, work_modes: ["self_use", "backup"],
+          backup_reserve: true },
+        capacity_kwh: BATTERY_WH / 2000, own_grid: false },
+    ],
     energy_step_wh: 10,
     control: { enabled: true, dry_run: true },
     storage: { failing_since: null, error: null, free_bytes: 24e9, low_space: false }, overwritten: null,
@@ -600,7 +623,10 @@ const ROUTES: Record<string, (q: URLSearchParams) => unknown> = {
     configured: true, meters: [{ id: "demo-bezug", name: "Smart Meter · Bezug", kinds: ["import"] },
       { id: "demo-einspeisung", name: "Smart Meter · Einspeisung", kinds: ["export"] }], active: ["demo-bezug", "demo-einspeisung"],
     synced: now() - 2 * 3600, until: isoDay(-2), error: null, busy: false }),
-  "/api/battery/settings": () => ({ work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
+  // the second inverter (#619) has settings of its own
+  "/api/battery/settings": (q) => (q.get("inverter") === "wr2"
+    ? { work_mode: "self_use", min_soc: 5, max_soc: 100, min_soc_on_grid: 25, backup_soc: 30, unreadable: [], external_change: null }
+    : { work_mode: "self_use", min_soc: 10, max_soc: 100, min_soc_on_grid: 20, unreadable: [], external_change: null }),
   "/api/grid/export-limit": () => ({ supported: true, limit_w: 5880, rated_power_w: RATED_W, rule: "limit_60", installed_kwp: KWP,
     legal_max_w: 5880, rated_power_reported_w: null, rated_power_confirmed: false, external_change: null }),
   "/api/control/log": controlLog,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { appUrl, getJson, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
+import { appUrl, getJson, inverterName, MAIN_INVERTER, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { ADVISORIES_URL, ANDROID_LICENSES_DATA_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
@@ -12,6 +12,7 @@ import { batterySettingName, batterySettingValue, describe, logCsv, logReport, s
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
+import { firstInverterOnly, InverterPicker, inverterQuery, InvertersSettings } from "./Inverters";
 import { ControlModeBar } from "./ControlMode";
 import { LastRestore, RestoreButton } from "./Restore";
 import { UpdatesCard } from "./Updates";
@@ -106,7 +107,10 @@ const formOf = (s: BatteryState): BatterySettings => ({ work_mode: s.work_mode, 
 
 export function BatteryPage({ onBack }: PageProps) {
   const { data: status } = useResource<Status>("/api/status");
-  const { data: current, error, reload, setData } = useResource<BatteryState>("/api/battery/settings");
+  // with several inverters (#619): whose battery settings are shown
+  const [inverter, setInverter] = useState(MAIN_INVERTER);
+  const path = `/api/battery/settings${inverterQuery(inverter)}`;
+  const { data: current, error, reload, setData } = useResource<BatteryState>(path);
   const [form, setForm] = useState<BatterySettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmLow, setConfirmLow] = useState(false); // the warning before a reserve below 10 % (#313)
@@ -115,12 +119,13 @@ export function BatteryPage({ onBack }: PageProps) {
   }, [current]);
 
   const control = status?.control;
-  const deviceSupportsControl = status?.device?.supports_control ?? true;
+  const device = inverter === MAIN_INVERTER ? status?.device : status?.inverters?.find((i) => i.id === inverter)?.device;
+  const deviceSupportsControl = device?.supports_control ?? true;
   const editable = !!control?.enabled && deviceSupportsControl;
   const changed = form && current && FIELDS.some((k) => form[k] !== current[k]);
   const socEditable = editable && !!current && !current.unreadable.some((k) => k !== "work_mode" && k !== "backup_soc");
   // the backup work mode keeps its own reserve (SAJ, #380): shown while that mode is chosen
-  const backupReserve = !!status?.device?.backup_reserve;
+  const backupReserve = !!device?.backup_reserve;
   const backupChosen = backupReserve && form?.work_mode === "backup";
   const set = (patch: Partial<BatterySettings>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
@@ -135,12 +140,12 @@ export function BatteryPage({ onBack }: PageProps) {
     }
     setBusy(true);
     try {
-      const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>("/api/battery/settings",
+      const r = await putJson<{ dry_run: boolean; written: object; result?: string; warning?: string | null }>(path,
         confirmed ? { ...changes, confirm_low_reserve: true } : changes);
       toast(r.dry_run ? t("settings.batteryPage.testModeLogged") : r.result === "ok" ? t("settings.batteryPage.saved") : r.result ?? t("common.saved"));
       if (r.warning) toast(r.warning, "error");
       // busy until the values read back are shown, the form in the same render (not one later in the effect)
-      const fresh = await readBack<BatteryState>("/api/battery/settings", setData, reload);
+      const fresh = await readBack<BatteryState>(path, setData, reload);
       if (fresh) setForm(formOf(fresh));
     } catch (e) {
       toast((e as Error).message, "error");
@@ -151,9 +156,10 @@ export function BatteryPage({ onBack }: PageProps) {
 
   return (
     <SubPage title={t("settings.batteryPage.title")} onBack={onBack}>
+      <InverterPicker status={status} value={inverter} onChange={(id) => { setForm(null); setInverter(id); }} />
       {!deviceSupportsControl ? (
         <Notice kind="info">{t("settings.batteryPage.readOnly",
-          { manufacturer: status?.device?.manufacturer ?? "" })}</Notice>
+          { manufacturer: device?.manufacturer ?? "" })}</Notice>
       ) : <ControlModeBar compact />}
       {!form && (error ? <LoadState error={error} onRetry={reload} /> : <p className="hint">{t("settings.batteryPage.reading")}</p>)}
 
@@ -507,6 +513,10 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
         />
       )}
       {!status?.connected && <SetupHelp />}
+      {settings && (
+        <InvertersSettings settings={settings} status={status} locked={locked}
+          save={(changes) => save(changes)} />
+      )}
 
       {status?.relocated && (
         <Notice kind="info">
@@ -1351,6 +1361,9 @@ export function ExportLimitPage({ onBack }: PageProps) {
 
   return (
     <SubPage title={t("common.exportLimit")} onBack={onBack}>
+      {firstInverterOnly(status) && (
+        <Notice kind="info">{t("settings.inverters.exportLimitFirstOnly", { name: firstInverterOnly(status) ?? "" })}</Notice>
+      )}
       <Notice kind="warn"><strong>{t("settings.exportLimitPage.legalLabel")}</strong>{" "}{t("settings.exportLimitPage.penaltyWarning")}</Notice>
       <LearnMore>
         <p className="hint">{t("settings.exportLimitPage.legalHint")}</p>
@@ -1548,7 +1561,7 @@ export function PvSystemPage({ onBack, snap }: PageProps & { snap: Snapshot | nu
             );
           })}
           <Button disabled={!dirty}
-            onClick={() => save({ "pv.input_names": names.slice(0, 6), "pv.hidden_inputs": hidden })}>{t("common.save")}</Button>
+            onClick={() => save({ "pv.input_names": names.slice(0, 12), "pv.hidden_inputs": hidden })}>{t("common.save")}</Button>
           <Unsaved show={dirty} />
           {hidden.length > 0 && <p className="hint">{t("settings.pvSystemPage.hiddenHint")}</p>}
         </div>
@@ -1594,7 +1607,11 @@ type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_
   window_start: number; window_end: number; max_price_ct: number | null; power_w: number; battery_kwh: number;
   legal_confirmed: boolean };
 export type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
-  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> } };
+  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> };
+  /** with several batteries (#619): a battery size is missing, so the one of these settings counts for all */
+  sizes_missing?: boolean;
+  /** with several batteries (#619): how each one is doing */
+  batteries?: { id: string; name: string; active: boolean; last_error: string | null; reason: string }[] };
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -1649,6 +1666,8 @@ export function ChargingPage({ onBack }: PageProps) {
     <SubPage title={t("settings.chargingPage.title")} onBack={onBack}>
       <p className="hint">{t("settings.chargingPage.intro")}{" "}
         <strong>{t("settings.chargingPage.experimental")}</strong></p>
+      {firstInverterOnly(status) && <Notice kind="info">{t("settings.inverters.chargingAll")}</Notice>}
+      {data?.sizes_missing && <Notice kind="warn">{t("settings.inverters.chargingSizesMissing")}</Notice>}
       {status?.device?.charging_continues_min ? (
         <Notice kind="warn">{t("settings.chargingPage.slotControlHint",
           { manufacturer: status.device.manufacturer, minutes: status.device.charging_continues_min })}</Notice>
@@ -1666,6 +1685,14 @@ export function ChargingPage({ onBack }: PageProps) {
               hint={data.active ? t("settings.chargingPage.chargingNow") : data.plan.reason}
               onChange={(v) => (v && !form.legal_confirmed ? setLegal(true) : void save({ ...form, enabled: v }))} />
             {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
+            {data.batteries && data.batteries.length > 1 && (
+              <ul className="hint battery-states">
+                {data.batteries.map((b, i) => (
+                  <li key={b.id}>{t("settings.inverters.chargingState", { name: inverterName(b.name, i),
+                    state: b.active ? t("settings.chargingPage.chargingNow") : b.reason })}</li>
+                ))}
+              </ul>
+            )}
             {form.enabled && data.plan.quarters.length > 0 && (
               <p className="hint">{data.plan.needed_wh
                 ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 2) })

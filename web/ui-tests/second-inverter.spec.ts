@@ -17,8 +17,9 @@ async function settings(values: Partial<Settings["values"]>) {
 
 test("a counted second inverter gets its own sun in the energy flow", async ({ page, api }) => {
   api.override("/api/settings", await settings({ "pv.external": true, "pv.external_name": "Garage" }));
+  // one inverter: the demo has two (#619), each with its own sun then
   api.live({ pv_power: 4000, pv_external_power: 1500, pv_inputs: [{ power: 1500, voltage: 400, current: 3.8 },
-    { power: 1000, voltage: 380, current: 2.6 }] });
+    { power: 1000, voltage: 380, current: 2.6 }], inverters: [] });
   await open(page, "");
   const own = page.locator(".flow-node.sun");
   const second = page.locator(".flow-node.sun-external");

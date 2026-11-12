@@ -22,7 +22,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 
 from .apitokens import ApiTokens, Pairing
 from .control import BACKUP_SOC, SOC_FIELDS, BatteryControl, ConfirmationRequired, ControlDisabled, NotConnected, WriteFailed
@@ -162,8 +162,10 @@ def bearer(value: str | None) -> str | None:
 
 def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing, *, installation_id: str,
              version: str, battery: BatteryControl, charging, surplus, devices, live_apps: dict,
-             wallboxes=None) -> None:
-    """live_apps: token id -> {"since", "connections"} of the apps with an open live connection (#79)."""
+             wallboxes=None, battery_of=None) -> None:
+    """live_apps: token id -> {"since", "connections"} of the apps with an open live connection (#79). battery_of:
+    the battery settings of an inverter by its id (#619); raises a 404 for an unknown one."""
+    battery_of = battery_of or (lambda inverter: battery)
     collector = runtime.collector
     limits = RateLimit(runtime.storage)
 
@@ -276,14 +278,26 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
                            "read_only": wallbox_read_only(wb)}
                           for wb in (wallboxes.wallboxes if wallboxes else [])],
             "poll_interval": runtime.config.inverter.poll_interval, "web_port": runtime.config.server.port,
+            # the further inverters whose battery settings can be changed (#619); the first one is "device"
+            "inverter_controls": [{"id": e.entry.id, "name": e.entry.name, "supports_control": e.device.supports_control,
+                                   "work_modes": e.device.work_modes, "backup_reserve": e.device.backup_reserve}
+                                  for e in collector.extras if e.device is not None and not e.entry.in_first],
         }
+
+    def battery_view(settings: dict | None) -> dict | None:
+        return {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS, BACKUP_SOC)} if settings else None
 
     @app.get(f"{PREFIX}/state")
     async def state():
-        settings = await battery.latest(SETTINGS_WAIT_S)
-        battery_settings = {k: settings.get(k) for k in ("work_mode", *SOC_FIELDS, BACKUP_SOC)} if settings else None
+        # the first inverter's and the further ones' (#619) at the same time: each waits at most SETTINGS_WAIT_S
+        extras = [e for e in collector.extras if e.device is not None and e.device.supports_control
+                  and not e.entry.in_first]
+        found = await asyncio.gather(battery.latest(SETTINGS_WAIT_S),
+                                     *(battery_of(e.entry.id).latest(SETTINGS_WAIT_S) for e in extras))
+        battery_settings = battery_view(found[0])
         grid = charging.settings
         return {**live_message(), "type": "state", "battery_settings": battery_settings,
+                "inverter_battery_settings": {e.entry.id: battery_view(s) for e, s in zip(extras, found[1:])},
                 "grid_charging": {"enabled": grid.enabled, "target_soc": grid.target_soc, "active": charging.active},
                 "price_ct": runtime.tariffs.price_at(time.time(), runtime.tz)}
 
@@ -328,14 +342,18 @@ def register(app: FastAPI, runtime: Runtime, tokens: ApiTokens, pairing: Pairing
                 live_apps.pop(token["id"], None)
 
     @app.put(f"{PREFIX}/battery")
-    async def put_battery(request: Request, changes: dict = Body(...)):
+    async def put_battery(request: Request, changes: dict = Body(...), inverter: str | None = Query(None, max_length=12)):
+        """inverter: the id of a further inverter (#619); none (or "main") for the first one."""
         require_control()
         unknown = set(changes) - {"work_mode", *SOC_FIELDS, BACKUP_SOC}
         if unknown or not changes:
             raise HTTPException(400, "Erlaubt sind work_mode, min_soc, max_soc, min_soc_on_grid und backup_soc.")
+        control = battery if not inverter or inverter == "main" else battery_of(inverter)
+        # counted per inverter: each has a permanent memory of its own
+        prefix = "battery:" if control is battery else f"battery:{inverter}:"
         try:
-            with limits.counted([f"battery:{key}" for key in changes], BATTERY_WRITES_PER_HOUR):
-                result = await battery.write(changes, source=source(request))
+            with limits.counted([f"{prefix}{key}" for key in changes], BATTERY_WRITES_PER_HOUR):
+                result = await control.write(changes, source=source(request))
         except ControlDisabled as err:
             raise HTTPException(403, str(err)) from None
         except ConfirmationRequired:  # the warning can only be confirmed in OpenAmpere itself (#313)

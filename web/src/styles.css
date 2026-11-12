@@ -165,6 +165,7 @@ nav.bottom button.active::after { background: var(--accent-text); }
 /* ---- energy flow ---- */
 .flow { position: relative; width: 100%; max-width: 380px; margin: 8px auto 0; aspect-ratio: 100 / 80; }
 .flow-node.small { font-size: 14px; min-width: 70px; transform: translate(-50%, -32px); } /* anchored at the icon centre, so extra text lines do not move it */
+.flow-node.small.tiny { transform: translate(-50%, -20px); } /* the small batteries of several inverters (#619): 40 px icon */
 .flow-node.small .soc { font-size: 12px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .flow-node {
@@ -704,6 +705,10 @@ html.embedded::-webkit-scrollbar, html.embedded body::-webkit-scrollbar { displa
   place-items: center; font-size: 13px; font-weight: 700; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .charge-source.sun { background: #f5b301; }
 .charge-source.grid { background: var(--grid, #6c8cff); }
+/* the small batteries of several inverters (#619) */
+.battery-with-source.small .charge-source { width: 18px; height: 18px; top: -4px; left: -8px; font-size: 11px; }
+.battery-with-source.small .charge-source svg { width: 11px; height: 11px; }
+.flow-total .nowrap { white-space: nowrap; }
 
 /* power cut: the house runs on the battery (#48) */
 .off-grid { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; padding: 14px 16px; border-radius: var(--radius-m);

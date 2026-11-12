@@ -36,6 +36,9 @@ def storage_problem(err: BaseException) -> str:
 
 
 class Collector:
+    # the meta entry with the serial number and address of this inverter: one per inverter (#619)
+    known_key = KNOWN_DEVICE
+
     def __init__(self, driver: InverterDriver | None, storage: Storage, interval: float, retention_days: int,
                  *, release_connection: bool = False) -> None:
         self.driver = driver
@@ -45,6 +48,11 @@ class Collector:
         self.interval = interval
         self.retention_days = retention_days
         self.latest: Snapshot | None = None
+        self._own: Snapshot | None = None  # see own
+        self.extras: list = []  # the further inverters (inverters.ExtraCollector), #619
+        self.main_name = ""  # the owner's name for this inverter and its battery's capacity (kWh), for combining
+        self.main_capacity = 0.0
+        self._extra_counters = None  # inverters.ExtraCounters, made with the first further inverter
         self.device: DeviceInfo | None = None
         self.connected = False
         self.connected_at: float | None = None  # when the current connection was established (#143)
@@ -61,15 +69,26 @@ class Collector:
         # the serial number of the owner's inverter (#567): readings and writes only while it answers; a device
         # whose detection reads none is not checked. Older versions remembered it only with the firmware.
         # A stored device without one (set up or taken over that way) keeps it so after a restart.
-        known = storage.get_meta(KNOWN_DEVICE)
-        self.known_serial: str | None = (known.get("serial") if isinstance(known, dict)
-                                         else (storage.get_meta("firmware") or {}).get("serial"))
+        known = storage.get_meta(self.known_key)
+        # older versions remembered it only with the firmware, which is the first inverter's
+        legacy = (storage.get_meta("firmware") or {}).get("serial") if self.known_key == KNOWN_DEVICE else None
+        self.known_serial: str | None = known.get("serial") if isinstance(known, dict) else legacy
         self.wrong_device: dict | None = None  # another device answers at the address: since, shortened numbers
         self._wrong_serial: str | None = None  # its full serial number, for accept_device()
         self._new_host: str | None = None  # the address of a device the owner just set up, until it answers
         self._other_errors = 0  # other errors in a row since another device answered
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
+
+    @property
+    def own(self) -> Snapshot | None:
+        """This inverter's own reading: latest combines it with the further inverters (#619), grid charging and the
+        control log need this one. The same as latest with one inverter."""
+        return self._own if self.extras else self.latest
+
+    @own.setter
+    def own(self, snap: Snapshot | None) -> None:
+        self._own = snap
 
     @property
     def configured(self) -> bool:
@@ -91,9 +110,24 @@ class Collector:
 
     def start(self) -> None:
         if self.driver is not None:
-            self._task = asyncio.create_task(self._run(), name="collector")
+            self._task = asyncio.create_task(self._run(), name=self.label)
+            # only with the first inverter: its collector combines and stores their readings (#619)
+            for extra in self.extras:
+                extra.start()
+
+    async def set_extras(self, extras: list) -> None:
+        """Replaces the further inverters (#619); started at once when this collector runs."""
+        old, self.extras = self.extras, []
+        for extra in old:
+            await extra.stop()
+        self.extras = extras
+        if self._task is not None:  # running: start() started the others
+            for extra in extras:
+                extra.start()
 
     async def stop(self) -> None:
+        for extra in self.extras:
+            await extra.stop()
         if self._task:
             self._task.cancel()
             try:
@@ -117,7 +151,7 @@ class Collector:
         self.connected_at = None
         self.disconnected_since = None
         self.last_error = None
-        self.latest = None
+        self.latest = self.own = None
         self.wrong_device = self._wrong_serial = None
         if new_device is not None:
             # stored with the new address as soon as it answers (_note_identity), so a restart right after keeps it;
@@ -131,7 +165,7 @@ class Collector:
         if self.wrong_device is None:
             return False
         self.known_serial, self._wrong_serial, self.wrong_device = self._wrong_serial, None, None
-        self.storage.set_meta(KNOWN_DEVICE, {"serial": self.known_serial, "host": host})
+        self.storage.set_meta(self.known_key, {"serial": self.known_serial, "host": host})
         if self.driver is not None:
             await self.stop()  # at once, not after the waiting time of the next attempt
             self.start()
@@ -147,7 +181,7 @@ class Collector:
             # set up by the owner: stored at once, not only by the next watchdog round, also without a serial number
             # (otherwise a restart would expect the previous inverter's again)
             try:
-                self.storage.set_meta(KNOWN_DEVICE, {"serial": device.serial, "host": self._new_host})
+                self.storage.set_meta(self.known_key, {"serial": device.serial, "host": self._new_host})
             except Exception:  # noqa: BLE001 - must never disturb polling
                 pass
             self._new_host = None
@@ -281,6 +315,34 @@ class Collector:
         hint = self.device.energy_step_wh if self.device else None
         return self.storage.energy_step_wh() or hint or 10
 
+    label = "inverter"  # in the log
+    prunes = True  # removes old readings from the database (one collector does it)
+
+    async def _reading(self, snap: Snapshot) -> None:
+        """A good reading of this inverter: combined with the further ones (#619), stored and handed out."""
+        self.own = snap
+        self._watch_daily_reset(snap)
+        try:
+            self.outages.observe(snap)
+        except Exception as err:  # noqa: BLE001 - statistics must never disturb polling
+            log.warning("could not record power cut: %s", err)
+        if self.extras:
+            from .inverters import ExtraCounters, combine  # inverters imports this module
+            if self._extra_counters is None:
+                self._extra_counters = ExtraCounters(self.storage)
+            snap = combine(snap, self.extras, self.main_name, self.main_capacity, counters=self._extra_counters)
+        await self._store(snap)
+        # shown only once stored: storing adds the second PV inverter's counter to the totals (#419), a reader in
+        # between would see the consumption without it
+        self.latest = snap
+        self._publish(snap)
+
+    def _unreachable(self) -> None:
+        try:
+            self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
+        except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling
+            log.warning("could not record power cut: %s", note_err)
+
     async def _run(self) -> None:
         assert self.driver is not None
         backoff = 5.0
@@ -305,15 +367,10 @@ class Collector:
                 # only a successful read counts as "connected" (connect() may just return cached device info)
                 if not self.connected:
                     self._note_identity(self.device)
-                    log.info("inverter connected")
+                    log.info("%s connected", self.label)
                     self.connected_at = time.time()
                     self._event("verbunden")
                     self._check_firmware()
-                self._watch_daily_reset(snap)
-                try:
-                    self.outages.observe(snap)
-                except Exception as err:  # noqa: BLE001 - statistics must never disturb polling
-                    log.warning("could not record power cut: %s", err)
                 self.connected = True
                 self.disconnected_since = None
                 self.last_error = None
@@ -321,12 +378,8 @@ class Collector:
                 transient_failures = 0
                 if self.release_connection and hasattr(self.driver, "disconnect"):
                     await self.driver.disconnect()
-                await self._store(snap)
-                # shown only once stored: storing adds the second PV inverter's counter to the totals (#419), a
-                # reader in between would see the consumption without it
-                self.latest = snap
-                self._publish(snap)
-                if time.time() - last_prune > 3600:
+                await self._reading(snap)
+                if time.time() - last_prune > 3600 and self.prunes:
                     try:
                         await asyncio.to_thread(self.storage.prune, self.retention_days)
                     except Exception as err:  # noqa: BLE001
@@ -341,15 +394,12 @@ class Collector:
                     self._note_wrong_device(err)
                 else:
                     self._note_other_error()
-                try:
-                    self.outages.unreachable(time.time())  # OpenAmpere runs, only the inverter is gone (#93)
-                except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling
-                    log.warning("could not record power cut: %s", note_err)
+                self._unreachable()
                 # Single hiccups (timeouts, a Modbus proxy that briefly cannot reach the inverter) keep the
                 # connection; only repeated failures count as "disconnected".
                 if getattr(err, "transient", False) and self.connected and transient_failures < MAX_TRANSIENT:
                     transient_failures += 1
-                    log.info("temporary read error (%d/%d): %s", transient_failures, MAX_TRANSIENT, err)
+                    log.info("%s: temporary read error (%d/%d): %s", self.label, transient_failures, MAX_TRANSIENT, err)
                     await asyncio.sleep(self.poll_interval())
                     continue
                 transient_failures = 0
@@ -358,7 +408,7 @@ class Collector:
                     self._event("getrennt", str(err) or type(err).__name__)
                 message = friendly_error(err)
                 if self.connected or self.last_error != message:
-                    log.warning("inverter error: %s (retry in %.0fs)", str(err) or type(err).__name__, backoff)
+                    log.warning("%s error: %s (retry in %.0fs)", self.label, str(err) or type(err).__name__, backoff)
                 self.connected = False
                 self.last_error = message
                 await self.driver.close()

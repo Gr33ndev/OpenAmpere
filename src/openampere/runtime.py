@@ -8,14 +8,15 @@ import logging
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import (AUDITED, EDITABLE, LABELS, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value,
-                     read_yaml, validate)
+from .config import (AUDITED, EDITABLE, LABELS, PRIVATE, SECRET_TARGETS, SECRETS, Config, ExtraInverter, build_config,
+                     get_value, read_yaml, validate)
 from .drivers import registry
+from .inverters import ExtraCollector
 from .cloud_import import CloudImport
 from .secretbox import SecretBox
 from .storage import Storage
@@ -23,7 +24,8 @@ from .tariffs import Tariffs
 
 log = logging.getLogger(__name__)
 
-RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")}
+# the name and the battery's capacity only describe the inverter (#619)
+RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")} - {"inverter.name", "inverter.capacity_kwh"}
 # which device the owner set up, not how to read it; the register map too: the FoxESS legacy map tells no serial number
 DEVICE_KEYS = ("inverter.host", "inverter.port", "inverter.unit", "inverter.driver", "inverter.register_map")
 
@@ -41,6 +43,29 @@ def make_driver(config: Config):
                            **options)
 
 
+def make_extra_driver(entry: ExtraInverter):
+    """The driver of a further inverter (#619)."""
+    options = dict(timeout=entry.timeout, register_map=entry.register_map, read_function=entry.read_function)
+    if entry.driver == "auto":
+        return registry.AutoDriver(entry.host, entry.port, entry.unit, **options)
+    return registry.create(entry.driver, entry.host, entry.port, entry.unit, **options)
+
+
+def check_addresses(config: Config) -> None:
+    """Every inverter at an address of its own (#619): two collectors on one device would read it twice and count its
+    PV and battery twice."""
+    if config.inverters and not config.inverter.host.strip():
+        raise ValueError("Bitte zuerst den ersten Wechselrichter einrichten. Weitere Wechselrichter zählt OpenAmpere "
+                         "zu seinen Werten dazu.")
+    seen = {(config.inverter.host.strip().lower(), config.inverter.port, config.inverter.unit)}
+    for entry in config.inverters:
+        address = (entry.host.strip().lower(), entry.port, entry.unit)
+        if address in seen:
+            raise ValueError(f"Unter der Adresse {entry.host} (Port {entry.port}) ist schon ein Wechselrichter "
+                             "eingebunden. Jeder Wechselrichter darf nur einmal eingetragen sein.")
+        seen.add(address)
+
+
 class Runtime:
     def __init__(self, file_values: dict, storage: Storage) -> None:
         self.file_values = file_values
@@ -50,6 +75,9 @@ class Runtime:
         self.tls_error: str | None = None  # the HTTPS port could not be opened (#76)
         # set by the server: ends it, after which the process starts again (a restored backup is put in place then)
         self.restart_hook: Callable[[], None] | None = None
+        # set by the server: releases what it started at further inverters about to be replaced (grid charging, #619);
+        # called with the ids of the further inverters that stay
+        self.before_extras_change: Callable[[set[str]], Awaitable[None]] | None = None
         self.restart_requested = False
         self.config, self.locked = build_config(file_values, self._load_settings())
         logs.apply_level(self.config.log.level)
@@ -58,9 +86,27 @@ class Runtime:
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
         self.collector.external_pv = self.config.pv.external
         self.collector.rated_power = (self.config.grid.rated_power_reported_w, self.config.grid.rated_power_w)
+        self.collector.main_name, self.collector.main_capacity = self.config.inverter.name, self.config.inverter.capacity_kwh
+        self.collector.extras = self._make_extras(self.config)
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
         self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct),
                                self.eeg_rate)
+
+    def _make_extras(self, config: Config) -> list[ExtraCollector]:
+        """A collector per further inverter (#619); one whose driver cannot be made is left out and logged."""
+        extras = []
+        for entry in config.inverters:
+            try:
+                driver = make_extra_driver(entry)
+            except ValueError as err:
+                log.warning("further inverter %s left out: %s", entry.id, err)
+                continue
+            extras.append(ExtraCollector(entry, driver, self.storage, config.inverter.poll_interval,
+                                         external_pv=config.pv.external))
+        return extras
+
+    def extra(self, inverter_id: str) -> ExtraCollector | None:
+        return next((e for e in self.collector.extras if e.entry.id == inverter_id), None)
 
     @classmethod
     def from_files(cls, config_path: str | None = None) -> Runtime:
@@ -141,6 +187,7 @@ class Runtime:
         hint (#164): reads are open on the home network, these values identify the owner or give access to data."""
         hidden = set() if authenticated else PRIVATE
         values = {key: None if key in hidden else get_value(self.config, key) for key in EDITABLE if key not in SECRETS}
+        values["inverters"] = [asdict(e) for e in self.config.inverters]
         secrets = {}
         for key in SECRETS:
             value = get_value(self.config, key)
@@ -198,12 +245,25 @@ class Runtime:
                                   f"eine andere Adresse gehen, bitte {where} auch in der config.yaml ändern oder die "
                                   f"Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.")
         make_driver(new)  # validate before persisting
+        check_addresses(new)
         self._save_settings(saved)
         self.storage.set_meta("settings_revision", self.settings_revision + 1)
         self.config, self.locked = new, locked
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 
         self.collector.retention_days = new.storage.raw_retention_days
+        self.collector.main_name, self.collector.main_capacity = new.inverter.name, new.inverter.capacity_kwh
+        if (old.inverters != new.inverters or old.pv.external != new.pv.external
+                or old.inverter.poll_interval != new.inverter.poll_interval):
+            if self.before_extras_change is not None:  # while the old collectors still run
+                # the same device stays charged: only a removal, another address or a parallel system releases it
+                same = {(e.id, e.host, e.port, e.unit, e.driver) for e in old.inverters}
+                keep = {e.id for e in new.inverters if not e.in_first and (e.id, e.host, e.port, e.unit, e.driver) in same}
+                try:
+                    await self.before_extras_change(keep)
+                except Exception as err:  # noqa: BLE001 - the settings change anyway; a SAJ slot ends by itself
+                    log.warning("could not release the further inverters before the change: %s", err)
+            await self.collector.set_extras(self._make_extras(new))
         self.collector.external_pv = new.pv.external
         self.collector.rated_power = (new.grid.rated_power_reported_w, new.grid.rated_power_w)
         if self.collector.device:

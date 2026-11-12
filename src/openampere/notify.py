@@ -368,6 +368,20 @@ class Notifier:
             elif collector.connected and self.sent.get("unreachable"):
                 await notify("unreachable", None, "Wechselrichter wieder erreichbar", "Die Verbindung steht wieder.",
                              "white_check_mark")
+            for extra in collector.extras:  # further inverters (#619): left out of the sums while they are away
+                key, name = f"unreachable:{extra.entry.id}", extra.entry.name or extra.entry.host
+                since = extra.disconnected_since
+                if since and now - since > UNREACHABLE_AFTER_S:
+                    # one whose values the first inverter already reports is never added: the sums lack nothing
+                    effect = ("Die Summen sind davon nicht betroffen, seine Werte stecken im ersten Wechselrichter."
+                              if extra.entry.in_first else
+                              "Solange zählt OpenAmpere ihn nicht zu Solarleistung und Speicher dazu.")
+                    await notify(key, since, f"Wechselrichter „{name}“ nicht erreichbar",
+                                 f"Seit {datetime.fromtimestamp(since, tz):%H:%M} Uhr keine Verbindung. {effect}",
+                                 "warning")
+                elif extra.connected and self.sent.get(key):
+                    await notify(key, None, f"Wechselrichter „{name}“ wieder erreichbar", "Die Verbindung steht wieder.",
+                                 "white_check_mark")
 
         if cfg.on_storage:
             await self._check_storage(notify, now)

@@ -192,6 +192,15 @@
       },
       "wallbox_current": {
         "name": "Charging current set"
+      },
+      "inverter_pv_power": {
+        "name": "Solar power"
+      },
+      "inverter_battery_power": {
+        "name": "Battery power"
+      },
+      "inverter_battery_soc": {
+        "name": "State of charge"
       }
     },
     "binary_sensor": {
@@ -289,6 +298,11 @@
           }
         }
       }
+    }
+  },
+  "device": {
+    "inverter": {
+      "name": "Inverter {number}"
     }
   }
 }
