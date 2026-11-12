@@ -124,8 +124,8 @@ Registers the box writes, as far as known. OpenAmpere does not use the box's pat
 - Whether and when the EKD cloud will be switched off ([#84](https://github.com/Gr33ndev/OpenAmpere/issues/84)).
 - The ZIP edge cases above come from reviews, not from a real export ([#288](https://github.com/Gr33ndev/OpenAmpere/issues/288)).
 - Whether the box only reads the FoxESS AC EV Charger or also controls it, and why the charger cannot be read while
-  the box is powered (only one client, or concurrent clients mishandled;
-  [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
+  the box is on the network (only one client, or concurrent clients mishandled;
+  [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431), [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
 
 ## Sources
 

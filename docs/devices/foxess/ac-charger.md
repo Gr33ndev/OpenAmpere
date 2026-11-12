@@ -154,8 +154,9 @@ Values while charging and single-phase models are not confirmed yet.
   [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)).
 - Why start and stop from evcc had no effect on one charger once the box was off the network (work mode or
   communication mode; [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
-- Number of simultaneous Modbus connections: while the previous smartbox is powered OpenAmpere cannot read the
-  charger, but whether it allows only one client or mishandles concurrent clients is open ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
+- Number of simultaneous Modbus connections: while the previous smartbox is on the network neither OpenAmpere nor evcc
+  can read the charger, but whether it allows only one client or mishandles concurrent clients is open
+  ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431), [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
 - Whether the previous smartbox only reads the charger or also controls it ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - Meaning of 0x1005, which read 1 while idle with no car plugged in; needs a reading with a car plugged in
   ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
