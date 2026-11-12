@@ -30,7 +30,7 @@ from openampere.cars import Cars, CarData, Delivery, Source, SourceAuthError, So
 from openampere.cars.vw_euda import VwEuDataAct, credentials_page, interpret, points, read_dataset
 from openampere.devices import Devices
 from openampere.runtime import Runtime
-from openampere.storage import Storage
+from openampere.storage import SCHEMA_VERSION, Storage
 
 from conftest import login
 
@@ -646,7 +646,7 @@ def test_the_car_tables_come_with_the_upgrade_of_an_existing_database(tmp_path):
     storage = Storage(path)
     storage.add_car_points("ab12cd34", [{"ts": T0, "soc": 50}])
     assert storage.car_value("ab12cd34", "soc")["value"] == 50
-    assert storage._db.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert storage._db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_the_api_needs_a_login_for_changes_and_the_charges(tmp_path, monkeypatch):

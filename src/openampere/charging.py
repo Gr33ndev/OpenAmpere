@@ -166,7 +166,7 @@ class GridCharging:
 
     def _soc_now(self) -> dict:
         """The state of charge at the time, for the control log: it makes the entries easier to follow (#322)."""
-        snap = self.runtime.collector.latest
+        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
         soc = snap.battery_soc if snap else None
         return {"soc": round(soc)} if soc is not None else {}
 
@@ -249,7 +249,7 @@ class GridCharging:
         now = time.time() if now is None else now
         runtime, s = self.runtime, self.settings
         collector = runtime.collector
-        snap = collector.latest
+        snap = collector.own  # the first inverter's battery: the one charged (#619)
         control = runtime.config.control
         device = collector.device
         allowed = (s.enabled and s.legal_confirmed and control.enabled and collector.connected
@@ -491,14 +491,14 @@ class GridCharging:
                                          "nichts mehr aufnimmt.")
 
     def _log_stop(self, result: str) -> None:
-        snap = self.runtime.collector.latest
+        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
         self.runtime.storage.log_control("grid_charging", {"from": {"soc": self.start_soc},
                                                            "to": {"soc": snap.battery_soc if snap else None}},
                                          False, result)
 
     def view(self, now: float | None = None) -> dict:
         now = time.time() if now is None else now
-        snap = self.runtime.collector.latest
+        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
         plan = self.plan(now, snap.battery_soc if snap else None, self._limit[1] if self._limit else None)
         if self.full_at_soc is not None and not self.active:  # paused at the charge limit: say so (#242)
             plan = {"quarters": [], "reason": self._full_reason()}

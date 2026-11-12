@@ -375,7 +375,9 @@
     },
     "wallboxPhasesBack": "{name}: power of the wallbox set back, it chooses the phases itself again.",
     "ratedPower": "Rated power of the inverter changed from {from} to {to} (type plate).",
-    "inverterAccepted": "New inverter taken over (serial number {from} → {to})."
+    "inverterAccepted": "New inverter taken over (serial number {from} → {to}).",
+    "batterySettingsAt": "Battery settings of “{inverter}” changed: {changes}.",
+    "batteryOverwrittenAt": "Another device changed the battery settings of “{inverter}”: {changes}."
   },
   "controlPage": {
     "emptyState": "No changes yet.",
@@ -959,5 +961,39 @@
     "range": "Please enter a value between 1000 and 100000 W.",
     "confirm": "Confirm rated power",
     "change": "Change rated power"
+  },
+  "inverters": {
+    "fallbackName": "Inverter {number}",
+    "firstTitle": "Name and battery",
+    "name": "Name",
+    "nameHint": "So you can tell the inverters apart, for example “House” or “Garage”.",
+    "capacity": "Usable battery size",
+    "capacityHint": "It is in the battery's data sheet. With the sizes of all batteries OpenAmpere calculates the combined state of charge correctly. Leave it empty if you do not know it: all batteries then count the same.",
+    "capacityInvalid": "Please enter the battery size as a number between 0 and 200 kWh.",
+    "furtherTitle": "Further inverters",
+    "intro": "Do you have more than one inverter or battery, for example a second battery with its own network connection? Add it here. OpenAmpere then shows the combined values and each inverter on its own.",
+    "combinedHint": "The overview adds up the solar power and the batteries of all inverters. OpenAmpere takes the grid power from the first inverter, because all of them measure at the same house connection.",
+    "add": "Add another inverter",
+    "addIntro": "Search for the other inverter in the network or enter its address and test the connection.",
+    "addSave": "Add",
+    "added": "Inverter added. OpenAmpere connects to it now.",
+    "ownGrid": "Measures a grid connection of its own",
+    "ownGridHint": "Only switch this on if this inverter is connected to a different electricity meter than the first one. Otherwise the grid power would be counted twice.",
+    "remove": "Remove inverter",
+    "removeTitle": "Remove “{name}”?",
+    "removeHint": "OpenAmpere then no longer reads this inverter and no longer counts it. Nothing changes on the device itself.",
+    "removeConfirm": "Remove",
+    "notChecked": "Checking the connection …",
+    "connected": "Connected",
+    "connectedTo": "Connected to {device}",
+    "notConnected": "Not connected",
+    "notConnectedError": "Not connected: {error}",
+    "wrongDevice": "Another device answers at the address.",
+    "tokenDevice": "A device that needs an access token can only be added as the first inverter.",
+    "pickerLabel": "Inverter",
+    "pickerHint": "The settings apply only to the battery of this inverter.",
+    "readOnly": "display only",
+    "exportLimitFirstOnly": "OpenAmpere sets the export limit only on the first inverter “{name}”. The others keep their own setting.",
+    "chargingFirstOnly": "OpenAmpere charges only the battery of the first inverter “{name}” from the grid."
   }
 }

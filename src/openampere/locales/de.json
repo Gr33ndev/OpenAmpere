@@ -42,7 +42,8 @@
     "unknownAction": "Unbekannte Aktion.",
     "unknownPeriod": "Unbekannter Zeitraum",
     "unknownPermission": "Unbekannte Berechtigung.",
-    "wrongPassword": "Falsches Passwort."
+    "wrongPassword": "Falsches Passwort.",
+    "inverterNotFound": "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden."
   },
   "apitokens": {
     "enterNameEG": "Bitte einen Namen angeben, z. B. „Home Assistant“.",
@@ -183,7 +184,10 @@
     "certificateFingerprintInvalid": "Der Fingerabdruck des Zertifikats ist ungültig. Bitte die Verbindung beim Einrichten noch einmal prüfen und speichern.",
     "mailServerNameOnly": "Mailserver: bitte nur den Namen eintragen, ohne https://, Port oder Pfad, zum Beispiel smtp.example.de.",
     "mailSenderAddress": "Absender: bitte eine E-Mail-Adresse eintragen, zum Beispiel name@example.de.",
-    "mailRecipientAddresses": "Empfänger: bitte nur E-Mail-Adressen eintragen, eine pro Zeile, zum Beispiel name@example.de."
+    "mailRecipientAddresses": "Empfänger: bitte nur E-Mail-Adressen eintragen, eine pro Zeile, zum Beispiel name@example.de.",
+    "tooManyInverters": "Es lassen sich höchstens {MAX_EXTRA_INVERTERS} weitere Wechselrichter einbinden.",
+    "sameInverterId": "Zwei weitere Wechselrichter haben dieselbe Kennung.",
+    "inverterInvalid": "Die Angaben zum weiteren Wechselrichter „{name}“ sind ungültig. Bitte Adresse, Port und Geräteadresse prüfen."
   },
   "consumers": {
     "addressNotFound": "Adresse nicht gefunden",
@@ -396,7 +400,9 @@
     "secretFromConfigFile": "Die Zugangsdaten „{names}“ stehen in der Datei config.yaml. Damit sie nicht an eine andere Adresse gehen, bitte {where} auch in der config.yaml ändern oder die Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.",
     "secretFromEnvironment": "Die Zugangsdaten „{names}“ sind fest als Umgebungsvariable eingestellt. Damit sie nicht an eine andere Adresse gehen, bitte {where} dort ändern, wo die Umgebungsvariable eingestellt ist.",
     "setEnvironmentVariableT": "Fest eingestellt (Umgebungsvariable), in der App nicht änderbar: {blocked}",
-    "enphaseCertificateOnlyWithToken": "Das Zertifikat des Enphase-Gateways lässt sich nur zusammen mit dem Zugangs-Token speichern. Bitte das Token beim Einrichten noch einmal eintragen."
+    "enphaseCertificateOnlyWithToken": "Das Zertifikat des Enphase-Gateways lässt sich nur zusammen mit dem Zugangs-Token speichern. Bitte das Token beim Einrichten noch einmal eintragen.",
+    "inverterTwice": "Unter der Adresse {host} (Port {port}) ist schon ein Wechselrichter eingebunden. Jeder Wechselrichter darf nur einmal eingetragen sein.",
+    "firstInverterFirst": "Bitte zuerst den ersten Wechselrichter einrichten. Weitere Wechselrichter zählt OpenAmpere zu seinen Werten dazu."
   },
   "secretbox": {
     "damagedDeleteFileEnter": "{key_path} ist beschädigt. Datei löschen und die Zugangsdaten in der App neu eingeben."

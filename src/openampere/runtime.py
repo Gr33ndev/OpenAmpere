@@ -13,9 +13,10 @@ from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
 from .collector import Collector
-from .config import (AUDITED, EDITABLE, LABELS, PRIVATE, SECRET_TARGETS, SECRETS, Config, build_config, get_value,
-                     read_yaml, validate)
+from .config import (AUDITED, EDITABLE, LABELS, PRIVATE, SECRET_TARGETS, SECRETS, Config, ExtraInverter, build_config,
+                     get_value, read_yaml, validate)
 from .drivers import registry
+from .inverters import ExtraCollector
 from .cloud_import import CloudImport
 from .secretbox import SecretBox
 from .storage import Storage
@@ -23,7 +24,8 @@ from .tariffs import Tariffs
 
 log = logging.getLogger(__name__)
 
-RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")}
+# the name and the battery's capacity only describe the inverter (#619)
+RECONNECT_KEYS = {k for k in EDITABLE if k.startswith("inverter.")} - {"inverter.name", "inverter.capacity_kwh"}
 # which device the owner set up, not how to read it; the register map too: the FoxESS legacy map tells no serial number
 DEVICE_KEYS = ("inverter.host", "inverter.port", "inverter.unit", "inverter.driver", "inverter.register_map")
 
@@ -39,6 +41,29 @@ def make_driver(config: Config):
         raise ValueError(f"unknown inverter driver {inv.driver!r}")
     return registry.create(inv.driver, inv.host, inv.port, inv.unit, token=inv.token, cert_sha256=inv.cert_sha256,
                            **options)
+
+
+def make_extra_driver(entry: ExtraInverter):
+    """The driver of a further inverter (#619)."""
+    options = dict(timeout=entry.timeout, register_map=entry.register_map, read_function=entry.read_function)
+    if entry.driver == "auto":
+        return registry.AutoDriver(entry.host, entry.port, entry.unit, **options)
+    return registry.create(entry.driver, entry.host, entry.port, entry.unit, **options)
+
+
+def check_addresses(config: Config) -> None:
+    """Every inverter at an address of its own (#619): two collectors on one device would read it twice and count its
+    PV and battery twice."""
+    if config.inverters and not config.inverter.host.strip():
+        raise ValueError("Bitte zuerst den ersten Wechselrichter einrichten. Weitere Wechselrichter zählt OpenAmpere "
+                         "zu seinen Werten dazu.")
+    seen = {(config.inverter.host.strip().lower(), config.inverter.port, config.inverter.unit)}
+    for entry in config.inverters:
+        address = (entry.host.strip().lower(), entry.port, entry.unit)
+        if address in seen:
+            raise ValueError(f"Unter der Adresse {entry.host} (Port {entry.port}) ist schon ein Wechselrichter "
+                             "eingebunden. Jeder Wechselrichter darf nur einmal eingetragen sein.")
+        seen.add(address)
 
 
 class Runtime:
@@ -58,9 +83,27 @@ class Runtime:
                                    release_connection=self.config.inverter.connection_mode == "per_poll")
         self.collector.external_pv = self.config.pv.external
         self.collector.rated_power = (self.config.grid.rated_power_reported_w, self.config.grid.rated_power_w)
+        self.collector.main_name, self.collector.main_capacity = self.config.inverter.name, self.config.inverter.capacity_kwh
+        self.collector.extras = self._make_extras(self.config)
         self.cloud_import = CloudImport(storage, lambda: (self.config.cloud.api_key, self.config.cloud.base_url))
         self.tariffs = Tariffs(storage, lambda: (self.config.tariff.electricity_price_ct, self.config.tariff.feed_in_ct),
                                self.eeg_rate)
+
+    def _make_extras(self, config: Config) -> list[ExtraCollector]:
+        """A collector per further inverter (#619); one whose driver cannot be made is left out and logged."""
+        extras = []
+        for entry in config.inverters:
+            try:
+                driver = make_extra_driver(entry)
+            except ValueError as err:
+                log.warning("further inverter %s left out: %s", entry.id, err)
+                continue
+            extras.append(ExtraCollector(entry, driver, self.storage, config.inverter.poll_interval,
+                                         external_pv=config.pv.external))
+        return extras
+
+    def extra(self, inverter_id: str) -> ExtraCollector | None:
+        return next((e for e in self.collector.extras if e.entry.id == inverter_id), None)
 
     @classmethod
     def from_files(cls, config_path: str | None = None) -> Runtime:
@@ -141,6 +184,7 @@ class Runtime:
         hint (#164): reads are open on the home network, these values identify the owner or give access to data."""
         hidden = set() if authenticated else PRIVATE
         values = {key: None if key in hidden else get_value(self.config, key) for key in EDITABLE if key not in SECRETS}
+        values["inverters"] = [asdict(e) for e in self.config.inverters]
         secrets = {}
         for key in SECRETS:
             value = get_value(self.config, key)
@@ -198,12 +242,17 @@ class Runtime:
                                   f"eine andere Adresse gehen, bitte {where} auch in der config.yaml ändern oder die "
                                   f"Zugangsdaten hier zusammen mit der neuen Einstellung noch einmal eingeben.")
         make_driver(new)  # validate before persisting
+        check_addresses(new)
         self._save_settings(saved)
         self.storage.set_meta("settings_revision", self.settings_revision + 1)
         self.config, self.locked = new, locked
         log.info("settings changed: %s", ", ".join(sorted(clean)))
 
         self.collector.retention_days = new.storage.raw_retention_days
+        self.collector.main_name, self.collector.main_capacity = new.inverter.name, new.inverter.capacity_kwh
+        if (old.inverters != new.inverters or old.pv.external != new.pv.external
+                or old.inverter.poll_interval != new.inverter.poll_interval):
+            await self.collector.set_extras(self._make_extras(new))
         self.collector.external_pv = new.pv.external
         self.collector.rated_power = (new.grid.rated_power_reported_w, new.grid.rated_power_w)
         if self.collector.device:

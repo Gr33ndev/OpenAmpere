@@ -137,6 +137,9 @@ class Snapshot:
     # house_power is a balance that includes pv_external_power (SAJ, #576): count_external_pv takes it out again when
     # the owner does not count the extra inverter, so the house matches the solar power and the stored energy
     house_with_external: bool = False
+    # with further inverters (#619): what each one reads (id, name, connected, powers, state of charge, alarms); the
+    # values above are then the combined ones (inverters.combine). Empty with one inverter.
+    inverters: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         data = asdict(self)

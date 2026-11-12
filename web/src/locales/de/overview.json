@@ -94,6 +94,16 @@
     "acceptTitle": "Neuen Wechselrichter übernehmen?",
     "acceptHint": "Bestätige das nur, wenn der Wechselrichter wirklich getauscht wurde und das Gerät in deinem eigenen Netzwerk ist. OpenAmpere liest und steuert dann dieses Gerät, mit allen Einstellungen, die du in OpenAmpere festgelegt hast.",
     "acceptConfirm": "Übernehmen",
-    "noSerialHint": "Dieses Gerät meldet keine Seriennummer. OpenAmpere kann deshalb später nicht mehr prüfen, ob unter der Adresse noch dasselbe Gerät antwortet. Gib ihm im Router am besten eine feste IP-Adresse."
+    "noSerialHint": "Dieses Gerät meldet keine Seriennummer. OpenAmpere kann deshalb später nicht mehr prüfen, ob unter der Adresse noch dasselbe Gerät antwortet. Gib ihm im Router am besten eine feste IP-Adresse.",
+    "titleNamed": "Unter der Adresse von „{name}“ antwortet seit {time} ein anderes Gerät."
+  },
+  "inverterCards": {
+    "title": "Wechselrichter",
+    "notConnected": "Keine aktuellen Werte",
+    "solar": "Solar {power}",
+    "charging": "lädt mit {power}",
+    "discharging": "entlädt mit {power}",
+    "idle": "Speicher ruht",
+    "missingHint": "Solange ein Wechselrichter keine aktuellen Werte liefert, zeigt die Übersicht keine Summe für Solarleistung und Speicher. Eine Summe ohne ihn wäre zu niedrig."
   }
 }

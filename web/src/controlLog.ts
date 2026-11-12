@@ -188,10 +188,15 @@ function sentence(e: LogEntry, details: Values, from: Values, to: Values): strin
         return t("settings.controlLog.setting", { name: key, from: str(from[key]) || unknown(), to: str(to[key]) || unknown() });
       })].join(" ") || t("settings.controlLog.unknown", { action: e.action });
     }
+    // with several inverters the entry names the one whose battery it was (#619)
     case "battery_settings":
-      return t("settings.controlLog.batterySettings", { changes: batteryChanges(from, to, false) });
+      return details.inverter != null
+        ? t("settings.controlLog.batterySettingsAt", { inverter: str(details.inverter), changes: batteryChanges(from, to, false) })
+        : t("settings.controlLog.batterySettings", { changes: batteryChanges(from, to, false) });
     case "battery_settings_check":
-      return t("settings.controlLog.batteryOverwritten", { changes: batteryChanges(from, to, true) });
+      return details.inverter != null
+        ? t("settings.controlLog.batteryOverwrittenAt", { inverter: str(details.inverter), changes: batteryChanges(from, to, true) })
+        : t("settings.controlLog.batteryOverwritten", { changes: batteryChanges(from, to, true) });
     case "export_limit":
       return t("settings.controlLog.exportLimit", { from: watts(from.export_limit_w), to: watts(to.export_limit_w) });
     case "export_limit_check":

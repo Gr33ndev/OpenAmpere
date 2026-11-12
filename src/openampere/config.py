@@ -40,6 +40,36 @@ class InverterConfig:
     token: str = ""  # access token of a device that needs one (Enphase, from the owner's Enphase account)
     # SHA-256 of the certificate the token may go to (Enphase, #539): recorded by the setup test with a new token
     cert_sha256: str = ""
+    name: str = ""  # the owner's name for it, shown once there is more than one inverter (#619)
+    capacity_kwh: float = 0.0  # usable capacity of its battery, for the combined state of charge (#619); 0 = unknown
+
+
+# drivers a further inverter can use: not one that needs an access token (Enphase), which only the first one keeps
+EXTRA_DRIVERS = ("auto", "foxess", "saj", "solarmax", "mtec", "senec")
+MAX_EXTRA_INVERTERS = 5
+
+
+@dataclass
+class ExtraInverter:
+    """A further inverter of the same installation (#619): read like the first one, its PV and battery added to the
+    combined values. Its grid power counts only with `own_grid` (it measures a grid connection of its own); otherwise
+    all inverters measure the same house connection and the first one's reading is taken."""
+
+    id: str = ""  # short, stable: the settings, the app and the control log refer to it
+    name: str = ""
+    driver: str = "auto"
+    host: str = ""
+    port: int = 502
+    unit: int = 0
+    register_map: str = "auto"
+    read_function: str = "auto"
+    timeout: float = 3.0
+    connection_mode: str = "persistent"
+    capacity_kwh: float = 0.0
+    own_grid: bool = False
+    # the rated power from the type plate, confirmed for a device whose reported one does not fit its type (#492)
+    rated_power_w: int = 0
+    rated_power_reported_w: int = 0
 
 
 @dataclass
@@ -182,12 +212,14 @@ class Config:
     evcc: EvccConfig = field(default_factory=EvccConfig)
     meter: MeterConfig = field(default_factory=MeterConfig)
     log: LogConfig = field(default_factory=LogConfig)
+    inverters: list = field(default_factory=list)  # further inverters (ExtraInverter), #619
     timezone: str = "Europe/Berlin"
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
+MAIN_INVERTER = "main"  # the id of the first inverter (config.inverter) where inverters are named by id (#619)
 MIN_RATED_POWER_W = 1000  # smallest rated power the owner can confirm (grid.rated_power_w, #492); 0 = not confirmed
 
 # Settings the web app may change, with validation limits for numbers / allowed values for strings.
@@ -204,6 +236,9 @@ EDITABLE: dict[str, tuple] = {
     "inverter.token": ("secret",),
     # not secret, but kept like the token: bound to the address, never from a backup, saved only together with it
     "inverter.cert_sha256": ("secret",),
+    "inverter.name": ("str", 30),
+    "inverter.capacity_kwh": ("float", 0, 200),
+    "inverters": ("inverters", MAX_EXTRA_INVERTERS),
     "storage.raw_retention_days": ("int", 0, 36500),  # 0 = keep forever
     "control.enabled": ("bool",),
     "control.dry_run": ("bool",),
@@ -213,8 +248,8 @@ EDITABLE: dict[str, tuple] = {
     "tariff.feed_in_full": ("bool",),
     "timezone": ("timezone",),
     "cloud.api_key": ("secret",),
-    "pv.input_names": ("strlist", 6, 30),
-    "pv.hidden_inputs": ("strlist", 6, 2),
+    "pv.input_names": ("strlist", 12, 30),  # up to 12 inputs of all inverters together (#619)
+    "pv.hidden_inputs": ("strlist", 12, 2),
     "pv.installed_kwp": ("float", 0, 1000),
     "pv.commissioning_date": ("date",),
     "pv.external": ("bool",),
@@ -288,7 +323,8 @@ def _coerce(current, value):
     if isinstance(current, list):
         if isinstance(value, str):  # environment variable: comma separated
             value = [v.strip() for v in value.split(",")] if value.strip() else []
-        return [str(v) for v in value or []]
+        # the further inverters (#619) are entries of their own, read by inverter_entries()
+        return [v if isinstance(v, dict) else str(v) for v in value or []]
     if isinstance(current, bool):
         if isinstance(value, str):
             return value.strip().lower() in ("1", "true", "yes", "on")
@@ -347,7 +383,91 @@ def build_config(file_values: dict | None = None, saved: dict | None = None) -> 
     locked: set[str] = set()
     _apply_env(config, "OPENAMPERE", "", locked)
     config.log.level = config.log.level.strip().lower()  # OPENAMPERE_LOG_LEVEL=DEBUG as usual for log levels
+    config.inverters = inverter_entries(config.inverters)
     return config, locked
+
+
+def inverter_entries(values: list) -> list[ExtraInverter]:
+    """The further inverters (#619) from the settings or config.yaml; one that cannot be used is left out (logged by
+    validate when the app saves it)."""
+    entries: list[ExtraInverter] = []
+    for value in values or []:
+        if isinstance(value, ExtraInverter):
+            entries.append(value)
+            continue
+        try:
+            entries.append(_inverter_entry(value))
+        except (TypeError, ValueError):
+            continue
+    _give_ids(entries)
+    return entries[:MAX_EXTRA_INVERTERS]
+
+
+def _give_ids(entries: list[ExtraInverter]) -> None:
+    """An id for each further inverter without one: wr2, wr3, … (the first inverter is number 1), one not taken."""
+    taken = {e.id for e in entries}
+    number = 2
+    for entry in entries:
+        if entry.id:
+            continue
+        while f"wr{number}" in taken:
+            number += 1
+        entry.id = f"wr{number}"
+        taken.add(entry.id)
+
+
+_INVERTER_ID = re.compile(r"[a-z0-9]{1,12}")
+_INVERTER_LIMITS = {"port": (1, 65535), "unit": (0, 255), "timeout": (1, 30), "capacity_kwh": (0, 200),
+                    "rated_power_w": (0, 100_000), "rated_power_reported_w": (0, 65_535)}
+_INVERTER_CHOICES = {"driver": EXTRA_DRIVERS, "register_map": ("auto", "foxess_h3_new", "foxess_h3_legacy"),
+                     "read_function": ("auto", "input", "holding"), "connection_mode": ("persistent", "per_poll")}
+
+
+def _inverter_entry(value: dict) -> ExtraInverter:
+    """One further inverter, checked like the settings of the first one; raises ValueError."""
+    if not isinstance(value, dict):
+        raise ValueError
+    entry = ExtraInverter()
+    for f in fields(ExtraInverter):
+        if f.name not in value:
+            continue
+        current = getattr(entry, f.name)
+        new = _coerce(current, value[f.name])
+        if f.name in _INVERTER_LIMITS:
+            lo, hi = _INVERTER_LIMITS[f.name]
+            if not lo <= new <= hi:
+                raise ValueError
+        if f.name in _INVERTER_CHOICES and new not in _INVERTER_CHOICES[f.name]:
+            raise ValueError
+        if isinstance(new, str):
+            new = new.strip()[:30 if f.name == "name" else 253]
+        setattr(entry, f.name, new)
+    entry.id = entry.id.lower()
+    if (entry.id and not _INVERTER_ID.fullmatch(entry.id)) or entry.id == MAIN_INVERTER or not entry.host:
+        raise ValueError
+    if entry.rated_power_w and entry.rated_power_w < MIN_RATED_POWER_W:
+        raise ValueError
+    return entry
+
+
+def validate_inverters(value) -> list[dict]:
+    """The further inverters as the app saves them (#619), each checked; raises ValueError with a message for the
+    owner."""
+    if not isinstance(value, list) or len(value) > MAX_EXTRA_INVERTERS:
+        raise ValueError(f"Es lassen sich höchstens {MAX_EXTRA_INVERTERS} weitere Wechselrichter einbinden.")
+    entries = []
+    for item in value:
+        try:
+            entries.append(_inverter_entry(item))
+        except (TypeError, ValueError, OverflowError):
+            name = str(item.get("name") or item.get("host") or "") if isinstance(item, dict) else ""
+            raise ValueError(f"Die Angaben zum weiteren Wechselrichter „{name[:30]}“ sind ungültig. Bitte Adresse, "
+                             "Port und Geräteadresse prüfen.") from None
+    ids = [e.id for e in entries if e.id]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Zwei weitere Wechselrichter haben dieselbe Kennung.")
+    _give_ids(entries)
+    return [asdict(e) for e in entries]
 
 
 def load_config(path: str | os.PathLike | None = None) -> Config:
@@ -380,6 +500,8 @@ LABELS = {
     "meter.provider": "Netzbetreiber", "meter.username": "E-Mail für das Kundenportal",
     "meter.password": "Passwort für das Kundenportal",
     "server.allowed_hosts": "Eigene Adressen",
+    "inverter.name": "Name des Wechselrichters", "inverter.capacity_kwh": "Speichergröße dieses Wechselrichters",
+    "inverters": "Weitere Wechselrichter",
 }
 
 
@@ -469,13 +591,17 @@ def validate(changes: dict) -> dict:
             elif kind == "hosts":
                 if not isinstance(value, list) or len(value) > rule[1]:
                     raise ValueError
+            elif kind == "inverters":
+                value = validate_inverters(value)  # with its own messages
             elif kind == "strlist":
                 if not isinstance(value, list) or len(value) > rule[1]:
                     raise ValueError
                 value = [str(v).strip()[: rule[2]] for v in value]
             else:
                 value = str(value).strip()[: rule[1] if len(rule) > 1 else None]
-        except (TypeError, ValueError, LookupError):
+        except (TypeError, ValueError, LookupError) as err:
+            if kind == "inverters" and str(err):
+                raise
             raise ValueError(_invalid_message(key, rule)) from None
         if kind == "hosts":
             value = _host_names(value)  # with its own messages, not the general one

@@ -33,10 +33,11 @@ COUNTERS = tuple(f for f in FLOWS if f != "load")
 EXTERNAL = "pv_external"
 MAX_CARRY_WH = 1000  # deficit of the balance carried into the next quarters, see _consumption
 QUARTER = 900
-MAX_PV_INPUTS = 4
-# columns added after the first release, before schema versions; created on start-up if missing
-SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, MAX_PV_INPUTS + 1)] + ["t_inverter", "t_battery", "t_cell_max",
-                                                                          "t_cell_min"]
+# columns added after the first release, before schema versions; created on start-up if missing (part of version 1)
+SAMPLE_EXTRA_COLUMNS = [f"pv{i}" for i in range(1, 5)] + ["t_inverter", "t_battery", "t_cell_max", "t_cell_min"]
+# PV inputs of all inverters together (#619): pv5 and up came with schema version 6
+MAX_PV_INPUTS = 12
+MORE_PV_COLUMNS = [f"pv{i}" for i in range(5, MAX_PV_INPUTS + 1)]
 MAX_INTEGRATION_GAP_S = 120  # do not integrate power across longer outages
 MAX_POWER_W = 60_000  # upper bound for any energy flow of a home system; larger counter jumps are garbage
 EARLIEST_PLAUSIBLE_TS = 1_735_689_600  # 2025-01-01: anything earlier is an unset clock
@@ -133,6 +134,14 @@ def _car_tables(db: sqlite3.Connection) -> None:
     db.execute("CREATE INDEX IF NOT EXISTS car_sessions_car ON car_sessions (car, start)")
 
 
+def _more_pv_inputs(db: sqlite3.Connection) -> None:
+    """Version 5 -> 6: power of up to 12 PV inputs in the readings, for more than one inverter (#619)."""
+    existing = {row[1] for row in db.execute("PRAGMA table_info(samples)")}
+    for column in MORE_PV_COLUMNS:
+        if column not in existing:
+            db.execute(f"ALTER TABLE samples ADD COLUMN {column} REAL")
+
+
 # MIGRATIONS[n] brings a database from version n to n + 1 (PRAGMA user_version), each step in one transaction.
 # Before the first step the database is copied to <db>.schema-<n>: after a rollback (the updater goes back to the
 # previous image when a new version does not start) the older version continues with that copy instead of a
@@ -140,8 +149,9 @@ def _car_tables(db: sqlite3.Connection) -> None:
 # and device state (KEEP_ON_RESTORE) in the copy is kept that of the running installation: the older version takes
 # the copy as it is, and an old password, sessions or revoked app tokens must not become valid again with it.
 MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {1: _consumption_from_balance, 2: _external_pv_columns,
-                                                               3: _allowed_hosts_from_the_app_only, 4: _car_tables}
-SCHEMA_VERSION = 5
+                                                               3: _allowed_hosts_from_the_app_only, 4: _car_tables,
+                                                               5: _more_pv_inputs}
+SCHEMA_VERSION = 6
 COPY_SUFFIX = ".schema-"  # <db>.schema-<version>: the database as it was before the upgrade from that version
 NEWER_SUFFIX = ".newer-"  # <db>.newer-<version>-<time>: a newer version's database, set aside after a rollback
 COPY_SPARE_BYTES = 50_000_000  # free space left over after the copy, so the app can still write
@@ -812,13 +822,14 @@ class Storage:
         inputs = [i.power for i in snap.pv_inputs[:MAX_PV_INPUTS]]
         inputs += [None] * (MAX_PV_INPUTS - len(inputs))
         temps = snap.temperatures
+        columns = [*SAMPLE_EXTRA_COLUMNS, EXTERNAL, *MORE_PV_COLUMNS]
         with self._lock, self._db:
             self._db.execute(
-                f"INSERT OR REPLACE INTO samples(ts, pv, house, grid, battery, soc, {', '.join(SAMPLE_EXTRA_COLUMNS)}, "
-                f"{EXTERNAL}) VALUES ({', '.join('?' * (7 + len(SAMPLE_EXTRA_COLUMNS)))})",
+                f"INSERT OR REPLACE INTO samples(ts, pv, house, grid, battery, soc, {', '.join(columns)}) "
+                f"VALUES ({', '.join('?' * (6 + len(columns)))})",
                 (snap.timestamp, snap.pv_power, snap.house_power, snap.grid_power, snap.battery_power,
-                 snap.battery_soc, *inputs, temps.get("inverter"), temps.get("battery"),
-                 temps.get("battery_cell_max"), temps.get("battery_cell_min"), snap.pv_external_power))
+                 snap.battery_soc, *inputs[:4], temps.get("inverter"), temps.get("battery"),
+                 temps.get("battery_cell_max"), temps.get("battery_cell_min"), snap.pv_external_power, *inputs[4:]))
             self._integrate_external(snap)
             self._accumulate(snap)
             self._accumulate_pv_inputs(snap.timestamp, [i or 0.0 for i in inputs[:len(snap.pv_inputs)]])

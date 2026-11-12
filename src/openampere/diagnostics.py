@@ -273,6 +273,7 @@ class Diagnostics:
                                      "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
                                                     "timeout_s": self.runtime.config.inverter.timeout},
+                                     "inverters": self._extras(include_serial),
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
                                      "probe": self.probe.section(include_text=include_serial),
                                      "wallbox": self.wallbox.section(include_text=include_serial),
@@ -283,6 +284,22 @@ class Diagnostics:
         self.runtime.storage.set_meta("diagnostics_report", report)
         self.last = report
         return report
+
+    def _extras(self, include_serial: bool) -> list[dict]:
+        """The further inverters (#619): which device, whether it answers, and the reading combined from it. Not the
+        owner's names for them (the id says which one is meant)."""
+        extras = []
+        for extra in self.runtime.collector.extras:
+            info = asdict(extra.device) if extra.device else {}
+            if not include_serial:
+                info["serial"] = privacy.shorten(info.get("serial"))
+            entry = extra.entry
+            extras.append({"id": entry.id, "driver": entry.driver, "unit": entry.unit,
+                           "connection": {"mode": entry.connection_mode, "timeout_s": entry.timeout},
+                           "own_grid": entry.own_grid, "capacity_known": entry.capacity_kwh > 0, "device": info,
+                           "connected": extra.connected, "last_error": extra.last_error,
+                           "wrong_device": extra.wrong_device, "fresh": extra.fresh()})
+        return extras
 
     def _not_connected(self) -> Check:
         collector = self.runtime.collector
@@ -303,7 +320,7 @@ class Diagnostics:
                          wallbox.get("host"))  # names the owner typed, not only those with a home-network ending
         report = {**report, "log": privacy.log_for_report(report.get("log"))}
         return {**report, **{part: pseudonyms.apply(report.get(part)) for part in ("checks", "log", "probe", "wallbox", "ocpp",
-                                                                          "wallboxes", "cars")}}
+                                                                          "wallboxes", "cars", "inverters")}}
 
     @staticmethod
     def _version() -> str:

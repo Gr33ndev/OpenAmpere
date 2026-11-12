@@ -94,6 +94,16 @@
     "acceptTitle": "Take over the new inverter?",
     "acceptHint": "Only confirm this if the inverter really was replaced and the device is in your own network. OpenAmpere then reads and controls this device, with all the settings you made in OpenAmpere.",
     "acceptConfirm": "Take over",
-    "noSerialHint": "This device reports no serial number. So OpenAmpere can no longer check later whether the same device still answers at the address. Best give it a fixed IP address in your router."
+    "noSerialHint": "This device reports no serial number. So OpenAmpere can no longer check later whether the same device still answers at the address. Best give it a fixed IP address in your router.",
+    "titleNamed": "Since {time}, another device answers at the address of “{name}”."
+  },
+  "inverterCards": {
+    "title": "Inverters",
+    "notConnected": "No current values",
+    "solar": "Solar {power}",
+    "charging": "charging at {power}",
+    "discharging": "discharging at {power}",
+    "idle": "Battery idle",
+    "missingHint": "While an inverter sends no current values, the overview shows no total for solar power and batteries. A total without it would be too low."
   }
 }

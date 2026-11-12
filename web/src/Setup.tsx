@@ -9,8 +9,10 @@ import { SMARTBOX_GUIDE } from "./links";
 import { navigate } from "./route";
 import { t, tx } from "./i18n";
 
-type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
+export type Device = { manufacturer: string; model: string; serial: string | null; firmware: string | null;
   driver: string; unit: number | null; supports_control: boolean };
+/** A tested device for a further inverter (#619): where it answers and what was detected. */
+export type Detected = { host: string; port: number; unit: number; driver: string; device: Device };
 // cert_sha256: the certificate a newly typed Enphase token went to, saved with it (#539)
 type TestResult = { ok: boolean; error?: string; device?: Device; label?: string; cert_sha256?: string;
   sample?: { pv_power: number | null; battery_soc: number | null; pv_external_power?: number | null } | null };
@@ -19,13 +21,18 @@ type Found = { host: string; port: number; model: string | null; manufacturer: s
   serial?: string | null; busy?: boolean; wallbox?: boolean };
 type DriverOption = { key: string; label: string };
 
+// a further inverter (#619) cannot use a device that needs an access token: only the first one keeps one
+const NEEDS_TOKEN = new Set(["enphase"]);
+
 /** Find / enter the inverter address, detect the device type, test and save.
- *  Used by the setup wizard and the connection settings. */
-export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"), locked = [] }: {
+ *  Used by the setup wizard and the connection settings. onUse: instead of saving it as the inverter, hand the tested
+ *  device over (a further inverter, #619). */
+export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"), locked = [], onUse }: {
   initial: { host: string; port: number; unit: number; driver?: string };
   onSaved: () => void;
   saveLabel?: string;
   locked?: string[];
+  onUse?: (detected: Detected) => Promise<boolean>;
 }) {
   const [host, setHost] = useState(initial.host);
   const [port, setPort] = useState(initial.port);
@@ -41,14 +48,17 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
   const [result, setResult] = useState<TestResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hostLocked = locked.includes("inverter.host");
+  const hostLocked = !onUse && locked.includes("inverter.host");
 
+  const further = !!onUse;  // not onUse itself: a new function with every render of the parent
   useEffect(() => {
     getJson<{ prefixes: string[] }>("/api/setup/networks")
       .then((r) => setPrefix((p) => p || r.prefixes[0] || ""))
       .catch(() => undefined);
-    getJson<{ drivers: DriverOption[] }>("/api/setup/drivers").then((r) => setDrivers(r.drivers)).catch(() => undefined);
-  }, []);
+    getJson<{ drivers: DriverOption[] }>("/api/setup/drivers")
+      .then((r) => setDrivers(further ? r.drivers.filter((d) => !NEEDS_TOKEN.has(d.key)) : r.drivers))
+      .catch(() => undefined);
+  }, [further]);
 
   const scan = async () => {
     setScanning(true); setFound(null); setError(null);
@@ -81,6 +91,16 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
   const save = async () => {
     if (!result?.device) return;
     setSaving(true); setError(null);
+    if (onUse) {
+      try {
+        if (await onUse({ host: host.trim(), port, unit: result.device.unit ?? 0, driver: result.device.driver, device: result.device })) {
+          onSaved();
+        }
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
       // store what was detected, so the next start does not need to probe again
       const changes: Record<string, unknown> = {
@@ -188,6 +208,9 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         <Button variant="secondary" onClick={() => test()} busy={testing} disabled={!host.trim()}>{t("setup.connectionForm.testConnection")}</Button>
         {testing && <p className="hint">{t("setup.connectionForm.detectingDevice")}</p>}
 
+        {result?.ok && result.device && onUse && NEEDS_TOKEN.has(result.device.driver) && (
+          <Notice kind="warn">{t("settings.inverters.tokenDevice")}</Notice>
+        )}
         {result?.ok && result.device && (
           <Notice kind="ok">
             <strong>{t("setup.connectionForm.detectedDevice", { device: `${result.device.manufacturer} ${result.device.model}` })}</strong>
@@ -204,7 +227,8 @@ export function ConnectionForm({ initial, onSaved, saveLabel = t("common.save"),
         {error && <Notice kind="error">{error}</Notice>}
       </div>
 
-      <Button onClick={save} busy={saving} disabled={!host.trim() || !result?.ok}>{saveLabel}</Button>
+      <Button onClick={save} busy={saving}
+        disabled={!host.trim() || !result?.ok || (!!onUse && NEEDS_TOKEN.has(result?.device?.driver ?? ""))}>{saveLabel}</Button>
       {!result?.ok && host.trim() && <p className="hint center">{t("setup.connectionForm.testFirst")}</p>}
     </>
   );

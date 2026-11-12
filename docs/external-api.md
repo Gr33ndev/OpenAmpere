@@ -242,6 +242,7 @@ Everything at once: the same content as a [live message](#live-values-ws), plus 
 | `alarms` | The device's alarm codes |
 | `today` | Energy since midnight in Wh, see below |
 | `totals` | Lifetime counters in Wh, see below |
+| `inverters` | Empty with one inverter. With further inverters of the same installation (#619): one entry per inverter, the first with `id` `"main"`, each with `id`, `name`, `connected` and, while it answers, `pv_power`, `pv_external_power`, `battery_power`, `battery_soc`, `grid_power` and `alarms`. The fields above are then the combined values: PV and battery added up, the grid from the first inverter (plus those that measure a grid connection of their own), the house from the balance, the state of charge weighted by battery size. While a further inverter sends no recent reading, the combined PV, battery, house and state of charge are `null`. Battery and temperature details are the first inverter's. |
 
 Fields of `today` and `totals`: `pv`, `consumption` (what the app shows as consumption), `grid_import`,
 `grid_export`, `battery_charge`, `battery_discharge`, `load` (the inverter's own load counter, which can count much
@@ -432,6 +433,9 @@ message. A command refused before anything was written does not count.
 
 Not every inverter accepts every command: `supports_control` in `/info` says whether OpenAmpere may control the
 device at all.
+
+With more than one inverter (#619) this interface controls the first one; the battery settings of the further ones
+can be changed in the app.
 
 ### `PUT /grid-charging`
 

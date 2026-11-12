@@ -375,7 +375,9 @@
     },
     "wallboxPhasesBack": "{name}: Leistung der Wallbox zurückgestellt, sie wählt die Phasen wieder selbst.",
     "ratedPower": "Nennleistung des Wechselrichters von {from} auf {to} geändert (Typenschild).",
-    "inverterAccepted": "Neuen Wechselrichter übernommen (Seriennummer {from} → {to})."
+    "inverterAccepted": "Neuen Wechselrichter übernommen (Seriennummer {from} → {to}).",
+    "batterySettingsAt": "Speicher-Einstellung von „{inverter}“ geändert: {changes}.",
+    "batteryOverwrittenAt": "Ein anderes Gerät hat die Speicher-Einstellung von „{inverter}“ geändert: {changes}."
   },
   "controlPage": {
     "emptyState": "Noch keine Änderungen.",
@@ -959,5 +961,39 @@
     "range": "Bitte einen Wert zwischen 1000 und 100000 W eingeben.",
     "confirm": "Nennleistung bestätigen",
     "change": "Nennleistung ändern"
+  },
+  "inverters": {
+    "fallbackName": "Wechselrichter {number}",
+    "firstTitle": "Name und Speicher",
+    "name": "Name",
+    "nameHint": "Damit du die Wechselrichter auseinanderhältst, zum Beispiel „Haus“ oder „Garage“.",
+    "capacity": "Nutzbare Speichergröße",
+    "capacityHint": "Steht im Datenblatt des Speichers. Mit den Größen aller Speicher berechnet OpenAmpere den gemeinsamen Ladestand richtig. Leer lassen, wenn du sie nicht kennst: Dann zählen alle Speicher gleich.",
+    "capacityInvalid": "Bitte die Speichergröße als Zahl zwischen 0 und 200 kWh eingeben.",
+    "furtherTitle": "Weitere Wechselrichter",
+    "intro": "Hast du mehr als einen Wechselrichter oder Speicher, zum Beispiel einen zweiten Speicher mit eigenem Netzwerkanschluss? Dann binde ihn hier ein. OpenAmpere zeigt dann die gemeinsamen Werte und jeden Wechselrichter einzeln.",
+    "combinedHint": "Die Übersicht zählt Solarleistung und Speicher aller Wechselrichter zusammen. Den Netzbezug nimmt OpenAmpere vom ersten Wechselrichter, weil alle am selben Hausanschluss messen.",
+    "add": "Weiteren Wechselrichter hinzufügen",
+    "addIntro": "Suche den weiteren Wechselrichter im Netzwerk oder gib seine Adresse ein und prüfe die Verbindung.",
+    "addSave": "Hinzufügen",
+    "added": "Wechselrichter hinzugefügt. OpenAmpere verbindet sich jetzt mit ihm.",
+    "ownGrid": "Misst einen eigenen Netzanschluss",
+    "ownGridHint": "Nur einschalten, wenn dieser Wechselrichter an einem anderen Stromzähler hängt als der erste. Sonst würde der Netzbezug doppelt gezählt.",
+    "remove": "Wechselrichter entfernen",
+    "removeTitle": "„{name}“ entfernen?",
+    "removeHint": "OpenAmpere liest diesen Wechselrichter dann nicht mehr und zählt ihn nicht mehr mit. Am Gerät selbst ändert sich nichts.",
+    "removeConfirm": "Entfernen",
+    "notChecked": "Verbindung wird geprüft …",
+    "connected": "Verbunden",
+    "connectedTo": "Verbunden mit {device}",
+    "notConnected": "Nicht verbunden",
+    "notConnectedError": "Nicht verbunden: {error}",
+    "wrongDevice": "Unter der Adresse antwortet ein anderes Gerät.",
+    "tokenDevice": "Ein Gerät, das einen Zugangs-Token braucht, lässt sich nur als erster Wechselrichter einbinden.",
+    "pickerLabel": "Wechselrichter",
+    "pickerHint": "Die Einstellungen gelten nur für den Speicher dieses Wechselrichters.",
+    "readOnly": "nur Anzeige",
+    "exportLimitFirstOnly": "Die Einspeisebegrenzung stellt OpenAmpere nur am ersten Wechselrichter „{name}“ ein. Die weiteren behalten ihre eigene Einstellung.",
+    "chargingFirstOnly": "OpenAmpere lädt nur den Speicher des ersten Wechselrichters „{name}“ aus dem Netz."
   }
 }

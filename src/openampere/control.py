@@ -10,6 +10,7 @@ import logging
 import time
 from dataclasses import asdict
 
+from .config import MAIN_INVERTER
 from .drivers.base import WorkMode
 from .runtime import Runtime
 
@@ -150,8 +151,12 @@ def check_backup_soc(value: int, max_soc: int | None) -> None:
 
 
 class BatteryControl:
-    def __init__(self, runtime: Runtime) -> None:
+    """The battery settings of one inverter: the first one, or a further one (#619) given as `source` (its
+    ExtraCollector). Grid charging belongs to the first one only, so only its control takes part in it."""
+
+    def __init__(self, runtime: Runtime, source=None) -> None:
         self.runtime = runtime
+        self.source = source
         self.external_change: dict | None = None  # values another device wrote back after our change
         self._verify_task: asyncio.Task | None = None
         self.known: dict | None = None  # the last settings read or read back after a change, for other apps (#336)
@@ -159,11 +164,23 @@ class BatteryControl:
         self._changes = 0  # a reading that started before a change is out of date (#342)
         self._shared = SharedRead(self._read)
 
+    @property
+    def collector(self):
+        return self.source if self.source is not None else self.runtime.collector
+
     def _driver(self):
-        collector = self.runtime.collector
+        collector = self.collector
         if collector.driver is None or not collector.connected:
             raise NotConnected("Wechselrichter ist nicht verbunden")
         return collector.driver
+
+    def _inverter(self) -> dict:
+        """Which inverter a log entry is about, once there is more than one (#619)."""
+        if self.source is not None:
+            return {"inverter": self.source.entry.name or self.source.entry.id}
+        if self.runtime.collector.extras:
+            return {"inverter": self.runtime.config.inverter.name or MAIN_INVERTER}
+        return {}
 
     async def _read(self) -> dict:
         settings = await self._driver().read_settings()
@@ -175,7 +192,7 @@ class BatteryControl:
         """shared: for the app's requests, see SharedRead; never for a check before or after a write."""
         await self._take_over_charge()
         data = await self._shared.get(self._driver()) if shared else await self._read()
-        device = self.runtime.collector.device
+        device = self.collector.device
         has_backup = bool(device and device.backup_reserve)
         data["unreadable"] = [k for k in FIELDS if data.get(k) is None and (k != BACKUP_SOC or has_backup)]
         data["external_change"] = self.external_change
@@ -217,7 +234,7 @@ class BatteryControl:
         control = self.runtime.config.control
         if not control.enabled:
             raise ControlDisabled("Steuerung ist deaktiviert")
-        device = self.runtime.collector.device
+        device = self.collector.device
         if device is not None and not device.supports_control:
             raise ValueError(f"Für {device.manufacturer}-Geräte ist die Steuerung in OpenAmpere noch nicht freigegeben "
                              "(nur Anzeige).")
@@ -268,8 +285,9 @@ class BatteryControl:
                 return {"dry_run": control.dry_run, "written": {}, "settings": current}
 
             storage = self.runtime.storage
-            snap = self.runtime.collector.latest  # the state of charge at the time, for the log (#322)
+            snap = self.collector.own  # this battery's state of charge at the time, for the log (#322)
             details = {"from": {k: current.get(k) for k in diff}, "to": diff, **({"source": source} if source else {}),
+                       **self._inverter(),
                        **({"low_reserve_confirmed": True} if lowering else {}),
                        **({"soc": round(snap.battery_soc)} if snap and snap.battery_soc is not None else {})}
             if control.dry_run:
@@ -317,9 +335,12 @@ class BatteryControl:
                     "warning": warning}
 
     def _pending_command(self) -> dict:
-        """OpenAmpere's last remote command while it is not released, else {}."""
+        """OpenAmpere's last remote command while it is not released, else {}; always {} for a further inverter, which
+        OpenAmpere does not charge from the grid."""
         from .charging import REMOTE_COMMAND  # charging imports this module
 
+        if self.source is not None:
+            return {}
         command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
         return command if command and not command.get("released") else {}
 
@@ -360,7 +381,7 @@ class BatteryControl:
         except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
             return
         command = self._pending_command()
-        if kept and command:
+        if kept and command and self.source is None:
             self.runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
 
     async def _read_back(self, written: dict) -> dict | None:
@@ -396,8 +417,9 @@ class BatteryControl:
             changed = {k: now.get(k) for k, v in written.items() if now.get(k) is not None and now.get(k) != v}
             if changed:
                 self.external_change = {"expected": written, "found": changed}
-                self.runtime.storage.log_control("battery_settings_check", {"from": written, "to": changed}, False,
-                                                 "von einem anderen Gerät überschrieben")
+                self.runtime.storage.log_control("battery_settings_check", {"from": written, "to": changed,
+                                                                            **self._inverter()},
+                                                 False, "von einem anderen Gerät überschrieben")
                 log.warning("battery settings were overwritten by another device: %s", changed)
                 return
 

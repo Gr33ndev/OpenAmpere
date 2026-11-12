@@ -35,7 +35,42 @@ export type Snapshot = {
   alarms: number[];
   totals: Counters;
   today: Counters;
+  /** with further inverters (#619): what each one reads; the values above are then the combined ones. Empty with one. */
+  inverters?: InverterReading[];
 };
+
+/** One inverter's own reading (#619); a disconnected one has only id, name and connected. */
+export type InverterReading = {
+  id: string;
+  name: string;
+  connected: boolean;
+  pv_power?: number | null;
+  pv_external_power?: number | null;
+  battery_power?: number | null;
+  battery_soc?: number | null;
+  grid_power?: number | null;
+  alarms?: number[];
+};
+
+/** A further inverter as the settings keep it (#619); "main" is the first one (inverter.*). */
+export type ExtraInverter = {
+  id?: string;
+  name: string;
+  driver: "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec";
+  host: string;
+  port: number;
+  unit: number;
+  register_map: string;
+  read_function: string;
+  timeout: number;
+  connection_mode: "persistent" | "per_poll";
+  capacity_kwh: number;
+  own_grid: boolean;
+  rated_power_w: number;
+  rated_power_reported_w: number;
+};
+
+export const MAIN_INVERTER = "main";
 
 export type Status = {
   version: string;
@@ -85,7 +120,26 @@ export type Status = {
   firmware?: { serial?: string | null; firmware?: string; since?: number; history: { ts: number; old: string; new: string }[] };
   /** another device (e.g. the old smartbox) set these settings back after a change by OpenAmpere */
   overwritten?: { ts: number; settings: string[] } | null;
+  /** every inverter once there is more than one (#619), the first one with id "main"; empty with one */
+  inverters?: InverterStatus[];
 };
+
+export type InverterStatus = {
+  id: string;
+  name: string;
+  connected: boolean;
+  last_error: string | null;
+  wrong_device: Status["wrong_device"];
+  device: Status["device"];
+  capacity_kwh: number;
+  own_grid: boolean;
+  stale?: boolean;
+};
+
+/** The owner's name of an inverter, else "Wechselrichter <number>" by its position (the first one is 1). */
+export function inverterName(name: string | null | undefined, index: number): string {
+  return name?.trim() || t("settings.inverters.fallbackName", { number: index + 1 });
+}
 
 export type Period = "day" | "week" | "month" | "year";
 
@@ -118,6 +172,9 @@ export type Settings = {
     "inverter.poll_interval": number;
     "inverter.timeout": number;
     "inverter.connection_mode": "persistent" | "per_poll";
+    "inverter.name": string;
+    "inverter.capacity_kwh": number;
+    inverters: ExtraInverter[];
     "storage.raw_retention_days": number;
     "control.enabled": boolean;
     "control.dry_run": boolean;

@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
 import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
-import { activeInputs, postJson, PV_INPUT_COLORS, refreshAll, useResource, useStale } from "./api";
+import { activeInputs, inverterName, postJson, PV_INPUT_COLORS, refreshAll, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
+import { InverterCards, inverterQuery } from "./Inverters";
 import { navigate } from "./route";
 import { Button, Dialog, Notice, toast } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
@@ -32,7 +33,11 @@ function StorageNotice({ storage }: { storage: Status["storage"] }) {
 
 /** Another device answers at the inverter's address (#567): nothing is read or controlled until the owner's inverter
  *  answers again, or the owner says the other one is their new inverter. */
-function WrongDeviceNotice({ wrong }: { wrong: Status["wrong_device"] }) {
+function WrongDeviceNotice({ wrong, inverter }: {
+  wrong: Status["wrong_device"];
+  /** a further inverter (#619): its id and name; none for the first one */
+  inverter?: { id: string; name: string };
+}) {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!wrong) return null;
@@ -40,7 +45,7 @@ function WrongDeviceNotice({ wrong }: { wrong: Status["wrong_device"] }) {
     setAsking(false);
     setBusy(true);
     try {
-      await postJson("/api/setup/accept-device", {});
+      await postJson(`/api/setup/accept-device${inverterQuery(inverter?.id ?? "")}`, {});
       refreshAll();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -50,7 +55,8 @@ function WrongDeviceNotice({ wrong }: { wrong: Status["wrong_device"] }) {
   };
   return (
     <Notice kind="error">
-      <strong>{t("overview.wrongDevice.title", { time: updatedLabel(wrong.since) })}</strong>{" "}
+      <strong>{inverter ? t("overview.wrongDevice.titleNamed", { name: inverter.name, time: updatedLabel(wrong.since) })
+        : t("overview.wrongDevice.title", { time: updatedLabel(wrong.since) })}</strong>{" "}
       {t("overview.wrongDevice.text", { found: wrong.found ?? t("overview.wrongDevice.noSerial"), expected: wrong.expected })}
       <div className="notice-actions">
         <Button variant="secondary" busy={busy} onClick={() => setAsking(true)}>{t("overview.wrongDevice.accept")}</Button>
@@ -310,6 +316,9 @@ export function Dashboard({ snap, online, blocked, status }: {
       {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
 
       <WrongDeviceNotice wrong={status?.wrong_device} />
+      {(status?.inverters ?? []).slice(1).map((item, index) => (
+        <WrongDeviceNotice key={item.id} wrong={item.wrong_device} inverter={{ id: item.id, name: inverterName(item.name, index + 1) }} />
+      ))}
       {status?.clock_wrong && (
         <Notice kind="error">{t("overview.dashboard.clockWrong")}</Notice>
       )}
@@ -318,6 +327,7 @@ export function Dashboard({ snap, online, blocked, status }: {
       <SecondInverterHint status={status} external={settings?.values["pv.external"]} />
       <EnergyFlow snap={snap} stale={stale} devices={flowDevices} gridCharging={!!status?.devices.grid_charging}
         externalName={settings?.values["pv.external_name"]} />
+      <InverterCards snap={snap} stale={stale} />
 
       <div className="section-title">{t("overview.dashboard.todayTitle")}</div>
       {today?.partial_since && <p className="hint">{t("overview.dashboard.recordedSince", { time: time(today.partial_since) })}</p>}
