@@ -322,7 +322,7 @@ des Zertifikats ist `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f1098
 
 Hat deine Anlage mehr als einen Wechselrichter oder Speicher mit eigenem Netzwerkanschluss (zum Beispiel zwei Speicher), richte zuerst einen wie gewohnt ein. Die weiteren fügst du unter **Mehr → Verbindung → Weitere Wechselrichter** hinzu: im Netzwerk suchen oder die Adresse eingeben, Verbindung testen, einen Namen geben.
 
-- **Übersicht und Auswertung** zeigen die Summe aller Wechselrichter. Darunter steht jeder Wechselrichter einzeln mit Solarleistung, Speicher und Ladestand. Die Auswertung pro Wechselrichter gibt es noch nicht.
+- **Übersicht:** Der Energiefluss zeigt für jeden Wechselrichter eine eigene Sonne und einen eigenen Speicher mit Namen und Ladestand (bis zu vier Sonnen und drei Speicher, bei mehr die Summe). Darunter steht jeder Wechselrichter noch einmal einzeln. Die Auswertung zeigt die Summe aller Wechselrichter, eine Auswertung pro Wechselrichter gibt es noch nicht.
 - **Netz:** Alle Wechselrichter am selben Hausanschluss messen dasselbe, deshalb nimmt OpenAmpere den Netzbezug vom ersten. Hängt ein Wechselrichter an einem eigenen Stromzähler, schalte bei ihm **Misst einen eigenen Netzanschluss** ein.
 - **Parallelsystem:** Sind die Wechselrichter so zusammengeschaltet, dass der erste schon die Werte aller meldet, schalte beim weiteren **Werte stecken schon im ersten Wechselrichter** ein. Sonst zählt OpenAmpere ihn doppelt. Im Zweifel vergleiche die Solarleistung des ersten mit seiner eigenen Anzeige oder der App des Herstellers.
 - **Speichergröße:** Trage bei jedem Wechselrichter die nutzbare Größe seines Speichers ein, dann stimmt der gemeinsame Ladestand. Ohne Angaben zählen alle Speicher gleich.

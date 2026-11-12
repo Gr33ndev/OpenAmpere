@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
 import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Device, Snapshot } from "./api";
+import type { Device, InverterReading, Snapshot } from "./api";
+import { inverterName } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import { kw, num, percent } from "./format";
 import { t } from "./i18n";
@@ -16,6 +17,42 @@ const HOUSE = { x: 50, y: 56 };
 const LINE_Y = 52; // vertical centre of the side icons
 const DEVICE_Y = 95; // centre of the device icons
 const MAX_DEVICES = 4;
+// several inverters (#619): a sun and a battery each, up to these numbers; more are drawn as one with the sum
+const MAX_SUNS = 4;
+const MAX_BATTERIES = 3;
+const BATTERY_STEP = 40; // a further battery below the first one, the rows below move down by as much
+
+type Sun = { key: string; power: number | null; label: string | null };
+type Battery = { key: string; power: number | null; soc: number | null; label: string | null };
+
+function sunX(index: number, count: number): number {
+  if (count === 1) return 50;
+  if (count === 2) return index ? 70 : 30;
+  return 14 + (72 / (count - 1)) * index;
+}
+
+/** A sun per inverter (its own PV, without a second PV inverter it measures) and one for the second PV inverters,
+ *  a battery per inverter with one; nothing to split with one inverter. Inverters whose values the first one reports
+ *  (a parallel system) are part of the first one's. */
+function perInverter(snap: Snapshot | null, external: number | null, externalLabel: string) {
+  const all = snap?.inverters ?? [];
+  const parts = all.filter((p) => !p.in_first);
+  if (parts.length < 2) return { suns: null, batteries: null };
+  const name = (p: InverterReading) => inverterName(p.name, all.indexOf(p));
+  const live = (p: InverterReading) => p.connected;
+  // a battery inverter without PV of its own (it reports no solar power) gets no sun
+  const suns: Sun[] = parts.filter((p) => !(p.connected && p.pv_power == null)).map((p) => ({
+    key: p.id, label: name(p),
+    power: live(p) && p.pv_power != null ? Math.max(0, p.pv_power - (p.pv_external_power ?? 0)) : null,
+  }));
+  if (external != null) suns.push({ key: "external", power: external, label: externalLabel });
+  // one that does not answer may have a battery: shown, without values
+  const batteries: Battery[] = parts.filter((p) => !p.connected || p.battery_soc != null || p.battery_power != null)
+    .map((p) => ({ key: p.id, label: name(p), power: live(p) ? p.battery_power ?? null : null,
+                   soc: live(p) ? p.battery_soc ?? null : null }));
+  return { suns: suns.length > 1 && suns.length <= MAX_SUNS ? suns : null,
+           batteries: batteries.length > 1 && batteries.length <= MAX_BATTERIES ? batteries : null };
+}
 
 /** Connection; dashes travel from (x1, y1) to (x2, y2) when power > 0 and backwards when < 0. */
 function Link({ x1, y1, x2, y2, power }: { x1: number; y1: number; x2: number; y2: number; power: number | null }) {
@@ -114,7 +151,18 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   snap: Snapshot | null; stale?: boolean; devices?: Device[]; gridCharging?: boolean; externalName?: string;
 }) {
   const shown = devices.slice(0, MAX_DEVICES);
-  const h = shown.length ? DEVICES_H : BASE_H;
+  // a second PV inverter the inverter measures (#419): its own sun next to the inverter's; pv_power is the sum
+  const external = snap?.pv_external_power ?? null;
+  const externalLabel = externalName || t("overview.energyFlow.secondInverter");
+  const split = perInverter(snap, external, externalLabel);
+  const ownPv = external != null && snap?.pv_power != null ? Math.max(0, snap.pv_power - external) : snap?.pv_power ?? null;
+  // power: what is shown, also when it is old; the lines move only with current values
+  const suns: Sun[] = split.suns ?? (external == null ? [{ key: "pv", power: snap?.pv_power ?? null, label: null }]
+    : [{ key: "pv", power: ownPv, label: t("overview.energyFlow.inverterPv") },
+       { key: "external", power: external, label: externalLabel }]);
+  const batteries = split.batteries;
+  const extra = batteries ? (batteries.length - 1) * BATTERY_STEP : 0;
+  const h = (shown.length ? DEVICES_H : BASE_H) + extra;
   const container = useRef<HTMLDivElement>(null);
   const houseIcon = useRef<HTMLDivElement>(null);
   const deviceIcons = useRef<(HTMLDivElement | null)[]>([]);
@@ -142,10 +190,6 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
     observer.observe(el);
     return () => observer.disconnect();
   }, [deviceKeys, h]);
-  // a second PV inverter the inverter measures (#419): its own sun next to the inverter's; pv_power is the sum
-  const external = snap?.pv_external_power ?? null;
-  const ownPv = external != null && snap?.pv_power != null ? Math.max(0, snap.pv_power - external) : snap?.pv_power ?? null;
-  const externalLabel = externalName || t("overview.energyFlow.secondInverter");
   const devicePower = shown.reduce((sum, d) => sum + (d.power_w || 0), 0);
   // the inverter measures the whole consumption: the household is what the devices do not use
   const house = snap?.house_power != null ? Math.max(0, snap.house_power - (stale ? 0 : devicePower)) : null;
@@ -155,7 +199,8 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const grid = snap?.off_grid ? t("common.disconnected") : direction(snap?.grid_power, t("common.import"), t("common.feedIn"));
   const label = snap
     ? [t("overview.energyFlow.solarPower", { power: kw(snap.pv_power) }),
-       ...(external != null ? [`${externalLabel} ${kw(external)}`] : []),
+       ...(split.suns ? split.suns.map((s) => `${s.label} ${kw(s.power)}`) : external != null ? [`${externalLabel} ${kw(external)}`] : []),
+       ...(batteries ?? []).map((b) => `${b.label} ${kw(b.power)}, ${percent(b.soc)}`),
        t("overview.energyFlow.housePower", { power: kw(house) }),
        `${t("overview.energyFlow.batteryPower", { power: kw(snap.battery_power) })}${battery ? ` ${battery}` : ""}, ${percent(snap.battery_soc)}`,
        `${t("overview.energyFlow.gridPower", { power: kw(snap.grid_power) })}${grid ? ` ${grid}` : ""}`,
@@ -164,15 +209,19 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   return (
     <div ref={container} className={`flow ${stale ? "stale" : ""} ${retro ? "retro" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
       <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none" aria-hidden="true">
-        {/* PV -> house (vertical), or from both suns when a second inverter is counted */}
-        {external == null ? <Link x1={50} y1={30} x2={50} y2={41} power={stale ? null : snap?.pv_power ?? null} /> : (
-          <>
-            <Link x1={34} y1={31} x2={45} y2={41} power={stale ? null : ownPv} />
-            <Link x1={66} y1={31} x2={55} y2={41} power={stale ? null : external} />
-          </>
-        )}
-        {/* battery <-> house: + = discharging towards the house */}
-        <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />
+        {/* PV -> house: vertical from one sun, from above at an angle from several (a second PV inverter, #419, or
+            several inverters, #619) */}
+        {suns.map((s, i) => {
+          const x = sunX(i, suns.length);
+          const power = stale ? null : s.power;
+          // below a sun with a name the line starts under the name
+          return x === 50 ? <Link key={s.key} x1={50} y1={s.label ? 34 : 30} x2={50} y2={41} power={power} />
+            : <Link key={s.key} x1={x + (50 - x) * 0.2} y1={31} x2={50 + (x - 50) * 0.25} y2={41} power={power} />;
+        })}
+        {/* battery <-> house: + = discharging towards the house; further batteries below, into the house's side */}
+        {batteries ? batteries.map((b, i) => (
+          <Link key={b.key} x1={23} y1={HOUSE.y - 4 + i * BATTERY_STEP} x2={38} y2={LINE_Y + Math.min(i, 1) * 6} power={stale ? null : b.power} />
+        )) : <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />}
         {/* grid <-> house: + = import towards the house (drawn from grid side) */}
         <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale || snap?.off_grid ? null : snap?.grid_power ?? null} />
         {/* house -> devices */}
@@ -184,20 +233,32 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         })}
       </svg>
 
-      {external == null ? <Node x={50} y={16} h={h} icon={<SolarIcon />} name="sun" onTap={() => press("up")}>{kw(snap?.pv_power)}</Node> : (
-        <>
-          <Node x={30} y={16} h={h} icon={<SolarIcon />} name="sun" onTap={() => press("up")}>
-            {kw(ownPv)}
-            <div className="soc">{t("overview.energyFlow.inverterPv")}</div>
-          </Node>
-          <Node x={70} y={16} h={h} icon={<SolarIcon />} name="sun-external">
-            {kw(external)}
-            <div className="soc clip">{externalLabel}</div>
-          </Node>
-        </>
-      )}
+      {suns.map((s, i) => (
+        <Node key={s.key} x={sunX(i, suns.length)} y={16} h={h} icon={<SolarIcon />}
+          name={i === 0 ? "sun" : s.key === "external" ? "sun-external" : "sun-more"} onTap={i === 0 ? () => press("up") : undefined}>
+          {kw(s.power)}
+          {s.label && <div className="soc clip">{s.label}</div>}
+        </Node>
+      ))}
       <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
-      <Node x={12} y={HOUSE.y} h={h} icon={
+      {batteries ? batteries.map((b, i) => {
+        const flow = direction(b.power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging"));
+        // grid charging charges the first battery only (#619)
+        const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && i === 0);
+        return (
+          <Node key={b.key} x={12} y={HOUSE.y + i * BATTERY_STEP} h={h} icon={
+            <span className="battery-with-source">
+              <BatteryIcon soc={b.soc} />
+              {from && <span className={`charge-source ${from}`} title={from === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>
+                {from === "sun" ? <SunGlyph /> : "€"}</span>}
+            </span>}
+            name={i === 0 ? "battery" : "battery-more"} onTap={i === 0 ? () => press("left") : undefined}>
+            {kw(b.power)}
+            <div className="soc clip">{b.label}</div>
+            <div className="soc">{percent(b.soc)}{flow ? ` · ${flow}` : ""}</div>
+          </Node>
+        );
+      }) : <Node x={12} y={HOUSE.y} h={h} icon={
         <span className="battery-with-source">
           <BatteryIcon soc={snap?.battery_soc ?? null} />
           {source && <span className={`charge-source ${source}`} title={source === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>
@@ -206,7 +267,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {kw(snap?.battery_power)}
         <div className="soc">{percent(snap?.battery_soc)}{battery ? ` · ${battery}` : ""}</div>
         {retro && <div className="soc lives">{t("overview.retro.lives")}</div>}
-      </Node>
+      </Node>}
       <Node x={88} y={HOUSE.y} h={h} icon={<span className="grid-with-coins"><GridIcon />
         {retro && !stale && !snap?.off_grid && (snap?.grid_power ?? 0) < -IDLE_W && <CoinSprite />}</span>}
         name="grid" onTap={() => press("right")}>
@@ -214,7 +275,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {grid && <div className="soc">{grid}</div>}
       </Node>
       {shown.map((d, i) => (
-        <Node key={d.key} x={deviceX(i, shown.length)} y={DEVICE_Y} h={h} small icon={<DeviceIcon kind={d.kind} size={64} />}
+        <Node key={d.key} x={deviceX(i, shown.length)} y={DEVICE_Y + extra} h={h} small icon={<DeviceIcon kind={d.kind} size={64} />}
           iconRef={(el) => { deviceIcons.current[i] = el; }}>
           {kw(d.power_w)}
           <div className="soc">{d.name}{d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</div>

@@ -164,3 +164,18 @@ test("an inverter already in the first one that does not answer leaves the sums 
   await expect(page.locator(".device-row-compact", { hasText: "Garage" })).toContainText("Keine aktuellen Werte");
   await expect(page.getByText("zeigt die Übersicht keine Summe")).toHaveCount(0);
 });
+
+test("the energy flow draws a sun and a battery for each inverter", async ({ page, api }) => {
+  api.live({ pv_power: 6800, battery_power: -1300, battery_soc: 55, house_power: 5100, grid_power: -400, inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 3200, battery_power: -800, battery_soc: 62 },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 2100, battery_power: -500, battery_soc: 48 },
+    { id: "wr3", name: "Stall", connected: true, pv_power: 1500, battery_power: null, battery_soc: null },
+    { id: "wr4", name: "Keller", connected: true, pv_power: 900, battery_power: 0, battery_soc: 70, in_first: true }] });
+  await open(page, "");
+  const flow = page.locator(".flow");
+  await expect(flow.locator(".flow-node.sun, .flow-node.sun-more")).toHaveCount(3);  // not the one in the first
+  await expect(flow.locator(".flow-node.battery, .flow-node.battery-more")).toHaveCount(2);  // Stall has none
+  await expect(flow.locator(".flow-node.battery-more")).toContainText("Garage");
+  await expect(flow).toHaveAttribute("aria-label", /Stall 1,50 kW/);
+  expect(await layoutProblems(page)).toEqual([]);
+});

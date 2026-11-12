@@ -322,7 +322,7 @@ certificate is `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886
 
 If your installation has more than one inverter or battery with its own network connection (for example two batteries), set up one as usual first. Add the others under **Mehr → Verbindung → Weitere Wechselrichter** (More → Connection → Further inverters): search the network or enter the address, test the connection, give it a name.
 
-- **Overview and report** show the sum of all inverters. Below, each inverter is shown on its own with solar power, battery and state of charge. A report per inverter is not available yet.
+- **Overview:** the energy flow shows a sun and a battery of its own for each inverter, with its name and state of charge (up to four suns and three batteries, the sum beyond that). Below, each inverter is listed once more. The report shows the sum of all inverters; a report per inverter is not available yet.
 - **Grid:** all inverters at one house connection measure the same, so OpenAmpere takes the grid power from the first one. If an inverter is connected to a meter of its own, switch on **Misst einen eigenen Netzanschluss** (measures a grid connection of its own) for it.
 - **Parallel system:** if the inverters are connected so that the first one already reports the values of all, switch on **Werte stecken schon im ersten Wechselrichter** (values are already in the first inverter) for the other one. Otherwise OpenAmpere counts it twice. If unsure, compare the solar power of the first one with its own display or the manufacturer's app.
 - **Battery size:** enter the usable size of each inverter's battery, then the combined state of charge is right. Without sizes all batteries count the same.
