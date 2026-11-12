@@ -277,6 +277,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     rediscovery = Rediscovery(runtime)
     charging = AllGridCharging(runtime)  # every battery OpenAmpere controls (#619)
+    runtime.before_extras_change = charging.release_removed
     gridmeter = GridMeter(runtime)
     billing = Billing(runtime.storage, runtime.tariffs, gridmeter)
     evcc = Evcc(runtime)

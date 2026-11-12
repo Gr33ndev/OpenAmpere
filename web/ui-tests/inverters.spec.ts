@@ -269,3 +269,11 @@ for (const width of [360, 393]) {
     expect(boxes.filter((b) => b.left < 0 || b.right > width).map((b) => b.name)).toEqual([]);
   });
 }
+
+test("grid charging asks for the size of each battery while one is missing", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  const inverters = status.inverters ?? [];
+  api.override("/api/status", { ...status, inverters: [inverters[0], { ...inverters[1], capacity_kwh: 0 }] });
+  await open(page, "devices/charging");
+  await expect(page.getByText("bei jedem Wechselrichter die Größe seines Speichers")).toBeVisible();
+});

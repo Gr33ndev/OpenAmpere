@@ -8,7 +8,7 @@ import logging
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 from zoneinfo import ZoneInfo
 
 from . import eeg, logs, tls
@@ -75,6 +75,9 @@ class Runtime:
         self.tls_error: str | None = None  # the HTTPS port could not be opened (#76)
         # set by the server: ends it, after which the process starts again (a restored backup is put in place then)
         self.restart_hook: Callable[[], None] | None = None
+        # set by the server: releases what it started at further inverters about to be replaced (grid charging, #619);
+        # called with the ids of the further inverters that stay
+        self.before_extras_change: Callable[[set[str]], Awaitable[None]] | None = None
         self.restart_requested = False
         self.config, self.locked = build_config(file_values, self._load_settings())
         logs.apply_level(self.config.log.level)
@@ -252,6 +255,12 @@ class Runtime:
         self.collector.main_name, self.collector.main_capacity = new.inverter.name, new.inverter.capacity_kwh
         if (old.inverters != new.inverters or old.pv.external != new.pv.external
                 or old.inverter.poll_interval != new.inverter.poll_interval):
+            if self.before_extras_change is not None:  # while the old collectors still run
+                keep = {e.id for e in new.inverters if not e.in_first and e in old.inverters}
+                try:
+                    await self.before_extras_change(keep)
+                except Exception as err:  # noqa: BLE001 - the settings change anyway; a SAJ slot ends by itself
+                    log.warning("could not release the further inverters before the change: %s", err)
             await self.collector.set_extras(self._make_extras(new))
         self.collector.external_pv = new.pv.external
         self.collector.rated_power = (new.grid.rated_power_reported_w, new.grid.rated_power_w)

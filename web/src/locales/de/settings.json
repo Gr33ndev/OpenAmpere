@@ -997,6 +997,7 @@
     "inFirst": "Werte stecken schon im ersten Wechselrichter",
     "inFirstHint": "Einschalten, wenn die Wechselrichter als Parallelsystem zusammengeschaltet sind und der erste schon die Werte aller meldet (Solarleistung und Speicher zusammen). OpenAmpere zählt diesen dann nicht noch einmal dazu und zeigt seine Werte nur in einer Zeile unter dem Energiefluss. Zum Prüfen bei ausgeschaltetem Schalter: Vergleiche die Solarleistung an der Sonne des ersten Wechselrichters im Energiefluss mit der Summe, die beide Wechselrichter gleichzeitig auf ihren eigenen Anzeigen zeigen. Entspricht sie der Summe, schalte das ein. Entspricht sie nur dem Anteil des ersten, lass es aus.",
     "chargingAll": "OpenAmpere lädt alle Speicher gleichzeitig aus dem Netz, so entlädt sich keiner in einen anderen. Ladeleistung und Speichergröße hier gelten für alle zusammen und werden nach der Größe der Speicher aufgeteilt (Mehr → Verbindung).",
-    "chargingState": "{name}: {state}"
+    "chargingState": "{name}: {state}",
+    "chargingSizesMissing": "Trage unter Mehr → Verbindung bei jedem Wechselrichter die Größe seines Speichers ein. Solange eine fehlt, gilt die Speichergröße hier für alle Speicher zusammen. War sie für den ersten Speicher allein eingetragen, lädt OpenAmpere sonst zu wenig."
   }
 }

@@ -112,6 +112,14 @@ def chargeable(runtime: Runtime) -> list:
             if e.has_battery and not e.entry.in_first and (e.device is None or e.device.supports_control)]
 
 
+def battery_sizes(runtime: Runtime) -> dict | None:
+    """The size (kWh) of each battery charged, by ExtraCollector (None for the first one), when every one is entered;
+    None with one inverter or while one size is unknown."""
+    extras = chargeable(runtime)
+    sizes = {None: runtime.config.inverter.capacity_kwh, **{id(e): e.entry.capacity_kwh for e in extras}}
+    return sizes if extras and all(size > 0 for size in sizes.values()) else None
+
+
 def battery_share(runtime: Runtime, source=None) -> float:
     """The part of the charging power and battery size of the settings for one battery: by the size of each battery
     that is charged, equally while one size is unknown; 1 with one inverter."""
@@ -181,6 +189,11 @@ class GridCharging:
     def _command(self) -> dict:
         return command_of(self.runtime, self.source)
 
+    def pending(self) -> bool:
+        """OpenAmpere's command to this battery is not released yet."""
+        command = self._command()
+        return self.active or (bool(command) and not command.get("released"))
+
     def _set_command(self, command: dict) -> None:
         set_command_of(self.runtime, command, self.source)
 
@@ -192,7 +205,11 @@ class GridCharging:
         device = self.collector.device
         if device is not None and device.rated_power_w:  # never more than this inverter takes
             power = min(power, device.rated_power_w)
-        return max(MIN_CHARGE_W, power), s.battery_kwh * share
+        # the size entered for this inverter when all are known: the size on the charging page may still be the one
+        # battery's from before a further inverter was added
+        sizes = battery_sizes(self.runtime)
+        size = sizes.get(None if self.source is None else id(self.source)) if sizes else None
+        return max(MIN_CHARGE_W, power), size if size else s.battery_kwh * share
 
     # ---- settings ------------------------------------------------------------
 
@@ -599,18 +616,39 @@ class AllGridCharging:
         self.runtime = runtime
         self.main = GridCharging(runtime)
         self._extra: dict[str, GridCharging] = {}
+        # chargers of batteries no longer charged whose command is not released yet: released on the next ticks
+        # (a SAJ has no watchdog, only its release puts back the owner's mode and slot, #377)
+        self._dropped: list[GridCharging] = []
 
     def chargers(self) -> list[GridCharging]:
         """The first battery's and one for each further one charged now; one made again for a new ExtraCollector
-        (its settings changed). One that is no longer charged keeps nothing running: its remote control ends by its
-        watchdog or its slot, and a pending release is done when it is charged again."""
+        (its settings changed). One that drops out (marked as part of the first one, no control any more) is kept to
+        be released while its command is pending."""
         current = {}
         for extra in chargeable(self.runtime):
             charger = self._extra.get(extra.entry.id)
             current[extra.entry.id] = charger if charger is not None and charger.source is extra else GridCharging(
                 self.runtime, extra)
+        for inverter_id, charger in self._extra.items():
+            if current.get(inverter_id) is not charger and charger.pending():
+                self._dropped.append(charger)
         self._extra = current
         return [self.main, *current.values()]
+
+    async def release_dropped(self) -> None:
+        """Releases the batteries no longer charged (see _dropped), as long as their inverter is still read."""
+        for charger in list(self._dropped):
+            if charger.collector.driver is not None and charger.collector.connected:
+                await charger.stop("Speicher wird nicht mehr aus dem Netz geladen")
+            if not charger.pending() or charger.collector._task is None:  # released, or no longer read at all
+                self._dropped.remove(charger)
+
+    async def release_removed(self, keep: set[str]) -> None:
+        """Before further inverters are replaced (their settings changed or removed): releases the charge of every one
+        not in `keep` while its collector still runs."""
+        for inverter_id, charger in list(self._extra.items()):
+            if inverter_id not in keep:
+                await charger.stop("Wechselrichter entfernt oder als Teil des ersten markiert")
 
     @property
     def settings(self) -> ChargingSettings:
@@ -633,9 +671,10 @@ class AllGridCharging:
     async def tick(self, now: float | None = None) -> None:
         for charger in self.chargers():
             await charger.tick(now)
+        await self.release_dropped()
 
     async def stop(self, reason: str, *, error: bool = False) -> None:
-        for charger in self.chargers():
+        for charger in [*self.chargers(), *self._dropped]:
             try:
                 await charger.stop(reason, error=error)
             except Exception:  # noqa: BLE001 - every battery is released, one error must not skip the others

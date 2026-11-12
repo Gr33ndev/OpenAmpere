@@ -4,6 +4,7 @@
 
 import asyncio
 import time
+from dataclasses import asdict
 
 import httpx
 import pytest
@@ -554,3 +555,43 @@ async def test_other_apps_read_and_set_the_battery_of_each_inverter(tmp_path):
                                          json={"min_soc_on_grid": 30})).status_code == 404
         finally:
             await runtime.collector.stop()
+
+
+async def test_a_battery_no_longer_charged_gets_the_owners_settings_back(tmp_path):
+    """A SAJ has no watchdog (#377): marked as part of the first one during a charge, its slot and mode are put back."""
+    from openampere.charging import AllGridCharging
+    from openampere.drivers.saj import registers as saj
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            charging = AllGridCharging(runtime)
+            runtime.before_extras_change = charging.release_removed
+            owner_mode = second.regs[saj.APP_MODE_ADDRESS]
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 4000})
+            await charging.tick()
+            assert second.energy.remote_enabled and second.regs[saj.APP_MODE_ADDRESS] == saj.APP_MODE_TIME
+            entry = {**asdict(runtime.config.inverters[0]), "in_first": True}
+            await runtime.update_settings({"inverters": [entry]})
+            assert not second.energy.remote_enabled and second.regs[saj.APP_MODE_ADDRESS] == owner_mode
+            assert first.energy.remote_enabled  # the first one charges on
+        finally:
+            await runtime.collector.stop()
+
+
+def test_each_battery_plans_with_its_own_size_when_all_are_entered():
+    """The size on the charging page may still be the one battery's from before; the entered sizes count (#619)."""
+    from types import SimpleNamespace
+
+    from openampere.charging import ChargingSettings, GridCharging
+
+    extra = SimpleNamespace(entry=ExtraInverter(id="wr2", host="x", capacity_kwh=10), has_battery=True, device=None,
+                            own=None)
+    runtime = SimpleNamespace(collector=SimpleNamespace(extras=[extra], device=None, own=None),
+                              config=SimpleNamespace(inverter=SimpleNamespace(capacity_kwh=10)))
+    settings = ChargingSettings(power_w=4000, battery_kwh=10)
+    assert GridCharging(runtime)._mine(settings) == (2000, 10)
+    assert GridCharging(runtime, extra)._mine(settings) == (2000, 10)
+    runtime.config.inverter.capacity_kwh = 0  # one size unknown: the size on the charging page, shared
+    assert GridCharging(runtime, extra)._mine(settings) == (2000, 5)
