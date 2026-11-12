@@ -176,7 +176,7 @@ test("the energy flow draws a sun and a battery for each inverter", async ({ pag
   await expect(flow.locator(".flow-node.sun, .flow-node.sun-more")).toHaveCount(3);  // not the one in the first
   await expect(flow.locator(".flow-node.battery, .flow-node.battery-more")).toHaveCount(2);  // Stall has none
   await expect(flow.locator(".flow-node.battery-more")).toContainText("Garage");
-  await expect(flow.locator(".flow-node.battery")).toContainText("Haus");  // in the row below the house
+  await expect(flow.locator(".flow-node.battery")).toContainText("Haus");
   await expect(flow).toHaveAttribute("aria-label", /Stall 1,50 kW/);
   expect(await layoutProblems(page)).toEqual([]);
 });
