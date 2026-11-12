@@ -434,16 +434,16 @@
         "en": "from late 2022"
       },
       "note": {
-        "de": "Bei älterer Firmware des WLAN-Moduls beim Einrichten Port 5743 eintragen.",
-        "en": "With older firmware of the Wi-Fi module, enter port 5743 in the setup."
+        "de": "Das WLAN-Modul nimmt nur eine Verbindung an: Andere Programme, die den Speicher lesen (z. B. die Modbus-Integration von Home Assistant), vor dem Einrichten abschalten. Bei älterer Firmware des Moduls Port 5743 eintragen.",
+        "en": "The Wi-Fi module takes only one connection: switch off other programs that read the storage (e.g. the Modbus integration of Home Assistant) before the setup. With older firmware of the module, enter port 5743."
       },
       "names": {
         "period": "from 2022-10",
         "sold": "M-TEC Energy-Butler",
         "model": "M-TEC Energy-Butler GEN3: 10 kW hybrid, about 11 kWh",
-        "interface": "Modbus over TCP through the Wi-Fi/LAN module, port 5743 (502 on newer module firmware); unit id (252, 247 or 255) and framing (RTU frames or plain Modbus TCP) differ between sources. The inverter is a Solinteg.",
+        "interface": "Modbus over TCP through the Wi-Fi/LAN module, port 5743 (502 on newer module firmware); unit id (252, 247 or 255) and framing (RTU frames or plain Modbus TCP) differ between sources; one EKD unit answered on 502 with RTU frames on unit 252. Only one Modbus connection at a time. The inverter is a Solinteg.",
         "openampere": "driver `mtec`, display only ([mtec/energy-butler.md](../mtec/energy-butler.md))",
-        "status": "documented (sale), derived (interface), open (unit id, framing)",
+        "status": "documented (sale), derived (interface), confirmed on one unit (port 502, RTU frames, unit 252, one connection)",
         "source": "[EKD news on the M-TEC Energy-Butler](https://www.ekd-solar.de/news/energiekonzepte-deutschland-erweitert-portfolio-mit-modularem-energy-butler-von-m-tec/); croedel/MTECmqtt up to commit 32cdf27 (MIT); evcc template `solinteg-gen3` (MIT); [#520](https://github.com/Gr33ndev/OpenAmpere/issues/520)"
       },
       "support": "mtec"
