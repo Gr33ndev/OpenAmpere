@@ -206,7 +206,10 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const label = snap
     ? [t("overview.energyFlow.solarPower", { power: kw(snap.pv_power) }),
        ...(split.suns ? split.suns.map((s) => `${s.label} ${kw(s.power)}`) : external != null ? [`${externalLabel} ${kw(external)}`] : []),
-       ...(batteries ?? []).map((b) => `${b.label} ${kw(b.power)}, ${percent(b.soc)}`),
+       ...(batteries ?? []).map((b) => {
+         const flow = direction(b.power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging"));
+         return `${b.label} ${kw(b.power)}${flow ? ` ${flow}` : ""}, ${percent(b.soc)}`;
+       }),
        t("overview.energyFlow.housePower", { power: kw(house) }),
        `${t("overview.energyFlow.batteryPower", { power: kw(snap.battery_power) })}${battery ? ` ${battery}` : ""}, ${percent(snap.battery_soc)}`,
        `${t("overview.energyFlow.gridPower", { power: kw(snap.grid_power) })}${grid ? ` ${grid}` : ""}`,
@@ -272,8 +275,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
                 {from === "sun" ? <SunGlyph /> : "€"}</span>}
             </span>}
             name={first ? "battery" : "battery-more"} onTap={first ? () => press("left") : undefined}>
-            {kw(b.power)}
-            <div className="soc clip" title={flow ?? undefined}>{b.label} · {percent(b.soc)}</div>
+            {/* the direction shown, not only as a tooltip: two batteries can work against each other (#619) */}
+            {kw(b.power)}{flow ? ` ${flow}` : ""}
+            <div className="soc clip">{b.label} · {percent(b.soc)}</div>
           </Node>
         );
       }) : <Node x={12} y={HOUSE.y} h={h} icon={

@@ -235,3 +235,13 @@ test("the combined battery power says which way it goes", async ({ page, api }) 
   await open(page, "");
   await expect(page.locator(".flow-total")).toContainText("Speicher 1,30 kW entlädt");
 });
+
+test("each battery says whether it charges or discharges", async ({ page, api }) => {
+  api.live({ battery_power: 0, battery_soc: 55, inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 0, battery_power: 1500, battery_soc: 62 },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 0, battery_power: -1500, battery_soc: 48 }] });
+  await open(page, "");
+  await expect(page.locator(".flow .flow-node.battery")).toContainText("1,50 kW entlädt");
+  await expect(page.locator(".flow .flow-node.battery-more")).toContainText("1,50 kW lädt");
+  await expect(page.locator(".flow")).toHaveAttribute("aria-label", /Garage 1,50 kW lädt, 48 %/);
+});
