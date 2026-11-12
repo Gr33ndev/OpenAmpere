@@ -623,3 +623,23 @@ async def test_a_charge_goes_on_when_the_inverter_is_read_anew(tmp_path):
             assert charging.view()["sizes_missing"] is True  # no size entered
         finally:
             await runtime.collector.stop()
+
+
+async def test_renaming_or_sizing_an_inverter_during_a_charge_does_not_release_it(tmp_path):
+    from openampere.charging import REMOTE_COMMANDS_EXTRA, AllGridCharging
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            charging = AllGridCharging(runtime)
+            runtime.before_extras_change = charging.release_removed
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 4000})
+            await charging.tick()
+            entry = {**asdict(runtime.config.inverters[0]), "name": "Scheune", "capacity_kwh": 10}
+            await runtime.update_settings({"inverters": [entry]})
+            assert not runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)["wr2"]["released"]
+            assert second.energy.remote_enabled
+            assert not [e for e in runtime.storage.control_log(20) if "entfernt" in (e["result"] or "")]
+        finally:
+            await runtime.collector.stop()

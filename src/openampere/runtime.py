@@ -256,7 +256,9 @@ class Runtime:
         if (old.inverters != new.inverters or old.pv.external != new.pv.external
                 or old.inverter.poll_interval != new.inverter.poll_interval):
             if self.before_extras_change is not None:  # while the old collectors still run
-                keep = {e.id for e in new.inverters if not e.in_first and e in old.inverters}
+                # the same device stays charged: only a removal, another address or a parallel system releases it
+                same = {(e.id, e.host, e.port, e.unit, e.driver) for e in old.inverters}
+                keep = {e.id for e in new.inverters if not e.in_first and (e.id, e.host, e.port, e.unit, e.driver) in same}
                 try:
                     await self.before_extras_change(keep)
                 except Exception as err:  # noqa: BLE001 - the settings change anyway; a SAJ slot ends by itself
