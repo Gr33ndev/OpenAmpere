@@ -46,6 +46,8 @@ export type InverterReading = {
   connected: boolean;
   /** away for some minutes: not part of the combined values until it answers again */
   left_out?: boolean;
+  /** part of a parallel system: its values are already in the first inverter's, it is only shown */
+  in_first?: boolean;
   pv_power?: number | null;
   pv_external_power?: number | null;
   battery_power?: number | null;
@@ -68,6 +70,8 @@ export type ExtraInverter = {
   connection_mode: "persistent" | "per_poll";
   capacity_kwh: number;
   own_grid: boolean;
+  /** its values are already in the first inverter's (a parallel system): shown, not added */
+  in_first: boolean;
   rated_power_w: number;
   rated_power_reported_w: number;
 };
@@ -135,6 +139,7 @@ export type InverterStatus = {
   device: Status["device"];
   capacity_kwh: number;
   own_grid: boolean;
+  in_first?: boolean;
   stale?: boolean;
 };
 

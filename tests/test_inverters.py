@@ -434,3 +434,26 @@ async def test_the_number_of_inputs_is_kept_over_a_restart(tmp_path):
     assert ExtraCollector(entry, None, storage, 10).input_count == 2  # after a restart, before it answers
     moved = ExtraInverter(id="wr2", host="192.168.1.40")  # another device at the id
     assert ExtraCollector(moved, None, storage, 10).input_count == 0
+
+
+def test_an_inverter_whose_values_the_first_already_has_is_only_shown():
+    """A parallel system: the first inverter reports the values of all, the other is not added again."""
+    own = reading(5000, -1000, 50, grid=-300, totals=counters(1000, 500, 300, 200, 100), inputs=(2500, 2500))
+    follower = ExtraInverter(id="wr2", name="Garage", host="x", in_first=True)
+    part = Extra(follower, reading(2000, -400, 60, totals=counters(400, 0, 0, 50, 30), inputs=(2000,)))
+    sums = ExtraCounters()
+    snap = combine(own, [part], counters=sums)
+    assert (snap.pv_power, snap.battery_power, snap.battery_soc, snap.house_power) == (5000, -1000, 50, 3700)
+    assert snap.totals.pv == 1000 and "wr2" not in sums.state
+    assert snap.inverters[1]["in_first"] is True and snap.inverters[1]["pv_power"] == 2000
+    assert [i.power for i in snap.pv_inputs] == [2500, 2500, 2000]  # its inputs are shown, not added to PV
+    # away: nothing goes missing, it is not part of the sums anyway
+    away = Extra(follower, None, fresh=False)
+    snap = combine(own, [away], counters=sums)
+    assert snap.pv_power == 5000 and snap.inverters[1].get("left_out") is None
+
+
+def test_the_parallel_setting_is_kept():
+    clean = validate({"inverters": [{"host": "192.168.1.31", "in_first": True}]})
+    assert clean["inverters"][0]["in_first"] is True
+    assert build_config({}, clean)[0].inverters[0].in_first is True

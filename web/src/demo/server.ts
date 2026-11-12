@@ -197,7 +197,7 @@ const settings = {
     "inverter.name": "Haus", "inverter.capacity_kwh": BATTERY_WH / 2000,
     inverters: [{ id: "wr2", name: "Garage", driver: "saj", host: "garage-speicher.local", port: 502, unit: 0, register_map: "auto",
       read_function: "auto", timeout: 3, connection_mode: "persistent", capacity_kwh: BATTERY_WH / 2000, own_grid: false,
-      rated_power_w: 0, rated_power_reported_w: 0 }],
+      in_first: false, rated_power_w: 0, rated_power_reported_w: 0 }],
     "control.enabled": true, "control.dry_run": true, "tariff.electricity_price_ct": PRICE_CT, "tariff.feed_in_ct": FEED_IN_CT,
     "tariff.feed_in_auto": true, "tariff.feed_in_full": false, "pv.commissioning_date": COMMISSIONED,
     timezone: "Europe/Berlin", "pv.input_names": INPUT_NAMES, "pv.hidden_inputs": [], "pv.external": false, "pv.external_name": "", "pv.installed_kwp": KWP, "grid.feed_in_rule": "limit_60",

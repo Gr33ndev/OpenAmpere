@@ -14,7 +14,9 @@ number, temporary errors, backoff). Before the first inverter's reading is store
   marked `own_grid` measures a grid connection of its own, its grid power and counters are added;
 - the house is the balance grid + PV + battery, not what the inverters report: each of them sees the other batteries
   as part of the house;
-- the state of charge is weighted by the capacity of each battery when all are known, otherwise the average.
+- the state of charge is weighted by the capacity of each battery when all are known, otherwise the average;
+- a further inverter marked `in_first` is part of a parallel system whose first inverter already reports the values
+  of all: it is shown on its own, but nothing of it is added (it would count twice). Its PV inputs keep their places.
 
 A further inverter without a recent reading makes the combined values it takes part in missing (None): a sum without
 it would be too low, and a wrong value is worse than a missing one. That holds for a short while (GONE_AFTER_S, the
@@ -184,11 +186,13 @@ def combined_soc(parts: list[tuple[Snapshot, float]]) -> float | None:
     return sum(soc for soc, _ in socs) / len(socs)
 
 
-def _part(inverter_id: str, name: str, snap: Snapshot | None, left_out: bool = False) -> dict:
-    """What the app shows of one inverter. left_out: away for long, not part of the combined values."""
+def _part(inverter_id: str, name: str, snap: Snapshot | None, left_out: bool = False, in_first: bool = False) -> dict:
+    """What the app shows of one inverter. left_out: away for long, not part of the combined values. in_first: its
+    values are already in the first inverter's (a parallel system), it is only shown."""
+    flags = {**({"left_out": True} if left_out else {}), **({"in_first": True} if in_first else {})}
     if snap is None:
-        return {"id": inverter_id, "name": name, "connected": False, **({"left_out": True} if left_out else {})}
-    return {"id": inverter_id, "name": name, "connected": True, "pv_power": snap.pv_power,
+        return {"id": inverter_id, "name": name, "connected": False, **flags}
+    return {"id": inverter_id, "name": name, "connected": True, **flags, "pv_power": snap.pv_power,
             "pv_external_power": snap.pv_external_power, "battery_power": snap.battery_power,
             "battery_soc": snap.battery_soc, "grid_power": snap.grid_power, "alarms": list(snap.alarms)}
 
@@ -255,11 +259,13 @@ def combine(own: Snapshot, extras: list[ExtraCollector], main_name: str = "", ma
     counters = counters if counters is not None else ExtraCounters()
     everyone = [(e, e.latest if e.fresh(now) else None) for e in extras]
     gone = {e.entry.id for e, r in everyone if r is None and e.gone(now)}
-    readings = [(e, r) for e, r in everyone if e.entry.id not in gone]
+    # one whose values the first inverter already reports (a parallel system, `in_first`) is only shown
+    readings = [(e, r) for e, r in everyone if e.entry.id not in gone and not e.entry.in_first]
     counters.forget({e.entry.id for e, _ in readings})
     snap = copy.deepcopy(own)
-    snap.inverters = [_part(MAIN_INVERTER, main_name, own)] + [_part(e.entry.id, e.name, r, e.entry.id in gone)
-                                                               for e, r in everyone]
+    snap.inverters = [_part(MAIN_INVERTER, main_name, own)] + [
+        _part(e.entry.id, e.name, r, e.entry.id in gone and not e.entry.in_first, e.entry.in_first)
+        for e, r in everyone]
     missing = any(r is None for _, r in readings)
     present = [(e, r) for e, r in readings if r is not None]
     if missing:

@@ -105,6 +105,7 @@
     "discharging": "entlädt mit {power}",
     "idle": "Speicher ruht",
     "missingHint": "Liefert ein Wechselrichter für kurze Zeit keine aktuellen Werte, zeigt die Übersicht keine Summe für Solarleistung und Speicher. Eine Summe ohne ihn wäre zu niedrig.",
-    "leftOutHint": "„{name}“ antwortet seit einigen Minuten nicht. Bis er wieder antwortet, zählt OpenAmpere ihn nicht zu Solarleistung und Speicher dazu. Was er in der Zeit erzeugt oder gespeichert hat, fehlt in der Auswertung."
+    "leftOutHint": "„{name}“ antwortet seit einigen Minuten nicht. Bis er wieder antwortet, zählt OpenAmpere ihn nicht zu Solarleistung und Speicher dazu. Was er in der Zeit erzeugt oder gespeichert hat, fehlt in der Auswertung. Prüfe, ob er eingeschaltet und im Netzwerk erreichbar ist. Hat er eine neue Adresse bekommen, trage sie unter Mehr → Verbindung → Weitere Wechselrichter ein.",
+    "inFirst": "nur angezeigt, schon im ersten enthalten"
   }
 }

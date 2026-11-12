@@ -67,6 +67,8 @@ class ExtraInverter:
     connection_mode: str = "persistent"
     capacity_kwh: float = 0.0
     own_grid: bool = False
+    # its values are already in the first inverter's (a parallel system): shown on its own, not added (#619)
+    in_first: bool = False
     # the rated power from the type plate, confirmed for a device whose reported one does not fit its type (#492)
     rated_power_w: int = 0
     rated_power_reported_w: int = 0

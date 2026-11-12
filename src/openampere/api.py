@@ -262,10 +262,12 @@ def create_app(runtime: Runtime) -> FastAPI:
             return []
         items = [{"id": MAIN_INVERTER, "name": runtime.config.inverter.name, "connected": collector.connected,
                   "last_error": collector.last_error, "wrong_device": collector.wrong_device,
-                  "device": collector.device, "capacity_kwh": runtime.config.inverter.capacity_kwh, "own_grid": False}]
+                  "device": collector.device, "capacity_kwh": runtime.config.inverter.capacity_kwh, "own_grid": False,
+                  "in_first": False}]
         items += [{"id": e.entry.id, "name": e.entry.name, "connected": e.connected, "last_error": e.last_error,
                    "wrong_device": e.wrong_device, "device": e.device, "capacity_kwh": e.entry.capacity_kwh,
-                   "own_grid": e.entry.own_grid, "stale": not e.fresh()} for e in collector.extras]
+                   "own_grid": e.entry.own_grid, "in_first": e.entry.in_first, "stale": not e.fresh()}
+                  for e in collector.extras]
         for item in items:
             device = item["device"]
             item["device"] = dict(device.__dict__) if device else None

@@ -18,7 +18,7 @@ function newEntry(found: Detected): ExtraInverter {
   return {
     name: "", driver: found.driver as ExtraInverter["driver"],
     host: found.host, port: found.port, unit: found.unit, register_map: "auto", read_function: "auto", timeout: 3,
-    connection_mode: "persistent", capacity_kwh: 0, own_grid: false, rated_power_w: 0, rated_power_reported_w: 0,
+    connection_mode: "persistent", capacity_kwh: 0, own_grid: false, in_first: false, rated_power_w: 0, rated_power_reported_w: 0,
   };
 }
 
@@ -124,17 +124,18 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
   const [name, setName] = useState(entry.name);
   const [capacity, setCapacity] = useState(capacityText(entry.capacity_kwh));
   const [grid, setGrid] = useState(entry.own_grid);
+  const [inFirst, setInFirst] = useState(!!entry.in_first);
   const [mode, setMode] = useState(entry.connection_mode);
   const [timeout, setTimeoutValue] = useState(entry.timeout);
   const [registerMap, setRegisterMap] = useState(entry.register_map);
   const [readFunction, setReadFunction] = useState(entry.read_function);
   const [removing, setRemoving] = useState(false);
   useEffect(() => {
-    setName(entry.name); setCapacity(capacityText(entry.capacity_kwh)); setGrid(entry.own_grid); setMode(entry.connection_mode);
+    setName(entry.name); setCapacity(capacityText(entry.capacity_kwh)); setGrid(entry.own_grid); setInFirst(!!entry.in_first); setMode(entry.connection_mode);
     setTimeoutValue(entry.timeout); setRegisterMap(entry.register_map); setReadFunction(entry.read_function);
   }, [entry]);
   const capacityValue = parseCapacity(capacity);
-  const dirty = name.trim() !== entry.name || capacityValue !== entry.capacity_kwh || grid !== entry.own_grid
+  const dirty = name.trim() !== entry.name || capacityValue !== entry.capacity_kwh || grid !== entry.own_grid || inFirst !== !!entry.in_first
     || mode !== entry.connection_mode || timeout !== entry.timeout || registerMap !== entry.register_map
     || readFunction !== entry.read_function;
   const foxess = (item?.device?.driver ?? entry.driver) === "foxess";
@@ -153,8 +154,12 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
           onChange={(e) => setCapacity(e.target.value)} /><span>kWh</span></div>
       </Field>
       {capacityValue === null && <Notice kind="error">{t("settings.inverters.capacityInvalid")}</Notice>}
-      <SwitchRow label={t("settings.inverters.ownGrid")} hint={t("settings.inverters.ownGridHint")} checked={grid}
-        disabled={disabled} onChange={setGrid} />
+      <SwitchRow label={t("settings.inverters.inFirst")} hint={t("settings.inverters.inFirstHint")} checked={inFirst}
+        disabled={disabled} onChange={setInFirst} />
+      {!inFirst && (
+        <SwitchRow label={t("settings.inverters.ownGrid")} hint={t("settings.inverters.ownGridHint")} checked={grid}
+          disabled={disabled} onChange={setGrid} />
+      )}
       <Field label={t("common.connection")} hint={mode === "per_poll" ? t("settings.connectionPage.perPollHint")
         : t("settings.connectionPage.permanentHint")}>
         <Segmented value={mode} onChange={setMode} disabled={disabled}
@@ -185,7 +190,7 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
         )}
       </details>
       <Button variant="secondary" disabled={disabled || !dirty || capacityValue === null}
-        onClick={() => void onSave({ ...entry, name: name.trim(), capacity_kwh: capacityValue ?? 0, own_grid: grid,
+        onClick={() => void onSave({ ...entry, name: name.trim(), capacity_kwh: capacityValue ?? 0, own_grid: grid, in_first: inFirst,
           connection_mode: mode, timeout, register_map: registerMap, read_function: readFunction })}>
         {t("common.save")}
       </Button>
@@ -238,7 +243,7 @@ function InverterRow({ reading, index, stale }: { reading: InverterReading; inde
       <span className="grow">
         <strong>{name}</strong>
         <span className="menu-hint">{t("overview.inverterCards.solar", { power: kw(reading.pv_power ?? null) })}
-          {flow ? ` · ${flow}` : ""}</span>
+          {flow ? ` · ${flow}` : ""}{reading.in_first ? ` · ${t("overview.inverterCards.inFirst")}` : ""}</span>
       </span>
       {reading.battery_soc != null && <span className="device-today">{percent(reading.battery_soc)}</span>}
     </div>

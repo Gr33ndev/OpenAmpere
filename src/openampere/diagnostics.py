@@ -296,7 +296,7 @@ class Diagnostics:
             entry = extra.entry
             extras.append({"id": entry.id, "driver": entry.driver, "unit": entry.unit,
                            "connection": {"mode": entry.connection_mode, "timeout_s": entry.timeout},
-                           "own_grid": entry.own_grid, "capacity_known": entry.capacity_kwh > 0, "device": info,
+                           "own_grid": entry.own_grid, "in_first": entry.in_first, "capacity_known": entry.capacity_kwh > 0, "device": info,
                            "connected": extra.connected, "last_error": extra.last_error,
                            "wrong_device": extra.wrong_device, "fresh": extra.fresh()})
         return extras

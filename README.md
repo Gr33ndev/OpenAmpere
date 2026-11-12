@@ -75,6 +75,7 @@ Full list: [docs/devices.md](docs/devices.md), with what is read and controlled 
 - **Meter readings from the grid operator:** with a smart meter, OpenAmpere fetches the daily values from the grid operator's customer portal (**Mehr → Verbindung → Zählerwerte** (More → Connection → Meter readings)) and uses them to calculate the advance payments. Currently for Netze BW; other grid operators can be added as separate modules.
 - **Export:** energy values as a CSV file for Excel and similar tools.
 - **Battery & backup power:** backup power reserve, charge limits, operating mode
+- **Several inverters:** up to five further inverters or batteries in one installation, also of different makes, each with its own name. The overview shows the sum and each one on its own; battery settings can be changed per inverter. See [Several inverters](#several-inverters).
 - **Feed-in limit:** view and change the maximum feed-in power. You enter the installed module power (kWp) and the applicable rule: 60 % under the Solarspitzengesetz (German solar peak law; until a smart metering system with a control box is installed), the former 70 % rule, a fixed value from the grid connection approval (e.g. zero feed-in) or no limit. The percentages refer to the module power, not the inverter; the app does not allow more than the rule permits. **With a fixed value from the grid operator, any increase is only permitted with the grid operator's written consent**; the app requires a confirmation for this and logs the date and reference. "No limit" requires an explicit declaration, which is also logged.
 - **Import history from the EKD cloud:** for previous users of the "Ampere.IQ" app. Under **Mehr → Daten & Sicherung** (More → Data & backup), enter the API key from the Ampere.IQ app and start the import. The import only uses the public customer API with your own key; OpenAmpere has nothing to do with EKD, see [legal notes](#background--legal-notes).
   - It runs in the background with at most one request per minute.
@@ -316,6 +317,18 @@ Phones and computers in the home network open OpenAmpere at `http://<address of 
 downloaded and installed the same way; the app shows when one is out. What the tablet needs, how to keep it running and what is different there is in the guide
 [docs/android.md](docs/android.md). The app is signed with the project's key; the SHA-256 fingerprint of the
 certificate is `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Verifying a release](#verifying-a-release)).
+
+### Several inverters
+
+If your installation has more than one inverter or battery with its own network connection (for example two batteries), set up one as usual first. Add the others under **Mehr → Verbindung → Weitere Wechselrichter** (More → Connection → Further inverters): search the network or enter the address, test the connection, give it a name.
+
+- **Overview and report** show the sum of all inverters. Below, each inverter is shown on its own with solar power, battery and state of charge. A report per inverter is not available yet.
+- **Grid:** all inverters at one house connection measure the same, so OpenAmpere takes the grid power from the first one. If an inverter is connected to a meter of its own, switch on **Misst einen eigenen Netzanschluss** (measures a grid connection of its own) for it.
+- **Parallel system:** if the inverters are connected so that the first one already reports the values of all, switch on **Werte stecken schon im ersten Wechselrichter** (values are already in the first inverter) for the other one. Otherwise OpenAmpere counts it twice. If unsure, compare the solar power of the first one with its own display or the manufacturer's app.
+- **Battery size:** enter the usable size of each inverter's battery, then the combined state of charge is right. Without sizes all batteries count the same.
+- **Control:** battery settings can be changed per inverter (Geräte → Speicher, choose the inverter at the top). Charging from the grid and the export limit act on the first inverter only. A further battery in self-consumption mode discharges into the first one while that is charged from the grid.
+- **Outage:** if a further inverter does not answer for a short while, the overview shows no sum. After five minutes OpenAmpere leaves it out until it answers again and sends a notification.
+- **Home Assistant** gets a device of its own for each inverter with solar power, battery power and state of charge.
 
 ### Running behind a Modbus proxy
 

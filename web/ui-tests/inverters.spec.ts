@@ -142,3 +142,17 @@ test("grid charging warns that it can move energy between the batteries", async 
   await open(page, "devices/charging");
   await expect(page.getByText("von einem Speicher in den anderen")).toBeVisible();
 });
+
+test("an inverter of a parallel system can be marked as already in the first one", async ({ page }) => {
+  const bodies: Settings["values"][] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().endsWith("/api/settings")) bodies.push(request.postDataJSON());
+  });
+  await open(page, "more/connection");
+  const garage = page.getByTestId("inverter-wr2");
+  await garage.getByRole("switch", { name: "Werte stecken schon im ersten Wechselrichter" }).click();
+  await expect(garage.getByRole("switch", { name: "Misst einen eigenen Netzanschluss" })).toHaveCount(0);
+  await garage.getByRole("button", { name: "Speichern" }).click();
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0].inverters).toEqual([expect.objectContaining({ id: "wr2", in_first: true })]);
+});

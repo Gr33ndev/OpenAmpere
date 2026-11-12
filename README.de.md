@@ -73,6 +73,7 @@ Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je M
 - **Zählerwerte vom Netzbetreiber:** Mit Smart Meter holt OpenAmpere die Tageswerte aus dem Kundenportal des Netzbetreibers (Mehr → Verbindung → Zählerwerte) und rechnet die Abschläge damit. Bisher für Netze BW, weitere Netzbetreiber können als eigenes Modul dazukommen.
 - **Export:** Energiewerte als CSV-Datei für Excel und Co.
 - **Speicher & Notstrom:** Notstrom-Reserve, Ladegrenzen, Betriebsmodus
+- **Mehrere Wechselrichter:** bis zu fünf weitere Wechselrichter oder Speicher in einer Anlage, auch von verschiedenen Herstellern, jeder mit eigenem Namen. Die Übersicht zeigt die Summe und jeden einzeln, Speicher-Einstellungen gehen pro Wechselrichter. Siehe [Mehrere Wechselrichter](#mehrere-wechselrichter).
 - **Einspeisebegrenzung:** maximale Einspeiseleistung anzeigen und ändern. Man gibt die installierte Modulleistung (kWp) und die geltende Regel an: 60 % nach dem Solarspitzengesetz (bis ein intelligentes Messsystem mit Steuerbox eingebaut ist), die frühere 70-%-Regel, ein fester Wert aus der Netzanschlusszusage (z. B. Nulleinspeisung) oder keine Begrenzung. Die Prozente beziehen sich auf die Modulleistung, nicht auf den Wechselrichter; mehr als die Regel erlaubt, lässt die App nicht zu. **Bei einem festen Wert vom Netzbetreiber ist jede Erhöhung nur mit dessen schriftlicher Zustimmung zulässig**; die App verlangt dafür eine Bestätigung und protokolliert Datum und Zeichen. „Keine Begrenzung“ setzt eine ausdrückliche Erklärung voraus, die ebenfalls protokolliert wird.
 - **Verlauf aus der EKD-Cloud übernehmen:** Für bisherige Nutzer der App „Ampere.IQ“. Unter **Mehr → Daten & Sicherung** den API-Schlüssel aus der Ampere.IQ-App eintragen und den Import starten. Der Import nutzt nur die öffentliche Kunden-API mit dem eigenen Schlüssel; OpenAmpere hat nichts mit EKD zu tun, siehe [rechtliche Hinweise](#hintergrund--rechtliche-hinweise).
   - Er läuft im Hintergrund mit höchstens einer Anfrage pro Minute.
@@ -316,6 +317,18 @@ Handy und Computer im Heimnetz öffnen OpenAmpere unter `http://<Adresse des Tab
 und installierst du genauso; die App zeigt an, wenn eine da ist. Was das Tablet braucht, wie es durchläuft und was dort anders ist, steht in der Anleitung
 [docs/android.de.md](docs/android.de.md). Die App ist mit dem Schlüssel des Projekts signiert, der SHA-256-Fingerabdruck
 des Zertifikats ist `26952e8da7f7093cf8ea99622d1576c88d075896b851e8ba4ff792f109854886` ([Release prüfen](#release-prüfen)).
+
+### Mehrere Wechselrichter
+
+Hat deine Anlage mehr als einen Wechselrichter oder Speicher mit eigenem Netzwerkanschluss (zum Beispiel zwei Speicher), richte zuerst einen wie gewohnt ein. Die weiteren fügst du unter **Mehr → Verbindung → Weitere Wechselrichter** hinzu: im Netzwerk suchen oder die Adresse eingeben, Verbindung testen, einen Namen geben.
+
+- **Übersicht und Auswertung** zeigen die Summe aller Wechselrichter. Darunter steht jeder Wechselrichter einzeln mit Solarleistung, Speicher und Ladestand. Die Auswertung pro Wechselrichter gibt es noch nicht.
+- **Netz:** Alle Wechselrichter am selben Hausanschluss messen dasselbe, deshalb nimmt OpenAmpere den Netzbezug vom ersten. Hängt ein Wechselrichter an einem eigenen Stromzähler, schalte bei ihm **Misst einen eigenen Netzanschluss** ein.
+- **Parallelsystem:** Sind die Wechselrichter so zusammengeschaltet, dass der erste schon die Werte aller meldet, schalte beim weiteren **Werte stecken schon im ersten Wechselrichter** ein. Sonst zählt OpenAmpere ihn doppelt. Im Zweifel vergleiche die Solarleistung des ersten mit seiner eigenen Anzeige oder der App des Herstellers.
+- **Speichergröße:** Trage bei jedem Wechselrichter die nutzbare Größe seines Speichers ein, dann stimmt der gemeinsame Ladestand. Ohne Angaben zählen alle Speicher gleich.
+- **Steuern:** Die Speicher-Einstellungen änderst du pro Wechselrichter (Geräte → Speicher, oben den Wechselrichter wählen). Laden aus dem Netz und die Einspeisebegrenzung wirken nur auf den ersten Wechselrichter. Steht ein weiterer Speicher auf Eigenverbrauch, entlädt er sich beim Laden aus dem Netz in den ersten.
+- **Ausfall:** Antwortet ein weiterer Wechselrichter kurz nicht, zeigt die Übersicht keine Summe. Nach fünf Minuten zählt OpenAmpere ihn nicht mehr mit, bis er wieder antwortet, und schickt eine Benachrichtigung.
+- **Home Assistant** bekommt für jeden Wechselrichter ein eigenes Gerät mit Solarleistung, Speicherleistung und Ladestand.
 
 ### Betrieb hinter einem Modbus-Proxy
 
