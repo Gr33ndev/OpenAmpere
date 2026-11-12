@@ -165,6 +165,7 @@ nav.bottom button.active::after { background: var(--accent-text); }
 /* ---- energy flow ---- */
 .flow { position: relative; width: 100%; max-width: 380px; margin: 8px auto 0; aspect-ratio: 100 / 80; }
 .flow-node.small { font-size: 14px; min-width: 70px; transform: translate(-50%, -32px); } /* anchored at the icon centre, so extra text lines do not move it */
+.flow-node.small.tiny { transform: translate(-50%, -20px); } /* the small batteries of several inverters (#619): 40 px icon */
 .flow-node.small .soc { font-size: 12px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .flow-node {

@@ -20,8 +20,16 @@ const MAX_DEVICES = 4;
 // several inverters (#619): a sun and a battery each, up to these numbers; more are drawn as one with the sum
 const MAX_SUNS = 4;
 const MAX_BATTERIES = 2; // small, one above the other on the left of the house; a third would reach the sun
-const STACK = 24; // distance of the small batteries on the left
+const STACK = 24; // distance of the small batteries on the left, at least
 const SMALL_BATTERY = 40; // icon size of each of them
+// in px, from the anchor (icon centre) of a small battery: its node reaches this far up and down (icon, value, name),
+// a sun's node this far below its anchor, a device's this far above; the batteries keep these apart however narrow
+// the flow is (one unit is 1 % of its width)
+const BATTERY_UP_PX = 20;
+const BATTERY_DOWN_PX = 76;
+const SUN_DOWN_PX = 54;
+const DEVICE_UP_PX = 32;
+const SPACE_PX = 6;
 
 type Sun = { key: string; power: number | null; label: string | null };
 type Battery = { key: string; power: number | null; soc: number | null; label: string | null };
@@ -72,12 +80,12 @@ function Link({ x1, y1, x2, y2, power }: { x1: number; y1: number; x2: number; y
   );
 }
 
-function Node({ x, y, h, icon, children, small = false, iconRef, name, onTap }: {
-  x: number; y: number; h: number; icon: ReactNode; children: ReactNode; small?: boolean; iconRef?: Ref<HTMLDivElement>;
-  name?: string; onTap?: () => void;
+function Node({ x, y, h, icon, children, small = false, tiny = false, iconRef, name, onTap }: {
+  x: number; y: number; h: number; icon: ReactNode; children: ReactNode; small?: boolean; tiny?: boolean;
+  iconRef?: Ref<HTMLDivElement>; name?: string; onTap?: () => void;
 }) {
   return (
-    <div className={`flow-node ${small ? "small" : ""} ${name ?? ""}`} style={{ left: `${x}%`, top: `${(y / h) * 100}%` }}>
+    <div className={`flow-node ${small ? "small" : ""} ${tiny ? "tiny" : ""} ${name ?? ""}`} style={{ left: `${x}%`, top: `${(y / h) * 100}%` }}>
       {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a hidden easter egg for pointer users, no function needs it */}
       <div className="flow-icon" ref={iconRef} onClick={onTap}>{icon}</div>
       <div className="value">{children}</div>
@@ -166,9 +174,26 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
        { key: "external", power: external, label: externalLabel }]);
   const batteries = split.batteries;
   // several batteries (#619): small, one above the other where the battery is, around the house's height
-  const stackY = (i: number) => HOUSE.y + (i - ((batteries?.length ?? 1) - 1) / 2) * STACK;
-  const h = shown.length ? DEVICES_H : BASE_H;
   const container = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(330); // of the flow in px, measured
+  useLayoutEffect(() => {
+    const el = container.current;
+    if (!el) return;
+    const measure = () => { if (el.clientWidth) setWidth(el.clientWidth); };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  // several batteries (#619): far enough apart in px, below the suns' names; the devices move down if needed
+  const unit = width / 100;
+  const gap = batteries ? Math.max(STACK, (BATTERY_UP_PX + BATTERY_DOWN_PX + SPACE_PX) / unit) : 0;
+  const centre = batteries ? Math.max(HOUSE.y, 16 + (SUN_DOWN_PX + BATTERY_UP_PX + SPACE_PX) / unit + gap / 2) : HOUSE.y;
+  const stackY = (i: number) => centre + (i - ((batteries?.length ?? 1) - 1) / 2) * gap;
+  const lowest = centre + gap / 2;
+  const deviceY = batteries ? Math.max(DEVICE_Y, lowest + (BATTERY_DOWN_PX + DEVICE_UP_PX + SPACE_PX) / unit) : DEVICE_Y;
+  const h = shown.length ? DEVICES_H + deviceY - DEVICE_Y
+    : batteries ? Math.max(BASE_H, lowest + (BATTERY_DOWN_PX + SPACE_PX) / unit) : BASE_H;
   const houseIcon = useRef<HTMLDivElement>(null);
   const deviceIcons = useRef<(HTMLDivElement | null)[]>([]);
   const [boxes, setBoxes] = useState<{ house: Box; houseNode: Box; devices: Box[] } | null>(null);
@@ -239,7 +264,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {/* battery <-> house: + = discharging towards the house; several batteries each with a line into the house's
             side */}
         {batteries ? batteries.map((b, i) => (
-          <Link key={b.key} x1={20} y1={stackY(i) - 3} x2={38} y2={LINE_Y + (stackY(i) - HOUSE.y) * 0.15}
+          <Link key={b.key} x1={20} y1={stackY(i)} x2={38} y2={LINE_Y + (stackY(i) - centre) * 0.15}
             power={stale ? null : b.power} />
         )) : <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />}
         {/* grid <-> house: + = import towards the house (drawn from grid side) */}
@@ -267,7 +292,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         const first = b.key === MAIN_INVERTER;
         const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && first);
         return (
-          <Node key={b.key} x={12} y={stackY(i)} h={h} small icon={
+          <Node key={b.key} x={12} y={stackY(i)} h={h} small tiny={!retro} icon={
             <span className="battery-with-source small">
               {/* the retro look's pixel filter needs the full icon size, smaller it draws nothing */}
               <BatteryIcon soc={b.soc} size={retro ? 64 : SMALL_BATTERY} />
@@ -276,8 +301,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
             </span>}
             name={first ? "battery" : "battery-more"} onTap={first ? () => press("left") : undefined}>
             {/* the direction shown, not only as a tooltip: two batteries can work against each other (#619) */}
-            {kw(b.power)}{flow ? ` ${flow}` : ""}
+            {kw(b.power)}
             <div className="soc clip">{b.label} · {percent(b.soc)}</div>
+            {flow && <div className="soc">{flow}</div>}
           </Node>
         );
       }) : <Node x={12} y={HOUSE.y} h={h} icon={
@@ -297,7 +323,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         {grid && <div className="soc">{grid}</div>}
       </Node>
       {shown.map((d, i) => (
-        <Node key={d.key} x={deviceX(i, shown.length)} y={DEVICE_Y} h={h} small icon={<DeviceIcon kind={d.kind} size={64} />}
+        <Node key={d.key} x={deviceX(i, shown.length)} y={deviceY} h={h} small icon={<DeviceIcon kind={d.kind} size={64} />}
           iconRef={(el) => { deviceIcons.current[i] = el; }}>
           {kw(d.power_w)}
           <div className="soc">{d.name}{d.temperature_c != null && d.kind === "heating_rod" ? ` · ${num(d.temperature_c, 0)} °C` : ""}</div>

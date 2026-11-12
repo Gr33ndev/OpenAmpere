@@ -241,7 +241,27 @@ test("each battery says whether it charges or discharges", async ({ page, api })
     { id: "main", name: "Haus", connected: true, pv_power: 0, battery_power: 1500, battery_soc: 62 },
     { id: "wr2", name: "Garage", connected: true, pv_power: 0, battery_power: -1500, battery_soc: 48 }] });
   await open(page, "");
-  await expect(page.locator(".flow .flow-node.battery")).toContainText("1,50 kW entlädt");
-  await expect(page.locator(".flow .flow-node.battery-more")).toContainText("1,50 kW lädt");
+  await expect(page.locator(".flow .flow-node.battery")).toContainText("entlädt");
+  await expect(page.locator(".flow .flow-node.battery-more")).toContainText(/(^|[^t])lädt/);
   await expect(page.locator(".flow")).toHaveAttribute("aria-label", /Garage 1,50 kW lädt, 48 %/);
 });
+
+for (const width of [360, 393]) {
+  test(`two batteries do not overlap anything on a ${width} px phone`, async ({ page, api }) => {
+    await page.setViewportSize({ width, height: 800 });
+    api.live({ pv_power: 5300, battery_power: -1300, battery_soc: 55, house_power: 3600, grid_power: -400, inverters: [
+      { id: "main", name: "Haus", connected: true, pv_power: 3200, battery_power: -800, battery_soc: 62 },
+      { id: "wr2", name: "Garage", connected: true, pv_power: 2100, battery_power: -500, battery_soc: 48 }] });
+    await open(page, "");
+    const boxes = await page.locator(".flow .flow-node").evaluateAll((nodes) => nodes.map((n) => {
+      const r = n.getBoundingClientRect();
+      return { name: n.className, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    }));
+    const overlaps = boxes.flatMap((a, i) => boxes.slice(i + 1)
+      .filter((b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
+      .map((b) => `${a.name} / ${b.name}`));
+    expect(overlaps).toEqual([]);
+    // and nothing is cut off at the sides of the screen
+    expect(boxes.filter((b) => b.left < 0 || b.right > width).map((b) => b.name)).toEqual([]);
+  });
+}
