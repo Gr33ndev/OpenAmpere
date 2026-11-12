@@ -120,7 +120,12 @@ class ExtraCollector(Collector):
         self.external_pv = external_pv
         self.rated_power = (entry.rated_power_reported_w, entry.rated_power_w)
         self.created = time.time()
-        self.input_count = 0  # PV inputs it reported at most: its places in the combined list stay its own
+        # PV inputs it reported at most: its places in the combined list stay its own, also after a restart or a
+        # change of the settings (kept with its address: another device there starts again)
+        self.inputs_key = f"inverter_inputs:{entry.id}"
+        kept = storage.get_meta(self.inputs_key)
+        self.input_count = (int(kept.get("count") or 0) if isinstance(kept, dict) and kept.get("host") == entry.host
+                            else 0)
 
     @property
     def name(self) -> str:
@@ -139,7 +144,12 @@ class ExtraCollector(Collector):
 
     async def _reading(self, snap: Snapshot) -> None:
         self.own = self.latest = snap
-        self.input_count = max(self.input_count, len(snap.pv_inputs))
+        if len(snap.pv_inputs) > self.input_count:
+            self.input_count = len(snap.pv_inputs)
+            try:
+                self.storage.set_meta(self.inputs_key, {"host": self.entry.host, "count": self.input_count})
+            except Exception:  # noqa: BLE001 - must never disturb polling
+                pass
 
     def _unreachable(self) -> None:
         pass  # a power cut is told by the first inverter

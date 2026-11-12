@@ -421,3 +421,16 @@ def test_the_pv_inputs_of_each_inverter_keep_their_places():
     assert [i.power for i in snap.pv_inputs] == [500, 500, None, None, 300]
     middle._gone = False  # a short gap: missing sums, but the same places
     assert [i.power for i in combine(own, [middle, last]).pv_inputs] == [500, 500, None, None, 300]
+
+
+async def test_the_number_of_inputs_is_kept_over_a_restart(tmp_path):
+    """The places of a further inverter that does not answer after a restart stay its own (#619)."""
+    from openampere.inverters import ExtraCollector
+
+    storage = Storage(tmp_path / "t.db")
+    entry = ExtraInverter(id="wr2", host="192.168.1.31")
+    first = ExtraCollector(entry, None, storage, 10)
+    await first._reading(reading(800, 0, 50, inputs=(400, 400)))
+    assert ExtraCollector(entry, None, storage, 10).input_count == 2  # after a restart, before it answers
+    moved = ExtraInverter(id="wr2", host="192.168.1.40")  # another device at the id
+    assert ExtraCollector(moved, None, storage, 10).input_count == 0
