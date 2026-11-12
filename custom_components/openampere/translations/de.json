@@ -192,6 +192,15 @@
       },
       "wallbox_current": {
         "name": "Eingestellter Ladestrom"
+      },
+      "inverter_pv_power": {
+        "name": "PV-Leistung"
+      },
+      "inverter_battery_power": {
+        "name": "Speicherleistung"
+      },
+      "inverter_battery_soc": {
+        "name": "Ladestand"
       }
     },
     "binary_sensor": {
@@ -289,6 +298,11 @@
           }
         }
       }
+    }
+  },
+  "device": {
+    "inverter": {
+      "name": "Wechselrichter {number}"
     }
   }
 }

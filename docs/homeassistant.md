@@ -64,6 +64,7 @@ one connection, and every command from Home Assistant goes through the same chec
 | PV power, house consumption, grid power, battery power | Grid: + import, − export. Battery: + discharging, − charging |
 | Power per PV string | Names as in OpenAmpere; hidden strings are left out |
 | Second inverter: power and production | Only when OpenAmpere counts a second PV inverter (SAJ "Meter B", under **Mehr → Meine Anlage → Modulfelder benennen**), named as there. It has no counter of its own: OpenAmpere calculates the production from its power. PV power above includes it, PV production (the inverter's counter) does not. |
+| Per inverter: PV power, battery power, state of charge | Only with more than one inverter (**Mehr → Verbindung → Weitere Wechselrichter**): one device card per inverter, named as in OpenAmpere ("Inverter 2" without a name). The entities above are then the sums of all inverters. While an inverter sends no current values, its entities are "unavailable". A newly added, removed or renamed inverter appears by itself. |
 | PV production, consumption, grid import, grid export, battery charged/discharged | Total counters in kWh, **suitable for the Energy dashboard**. OpenAmpere calculates the consumption from the other counters, as in the app. |
 | Consumption counter of the inverter | Hidden. The inverter's own counter often counts more than the house used. Older versions showed it as "Consumption". |
 | State of charge, battery health, voltage, current and temperature, inverter temperature | |
@@ -96,7 +97,7 @@ lesen** (Read only).
 
 | Entity | |
 |---|---|
-| Work mode | Self-use, feed-in first, backup, peak shaving |
+| Work mode | Self-use, feed-in first, backup, peak shaving. With more than one inverter, the control entities act on the first one; the battery settings of the others can be changed in OpenAmpere. |
 | Backup reserve, charge limit, minimum level during a power cut | in %; SAJ also the reserve of the backup mode |
 | Grid charging, grid charging target | set up once in OpenAmpere (legal notes) |
 | Mode per immersion heater/switch | Automatic (surplus), off, boost |

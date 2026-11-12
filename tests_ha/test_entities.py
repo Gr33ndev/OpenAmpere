@@ -346,3 +346,53 @@ def test_switching_the_second_inverter_sets_up_again() -> None:
     assert needs_reload(with_key, live, status={"pv_external": {"name": "Garage"}})
     assert needs_reload({**info(), "pv_external": {"name": "Garage"}}, live, status={"pv_external": {"name": "Dach"}})
     assert not needs_reload(with_key, live, status={})  # an older OpenAmpere sends no flag
+
+
+def with_inverters(parts: list[dict]) -> dict:
+    """The state of an installation with more than one inverter (#619)."""
+    data = state()
+    data["live"] = {**data["live"], "inverters": parts}
+    return data
+
+
+TWO = [{"id": "main", "name": "Haus", "connected": True, "pv_power": 3000.0, "battery_power": -500.0,
+        "battery_soc": 60.0},
+       {"id": "wr2", "name": "", "connected": True, "pv_power": 2200.0, "battery_power": 300.0, "battery_soc": 40.0}]
+
+
+async def test_each_inverter_gets_its_own_device_and_sensors(hass: HomeAssistant, entry, client) -> None:
+    """#619: with more than one inverter each has its power and state of charge; none with one inverter."""
+    await setup(hass, entry)
+    assert entity_id(hass, "sensor", "_inverter_wr2_inverter_pv_power") is None
+    await hass.config_entries.async_unload(entry.entry_id)
+    client.state.return_value = with_inverters(TWO)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id(hass, "sensor", "_inverter_main_inverter_pv_power")).state == "3000.0"
+    assert hass.states.get(entity_id(hass, "sensor", "_inverter_wr2_inverter_battery_power")).state == "300.0"
+    soc = hass.states.get(entity_id(hass, "sensor", "_inverter_wr2_inverter_battery_soc"))
+    assert soc.state == "40.0" and soc.attributes["device_class"] == "battery"
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    haus = next(d for d in devices if ("openampere", f"{INSTALLATION}_inverter_main") in d.identifiers)
+    second = next(d for d in devices if ("openampere", f"{INSTALLATION}_inverter_wr2") in d.identifiers)
+    assert haus.name == "Haus" and haus.via_device_id is not None
+    assert second.name == "Inverter 2"  # no name in OpenAmpere: by its place
+    # an inverter without current values is unavailable, never an old value
+    coordinator = entry.runtime_data
+    coordinator._on_push({"type": "live", "live": {**coordinator.data["live"],
+                                                   "inverters": [TWO[0], {"id": "wr2", "name": "", "connected": False}]},
+                          "status": coordinator.data["status"], "devices": coordinator.data["devices"]})
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id(hass, "sensor", "_inverter_wr2_inverter_pv_power")).state == "unavailable"
+    assert hass.states.get(entity_id(hass, "sensor", "_inverter_main_inverter_pv_power")).state == "3000.0"
+
+
+def test_adding_removing_or_renaming_an_inverter_sets_up_again() -> None:
+    from custom_components.openampere.coordinator import needs_reload
+    live = with_inverters(TWO)["live"]
+    known = {**info(), "inverters": [{"id": "main", "name": "Haus"}, {"id": "wr2", "name": ""}]}
+    assert not needs_reload(known, live)
+    assert needs_reload(known, {**live, "inverters": TWO[:1]})
+    assert needs_reload(known, {**live, "inverters": [TWO[0], {**TWO[1], "name": "Garage"}]})
+    assert needs_reload({**info(), "inverters": []}, live)  # the first further inverter
+    assert not needs_reload(info(), live)  # set up by an older integration: no key

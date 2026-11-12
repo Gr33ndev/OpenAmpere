@@ -126,7 +126,8 @@ def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, s
     """Set up before OpenAmpere had its first reading (e.g. everything starting after a power cut): the device and
     the PV inputs were unknown, so set up again once they are there (#220). Also when a wallbox was added or removed
     in OpenAmpere (#388), or a second PV inverter switched on, off or renamed (#419); an older OpenAmpere sends
-    neither. And when the device got an access token or lost it (#538): the sensor of its days left comes or goes."""
+    neither. And when the device got an access token or lost it (#538): the sensor of its days left comes or goes.
+    And when an inverter was added, removed or renamed (#619)."""
     if status and "pv_external" in status and "pv_external" in info and status["pv_external"] != info["pv_external"]:
         return True
     if status and "token_days_left" in status and "token_sensor" in info \
@@ -137,6 +138,10 @@ def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, s
         return True
     if not live:
         return False
+    if "inverters" in info:  # an inverter added, removed or renamed in OpenAmpere (#619)
+        from .entity import inverter_list  # entity imports this module
+        if inverter_list(live) != info["inverters"]:
+            return True
     if info["device"] is None:
         return True
     count = info.get("pv_input_count")  # all inputs, also hidden ones; missing on older OpenAmpere versions
