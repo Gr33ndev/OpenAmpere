@@ -154,7 +154,9 @@
     "logTestMode": "Testmodus ist an",
     "logWouldCharge": "würde laden ({reason}) – Testmodus",
     "unknownChargingType": "Unbekannte Lade-Art.",
-    "reserveNotSetBack": "nicht zurückgestellt: die Notstrom-Reserve wurde inzwischen auf {current} % geändert"
+    "reserveNotSetBack": "nicht zurückgestellt: die Notstrom-Reserve wurde inzwischen auf {current} % geändert",
+    "chargingNoLongerCharged": "Speicher wird nicht mehr aus dem Netz geladen",
+    "chargingInverterRemoved": "Wechselrichter entfernt oder als Teil des ersten markiert"
   },
   "cli": {
     "noDatabaseFound": "Keine Datenbank unter {path} gefunden.",
