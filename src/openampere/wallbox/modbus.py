@@ -40,8 +40,9 @@ class ModbusWallbox:
             if not await client.connect():
                 raise WallboxUnreachable(
                     f"Die Wallbox unter {self.host} antwortet nicht oder nimmt keine Modbus-Verbindung an. Bei Anlagen "
-                    "von EKD ist meist die bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die "
-                    "Verbindung zur Wallbox. Nimm sie vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. "
+                    "von EKD ist meist die bisherige Smartbox der Grund: Solange sie im Netzwerk ist, hält sie die "
+                    "Verbindung zur Wallbox. Trenne sie vom Netzwerk (LAN-Kabel ziehen) oder vom Strom, dann liest "
+                    "OpenAmpere die Wallbox von selbst wieder. "
                     "Hilft das nicht, prüfe die Adresse und ob evcc oder ein anderes Programm die Wallbox liest.")
             values: dict[int, int] = {}
             blocks = [(r, False) for r in self.ranges] + [(r, True) for r in self.optional]
@@ -70,7 +71,8 @@ class ModbusWallbox:
             if not await client.connect():
                 raise WallboxUnreachable(
                     f"Die Wallbox unter {self.host} nimmt gerade keine Modbus-Verbindung an. Bei Anlagen von EKD ist "
-                    "meist die bisherige Smartbox der Grund: Nimm sie vom Strom und versuche es noch einmal.")
+                    "meist die bisherige Smartbox der Grund: Trenne sie vom Netzwerk (LAN-Kabel ziehen) oder vom Strom "
+                    "und versuche es noch einmal.")
             back: dict[int, int] = {}
             ordered = [(a, v) for a, v in values.items() if a not in write_only] \
                 + [(a, v) for a, v in values.items() if a in write_only]
@@ -137,6 +139,6 @@ class ModbusWallbox:
                                      "anderes Modell oder eine andere Firmware.")
         raise WallboxUnreachable(
             "Die Wallbox nimmt die Verbindung an, antwortet aber nicht richtig. Bei Anlagen von EKD ist meist die "
-            "bisherige Smartbox der Grund: Solange sie Strom hat, hält sie die Verbindung zur Wallbox. Nimm sie vom "
-            "Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, liest vielleicht evcc die "
+            "bisherige Smartbox der Grund: Solange sie im Netzwerk ist, hält sie die Verbindung zur Wallbox. Trenne sie "
+            "vom Netzwerk (LAN-Kabel ziehen) oder vom Strom, dann liest OpenAmpere die Wallbox von selbst wieder. Hilft das nicht, liest vielleicht evcc die "
             "Wallbox, oder die Geräteadresse stimmt nicht.")

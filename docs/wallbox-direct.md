@@ -143,9 +143,9 @@ it is set in its own app, and the one thing OpenAmpere writes, only when you ask
 
 OpenAmpere asks the wallbox every few seconds, each time over a short connection it closes right afterwards.
 
-- **On EKD systems** the previous smartbox holds the connection to the wallbox as long as it has power. OpenAmpere
-  then cannot read the wallbox and shows it as not reachable. For OpenAmpere to show the wallbox, the smartbox has to
-  stay disconnected from power.
+- **On EKD systems** the previous smartbox holds the connection to the wallbox as long as it is on the network.
+  OpenAmpere then cannot read the wallbox and shows it as not reachable. For OpenAmpere to show the wallbox, the
+  smartbox has to stay disconnected from the network (pull its LAN cable) or from power.
 - **Never evcc and OpenAmpere on the same wallbox:** it may allow only one connection. If evcc already reads it, do
   not add it here as well. If you move a wallbox from evcc to OpenAmpere, delete it in evcc under Configuration. While
   evcc stays connected without a charge point, OpenAmpere warns about it under **Geräte** and on the wallbox page
@@ -190,7 +190,7 @@ stops charging and sets the charging current. This is new and not yet tried on a
   The wallbox has no way to stop by itself when its controller is gone. When OpenAmpere is shut down as planned (an
   update, a restart) it stops a charge it started itself.
 - Needed: the wallbox's **Betriebsmodus** (work mode) is **Gesteuert** (controlled, see below), the previous EKD
-  smartbox is cut from power, and **Änderungen an Geräten** (changes to devices) is **Aktiv** (active). In test mode
+  smartbox is disconnected from the network or from power, and **Änderungen an Geräten** (changes to devices) is **Aktiv** (active). In test mode
   the control log only shows what OpenAmpere would do; if you switch to test mode while a charge OpenAmpere started is
   running, OpenAmpere stops it and lets go of the wallbox, since nothing would keep its watchdog alive.
 - While the car charges OpenAmpere writes the current again every 25 seconds; these writes are not in the control log.
@@ -218,7 +218,7 @@ The card also shows the wallbox's own **Betriebsmodus** (work mode, #464): **Ges
 or a controller starts it), **Plug & Charge** (charges when a car is plugged in) or **Gesperrt** (locked, does not
 charge). A wallbox that went "locked" can be released here. OpenAmpere writes the setting once, after a question, and
 reads it back. It needs **Aktiv** (active) under **Änderungen an Geräten** (changes to devices), the previous smartbox
-cut from power, and a wallbox that answers right now. In test mode the control log only shows the change.
+disconnected from the network or from power, and a wallbox that answers right now. In test mode the control log only shows the change.
 
 ## Setting up the Weidmüller AC SMART
 
@@ -235,7 +235,7 @@ evcc is still the way (with an evcc sponsor token).
 3. **Verbindung prüfen** (check the connection), then **Speichern** (save).
 
 - **It takes only one Modbus connection at a time.** While evcc or the previous smartbox holds it, OpenAmpere cannot
-  read the wallbox and shows it as not reachable. On EKD systems, take the smartbox off power; do not add a wallbox here
+  read the wallbox and shows it as not reachable. On EKD systems, disconnect the smartbox from the network (pull its LAN cable) or from power; do not add a wallbox here
   that evcc already reads.
 - OpenAmpere asks it every few seconds over a short connection it closes right afterwards, so the wallbox's own app can
   still connect in between.

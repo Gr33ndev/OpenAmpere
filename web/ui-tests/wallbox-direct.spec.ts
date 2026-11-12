@@ -94,6 +94,7 @@ test("a refused connection and an unknown name get their own advice", async ({ p
   await expect(refused).toContainText("(Port 502)");
   await expect(refused).toContainText("bisherige Smartbox");
   await expect(refused).toContainText("vom Strom");
+  await expect(refused).toContainText("LAN-Kabel ziehen");  // #624: pulling its network cable is enough
 
   // #431: an accepted connection without a proper answer, or one closed at once, names the smartbox as well
   for (const [outcome, text] of [["no_answer", "nicht richtig"], ["connections_taken", "schon ein anderes Gerät"]]) {
@@ -102,6 +103,7 @@ test("a refused connection and an unknown name get their own advice", async ({ p
     const notice = page.locator(".notice", { hasText: text });
     await expect(notice).toContainText("bisherige Smartbox");
     await expect(notice).toContainText("vom Strom");
+    await expect(notice).toContainText("LAN-Kabel ziehen");
   }
 
   api.override("/api/wallbox/check", { ...READABLE, host: "EVC-example.local", port: null, outcome: "unresolved",
