@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Device, InverterReading, Snapshot } from "./api";
-import { inverterName } from "./api";
+import { inverterName, MAIN_INVERTER } from "./api";
 import { DeviceIcon } from "./DevicesPage";
 import { kw, num, percent } from "./format";
 import { t } from "./i18n";
@@ -212,7 +212,12 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
        `${t("overview.energyFlow.gridPower", { power: kw(snap.grid_power) })}${grid ? ` ${grid}` : ""}`,
        ...shown.map((d) => `${d.name} ${kw(d.power_w)}`)].join(", ") + (stale ? ` (${t("overview.energyFlow.outdated")})` : "")
     : t("overview.energyFlow.noData");
+  // drawn per inverter (#619): the sums in a line below, the issue asks for the combined view
+  const total = !snap || (!split.suns && !batteries) ? null : batteries
+    ? t("overview.energyFlow.totalBoth", { pv: kw(snap.pv_power), battery: kw(snap.battery_power), soc: percent(snap.battery_soc) })
+    : t("overview.energyFlow.totalSolar", { pv: kw(snap.pv_power) });
   return (
+    <>
     <div ref={container} className={`flow ${stale ? "stale" : ""} ${retro ? "retro" : ""}`} role="img" aria-label={label} style={{ aspectRatio: `100 / ${h}` }}>
       <svg className="lines" viewBox={`0 0 100 ${h}`} preserveAspectRatio="none" aria-hidden="true">
         {/* PV -> house: vertical from one sun, from above at an angle from several (a second PV inverter, #419, or
@@ -271,8 +276,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
       <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
       {batteries ? batteries.map((b, i) => {
         const flow = direction(b.power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging"));
-        // grid charging charges the first battery only (#619)
-        const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && i === 0);
+        // grid charging charges the first inverter's battery only (#619), wherever it is drawn
+        const first = b.key === MAIN_INVERTER;
+        const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && first);
         return (
           <Node key={b.key} x={batteryX(i)} y={DEVICE_Y} h={h} small iconRef={(el) => { batteryIcons.current[i] = el; }} icon={
             <span className="battery-with-source">
@@ -280,7 +286,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
               {from && <span className={`charge-source ${from}`} title={from === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>
                 {from === "sun" ? <SunGlyph /> : "€"}</span>}
             </span>}
-            name={i === 0 ? "battery" : "battery-more"} onTap={i === 0 ? () => press("left") : undefined}>
+            name={first ? "battery" : "battery-more"} onTap={first ? () => press("left") : undefined}>
             {kw(b.power)}
             <div className="soc clip">{b.label}</div>
             <div className="soc">{percent(b.soc)}{flow ? ` · ${flow}` : ""}</div>
@@ -318,6 +324,8 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
       )}
       {justUnlocked && <div className="retro-banner">{t("overview.retro.unlocked")}</div>}
     </div>
+    {total && <p className="hint center flow-total">{total}</p>}
+    </>
   );
 }
 

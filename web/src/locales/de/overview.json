@@ -30,7 +30,9 @@
     "noData": "Energiefluss, keine Daten",
     "outdated": "veraltet",
     "secondInverter": "Zweiter Wechselrichter",
-    "solarPower": "Solar {power}"
+    "solarPower": "Solar {power}",
+    "totalBoth": "Zusammen: Solar {pv} · Speicher {battery}, {soc}",
+    "totalSolar": "Zusammen: Solar {pv}"
   },
   "importHint": {
     "hide": "Ausblenden",

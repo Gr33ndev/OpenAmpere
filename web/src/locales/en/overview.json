@@ -30,7 +30,9 @@
     "noData": "Energy flow, no data",
     "outdated": "outdated",
     "secondInverter": "Second inverter",
-    "solarPower": "Solar {power}"
+    "solarPower": "Solar {power}",
+    "totalBoth": "Together: solar {pv} · batteries {battery}, {soc}",
+    "totalSolar": "Together: solar {pv}"
   },
   "importHint": {
     "hide": "Hide",

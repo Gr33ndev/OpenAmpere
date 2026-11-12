@@ -189,3 +189,25 @@ test("more batteries than fit in the row are drawn as one with the sum", async (
   await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(0);
   await expect(page.locator(".flow .flow-node.sun-more")).toHaveCount(2);
 });
+
+test("the combined values stay visible below the energy flow", async ({ page, api }) => {
+  api.live({ pv_power: 5300, battery_power: -1300, battery_soc: 55, house_power: 3600, grid_power: -400, inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 3200, battery_power: -800, battery_soc: 62 },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 2100, battery_power: -500, battery_soc: 48 }] });
+  await open(page, "");
+  await expect(page.locator(".flow-total")).toHaveText("Zusammen: Solar 5,30 kW · Speicher 1,30 kW, 55 %");
+});
+
+test("the grid charging mark is on the first inverter's battery wherever it is drawn", async ({ page, api }) => {
+  const status = await demoRequest<Status>("GET", "/api/status");
+  api.override("/api/status", { ...status, devices: { ...status.devices, grid_charging: true } });
+  api.live({ battery_power: -2000, grid_power: 0, inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 0, battery_power: null, battery_soc: null },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 0, battery_power: -500, battery_soc: 48 },
+    { id: "wr3", name: "Stall", connected: true, pv_power: 0, battery_power: -1500, battery_soc: 30 }] });
+  await open(page, "");
+  // the first inverter has no battery values in this reading: the batteries drawn are wr2 and wr3, neither gets "€"
+  await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(2);
+  await expect(page.locator(".flow .charge-source.grid")).toHaveCount(0);
+  await expect(page.locator(".flow .charge-source.sun")).toHaveCount(2);
+});
