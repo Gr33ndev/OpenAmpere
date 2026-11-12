@@ -141,9 +141,9 @@ schreibt, und nur auf deinen Wunsch, ist der Betriebsmodus der Wallbox (siehe un
 OpenAmpere fragt die Wallbox alle paar Sekunden ab, jedes Mal über eine kurze Verbindung, die es danach gleich wieder
 schließt.
 
-- **Bei Anlagen von EKD** hält die bisherige Smartbox die Verbindung zur Wallbox, solange sie Strom hat. Dann kann
-  OpenAmpere die Wallbox nicht lesen und zeigt „nicht erreichbar“. Soll OpenAmpere die Wallbox anzeigen, muss die
-  Smartbox vom Strom getrennt bleiben.
+- **Bei Anlagen von EKD** hält die bisherige Smartbox die Verbindung zur Wallbox, solange sie im Netzwerk ist. Dann
+  kann OpenAmpere die Wallbox nicht lesen und zeigt „nicht erreichbar“. Soll OpenAmpere die Wallbox anzeigen, muss die
+  Smartbox vom Netzwerk (LAN-Kabel ziehen) oder vom Strom getrennt bleiben.
 - **Nie evcc und OpenAmpere an derselben Wallbox:** Vielleicht erlaubt sie nur eine Verbindung. Liest evcc sie schon,
   richte sie hier nicht zusätzlich ein. Ziehst du eine Wallbox von evcc zu OpenAmpere um, lösche sie in evcc unter
   Konfiguration. Bleibt evcc ohne Ladepunkt verbunden, warnt OpenAmpere unter **Geräte** und auf der Wallbox-Seite
@@ -190,7 +190,7 @@ Laden und stellt den Ladestrom ein. Das ist neu und noch an keiner Wallbox mit O
   der Wallbox ein. Von selbst stoppen kann die Wallbox nicht, wenn ihre Steuerung fehlt. Beim geplanten Beenden (ein
   Update, ein Neustart) stoppt OpenAmpere ein Laden, das es selbst gestartet hat.
 - Voraussetzung: Der **Betriebsmodus** der Wallbox ist **Gesteuert** (siehe unten), die bisherige Smartbox von EKD ist
-  vom Strom getrennt, und **Änderungen an Geräten** steht auf **Aktiv**. Im Testmodus steht im Steuerungsprotokoll nur,
+  vom Netzwerk oder vom Strom getrennt, und **Änderungen an Geräten** steht auf **Aktiv**. Im Testmodus steht im Steuerungsprotokoll nur,
   was OpenAmpere tun würde. Schaltest du den Testmodus ein, während ein Laden läuft, das OpenAmpere gestartet hat,
   stoppt OpenAmpere es und gibt die Wallbox ab, weil sonst niemand mehr ihre Überwachung am Leben hält.
 - Solange das Auto lädt, schreibt OpenAmpere den Ladestrom alle 25 Sekunden neu; das steht nicht im Protokoll. Nach
@@ -221,7 +221,7 @@ Die Karte zeigt auch den **Betriebsmodus** der Wallbox selbst (#464): **Gesteuer
 oder eine Steuerung den Ladevorgang startet), **Plug & Charge** (lädt beim Einstecken) oder **Gesperrt** (lädt nicht).
 Eine Wallbox, die sich gesperrt hat, lässt sich hier wieder freigeben. OpenAmpere schreibt die Einstellung nach einer
 Rückfrage einmal und liest sie zurück. Dafür muss **Änderungen an Geräten** auf **Aktiv** stehen, die bisherige
-Smartbox vom Strom getrennt sein und die Wallbox gerade antworten. Im Testmodus steht die Änderung nur im
+Smartbox vom Netzwerk oder vom Strom getrennt sein und die Wallbox gerade antworten. Im Testmodus steht die Änderung nur im
 Steuerungsprotokoll.
 
 ## Weidmüller AC SMART einrichten
@@ -238,8 +238,8 @@ Hausverbrauch. Steuern lässt sie sich weiter über evcc (mit einem Sponsortoken
 3. **Verbindung prüfen**, dann **Speichern**.
 
 - **Sie nimmt nur eine Modbus-Verbindung gleichzeitig an.** Solange evcc oder die bisherige Smartbox sie hält, kann
-  OpenAmpere die Wallbox nicht lesen und zeigt sie als nicht erreichbar. Bei Anlagen von EKD die Smartbox vom Strom
-  nehmen; eine Wallbox, die schon evcc liest, hier nicht zusätzlich einrichten.
+  OpenAmpere die Wallbox nicht lesen und zeigt sie als nicht erreichbar. Bei Anlagen von EKD die Smartbox vom Netzwerk
+  (LAN-Kabel ziehen) oder vom Strom trennen; eine Wallbox, die schon evcc liest, hier nicht zusätzlich einrichten.
 - OpenAmpere fragt sie alle paar Sekunden über eine kurze Verbindung ab und schließt sie gleich wieder, damit die
   eigene App der Wallbox zwischendurch auch verbinden kann.
 - An einer echten Wallbox ist noch nichts bestätigt. Eine Prüfung mit **Nur prüfen (Bericht)** und ein Bericht unter
