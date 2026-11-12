@@ -5,14 +5,13 @@ import type { Settings, Status } from "../src/api";
 import { expect, layoutProblems, open, test } from "./fixtures";
 
 // #619: more than one inverter in one installation (the demo has two: "Haus" and "Garage")
-test("the overview shows each inverter with its own values", async ({ page }) => {
+test("the energy flow shows each inverter with its own values", async ({ page }) => {
   await open(page, "");
-  const title = page.locator(".section-title", { hasText: "Wechselrichter" });
-  await expect(title).toBeVisible();
-  const card = title.locator("xpath=following-sibling::div[1]");
-  await expect(card).toContainText("Haus");
-  await expect(card).toContainText("Garage");
-  await expect(card).toContainText("Solar");
+  const flow = page.locator(".flow");
+  await expect(flow.locator(".flow-node.sun")).toContainText("Haus");
+  await expect(flow.locator(".flow-node.sun-more")).toContainText("Garage");
+  await expect(flow.locator(".flow-node.battery-more")).toContainText("Garage");
+  await expect(page.locator(".section-title", { hasText: /^Wechselrichter$/ })).toHaveCount(0);  // no list any more
   expect(await layoutProblems(page)).toEqual([]);
 });
 
@@ -20,16 +19,17 @@ test("an inverter without current values is shown as such", async ({ page, api }
   api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 1000, battery_power: 0, battery_soc: 50 },
     { id: "wr2", name: "Garage", connected: false }] });
   await open(page, "");
-  await expect(page.locator(".device-row-compact", { hasText: "Garage" })).toContainText("Keine aktuellen Werte");
+  await expect(page.locator(".flow .flow-node.battery-more")).toContainText("Garage");  // its battery, without values
+  await expect(page.locator(".flow .flow-node.battery-more")).toContainText("–");
   await expect(page.getByText("zeigt die Übersicht keine Summe")).toBeVisible();
 });
 
-test("with one inverter there are no inverter cards and no choice of inverter", async ({ page, api }) => {
+test("with one inverter there is one sun and battery and no choice of inverter", async ({ page, api }) => {
   const status = await demoRequest<Status>("GET", "/api/status");
   api.override("/api/status", { ...status, inverters: [] });
   api.live({ inverters: [] });
   await open(page, "");
-  await expect(page.locator(".section-title", { hasText: /^Wechselrichter$/ })).toHaveCount(0);
+  await expect(page.locator(".flow .flow-node.sun-more, .flow .flow-node.battery-more")).toHaveCount(0);
   await open(page, "devices/battery");
   await expect(page.getByRole("combobox", { name: "Wechselrichter" })).toHaveCount(0);
 });
@@ -161,7 +161,7 @@ test("an inverter already in the first one that does not answer leaves the sums 
   api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 1000, battery_power: 0, battery_soc: 50 },
     { id: "wr2", name: "Garage", connected: false, in_first: true }] });
   await open(page, "");
-  await expect(page.locator(".device-row-compact", { hasText: "Garage" })).toContainText("Keine aktuellen Werte");
+  await expect(page.locator(".flow .flow-node.sun-more")).toHaveCount(0);  // part of the first one's
   await expect(page.getByText("zeigt die Übersicht keine Summe")).toHaveCount(0);
 });
 
@@ -176,6 +176,16 @@ test("the energy flow draws a sun and a battery for each inverter", async ({ pag
   await expect(flow.locator(".flow-node.sun, .flow-node.sun-more")).toHaveCount(3);  // not the one in the first
   await expect(flow.locator(".flow-node.battery, .flow-node.battery-more")).toHaveCount(2);  // Stall has none
   await expect(flow.locator(".flow-node.battery-more")).toContainText("Garage");
+  await expect(flow.locator(".flow-node.battery")).toContainText("Haus");  // in the row below the house
   await expect(flow).toHaveAttribute("aria-label", /Stall 1,50 kW/);
   expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("more batteries than fit in the row are drawn as one with the sum", async ({ page, api }) => {
+  const battery = (id: string, soc: number) => ({ id, name: id, connected: true, pv_power: 1000, battery_power: -300, battery_soc: soc });
+  api.live({ battery_power: -900, battery_soc: 50, inverters: [battery("main", 40), battery("wr2", 50), battery("wr3", 60)] });
+  await open(page, "");
+  await expect(page.locator(".flow .flow-node.battery")).toContainText("0,90 kW");
+  await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(0);
+  await expect(page.locator(".flow .flow-node.sun-more")).toHaveCount(2);
 });

@@ -98,14 +98,7 @@
     "titleNamed": "Since {time}, another device answers at the address of “{name}”."
   },
   "inverterCards": {
-    "title": "Inverters",
-    "notConnected": "No current values",
-    "solar": "Solar {power}",
-    "charging": "charging at {power}",
-    "discharging": "discharging at {power}",
-    "idle": "Battery idle",
     "missingHint": "While an inverter sends no current values for a short time, the overview shows no total for solar power and batteries. A total without it would be too low.",
-    "leftOutHint": "“{name}” has not answered for a few minutes. Until it answers again, OpenAmpere does not add it to solar power and batteries. What it produced or stored in that time is missing from the report. Check that it is switched on and reachable in the network. If it got a new address, enter it under More → Connection → Further inverters.",
-    "inFirst": "only shown, already in the first one"
+    "leftOutHint": "“{name}” has not answered for a few minutes. Until it answers again, OpenAmpere does not add it to solar power and batteries. What it produced or stored in that time is missing from the report. Check that it is switched on and reachable in the network. If it got a new address, enter it under More → Connection → Further inverters."
   }
 }

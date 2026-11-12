@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
 import { activeInputs, inverterName, postJson, PV_INPUT_COLORS, refreshAll, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
-import { InverterCards, inverterQuery } from "./Inverters";
+import { InverterHints, inverterQuery } from "./Inverters";
 import { navigate } from "./route";
 import { Button, Dialog, Notice, toast } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
@@ -327,7 +327,7 @@ export function Dashboard({ snap, online, blocked, status }: {
       <SecondInverterHint status={status} external={settings?.values["pv.external"]} />
       <EnergyFlow snap={snap} stale={stale} devices={flowDevices} gridCharging={!!status?.devices.grid_charging}
         externalName={settings?.values["pv.external_name"]} />
-      <InverterCards snap={snap} stale={stale} />
+      <InverterHints snap={snap} />
 
       <div className="section-title">{t("overview.dashboard.todayTitle")}</div>
       {today?.partial_since && <p className="hint">{t("overview.dashboard.recordedSince", { time: time(today.partial_since) })}</p>}

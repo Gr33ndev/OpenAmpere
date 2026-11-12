@@ -19,8 +19,10 @@ const DEVICE_Y = 95; // centre of the device icons
 const MAX_DEVICES = 4;
 // several inverters (#619): a sun and a battery each, up to these numbers; more are drawn as one with the sum
 const MAX_SUNS = 4;
-const MAX_BATTERIES = 3;
-const BATTERY_STEP = 40; // a further battery below the first one, the rows below move down by as much
+const MAX_BATTERIES = 2; // in the row below the house, left and right of the line to the devices
+const ROW_STEP = 44; // the row of the batteries below the house; the devices move down by as much
+
+const batteryX = (index: number): number => (index ? 70 : 30);
 
 type Sun = { key: string; power: number | null; label: string | null };
 type Battery = { key: string; power: number | null; soc: number | null; label: string | null };
@@ -161,20 +163,22 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
     : [{ key: "pv", power: ownPv, label: t("overview.energyFlow.inverterPv") },
        { key: "external", power: external, label: externalLabel }]);
   const batteries = split.batteries;
-  const extra = batteries ? (batteries.length - 1) * BATTERY_STEP : 0;
+  // several batteries (#619): a row of their own below the house, the devices below them
+  const extra = batteries ? ROW_STEP : 0;
   const h = (shown.length ? DEVICES_H : BASE_H) + extra;
   const container = useRef<HTMLDivElement>(null);
   const houseIcon = useRef<HTMLDivElement>(null);
   const deviceIcons = useRef<(HTMLDivElement | null)[]>([]);
-  const [boxes, setBoxes] = useState<{ house: Box; houseNode: Box; devices: Box[] } | null>(null);
-  const deviceKeys = shown.map((d) => d.key).join(",");
+  const batteryIcons = useRef<(HTMLDivElement | null)[]>([]);
+  const [boxes, setBoxes] = useState<{ house: Box; houseNode: Box; devices: Box[]; batteries: Box[] } | null>(null);
+  const deviceKeys = [...shown.map((d) => d.key), ...(batteries ?? []).map((b) => `battery:${b.key}`)].join(",");
   const { retro, justUnlocked, progress, press } = useRetro();
 
   // the device lines run between the drawn corners, so they are measured from the rendered icons
   // biome-ignore lint/correctness/useExhaustiveDependencies: deviceKeys stands for the shown devices, so a new array on every render does not measure again
   useLayoutEffect(() => {
     const el = container.current;
-    if (!el || !shown.length) return;
+    if (!el || (!shown.length && !batteries)) return;
     const measure = () => {
       const c = el.getBoundingClientRect();
       if (!c.width || !houseIcon.current) return;
@@ -183,7 +187,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         return { x: ((r.left - c.left) / c.width) * 100, y: ((r.top - c.top) / c.height) * h,
           w: (r.width / c.width) * 100, h: (r.height / c.height) * h };
       };
-      setBoxes({ house: box(houseIcon.current), houseNode: box(houseIcon.current.parentElement!), devices: deviceIcons.current.slice(0, shown.length).map((d) => (d ? box(d) : null!)) });
+      setBoxes({ house: box(houseIcon.current), houseNode: box(houseIcon.current.parentElement!),
+        devices: deviceIcons.current.slice(0, shown.length).map((d) => (d ? box(d) : null!)),
+        batteries: batteryIcons.current.slice(0, batteries?.length ?? 0).map((b) => (b ? box(b) : null!)) });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -218,14 +224,36 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
           return x === 50 ? <Link key={s.key} x1={50} y1={s.label ? 34 : 30} x2={50} y2={41} power={power} />
             : <Link key={s.key} x1={x + (50 - x) * 0.2} y1={31} x2={50 + (x - 50) * 0.25} y2={41} power={power} />;
         })}
-        {/* battery <-> house: + = discharging towards the house; further batteries below, into the house's side */}
-        {batteries ? batteries.map((b, i) => (
-          <Link key={b.key} x1={23} y1={HOUSE.y - 4 + i * BATTERY_STEP} x2={38} y2={LINE_Y + Math.min(i, 1) * 6} power={stale ? null : b.power} />
-        )) : <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />}
+        {/* battery <-> house: + = discharging towards the house; several batteries in the row below the house, their
+            lines drawn from the house (+ = charging) */}
+        {batteries ? boxes?.batteries.map((box, i) => {
+          if (!box || !batteries[i]) return null;
+          const [[x1, y1], [x2, y2]] = deviceLine(boxes.house, boxes.houseNode, box);
+          const power = batteries[i].power;
+          return <Link key={batteries[i].key} x1={x1} y1={y1} x2={x2} y2={y2} power={stale || power == null ? null : -power} />;
+        }) : <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />}
         {/* grid <-> house: + = import towards the house (drawn from grid side) */}
         <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale || snap?.off_grid ? null : snap?.grid_power ?? null} />
-        {/* house -> devices */}
-        {boxes && shown.map((d, i) => {
+        {/* house -> devices; below a row of batteries one line down the middle, between them, and from there to
+            each device, so no line crosses a battery */}
+        {boxes && batteries && shown.length > 0 && (() => {
+          const top = Math.min(...boxes.devices.filter(Boolean).map((d) => at(d, DEVICE_CORNER)[1]));
+          const fork = top - 6;
+          const total = shown.reduce((sum, d) => sum + (d.power_w || 0), 0);
+          return (
+            <>
+              <Link x1={50} y1={boxes.houseNode.y + boxes.houseNode.h + GAP} x2={50} y2={fork} power={stale ? null : total} />
+              {shown.map((d, i) => {
+                const device = boxes.devices[i];
+                if (!device) return null;
+                const centre = device.x + device.w / 2;
+                const [x2, y2] = Math.abs(centre - 50) < 5 ? [50, top - GAP] : at(device, DEVICE_CORNER, centre > 50);
+                return <Link key={d.key} x1={50} y1={fork} x2={x2} y2={y2 - GAP} power={stale ? null : d.power_w} />;
+              })}
+            </>
+          );
+        })()}
+        {boxes && !batteries && shown.map((d, i) => {
           const device = boxes.devices[i];
           if (!device) return null;
           const [[x1, y1], [x2, y2]] = deviceLine(boxes.house, boxes.houseNode, device);
@@ -246,7 +274,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         // grid charging charges the first battery only (#619)
         const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && i === 0);
         return (
-          <Node key={b.key} x={12} y={HOUSE.y + i * BATTERY_STEP} h={h} icon={
+          <Node key={b.key} x={batteryX(i)} y={DEVICE_Y} h={h} small iconRef={(el) => { batteryIcons.current[i] = el; }} icon={
             <span className="battery-with-source">
               <BatteryIcon soc={b.soc} />
               {from && <span className={`charge-source ${from}`} title={from === "sun" ? t("overview.energyFlow.chargingFromSolar") : t("overview.energyFlow.chargingFromGrid")}>

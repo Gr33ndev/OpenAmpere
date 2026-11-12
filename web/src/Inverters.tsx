@@ -1,13 +1,12 @@
 // SPDX-FileCopyrightText: Copyright the OpenAmpere contributors
 // SPDX-License-Identifier: MIT
-/** More than one inverter in one installation (#619): the settings of the further ones, a card per inverter on the
- *  overview and the choice of the inverter whose battery settings are shown. */
+/** More than one inverter in one installation (#619): the settings of the further ones, the hints below the energy
+ *  flow and the choice of the inverter whose battery settings are shown. */
 import { useEffect, useState } from "react";
-import type { ExtraInverter, InverterReading, InverterStatus, Settings, Snapshot, Status } from "./api";
+import type { ExtraInverter, InverterStatus, Settings, Snapshot, Status } from "./api";
 import { inverterName, MAIN_INVERTER } from "./api";
-import { kw, num, percent } from "./format";
+import { num } from "./format";
 import { t } from "./i18n";
-import { BatteryIcon, InverterIcon } from "./icons";
 import { type Detected, ConnectionForm } from "./Setup";
 import { Button, Dialog, Field, Notice, Segmented, Slider, SwitchRow, toast, Unsaved } from "./ui";
 
@@ -206,47 +205,17 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
   );
 }
 
-/** A card per inverter on the overview, with what each one reads now. Nothing with one inverter. */
-export function InverterCards({ snap, stale }: { snap: Snapshot | null; stale: boolean }) {
+/** Below the energy flow, which draws each inverter (#619): why sums are missing or an inverter is left out.
+ *  Nothing while all answer. */
+export function InverterHints({ snap }: { snap: Snapshot | null }) {
   const readings = snap?.inverters ?? [];
-  if (!readings.length) return null;
   return (
     <>
-      <div className="section-title">{t("overview.inverterCards.title")}</div>
-      <div className="card menu">
-        {readings.map((r, index) => <InverterRow key={r.id} reading={r} index={index} stale={stale} />)}
-      </div>
       {readings.map((r, index) => r.left_out ? (
         <p key={r.id} className="hint">{t("overview.inverterCards.leftOutHint", { name: inverterName(r.name, index) })}</p>
       ) : null)}
       {readings.some((r) => !r.connected && !r.left_out && !r.in_first) && <p className="hint">{t("overview.inverterCards.missingHint")}</p>}
     </>
-  );
-}
-
-function InverterRow({ reading, index, stale }: { reading: InverterReading; index: number; stale: boolean }) {
-  const name = inverterName(reading.name, index);
-  if (!reading.connected || stale) {
-    return (
-      <div className="device-row-compact">
-        <InverterIcon size={36} />
-        <span className="grow"><strong>{name}</strong><span className="menu-hint">{t("overview.inverterCards.notConnected")}</span></span>
-      </div>
-    );
-  }
-  const battery = reading.battery_power;
-  const flow = battery == null ? "" : battery < -20 ? t("overview.inverterCards.charging", { power: kw(-battery) })
-    : battery > 20 ? t("overview.inverterCards.discharging", { power: kw(battery) }) : t("overview.inverterCards.idle");
-  return (
-    <div className="device-row-compact">
-      {reading.battery_soc != null ? <BatteryIcon size={36} soc={reading.battery_soc} /> : <InverterIcon size={36} />}
-      <span className="grow">
-        <strong>{name}</strong>
-        <span className="menu-hint">{t("overview.inverterCards.solar", { power: kw(reading.pv_power ?? null) })}
-          {flow ? ` · ${flow}` : ""}{reading.in_first ? ` · ${t("overview.inverterCards.inFirst")}` : ""}</span>
-      </span>
-      {reading.battery_soc != null && <span className="device-today">{percent(reading.battery_soc)}</span>}
-    </div>
   );
 }
 
