@@ -16,6 +16,11 @@ Safety rules:
 - Never discharges into the grid: it only charges; afterwards the inverter runs as before.
 - FoxESS: the setpoint targets the battery where the inverter has the newer layout of 46001, otherwise the AC side
   as before, where PV is curtailed once the battery takes no more; the control log says so once per charge (#509).
+- Several inverters (#619): every battery that OpenAmpere may control is charged by a GridCharging of its own, with
+  the same rules and a remote command of its own (REMOTE_COMMAND for the first inverter, REMOTE_COMMANDS_EXTRA by id
+  for the others). The charging power and battery size of the settings are those of all batteries together, shared
+  by the size of each battery (equally while one is unknown). Charging them together keeps one battery from
+  discharging into the other one while it is charged.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ RESTART_BELOW = 5  # % below the level where the battery took no more: grid char
 LIMIT_READ_S = 600  # the inverter's charge limit is read at most this often (#242)
 MIN_CHARGE_W = 200
 REMOTE_COMMAND = "remote_command"  # meta: OpenAmpere's last remote command and when it ended it (#135, #141)
+REMOTE_COMMANDS_EXTRA = "remote_command_extra"  # meta: the same for each further inverter, by its id (#619)
 AFTER_CONNECT_S = 600  # after a new connection, look this long for OpenAmpere's values brought back by the inverter
 STARTED = "Laden gestartet"  # start of the result logged when charging starts, see tick()
 # meta of 0.23.1, which raised the backup reserve for grid charging (#315, rolled back in #320): a reserve still raised
@@ -99,9 +105,53 @@ def validate(raw: dict, rated_w: int | None, battery_max_w: int | None = None) -
     return s
 
 
+def chargeable(runtime: Runtime) -> list:
+    """The further inverters whose battery OpenAmpere charges as well (#619): one with a battery that is not part of
+    the first one's (a parallel system charges through the first one) and that may be controlled, as far as known."""
+    return [e for e in runtime.collector.extras
+            if e.has_battery and not e.entry.in_first and (e.device is None or e.device.supports_control)]
+
+
+def battery_share(runtime: Runtime, source=None) -> float:
+    """The part of the charging power and battery size of the settings for one battery: by the size of each battery
+    that is charged, equally while one size is unknown; 1 with one inverter."""
+    extras = chargeable(runtime)
+    if not extras:
+        return 1.0
+    sizes = {None: runtime.config.inverter.capacity_kwh, **{id(e): e.entry.capacity_kwh for e in extras}}
+    mine = sizes.get(None if source is None else id(source))
+    if mine is None:  # not charged (any more)
+        return 0.0
+    if all(size > 0 for size in sizes.values()):
+        return mine / sum(sizes.values())
+    return 1 / len(sizes)
+
+
+def command_of(runtime: Runtime, source=None) -> dict:
+    """OpenAmpere's last remote command to the first inverter, or to a further one (source: its ExtraCollector)."""
+    if source is None:
+        return runtime.storage.get_meta(REMOTE_COMMAND) or {}
+    commands = runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)
+    command = commands.get(source.entry.id) if isinstance(commands, dict) else None
+    return command if isinstance(command, dict) else {}
+
+
+def set_command_of(runtime: Runtime, command: dict, source=None) -> None:
+    if source is None:
+        runtime.storage.set_meta(REMOTE_COMMAND, command)
+        return
+    commands = runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)
+    commands = dict(commands) if isinstance(commands, dict) else {}
+    commands[source.entry.id] = command
+    runtime.storage.set_meta(REMOTE_COMMANDS_EXTRA, commands)
+
+
 class GridCharging:
-    def __init__(self, runtime: Runtime) -> None:
+    """Grid charging of one battery: the first inverter's, or a further one's (source: its ExtraCollector, #619)."""
+
+    def __init__(self, runtime: Runtime, source=None) -> None:
         self.runtime = runtime
+        self.source = source
         self.active = False  # remote control currently commanded by us
         self.started_at: float | None = None
         self.start_soc: float | None = None
@@ -116,12 +166,42 @@ class GridCharging:
         self._target_logged: tuple | None = None  # remote control target and fallback last logged this charge (#509)
         self._restore_failed = False  # setting a reserve raised by 0.23.1 back failed: logged once, tried on every tick
 
+    @property
+    def collector(self):
+        return self.source if self.source is not None else self.runtime.collector
+
+    def _who(self) -> dict:
+        """Which battery a log entry is about, once there is more than one inverter (#619)."""
+        if self.source is not None:
+            return {"inverter": self.source.entry.name or self.source.entry.id}
+        if self.runtime.collector.extras:
+            return {"inverter": self.runtime.config.inverter.name or "main"}
+        return {}
+
+    def _command(self) -> dict:
+        return command_of(self.runtime, self.source)
+
+    def _set_command(self, command: dict) -> None:
+        set_command_of(self.runtime, command, self.source)
+
+    def _mine(self, s: ChargingSettings) -> tuple[int, float]:
+        """This battery's charging power (W) and size (kWh): its share of the settings, which are those of all
+        batteries together (#619); never below the smallest power a command may have."""
+        share = battery_share(self.runtime, self.source)
+        power = round(s.power_w * share)
+        device = self.collector.device
+        if device is not None and device.rated_power_w:  # never more than this inverter takes
+            power = min(power, device.rated_power_w)
+        return max(MIN_CHARGE_W, power), s.battery_kwh * share
+
     # ---- settings ------------------------------------------------------------
 
     def _power_limits(self) -> tuple[int | None, int | None]:
         """The inverter's rated power (None while no device is known) and the battery's allowed charging power."""
         device = self.runtime.collector.device
         battery_max_w = round(self.runtime.config.battery.max_charge_kw * 1000) or None
+        if self.runtime.collector.extras:  # all batteries together (#619): the first inverter does not limit the sum
+            return None, battery_max_w
         return (device.rated_power_w if device else None), battery_max_w
 
     @property
@@ -166,7 +246,7 @@ class GridCharging:
 
     def _soc_now(self) -> dict:
         """The state of charge at the time, for the control log: it makes the entries easier to follow (#322)."""
-        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
+        snap = self.collector.own  # this battery's, not the combined one (#619)
         soc = snap.battery_soc if snap else None
         return {"soc": round(soc)} if soc is not None else {}
 
@@ -193,8 +273,9 @@ class GridCharging:
                 reason = f"Ladegrenze des Wechselrichters ({round(target)} %) erreicht"
                 return {"quarters": [], "reason": reason}
             return {"quarters": [], "reason": f"Ladeziel {s.target_soc} % erreicht"}
-        needed_wh = (target - soc) / 100 * s.battery_kwh * 1000 / EFFICIENCY
-        count = math.ceil(needed_wh / (s.power_w * QUARTER / 3600))
+        power_w, battery_kwh = self._mine(s)
+        needed_wh = (target - soc) / 100 * battery_kwh * 1000 / EFFICIENCY
+        count = math.ceil(needed_wh / (power_w * QUARTER / 3600))
         if s.mode == "window":
             in_window = self._in_window(now, s.window_start, s.window_end)
             quarters = [quarter] if in_window else []
@@ -248,8 +329,9 @@ class GridCharging:
     async def _tick(self, now: float | None = None) -> None:
         now = time.time() if now is None else now
         runtime, s = self.runtime, self.settings
-        collector = runtime.collector
-        snap = collector.own  # the first inverter's battery: the one charged (#619)
+        collector = self.collector
+        snap = collector.own  # this battery's, not the combined one (#619)
+        power_w = self._mine(s)[0]
         control = runtime.config.control
         device = collector.device
         allowed = (s.enabled and s.legal_confirmed and control.enabled and collector.connected
@@ -269,8 +351,8 @@ class GridCharging:
             await self.stop("Testmodus ist an")  # also switched on during charging
             if self._dry_logged_quarter != quarter:
                 self._dry_logged_quarter = quarter
-                runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w}}, True,
-                                            f"würde laden ({plan['reason']}) – Testmodus")
+                runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": power_w}, **self._who()},
+                                            True, f"würde laden ({plan['reason']}) – Testmodus")
             return
         soc = snap.battery_soc if snap else None
         if self.full_at_soc is not None:
@@ -299,16 +381,16 @@ class GridCharging:
         # not be overwritten by the values this command started with
         failed: Exception | None = None
         async with control_lock(runtime):
-            previous = runtime.storage.get_meta(REMOTE_COMMAND) or {}
+            previous = self._command()
             restore = None if previous.get("released") else previous.get("restore")
-            command = {"ts": now, "power_w": CHARGE_SIGN * s.power_w, "timeout_s": REMOTE_TIMEOUT_S, "released": None,
+            command = {"ts": now, "power_w": CHARGE_SIGN * power_w, "timeout_s": REMOTE_TIMEOUT_S, "released": None,
                        **({"restore": restore} if restore else {})}
-            runtime.storage.set_meta(REMOTE_COMMAND, command)
+            self._set_command(command)
             try:
-                restore_now = await collector.driver.set_remote_power(CHARGE_SIGN * s.power_w, REMOTE_TIMEOUT_S,
+                restore_now = await collector.driver.set_remote_power(CHARGE_SIGN * power_w, REMOTE_TIMEOUT_S,
                                                                       restore=restore)
                 if restore_now and restore_now != restore:
-                    runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": restore_now})
+                    self._set_command({**command, "restore": restore_now})
             except Exception as exc:  # noqa: BLE001
                 failed = exc
                 # what the half-written command changed, so a release after a restart puts it back as well (#491)
@@ -317,7 +399,7 @@ class GridCharging:
                 except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
                     kept = None
                 if kept and kept != restore:
-                    runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
+                    self._set_command({**command, "restore": kept})
         if failed is not None:
             err = friendly_error(failed)  # the technical text goes to the log, not into the app
             log.warning("grid charging command failed: %s", failed)
@@ -325,16 +407,16 @@ class GridCharging:
             # whatever power is set in the inverter: switched off at once, logged, and not repeated this quarter
             self._refused_quarter = quarter
             if not self.active:
-                runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w}}, False,
-                                            f"Befehl abgelehnt: {err}")
+                runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": power_w}, **self._who()},
+                                            False, f"Befehl abgelehnt: {err}")
             await self.stop(f"Befehl abgelehnt: {err}", error=True)
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
             self.verified, self._target_logged = False, None
-            runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": s.power_w,
+            runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": power_w,
                                                                               "target_soc": s.target_soc},
-                                                          **self._soc_now()},
+                                                          **self._soc_now(), **self._who()},
                                         False, f"Laden gestartet ({plan['reason']})")
         self._log_target(collector.driver)
 
@@ -349,8 +431,8 @@ class GridCharging:
         OpenAmpere's values that come back after a new connection are switched off again (#143)."""
         if error:
             self.last_error = reason
-        storage, collector = self.runtime.storage, self.runtime.collector
-        command = storage.get_meta(REMOTE_COMMAND) or {}
+        collector = self.collector
+        command = self._command()
         pending = bool(command) and not command.get("released")
         was_active, self.active = self.active, False
         if collector.driver is None:  # no inverter set up any more: switched off as soon as there is one again
@@ -376,7 +458,7 @@ class GridCharging:
         else:
             failed = None
         if command:
-            storage.set_meta(REMOTE_COMMAND, {**command, "released": time.time()})
+            self._set_command({**command, "released": time.time()})
         if failed is not None:
             if was_active or pending:
                 self._log_stop(f"Beenden fehlgeschlagen ({failed}); die Fernsteuerung lässt sich nicht abschalten. "
@@ -396,6 +478,8 @@ class GridCharging:
         not answer. Only a value within the limits is written back, and only to a device OpenAmpere may control. A
         reserve below 10 % counts as allowed here: it was the inverter's own value before 0.23.1 raised it (#313)."""
         runtime, collector = self.runtime, self.runtime.collector
+        if self.source is not None:  # 0.23.1 knew only one inverter
+            return
         if runtime.storage.get_meta(STOPS_AT_RESERVE):
             runtime.storage.delete_meta(STOPS_AT_RESERVE)
         raised = runtime.storage.get_meta(RAISED_RESERVE)
@@ -462,7 +546,7 @@ class GridCharging:
     async def _upper_limit(self) -> float:
         """The inverter's own charge limit (max_soc), 100 if it cannot be read."""
         try:
-            limit = (await self.runtime.collector.driver.read_settings()).max_soc
+            limit = (await self.collector.driver.read_settings()).max_soc
         except Exception:  # noqa: BLE001 - only decides whether "not charging" is a fault
             limit = None
         return float(limit) if limit else 100.0
@@ -485,25 +569,88 @@ class GridCharging:
                       "Speicher vielleicht nicht")
         else:
             reason = "Der Wechselrichter hat das Ziel Speicher nicht übernommen"
-        self.runtime.storage.log_control("grid_charging", {"from": {}, "to": {"target": "ac"}}, False,
+        self.runtime.storage.log_control("grid_charging", {"from": {}, "to": {"target": "ac"}, **self._who()}, False,
                                          f"Lädt mit Ziel Wechselrichter-Ausgang statt Speicher: {reason}. Scheint die "
                                          "Sonne, regelt der Wechselrichter die Solaranlage ab, sobald der Speicher "
                                          "nichts mehr aufnimmt.")
 
     def _log_stop(self, result: str) -> None:
-        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
+        snap = self.collector.own  # this battery's, not the combined one (#619)
         self.runtime.storage.log_control("grid_charging", {"from": {"soc": self.start_soc},
-                                                           "to": {"soc": snap.battery_soc if snap else None}},
+                                                           "to": {"soc": snap.battery_soc if snap else None},
+                                                           **self._who()},
                                          False, result)
 
     def view(self, now: float | None = None) -> dict:
         now = time.time() if now is None else now
-        snap = self.runtime.collector.own  # the first inverter's battery: the one charged (#619)
+        snap = self.collector.own  # this battery's, not the combined one (#619)
         plan = self.plan(now, snap.battery_soc if snap else None, self._limit[1] if self._limit else None)
         if self.full_at_soc is not None and not self.active:  # paused at the charge limit: say so (#242)
             plan = {"quarters": [], "reason": self._full_reason()}
         return {"settings": asdict(self.settings), "active": self.active, "last_error": self.last_error,
                 "plan": {**plan, "quarters": plan["quarters"][:96]}}
+
+
+class AllGridCharging:
+    """Grid charging of every battery OpenAmpere controls (#619): the first inverter's and each further one's, with the
+    settings of all together. With one inverter it is the first one's GridCharging and nothing else."""
+
+    def __init__(self, runtime: Runtime) -> None:
+        self.runtime = runtime
+        self.main = GridCharging(runtime)
+        self._extra: dict[str, GridCharging] = {}
+
+    def chargers(self) -> list[GridCharging]:
+        """The first battery's and one for each further one charged now; one made again for a new ExtraCollector
+        (its settings changed). One that is no longer charged keeps nothing running: its remote control ends by its
+        watchdog or its slot, and a pending release is done when it is charged again."""
+        current = {}
+        for extra in chargeable(self.runtime):
+            charger = self._extra.get(extra.entry.id)
+            current[extra.entry.id] = charger if charger is not None and charger.source is extra else GridCharging(
+                self.runtime, extra)
+        self._extra = current
+        return [self.main, *current.values()]
+
+    @property
+    def settings(self) -> ChargingSettings:
+        return self.main.settings
+
+    def save(self, raw: dict, source: str | None = None) -> ChargingSettings:
+        settings = self.main.save(raw, source)
+        for charger in self.chargers()[1:]:
+            charger.full_at_soc, charger._limit = None, None
+        return settings
+
+    @property
+    def active(self) -> bool:
+        return any(c.active for c in self.chargers())
+
+    @property
+    def last_error(self) -> str | None:
+        return next((c.last_error for c in self.chargers() if c.last_error), None)
+
+    async def tick(self, now: float | None = None) -> None:
+        for charger in self.chargers():
+            await charger.tick(now)
+
+    async def stop(self, reason: str, *, error: bool = False) -> None:
+        for charger in self.chargers():
+            try:
+                await charger.stop(reason, error=error)
+            except Exception:  # noqa: BLE001 - every battery is released, one error must not skip the others
+                log.exception("could not stop grid charging")
+
+    def view(self, now: float | None = None) -> dict:
+        view = self.main.view(now)
+        chargers = self.chargers()
+        if len(chargers) > 1:
+            view["active"], view["last_error"] = self.active, self.last_error
+            view["batteries"] = [{"id": "main" if c.source is None else c.source.entry.id,
+                                  "name": self.runtime.config.inverter.name if c.source is None else c.source.entry.name,
+                                  "active": c.active, "last_error": c.last_error, "reason": c.view(now)["plan"]["reason"]}
+                                 for c in chargers]
+        return view
 
 
 def _reserve_pair(raised) -> bool:

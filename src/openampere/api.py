@@ -41,7 +41,7 @@ from .discovery import Rediscovery
 from .billing import Billing
 from .cars import Cars, SourceError
 from .gridmeter import GridMeter
-from .charging import GridCharging
+from .charging import AllGridCharging
 from .consumers import SurplusControl
 from .evcc import Evcc, EvccError
 from .devices import Devices
@@ -276,7 +276,7 @@ def create_app(runtime: Runtime) -> FastAPI:
         return items
 
     rediscovery = Rediscovery(runtime)
-    charging = GridCharging(runtime)
+    charging = AllGridCharging(runtime)  # every battery OpenAmpere controls (#619)
     gridmeter = GridMeter(runtime)
     billing = Billing(runtime.storage, runtime.tariffs, gridmeter)
     evcc = Evcc(runtime)
@@ -664,7 +664,8 @@ def create_app(runtime: Runtime) -> FastAPI:
         return tokens_view()
 
     external.register(app, runtime, tokens, pairing, installation_id=installation_id, version=VERSION, battery=battery,
-                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps, wallboxes=wallboxes)
+                      charging=charging, surplus=surplus, devices=devices, live_apps=live_apps, wallboxes=wallboxes,
+                      battery_of=battery_of)
 
     # ---- live ------------------------------------------------------------
 

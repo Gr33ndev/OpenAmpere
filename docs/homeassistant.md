@@ -97,7 +97,7 @@ lesen** (Read only).
 
 | Entity | |
 |---|---|
-| Work mode | Self-use, feed-in first, backup, peak shaving. With more than one inverter, the control entities act on the first one; the battery settings of the others can be changed in OpenAmpere. |
+| Work mode | Self-use, feed-in first, backup, peak shaving. With more than one inverter, these act on the first one; each further one has its own work mode and limits on its device card. Charging from the grid charges all batteries. |
 | Backup reserve, charge limit, minimum level during a power cut | in %; SAJ also the reserve of the backup mode |
 | Grid charging, grid charging target | set up once in OpenAmpere (legal notes) |
 | Mode per immersion heater/switch | Automatic (surplus), off, boost |

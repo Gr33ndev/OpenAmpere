@@ -477,3 +477,80 @@ async def test_what_an_inverter_has_is_kept_for_when_it_does_not_answer(tmp_path
     again.latest = None
     snap = combine(reading(1000, 0, 50), [again])
     assert snap.inverters[1]["has_battery"] is False and snap.inverters[1]["has_pv"] is True
+
+
+async def test_grid_charging_charges_every_battery_with_its_share(tmp_path):
+    """#619: both batteries are charged, the power of the settings shared by their sizes; both let go at the end."""
+    from openampere.charging import REMOTE_COMMANDS_EXTRA, AllGridCharging
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            runtime.config.inverter.capacity_kwh = 5
+            runtime.extra("wr2").entry.capacity_kwh = 15
+            charging = AllGridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 4000, "battery_kwh": 20})
+            await charging.tick()
+            assert first.energy.remote_enabled and first.energy.remote_power_w == -1000
+            assert second.energy.remote_enabled and second.energy.remote_power_w == -3000
+            assert charging.active and [c.active for c in charging.chargers()] == [True, True]
+            assert runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)["wr2"]["power_w"] == -3000
+            started = [e for e in runtime.storage.control_log(10) if e["action"] == "grid_charging"]
+            assert {e["details"]["inverter"] for e in started} == {"Haus", "Garage"}
+            view = charging.view()
+            assert [b["id"] for b in view["batteries"]] == ["main", "wr2"]
+
+            await charging.stop("Test")
+            assert not first.energy.remote_enabled and not second.energy.remote_enabled
+            assert runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)["wr2"]["released"]
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_battery_settings_of_a_further_inverter_keep_its_own_charge(tmp_path):
+    """The work mode kept for the end of a charge goes to the command of the inverter it belongs to (#493, #619)."""
+    from openampere.charging import REMOTE_COMMAND, AllGridCharging
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            charging = AllGridCharging(runtime)
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 4000})
+            await charging.tick()
+            main_restore = runtime.storage.get_meta(REMOTE_COMMAND)["restore"]
+            await BatteryControl(runtime, runtime.extra("wr2")).write({"work_mode": "backup"})
+            assert runtime.storage.get_meta(REMOTE_COMMAND)["restore"] == main_restore  # the first one's untouched
+            await charging.stop("Test")
+            assert second.regs[0x3647] == 2  # the owner's new mode after the charge (backup)
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_other_apps_read_and_set_the_battery_of_each_inverter(tmp_path):
+    """#619: the external API lists the further inverters that can be controlled, gives their battery settings and
+    changes them by id; the first one stays where it was."""
+    from openampere.apitokens import ApiTokens
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            runtime.config.server.tls_port = 8443
+            token, _ = ApiTokens(runtime.storage).create("Home Assistant", "control")
+            transport = httpx.ASGITransport(app=create_app(runtime))
+            async with httpx.AsyncClient(transport=transport, base_url="https://localhost",
+                                         headers={"Authorization": f"Bearer {token}"}) as client:
+                info = (await client.get("/api/external/v1/info")).json()
+                assert [i["id"] for i in info["inverter_controls"]] == ["wr2"]
+                assert info["inverter_controls"][0]["supports_control"] is True
+                state = (await client.get("/api/external/v1/state")).json()
+                assert state["inverter_battery_settings"]["wr2"]["min_soc_on_grid"] == 20
+                answer = await client.put("/api/external/v1/battery", params={"inverter": "wr2"},
+                                          json={"min_soc_on_grid": 30})
+                assert answer.status_code == 200, answer.text
+                assert second.regs[0x3644] == 30 and first.regs[0x3644] == 20
+                assert (await client.put("/api/external/v1/battery", params={"inverter": "nope"},
+                                         json={"min_soc_on_grid": 30})).status_code == 404
+        finally:
+            await runtime.collector.stop()

@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator
 from .const import WALLBOX_CHARGING_MODES
-from .entity import ControlEntity, WallboxEntity, controllable_wallboxes
+from .entity import ControlEntity, InverterControlEntity, WallboxEntity, controllable_wallboxes, inverter_controls
 from .helpers import send
 
 
@@ -56,7 +56,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     if not coordinator.can_control:
         return
     numbers = [*SOC_NUMBERS, *([BACKUP_SOC] if (coordinator.info.get("device") or {}).get("backup_reserve") else [])]
-    async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator),
+    # the battery of each further inverter (#619), on its own device
+    further = [InverterSocNumber(coordinator, d, inverter["id"]) for inverter in inverter_controls(coordinator.info)
+               for d in (*SOC_NUMBERS, *([BACKUP_SOC] if inverter.get("backup_reserve") else []))]
+    async_add_entities([*(SocNumber(coordinator, d) for d in numbers), GridChargingTarget(coordinator), *further,
                         *(WallboxModeCurrent(coordinator, w["id"]) for w in controllable_wallboxes(coordinator.info))])
 
 
@@ -85,6 +88,39 @@ class SocNumber(ControlEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         await send(self.coordinator, self.coordinator.client.set_battery({self.entity_description.key: int(value)}))
+
+
+class InverterSocNumber(InverterControlEntity, NumberEntity):
+    """A limit of the battery of a further inverter (#619), with the same bounds as the first one's."""
+
+    entity_description: SocDescription
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(self, coordinator: OpenAmpereCoordinator, description: SocDescription, inverter_id: str) -> None:
+        super().__init__(coordinator, description.key, inverter_id)
+        self.entity_description = description
+
+    def _bounds(self) -> tuple[int, int]:
+        return self.entity_description.bounds({"battery_settings": self.battery_settings})
+
+    @property
+    def native_min_value(self) -> float:
+        return self._bounds()[0]
+
+    @property
+    def native_max_value(self) -> float:
+        low, high = self._bounds()
+        return max(low, high)
+
+    @property
+    def native_value(self) -> float | None:
+        return self.battery_settings.get(self.entity_description.key)
+
+    async def async_set_native_value(self, value: float) -> None:
+        await send(self.coordinator, self.coordinator.client.set_battery({self.entity_description.key: int(value)},
+                                                                         self._inverter_id))
 
 
 class GridChargingTarget(ControlEntity, NumberEntity):

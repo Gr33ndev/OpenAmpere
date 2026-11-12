@@ -292,9 +292,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
       <Node x={HOUSE.x} y={houseY} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
       {batteries ? batteries.map((b, i) => {
         const flow = direction(b.power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging"));
-        // grid charging charges the first inverter's battery only (#619), wherever it is drawn
+        // grid charging charges every battery (#619)
         const first = b.key === MAIN_INVERTER;
-        const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging && first);
+        const from = stale || !snap ? null : chargeSource({ ...snap, battery_power: b.power }, gridCharging);
         return (
           <Node key={b.key} x={12} y={stackY(i)} h={h} small tiny={!retro} icon={
             <span className="battery-with-source small">

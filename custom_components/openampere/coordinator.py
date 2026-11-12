@@ -49,8 +49,9 @@ class OpenAmpereCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._follow_firmware()
         super().async_update_listeners()
         data = self.data or {}
-        if not self._reload_scheduled and self.config_entry and needs_reload(self.info, data.get("live"),
-                                                                           data.get("wallboxes"), data.get("status")):
+        if not self._reload_scheduled and self.config_entry and needs_reload(
+                self.info, data.get("live"), data.get("wallboxes"), data.get("status"),
+                data.get("inverter_battery_settings")):
             self._reload_scheduled = True
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
@@ -122,12 +123,18 @@ def firmware(coordinator: OpenAmpereCoordinator) -> str | None:
     return (coordinator.info.get("device") or {}).get("firmware")
 
 
-def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, status: dict | None = None) -> bool:
+def needs_reload(info: dict, live: dict | None, wallboxes: list | None = None, status: dict | None = None,
+                 controls: dict | None = None) -> bool:
     """Set up before OpenAmpere had its first reading (e.g. everything starting after a power cut): the device and
     the PV inputs were unknown, so set up again once they are there (#220). Also when a wallbox was added or removed
     in OpenAmpere (#388), or a second PV inverter switched on, off or renamed (#419); an older OpenAmpere sends
     neither. And when the device got an access token or lost it (#538): the sensor of its days left comes or goes.
-    And when an inverter was added, removed or renamed (#619)."""
+    And when an inverter was added, removed or renamed, or a further one can be controlled now that could not when
+    it was set up (its device was not found yet, #619): controls = the battery settings of the further inverters."""
+    if controls is not None and "inverter_controls" in info:
+        known = sorted(i["id"] for i in info["inverter_controls"] if i.get("supports_control"))
+        if sorted(controls) != known:
+            return True
     if status and "pv_external" in status and "pv_external" in info and status["pv_external"] != info["pv_external"]:
         return True
     if status and "token_days_left" in status and "token_sensor" in info \

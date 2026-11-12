@@ -427,3 +427,42 @@ async def test_no_reading_yet_keeps_the_inverter_devices(hass: HomeAssistant, en
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
     assert any((("openampere", f"{INSTALLATION}_inverter_wr2") in d.identifiers) for d in devices)
     assert registry.async_get(soc).name == "Garage-Akku"
+
+
+async def test_the_battery_of_each_further_inverter_can_be_controlled(hass: HomeAssistant, entry, client) -> None:
+    """#619: work mode and limits of a further inverter on its own device, sent with its id."""
+    client.info.return_value = {**info(), "inverter_controls": [
+        {"id": "wr2", "name": "Garage", "supports_control": True, "work_modes": ["self_use", "backup"],
+         "backup_reserve": True}]}
+    data = with_inverters(TWO)
+    data["inverter_battery_settings"] = {"wr2": {"work_mode": "self_use", "min_soc": 5, "max_soc": 100,
+                                                 "min_soc_on_grid": 25, "backup_soc": 30}}
+    client.state.return_value = data
+    await setup(hass, entry)
+    mode = entity_id(hass, "select", "_inverter_wr2_work_mode")
+    assert hass.states.get(mode).state == "self_use"
+    assert hass.states.get(mode).attributes["options"] == ["self_use", "backup"]
+    await hass.services.async_call("select", "select_option", {"entity_id": mode, "option": "backup"}, blocking=True)
+    client.set_battery.assert_called_with({"work_mode": "backup"}, "wr2")
+    reserve = entity_id(hass, "number", "_inverter_wr2_min_soc_on_grid")
+    assert float(hass.states.get(reserve).state) == 25
+    await hass.services.async_call("number", "set_value", {"entity_id": reserve, "value": 30}, blocking=True)
+    client.set_battery.assert_called_with({"min_soc_on_grid": 30}, "wr2")
+    assert entity_id(hass, "number", "_inverter_wr2_backup_soc") is not None
+    # the first inverter's controls stay as they were
+    await hass.services.async_call("select", "select_option", {"entity_id": entity_id(hass, "select", "_work_mode"),
+                                                                "option": "backup"}, blocking=True)
+    client.set_battery.assert_called_with({"work_mode": "backup"})
+    # on its own device, named like in OpenAmpere
+    registry = er.async_get(hass)
+    device = dr.async_get(hass).async_get(registry.async_get(reserve).device_id)
+    assert device.name == "Inverter 2"
+
+
+def test_a_further_inverter_that_can_be_controlled_now_sets_up_again() -> None:
+    from custom_components.openampere.coordinator import needs_reload
+    live = state()["live"]
+    known = {**info(), "inverter_controls": [{"id": "wr2", "supports_control": True}]}
+    assert not needs_reload(known, live, controls={"wr2": {}})
+    assert needs_reload({**info(), "inverter_controls": []}, live, controls={"wr2": {}})  # its device found later
+    assert not needs_reload(info(), live, controls={"wr2": {}})  # set up by an older integration: no key

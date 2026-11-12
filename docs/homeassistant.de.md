@@ -95,7 +95,7 @@ das nicht, wähle **„Nur lesen“**.
 
 | Entität | |
 |---|---|
-| Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen. Mit mehr als einem Wechselrichter steuern diese Werte den ersten; die Speicher-Einstellungen der anderen änderst du in OpenAmpere. |
+| Betriebsmodus | Eigenverbrauch, Einspeisung bevorzugen, Notstromreserve, Spitzenlast begrenzen. Mit mehr als einem Wechselrichter steuern diese Werte den ersten; jeder weitere hat auf seiner Gerätekarte eigenen Betriebsmodus und eigene Grenzen. Laden aus dem Netz lädt alle Speicher. |
 | Notstrom-Reserve, Ladegrenze, Untergrenze im Notstrombetrieb | in %; bei SAJ zusätzlich die Reserve im Modus Notstromreserve |
 | Laden aus dem Netz, Ladeziel aus dem Netz | einmal in OpenAmpere einrichten (rechtliche Hinweise) |
 | Betriebsart je Heizstab/Schalter | Automatik (Überschuss), Aus, Boost |

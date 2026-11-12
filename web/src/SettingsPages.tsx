@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Fragment, useEffect, useState } from "react";
 import type { AuthStatus, BatterySettings, BatteryState, CloudImportState, ExportLimit, FeedInRule, SecretKey, SettingKey, Settings, Snapshot, Status } from "./api";
-import { appUrl, getJson, MAIN_INVERTER, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
+import { appUrl, getJson, inverterName, MAIN_INVERTER, OFFLINE_MESSAGE, postFile, postJson, putJson, PV_INPUT_COLORS, refreshAll, useOnServerChange, useResource } from "./api";
 import { DEMO } from "./demo/flag";
 import { ADVISORIES_URL, ANDROID_LICENSES_DATA_URL, CHANGELOG_URL, IMPRINT_URL, ISSUES_URL, LICENSES_DATA_URL, REPO_URL } from "./links";
 import { LANGUAGES, lang, LOCALE, setLang, t, tx, type Lang } from "./i18n";
@@ -1607,7 +1607,9 @@ type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_
   window_start: number; window_end: number; max_price_ct: number | null; power_w: number; battery_kwh: number;
   legal_confirmed: boolean };
 export type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
-  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> } };
+  plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> };
+  /** with several batteries (#619): how each one is doing */
+  batteries?: { id: string; name: string; active: boolean; last_error: string | null; reason: string }[] };
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -1662,9 +1664,7 @@ export function ChargingPage({ onBack }: PageProps) {
     <SubPage title={t("settings.chargingPage.title")} onBack={onBack}>
       <p className="hint">{t("settings.chargingPage.intro")}{" "}
         <strong>{t("settings.chargingPage.experimental")}</strong></p>
-      {firstInverterOnly(status) && (
-        <Notice kind="info">{t("settings.inverters.chargingFirstOnly", { name: firstInverterOnly(status) ?? "" })}</Notice>
-      )}
+      {firstInverterOnly(status) && <Notice kind="info">{t("settings.inverters.chargingAll")}</Notice>}
       {status?.device?.charging_continues_min ? (
         <Notice kind="warn">{t("settings.chargingPage.slotControlHint",
           { manufacturer: status.device.manufacturer, minutes: status.device.charging_continues_min })}</Notice>
@@ -1682,6 +1682,14 @@ export function ChargingPage({ onBack }: PageProps) {
               hint={data.active ? t("settings.chargingPage.chargingNow") : data.plan.reason}
               onChange={(v) => (v && !form.legal_confirmed ? setLegal(true) : void save({ ...form, enabled: v }))} />
             {data.last_error && <Notice kind="error">{data.last_error}</Notice>}
+            {data.batteries && data.batteries.length > 1 && (
+              <ul className="hint battery-states">
+                {data.batteries.map((b, i) => (
+                  <li key={b.id}>{t("settings.inverters.chargingState", { name: inverterName(b.name, i),
+                    state: b.active ? t("settings.chargingPage.chargingNow") : b.reason })}</li>
+                ))}
+              </ul>
+            )}
             {form.enabled && data.plan.quarters.length > 0 && (
               <p className="hint">{data.plan.needed_wh
                 ? t("settings.chargingPage.plannedEnergy", { times: ranges(data.plan.quarters).join(", "), energy: num(data.plan.needed_wh / 1000, 2) })

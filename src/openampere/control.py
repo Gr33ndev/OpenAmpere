@@ -152,7 +152,7 @@ def check_backup_soc(value: int, max_soc: int | None) -> None:
 
 class BatteryControl:
     """The battery settings of one inverter: the first one, or a further one (#619) given as `source` (its
-    ExtraCollector). Grid charging belongs to the first one only, so only its control takes part in it."""
+    ExtraCollector), each with the remote command of its own grid charging."""
 
     def __init__(self, runtime: Runtime, source=None) -> None:
         self.runtime = runtime
@@ -335,13 +335,10 @@ class BatteryControl:
                     "warning": warning}
 
     def _pending_command(self) -> dict:
-        """OpenAmpere's last remote command while it is not released, else {}; always {} for a further inverter, which
-        OpenAmpere does not charge from the grid."""
-        from .charging import REMOTE_COMMAND  # charging imports this module
+        """OpenAmpere's last remote command to this inverter while it is not released, else {}."""
+        from .charging import command_of  # charging imports this module
 
-        if self.source is not None:
-            return {}
-        command = self.runtime.storage.get_meta(REMOTE_COMMAND) or {}
+        command = command_of(self.runtime, self.source)
         return command if command and not command.get("released") else {}
 
     async def _adopt_remote_restore(self, driver) -> None:
@@ -374,15 +371,15 @@ class BatteryControl:
         """A driver that keeps a new work mode for the end of grid charging (SAJ) has it only in memory: stored with
         the rest of what the release puts back right away, so a release after a restart puts back the mode chosen
         last (#493)."""
-        from .charging import REMOTE_COMMAND  # charging imports this module
+        from .charging import set_command_of  # charging imports this module
 
         try:
             kept = driver.remote_restore()
         except (AttributeError, ConnectionError):  # a driver without it, or a device not detected yet
             return
         command = self._pending_command()
-        if kept and command and self.source is None:
-            self.runtime.storage.set_meta(REMOTE_COMMAND, {**command, "restore": kept})
+        if kept and command:
+            set_command_of(self.runtime, {**command, "restore": kept}, self.source)
 
     async def _read_back(self, written: dict) -> dict | None:
         """The values after writing. A value the inverter takes a few seconds later (while it is controlled remotely)

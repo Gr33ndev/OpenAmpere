@@ -185,7 +185,8 @@ example a new PV inverter in `pv_external`).
   "pv_external": null,
   "devices": [{"id": "…", "name": "Heizstab", "kind": "mypv"}],
   "wallboxes": [{"id": "…", "name": "Garage", "model": "…", "read_only": false}],
-  "poll_interval": 10, "web_port": 8080
+  "poll_interval": 10, "web_port": 8080,
+  "inverter_controls": []
 }
 ```
 
@@ -197,6 +198,9 @@ example a new PV inverter in `pv_external`).
 - `pv_external`: `{"name": …}` if the owner counts a second PV inverter, otherwise `null`.
 - `devices`: heaters and relays OpenAmpere switches itself; `wallboxes`: wallboxes it reads itself. Wallboxes run
   through evcc are not part of this interface.
+- `inverter_controls`: with more than one inverter (#619), the further ones whose battery can be set, each with `id`,
+  `name`, `supports_control`, `work_modes` and `backup_reserve` like `device`. Their current settings are in
+  `inverter_battery_settings` of `/state` (by id), and `PUT /battery?inverter=<id>` changes them.
 
 ### `GET /state`
 
@@ -434,8 +438,10 @@ message. A command refused before anything was written does not count.
 Not every inverter accepts every command: `supports_control` in `/info` says whether OpenAmpere may control the
 device at all.
 
-With more than one inverter (#619) this interface controls the first one; the battery settings of the further ones
-can be changed in the app.
+With more than one inverter (#619) `PUT /battery?inverter=<id>` changes the battery of a further one (the ids and what
+each offers are in `inverter_controls` of `/info`, its settings in `inverter_battery_settings` of `/state`); without
+`inverter` it changes the first one. The limit of 6 changes per hour counts per inverter. `PUT /grid-charging` switches
+grid charging of all batteries together.
 
 ### `PUT /grid-charging`
 

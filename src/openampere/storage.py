@@ -173,7 +173,8 @@ SETUP_LOCKED = "setup_locked"
 # old one nor drop one that is pending. wallbox_owned / wallbox_stopped: which wallbox charges OpenAmpere started and
 # stopped (wallbox/native.py, #465, #456), the counterpart of remote_command: a backup must neither make OpenAmpere
 # stop a charge it did not start nor forget one it did.
-KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "consumer_switched_on",  # last: #243
+KEEP_ON_RESTORE = ("auth", "sessions", "api_tokens", "remote_command", "remote_command_extra",  # #619: by inverter
+                   "consumer_switched_on",  # last: #243
                    "known_devices", SETUP_LOCKED, "grid_charging_reserve", "grid_charging_stops_at_reserve",
                    "wallbox_owned", "wallbox_stopped")
 SQLITE_CORRUPT, SQLITE_NOTADB = 11, 26

@@ -139,8 +139,9 @@ class OpenAmpereClient:
     async def state(self) -> dict:
         return await self._request("GET", "/state")
 
-    async def set_battery(self, changes: dict) -> dict:
-        return await self._request("PUT", "/battery", changes)
+    async def set_battery(self, changes: dict, inverter: str | None = None) -> dict:
+        """inverter: the id of a further inverter (#619); none for the first one."""
+        return await self._request("PUT", f"/battery?inverter={inverter}" if inverter else "/battery", changes)
 
     async def set_grid_charging(self, changes: dict) -> dict:
         return await self._request("PUT", "/grid-charging", changes)

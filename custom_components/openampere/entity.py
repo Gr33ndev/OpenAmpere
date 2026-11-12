@@ -114,7 +114,8 @@ class InverterEntity(OpenAmpereEntity):
         installation = coordinator.info["installation_id"]
         self._inverter_id = inverter_id
         self._attr_unique_id = f"{installation}_inverter_{inverter_id}_{key}"
-        inverters = coordinator.info.get("inverters") or []
+        # set up by the sensors; a platform set up before them reads the same list from the reading
+        inverters = coordinator.info.get("inverters") or inverter_list((coordinator.data or {}).get("live"))
         index = next((n for n, i in enumerate(inverters) if i["id"] == inverter_id), 0)
         name = inverters[index]["name"] if index < len(inverters) else ""
         named = {"name": name} if name else {"translation_key": "inverter",
@@ -130,6 +131,25 @@ class InverterEntity(OpenAmpereEntity):
     def available(self) -> bool:
         reading = self.reading
         return super().available and not self.stale and reading is not None and bool(reading.get("connected"))
+
+
+def inverter_controls(info: dict[str, Any]) -> list[dict[str, Any]]:
+    """The further inverters whose battery can be controlled (#619); missing on older OpenAmpere versions."""
+    return [i for i in info.get("inverter_controls") or [] if i.get("supports_control")]
+
+
+class InverterControlEntity(InverterEntity):
+    """Changes the battery of a further inverter (#619): only while the control switch in OpenAmpere is on and the
+    inverter answers."""
+
+    @property
+    def battery_settings(self) -> dict[str, Any]:
+        return (self.data.get("inverter_battery_settings") or {}).get(self._inverter_id) or {}
+
+    @property
+    def available(self) -> bool:
+        status = self.data.get("status") or {}
+        return super().available and bool((status.get("control") or {}).get("enabled"))
 
 
 class ControlEntity(OpenAmpereEntity):

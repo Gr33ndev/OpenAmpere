@@ -138,9 +138,14 @@ test("an inverter away for long is named as left out of the sums", async ({ page
   await expect(page.getByText("zeigt die Übersicht keine Summe")).toHaveCount(0);
 });
 
-test("grid charging warns that it can move energy between the batteries", async ({ page }) => {
+test("grid charging says it charges all batteries together", async ({ page, api }) => {
+  const view = await demoRequest<Record<string, unknown>>("GET", "/api/charging");
+  api.override("/api/charging", { ...view, batteries: [
+    { id: "main", name: "Haus", active: true, last_error: null, reason: "im Ladefenster" },
+    { id: "wr2", name: "", active: false, last_error: null, reason: "Ladeziel 80 % erreicht" }] });
   await open(page, "devices/charging");
-  await expect(page.getByText("von einem Speicher in den anderen")).toBeVisible();
+  await expect(page.getByText("lädt alle Speicher gleichzeitig")).toBeVisible();
+  await expect(page.getByText("Wechselrichter 2: Ladeziel 80 % erreicht")).toBeVisible();
 });
 
 test("an inverter of a parallel system can be marked as already in the first one", async ({ page }) => {
@@ -198,7 +203,7 @@ test("the combined values stay visible below the energy flow", async ({ page, ap
   await expect(page.locator(".flow-total")).toHaveText("Zusammen: Solar 5,30 kW · Speicher 1,30 kW lädt, 55 %");
 });
 
-test("the grid charging mark is on the first inverter's battery wherever it is drawn", async ({ page, api }) => {
+test("the grid charging mark is on every battery that charges", async ({ page, api }) => {
   const status = await demoRequest<Status>("GET", "/api/status");
   api.override("/api/status", { ...status, devices: { ...status.devices, grid_charging: true } });
   api.live({ battery_power: -2000, grid_power: 0, inverters: [
@@ -206,10 +211,9 @@ test("the grid charging mark is on the first inverter's battery wherever it is d
     { id: "wr2", name: "Garage", connected: true, pv_power: 0, battery_power: -500, battery_soc: 48 },
     { id: "wr3", name: "Stall", connected: true, pv_power: 0, battery_power: -1500, battery_soc: 30 }] });
   await open(page, "");
-  // the first inverter has no battery values in this reading: the batteries drawn are wr2 and wr3, neither gets "€"
+  // grid charging charges every battery (#619): both batteries drawn get "€"
   await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(2);
-  await expect(page.locator(".flow .charge-source.grid")).toHaveCount(0);
-  await expect(page.locator(".flow .charge-source.sun")).toHaveCount(2);
+  await expect(page.locator(".flow .charge-source.grid")).toHaveCount(2);
 });
 
 test("an inverter already in the first one is named below the energy flow with its values", async ({ page, api }) => {
