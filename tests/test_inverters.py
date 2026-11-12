@@ -408,3 +408,16 @@ def test_battery_health_counts_the_size_of_all_batteries(tmp_path):
         health_module.battery = original
         runtime.collector.extras = []
     assert seen == [10, 10, 20]
+
+
+def test_the_pv_inputs_of_each_inverter_keep_their_places():
+    """A further inverter left out or without a reading keeps its places: the next one's inputs do not move into them
+    (the owner names inputs by place, the history keeps them so)."""
+    own = reading(1000, 0, 50, inputs=(500, 500))
+    middle = Extra(ExtraInverter(id="wr2", host="a"), reading(800, 0, 50, inputs=(400, 400)), fresh=False, gone=True)
+    middle.input_count = 2
+    last = Extra(ExtraInverter(id="wr3", host="b"), reading(300, 0, 50, inputs=(300,)))
+    snap = combine(own, [middle, last])
+    assert [i.power for i in snap.pv_inputs] == [500, 500, None, None, 300]
+    middle._gone = False  # a short gap: missing sums, but the same places
+    assert [i.power for i in combine(own, [middle, last]).pv_inputs] == [500, 500, None, None, 300]

@@ -31,7 +31,7 @@ import time
 
 from .collector import KNOWN_DEVICE, Collector
 from .config import MAIN_INVERTER, ExtraInverter
-from .drivers.base import EnergyCounters, InverterDriver, Snapshot, energy_balance
+from .drivers.base import EnergyCounters, InverterDriver, PvInput, Snapshot, energy_balance
 
 log = logging.getLogger(__name__)
 
@@ -120,6 +120,7 @@ class ExtraCollector(Collector):
         self.external_pv = external_pv
         self.rated_power = (entry.rated_power_reported_w, entry.rated_power_w)
         self.created = time.time()
+        self.input_count = 0  # PV inputs it reported at most: its places in the combined list stay its own
 
     @property
     def name(self) -> str:
@@ -138,6 +139,7 @@ class ExtraCollector(Collector):
 
     async def _reading(self, snap: Snapshot) -> None:
         self.own = self.latest = snap
+        self.input_count = max(self.input_count, len(snap.pv_inputs))
 
     def _unreachable(self) -> None:
         pass  # a power cut is told by the first inverter
@@ -225,6 +227,17 @@ def _battery_power(snaps: list[Snapshot]) -> float | None:
     return _add([s.battery_power for s in snaps])
 
 
+def _pv_inputs(own: Snapshot, everyone: list) -> list[PvInput]:
+    """The PV inputs of all inverters, each inverter at the same places every time (the owner names inputs by place,
+    and the history keeps them so): one without a reading gets empty places, as many as it reported before."""
+    inputs = list(own.pv_inputs)
+    for extra, snap in everyone:
+        its = list(snap.pv_inputs) if snap is not None else []
+        count = max(getattr(extra, "input_count", 0), len(its))
+        inputs += its + [PvInput() for _ in range(count - len(its))]
+    return inputs
+
+
 def combine(own: Snapshot, extras: list[ExtraCollector], main_name: str = "", main_capacity: float = 0.0,
             now: float | None = None, counters: ExtraCounters | None = None) -> Snapshot:
     """The first inverter's reading with the further ones added (see the module docstring). counters: the further
@@ -246,7 +259,7 @@ def combine(own: Snapshot, extras: list[ExtraCollector], main_name: str = "", ma
         snap.pv_external_power = _add([own.pv_external_power, *(r.pv_external_power for _, r in present)])
         snap.battery_power = _battery_power([own, *(r for _, r in present)])
         snap.battery_soc = combined_soc([(own, main_capacity), *((r, e.entry.capacity_kwh) for e, r in present)])
-        snap.pv_inputs = [*own.pv_inputs, *(i for _, r in present for i in r.pv_inputs)]
+    snap.pv_inputs = _pv_inputs(own, everyone)
     if any(e.entry.own_grid and r is None for e, r in readings):
         snap.grid_power = None
     else:
