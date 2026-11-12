@@ -410,3 +410,20 @@ async def test_a_removed_inverter_takes_its_device_along(hass: HomeAssistant, en
     assert entity_id(hass, "sensor", "_inverter_wr2_inverter_pv_power") is None
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
     assert not any(ident.startswith(f"{INSTALLATION}_inverter_") for d in devices for _, ident in d.identifiers)
+
+
+async def test_no_reading_yet_keeps_the_inverter_devices(hass: HomeAssistant, entry, client) -> None:
+    """Set up again before OpenAmpere has a reading (#220): the cards of the inverters and the owner's changes to them
+    stay, and they come back once the reading is there."""
+    client.state.return_value = with_inverters(TWO)
+    await setup(hass, entry)
+    registry = er.async_get(hass)
+    soc = entity_id(hass, "sensor", "_inverter_wr2_inverter_battery_soc")
+    registry.async_update_entity(soc, name="Garage-Akku")
+    await hass.config_entries.async_unload(entry.entry_id)
+    client.state.return_value = {**with_inverters(TWO), "live": None}
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert any((("openampere", f"{INSTALLATION}_inverter_wr2") in d.identifiers) for d in devices)
+    assert registry.async_get(soc).name == "Garage-Akku"

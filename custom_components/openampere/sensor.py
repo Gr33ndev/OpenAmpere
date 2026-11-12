@@ -114,8 +114,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
         if not wallbox.get("read_only"):  # one OpenAmpere only shows does not tell the current set in it (#439)
             entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
     # every inverter on its own once there is more than one (#619); remembered, so a change sets up again
-    coordinator.info["inverters"] = inverter_list((coordinator.data or {}).get("live"))
-    remove_old_inverters(hass, entry, coordinator.info)
+    live = (coordinator.data or {}).get("live")
+    coordinator.info["inverters"] = inverter_list(live)
+    if live:  # without a reading yet (#220) nothing tells which inverters there are: keep every card
+        remove_old_inverters(hass, entry, coordinator.info)
     for inverter in coordinator.info["inverters"]:
         entities += [InverterSensor(coordinator, d, inverter["id"]) for d in INVERTER_SENSORS]
     entities.append(FirmwareSensor(coordinator))
