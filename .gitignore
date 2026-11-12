@@ -10,6 +10,10 @@ web/playwright-report/
 src/openampere/web/
 .pytest_cache/
 .hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+diff-cover.md
 
 # lokale Werkzeug-Protokolle
 .abide/

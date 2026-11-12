@@ -176,6 +176,24 @@ files" workflow adds them:
 scripts/deps.sh
 ```
 
+### Tests and coverage
+
+CI measures which lines of the backend the tests run (#630). At least **70 % of the lines a pull request adds or
+changes** in `src/openampere/` must be covered; old code is not counted. The `backend` job fails below that and
+lists the uncovered lines in its summary. To check locally before pushing:
+
+```bash
+.venv/bin/pytest --cov --cov-report=xml
+```
+
+```bash
+.venv/bin/diff-cover coverage.xml --compare-branch=origin/main --fail-under=70
+```
+
+Cover new code with tests rather than lowering the bar. Code that can only run against a real device or the host
+(and not against the simulator or a mock) may be excluded with `# pragma: no cover` and a comment saying why.
+Code that only runs in a separate process started by a test is not measured and counts as uncovered.
+
 ## Code rules
 
 - **Style guides, checked in CI:**

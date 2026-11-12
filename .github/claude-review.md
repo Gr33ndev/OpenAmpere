@@ -52,13 +52,15 @@ corrected on the page, and that a fact moved up keeps its old source.
 ## 4. Project rules that CI does not check
 
 Do not report what CI already checks: ruff, Biome, TypeScript, the build, Conventional Commits, the SPDX lines,
-`check:demo`, `check:i18n`, the tests themselves. Check these instead (details in AGENTS.md):
+`check:demo`, `check:i18n`, the tests themselves, the coverage of new backend lines (70 %, diff-cover). Check these
+instead (details in AGENTS.md):
 
 - **Texts:** every UI text through `t()`/`tx()` with German in `web/src/locales/de/` and English in `en/`; no
   sentence split over several keys; `LOCALE` instead of `"de-DE"`; German server messages with a key in
   `src/openampere/locales/de.json`. German texts are complete sentences for non-technical owners and say what to do.
 - **Configurable in the app**, not only in a file.
-- **Tests:** new logic has tests; a bug fix has a test that fails without the fix; simulator tests stop the collector
+- **Tests:** new logic has tests; a bug fix has a test that fails without the fix; `# pragma: no cover` only on code
+  that cannot run without real hardware or the host, with a comment why; simulator tests stop the collector
   in `finally`; a UI bug has a test in `web/ui-tests/`; a new page is in `PAGES` of `web/ui-tests/fixtures.ts`.
 - **Four ways to run** (Docker, Home Assistant app, Android app, integration): paths relative to the page in the web
   app (no `"/…"` in `fetch`, `href`, `src`); a feature needing a helper container, the host or Docker says in the app

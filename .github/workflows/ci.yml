@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # diff-cover needs main and the merge base
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
@@ -24,7 +26,14 @@ jobs:
       - name: Code style (ruff)
         run: ruff check .
       - name: Tests
-        run: pytest -q
+        run: pytest -q --cov --cov-report=xml
+      - name: Coverage of new code (at least 70 %)
+        # diff-cover (#630) compares coverage.xml with the diff against main: at least 70 % of the lines a pull request
+        # adds or changes must run in the tests; old code is not counted. On main the diff is empty.
+        run: diff-cover coverage.xml --compare-branch=origin/main --fail-under=70 --format markdown:diff-cover.md
+      - name: Coverage report in the job summary
+        if: always()
+        run: if [ -f diff-cover.md ]; then cat diff-cover.md >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Third-party licence list up to date
         run: |
           cd web && npm ci && cd ..
