@@ -190,6 +190,10 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
   const gap = batteries ? Math.max(STACK, (BATTERY_UP_PX + BATTERY_DOWN_PX + SPACE_PX) / unit) : 0;
   const centre = batteries ? Math.max(HOUSE.y, 16 + (SUN_DOWN_PX + BATTERY_UP_PX + SPACE_PX) / unit + gap / 2) : HOUSE.y;
   const stackY = (i: number) => centre + (i - ((batteries?.length ?? 1) - 1) / 2) * gap;
+  // house and grid move down with the batteries, so all three stay at one height
+  const dy = centre - HOUSE.y;
+  const houseY = HOUSE.y + dy;
+  const lineY = LINE_Y + dy;
   const lowest = centre + gap / 2;
   const deviceY = batteries ? Math.max(DEVICE_Y, lowest + (BATTERY_DOWN_PX + DEVICE_UP_PX + SPACE_PX) / unit) : DEVICE_Y;
   const h = shown.length ? DEVICES_H + deviceY - DEVICE_Y
@@ -258,17 +262,17 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
           const x = sunX(i, suns.length);
           const power = stale ? null : s.power;
           // below a sun with a name the line starts under the name
-          return x === 50 ? <Link key={s.key} x1={50} y1={s.label ? 34 : 30} x2={50} y2={41} power={power} />
-            : <Link key={s.key} x1={x + (50 - x) * 0.2} y1={31} x2={50 + (x - 50) * 0.25} y2={41} power={power} />;
+          return x === 50 ? <Link key={s.key} x1={50} y1={s.label ? 34 : 30} x2={50} y2={41 + dy} power={power} />
+            : <Link key={s.key} x1={x + (50 - x) * 0.2} y1={31} x2={50 + (x - 50) * 0.25} y2={41 + dy} power={power} />;
         })}
         {/* battery <-> house: + = discharging towards the house; several batteries each with a line into the house's
             side */}
         {batteries ? batteries.map((b, i) => (
-          <Link key={b.key} x1={20} y1={stackY(i)} x2={38} y2={LINE_Y + (stackY(i) - centre) * 0.15}
+          <Link key={b.key} x1={20} y1={stackY(i)} x2={38} y2={lineY + (stackY(i) - centre) * 0.15}
             power={stale ? null : b.power} />
         )) : <Link x1={23} y1={LINE_Y} x2={38} y2={LINE_Y} power={stale ? null : snap?.battery_power ?? null} />}
         {/* grid <-> house: + = import towards the house (drawn from grid side) */}
-        <Link x1={77} y1={LINE_Y} x2={62} y2={LINE_Y} power={stale || snap?.off_grid ? null : snap?.grid_power ?? null} />
+        <Link x1={77} y1={lineY} x2={62} y2={lineY} power={stale || snap?.off_grid ? null : snap?.grid_power ?? null} />
         {/* house -> devices */}
         {boxes && shown.map((d, i) => {
           const device = boxes.devices[i];
@@ -285,7 +289,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
           {s.label && <div className="soc clip">{s.label}</div>}
         </Node>
       ))}
-      <Node x={HOUSE.x} y={HOUSE.y} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
+      <Node x={HOUSE.x} y={houseY} h={h} icon={<HouseIcon size={72} />} iconRef={houseIcon} name="house" onTap={() => press("down")}>{kw(house)}</Node>
       {batteries ? batteries.map((b, i) => {
         const flow = direction(b.power, t("overview.energyFlow.discharging"), t("overview.energyFlow.charging"));
         // grid charging charges the first inverter's battery only (#619), wherever it is drawn
@@ -316,7 +320,7 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
         <div className="soc">{percent(snap?.battery_soc)}{battery ? ` · ${battery}` : ""}</div>
         {retro && <div className="soc lives">{t("overview.retro.lives")}</div>}
       </Node>}
-      <Node x={88} y={HOUSE.y} h={h} icon={<span className="grid-with-coins"><GridIcon />
+      <Node x={88} y={houseY} h={h} icon={<span className="grid-with-coins"><GridIcon />
         {retro && !stale && !snap?.off_grid && (snap?.grid_power ?? 0) < -IDLE_W && <CoinSprite />}</span>}
         name="grid" onTap={() => press("right")}>
         {kw(snap?.grid_power)}
