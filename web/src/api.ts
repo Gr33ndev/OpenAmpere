@@ -44,6 +44,8 @@ export type InverterReading = {
   id: string;
   name: string;
   connected: boolean;
+  /** away for some minutes: not part of the combined values until it answers again */
+  left_out?: boolean;
   pv_power?: number | null;
   pv_external_power?: number | null;
   battery_power?: number | null;

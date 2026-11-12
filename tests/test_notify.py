@@ -671,3 +671,23 @@ async def test_the_enphase_token_is_reminded_once_two_weeks_before_it_runs_out(t
     runtime.config.notify.on_unreachable = False
     driver.token_expires = evening + 3 * 3600
     assert await notifier.check(now=evening) == []  # switched off with the messages about the connection
+
+
+async def test_a_further_inverter_that_stays_away_is_told_by_name(tmp_path, monkeypatch):
+    """#619: a further inverter left out of the combined values is notified, and when it is back."""
+    from types import SimpleNamespace
+
+    from openampere.config import ExtraInverter
+
+    runtime, posts = make(tmp_path, monkeypatch)
+    extra = SimpleNamespace(entry=ExtraInverter(id="wr2", name="Garage", host="192.168.1.31"),
+                            disconnected_since=1000.0, connected=False)
+    monkeypatch.setattr(type(runtime.collector), "configured", property(lambda self: True))
+    runtime.collector.connected = True  # the first inverter answers
+    runtime.collector.extras = [extra]
+    notifier = Notifier(runtime)
+    assert await notifier.check(now=1000 + 60) == []
+    assert await notifier.check(now=1000 + 16 * 60) == ["Wechselrichter „Garage“ nicht erreichbar"]
+    assert await notifier.check(now=1000 + 20 * 60) == []
+    extra.disconnected_since, extra.connected = None, True
+    assert await notifier.check(now=5000) == ["Wechselrichter „Garage“ wieder erreichbar"]

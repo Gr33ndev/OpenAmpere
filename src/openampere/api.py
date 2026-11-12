@@ -248,6 +248,14 @@ def create_app(runtime: Runtime) -> FastAPI:
             control = extra_batteries[inverter] = BatteryControl(runtime, extra)
         return control
 
+    def battery_capacity() -> float:
+        """The size of all batteries: with further inverters (#619) the sum of their sizes when each is known (the
+        combined counters count all batteries), else the size entered for the battery."""
+        sizes = [runtime.config.inverter.capacity_kwh, *(e.entry.capacity_kwh for e in collector.extras)]
+        if collector.extras and all(size > 0 for size in sizes):
+            return sum(sizes)
+        return runtime.config.battery.capacity_kwh
+
     def inverters_view(serial_shown: bool) -> list[dict]:
         """Every inverter once there is more than one (#619): name, connection and device; empty with one."""
         if not collector.extras:
@@ -771,7 +779,7 @@ def create_app(runtime: Runtime) -> FastAPI:
 
     @app.get("/api/battery/health")
     def battery_health():
-        return health.battery(storage, collector.latest, runtime.config.battery.capacity_kwh)
+        return health.battery(storage, collector.latest, battery_capacity())
 
     @app.get("/api/battery/settings")
     async def get_battery_settings(inverter: str | None = Query(None, max_length=12)):

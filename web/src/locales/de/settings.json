@@ -994,6 +994,6 @@
     "pickerHint": "Die Einstellungen gelten nur für den Speicher dieses Wechselrichters.",
     "readOnly": "nur Anzeige",
     "exportLimitFirstOnly": "Die Einspeisebegrenzung stellt OpenAmpere nur am ersten Wechselrichter „{name}“ ein. Die weiteren behalten ihre eigene Einstellung.",
-    "chargingFirstOnly": "OpenAmpere lädt nur den Speicher des ersten Wechselrichters „{name}“ aus dem Netz."
+    "chargingFirstOnly": "OpenAmpere lädt nur den Speicher des ersten Wechselrichters „{name}“ aus dem Netz. Steht ein weiterer Speicher auf Eigenverbrauch, sieht er das Laden als Verbrauch im Haus und entlädt sich dafür. Dann fließt Energie von einem Speicher in den anderen statt günstig aus dem Netz, mit Umwandlungsverlusten."
   }
 }

@@ -17,7 +17,10 @@ number, temporary errors, backoff). Before the first inverter's reading is store
 - the state of charge is weighted by the capacity of each battery when all are known, otherwise the average.
 
 A further inverter without a recent reading makes the combined values it takes part in missing (None): a sum without
-it would be too low, and a wrong value is worse than a missing one.
+it would be too low, and a wrong value is worse than a missing one. That holds for a short while (GONE_AFTER_S, the
+storage spreads such a gap). An inverter that stays away longer (switched off, a new address, no Wi-Fi) is left out
+of the sums from then on, so the others are still shown and recorded; the app and a notification tell the owner. Its
+counters then count again from its next reading: what it produced while it was away is not known.
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ SUMMED = ("pv", "load", "battery_charge", "battery_discharge")
 GRID = ("grid_import", "grid_export")
 COUNTERS_META = "inverter_counters"
 MAX_POWER_W = 60_000  # like storage: a larger counter step of a home system is garbage
+GONE_AFTER_S = 300  # a further inverter without a reading for this long is left out of the combined values
 
 
 class ExtraCounters:
@@ -49,9 +53,12 @@ class ExtraCounters:
         state = storage.get_meta(COUNTERS_META) if storage is not None else None
         self.state: dict = state if isinstance(state, dict) else {}
 
-    def add(self, inverter_id: str, counters: EnergyCounters, ts: float, own_grid: bool) -> None:
-        """One reading's counters of a further inverter."""
-        entry = self.state.setdefault(inverter_id, {"last": {}, "sum": {}, "ts": ts})
+    def add(self, inverter_id: str, counters: EnergyCounters, ts: float, own_grid: bool, host: str = "") -> None:
+        """One reading's counters of a further inverter. host: its address; another one at the same id (removed and
+        another device added) counts from its first reading, not from the difference to the one before."""
+        entry = self.state.setdefault(inverter_id, {"last": {}, "sum": {}, "ts": ts, "host": host})
+        if entry.get("host", host) != host:
+            entry["last"], entry["host"] = {}, host
         span = max(1.0, ts - entry.get("ts", ts))
         changed = False
         for name in (*SUMMED, *GRID):
@@ -71,6 +78,19 @@ class ExtraCounters:
             changed = True
         entry["ts"] = ts
         if changed and self.storage is not None:
+            try:
+                self.storage.set_meta(COUNTERS_META, self.state)
+            except Exception as err:  # noqa: BLE001 - must never disturb polling
+                log.warning("could not keep the counters of the further inverters: %s", err)
+
+    def forget(self, counting: set[str]) -> None:
+        """Only the inverters in `counting` go on from their last counter values. One that was removed or stayed away
+        counts again from its next reading: the difference to a value from long ago would land in one quarter hour,
+        for a different device even a whole lifetime. What it counted stays in the sum."""
+        stale = [i for i, entry in self.state.items() if i not in counting and entry.get("last")]
+        for inverter_id in stale:
+            self.state[inverter_id]["last"] = {}
+        if stale and self.storage is not None:
             try:
                 self.storage.set_meta(COUNTERS_META, self.state)
             except Exception as err:  # noqa: BLE001 - must never disturb polling
@@ -99,6 +119,7 @@ class ExtraCollector(Collector):
             self.known_serial, self._new_host = None, entry.host
         self.external_pv = external_pv
         self.rated_power = (entry.rated_power_reported_w, entry.rated_power_w)
+        self.created = time.time()
 
     @property
     def name(self) -> str:
@@ -109,6 +130,11 @@ class ExtraCollector(Collector):
         if snap is None or not self.connected:
             return False
         return (time.time() if now is None else now) - snap.timestamp <= max(3 * self.poll_interval(), FRESH_S)
+
+    def gone(self, now: float | None = None) -> bool:
+        """No reading for GONE_AFTER_S: left out of the combined values until it answers again."""
+        last = self.latest.timestamp if self.latest is not None else self.created
+        return (time.time() if now is None else now) - last > GONE_AFTER_S
 
     async def _reading(self, snap: Snapshot) -> None:
         self.own = self.latest = snap
@@ -146,10 +172,10 @@ def combined_soc(parts: list[tuple[Snapshot, float]]) -> float | None:
     return sum(soc for soc, _ in socs) / len(socs)
 
 
-def _part(inverter_id: str, name: str, snap: Snapshot | None) -> dict:
-    """What the app shows of one inverter."""
+def _part(inverter_id: str, name: str, snap: Snapshot | None, left_out: bool = False) -> dict:
+    """What the app shows of one inverter. left_out: away for long, not part of the combined values."""
     if snap is None:
-        return {"id": inverter_id, "name": name, "connected": False}
+        return {"id": inverter_id, "name": name, "connected": False, **({"left_out": True} if left_out else {})}
     return {"id": inverter_id, "name": name, "connected": True, "pv_power": snap.pv_power,
             "pv_external_power": snap.pv_external_power, "battery_power": snap.battery_power,
             "battery_soc": snap.battery_soc, "grid_power": snap.grid_power, "alarms": list(snap.alarms)}
@@ -166,7 +192,7 @@ def _totals(out: EnergyCounters, readings: list, counters: ExtraCounters) -> Non
     a further inverter has no recent reading, so the storage spreads the gap instead of counting it at the end."""
     for entry, snap in readings:
         if snap is not None:
-            counters.add(entry.id, snap.totals, snap.timestamp, entry.own_grid)
+            counters.add(entry.id, snap.totals, snap.timestamp, entry.own_grid, entry.host)
     missing = any(snap is None for _, snap in readings)
     grid_missing = any(entry.own_grid and snap is None for entry, snap in readings)
     for name in (*SUMMED, *GRID):
@@ -204,9 +230,13 @@ def combine(own: Snapshot, extras: list[ExtraCollector], main_name: str = "", ma
     """The first inverter's reading with the further ones added (see the module docstring). counters: the further
     inverters' lifetime counters, kept by the first inverter's collector."""
     counters = counters if counters is not None else ExtraCounters()
-    readings = [(e, e.latest if e.fresh(now) else None) for e in extras]
+    everyone = [(e, e.latest if e.fresh(now) else None) for e in extras]
+    gone = {e.entry.id for e, r in everyone if r is None and e.gone(now)}
+    readings = [(e, r) for e, r in everyone if e.entry.id not in gone]
+    counters.forget({e.entry.id for e, _ in readings})
     snap = copy.deepcopy(own)
-    snap.inverters = [_part(MAIN_INVERTER, main_name, own)] + [_part(e.entry.id, e.name, r) for e, r in readings]
+    snap.inverters = [_part(MAIN_INVERTER, main_name, own)] + [_part(e.entry.id, e.name, r, e.entry.id in gone)
+                                                               for e, r in everyone]
     missing = any(r is None for _, r in readings)
     present = [(e, r) for e, r in readings if r is not None]
     if missing:

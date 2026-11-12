@@ -104,6 +104,7 @@
     "charging": "lädt mit {power}",
     "discharging": "entlädt mit {power}",
     "idle": "Speicher ruht",
-    "missingHint": "Solange ein Wechselrichter keine aktuellen Werte liefert, zeigt die Übersicht keine Summe für Solarleistung und Speicher. Eine Summe ohne ihn wäre zu niedrig."
+    "missingHint": "Liefert ein Wechselrichter für kurze Zeit keine aktuellen Werte, zeigt die Übersicht keine Summe für Solarleistung und Speicher. Eine Summe ohne ihn wäre zu niedrig.",
+    "leftOutHint": "„{name}“ antwortet seit einigen Minuten nicht. Bis er wieder antwortet, zählt OpenAmpere ihn nicht zu Solarleistung und Speicher dazu. Was er in der Zeit erzeugt oder gespeichert hat, fehlt in der Auswertung."
   }
 }

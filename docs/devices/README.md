@@ -39,6 +39,7 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | Modbus connections, proxies and what all inverters share | [topics/modbus.md](topics/modbus.md) |
 | Relays, smart plugs, SG Ready | [topics/consumers.md](topics/consumers.md) |
 | Wallboxes through evcc, OCPP and directly | [topics/wallboxes.md](topics/wallboxes.md) |
+| Several inverters in one installation | [topics/several-inverters.md](topics/several-inverters.md) |
 
 [devices.md](../devices.md) is the short support overview, [registers.md](../registers.md) an index of the register
 tables on these pages.

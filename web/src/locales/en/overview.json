@@ -104,6 +104,7 @@
     "charging": "charging at {power}",
     "discharging": "discharging at {power}",
     "idle": "Battery idle",
-    "missingHint": "While an inverter sends no current values, the overview shows no total for solar power and batteries. A total without it would be too low."
+    "missingHint": "While an inverter sends no current values for a short time, the overview shows no total for solar power and batteries. A total without it would be too low.",
+    "leftOutHint": "“{name}” has not answered for a few minutes. Until it answers again, OpenAmpere does not add it to solar power and batteries. What it produced or stored in that time is missing from the report."
   }
 }

@@ -24,8 +24,8 @@ from test_detection import serve
 class Extra:
     """What combine needs of an ExtraCollector."""
 
-    def __init__(self, entry: ExtraInverter, latest: Snapshot | None, fresh: bool = True) -> None:
-        self.entry, self.latest, self._fresh = entry, latest, fresh
+    def __init__(self, entry: ExtraInverter, latest: Snapshot | None, fresh: bool = True, gone: bool = False) -> None:
+        self.entry, self.latest, self._fresh, self._gone = entry, latest, fresh, gone
 
     @property
     def name(self) -> str:
@@ -33,6 +33,9 @@ class Extra:
 
     def fresh(self, now=None) -> bool:
         return self._fresh and self.latest is not None
+
+    def gone(self, now=None) -> bool:
+        return self._gone
 
 
 def reading(pv, battery, soc, grid=0.0, *, totals=None, inputs=()) -> Snapshot:
@@ -345,3 +348,63 @@ def test_an_existing_database_gets_the_columns_of_more_pv_inputs(tmp_path):
     storage.add_snapshot(snap)
     assert storage.samples(snap.timestamp - 1, snap.timestamp + 1)[0]["pv5"] == 500
     assert (tmp_path / "old.db.schema-5").exists()  # the copy for a rollback
+
+
+def test_an_id_used_again_counts_from_the_new_inverters_first_reading():
+    """Removing wr2 and adding another device (it gets wr2 again) must not count the difference of their counters."""
+    sums = ExtraCounters()
+    ts = time.time()
+    sums.add("wr2", EnergyCounters(pv=5000), ts, own_grid=False, host="192.168.1.31")
+    sums.add("wr2", EnergyCounters(pv=5100), ts + 60, own_grid=False, host="192.168.1.31")
+    sums.forget(set())  # removed
+    sums.add("wr2", EnergyCounters(pv=9_000_000), ts + 86400 * 20, own_grid=False, host="192.168.1.31")
+    sums.add("wr2", EnergyCounters(pv=9_000_040), ts + 86400 * 20 + 60, own_grid=False, host="192.168.1.31")
+    assert sums.total("pv") == 140
+    # another device at the same id without a removal in between (address changed in the settings)
+    sums.add("wr2", EnergyCounters(pv=300), ts + 86400 * 21, own_grid=False, host="192.168.1.40")
+    sums.add("wr2", EnergyCounters(pv=310), ts + 86400 * 21 + 60, own_grid=False, host="192.168.1.40")
+    assert sums.total("pv") == 150
+
+
+def test_combine_forgets_the_counters_of_inverters_no_longer_set_up():
+    sums = ExtraCounters()
+    entry = ExtraInverter(id="wr2", host="x")
+    own = reading(0, 0, 50, totals=counters(1000, 500, 300, 200, 100))
+    combine(own, [Extra(entry, reading(0, 0, 50, totals=counters(5000, 0, 0, 0, 0)))], counters=sums)
+    combine(own, [], counters=sums)  # removed in the settings
+    assert sums.state["wr2"]["last"] == {}
+
+
+def test_an_inverter_away_for_long_is_left_out_and_the_others_are_recorded():
+    own = reading(3000, -1000, 40, grid=-500, totals=counters(1000, 500, 300, 200, 100))
+    away = Extra(ExtraInverter(id="wr2", name="Garage", host="x"), reading(2000, 500, 80), fresh=False, gone=True)
+    sums = ExtraCounters()
+    sums.add("wr2", EnergyCounters(pv=700), time.time() - 3600, own_grid=False, host="x")
+    sums.add("wr2", EnergyCounters(pv=750), time.time() - 3500, own_grid=False, host="x")
+    snap = combine(own, [away], counters=sums)
+    assert snap.pv_power == 3000 and snap.battery_power == -1000 and snap.battery_soc == 40
+    assert snap.house_power == 1500
+    assert snap.totals.pv == 1050  # its part counted so far stays
+    assert snap.inverters[1] == {"id": "wr2", "name": "Garage", "connected": False, "left_out": True}
+    assert sums.state["wr2"]["last"] == {}  # counts again from its next reading
+
+
+def test_battery_health_counts_the_size_of_all_batteries(tmp_path):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    runtime.config.battery.capacity_kwh = 10
+    app = create_app(runtime)
+    battery_health = next(r.endpoint for r in app.routes if getattr(r, "path", "") == "/api/battery/health")
+    seen = []
+    import openampere.health as health_module
+    original = health_module.battery
+    health_module.battery = lambda storage, snap, capacity: seen.append(capacity) or {}
+    try:
+        battery_health()
+        runtime.collector.extras = [Extra(ExtraInverter(id="wr2", host="x", capacity_kwh=10), None)]
+        battery_health()  # the first one's size unknown: the size entered for the battery
+        runtime.config.inverter.capacity_kwh = 10
+        battery_health()
+    finally:
+        health_module.battery = original
+        runtime.collector.extras = []
+    assert seen == [10, 10, 20]

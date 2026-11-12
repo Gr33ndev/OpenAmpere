@@ -211,7 +211,10 @@ export function InverterCards({ snap, stale }: { snap: Snapshot | null; stale: b
       <div className="card menu">
         {readings.map((r, index) => <InverterRow key={r.id} reading={r} index={index} stale={stale} />)}
       </div>
-      {readings.some((r) => !r.connected) && <p className="hint">{t("overview.inverterCards.missingHint")}</p>}
+      {readings.map((r, index) => r.left_out ? (
+        <p key={r.id} className="hint">{t("overview.inverterCards.leftOutHint", { name: inverterName(r.name, index) })}</p>
+      ) : null)}
+      {readings.some((r) => !r.connected && !r.left_out) && <p className="hint">{t("overview.inverterCards.missingHint")}</p>}
     </>
   );
 }

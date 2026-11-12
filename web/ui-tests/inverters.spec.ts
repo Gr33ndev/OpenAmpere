@@ -129,3 +129,16 @@ test("the control log names the inverter a battery change was for", async ({ pag
   await open(page, "more/control");
   await expect(page.getByText("Speicher-Einstellung von „Garage“ geändert")).toBeVisible();
 });
+
+test("an inverter away for long is named as left out of the sums", async ({ page, api }) => {
+  api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 1000, battery_power: 0, battery_soc: 50 },
+    { id: "wr2", name: "Garage", connected: false, left_out: true }] });
+  await open(page, "");
+  await expect(page.getByText("„Garage“ antwortet seit einigen Minuten nicht")).toBeVisible();
+  await expect(page.getByText("zeigt die Übersicht keine Summe")).toHaveCount(0);
+});
+
+test("grid charging warns that it can move energy between the batteries", async ({ page }) => {
+  await open(page, "devices/charging");
+  await expect(page.getByText("von einem Speicher in den anderen")).toBeVisible();
+});

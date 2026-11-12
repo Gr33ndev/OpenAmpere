@@ -994,6 +994,6 @@
     "pickerHint": "The settings apply only to the battery of this inverter.",
     "readOnly": "display only",
     "exportLimitFirstOnly": "OpenAmpere sets the export limit only on the first inverter “{name}”. The others keep their own setting.",
-    "chargingFirstOnly": "OpenAmpere charges only the battery of the first inverter “{name}” from the grid."
+    "chargingFirstOnly": "OpenAmpere charges only the battery of the first inverter “{name}” from the grid. If another battery is in self-consumption mode, it sees the charging as consumption in the house and discharges for it. Energy then flows from one battery into the other instead of cheaply from the grid, with conversion losses."
   }
 }
