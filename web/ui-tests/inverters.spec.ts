@@ -195,7 +195,7 @@ test("the combined values stay visible below the energy flow", async ({ page, ap
     { id: "main", name: "Haus", connected: true, pv_power: 3200, battery_power: -800, battery_soc: 62 },
     { id: "wr2", name: "Garage", connected: true, pv_power: 2100, battery_power: -500, battery_soc: 48 }] });
   await open(page, "");
-  await expect(page.locator(".flow-total")).toHaveText("Zusammen: Solar 5,30 kW · Speicher 1,30 kW, 55 %");
+  await expect(page.locator(".flow-total")).toHaveText("Zusammen: Solar 5,30 kW · Speicher 1,30 kW lädt, 55 %");
 });
 
 test("the grid charging mark is on the first inverter's battery wherever it is drawn", async ({ page, api }) => {
@@ -226,4 +226,12 @@ test("a PV inverter that is off at night gets no battery", async ({ page, api })
   await open(page, "");
   await expect(page.locator(".flow .flow-node.battery-more")).toHaveCount(0);
   await expect(page.locator(".flow .flow-node.sun-more")).toContainText("Dach");  // its sun stays, without values
+});
+
+test("the combined battery power says which way it goes", async ({ page, api }) => {
+  api.live({ pv_power: 0, battery_power: 1300, battery_soc: 55, house_power: 1700, grid_power: 400, inverters: [
+    { id: "main", name: "Haus", connected: true, pv_power: 0, battery_power: -1000, battery_soc: 62 },
+    { id: "wr2", name: "Garage", connected: true, pv_power: 0, battery_power: 2300, battery_soc: 48 }] });
+  await open(page, "");
+  await expect(page.locator(".flow-total")).toContainText("Speicher 1,30 kW entlädt");
 });

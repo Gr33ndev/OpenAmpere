@@ -217,7 +217,9 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
     : t("overview.energyFlow.noData");
   // drawn per inverter (#619): the sums in a line below, the issue asks for the combined view
   const total = !snap || (!split.suns && !batteries) ? null : batteries
-    ? t("overview.energyFlow.totalBoth", { pv: kw(snap.pv_power), battery: kw(snap.battery_power), soc: percent(snap.battery_soc) })
+    ? t("overview.energyFlow.totalBoth", { pv: kw(snap.pv_power), soc: percent(snap.battery_soc),
+        // which way the sum goes: two batteries can work against each other
+        battery: battery ? `${kw(snap.battery_power)} ${battery}` : kw(snap.battery_power) })
     : t("overview.energyFlow.totalSolar", { pv: kw(snap.pv_power) });
   return (
     <>
@@ -327,7 +329,8 @@ export function EnergyFlow({ snap, stale = false, devices = [], gridCharging = f
       )}
       {justUnlocked && <div className="retro-banner">{t("overview.retro.unlocked")}</div>}
     </div>
-    {total && <p className="hint center flow-total">{total}</p>}
+    {total && <p className={`hint center flow-total ${stale ? "stale" : ""}`}>
+      {stale ? `${total} (${t("overview.energyFlow.outdated")})` : total}</p>}
     </>
   );
 }
