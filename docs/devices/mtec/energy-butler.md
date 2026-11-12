@@ -6,13 +6,17 @@
 **Applies to:** M-TEC Energy-Butler GEN3 hybrid inverters (a Solinteg inverter, also sold as Wattsonic, Sunways,
 A-Tronix, SunEnergyBox) · **Sold as:** M-TEC Energy-Butler (EKD from late 2022) · **OpenAmpere:** driver `mtec`
 (`src/openampere/drivers/mtec/`), register map `mtec_gen3` · **Support:** display only · **Confirmed on a real
-device:** partly (detected and read in the Home Assistant app; port, framing, unit id and signs not yet)
+device:** partly (detected and read in the Home Assistant app; port 502, RTU frames and unit 252 on one unit; only
+one Modbus connection; signs not yet)
 
 ## Summary
 
 - Read through the Wi-Fi/LAN module: **port 502** on newer module firmware (V27.52.4.0 and later), **5743** before.
 - Unit id and framing differ between the sources: OpenAmpere tries **plain Modbus TCP, then RTU frames over TCP**, on
   units **252, 255 and 247**, and shows the one that answered in the register map (`mtec_gen3 (socket)` or `(rtu)`).
+  One owner's unit answered on port 502 with RTU frames on unit 252.
+- **The module takes only one Modbus connection:** another reader (e.g. the Modbus integration of Home Assistant)
+  keeps OpenAmpere out, and a second connection drops the first. Switch other readers off before the setup.
 - Holding registers (FC03), 32-bit values with the high word first; energy counters in 0.1 kWh, so OpenAmpere has an
   energy history for this device.
 - **Signs:** grid power is + for export (turned around), battery power + for discharging (as OpenAmpere).
@@ -63,12 +67,15 @@ in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, a
 |---|---|---|
 | The Wi-Fi/LAN module listens on port 5743 before module firmware V27.52.4.0 and on 502 from then on. | derived | croedel/MTECmqtt; owners' reports (2025–2026) |
 | Unit 252 with RTU frames over TCP (MTECmqtt, port 5743), 247 (RS485 default, also shown on the display), 255 with plain Modbus TCP (evcc); on 502 owners report both framings working. | open | MTECmqtt; evcc `solinteg-gen3`; owners' reports |
+| One EKD unit answered on port 502 with RTU frames over TCP on unit 252 (register map `mtec_gen3 (rtu)`). | confirmed (one unit) | diagnostics report of an owner, [#626](https://github.com/Gr33ndev/OpenAmpere/issues/626) |
+| The Wi-Fi/LAN module takes only one Modbus TCP connection: the connection test of the diagnostics got no answer on any extra connection (connection refused) and OpenAmpere's own connection was dropped. While the Modbus integration of Home Assistant read the device, OpenAmpere could not connect; once it was switched off and Home Assistant restarted, OpenAmpere connected. | confirmed (one unit) | diagnostics report of an owner, [#626](https://github.com/Gr33ndev/OpenAmpere/issues/626) |
+| In one reading with the battery idle, PV power plus grid import equalled the backup output, with 11000 read as + = export. This supports the sign of 11000; the battery sign stays open. | derived | diagnostics report of an owner, [#626](https://github.com/Gr33ndev/OpenAmpere/issues/626) |
 | The house load is the inverter's AC power minus the grid power (11016 − 11000). | derived | MTECmqtt (32cdf27) |
 | The Energy-Butler GEN3 is a Solinteg inverter; evcc's `solinteg-gen3` and the Solinteg plugin of homeassistant-solax-modbus cover it. | derived | evcc-io/evcc (MIT); wills106/homeassistant-solax-modbus (Apache-2.0) |
 | The module shows up in the router as "espressif"; the data also goes to M-TEC's cloud at least once a minute. | derived | owners' reports; croedel/M-TEC-API README |
 | Writing (operating mode 50000, export limit 25100/25103, SoC floors 52502–52505, EMS setpoints 50202–50210) is used by projects without a documented watchdog: the values are probably stored. | derived, open | MTECmqtt (LGPL, facts only), evcc, Solinteg plugin |
 | M-TEC is still in business; owners use the "M-TEC Energy Butler" app and the portal energybutler.mtec-portal.com. In 2023 M-TEC removed the grid export settings from the portal for owners; installers still have them. | documented (store listings), derived (forum) | App Store and Google Play listings; forum.iobroker.net topic 64236 |
-| An Energy-Butler GEN3 was detected on its own by the Home Assistant app of OpenAmpere, which reads its data. Which port, framing and unit id answered, and whether the signs are right, is not recorded. | confirmed (detection and reading), open (signs) | owner report by e-mail, summarised in [#617](https://github.com/Gr33ndev/OpenAmpere/issues/617) |
+| An Energy-Butler GEN3 was detected on its own by the Home Assistant app of OpenAmpere, which reads its data. Whether the signs are right is not recorded. | confirmed (detection and reading), open (signs) | owner report by e-mail, summarised in [#617](https://github.com/Gr33ndev/OpenAmpere/issues/617) |
 
 ## Decisions in OpenAmpere
 
@@ -82,8 +89,9 @@ in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, a
 
 ## Open questions
 
-- On port 502: which framing and unit id answer on an EKD unit; does 5743 still answer after an update?
-- The signs of 11000 and 30258, and whether 11016 − 11000 matches the house load in the M-TEC app.
+- Do all EKD units answer on 502 with RTU frames on unit 252; does 5743 still answer after an update?
+- The signs of 11000 (supported, not compared with the M-TEC app) and 30258, and whether 11016 − 11000 matches the
+  house load in the M-TEC app.
 - Whether loads on the backup (EPS) output are part of 11016: if not, the house load needs 30230 too (and during an
   outage it is all of it). The diagnostics show 30230 so a report can tell.
 - Whether the module takes OpenAmpere next to the M-TEC app and cloud without trouble.
