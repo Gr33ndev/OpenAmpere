@@ -396,3 +396,17 @@ def test_adding_removing_or_renaming_an_inverter_sets_up_again() -> None:
     assert needs_reload(known, {**live, "inverters": [TWO[0], {**TWO[1], "name": "Garage"}]})
     assert needs_reload({**info(), "inverters": []}, live)  # the first further inverter
     assert not needs_reload(info(), live)  # set up by an older integration: no key
+
+
+async def test_a_removed_inverter_takes_its_device_along(hass: HomeAssistant, entry, client) -> None:
+    """#619: no "unavailable" card left behind, and a later inverter with the same id starts with a card of its own."""
+    client.state.return_value = with_inverters(TWO)
+    await setup(hass, entry)
+    assert entity_id(hass, "sensor", "_inverter_wr2_inverter_pv_power") is not None
+    await hass.config_entries.async_unload(entry.entry_id)
+    client.state.return_value = state()  # back to one inverter
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entity_id(hass, "sensor", "_inverter_wr2_inverter_pv_power") is None
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert not any(ident.startswith(f"{INSTALLATION}_inverter_") for d in devices for _, ident in d.identifiers)

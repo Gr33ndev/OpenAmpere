@@ -13,11 +13,12 @@ from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity, Se
 from homeassistant.const import (PERCENTAGE, EntityCategory, UnitOfElectricCurrent, UnitOfElectricPotential,
                                  UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfTime)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import OpenAmpereConfigEntry
 from .coordinator import OpenAmpereCoordinator, firmware
-from .const import WALLBOX_STATES
+from .const import DOMAIN, WALLBOX_STATES
 from .entity import InverterEntity, OpenAmpereEntity, WallboxReadingEntity, inverter_list
 
 
@@ -114,6 +115,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
             entities.append(WallboxCurrentSensor(coordinator, wallbox["id"]))
     # every inverter on its own once there is more than one (#619); remembered, so a change sets up again
     coordinator.info["inverters"] = inverter_list((coordinator.data or {}).get("live"))
+    remove_old_inverters(hass, entry, coordinator.info)
     for inverter in coordinator.info["inverters"]:
         entities += [InverterSensor(coordinator, d, inverter["id"]) for d in INVERTER_SENSORS]
     entities.append(FirmwareSensor(coordinator))
@@ -122,6 +124,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenAmpereConfigEntry,
     if coordinator.info["token_sensor"]:
         entities.append(TokenDaysSensor(coordinator))
     async_add_entities(entities)
+
+
+def remove_old_inverters(hass: HomeAssistant, entry: OpenAmpereConfigEntry, info: dict) -> None:
+    """Removes the device of an inverter removed in OpenAmpere (#619), with its entities: it would stay as
+    "unavailable", and a later inverter with the same id would take over its card and history."""
+    prefix = f"{info['installation_id']}_inverter_"
+    keep = {f"{prefix}{i['id']}" for i in info["inverters"]}
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+        ours = [ident for domain, ident in device.identifiers if domain == DOMAIN and ident.startswith(prefix)]
+        if ours and not set(ours) & keep:
+            registry.async_remove_device(device.id)
 
 
 class OpenAmpereSensor(OpenAmpereEntity, SensorEntity):
