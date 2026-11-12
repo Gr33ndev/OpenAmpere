@@ -691,3 +691,19 @@ async def test_a_further_inverter_that_stays_away_is_told_by_name(tmp_path, monk
     assert await notifier.check(now=1000 + 20 * 60) == []
     extra.disconnected_since, extra.connected = None, True
     assert await notifier.check(now=5000) == ["Wechselrichter „Garage“ wieder erreichbar"]
+
+
+async def test_an_inverter_already_in_the_first_one_says_the_sums_are_fine(tmp_path, monkeypatch):
+    """#619: a further inverter whose values the first one reports is never added, so nothing is missing."""
+    from types import SimpleNamespace
+
+    from openampere.config import ExtraInverter
+
+    runtime, posts = make(tmp_path, monkeypatch)
+    monkeypatch.setattr(type(runtime.collector), "configured", property(lambda self: True))
+    runtime.collector.connected = True
+    runtime.collector.extras = [SimpleNamespace(entry=ExtraInverter(id="wr2", name="Garage", host="x", in_first=True),
+                                                disconnected_since=1000.0, connected=False)]
+    assert await Notifier(runtime).check(now=1000 + 16 * 60) == ["Wechselrichter „Garage“ nicht erreichbar"]
+    message = posts[-1][1]["message"]
+    assert "nicht betroffen" in message and "zählt OpenAmpere ihn nicht" not in message

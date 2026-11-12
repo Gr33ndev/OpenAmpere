@@ -156,3 +156,11 @@ test("an inverter of a parallel system can be marked as already in the first one
   await expect.poll(() => bodies.length).toBe(1);
   expect(bodies[0].inverters).toEqual([expect.objectContaining({ id: "wr2", in_first: true })]);
 });
+
+test("an inverter already in the first one that does not answer leaves the sums as they are", async ({ page, api }) => {
+  api.live({ inverters: [{ id: "main", name: "Haus", connected: true, pv_power: 1000, battery_power: 0, battery_soc: 50 },
+    { id: "wr2", name: "Garage", connected: false, in_first: true }] });
+  await open(page, "");
+  await expect(page.locator(".device-row-compact", { hasText: "Garage" })).toContainText("Keine aktuellen Werte");
+  await expect(page.getByText("zeigt die Übersicht keine Summe")).toHaveCount(0);
+});
