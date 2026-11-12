@@ -30,7 +30,7 @@ jobs:
       - name: Coverage of new code (at least 70 %)
         # diff-cover (#630) compares coverage.xml with the diff against main: at least 70 % of the lines a pull request
         # adds or changes must run in the tests; old code is not counted. On main the diff is empty.
-        run: diff-cover coverage.xml --compare-branch=origin/main --fail-under=70 --markdown-report=diff-cover.md
+        run: diff-cover coverage.xml --compare-branch=origin/main --fail-under=70 --format markdown:diff-cover.md
       - name: Coverage report in the job summary
         if: always()
         run: if [ -f diff-cover.md ]; then cat diff-cover.md >> "$GITHUB_STEP_SUMMARY"; fi
