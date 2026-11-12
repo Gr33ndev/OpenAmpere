@@ -37,6 +37,7 @@ writes as safety-relevant (see below).
 ```bash
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"   # backend dev setup (Python 3.11+)
 .venv/bin/pytest                                             # backend tests (about 2 minutes)
+.venv/bin/pytest --cov --cov-report=xml && .venv/bin/diff-cover coverage.xml --compare-branch=origin/main --fail-under=70
 .venv/bin/ruff check .                                       # Python code style (PEP 8 via ruff)
 .venv/bin/python -m openampere.simulator --port 5020 --speed 20
 OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERVER_PORT=8089 .venv/bin/python -m openampere
@@ -54,7 +55,7 @@ cd android && ./gradlew assembleDebug                       # Android app (after
 python3 scripts/android_smoke_test.py <apk>                  # the APK in an emulator: server, simulator, restart
 ```
 
-CI runs: `backend` (ruff, pytest + license list), `backend-py311` (pytest on the Android app's Python 3.11), `web` (lint, build, check:demo, check:i18n, check:devices), `ui` (Playwright), `docker`, `homeassistant`,
+CI runs: `backend` (ruff, pytest with coverage: 70 % of new or changed lines, license list), `backend-py311` (pytest on the Android app's Python 3.11), `web` (lint, build, check:demo, check:i18n, check:devices), `ui` (Playwright), `docker`, `homeassistant`,
 `hassfest`, `hacs`, `android` (APK), `android-emulator` (smoke test), and `check` (Conventional Commits for the PR title and every commit).
 `AI review` (not required) comments on pull requests from this repository following `.github/claude-review.md`;
 when a rule here changes, check whether that file needs the change too.
@@ -91,9 +92,11 @@ check: remove the label `ai-review` and add it again, once), say so instead of c
   README.md, README.de.md, `docs/devices.md`, `docs/devices.de.md` and `docs/devices/topics/names.md` (between
   `generated:` markers, never edit those by hand), and the website renders the EKD device page and the home page list
   from it. The other tables in `docs/devices.md` say what is read and controlled, not what is confirmed (#542).
-- **Tests:** new logic gets tests, bug fixes a test that fails without the fix. Tests with the simulator must stop the
-  collector in a `finally` block, otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes
-  into `PAGES` in `web/ui-tests/fixtures.ts`.
+- **Tests:** new logic gets tests, bug fixes a test that fails without the fix. CI requires 70 % coverage of the
+  backend lines a PR adds or changes (diff-cover, #630); `# pragma: no cover` only for code that cannot run without
+  real hardware or the host, with a comment why. Tests with the simulator must stop the collector in a `finally` block,
+  otherwise the test run hangs. A UI bug gets a test in `web/ui-tests/`; a new page goes into `PAGES` in
+  `web/ui-tests/fixtures.ts`.
 - **Every source file starts with two SPDX lines** (copyright "the OpenAmpere contributors", license MIT), see
   [CONTRIBUTING.md](CONTRIBUTING.md#code-rules); `tests/test_source_headers.py` fails without them.
 - **No new dependencies** without agreeing in the issue (they also change the license list).

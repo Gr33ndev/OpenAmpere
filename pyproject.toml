@@ -22,7 +22,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "packaging>=23", "hypothesis>=6", "ruff>=0.15"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27", "packaging>=23", "hypothesis>=6", "ruff>=0.15",
+       "pytest-cov>=6", "diff-cover>=9"]
 
 [project.urls]
 Homepage = "https://github.com/Gr33ndev/OpenAmpere"
@@ -38,6 +39,16 @@ where = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+# Test coverage (#630): CI runs `pytest --cov` and diff-cover requires 70 % of the lines a pull request adds or changes
+# (CONTRIBUTING.md#tests-and-coverage). Line coverage of the backend; code that only runs against real hardware may be
+# excluded with `# pragma: no cover` and a comment saying why.
+[tool.coverage.run]
+source = ["openampere"]
+omit = ["*/openampere/web/*"]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "if __name__ == .__main__.:", "raise NotImplementedError"]
 
 [tool.setuptools.package-data]
 openampere = ["web/*", "web/**/*", "locales/*.json"]
