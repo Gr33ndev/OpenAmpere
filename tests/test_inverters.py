@@ -595,3 +595,31 @@ def test_each_battery_plans_with_its_own_size_when_all_are_entered():
     assert GridCharging(runtime, extra)._mine(settings) == (2000, 10)
     runtime.config.inverter.capacity_kwh = 0  # one size unknown: the size on the charging page, shared
     assert GridCharging(runtime, extra)._mine(settings) == (2000, 5)
+
+
+async def test_a_charge_goes_on_when_the_inverter_is_read_anew(tmp_path):
+    """A further inverter whose collector is made again (e.g. a new poll interval) keeps charging: no release."""
+    from openampere.charging import REMOTE_COMMANDS_EXTRA, AllGridCharging
+
+    (first, second), servers, runtime = await two_inverters(tmp_path)
+    async with servers[0], servers[1]:
+        try:
+            charging = AllGridCharging(runtime)
+            runtime.before_extras_change = charging.release_removed
+            charging.save({"enabled": True, "legal_confirmed": True, "mode": "window", "window_start": 0,
+                           "window_end": 0, "target_soc": 100, "power_w": 4000})
+            await charging.tick()
+            await runtime.update_settings({"inverter.poll_interval": 3})
+            for _ in range(100):
+                if runtime.extra("wr2").connected:
+                    break
+                await asyncio.sleep(0.1)
+            await charging.tick()
+            chargers = charging.chargers()
+            assert chargers[1].source is runtime.extra("wr2") and chargers[1].active
+            assert not charging._dropped
+            assert not runtime.storage.get_meta(REMOTE_COMMANDS_EXTRA)["wr2"]["released"]
+            assert second.energy.remote_enabled
+            assert charging.view()["sizes_missing"] is True  # no size entered
+        finally:
+            await runtime.collector.stop()

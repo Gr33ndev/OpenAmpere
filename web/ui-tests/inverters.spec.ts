@@ -271,9 +271,20 @@ for (const width of [360, 393]) {
 }
 
 test("grid charging asks for the size of each battery while one is missing", async ({ page, api }) => {
+  const view = await demoRequest<Record<string, unknown>>("GET", "/api/charging");
+  api.override("/api/charging", { ...view, sizes_missing: true });
+  await open(page, "devices/charging");
+  await expect(page.getByText("bei jedem Wechselrichter die Größe seines Speichers")).toBeVisible();
+});
+
+test("a PV inverter without a battery size does not ask for one", async ({ page, api }) => {
+  // the server decides: a PV-only inverter is not charged, so no size is missing
   const status = await demoRequest<Status>("GET", "/api/status");
   const inverters = status.inverters ?? [];
   api.override("/api/status", { ...status, inverters: [inverters[0], { ...inverters[1], capacity_kwh: 0 }] });
+  const view = await demoRequest<Record<string, unknown>>("GET", "/api/charging");
+  api.override("/api/charging", { ...view, sizes_missing: false });
   await open(page, "devices/charging");
-  await expect(page.getByText("bei jedem Wechselrichter die Größe seines Speichers")).toBeVisible();
+  await expect(page.getByText("lädt alle Speicher gleichzeitig")).toBeVisible();
+  await expect(page.getByText("bei jedem Wechselrichter die Größe seines Speichers")).toHaveCount(0);
 });

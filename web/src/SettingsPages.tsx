@@ -1608,6 +1608,8 @@ type ChargingSettings = { enabled: boolean; mode: "cheapest" | "window"; target_
   legal_confirmed: boolean };
 export type ChargingView = { settings: ChargingSettings; active: boolean; last_error: string | null;
   plan: { quarters: number[]; reason: string; needed_wh?: number; prices?: Record<string, number> };
+  /** with several batteries (#619): a battery size is missing, so the one of these settings counts for all */
+  sizes_missing?: boolean;
   /** with several batteries (#619): how each one is doing */
   batteries?: { id: string; name: string; active: boolean; last_error: string | null; reason: string }[] };
 
@@ -1665,9 +1667,7 @@ export function ChargingPage({ onBack }: PageProps) {
       <p className="hint">{t("settings.chargingPage.intro")}{" "}
         <strong>{t("settings.chargingPage.experimental")}</strong></p>
       {firstInverterOnly(status) && <Notice kind="info">{t("settings.inverters.chargingAll")}</Notice>}
-      {firstInverterOnly(status) && (status?.inverters ?? []).some((i) => !i.in_first && !i.capacity_kwh) && (
-        <Notice kind="warn">{t("settings.inverters.chargingSizesMissing")}</Notice>
-      )}
+      {data?.sizes_missing && <Notice kind="warn">{t("settings.inverters.chargingSizesMissing")}</Notice>}
       {status?.device?.charging_continues_min ? (
         <Notice kind="warn">{t("settings.chargingPage.slotControlHint",
           { manufacturer: status.device.manufacturer, minutes: status.device.charging_continues_min })}</Notice>

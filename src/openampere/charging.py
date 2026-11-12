@@ -189,6 +189,12 @@ class GridCharging:
     def _command(self) -> dict:
         return command_of(self.runtime, self.source)
 
+    def take_over(self, old: GridCharging) -> None:
+        """Goes on with the charge of the same battery whose collector was made again: not stopped and started."""
+        for name in ("active", "started_at", "start_soc", "last_error", "verified", "full_at_soc", "_limit",
+                     "_refused_quarter", "_target_logged"):
+            setattr(self, name, getattr(old, name))
+
     def pending(self) -> bool:
         """OpenAmpere's command to this battery is not released yet."""
         command = self._command()
@@ -627,10 +633,14 @@ class AllGridCharging:
         current = {}
         for extra in chargeable(self.runtime):
             charger = self._extra.get(extra.entry.id)
-            current[extra.entry.id] = charger if charger is not None and charger.source is extra else GridCharging(
-                self.runtime, extra)
+            if charger is None or charger.source is not extra:
+                new = GridCharging(self.runtime, extra)
+                if charger is not None:  # the same inverter read anew (e.g. the poll interval changed): goes on
+                    new.take_over(charger)
+                charger = new
+            current[extra.entry.id] = charger
         for inverter_id, charger in self._extra.items():
-            if current.get(inverter_id) is not charger and charger.pending():
+            if inverter_id not in current and charger.pending():
                 self._dropped.append(charger)
         self._extra = current
         return [self.main, *current.values()]
@@ -683,6 +693,8 @@ class AllGridCharging:
     def view(self, now: float | None = None) -> dict:
         view = self.main.view(now)
         chargers = self.chargers()
+        # with several batteries: one without a size makes the size of the settings count for all together
+        view["sizes_missing"] = len(chargers) > 1 and battery_sizes(self.runtime) is None
         if len(chargers) > 1:
             view["active"], view["last_error"] = self.active, self.last_error
             view["batteries"] = [{"id": "main" if c.source is None else c.source.entry.id,
