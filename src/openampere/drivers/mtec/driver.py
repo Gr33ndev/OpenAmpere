@@ -35,6 +35,7 @@ def refuse() -> None:
 class MtecDriver(ModbusDevice):
     KEY = "mtec"
     DEFAULT_UNITS = (252, 255, 247)
+    SINGLE_CONNECTION = True  # the Wi-Fi/LAN module drops the first connection for a second one (#626, #628)
 
     def __init__(self, host: str, port: int = 502, unit: int = 252, *, timeout: float = 3.0, read_attempts: int = 3,
                  quick: bool = False, **_ignored) -> None:

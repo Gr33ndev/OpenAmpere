@@ -420,8 +420,13 @@ class Diagnostics:
         if getattr(driver, "KEY", None) == "mtec":
             checks.append(await self._mtec_values())
 
-        # 6. connection limit (optional: may briefly disturb other devices); Modbus only
-        if connection_test and getattr(driver, "PROTOCOL", "modbus") == "modbus":
+        # 6. connection limit (optional: may briefly disturb other devices); Modbus only. A device that takes a single
+        # connection drops OpenAmpere's own one when another opens (M-TEC, #628): the test would only disturb it.
+        if getattr(driver, "SINGLE_CONNECTION", False):
+            checks.append(Check("connections", "Gleichzeitige Verbindungen", "skipped",
+                                "Nicht ausgeführt: Dieses Gerät nimmt nur eine Verbindung an. Eine zweite würde die "
+                                "Verbindung von OpenAmpere trennen, andere Programme können also nicht mitlesen."))
+        elif connection_test and getattr(driver, "PROTOCOL", "modbus") == "modbus":
             checks.append(await self._connection_test())
         else:
             checks.append(Check("connections", "Gleichzeitige Verbindungen", "skipped",
