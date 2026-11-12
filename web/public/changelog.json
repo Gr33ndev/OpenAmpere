@@ -1,6 +1,53 @@
 {
   "versions": [
     {
+      "version": "0.42.0",
+      "date": "2026-11-12",
+      "first": false,
+      "groups": {
+        "feat": [
+          {
+            "scope": null,
+            "text": "Support more than one inverter per installation (#620)"
+          }
+        ],
+        "fix": [
+          {
+            "scope": "mtec",
+            "text": "Skip the connection test and say in the setup that the module takes one connection (#629)"
+          },
+          {
+            "scope": "web",
+            "text": "Offer pulling the smartbox's network cable to free the wallbox (#625)"
+          }
+        ],
+        "perf": [],
+        "other": [
+          {
+            "scope": "devices",
+            "text": "Record port, framing, unit id and the single connection of an m-tec gen3 (#627)"
+          },
+          {
+            "scope": null,
+            "text": "Confirm the old smartbox blocks the FoxESS charger on a second system (#623)"
+          },
+          {
+            "scope": "devices",
+            "text": "Record owner confirmations for saj, solarmax, go-e and m-tec (#618)"
+          },
+          {
+            "scope": "cars",
+            "text": "Use long refresh tokens in the bmw fake service (#614)"
+          },
+          {
+            "scope": "deps",
+            "text": "Update Python dependencies (#612)"
+          }
+        ]
+      },
+      "breaking": []
+    },
+    {
       "version": "0.41.0",
       "date": "2026-11-07",
       "first": false,

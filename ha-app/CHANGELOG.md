@@ -4,6 +4,25 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.42.0 (2026-11-12)
+
+### Neu
+
+- Support more than one inverter per installation (#620)
+
+### Behoben
+
+- **mtec:** Skip the connection test and say in the setup that the module takes one connection (#629)
+- **web:** Offer pulling the smartbox's network cable to free the wallbox (#625)
+
+### Weitere Änderungen
+
+- **devices:** Record port, framing, unit id and the single connection of an m-tec gen3 (#627)
+- Confirm the old smartbox blocks the FoxESS charger on a second system (#623)
+- **devices:** Record owner confirmations for saj, solarmax, go-e and m-tec (#618)
+- **cars:** Use long refresh tokens in the bmw fake service (#614)
+- **deps:** Update Python dependencies (#612)
+
 ## 0.41.0 (2026-11-07)
 
 ### Neu
@@ -172,19 +191,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 - **foxess:** Add the write registers of the ac ev charger (#467)
 - **deps:** Update Python dependencies (#461)
 - **deps-web:** Bump react-dom from 19.3.0 to 19.3.1 in /web (#458)
-
-## 0.34.0 (2026-10-22)
-
-### Neu
-
-- **notify:** Tell when a car starts and ends charging at the wallbox (#453)
-
-### Behoben
-
-- **wallbox:** Remember openampere's stop after letting go of the wallbox (#457)
-- **wallbox:** Start a wallbox again that reports complete after openampere's stop (#455)
-
-### Weitere Änderungen
-
-- Put the review instructions into the ai review prompt and skip bot actors (#450)
-- **deps:** Update Python dependencies (#448)
