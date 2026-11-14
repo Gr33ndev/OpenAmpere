@@ -576,6 +576,7 @@ function diagnostics() {
     ["blocks", "Registerkarte und Funktionscode", "ok", "Alle Blöcke mit dem erkannten Funktionscode lesbar."],
     ["optional_38309", "Zweites Batteriemodul (38309)", "ok", "liefert nur Nullen (vermutlich nicht vorhanden)"],
     ["optional_39327", "MPPT-Details (39327)", "ok", "liefert Werte"],
+    ["meter2", "Zähler 2 / externe PV (38901)", "info", "nicht eingerichtet"],
     ["block_37609", "Blocklesen (37609–37632)", "ok", "Block und Einzelwerte stimmen überein."],
     ["temp_scale", "Wechselrichtertemperatur (39141)", "ok", "31,4 °C (Rohwert 314, Faktor 0,1)"],
     ["export_limit", "Einspeisebegrenzung (46616)", "ok", "etwa 5900 W"],
