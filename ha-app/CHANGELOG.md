@@ -4,6 +4,22 @@
 
 All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 
+## 0.43.0 (2026-11-14)
+
+### Neu
+
+- **diagnostics:** Show whether a foxess h3 has a meter 2 for external pv (#637)
+
+### Behoben
+
+- **solarmax:** Show day values and energy history without "Connectivity+" (#638)
+
+### Weitere Änderungen
+
+- **deps-web:** Bump @biomejs/biome from 2.6.4 to 2.6.6 in /web (#633)
+- **deps-web:** Bump the vite group in /web with 2 updates (#632)
+- Require 70 % test coverage of new backend lines (#631)
+
 ## 0.42.0 (2026-11-12)
 
 ### Neu
@@ -168,26 +184,3 @@ All versions: https://github.com/Gr33ndev/OpenAmpere/releases
 ### Weitere Änderungen
 
 - **ai-review:** Trust nothing in the checkout after the review (#484)
-
-## 0.35.0 (2026-10-29)
-
-### Neu
-
-- **wallbox:** Switch the foxess charger between one and three phases (#479)
-- **import:** Say that the state of charge of old days comes in step 2 (#477)
-- **wallbox:** Control the foxess ac ev charger for real once its owner agrees (#472)
-- **wallbox:** Set the work mode of a foxess charger to unlock it (#470)
-
-### Behoben
-
-- **web:** Explain a live connection that fails behind a reverse proxy (#474)
-- **report:** Show the imported state of charge in the power day view (#473)
-- **wallbox:** Say when the evcc sponsor token has expired (#466)
-
-### Weitere Änderungen
-
-- Check whether the grid operator needs the old smartbox (#475)
-- Mark saj reading as confirmed on the 3p-x e2 (#471)
-- **foxess:** Add the write registers of the ac ev charger (#467)
-- **deps:** Update Python dependencies (#461)
-- **deps-web:** Bump react-dom from 19.3.0 to 19.3.1 in /web (#458)
