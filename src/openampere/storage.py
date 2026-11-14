@@ -504,6 +504,7 @@ class Storage:
         self._pv_acc: dict | None = self._get_meta("pv_input_state")
         self._quarter: dict | None = self._get_meta("quarter_state")
         # the second PV inverter has no energy counter: its power is integrated into one of OpenAmpere's own (#419)
+        self._pending_meta: dict = {}  # see keep_with_next_snapshot
         self._external: dict = self._get_meta("pv_external_state") or {"total": 0.0, "ts": None, "w": None}
         row = self._db.execute("SELECT MAX(ts) FROM samples").fetchone()
         self._last_sample_ts: float = row[0] or 0.0
@@ -617,6 +618,12 @@ class Storage:
 
     def get_meta(self, key: str):
         return self._get_meta(key)
+
+    def keep_with_next_snapshot(self, key: str, value) -> None:
+        """A meta entry written together with the next reading, in its transaction: state that changes with every
+        poll would otherwise double the writes (SD card, a tablet's flash)."""
+        with self._lock:
+            self._pending_meta[key] = value
 
     def set_meta(self, key: str, value) -> None:
         with self._lock:
@@ -832,6 +839,9 @@ class Storage:
                  snap.battery_soc, *inputs[:4], temps.get("inverter"), temps.get("battery"),
                  temps.get("battery_cell_max"), temps.get("battery_cell_min"), snap.pv_external_power, *inputs[4:]))
             self._integrate_external(snap)
+            for key, value in self._pending_meta.items():
+                self._set_meta(key, value)
+            self._pending_meta.clear()
             self._accumulate(snap)
             self._accumulate_pv_inputs(snap.timestamp, [i or 0.0 for i in inputs[:len(snap.pv_inputs)]])
 

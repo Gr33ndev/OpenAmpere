@@ -62,8 +62,10 @@ def test_a_device_with_counters_keeps_them():
 def test_the_counters_go_on_after_a_restart(tmp_path):
     storage = Storage(tmp_path / "t.db")
     counters = PowerCounters(storage, "power_counters")
-    counters.add(snap(T0))
-    counters.add(snap(T0 + 60))
+    for ts in (T0, T0 + 60):
+        reading = snap(ts)
+        counters.add(reading)
+        storage.add_snapshot(reading)  # kept with the reading, in the same write
     storage.close()
     restarted = PowerCounters(Storage(tmp_path / "t.db"), "power_counters")
     reading = snap(T0 + 3600)  # after the restart: not counted across the gap, but not from 0 again either
@@ -104,22 +106,31 @@ def test_the_collector_integrates_only_for_a_driver_that_asks(tmp_path, integrat
 def test_integrated_counters_show_decimals(tmp_path):
     """The register map's step (whole kWh for a Solarmax) does not apply to the integrated counters."""
     collector = Collector(Driver(True), Storage(tmp_path / "t.db"), 2, 30)  # type: ignore[arg-type]
-    collector.device = DeviceInfo(manufacturer="Solarmax", model="MAX.STORAGE", serial=None, firmware="3.4.5",
+    collector.device = DeviceInfo(manufacturer="Solarmax", model="MAX.STORAGE", serial=None, firmware="3.4.4",
                                   energy_step_wh=1000)
     assert collector.energy_step_wh() == 10
     collector.driver = Driver(False)  # type: ignore[assignment]
     assert collector.energy_step_wh() == 1000
 
 
-def test_a_solarmax_without_counters_asks_for_them():
-    """All-zero counters (no "Connectivity+", firmware 3.4.5 in #636) are no counters: the collector integrates."""
-    from openampere.drivers.solarmax.driver import SolarmaxDriver
-
-    driver = SolarmaxDriver("127.0.0.1")
-    assert driver.integrates_power
+def test_all_zero_solarmax_counters_are_none():
+    """All-zero counters (no "Connectivity+") are no counters, not counters that start at 0."""
     raw = {"device_state": 1, "pv_power": 900, "pv_plant_power": 900, "battery_power": 100, "house_power": 700,
            "grid_power": 100, "battery_soc": 98, "pv_total": 0, "grid_import_total": 0, "grid_export_total": 0,
            "battery_charge_total": 0, "battery_discharge_total": 0}
     assert to_snapshot(raw, T0).totals.pv is None
-    driver.counters_seen = True  # the counters answered with values once: they are used, nothing integrated
+
+
+def test_a_solarmax_integrates_only_once_it_is_known_to_have_no_counters():
+    """After a restart a device with counters may miss its first counter read: nothing is integrated then, its real
+    counters must not be mixed with integrated ones."""
+    from openampere.drivers.solarmax.driver import SolarmaxDriver
+
+    driver = SolarmaxDriver("127.0.0.1")
+    assert not driver.integrates_power  # not known yet (a transient failure leaves it so)
+    driver.zeros_seen = True
+    assert driver.integrates_power
+    driver.zeros_seen, driver.has_counters = False, False  # refused, or never answered
+    assert driver.integrates_power
+    driver.counters_seen = True  # the counters answered with values once: they are used
     assert not driver.integrates_power

@@ -81,8 +81,8 @@
         "en": "Solarmax MAX.STORAGE (\"AMPERE.Storage\")"
       },
       "does": {
-        "de": "Nur Anzeige: PV, Speicher, Haus, Netz und Ladestand. Den Energieverlauf gibt es nur, wenn Solarmax „Connectivity+“ freigeschaltet hat. OpenAmpere ändert dort nichts.",
-        "en": "Monitoring only: PV, battery, house, grid and state of charge. The energy history needs \"Connectivity+\", which only Solarmax unlocked. OpenAmpere changes nothing there."
+        "de": "Nur Anzeige: PV, Speicher, Haus, Netz und Ladestand. Ohne „Connectivity+“ rechnet OpenAmpere den Energieverlauf aus den Leistungen. OpenAmpere ändert dort nichts.",
+        "en": "Monitoring only: PV, battery, house, grid and state of charge. Without \"Connectivity+\" OpenAmpere works out the energy history from the powers. OpenAmpere changes nothing there."
       },
       "short": {
         "de": "nur Anzeige",

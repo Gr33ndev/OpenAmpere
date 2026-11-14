@@ -9,14 +9,11 @@ database's meta table, so they go on after a restart and never go backwards."""
 
 from __future__ import annotations
 
-import logging
 from dataclasses import asdict
 
 from .drivers.base import EnergyCounters, Snapshot, energy_balance
+from .storage import MAX_INTEGRATION_GAP_S
 
-log = logging.getLogger(__name__)
-
-MAX_GAP_S = 120  # no energy across a longer gap (OpenAmpere or the device was away): a guess would be wrong
 FLOWS = ("pv", "grid_import", "grid_export", "battery_charge", "battery_discharge")
 
 
@@ -52,7 +49,7 @@ class PowerCounters:
         last_ts, last_w = state.get("ts"), state.get("w")
         if last_ts is not None and isinstance(last_w, dict):
             dt = snap.timestamp - last_ts
-            if 0 < dt <= MAX_GAP_S:
+            if 0 < dt <= MAX_INTEGRATION_GAP_S:  # not across a gap: a guess would be wrong
                 for name in FLOWS:
                     state["sum"][name] = state["sum"].get(name, 0.0) + last_w.get(name, 0.0) * dt / 3600
         state["ts"], state["w"] = snap.timestamp, now
@@ -61,7 +58,4 @@ class PowerCounters:
         balance = energy_balance(asdict(snap.totals))
         snap.totals.consumption = None if balance is None else max(0.0, balance)
         if self.storage is not None:
-            try:
-                self.storage.set_meta(self.key, state)
-            except Exception as err:  # noqa: BLE001 - must never disturb polling
-                log.warning("could not keep the integrated energy counters: %s", err)
+            self.storage.keep_with_next_snapshot(self.key, state)  # with the reading: one write per poll, not two

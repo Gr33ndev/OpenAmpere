@@ -67,6 +67,7 @@ async def test_detected_automatically_and_read_only():
     assert snap.alarms == [] and snap.off_grid is None
     assert snap.totals.pv == (sim.counter_base["pv"] + e.totals["pv"]) // 1000 * 1000
     assert snap.totals.battery_charge is not None and snap.totals.load is None  # no load counter: the balance
+    assert not _driver.integrates_power  # real counters: nothing integrated
 
 
 @pytest.mark.parametrize("connectivity", ["rejected", "zeros"])
@@ -77,6 +78,7 @@ async def test_without_connectivity_plus_there_are_no_counters_but_live_values(c
     assert snap.totals.pv is None and snap.totals.grid_import is None
     assert snap.battery_soc is not None and snap.grid_power == pytest.approx(sim.energy.grid_w, abs=1)
     assert driver.has_counters == (connectivity == "zeros")
+    assert driver.integrates_power  # the collector integrates the powers instead (#636)
 
 
 async def test_counters_that_never_answer_do_not_stop_the_live_values():
@@ -91,6 +93,7 @@ async def test_counters_that_never_answer_do_not_stop_the_live_values():
             for _ in range(3):
                 snap = await driver.read()
                 assert snap.battery_soc is not None and snap.totals.pv is None
+                assert driver.integrates_power == (driver.has_counters is False)  # not on a missed read alone
         finally:
             await driver.close()
     assert driver.has_counters is False
