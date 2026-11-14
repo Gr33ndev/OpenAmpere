@@ -217,6 +217,8 @@ class InverterDriver(Protocol):
                                min_soc_on_grid: int | None = None) -> None: ...
 
     # only a device with DeviceInfo.backup_reserve: async def write_backup_soc(self, value: int) -> None
+    # optional: integrates_power -> bool, True while the device is known to have no energy counters; the collector
+    # then integrates its powers (power_counters.py, #636)
 
     async def set_remote_power(self, watts: int, timeout_s: int, restore: dict | None = None) -> dict | None:
         """Force battery power (+ discharge, - charge) until timeout or release. A driver that changes stored settings

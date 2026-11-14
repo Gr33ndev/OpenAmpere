@@ -91,6 +91,11 @@ Things that are easy to get wrong:
   `to_snapshot()`. Convert in the driver; never let a vendor's convention leak into the snapshot.
 - **Counters are monotonic lifetime values in Wh.** The quarter-hour energy table (`energy_15m`) is only filled when
   all six `totals` counters are present (`Storage._accumulate()`); with a missing counter the report stays empty.
+- **A device without any energy counters** can set `integrates_power` on the driver (a property, read by the
+  collector): the collector then integrates PV, grid and battery power into counters of OpenAmpere's own
+  (`power_counters.py`, #636). Set it only once you know the device has none (refused, all zero, never answered),
+  never after a single missed read, and drop it as soon as real counters answer: integrated and real counters must
+  never mix. See the Solarmax driver.
 - **Do not switch the source of a counter between readings.** The SAJ driver pins the grid counters to either the
   summed or the L1 registers after the first reading (`grid_counter_source`), because switching would look like a
   huge energy jump.

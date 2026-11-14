@@ -41,6 +41,7 @@ class SolarmaxDriver(ModbusDevice):
         self.has_counters = True  # False once the device rejects them (no "Connectivity+") or keeps not answering
         self._counter_failures = 0
         self.counters_seen = False  # the counters answered with values once: PV is the whole plant's from then on
+        self.zeros_seen = False  # the counters answered with zeros only (no "Connectivity+", #636)
         self._counters_due = 0.0  # monotonic time from which the counters are asked again
         self.has_external = False  # another inverter connected to the MAX.STORAGE was seen (112 above 110)
 
@@ -89,6 +90,14 @@ class SolarmaxDriver(ModbusDevice):
                     self._counters_due = time.monotonic() + COUNTER_RETRY_S
         return values(words)
 
+    @property
+    def integrates_power(self) -> bool:
+        """Without counters (no "Connectivity+": refused, unanswered or all zero, #636) the collector integrates the
+        powers into counters of OpenAmpere's own, so the energy history and the day values are not empty. Not before
+        that is known: after a restart a device with counters may miss a read, its counters must not be mixed with
+        integrated ones."""
+        return not self.counters_seen and (not self.has_counters or self.zeros_seen)
+
     def assume_external(self) -> None:
         """The owner counts a second inverter (pv.external): report it from now on, also at 0 W."""
         self.has_external = True
@@ -97,6 +106,8 @@ class SolarmaxDriver(ModbusDevice):
         raw = await self.read_raw()
         if counters(raw).pv is not None:
             self.counters_seen = True
+        elif "pv_total" in raw:
+            self.zeros_seen = True
         if not self.has_external and raw.get("pv_plant_power", 0) - raw.get("pv_power", 0) > EXTERNAL_FROM_W:
             self.has_external = True
         # sticky while the counters are read: one missed read must not switch PV back to the inverter's own power
