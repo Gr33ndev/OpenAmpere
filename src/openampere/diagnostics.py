@@ -66,6 +66,31 @@ def export_limit_check(words: list[int], rated: int | None) -> Check:
                  "Bericht.")
 
 
+METER2 = "Zähler 2 / externe PV (38901)"
+
+
+def meter2_check(words: list[int] | None, error: str = "") -> Check:
+    """Meter 2 of a FoxESS H3 (#635): a second meter on the inverter that measures an AC-coupled PV inverter. 38901 = 1
+    while it is active, 38914–38915 its power (I32, 0.1 W, sign not known yet). Not read by the driver; the report
+    shows whether such a meter exists before OpenAmpere counts it."""
+    if words is None or len(words) < 15:
+        return Check("meter2", METER2, "info", f"nicht lesbar ({error})" if error else "nicht lesbar")
+    raw = (words[13] << 16) | words[14]
+    if raw >= 1 << 31:
+        raw -= 1 << 32
+    # rounded: the report should not carry exact energy figures of an installation
+    power = round(raw / 10, -1)
+    details = {"active": words[0], "power_w": power}
+    if words[0] == 1:
+        return Check("meter2", METER2, "info", f"aktiv, etwa {power:.0f} W", details,
+                     "Am Wechselrichter ist ein zweiter Zähler eingerichtet, meist für einen weiteren "
+                     "Solar-Wechselrichter. OpenAmpere zählt ihn noch nicht mit. Teile bitte den Bericht.")
+    if words[0] == 0 and raw == 0:
+        return Check("meter2", METER2, "info", "nicht eingerichtet", details)
+    return Check("meter2", METER2, "info", f"unklar: Kennung {words[0]}, etwa {power:.0f} W", details,
+                 "Die Werte passen nicht zu dem, was wir über diesen Zähler wissen. Teile bitte den Bericht.")
+
+
 class Diagnostics:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
@@ -368,6 +393,10 @@ class Diagnostics:
                 summary = ("liefert nur Nullen (vermutlich nicht vorhanden)" if r["ok"] and not any(r["words"])
                            else "liefert Werte" if r["ok"] else f"{r['error']} – wird übersprungen")
                 checks.append(Check(f"optional_{start}", label, status, summary, {"words": r.get("words")}))
+
+            # meter 2 for an AC-coupled PV inverter (#635), read only here, not by the driver
+            r = await self._try(38901, 15, fc)
+            checks.append(meter2_check(r["words"] if r["ok"] else None, r.get("error", "")))
 
             # 3. block read 37609-37632 compared with single reads
             block = await self._try(37609, 24, fc)

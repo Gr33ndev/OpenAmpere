@@ -379,6 +379,7 @@ async def test_diagnostics_report(tmp_path):
             checks = {c["id"]: c for c in report["checks"]}
             assert checks["blocks"]["status"] == "ok"
             assert checks["block_37609"]["status"] == "ok"
+            assert checks["meter2"]["summary"].startswith("nicht lesbar")  # the simulator has no meter 2 (#635)
             assert checks["export_limit"]["summary"] == "etwa 6000 W"
             assert checks["connections"]["details"]["main_connection_survived"]
             assert report["device"]["serial"] != "SN1"  # masked unless asked
