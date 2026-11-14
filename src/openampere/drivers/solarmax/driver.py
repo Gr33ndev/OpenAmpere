@@ -89,6 +89,12 @@ class SolarmaxDriver(ModbusDevice):
                     self._counters_due = time.monotonic() + COUNTER_RETRY_S
         return values(words)
 
+    @property
+    def integrates_power(self) -> bool:
+        """Without counters (no "Connectivity+": refused, unanswered or all zero, #636) the collector integrates the
+        powers into counters of OpenAmpere's own, so the energy history and the day values are not empty."""
+        return not self.counters_seen
+
     def assume_external(self) -> None:
         """The owner counts a second inverter (pv.external): report it from now on, also at 0 W."""
         self.has_external = True

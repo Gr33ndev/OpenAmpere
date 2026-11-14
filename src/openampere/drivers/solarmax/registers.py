@@ -10,8 +10,8 @@ after Solarmax unlocked "Connectivity+" (the energy counters among them, in whol
 Read only: OpenAmpere never switches on a storage function EKD switched off remotely (#515).
 
 VERIFY ON HARDWARE: whether port 502 answers with factory settings; the signs of 114 (battery, charging positive) and
-118 (grid, export positive); what 150–159 return without "Connectivity+" (exception or zeros); what the registers show
-while EKD's switch-off is active.
+118 (grid, export positive); what the registers show while EKD's switch-off is active. Without "Connectivity+" two
+devices answered 130–159 with zeros (#596, #636); the collector then integrates the powers instead.
 """
 
 from __future__ import annotations

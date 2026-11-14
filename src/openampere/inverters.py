@@ -113,6 +113,7 @@ class ExtraCollector(Collector):
                  external_pv: bool = False) -> None:
         self.entry = entry
         self.known_key = f"{KNOWN_DEVICE}:{entry.id}"
+        self.power_counters_key = f"power_counters:{entry.id}"
         self.label = f"inverter {entry.id}"
         super().__init__(driver, storage, interval, 0, release_connection=entry.connection_mode == "per_poll")
         known = storage.get_meta(self.known_key)

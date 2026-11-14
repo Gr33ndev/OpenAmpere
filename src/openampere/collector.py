@@ -12,6 +12,7 @@ from .drivers.base import DeviceInfo, InverterDriver, Snapshot, raise_if_cancell
 from .drivers.modbus import WrongDevice, friendly_error
 from . import privacy
 from .outages import Outages
+from .power_counters import PowerCounters
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ def storage_problem(err: BaseException) -> str:
 class Collector:
     # the meta entry with the serial number and address of this inverter: one per inverter (#619)
     known_key = KNOWN_DEVICE
+    power_counters_key = "power_counters"  # energy integrated from the powers of a device without counters (#636)
 
     def __init__(self, driver: InverterDriver | None, storage: Storage, interval: float, retention_days: int,
                  *, release_connection: bool = False) -> None:
@@ -53,6 +55,7 @@ class Collector:
         self.main_name = ""  # the owner's name for this inverter and its battery's capacity (kWh), for combining
         self.main_capacity = 0.0
         self._extra_counters = None  # inverters.ExtraCounters, made with the first further inverter
+        self._power_counters: PowerCounters | None = None  # made when the driver has no counters (#636)
         self.device: DeviceInfo | None = None
         self.connected = False
         self.connected_at: float | None = None  # when the current connection was established (#143)
@@ -303,6 +306,15 @@ class Collector:
             self.storage_failing_since = None
             self.storage_error = None
 
+    def _integrate_power(self, snap: Snapshot) -> None:
+        """A device without energy counters (#636): its powers integrated into counters of OpenAmpere's own, before a
+        second PV inverter is added to the PV power (that one has its own integral, #419)."""
+        if not getattr(self.driver, "integrates_power", False):
+            return
+        if self._power_counters is None:
+            self._power_counters = PowerCounters(self.storage, self.power_counters_key)
+        self._power_counters.add(snap)
+
     def storage_state(self) -> dict:
         """Whether readings get stored (#170): a failed write and how much space is left on the disk."""
         free = self.storage.free_bytes()
@@ -312,7 +324,9 @@ class Collector:
     def energy_step_wh(self) -> int:
         """Step of the energy counters in Wh (#194), so the app shows no decimal the inverter does not count:
         what the recorded data shows, else what the driver's register map says, else 0.01 kWh."""
-        hint = self.device.energy_step_wh if self.device else None
+        # the integrated counters (#636) have no step; the register map's would hide their decimals
+        integrated = getattr(self.driver, "integrates_power", False)
+        hint = self.device.energy_step_wh if self.device and not integrated else None
         return self.storage.energy_step_wh() or hint or 10
 
     label = "inverter"  # in the log
@@ -361,6 +375,7 @@ class Collector:
                     getattr(self.driver, "assume_external", lambda: None)()
                 started = time.monotonic()
                 snap = (await self.driver.read()).sanitize()
+                self._integrate_power(snap)
                 self.external_pv_w = snap.pv_external_power
                 snap.count_external_pv(self.external_pv)
                 log.debug("reading took %.0f ms", (time.monotonic() - started) * 1000)
