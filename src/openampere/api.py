@@ -331,7 +331,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         remove_stale_uploads(Path(storage.path).resolve().parent)
-        collector.start()
+        collector.start(app_start=True)
         runtime.cloud_import.resume_if_running()
         await home_assistant.refresh()
         if ha_app.active() and runtime.config.server.tls_port:  # the integration connects over HTTPS
@@ -778,6 +778,20 @@ def create_app(runtime: Runtime) -> FastAPI:
         storage.log_control("inverter_accepted", {"from": {"serial": wrong["expected"]}, "to": {"serial": wrong["found"]},
                                                   **named, **by(request)}, False, "ok")
         return {"ok": True}
+
+    @app.post("/api/inverter/reconnect")
+    async def inverter_reconnect(inverter: str | None = Query(None, max_length=12)):
+        """Connect to the inverter again at once instead of after the waiting time (#640), like a restart.
+        inverter: the id of a further inverter (#619); none for the first one."""
+        target = collector
+        if inverter and inverter != MAIN_INVERTER:
+            target = runtime.extra(inverter)
+            if target is None:
+                raise HTTPException(404, "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden.")
+        if not target.configured:
+            raise HTTPException(409, "Es ist noch kein Wechselrichter eingerichtet.")
+        # connected already: nothing to do, the app shows it with the next status
+        return {"ok": True, "retrying": target.retry_now()}
 
     # ---- battery control -------------------------------------------------
 

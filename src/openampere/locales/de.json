@@ -43,7 +43,8 @@
     "unknownPeriod": "Unbekannter Zeitraum",
     "unknownPermission": "Unbekannte Berechtigung.",
     "wrongPassword": "Falsches Passwort.",
-    "inverterNotFound": "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden."
+    "inverterNotFound": "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden.",
+    "inverterNotSetUp": "Es ist noch kein Wechselrichter eingerichtet."
   },
   "apitokens": {
     "enterNameEG": "Bitte einen Namen angeben, z. B. „Home Assistant“.",

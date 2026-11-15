@@ -43,7 +43,8 @@
     "unknownPeriod": "Unknown period",
     "unknownPermission": "Unknown permission.",
     "wrongPassword": "Wrong password.",
-    "inverterNotFound": "This inverter does not exist (any more). Please reload the page."
+    "inverterNotFound": "This inverter does not exist (any more). Please reload the page.",
+    "inverterNotSetUp": "No inverter has been set up yet."
   },
   "apitokens": {
     "enterNameEG": "Please enter a name, e.g. “Home Assistant”.",

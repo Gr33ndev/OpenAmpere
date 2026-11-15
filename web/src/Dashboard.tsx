@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { CloudImportState, Device, DevicesView, Settings, Snapshot, Status, Summary } from "./api";
 import { activeInputs, inverterName, postJson, PV_INPUT_COLORS, refreshAll, useResource, useStale } from "./api";
 import { EnergyFlow } from "./EnergyFlow";
-import { InverterHints, inverterQuery } from "./Inverters";
+import { InverterHints, inverterQuery, ReconnectButton, waitingToReconnect } from "./Inverters";
 import { navigate } from "./route";
 import { Button, Dialog, Notice, toast } from "./ui";
 import { DeviceIcon, deviceStatus } from "./DevicesPage";
@@ -314,6 +314,12 @@ export function Dashboard({ snap, online, blocked, status }: {
         </Notice>
       )}
       {snap?.off_grid && !stale && <OffGridNotice snap={snap} />}
+      {waitingToReconnect(status) && (
+        <Notice kind="warn">
+          {t("settings.inverters.reconnectHint")}
+          <ReconnectButton />
+        </Notice>
+      )}
 
       <WrongDeviceNotice wrong={status?.wrong_device} />
       {(status?.inverters ?? []).slice(1).map((item, index) => (
