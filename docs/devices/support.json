@@ -417,10 +417,10 @@
         "period": "mid-2022 – mid-2023",
         "sold": "\"AMPERE.Storage\"",
         "model": "Solarmax MAX.STORAGE Ultimate: 10 kW, three-phase, 2 MPPT, 6–15 kWh in 3 kWh packs",
-        "interface": "Modbus TCP and RTU, KNX (datasheet); battery control only after Solarmax unlocked \"Connectivity+\"",
+        "interface": "Modbus TCP and RTU, KNX (datasheet); battery control only after Solarmax unlocked \"Connectivity+\". Only one Modbus TCP connection at a time",
         "openampere": "driver `solarmax`, display only ([solarmax/max-storage.md](../solarmax/max-storage.md))",
-        "status": "documented (maker, interfaces), derived (model, control, end of the period)",
-        "source": "EKD datasheet \"AMPERE.Storage\", 2022-07; evcc template for the Solarmax MAX.STORAGE"
+        "status": "documented (maker, interfaces), derived (model, control, end of the period), confirmed on one unit (one connection)",
+        "source": "EKD datasheet \"AMPERE.Storage\", 2022-07; evcc template for the Solarmax MAX.STORAGE; owner's diagnostics in [#636](https://github.com/Gr33ndev/OpenAmpere/issues/636)"
       },
       "support": "solarmax"
     },
