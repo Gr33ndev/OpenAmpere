@@ -216,3 +216,16 @@ async def test_only_a_start_of_openampere_is_noted_not_a_new_connection_setup(tm
         await collector.stop()
     events = [e["event"] for e in collector.storage.get_meta("connection_events")]
     assert events.count("start") == 1 and events[0] == "start"
+
+
+def test_reconnect_endpoint_for_a_further_inverter(tmp_path, monkeypatch):
+    runtime = Runtime({}, Storage(tmp_path / "t.db"))
+    client = login(TestClient(create_app(runtime)))
+    extra = Collector(GoneDriver(), runtime.storage, 10, 30)
+    asked = []
+    monkeypatch.setattr(extra, "retry_now", lambda: asked.append(True) or False)
+    monkeypatch.setattr(runtime, "extra", lambda inverter_id: extra if inverter_id == "wr2" else None)
+    assert client.post("/api/inverter/reconnect?inverter=wr2", json={}).json() == {"ok": True, "retrying": False}
+    assert asked == [True]
+    extra.driver = None  # its driver could not be made: nothing to connect
+    assert client.post("/api/inverter/reconnect?inverter=wr2", json={}).status_code == 409
