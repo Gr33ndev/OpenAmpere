@@ -144,3 +144,16 @@ async def test_a_press_during_an_attempt_that_works_is_not_kept_for_the_next_out
         assert not collector._retry_now.is_set()
     finally:
         await collector.stop()
+
+
+def test_presses_are_noted_at_most_once_a_minute(tmp_path, monkeypatch):
+    collector = Collector(GoneDriver(), Storage(tmp_path / "t.db"), 10, 30)
+    collector._task = object()  # counts as running
+    clock = [1000.0]
+    monkeypatch.setattr(collector_module.time, "monotonic", lambda: clock[0])
+    for _ in range(50):
+        assert collector.retry_now()
+    clock[0] += 61
+    assert collector.retry_now()
+    events = [e["event"] for e in collector.storage.get_meta("connection_events")]
+    assert events == ["jetzt_verbinden", "jetzt_verbinden"]

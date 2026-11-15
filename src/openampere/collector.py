@@ -87,6 +87,7 @@ class Collector:
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
         self._retry_now = asyncio.Event()  # set by retry_now(): ends the waiting time before the next attempt (#640)
+        self._retry_noted = float("-inf")  # when a press was last written to the connection history
 
     @property
     def own(self) -> Snapshot | None:
@@ -172,7 +173,12 @@ class Collector:
         and starts over. Never sooner than the device stands (min_gap, #521). False while connected or not running."""
         if self._task is None or self.connected:
             return False
-        self._event("jetzt_verbinden")  # in the connection history of the diagnostics
+        now = time.monotonic()
+        # in the connection history of the diagnostics, at most once a minute: many presses must not push the
+        # disconnects out of its last 100 entries
+        if now - self._retry_noted >= RETRY_MAX_S:
+            self._retry_noted = now
+            self._event("jetzt_verbinden")
         self._retry_now.set()
         return True
 
