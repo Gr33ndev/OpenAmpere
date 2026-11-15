@@ -79,7 +79,7 @@ async def test_connect_now_ends_the_wait_and_starts_over(tmp_path, monkeypatch):
         assert driver.attempts == 2
         assert not collector.retry_now()  # connected: nothing to do
         events = [e["event"] for e in collector.storage.get_meta("connection_events")]
-        assert events == ["getrennt", "jetzt_verbinden", "verbunden"]
+        assert events == ["start", "getrennt", "jetzt_verbinden", "verbunden"]
     finally:
         await collector.stop()
 
@@ -189,3 +189,14 @@ def test_a_further_inverter_writes_its_id_into_the_connection_history(tmp_path):
     Collector(GoneDriver(), storage, 10, 30)._event("getrennt", "timeout")
     events = storage.get_meta("connection_events")
     assert [e.get("inverter") for e in events] == ["wr2", None]
+
+
+def test_an_outage_that_a_restart_ended_has_no_duration():
+    """The tablet or the host was off: that time is no outage, and the report must not read as a missed reconnect."""
+    from openampere.diagnostics import Diagnostics
+    events = [{"ts": 1000, "event": "getrennt"}, {"ts": 1300, "event": "jetzt_verbinden"},
+              {"ts": 30000, "event": "start"}, {"ts": 30005, "event": "verbunden"},
+              {"ts": 31000, "event": "getrennt", "inverter": "wr2"}, {"ts": 32000, "event": "start"},
+              {"ts": 33000, "event": "start", "inverter": "wr2"}]
+    assert Diagnostics._outages(events) == [{"minutes": None, "connect_now": True, "restart": True},
+                                            {"minutes": None, "connect_now": False, "restart": True, "inverter": "wr2"}]

@@ -659,8 +659,9 @@ class Diagnostics:
     @staticmethod
     def _outages(events: list[dict]) -> list[dict]:
         """The last outages (#640): minutes until OpenAmpere was connected again (None while it lasts) and whether
-        the owner pressed "Connect now" meanwhile, per inverter (a further one with its id, #619). Durations only,
-        no times (#149). A further inverter's events stored by older versions have no id and count as the first one's."""
+        the owner pressed "Connect now" meanwhile, per inverter (a further one with its id, #619). One that a start of
+        OpenAmpere (or a new connection setup) ended has no duration but `restart`: the time it did not run is no
+        outage. Durations only, no times (#149). A further inverter's events stored by older versions have no id and count as the first one's."""
         found: list[tuple[float, dict]] = []
         current: dict[str | None, dict] = {}
         for event in events:
@@ -670,6 +671,10 @@ class Diagnostics:
                 current[source] = {"since": event["ts"], "connect_now": False}
             elif kind == "jetzt_verbinden" and outage is not None:
                 outage["connect_now"] = True
+            elif kind == "start" and outage is not None:
+                found.append((outage["since"], {"minutes": None, "connect_now": outage["connect_now"], "restart": True}
+                              | ({"inverter": source} if source else {})))
+                del current[source]
             elif kind == "verbunden" and outage is not None:
                 found.append((outage["since"], {"minutes": round((event["ts"] - outage["since"]) / 60, 1),
                                                 "connect_now": outage["connect_now"]} | ({"inverter": source} if source else {})))
@@ -697,7 +702,7 @@ class Diagnostics:
         outages = self._outages
         by_hour = Counter(datetime.fromtimestamp(e["ts"], tz).hour for e in events if e["event"] == "getrennt")
         glitches = self.runtime.storage.get_meta("counter_glitches") or []
-        checks.append(Check("night", "Verbindungsabbrüche und Zähler", "ok" if not events and not glitches else "info",
+        checks.append(Check("night", "Verbindungsabbrüche und Zähler", "ok" if not by_hour and not glitches else "info",
                             f"{plural(sum(by_hour.values()), 'Abbruch', 'Abbrüche')}, "
                             f"{plural(len(glitches), 'Zählerauffälligkeit', 'Zählerauffälligkeiten')} gespeichert",
                             {"disconnects_by_hour": dict(sorted(by_hour.items())),

@@ -401,6 +401,8 @@ class Collector:
 
     async def _run(self) -> None:
         assert self.driver is not None
+        # ends an outage that was still open in the history: the time OpenAmpere did not run is no outage (#640)
+        self._event("start")
         backoff = RETRY_FIRST_S
         last_prune = 0.0
         transient_failures = 0
