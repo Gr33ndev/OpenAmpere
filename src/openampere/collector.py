@@ -297,7 +297,10 @@ class Collector:
         """Connection history for the diagnostics (e.g. does the inverter refuse connections at night?)."""
         try:
             events = (self.storage.get_meta("connection_events") or [])[-99:]
-            events.append({"ts": time.time(), "event": kind, "detail": detail[:200]})
+            event = {"ts": time.time(), "event": kind, "detail": detail[:200]}
+            if self.event_source:  # a further inverter (#619), so its outages are told apart (#640)
+                event["inverter"] = self.event_source
+            events.append(event)
             self.storage.set_meta("connection_events", events)
         except Exception:  # noqa: BLE001 - diagnostics must never disturb polling
             pass
@@ -368,6 +371,7 @@ class Collector:
         return self.storage.energy_step_wh() or hint or 10
 
     label = "inverter"  # in the log
+    event_source: str | None = None  # in the connection history: None for the first inverter, else its id
     prunes = True  # removes old readings from the database (one collector does it)
 
     async def _reading(self, snap: Snapshot) -> None:

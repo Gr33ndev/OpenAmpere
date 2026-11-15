@@ -659,22 +659,25 @@ class Diagnostics:
     @staticmethod
     def _outages(events: list[dict]) -> list[dict]:
         """The last outages (#640): minutes until OpenAmpere was connected again (None while it lasts) and whether
-        the owner pressed "Connect now" meanwhile. Durations only, no times (#149)."""
-        found: list[dict] = []
-        current: dict | None = None
+        the owner pressed "Connect now" meanwhile, per inverter (a further one with its id, #619). Durations only,
+        no times (#149). A further inverter's events stored by older versions have no id and count as the first one's."""
+        found: list[tuple[float, dict]] = []
+        current: dict[str | None, dict] = {}
         for event in events:
-            kind = event["event"]
-            if kind == "getrennt" and current is None:
-                current = {"since": event["ts"], "connect_now": False}
-            elif kind == "jetzt_verbinden" and current is not None:
-                current["connect_now"] = True
-            elif kind == "verbunden" and current is not None:
-                found.append({"minutes": round((event["ts"] - current["since"]) / 60, 1),
-                              "connect_now": current["connect_now"]})
-                current = None
-        if current is not None:
-            found.append({"minutes": None, "connect_now": current["connect_now"]})
-        return found[-5:]
+            kind, source = event["event"], event.get("inverter")
+            outage = current.get(source)
+            if kind == "getrennt" and outage is None:
+                current[source] = {"since": event["ts"], "connect_now": False}
+            elif kind == "jetzt_verbinden" and outage is not None:
+                outage["connect_now"] = True
+            elif kind == "verbunden" and outage is not None:
+                found.append((outage["since"], {"minutes": round((event["ts"] - outage["since"]) / 60, 1),
+                                                "connect_now": outage["connect_now"]} | ({"inverter": source} if source else {})))
+                del current[source]
+        for source, outage in current.items():
+            found.append((outage["since"], {"minutes": None, "connect_now": outage["connect_now"]}
+                          | ({"inverter": source} if source else {})))
+        return [outage for _since, outage in sorted(found, key=lambda item: item[0])][-5:]
 
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""

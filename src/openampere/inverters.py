@@ -167,6 +167,10 @@ class ExtraCollector(Collector):
     def _check_firmware(self) -> None:
         pass  # the firmware history is the first inverter's (an update can change its registers)
 
+    @property
+    def event_source(self) -> str:
+        return self.entry.id
+
     def _event(self, kind: str, detail: str = "") -> None:
         super()._event(kind, f"{self.entry.id}: {detail}" if detail else self.entry.id)
 

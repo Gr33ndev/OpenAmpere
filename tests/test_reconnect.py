@@ -169,3 +169,23 @@ def test_diagnostics_show_how_long_outages_lasted_and_whether_connect_now_was_pr
     assert Diagnostics._outages(events) == [{"minutes": 10.0, "connect_now": False},
                                             {"minutes": 7.2, "connect_now": True},
                                             {"minutes": None, "connect_now": False}]
+
+
+def test_outages_of_a_further_inverter_are_told_apart():
+    from openampere.diagnostics import Diagnostics
+    events = [{"ts": 1000, "event": "getrennt"}, {"ts": 1100, "event": "getrennt", "inverter": "wr2"},
+              {"ts": 1200, "event": "verbunden", "inverter": "wr2"}, {"ts": 1300, "event": "jetzt_verbinden"},
+              {"ts": 1600, "event": "verbunden"}]
+    assert Diagnostics._outages(events) == [{"minutes": 10.0, "connect_now": True},
+                                            {"minutes": 1.7, "connect_now": False, "inverter": "wr2"}]
+
+
+def test_a_further_inverter_writes_its_id_into_the_connection_history(tmp_path):
+    from openampere.config import ExtraInverter
+    from openampere.inverters import ExtraCollector
+    storage = Storage(tmp_path / "t.db")
+    extra = ExtraCollector(ExtraInverter(id="wr2", host="127.0.0.1"), GoneDriver(), storage, 10)
+    extra._event("getrennt", "timeout")
+    Collector(GoneDriver(), storage, 10, 30)._event("getrennt", "timeout")
+    events = storage.get_meta("connection_events")
+    assert [e.get("inverter") for e in events] == ["wr2", None]
