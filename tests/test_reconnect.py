@@ -119,3 +119,28 @@ def test_reconnect_needs_login(tmp_path):
     client = TestClient(create_app(runtime))
     client.headers.update({"x-openampere": "1"})
     assert client.post("/api/inverter/reconnect", json={}).status_code == 401
+
+
+async def test_a_press_during_an_attempt_that_works_is_not_kept_for_the_next_outage(tmp_path, monkeypatch):
+    monkeypatch.setattr(collector_module, "RETRY_FIRST_S", 600.0)
+    driver = GoneDriver()
+    gate = asyncio.Event()
+    connect = driver.connect
+
+    async def slow_connect() -> DeviceInfo:
+        await gate.wait()
+        return await connect()
+
+    collector = Collector(driver, Storage(tmp_path / "t.db"), 10, 30)
+    collector.start()
+    try:
+        await wait_for(lambda: collector.last_error is not None)
+        driver.back, driver.connect = True, slow_connect
+        assert collector.retry_now()  # ends the wait: the next attempt waits at the gate
+        await wait_for(lambda: not collector._retry_now.is_set())
+        assert collector.retry_now()  # pressed again while that attempt runs
+        gate.set()
+        await wait_for(lambda: collector.connected)
+        assert not collector._retry_now.is_set()
+    finally:
+        await collector.stop()

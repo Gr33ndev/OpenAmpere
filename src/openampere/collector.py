@@ -419,6 +419,7 @@ class Collector:
                     self._event("verbunden")
                     self._check_firmware()
                 self.connected = True
+                self._retry_now.clear()  # pressed during the attempt that worked: not for the next outage (#640)
                 self.disconnected_since = None
                 self.last_error = None
                 backoff = RETRY_FIRST_S
