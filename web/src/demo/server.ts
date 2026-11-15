@@ -675,7 +675,7 @@ export const DEMO_WRITE_ONLY = [
   "/api/database/damaged", "/api/database/ha-backup", "/api/database/rollback", "/api/diagnostics/identify", "/api/diagnostics/read",
   "/api/diagnostics/search", "/api/evcc/loadpoints/", "/api/wallbox/check", "/api/wallboxes/", "/api/wallboxes/search", "/api/wallboxes/test",
   "/api/cars/", "/api/cars/login", "/api/cars/login/", "/api/cars/vehicles", "/api/wallbox/ocpp/start", "/api/wallbox/ocpp/stop",
-  "/api/gridmeter/sync", "/api/import/cloud/file", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/notify/mail/test", "/api/outages/",
+  "/api/gridmeter/sync", "/api/import/cloud/file", "/api/inverter/reconnect", "/api/import/cloud/start", "/api/import/cloud/stop", "/api/notify/test", "/api/notify/mail/test", "/api/outages/",
   "/api/setup/accept-device", "/api/setup/scan", "/api/setup/test", "/api/tokens/", "/api/tokens/pairing/",
 ];
 

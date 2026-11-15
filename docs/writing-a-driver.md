@@ -138,8 +138,8 @@ picked one in the setup.
 
 On an exception that has `transient = True`, up to `MAX_TRANSIENT` consecutive failures keep the connection. Anything
 else marks the device as disconnected, shows `friendly_error(err)` in the app, calls `close()` and retries with an
-exponential backoff (5 s up to 300 s). So raise `ModbusTransientError` for "try again" and `ModbusIllegalError` or
-`ConnectionError` for "this does not work".
+exponential backoff (5 s up to 60 s, #640; "Connect now" in the app ends the wait). So raise `ModbusTransientError`
+for "try again" and `ModbusIllegalError` or `ConnectionError` for "this does not work".
 
 ## 2. A read-only driver, step by step
 

@@ -23,6 +23,10 @@ LOW_DISK_BYTES = 200 * 1024 * 1024
 STORAGE_LOG_EVERY_S = 3600  # while writing keeps failing, repeat the error in the log only this often
 WRONG_DEVICE_GONE_AFTER = 3  # other errors in a row after which another device counts as gone (#567)
 KNOWN_DEVICE = "known_device"  # meta: serial number and address of the owner's inverter (#351, #567)
+# waiting time after a failed connection attempt: doubled each time up to the maximum, so an inverter that is back
+# (e.g. after its network cable was unplugged for a while) is read again within about a minute (#640)
+RETRY_FIRST_S = 5.0
+RETRY_MAX_S = 60.0
 
 
 def storage_problem(err: BaseException) -> str:
@@ -82,6 +86,7 @@ class Collector:
         self._other_errors = 0  # other errors in a row since another device answered
         self._subscribers: set[asyncio.Queue] = set()
         self._task: asyncio.Task | None = None
+        self._retry_now = asyncio.Event()  # set by retry_now(): ends the waiting time before the next attempt (#640)
 
     @property
     def own(self) -> Snapshot | None:
@@ -161,6 +166,33 @@ class Collector:
             # until then the stored one stays, e.g. for a wrong port or unit id
             self.known_serial, self._new_host = None, new_device
         self.start()
+
+    def retry_now(self) -> bool:
+        """The owner asks to connect again at once (#640), like a restart: the waiting time after failed attempts ends
+        and starts over. Never sooner than the device stands (min_gap, #521). False while connected or not running."""
+        if self._task is None or self.connected:
+            return False
+        self._event("jetzt_verbinden")  # in the connection history of the diagnostics
+        self._retry_now.set()
+        return True
+
+    async def _wait_retry(self, delay: float) -> bool:
+        """Waits `delay` seconds before the next connection attempt; True if retry_now() ended the wait early."""
+        started = time.monotonic()
+        sleeper = asyncio.ensure_future(asyncio.sleep(delay))
+        asked = asyncio.ensure_future(self._retry_now.wait())
+        try:
+            await asyncio.wait((sleeper, asked), return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            sleeper.cancel()
+            asked.cancel()
+            woken = self._retry_now.is_set()
+            self._retry_now.clear()
+        if not woken:
+            return False
+        # never sooner than the device stands (a Senec restarts when asked too often, #521)
+        await asyncio.sleep(max(0.0, self.min_gap() - (time.monotonic() - started)))
+        return True
 
     async def accept_device(self, host: str) -> bool:
         """The owner confirms that the other device at `host` is their (new) inverter. False if there is none. One
@@ -359,7 +391,7 @@ class Collector:
 
     async def _run(self) -> None:
         assert self.driver is not None
-        backoff = 5.0
+        backoff = RETRY_FIRST_S
         last_prune = 0.0
         transient_failures = 0
         while True:
@@ -389,7 +421,7 @@ class Collector:
                 self.connected = True
                 self.disconnected_since = None
                 self.last_error = None
-                backoff = 5.0
+                backoff = RETRY_FIRST_S
                 transient_failures = 0
                 if self.release_connection and hasattr(self.driver, "disconnect"):
                     await self.driver.disconnect()
@@ -428,5 +460,7 @@ class Collector:
                 self.last_error = message
                 await self.driver.close()
                 # never sooner than the device stands (a Senec restarts when asked too often, #521)
-                await asyncio.sleep(max(backoff, self.min_gap()))
-                backoff = min(backoff * 2, 300)
+                if await self._wait_retry(max(backoff, self.min_gap())):
+                    backoff = RETRY_FIRST_S  # asked by the owner: the waiting time starts over (#640)
+                else:
+                    backoff = min(backoff * 2, RETRY_MAX_S)

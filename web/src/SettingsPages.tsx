@@ -12,7 +12,7 @@ import { batterySettingName, batterySettingValue, describe, logCsv, logReport, s
 import { Chart } from "./Chart";
 import { Chevron } from "./icons";
 import { ConnectionForm, SetupHelp } from "./Setup";
-import { firstInverterOnly, InverterPicker, inverterQuery, InvertersSettings } from "./Inverters";
+import { firstInverterOnly, InverterPicker, inverterQuery, InvertersSettings, ReconnectButton, waitingToReconnect } from "./Inverters";
 import { ControlModeBar } from "./ControlMode";
 import { LastRestore, RestoreButton } from "./Restore";
 import { UpdatesCard } from "./Updates";
@@ -487,6 +487,12 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
         {status?.connected
           ? t("settings.connectionPage.connectedTo", { manufacturer: status.device?.manufacturer ?? "", model: status.device?.model ?? "" })
           : status?.last_error ? t("settings.connectionPage.notConnectedError", { error: status.last_error }) : t("settings.connectionPage.notConnected")}
+        {waitingToReconnect(status) && (
+          <>
+            <p>{t("settings.inverters.reconnectHint")} {t("settings.inverters.reconnectNotify")}</p>
+            <ReconnectButton />
+          </>
+        )}
       </Notice>
       <div className="section-title">{t("common.otherDevices")}</div>
       <div className="card menu">

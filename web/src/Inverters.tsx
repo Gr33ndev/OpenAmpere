@@ -4,7 +4,7 @@
  *  flow and the choice of the inverter whose battery settings are shown. */
 import { useEffect, useState } from "react";
 import type { ExtraInverter, InverterStatus, Settings, Snapshot, Status } from "./api";
-import { inverterName, MAIN_INVERTER } from "./api";
+import { inverterName, MAIN_INVERTER, postJson, refreshAll } from "./api";
 import { kw, num, percent } from "./format";
 import { t } from "./i18n";
 import { type Detected, ConnectionForm } from "./Setup";
@@ -144,6 +144,7 @@ function ExtraCard({ entry, number, item, disabled, onSave, onRemove }: {
     <div className="card form" data-testid={`inverter-${entry.id ?? number}`}>
       <h2>{title}</h2>
       <p className="hint">{entry.host}{entry.port !== 502 ? `:${entry.port}` : ""} · {stateLine(item)}</p>
+      {waitingToReconnect(item) && <ReconnectButton inverter={entry.id} />}
       <Field label={t("settings.inverters.name")}>
         <input className="input" value={name} maxLength={30} disabled={disabled} placeholder={inverterName("", number - 1)}
           onChange={(e) => setName(e.target.value)} />
@@ -243,6 +244,34 @@ export function InverterPicker({ status, value, onChange }: {
         ))}
       </select>
     </Field>
+  );
+}
+
+/** Not connected after a failed attempt: OpenAmpere waits before the next one (#640). */
+export function waitingToReconnect(item: { configured?: boolean; connected: boolean; last_error: string | null;
+  wrong_device?: Status["wrong_device"] } | null | undefined): boolean {
+  return !!item && item.configured !== false && !item.connected && !!item.last_error && !item.wrong_device;
+}
+
+/** "Connect now" (#640): the next connection attempt right away instead of after the waiting time, like a restart. */
+export function ReconnectButton({ inverter = "" }: { inverter?: string }) {
+  const [busy, setBusy] = useState(false);
+  const reconnect = async () => {
+    setBusy(true);
+    try {
+      await postJson(`/api/inverter/reconnect${inverterQuery(inverter)}`, {});
+      toast(t("settings.inverters.reconnecting"));
+      window.setTimeout(refreshAll, 5000); // the status shows the result with the next reading
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="notice-actions">
+      <Button variant="secondary" busy={busy} onClick={() => void reconnect()}>{t("settings.inverters.reconnect")}</Button>
+    </div>
   );
 }
 

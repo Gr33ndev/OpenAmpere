@@ -779,6 +779,20 @@ def create_app(runtime: Runtime) -> FastAPI:
                                                   **named, **by(request)}, False, "ok")
         return {"ok": True}
 
+    @app.post("/api/inverter/reconnect")
+    async def inverter_reconnect(inverter: str | None = Query(None, max_length=12)):
+        """Connect to the inverter again at once instead of after the waiting time (#640), like a restart.
+        inverter: the id of a further inverter (#619); none for the first one."""
+        target = collector
+        if inverter and inverter != MAIN_INVERTER:
+            target = runtime.extra(inverter)
+            if target is None:
+                raise HTTPException(404, "Diesen Wechselrichter gibt es nicht (mehr). Bitte die Seite neu laden.")
+        if not target.configured:
+            raise HTTPException(409, "Es ist noch kein Wechselrichter eingerichtet.")
+        # connected already: nothing to do, the app shows it with the next status
+        return {"ok": True, "retrying": target.retry_now()}
+
     # ---- battery control -------------------------------------------------
 
     @app.get("/api/battery/health")
