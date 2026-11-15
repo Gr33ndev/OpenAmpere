@@ -33,6 +33,7 @@ def refuse() -> None:
 class SolarmaxDriver(ModbusDevice):
     KEY = "solarmax"
     DEFAULT_UNITS = (1,)
+    SINGLE_CONNECTION = True  # a second connection drops OpenAmpere's own one, also with the tablet app stopped (#636)
 
     def __init__(self, host: str, port: int = 502, unit: int = 1, *, timeout: float = 3.0, read_attempts: int = 3,
                  **_ignored) -> None:

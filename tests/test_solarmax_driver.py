@@ -259,9 +259,14 @@ async def test_the_app_keeps_control_off_and_the_report_shows_the_raw_signs(tmp_
             await runtime.update_settings({"control.enabled": True, "control.dry_run": False})
             with pytest.raises(ValueError, match="noch nicht freigegeben"):
                 await BatteryControl(runtime).write({"min_soc_on_grid": 30})
-            report = await Diagnostics(runtime).run()
+            report = await Diagnostics(runtime).run(connection_test=True)
+            connected = runtime.collector.connected
         finally:
             await runtime.collector.stop()
+    # the device serves one connection (#636): the test is skipped even when asked, and OpenAmpere stays connected
+    connections = {c["id"]: c for c in report["checks"]}["connections"]
+    assert connections["status"] == "skipped" and "nur eine Verbindung" in connections["summary"]
+    assert connected
     check = {c["id"]: c for c in report["checks"]}["solarmax_registers"]
     details = check["details"]
     # Solarmax's own signs, rounded: charging and export are positive there
