@@ -656,6 +656,26 @@ class Diagnostics:
                      hint="Hol rechtzeitig bei Enphase ein neues Token und trag es beim Einrichten ein."
                      if status == "warn" else "")
 
+    @staticmethod
+    def _outages(events: list[dict]) -> list[dict]:
+        """The last outages (#640): minutes until OpenAmpere was connected again (None while it lasts) and whether
+        the owner pressed "Connect now" meanwhile. Durations only, no times (#149)."""
+        found: list[dict] = []
+        current: dict | None = None
+        for event in events:
+            kind = event["event"]
+            if kind == "getrennt" and current is None:
+                current = {"since": event["ts"], "connect_now": False}
+            elif kind == "jetzt_verbinden" and current is not None:
+                current["connect_now"] = True
+            elif kind == "verbunden" and current is not None:
+                found.append({"minutes": round((event["ts"] - current["since"]) / 60, 1),
+                              "connect_now": current["connect_now"]})
+                current = None
+        if current is not None:
+            found.append({"minutes": None, "connect_now": current["connect_now"]})
+        return found[-5:]
+
     def _history_checks(self) -> list[Check]:
         """What OpenAmpere observed while polling; needs no connection right now."""
         checks: list[Check] = []
@@ -671,6 +691,7 @@ class Diagnostics:
 
         # 9. night behaviour: disconnects per hour and counter glitches
         events = self.runtime.storage.get_meta("connection_events") or []
+        outages = self._outages
         by_hour = Counter(datetime.fromtimestamp(e["ts"], tz).hour for e in events if e["event"] == "getrennt")
         glitches = self.runtime.storage.get_meta("counter_glitches") or []
         checks.append(Check("night", "Verbindungsabbrüche und Zähler", "ok" if not events and not glitches else "info",
@@ -678,6 +699,7 @@ class Diagnostics:
                             f"{plural(len(glitches), 'Zählerauffälligkeit', 'Zählerauffälligkeiten')} gespeichert",
                             {"disconnects_by_hour": dict(sorted(by_hour.items())),
                              "last_errors": [e["detail"] for e in events if e["event"] == "getrennt"][-5:],
+                             "last_outages": outages(events),
                              "glitches": [{"kind": g["kind"], "hour": datetime.fromtimestamp(g["ts"], tz).hour}
                                           for g in glitches[-10:]]}))
         return checks

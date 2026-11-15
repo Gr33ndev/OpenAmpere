@@ -157,3 +157,15 @@ def test_presses_are_noted_at_most_once_a_minute(tmp_path, monkeypatch):
     assert collector.retry_now()
     events = [e["event"] for e in collector.storage.get_meta("connection_events")]
     assert events == ["jetzt_verbinden", "jetzt_verbinden"]
+
+
+def test_diagnostics_show_how_long_outages_lasted_and_whether_connect_now_was_pressed():
+    from openampere.diagnostics import Diagnostics
+    events = [{"ts": 1000, "event": "verbunden"},
+              {"ts": 2000, "event": "getrennt"}, {"ts": 2600, "event": "verbunden"},
+              {"ts": 5000, "event": "getrennt"}, {"ts": 5100, "event": "getrennt"},
+              {"ts": 5400, "event": "jetzt_verbinden"}, {"ts": 5430, "event": "verbunden"},
+              {"ts": 9000, "event": "getrennt"}]
+    assert Diagnostics._outages(events) == [{"minutes": 10.0, "connect_now": False},
+                                            {"minutes": 7.2, "connect_now": True},
+                                            {"minutes": None, "connect_now": False}]
