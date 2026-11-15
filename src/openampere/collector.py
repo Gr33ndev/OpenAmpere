@@ -117,12 +117,13 @@ class Collector:
                 queue.get_nowait()  # slow client: drop the oldest reading
             queue.put_nowait(snap)
 
-    def start(self) -> None:
+    def start(self, *, app_start: bool = False) -> None:
+        """app_start: OpenAmpere itself just started (not a new connection setup), noted in the connection history."""
         if self.driver is not None:
-            self._task = asyncio.create_task(self._run(), name=self.label)
+            self._task = asyncio.create_task(self._run(app_start), name=self.label)
             # only with the first inverter: its collector combines and stores their readings (#619)
             for extra in self.extras:
-                extra.start()
+                extra.start(app_start=app_start)
 
     async def set_extras(self, extras: list) -> None:
         """Replaces the further inverters (#619); started at once when this collector runs."""
@@ -399,10 +400,12 @@ class Collector:
         except Exception as note_err:  # noqa: BLE001 - statistics must never disturb polling
             log.warning("could not record power cut: %s", note_err)
 
-    async def _run(self) -> None:
+    async def _run(self, app_start: bool = False) -> None:
         assert self.driver is not None
-        # ends an outage that was still open in the history: the time OpenAmpere did not run is no outage (#640)
-        self._event("start")
+        if app_start:
+            # ends an outage that was still open in the history: the time OpenAmpere did not run is no outage (#640).
+            # Not after a new connection setup or the address search (reconfigure), during which it kept running.
+            self._event("start")
         backoff = RETRY_FIRST_S
         last_prune = 0.0
         transient_failures = 0

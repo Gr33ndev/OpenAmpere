@@ -79,7 +79,7 @@ async def test_connect_now_ends_the_wait_and_starts_over(tmp_path, monkeypatch):
         assert driver.attempts == 2
         assert not collector.retry_now()  # connected: nothing to do
         events = [e["event"] for e in collector.storage.get_meta("connection_events")]
-        assert events == ["start", "getrennt", "jetzt_verbinden", "verbunden"]
+        assert events == ["getrennt", "jetzt_verbinden", "verbunden"]
     finally:
         await collector.stop()
 
@@ -200,3 +200,19 @@ def test_an_outage_that_a_restart_ended_has_no_duration():
               {"ts": 33000, "event": "start", "inverter": "wr2"}]
     assert Diagnostics._outages(events) == [{"minutes": None, "connect_now": True, "restart": True},
                                             {"minutes": None, "connect_now": False, "restart": True, "inverter": "wr2"}]
+
+
+async def test_only_a_start_of_openampere_is_noted_not_a_new_connection_setup(tmp_path):
+    """The address search (#351) or new settings reconfigure the collector while OpenAmpere keeps running: an outage
+    that ends there has a real duration and must not read as a restart."""
+    driver = GoneDriver()
+    collector = Collector(driver, Storage(tmp_path / "t.db"), 10, 30)
+    collector.start(app_start=True)
+    try:
+        await wait_for(lambda: collector.last_error is not None)
+        await collector.reconfigure(GoneDriver(), 10)
+        await wait_for(lambda: collector.last_error is not None)
+    finally:
+        await collector.stop()
+    events = [e["event"] for e in collector.storage.get_meta("connection_events")]
+    assert events.count("start") == 1 and events[0] == "start"

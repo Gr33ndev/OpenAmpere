@@ -331,7 +331,7 @@ def create_app(runtime: Runtime) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         remove_stale_uploads(Path(storage.path).resolve().parent)
-        collector.start()
+        collector.start(app_start=True)
         runtime.cloud_import.resume_if_running()
         await home_assistant.refresh()
         if ha_app.active() and runtime.config.server.tls_port:  # the integration connects over HTTPS

@@ -660,7 +660,7 @@ class Diagnostics:
     def _outages(events: list[dict]) -> list[dict]:
         """The last outages (#640): minutes until OpenAmpere was connected again (None while it lasts) and whether
         the owner pressed "Connect now" meanwhile, per inverter (a further one with its id, #619). One that a start of
-        OpenAmpere (or a new connection setup) ended has no duration but `restart`: the time it did not run is no
+        OpenAmpere ended has no duration but `restart`: the time it did not run is no
         outage. Durations only, no times (#149). A further inverter's events stored by older versions have no id and count as the first one's."""
         found: list[tuple[float, dict]] = []
         current: dict[str | None, dict] = {}
