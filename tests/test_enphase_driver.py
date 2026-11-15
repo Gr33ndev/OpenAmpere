@@ -6,6 +6,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import random
 import ssl
 import time
 from datetime import datetime, timedelta
@@ -45,6 +46,7 @@ async def serve(sim, tls: bool = True):
 
 
 def sunny(sim):
+    random.seed(594)  # the model draws clouds and load spikes from the global random: the same values in every test order
     sim.energy.step(datetime(2026, 6, 1, 13, 0), 60)
     return sim
 
