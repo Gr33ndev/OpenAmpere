@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import random
 import time
 from datetime import datetime
 
@@ -26,6 +27,7 @@ async def serve(sim):
 
 
 def sunny(sim: SimulatedSenec) -> SimulatedSenec:
+    random.seed(594)  # the model draws clouds and load spikes from the global random: the same values in every test order
     sim.energy.step(datetime(2026, 6, 1, 13, 0), 60)
     return sim
 
