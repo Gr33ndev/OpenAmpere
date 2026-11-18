@@ -1,13 +1,18 @@
 {
   "meta": {
-    "title": "EKD devices | OpenAmpere",
-    "description": "Which batteries, wallboxes and other devices EKD sold, and which of them OpenAmpere can monitor and control."
+    "title": "EKD and RCT devices | OpenAmpere",
+    "description": "Which batteries, wallboxes and other devices EKD and RCT Power sold, and which of them OpenAmpere can monitor and control."
   },
   "head": {
     "eyebrow": "Devices",
-    "title": "Which EKD devices work with OpenAmpere?",
-    "lead": "Since 2018, EKD has sold batteries, wallboxes and other devices of several makers. This page shows what OpenAmpere can do with them today and what is being worked on.",
-    "find": "Which device you have is on the type plate of the battery, the inverter or the wallbox. The sales name is usually in EKD's offer or invoice."
+    "title": "Which EKD and RCT devices work with OpenAmpere?",
+    "lead": "Since 2018, EKD has sold batteries, wallboxes and other devices of several makers, and since 2016 RCT Power has sold its own batteries and inverters. Both companies are insolvent. This page shows what OpenAmpere can do with their devices today and what is being worked on.",
+    "find": "Which device you have is on the type plate of the battery, the inverter or the wallbox. The sales name is usually in the offer or invoice from EKD or your installer.",
+    "jump": "<a href=\"#rct\">Go to the devices by RCT Power</a>",
+    "ekdTitle": "Devices sold by EKD",
+    "rctTitle": "Devices by RCT Power",
+    "rctIntro": "RCT Power GmbH from Konstanz is insolvent. Official announcement of 15 September 2026 at <a href=\"https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf\">insolvenzbekanntmachungen.de</a>: Local Court (Amtsgericht) of Konstanz, case number K 42 IN 457/26, RCT Power GmbH, Konstanz (commercial register Freiburg im Breisgau, HRB 713720). The systems keep running; what happens to service, app and portal is open.",
+    "rctHow": "OpenAmpere reads RCT inverters directly in the home network through the RCT app's protocol (port 8899), without any RCT server and without Modbus. It only monitors: OpenAmpere changes no settings, and it cannot reset battery errors such as \"Error Class 3\". Details are on the <a href=\"docs/devices/rct/power-storage.html\">device page</a>."
   },
   "table": {
     "label": "Devices sold by EKD",
@@ -15,7 +20,8 @@
     "device": "Device",
     "period": "Period, about",
     "state": "In OpenAmpere",
-    "next": "Next step"
+    "next": "Next step",
+    "rctLabel": "Devices by RCT Power"
   },
   "groups": {
     "storage": "Batteries",
@@ -42,7 +48,7 @@
     "plannedTitle": "What “planned” means",
     "planned": "Every planned device has an issue on GitHub, but no date yet. Monitoring comes first. Control comes only after an owner has confirmed the values on their system.",
     "testers": "Do you have such a device and can test? Then please say so in the issue: which device according to the type plate. Leave out the serial number, because the issue is public.",
-    "sources": "Details and sources for every device are in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">device overview in the repository</a>.",
-    "legal": "<strong>No guarantee:</strong> This overview is not official information from EKD or the makers. It comes from public datasheets, press reports and reports of owners and may be incomplete or wrong. OpenAmpere has no affiliation with EKD or the makers named. All product and company names belong to their owners and are used here only to describe which devices OpenAmpere works with. Not legal advice."
+    "sources": "Details and sources for every device are in the <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">device overview in the repository</a>, for RCT Power on the <a href=\"docs/devices/rct/power-storage.html\">device page</a>.",
+    "legal": "<strong>No guarantee:</strong> This overview is not official information from EKD, RCT Power or the makers. It comes from public datasheets, press reports and reports of owners and may be incomplete or wrong. OpenAmpere has no affiliation with EKD, RCT Power GmbH, their insolvency administrations or the makers named. All product and company names belong to their owners and are used here only to describe which devices OpenAmpere works with. Not legal advice."
   }
 }
