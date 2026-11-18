@@ -180,3 +180,25 @@ def test_names_md_takes_the_confirmation_from_the_device():
 def test_a_cell_keeps_backslashes_and_pipes_as_written():
     devices = [{**data()["devices"][0], "does": "a | b \\| c"}]
     assert "| a \\| b \\\\\\| c |" in call("readmeTable", data(devices=devices), "en")["value"]
+
+
+@needs_node
+def test_the_rct_list_is_checked_and_rendered_as_its_own_matrix():
+    """What RCT Power sold (#646) has its own table on the device page, from the same file, without names.md cells."""
+    rct = [{"id": "dc", "group": "storage", "sold": "RCT Power", "device": "Storage DC", "period": "2016", "support": "inv"},
+           {"id": "flex", "group": "storage", "sold": "RCT Power", "device": "Flex", "period": "2025", "state": "info",
+            "note": "Unclear.", "next": "deviceReport"}]
+    assert call("validate", data(rct=rct))["value"] == []
+    errors = call("validate", data(rct=[{**rct[1], "state": "maybe"}, {**rct[0], "support": "nope"}]))["value"]
+    assert any("rct.flex.state: one of" in e for e in errors) and any('rct.dc.support: there is no device' in e for e in errors)
+    labels = {"geraete.state.both": "BOTH", "geraete.state.info": "INFO", "geraete.groups.storage": "STORAGE",
+              "geraete.next.issue": "Issue", "geraete.next.deviceReport": "REPORT"}
+    script = (CALL % json.dumps(SCRIPT.as_uri())).replace(
+        "support[name](...args)", f"support.siteMatrix(args[0], args[1], (key) => ({json.dumps(labels)})[key], 'rct')")
+    result = subprocess.run(["node", "--input-type=module", "-e", script],
+                            input=json.dumps({"name": "siteMatrix", "args": [data(rct=rct), "en"]}),
+                            capture_output=True, text=True, timeout=60, check=True)
+    html = json.loads(result.stdout)["value"]
+    assert "Storage DC" in html and "Flex" in html and "Old box" not in html  # only the RCT list
+    assert html.index("Storage DC") < html.index("Flex")  # supported first
+    assert "names.md" not in call("namesTables", data(rct=rct))["value"] and "Flex" not in call("namesTables", data(rct=rct))["value"]

@@ -4,7 +4,7 @@
     "`node scripts/device-support.mjs`: it writes the tables in README.md, README.de.md, docs/devices.md, docs/devices.de.md",
     "and docs/devices/topics/names.md. The website renders its EKD device page and the device list on its home page from",
     "this file. The fields are described at the top of scripts/device-support.mjs. The evidence behind a confirmation",
-    "stays on the device page ('page')."
+    "stays on the device page ('page'). The list 'rct' is what RCT Power sold (#646), shown on the same website page."
   ],
   "devices": [
     {
@@ -814,6 +814,145 @@
         "openampere": "driver `mypv` ([mypv/elwa.md](../mypv/elwa.md))",
         "status": "derived",
         "source": "Photovoltaikforum on the Ampere Storage Pro (as above)"
+      }
+    }
+  ],
+  "rct": [
+    {
+      "id": "rct-inverter",
+      "group": "storage",
+      "sold": "RCT Power",
+      "device": {
+        "de": "Power Inverter (ohne Speicher)",
+        "en": "Power Inverter (without battery)"
+      },
+      "period": {
+        "de": "2016–2026",
+        "en": "2016–2026"
+      },
+      "support": "rct",
+      "note": {
+        "de": "PV-Wechselrichter; Werte zum Speicher gibt es hier nicht.",
+        "en": "PV inverter; there are no battery values."
+      }
+    },
+    {
+      "id": "rct-storage-ac",
+      "group": "storage",
+      "sold": "RCT Power",
+      "device": "Power Storage AC",
+      "period": {
+        "de": "2017–2026",
+        "en": "2017–2026"
+      },
+      "support": "rct",
+      "note": {
+        "de": "AC-gekoppelter Speicher ohne eigene PV-Eingänge.",
+        "en": "AC-coupled battery without PV inputs of its own."
+      }
+    },
+    {
+      "id": "rct-storage-dc",
+      "group": "storage",
+      "sold": "RCT Power",
+      "device": {
+        "de": "Power Storage DC 4.0 bis 12.0 (auch LAN)",
+        "en": "Power Storage DC 4.0 to 12.0 (also LAN)"
+      },
+      "period": {
+        "de": "2016–2026",
+        "en": "2016–2026"
+      },
+      "support": "rct",
+      "note": {
+        "de": "Hybrid-Wechselrichter mit Power Battery. Beim Einrichten unter „Erweitert“ den Gerätetyp „RCT Power“ wählen.",
+        "en": "Hybrid inverter with Power Battery. Choose the device type \"RCT Power\" under \"Advanced\" in the setup."
+      }
+    },
+    {
+      "id": "rct-sp",
+      "group": "storage",
+      "sold": "RCT Power",
+      "device": {
+        "de": "Power Storage DC 6.0 SP (einphasig)",
+        "en": "Power Storage DC 6.0 SP (single-phase)"
+      },
+      "period": {
+        "de": "ab 2024",
+        "en": "from 2024"
+      },
+      "state": "info",
+      "next": "tellUs",
+      "note": {
+        "de": "Unklar, ob er dasselbe Protokoll spricht wie die anderen.",
+        "en": "Unclear whether it speaks the same protocol as the others."
+      }
+    },
+    {
+      "id": "rct-flex",
+      "group": "storage",
+      "sold": "RCT Power",
+      "device": "Power Storage Flex",
+      "period": {
+        "de": "2025–2026",
+        "en": "2025–2026"
+      },
+      "state": "info",
+      "next": "tellUs",
+      "note": {
+        "de": "Vermutlich eine andere Technik mit eigener Schnittstelle und eigenem Portal.",
+        "en": "Probably other technology with its own interface and portal."
+      }
+    },
+    {
+      "id": "rct-sensor",
+      "group": "around",
+      "sold": "RCT Power",
+      "device": {
+        "de": "Power Sensor (Stromwandler)",
+        "en": "Power Sensor (current transformers)"
+      },
+      "period": {
+        "de": "2016–2026",
+        "en": "2016–2026"
+      },
+      "state": "notNeeded",
+      "note": {
+        "de": "Misst für den Wechselrichter; die Netzleistung kommt über ihn.",
+        "en": "Measures for the inverter; the grid power comes through it."
+      }
+    },
+    {
+      "id": "rct-battery",
+      "group": "around",
+      "sold": "RCT Power",
+      "device": "Power Battery",
+      "period": {
+        "de": "2016–2026",
+        "en": "2016–2026"
+      },
+      "state": "notNeeded",
+      "note": {
+        "de": "Ladestand, Leistung und Zustand kommen über den Wechselrichter.",
+        "en": "State of charge, power and health come through the inverter."
+      }
+    },
+    {
+      "id": "rct-switch",
+      "group": "around",
+      "sold": "RCT Power",
+      "device": {
+        "de": "Power Switch (Notstrom)",
+        "en": "Power Switch (backup power)"
+      },
+      "period": {
+        "de": "2016–2026",
+        "en": "2016–2026"
+      },
+      "state": "nothing",
+      "note": {
+        "de": "Umschaltbox für Notstrom am Power Storage DC; OpenAmpere liest sie nicht.",
+        "en": "Switch box for backup power at the Power Storage DC; OpenAmpere does not read it."
       }
     }
   ]

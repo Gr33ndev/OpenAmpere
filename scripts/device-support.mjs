@@ -12,8 +12,8 @@
  *   README.md, README.de.md          the table "Supported devices" from `devices`
  *   docs/devices.md, devices.de.md   the table "Confirmed on a real system" from `devices` with a device page (#542)
  *   docs/devices/topics/names.md     the tables "Hardware sold by EKD over time" from `ekd`
- * scripts/build-site-pages.mjs renders the matrix of the EKD device page ({{devicesMatrix}}) and the device list on
- * the home page ({{devicesList}}) with siteMatrix() and siteList().
+ * scripts/build-site-pages.mjs renders the matrices of the device page ({{devicesMatrix}} for EKD, {{rctMatrix}} for
+ * RCT Power, #646) and the device list on the home page ({{devicesList}}) with siteMatrix() and siteList().
  *
  * The data:
  *   devices[]  id, name, does (Markdown, README only), short, confirmed, check (✅), state, next, page (its device
@@ -23,6 +23,7 @@
  *              with support, the OpenAmpere cell names only the driver, the confirmation is added from the device),
  *              and for the website: sold, device, period, state, note, issue or next; site: false leaves it off.
  *              support names a device: state, confirmation and next step come from it, a note of its own comes first.
+ *   rct[]      what RCT Power sold (#646), for the website only: id, group and the website fields of ekd[] (no names).
  * A text is a string (the same in every language) or {de, en}. Website texts are plain text, escaped there.
  * state and next are keys of geraete.state.* and geraete.next.* in site/locales/<lang>/geraete.json.
  */
@@ -68,10 +69,13 @@ export function validate(data, exists = existsSync) {
   };
   const devices = Array.isArray(data.devices) ? data.devices : [];
   const ekd = Array.isArray(data.ekd) ? data.ekd : [];
+  const rct = Array.isArray(data.rct) ? data.rct : [];
+  if (data.rct !== undefined && !Array.isArray(data.rct)) errors.push("rct: a list");
   if (!devices.length) errors.push("devices: missing or empty");
   if (!ekd.length) errors.push("ekd: missing or empty");
   unique(devices, "devices");
   unique(ekd, "ekd");
+  unique(rct, "rct");
   const byId = new Map(devices.map((device) => [device.id, device]));
   for (const device of devices) {
     const where = `devices.${device.id}`;
@@ -85,10 +89,10 @@ export function validate(data, exists = existsSync) {
       errors.push(`${where}.page: ${device.page} is not a page of docs/devices/`);
     }
   }
-  for (const entry of ekd) {
-    const where = `ekd.${entry.id}`;
+  for (const [kind, entry] of [...ekd.map((e) => ["ekd", e]), ...rct.map((e) => ["rct", e])]) {
+    const where = `${kind}.${entry.id}`;
     if (!GROUPS.includes(entry.group)) errors.push(`${where}.group: one of ${GROUPS.join(", ")}`);
-    for (const column of NAMES_COLUMNS) {
+    for (const column of kind === "ekd" ? NAMES_COLUMNS : []) {
       if (typeof entry.names?.[column] !== "string" || !entry.names[column].trim()) errors.push(`${where}.names.${column}: missing`);
       else if (entry.names[column].includes("|")) errors.push(`${where}.names.${column}: a "|" would break the table`);
     }
@@ -165,9 +169,9 @@ export function namesTables(data) {
 }
 
 /** The entries of the website by group, each with its state, notes, next step and device page. */
-function siteEntries(data) {
+function siteEntries(data, list) {
   const byId = new Map(data.devices.map((device) => [device.id, device]));
-  const entries = data.ekd.map((entry, index) => ({ entry, index, device: byId.get(entry.support) }))
+  const entries = (data[list] ?? []).map((entry, index) => ({ entry, index, device: byId.get(entry.support) }))
     .filter(({ entry }) => entry.site !== false);
   const rank = ({ entry, device }) => (device ? 0 : RANK[entry.state] ?? 9);
   return GROUPS.map((group) => [group, entries.filter(({ entry }) => entry.group === group)
@@ -175,12 +179,12 @@ function siteEntries(data) {
 }
 
 /**
- * The rows of the matrix on the EKD device page (the <tbody> content) in lang. t(key) is the website text of a key
- * (geraete.groups.*, geraete.state.*, geraete.next.*), already safe HTML.
+ * The rows of a matrix on the device page (the <tbody> content) in lang: list "ekd" or "rct". t(key) is the website
+ * text of a key (geraete.groups.*, geraete.state.*, geraete.next.*), already safe HTML.
  */
-export function siteMatrix(data, lang, t) {
+export function siteMatrix(data, lang, t, list = "ekd") {
   const rows = [];
-  for (const [group, entries] of siteEntries(data)) {
+  for (const [group, entries] of siteEntries(data, list)) {
     if (!entries.length) continue;
     rows.push(`<tr class="group"><th colspan="5" scope="rowgroup">${t(`geraete.groups.${group}`)}</th></tr>`);
     for (const { entry, device } of entries) {
@@ -211,8 +215,9 @@ export function siteList(data, lang) {
 
 /** Every key of the website texts siteMatrix() may use. */
 export function siteKeys(data) {
-  const states = new Set([...data.devices.map((d) => d.state), ...data.ekd.map((e) => e.state)].filter(Boolean));
-  const next = new Set([...data.devices.map((d) => d.next), ...data.ekd.map((e) => e.next)].filter(Boolean));
+  const entries = [...data.ekd, ...(data.rct ?? [])];
+  const states = new Set([...data.devices.map((d) => d.state), ...entries.map((e) => e.state)].filter(Boolean));
+  const next = new Set([...data.devices.map((d) => d.next), ...entries.map((e) => e.next)].filter(Boolean));
   return ["geraete.next.issue", ...GROUPS.map((g) => `geraete.groups.${g}`), ...[...states].map((s) => `geraete.state.${s}`),
     ...[...next].map((n) => `geraete.next.${n}`)];
 }

@@ -36,8 +36,10 @@
       <h1>{{geraete.head.title}}</h1>
       <p class="lead">{{geraete.head.lead}}</p>
       <p>{{geraete.head.find}}</p>
+      <p>{{geraete.head.jump}}</p>
     </div>
 
+    <h2>{{geraete.head.ekdTitle}}</h2>
     <div class="matrix-wrap" role="region" aria-label="{{geraete.table.label}}" tabindex="0">
       <table class="matrix">
         <thead>
@@ -54,6 +56,28 @@
         </tbody>
       </table>
     </div>
+
+    <section id="rct">
+      <h2>{{geraete.head.rctTitle}}</h2>
+      <p>{{geraete.head.rctIntro}}</p>
+      <p>{{geraete.head.rctHow}}</p>
+      <div class="matrix-wrap" role="region" aria-label="{{geraete.table.rctLabel}}" tabindex="0">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th scope="col">{{geraete.table.sold}}</th>
+              <th scope="col">{{geraete.table.device}}</th>
+              <th scope="col">{{geraete.table.period}}</th>
+              <th scope="col">{{geraete.table.state}}</th>
+              <th scope="col">{{geraete.table.next}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{rctMatrix}}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <section>
       <h2>{{geraete.notes.plannedTitle}}</h2>

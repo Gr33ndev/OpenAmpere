@@ -1,13 +1,18 @@
 {
   "meta": {
-    "title": "EKD-Geräte | OpenAmpere",
-    "description": "Welche Speicher, Wallboxen und Zusatzgeräte EKD verkauft hat und was OpenAmpere davon anzeigen und steuern kann."
+    "title": "EKD- und RCT-Geräte | OpenAmpere",
+    "description": "Welche Speicher, Wallboxen und Zusatzgeräte EKD und RCT Power verkauft haben und was OpenAmpere davon anzeigen und steuern kann."
   },
   "head": {
     "eyebrow": "Geräte",
-    "title": "Welche EKD-Geräte funktionieren mit OpenAmpere?",
-    "lead": "EKD hat seit 2018 Speicher, Wallboxen und Zusatzgeräte verschiedener Hersteller verkauft. Hier siehst du, was OpenAmpere davon heute kann und woran gearbeitet wird.",
-    "find": "Welches Gerät du hast, steht auf dem Typenschild am Speicher, am Wechselrichter oder an der Wallbox. Den Verkaufsnamen findest du meist im Angebot oder in der Rechnung von EKD."
+    "title": "Welche EKD- und RCT-Geräte funktionieren mit OpenAmpere?",
+    "lead": "EKD hat seit 2018 Speicher, Wallboxen und Zusatzgeräte verschiedener Hersteller verkauft, RCT Power seit 2016 eigene Speicher und Wechselrichter. Beide Unternehmen sind insolvent. Hier siehst du, was OpenAmpere mit ihren Geräten heute kann und woran gearbeitet wird.",
+    "find": "Welches Gerät du hast, steht auf dem Typenschild am Speicher, am Wechselrichter oder an der Wallbox. Den Verkaufsnamen findest du meist im Angebot oder in der Rechnung von EKD oder deines Installationsbetriebs.",
+    "jump": "<a href=\"#rct\">Zu den Geräten von RCT Power</a>",
+    "ekdTitle": "Von EKD verkaufte Geräte",
+    "rctTitle": "Geräte von RCT Power",
+    "rctIntro": "Die RCT Power GmbH aus Konstanz ist insolvent. Amtliche Bekanntmachung vom 15.09.2026 unter <a href=\"https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf\">insolvenzbekanntmachungen.de</a>: Amtsgericht Konstanz, Aktenzeichen K 42 IN 457/26, RCT Power GmbH, Konstanz (Handelsregister Freiburg im Breisgau, HRB 713720). Die Anlagen laufen weiter, wie es mit Service, App und Portal weitergeht, ist offen.",
+    "rctHow": "OpenAmpere liest RCT-Wechselrichter direkt im Heimnetz über das Protokoll der RCT-App (Port 8899), ohne Server von RCT und ohne Modbus. Es zeigt nur an: Einstellungen ändert OpenAmpere nicht, und Fehler des Batteriespeichers wie „Error Class 3“ kann es nicht zurücksetzen. Einzelheiten stehen auf der <a href=\"docs/devices/rct/power-storage.html\">Geräteseite</a> (auf Englisch)."
   },
   "table": {
     "label": "Von EKD verkaufte Geräte",
@@ -15,7 +20,8 @@
     "device": "Gerät",
     "period": "Zeitraum, etwa",
     "state": "In OpenAmpere",
-    "next": "Nächster Schritt"
+    "next": "Nächster Schritt",
+    "rctLabel": "Geräte von RCT Power"
   },
   "groups": {
     "storage": "Speicher",
@@ -42,7 +48,7 @@
     "plannedTitle": "Was „geplant“ heißt",
     "planned": "Für jedes geplante Gerät gibt es ein Issue auf GitHub, aber noch keinen Termin. Zuerst kommt die Anzeige. Steuern kommt erst, wenn ein Besitzer die Werte an seiner Anlage bestätigt hat.",
     "testers": "Hast du so ein Gerät und kannst testen? Dann schreib das bitte im Issue: welches Gerät laut Typenschild. Lass die Seriennummer weg, denn das Issue ist öffentlich.",
-    "sources": "Einzelheiten und Quellen zu jedem Gerät stehen in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">Geräteübersicht im Repository</a> (auf Englisch).",
-    "legal": "<strong>Ohne Gewähr:</strong> Diese Übersicht ist keine offizielle Information von EKD oder den Herstellern. Sie stammt aus öffentlichen Datenblättern, Presseberichten und Berichten von Besitzern und kann unvollständig oder falsch sein. OpenAmpere hat keine Verbindung zu EKD oder den genannten Herstellern. Alle Produkt- und Firmennamen gehören ihren Inhabern und stehen hier nur, um zu beschreiben, mit welchen Geräten OpenAmpere funktioniert. Keine Rechtsberatung."
+    "sources": "Einzelheiten und Quellen zu jedem Gerät stehen in der <a href=\"https://github.com/Gr33ndev/OpenAmpere/blob/main/docs/devices/topics/names.md\">Geräteübersicht im Repository</a> (auf Englisch), zu RCT Power auf der <a href=\"docs/devices/rct/power-storage.html\">Geräteseite</a>.",
+    "legal": "<strong>Ohne Gewähr:</strong> Diese Übersicht ist keine offizielle Information von EKD, RCT Power oder den Herstellern. Sie stammt aus öffentlichen Datenblättern, Presseberichten und Berichten von Besitzern und kann unvollständig oder falsch sein. OpenAmpere hat keine Verbindung zu EKD, zur RCT Power GmbH, zu ihren Insolvenzverwaltungen oder zu den genannten Herstellern. Alle Produkt- und Firmennamen gehören ihren Inhabern und stehen hier nur, um zu beschreiben, mit welchen Geräten OpenAmpere funktioniert. Keine Rechtsberatung."
   }
 }
