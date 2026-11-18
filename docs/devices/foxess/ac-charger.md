@@ -27,6 +27,8 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
 - On EKD systems the previous smartbox blocks access to the charger (by OpenAmpere and evcc) while it is connected
   to the network; with the box cut from power, or only its LAN cable pulled, the charger can be read
   ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431), [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#622](https://github.com/Gr33ndev/OpenAmpere/issues/622)).
+  On one system pulling the cable later made the charger unreachable altogether; there, changing the box's Modbus target
+  port for the charger to 503 freed it while the box stayed connected ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)).
 - In Modbus TCP mode the charger's watchdog fails in the unsafe direction: it keeps charging when the controller stops
   writing.
 - The register addresses come from FoxESS's protocol document V1.6, which FoxESS support gives to owners and an owner
@@ -146,7 +148,8 @@ Values while charging and single-phase models are not confirmed yet.
 ## Open questions
 
 - A write by OpenAmpere (work mode 0x3000, [#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)) is not yet
-  confirmed on a real device. Open with it: whether the status leaves 8 ("locked") as soon as the work mode is no
+  confirmed on a real device: the first one seen, "controlled" on the system of [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), was refused, and which
+  exception code the charger sent is not recorded ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)). Open with it: whether the status leaves 8 ("locked") as soon as the work mode is no
   longer 2 (the simulator assumes so), and which exception a charger outside the "Modbus TCP" mode sends for a write
   (the app's text assumes 1, 2, 3 or 6).
 
@@ -154,8 +157,10 @@ Values while charging and single-phase models are not confirmed yet.
   some firmware refuses every read with exception 6 outside the Modbus TCP mode. Only a real device can settle whether
   reads work in default mode ([#318](https://github.com/Gr33ndev/OpenAmpere/issues/318),
   [#325](https://github.com/Gr33ndev/OpenAmpere/issues/325)).
-- Why start and stop from evcc had no effect on one charger once the box was off the network (work mode or
-  communication mode; [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
+- Why start and stop from evcc first had no effect on one charger once the box was off the network (work mode or
+  communication mode; [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)). On the same system evcc later started and stopped charging after the box's port was
+  changed to 503, while OpenAmpere's write of "controlled" was refused; which work mode and communication mode the
+  charger is in is still not recorded ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)).
 - Number of simultaneous Modbus connections: while the previous smartbox is on the network neither OpenAmpere nor evcc
   can read the charger, but whether it allows only one client or mishandles concurrent clients is open
   ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431), [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
