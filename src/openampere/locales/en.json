@@ -288,7 +288,11 @@
     "enphaseNotAnswering": "The Enphase gateway is not answering right now. OpenAmpere asks it again shortly.",
     "notEnphase": "A device answers at {host}, but not like an Enphase gateway. Is the address right?",
     "enphasePlainHttp": "The Enphase gateway answers only unencrypted; OpenAmpere does not send the access token there. Check the address and try again.",
-    "enphaseCertificateChanged": "The Enphase gateway presents a different certificate than during setup, so OpenAmpere does not send it the access token. If the gateway was replaced or set up again, enter the token in the setup again, test the connection and save it. You get a new token with your Enphase account at entrez.enphaseenergy.com."
+    "enphaseCertificateChanged": "The Enphase gateway presents a different certificate than during setup, so OpenAmpere does not send it the access token. If the gateway was replaced or set up again, enter the token in the setup again, test the connection and save it. You get a new token with your Enphase account at entrez.enphaseenergy.com.",
+    "rctReadOnly": "For the RCT inverter, OpenAmpere only shows the values and changes no settings.",
+    "notRct": "No RCT inverter answers at {host}, port {port}. Is the address right?",
+    "rctNotAnswering": "The RCT inverter is not answering right now. OpenAmpere asks it again shortly.",
+    "rctUnreachable": "No connection to the RCT inverter at {host}, port {port}. Is the address right, and is the inverter switched on and in the home network?"
   },
   "eeg": {
     "enterInstalledPvCapacity": "Please enter the installed PV capacity.",
@@ -389,7 +393,8 @@
     "noModbusConnection": "{host} is reachable but does not accept a Modbus connection on port {port}. Maybe the port is wrong, or another program such as evcc holds the only connection of the device.",
     "onlyReadFunctions": "Only the function codes 3 and 4 (read) are possible.",
     "tooManyRegisters": "Please read at most {MAX_REGISTERS} registers between 0 and 65535.",
-    "readThroughWebInterface": "OpenAmpere reads this device through its web interface, not over Modbus. The device query reads only Modbus registers and so cannot query it."
+    "readThroughWebInterface": "OpenAmpere reads this device through its web interface, not over Modbus. The device query reads only Modbus registers and so cannot query it.",
+    "readThroughRctProtocol": "OpenAmpere reads this device through RCT's own protocol, not through Modbus. The device query only reads Modbus registers and therefore cannot query it."
   },
   "registry": {
     "noSupportedDeviceFound": "No supported device found. Is the address correct and Modbus TCP enabled?"

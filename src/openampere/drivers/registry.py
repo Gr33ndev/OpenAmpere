@@ -17,16 +17,18 @@ from .foxess.driver import FoxessDriver
 from .modbus import (DetectionFailed, DeviceUnreachable, ModbusDevice, ModbusIllegalError, ModbusReadError,
                      WrongDevice)
 from .mtec.driver import MtecDriver
+from .rct.driver import RctDriver
 from .saj.driver import SajDriver
 from .senec.driver import SenecDriver
 from .solarmax.driver import SolarmaxDriver
 
 log = logging.getLogger(__name__)
 
-# SenecDriver is no ModbusDevice (HTTP), but has the same face; it is only used when chosen (AUTO_DETECT)
+# SenecDriver, EnphaseDriver (HTTP) and RctDriver (RCT's own protocol) are no ModbusDevice, but have the same face;
+# they are only used when chosen (AUTO_DETECT)
 DRIVERS: dict[str, type[ModbusDevice]] = {"foxess": FoxessDriver, "saj": SajDriver, "solarmax": SolarmaxDriver,
                                           "mtec": MtecDriver, "senec": SenecDriver,
-                                          "enphase": EnphaseDriver}  # type: ignore[dict-item]
+                                          "enphase": EnphaseDriver, "rct": RctDriver}  # type: ignore[dict-item]
 
 LABELS = {
     "auto": "Automatisch erkennen",
@@ -36,6 +38,7 @@ LABELS = {
     "mtec": "M-TEC Energy-Butler GEN3 (nur Anzeige)",
     "senec": "Senec.Home V3 / V2.1 (nur Anzeige)",
     "enphase": "Enphase IQ Gateway mit IQ Battery (nur Anzeige)",
+    "rct": "RCT Power Storage DC / AC, Power Inverter (nur Anzeige)",
 }
 
 DETECT_TIMEOUT_S = 2.5

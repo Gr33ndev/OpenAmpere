@@ -33,6 +33,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 | [M-TEC Energy-Butler GEN3](docs/devices/mtec/energy-butler.md) | Nur Anzeige: PV, Speicher, Haus, Netz, Ladestand und Energieverlauf. Über das WLAN-/LAN-Modul, Port 502 (bei älterer Firmware 5743). | Erkennung und Anzeige bestätigt (in der Home-Assistant-App); Vorzeichen noch nicht |
 | [Senec.Home V3 / V2.1](docs/devices/senec/home-v3.md) | Nur Anzeige über die Weboberfläche im Heimnetz (kein Modbus): PV, Speicher, Haus, Netz und Ladestand. Beim Einrichten unter „Erweitert“ als Gerätetyp wählen. Einen Energieverlauf gibt es nicht, weil der Speicher keine Zähler mehr meldet. | Noch nicht bestätigt |
 | [Enphase IQ Gateway mit IQ Battery](docs/devices/enphase/iq-gateway.md) | Nur Anzeige über die lokale Schnittstelle des Gateways (kein Modbus): PV, Speicher und Ladestand, Netz und Haus mit Verbrauchswandlern. Braucht einmal im Jahr ein Zugangs-Token aus dem Enphase-Konto; beim Einrichten unter „Erweitert“ eintragen. | Noch nicht bestätigt |
+| [RCT Power Storage DC / AC, Power Inverter](docs/devices/rct/power-storage.md) | Nur Anzeige über das Protokoll der RCT-App im Heimnetz (Port 8899, kein Modbus): PV, Speicher, Haus, Netz, Ladestand und Energiezähler. Beim Einrichten unter „Erweitert“ als Gerätetyp wählen. Für Besitzer, deren Hersteller RCT Power insolvent ist. | Noch nicht bestätigt |
 | [Heizstab, Wärmepumpe (SG-Ready)](docs/devices/topics/consumers.md) | Schalten bei Solarüberschuss über Shelly-Relais oder Web-Adressen. | Noch nicht bestätigt |
 | [Heizstab my-PV AC ELWA-E, AC ELWA 2, AC THOR](docs/devices/mypv/elwa.md) | Stufenlos nach Solarüberschuss, optional mit günstigem Netzstrom. | Noch nicht bestätigt |
 | [FoxESS AC EV Charger („Ampere.ChargePro“)](docs/devices/foxess/ac-charger.md) | Anzeige direkt über Modbus TCP. Laden steuert OpenAmpere als Test und erst richtig, wenn du es für die Wallbox in der App einschaltest. | ✅ Anzeige teilweise bestätigt (im Leerlauf, an einer Wallbox einer EKD-Anlage); Steuerung noch nicht bestätigt |
@@ -48,7 +49,7 @@ OpenAmpere spricht direkt im Heimnetz mit dem Wechselrichter, speichert alle Dat
 
 **Noch nicht bestätigt** heißt: Die Unterstützung beruht auf Unterlagen der Hersteller oder der Community und ist mit Tests und dem Simulator geprüft, aber noch niemand hat sie von einer echten Anlage gemeldet. Gut möglich, dass alles klappt. Hast du so ein Gerät, hilf mit einem **Gerätebericht**: Starte in der App unter **Mehr → Diagnose** die Diagnose (sie liest nur und ändert nichts), tippe auf **Bericht kopieren** und füge den Bericht in das [Formular für Geräteberichte](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml) ein. Entferne vorher IP-Adressen, Passwörter und API-Schlüssel. Jeder Bericht hilft, eine Zeile auf „bestätigt“ zu bringen.
 
-**Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2, Solarmax auf 1, M-TEC auf 252, 255 und 247. Ein Senec oder ein Enphase-Gateway hat kein Modbus: Ihn wählst du unter den erweiterten Einstellungen als Gerätetyp (Enphase braucht dazu ein Zugangs-Token aus deinem Enphase-Konto). Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
+**Der Gerätetyp wird automatisch erkannt.** Die Einrichtung probiert nacheinander alle bekannten Geräte, und zwar nur lesend: FoxESS auf Geräteadresse 247, SAJ auf 1 und 2, Solarmax auf 1, M-TEC auf 252, 255 und 247. Ein Senec, ein Enphase-Gateway oder ein RCT-Power-Wechselrichter hat kein Modbus TCP: Ihn wählst du unter den erweiterten Einstellungen als Gerätetyp (Enphase braucht dazu ein Zugangs-Token aus deinem Enphase-Konto, einen RCT-Wechselrichter liest OpenAmpere über den Port 8899 der RCT-App). Geräteadresse und Hersteller muss man also nicht kennen. Die Verbindung läuft über Modbus TCP, Standard ist Port 502. Neue Treiber sind willkommen, siehe `src/openampere/drivers/registry.py`.
 
 Vollständige Liste: [docs/devices.de.md](docs/devices.de.md), mit dem, was je Modell angezeigt und gesteuert wird und was genau schon an echten Anlagen bestätigt ist.
 
@@ -113,7 +114,7 @@ Wechselrichter sprechen.
 
 ### Weg 1: eigenständig
 
-**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen.
+**Voraussetzungen:** ein Linux-Rechner im selben Netz wie der Wechselrichter (Raspberry Pi mit 64-Bit-System, NAS, Proxmox …) und Modbus TCP am Wechselrichter eingeschaltet. Bei den von EKD verkauften Ampere.StoragePro-Speichern ist das schon der Fall, bei anderen Geräten kann es der Installationsbetrieb erledigen. RCT-Power-Wechselrichter brauchen kein Modbus TCP.
 
 **1. Installieren:** Auf dem Rechner im Terminal ausführen:
 
@@ -584,9 +585,15 @@ Die Register zum Schreiben stammen aus der Dokumentation der Community und sind 
 - Die App „Ampere.IQ“ funktioniert nur über Server von EKD. Wie es damit weitergeht, ist offen. Sollte das Insolvenzverfahren dazu führen, dass diese Server abgeschaltet werden, läuft OpenAmpere einfach weiter: Es spricht direkt im Heimnetz mit dem Wechselrichter und braucht keinen Server von EKD.
 - OpenAmpere entstand als lokale Alternative von Betroffenen für Betroffene.
 
+**Auch für Besitzer einer RCT-Power-Anlage:**
+- Die RCT Power GmbH aus Konstanz, Hersteller der Power Storage DC, Power Storage AC und Power Inverter, ist ebenfalls insolvent. Amtliche Bekanntmachung vom 15.09.2026 unter [insolvenzbekanntmachungen.de](https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf) (Gericht Konstanz, Aktenzeichen eingeben):
+  - RCT Power GmbH, Konstanz (Handelsregister Freiburg im Breisgau, HRB 713720): K 42 IN 457/26
+- Die Anlagen laufen weiter, wie es mit Service, RCT-App und Portal weitergeht, ist offen ([pv magazine](https://www.pv-magazine.de/2026/09/16/speicheranbieter-rct-power-meldet-insolvenz-an/)).
+- OpenAmpere zeigt die Werte eines RCT-Wechselrichters direkt im Heimnetz an, über das Protokoll der RCT-App und ohne Server von RCT (nur Anzeige). Was wir über die Geräte wissen: [docs/devices/rct/power-storage.md](docs/devices/rct/power-storage.md).
+
 **Warum es mit EKD-Anlagen funktioniert:** OpenAmpere spricht direkt mit den verbauten Wechselrichtern. Die von EKD als „Ampere.StoragePro E3“ vertriebenen Speicher basieren auf der FoxESS-H3-Serie, die älteren „Ampere.StoragePro“ auf SAJ H2/HS2. OpenAmpere funktioniert genauso mit diesen Geräten aus anderen Quellen.
 
-**Keine Verbindung zu EKD oder den Herstellern:** OpenAmpere ist ein unabhängiges, inoffizielles Community-Projekt. Es steht in keinerlei Verbindung zur Energiekonzepte Deutschland GmbH, zu deren Insolvenzverwaltung, zu FoxESS, SAJ oder Kiwigrid. Es wurde von ihnen weder beauftragt noch autorisiert oder unterstützt.
+**Keine Verbindung zu EKD, RCT Power oder den Herstellern:** OpenAmpere ist ein unabhängiges, inoffizielles Community-Projekt. Es steht in keinerlei Verbindung zur Energiekonzepte Deutschland GmbH, zur RCT Power GmbH, zu deren Insolvenzverwaltungen, zu FoxESS, SAJ oder Kiwigrid. Es wurde von ihnen weder beauftragt noch autorisiert oder unterstützt.
 
 **Keine Verbindung zu Home Assistant:** OpenAmpere, seine Home-Assistant-Integration und seine Home-Assistant-App haben nichts mit Home Assistant, der Open Home Foundation oder Nabu Casa zu tun. Sie nutzen nur die öffentlichen Schnittstellen von Home Assistant.
 

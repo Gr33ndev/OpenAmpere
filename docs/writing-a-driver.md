@@ -29,6 +29,7 @@ Contents:
 | `src/openampere/drivers/saj/` | SAJ H2 / HS2: the smallest complete example and the best template; control through a charge slot instead of a remote control (#377). |
 | `src/openampere/drivers/mtec/` | M-TEC Energy-Butler GEN3: a display-only driver (#520) that tries plain Modbus TCP and then RTU frames over TCP (`ModbusDevice.framer`). |
 | `src/openampere/drivers/enphase/` | Enphase IQ Gateway: a display-only HTTPS driver (#522) with an access token (`inverter.token`, a secret bound to the address) and the certificate it may go to (`inverter.cert_sha256`, #539), passed by `registry.create(token=…, cert_sha256=…)`. |
+| `src/openampere/drivers/rct/` | RCT Power Storage DC / AC, Power Inverter: a display-only driver over RCT's own binary protocol on TCP port 8899 (#646). `protocol.py` builds and parses the frames (escaping, CRC-16), `driver.py` keeps one connection open, sends one READ per object and collects the answers; objects without answer stay empty. |
 | `src/openampere/drivers/senec/` | Senec.Home V3 / V2.1: a display-only driver over HTTP (`lala.cgi`) instead of Modbus (#521). It has the same face as a `ModbusDevice` (`connect`, `read`, `close`, the settings methods), `AUTO_DETECT = False` keeps it out of the automatic detection and `MIN_POLL_S` raises the poll interval. |
 | `src/openampere/drivers/solarmax/` | Solarmax MAX.STORAGE: a display-only driver (#519), input registers with the low word first, built without a device. |
 | `src/openampere/drivers/mypv.py` | my-PV heating rods. Not an inverter driver, see [Other devices](#other-devices). |
@@ -358,7 +359,7 @@ OPENAMPERE_INVERTER_HOST=127.0.0.1 OPENAMPERE_INVERTER_PORT=5020 OPENAMPERE_SERV
 
 | Option | Effect |
 |---|---|
-| `--vendor foxess\|saj\|solarmax\|mtec\|senec\|enphase\|mypv` | device family (`mypv` = my-PV heating rod, `senec` = lala.cgi over HTTP, `enphase` = IQ Gateway over HTTP with `--token`); `--rtu` for M-TEC: RTU frames over TCP |
+| `--vendor foxess\|saj\|solarmax\|mtec\|senec\|enphase\|rct\|mypv` | device family (`mypv` = my-PV heating rod, `senec` = lala.cgi over HTTP, `enphase` = IQ Gateway over HTTP with `--token`, `rct` = RCT protocol); `--rtu` for M-TEC: RTU frames over TCP |
 | `--map new\|legacy` | FoxESS register map |
 | `--unit N` | the only unit id that answers (default FoxESS 247, SAJ and Solarmax 1); other ids get "gateway target failed" |
 | `--connectivity unlocked\|rejected\|zeros\|silent` | Solarmax: the "Connectivity+" registers (energy counters) filled, refused, zero or not answered |

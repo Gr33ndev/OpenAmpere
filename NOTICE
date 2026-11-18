@@ -39,6 +39,12 @@ GEN3 V1.0" (2022-11-19), MTECmqtt up to commit 32cdf27 (https://github.com/croed
 Christian Rödel, MIT License; later versions are LGPL-3.0 and were not used) and the evcc solinteg-gen3 template
 (https://github.com/evcc-io/evcc, MIT License).
 
+The local protocol of RCT Power inverters (frame, CRC, commands) and the object ids, types and units OpenAmpere reads are
+based on facts from RCT Power's "Serial Communication Protocol" (document version 1.14, 2022-02-11), in own words; the
+sign of the grid power on evcc's rct-power meter (https://github.com/evcc-io/evcc, MIT License). OpenAmpere has its own
+implementation and contains no code or tables of python-rctclient (GPL-3.0) or rct (LGPL-2.1). OpenAmpere is not
+affiliated with RCT Power GmbH or its insolvency administration.
+
 The local API of the Enphase IQ Gateway (endpoints, fields, signs, the token) follows Enphase's tech brief "Accessing IQ
 Gateway local APIs or local UI with token-based authentication" (2023-01) and the facts described by pyenphase
 (https://github.com/pyenphase/pyenphase, MIT License) and evcc's enphase template (https://github.com/evcc-io/evcc, MIT

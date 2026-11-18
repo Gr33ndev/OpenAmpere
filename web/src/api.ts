@@ -63,7 +63,7 @@ export type InverterReading = {
 export type ExtraInverter = {
   id?: string;
   name: string;
-  driver: "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec";
+  driver: "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec" | "rct";
   host: string;
   port: number;
   unit: number;
@@ -173,7 +173,7 @@ export type SecretKey = "cloud.api_key" | "notify.ntfy_token" | "notify.mail_pas
   | "inverter.cert_sha256";
 export type Settings = {
   values: {
-    "inverter.driver": "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec" | "enphase";
+    "inverter.driver": "auto" | "foxess" | "saj" | "solarmax" | "mtec" | "senec" | "enphase" | "rct";
     "inverter.host": string;
     "inverter.port": number;
     "inverter.unit": number;

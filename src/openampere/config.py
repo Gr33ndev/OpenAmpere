@@ -26,7 +26,7 @@ from .secretbox import PREFIX as ENCRYPTED_PREFIX
 
 @dataclass
 class InverterConfig:
-    driver: str = "auto"  # auto | foxess | saj | solarmax | mtec | senec | enphase
+    driver: str = "auto"  # auto | foxess | saj | solarmax | mtec | senec | enphase | rct
     host: str = ""
     port: int = 502
     unit: int = 0  # Modbus unit id; 0 = the device's default (FoxESS 247, SAJ 1 or 2)
@@ -45,7 +45,7 @@ class InverterConfig:
 
 
 # drivers a further inverter can use: not one that needs an access token (Enphase), which only the first one keeps
-EXTRA_DRIVERS = ("auto", "foxess", "saj", "solarmax", "mtec", "senec")
+EXTRA_DRIVERS = ("auto", "foxess", "saj", "solarmax", "mtec", "senec", "rct")
 MAX_EXTRA_INVERTERS = 5
 
 
@@ -226,7 +226,7 @@ MIN_RATED_POWER_W = 1000  # smallest rated power the owner can confirm (grid.rat
 
 # Settings the web app may change, with validation limits for numbers / allowed values for strings.
 EDITABLE: dict[str, tuple] = {
-    "inverter.driver": ("choice", "auto", "foxess", "saj", "solarmax", "mtec", "senec", "enphase"),
+    "inverter.driver": ("choice", "auto", "foxess", "saj", "solarmax", "mtec", "senec", "enphase", "rct"),
     "inverter.host": ("str",),
     "inverter.port": ("int", 1, 65535),
     "inverter.unit": ("int", 0, 255),
