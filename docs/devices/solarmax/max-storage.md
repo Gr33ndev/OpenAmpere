@@ -8,7 +8,7 @@
 the 10 kW Ultimate, about 2022–2023) · **OpenAmpere:** driver `solarmax` (`src/openampere/drivers/solarmax/`),
 register map `solarmax_max_storage` · **Support:** display only · **Confirmed on a real device:** partly (detection,
 live values and the grid sign from a diagnostics report, zeros in the "Connectivity+" registers on two devices; the
-battery sign only by the owner's word)
+battery sign from the energy balance of one report)
 
 ## Summary
 
@@ -35,7 +35,7 @@ All input registers (FC04), unit id 1. 32-bit values: low word at the lower addr
 | 105 | Nominal AC power | U16, W | R | documented | Solarmax list |
 | 110–111 | PV power (DC) of this inverter | I32, W | R | documented, derived (type) | Solarmax list; evcc |
 | 112–113 | PV power (DC) of the whole plant, other connected inverters included | I32, W | R | documented | Solarmax list |
-| 114–115 | Battery power, **+ = charging**, − = discharging | I32, W | R | documented, derived (type) | Solarmax list; evcc (scale −1) |
+| 114–115 | Battery power, **+ = charging**, − = discharging | I32, W | R | documented, derived (type, sign) | Solarmax list; evcc (scale −1); [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
 | 116–117 | House consumption ("Eigenverbrauchsleistung") | I32, W | R | documented | Solarmax list |
 | 118–119 | Grid power, **+ = export**, − = import | I32, W | R | documented, derived (type), confirmed (sign) | Solarmax list; evcc (scale −1); [#596](https://github.com/Gr33ndev/OpenAmpere/issues/596) |
 | 120–121 | AC power of the whole PV plant | I32, W | R | documented | Solarmax list |
@@ -72,6 +72,7 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 | On the first owner's device (OpenAmpere 0.41.0, Docker) detection at unit 1 over port 502 with FC04 worked and 100–126 read. With no PV and the battery idle, the diagnostics showed grid power of about −3 kW and the same house power in Solarmax's signs: 118 is negative for import, as the list says. The "Connectivity+" registers 130–143 and 150–159 answered with zeros, not with an exception, so this device has no energy history. The owner says the directions of the flows are right as far as they could tell. | confirmed (detection, live values, grid sign, zeros without "Connectivity+"), open (battery sign) | owner's diagnostics report by e-mail, summarised in [#596](https://github.com/Gr33ndev/OpenAmpere/issues/596) |
 | On a second owner's device (an EKD unit, firmware within the list's range, OpenAmpere 0.41.0) the diagnostics again showed the live values read and the "Connectivity+" registers 130–143 and the counters 150–159 answering with zeros. Before #636 OpenAmpere therefore had no energy history and every day value stayed at 0, while the live values were right. In the same reading PV covered the house with a little left over, and both 114 (battery) and 118 (grid) were small and positive: charging and export in Solarmax's signs, as the list says. The values are rounded to 100 W, so this is weak evidence for the battery sign. | confirmed (zeros without "Connectivity+" on a second device), derived (battery sign, one rounded reading) | owner's diagnostics report in [#636](https://github.com/Gr33ndev/OpenAmpere/issues/636) |
 | In the same report the check of further connections got no answer on any of three extra connections, and the main connection was closed during it; the log also shows Modbus answers that belonged to an earlier request (transaction id one lower). The owner had also run the tablet app of the system then. A second run with the tablet app stopped gave the same result: the device serves one Modbus TCP client at a time, like the M-TEC module ([mtec](../mtec/energy-butler.md)), and a second connection drops the first. | confirmed (one device, two runs) | owner's diagnostics report and follow-up comment in [#636](https://github.com/Gr33ndev/OpenAmpere/issues/636) |
+| A later report of the first owner (0.42.0) was taken while a car charged from PV at a low state of charge. In Solarmax's signs: PV about 3.9 kW, battery about −200 W, grid about −200 W, house (116, read on its own) about 4.3 kW. PV plus battery discharge plus grid import equals the house only with 114 read as + = charging; turned around, the sum is 400 W short, more than the rounding to 100 W explains. The house also contains the charging car (about 3.9 kW in the wallbox's own reading). | derived (battery sign, one reading) | owner's diagnostics report by e-mail, summarised in [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
 
 ## Decisions in OpenAmpere
 
@@ -89,9 +90,10 @@ later). The input registers 140–143 and the holding registers 140–143 are di
 ## Open questions
 
 - Whether port 502 answers with factory settings on every device (it did on the first owner's).
-- The sign of 114 on a real device: the list and evcc agree and the first owner says the directions are right, and one
-  rounded reading in [#636](https://github.com/Gr33ndev/OpenAmpere/issues/636) fits charging as positive, but no report
-  yet shows the battery clearly charging or discharging ([#596](https://github.com/Gr33ndev/OpenAmpere/issues/596)).
+- The sign of 114 on a real device: the list and evcc agree, the first owner says the directions are right, and the
+  energy balance of one report only adds up with charging as positive ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)), but the battery power was small in every
+  report so far; a report with the battery clearly charging or discharging would settle it
+  ([#596](https://github.com/Gr33ndev/OpenAmpere/issues/596)).
 - What 103, 114, 123 and 124 show while EKD's switch-off is active, and whether PV keeps producing then.
 - Whether 116 is the whole house consumption when a second inverter is in the house.
 - Which firmware EKD's units run; the list is for 3.4.4 and later (the first owner's unit is within it).

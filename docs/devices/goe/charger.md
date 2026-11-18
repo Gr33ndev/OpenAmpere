@@ -6,7 +6,7 @@
 **Applies to:** go-e Charger wallboxes (HOME, Gemini and later; older hardware only through API v1) · **Sold as:** go-e
 Charger (not sold by EKD) · **OpenAmpere:** wallbox module `goe` (`src/openampere/wallbox/goe.py`) · **Support:**
 display only (live view, found by the search in the wallbox setup) · **Confirmed on a real device:** partly (found by the
-search and shown in the live view; the values while a car charges not yet)
+search, shown in the live view and read while a car charged)
 
 ## Summary
 
@@ -56,6 +56,7 @@ API v2: `GET http://<address>/api/status?filter=car,nrg,wh,amp,ama,fwv,cdi`. API
 | Modbus TCP: off by default, switched on in the app (needs a restart of the charger), port 502, unit id 1, firmware 040 and newer; the unit of the total power differs between go-e's two descriptions (0.01 kW and 0.01 W). | documented; open (unit) | go-e Modbus descriptions (v1 and v2) |
 | V4 announces itself over mDNS as `_go-e_go-eCharger_V4._tcp` and `_http._tcp`, host name `go-echarger_<serial>`. Not used: the search asks the HTTP API instead, which also works in the Home Assistant app. | derived | a forum post of a Homey developer |
 | On a real charger with OpenAmpere 0.41.0 (Docker), the search in the wallbox setup found the charger and the live view showed it without problems. Whether a car was charging, and so whether power, current and voltage are right, is not recorded. | confirmed (found and shown), open (values while charging) | owner report by e-mail, summarised in [#616](https://github.com/Gr33ndev/OpenAmpere/issues/616) |
+| On the same charger with OpenAmpere 0.42.0, a report while a car charged showed state charging, three active phases at about 5–6 A and 231–232 V each, and about 3.9 kW in total, which fits voltage × current; the charging current set was 6 A. The house load of the inverter at the same moment contained the charge. Compared with the go-e app it was not. Short gaps of a few seconds at night, after which the charger answered again at once, were logged as "not reachable". | confirmed (values while charging, one charger) | owner's diagnostics report by e-mail, summarised in [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
 
 ## Decisions in OpenAmpere
 

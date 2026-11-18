@@ -89,8 +89,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt (Erkennung, Live-Werte, Netzrichtung); Richtung der Batterie nur laut Besitzer",
-        "en": "Monitoring confirmed (detection, live values, grid direction); battery direction only by the owner's word"
+        "de": "Anzeige bestätigt (Erkennung, Live-Werte, Netzrichtung); Richtung der Batterie aus einem Bericht abgeleitet",
+        "en": "Monitoring confirmed (detection, live values, grid direction); battery direction derived from one report"
       },
       "state": "read",
       "next": "deviceReport",
@@ -111,8 +111,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Erkennung und Anzeige bestätigt (in der Home-Assistant-App); Vorzeichen noch nicht",
-        "en": "Detection and monitoring confirmed (in the Home Assistant app); signs not yet"
+        "de": "Erkennung, Anzeige und Vorzeichen bestätigt (in der Home-Assistant-App)",
+        "en": "Detection, monitoring and signs confirmed (in the Home Assistant app)"
       },
       "state": "read",
       "next": "deviceReport",
@@ -260,8 +260,8 @@
         "en": "monitoring only"
       },
       "confirmed": {
-        "de": "Bestätigt: wird gefunden und angezeigt; Werte beim Laden noch offen",
-        "en": "Confirmed: found and shown; values while charging still open"
+        "de": "Bestätigt: wird gefunden und beim Laden angezeigt",
+        "en": "Confirmed: found and shown while charging"
       },
       "state": "read",
       "next": "tellUs",
