@@ -73,7 +73,7 @@
    "packages": [
     {
      "name": "annotated-doc",
-     "version": "0.0.5",
+     "version": "0.0.6",
      "license": "MIT",
      "url": "https://github.com/fastapi/annotated-doc",
      "texts": [
@@ -129,7 +129,7 @@
     },
     {
      "name": "fastapi",
-     "version": "0.162.2",
+     "version": "0.163.1",
      "license": "MIT",
      "url": "https://github.com/fastapi/fastapi",
      "texts": [
