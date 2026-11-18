@@ -7,7 +7,7 @@
 A-Tronix, SunEnergyBox) · **Sold as:** M-TEC Energy-Butler (EKD from late 2022) · **OpenAmpere:** driver `mtec`
 (`src/openampere/drivers/mtec/`), register map `mtec_gen3` · **Support:** display only · **Confirmed on a real
 device:** partly (detected and read in the Home Assistant app; port 502, RTU frames and unit 252 on one unit; only
-one Modbus connection; signs not yet)
+one Modbus connection; signs compared with the M-TEC app on one unit)
 
 ## Summary
 
@@ -42,7 +42,7 @@ All holding registers (FC03).
 | 10105 | Running state: 0 wait, 1 check, 2 on-grid, 3 fault, 4 flash, 5 off-grid | U16 | R | documented | M-TEC document |
 | 10112–10115 | Fault flags 1 and 2 | U32 each | R | derived | MTECmqtt |
 | 10994–10999 | Grid meter power L1–L3 | I32 each, W | R | derived | MTECmqtt |
-| 11000–11001 | Grid meter power, total, **+ = export** | I32, W | R | documented (register), derived (sign) | M-TEC document; MTECmqtt; evcc (scale −1) |
+| 11000–11001 | Grid meter power, total, **+ = export** | I32, W | R | documented (register), confirmed (sign, one unit) | M-TEC document; MTECmqtt; evcc (scale −1); [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
 | 11016–11017 | Inverter AC power | I32, W | R | documented | M-TEC document; MTECmqtt |
 | 11028–11029 | PV power, total | U32, W | R | documented | M-TEC document; MTECmqtt |
 | 11038–11041 | PV1, PV2 voltage and current | U16, 0.1 V, 0.1 A | R | derived | MTECmqtt |
@@ -51,7 +51,7 @@ All holding registers (FC03).
 | 30254 | Battery voltage | U16, 0.1 V | R | documented | M-TEC document |
 | 30255 | Battery current | I16, 0.1 A | R | documented | M-TEC document |
 | 30256 | Battery mode | U16 | R | derived; not used | MTECmqtt |
-| 30258–30259 | Battery power, **+ = discharging** | I32, W | R | documented (register), derived (sign) | M-TEC document; evcc |
+| 30258–30259 | Battery power, **+ = discharging** | I32, W | R | documented (register), confirmed (sign, one unit) | M-TEC document; evcc; [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
 | 31000–31006 | Today: export, import, backup output (31002), battery charge and discharge, PV, load | U16, 0.1 kWh | R | derived | MTECmqtt |
 | 31102–31113 | Lifetime: export, import, backup output (31106), battery charge, battery discharge, PV | U32, 0.1 kWh | R | derived | MTECmqtt |
 | 33000 | State of charge | U16, 0.01 % | R | documented | M-TEC document; MTECmqtt |
@@ -76,6 +76,8 @@ in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, a
 | Writing (operating mode 50000, export limit 25100/25103, SoC floors 52502–52505, EMS setpoints 50202–50210) is used by projects without a documented watchdog: the values are probably stored. | derived, open | MTECmqtt (LGPL, facts only), evcc, Solinteg plugin |
 | M-TEC is still in business; owners use the "M-TEC Energy Butler" app and the portal energybutler.mtec-portal.com. In 2023 M-TEC removed the grid export settings from the portal for owners; installers still have them. | documented (store listings), derived (forum) | App Store and Google Play listings; forum.iobroker.net topic 64236 |
 | An Energy-Butler GEN3 was detected on its own by the Home Assistant app of OpenAmpere, which reads its data. Whether the signs are right is not recorded. | confirmed (detection and reading), open (signs) | owner report by e-mail, summarised in [#617](https://github.com/Gr33ndev/OpenAmpere/issues/617) |
+| The same owner compared grid, battery, house and PV in OpenAmpere with the M-TEC app at the same time and says the signs are right: 11000 is + for export and 30258 + for discharging, as OpenAmpere reads them. | confirmed (one unit) | owner report by e-mail, summarised in [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
+| On that system the whole house, the wallbox included, is on the backup (EPS) output. In the diagnostics report of [#626](https://github.com/Gr33ndev/OpenAmpere/issues/626) the backup output (30230) was above the inverter's AC power (11016); the owner says a car was charging at full power with little PV then, more than the inverter could supply. | derived (one system) | owner report by e-mail, summarised in [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647); diagnostics report in [#626](https://github.com/Gr33ndev/OpenAmpere/issues/626) |
 
 ## Decisions in OpenAmpere
 
@@ -91,9 +93,9 @@ in the ioBroker forum; facts only, in own words. It describes RS485 (9600 8N1, a
 ## Open questions
 
 - Do all EKD units answer on 502 with RTU frames on unit 252; does 5743 still answer after an update?
-- The signs of 11000 (supported, not compared with the M-TEC app) and 30258, and whether 11016 − 11000 matches the
-  house load in the M-TEC app.
-- Whether loads on the backup (EPS) output are part of 11016: if not, the house load needs 30230 too (and during an
+- Whether 11016 − 11000 matches the house load in the M-TEC app (the signs of 11000 and 30258 are confirmed on one
+  unit).
+- Whether loads on the backup (EPS) output are part of 11016 (on one owner's system the whole house is on it): if not, the house load needs 30230 too (and during an
   outage it is all of it). The diagnostics show 30230 so a report can tell.
 - Whether the module takes OpenAmpere next to the M-TEC app and cloud without trouble.
 - Type plate text ("Energy-Butler 10kW-3P-3G25" is expected) and register 10008 of an EKD unit; whether any is a GEN2.

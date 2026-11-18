@@ -49,7 +49,7 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
 | 38316 | BMS2 lowest cell temperature | I16, ×0.1 °C | R FC04 (optional block) | derived | nathanmarlor/foxess_modbus |
 | 38814–38815 | Grid power, total | I32, ×0.1 W, + = export (OpenAmpere negates it: + = import) | R FC04 | derived | nathanmarlor/foxess_modbus |
 | 38816–38821 | Grid power L1, L2, L3 | I32 each, ×0.1 W | read in the block, not used | derived | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md) |
-| 38901 | Meter 2 (external PV) active, = 1 | flag | diagnostics report only (block 38901+15, [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | derived | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md) |
+| 38901 | Meter 2 (external PV) active, = 1 | flag | diagnostics report only (block 38901+15, [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | derived, confirmed (active on one EKD system with a second PV inverter) | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md); owner's diagnostics report in [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
 | 38914–38915 | Meter 2 (external PV) power; sign not known | I32, ×0.1 W | diagnostics report only, rounded to 10 W ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | derived | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md) |
 | 39063 | Inverter state (status code) | U16 | R FC04 (optional block) | derived | nathanmarlor/foxess_modbus |
 | 39065–39066 | Flags; bit 0 = off-grid (grid disconnected, backup operation) | U32 | R FC04 | derived; bit seen set on a real device, once spuriously ([#48](https://github.com/Gr33ndev/OpenAmpere/issues/48), [#50](https://github.com/Gr33ndev/OpenAmpere/issues/50), [#89](https://github.com/Gr33ndev/OpenAmpere/issues/89)) | nathanmarlor/foxess_modbus; [#89](https://github.com/Gr33ndev/OpenAmpere/issues/89), [#90](https://github.com/Gr33ndev/OpenAmpere/issues/90) |
@@ -130,8 +130,8 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
   names only the H3 Smart).
 - Meaning of 20162, which the previous smartbox was reported to write.
 - Unit of the remaining capacity at 37632.
-- Whether EKD systems with a second, AC-coupled PV inverter measure it through Meter 2 (38901, 38914), which sign its
-  power has, and whether the house consumption at 39225 already contains it
+- Whether every EKD system with a second, AC-coupled PV inverter measures it through Meter 2 (38901, 38914; one does,
+  about 120 W in its report), which sign its power has, and whether the house consumption at 39225 already contains it
   ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)).
 - Whether some firmware counts in 0.1 kWh steps ([#194](https://github.com/Gr33ndev/OpenAmpere/issues/194)).
 
