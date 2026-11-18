@@ -14,13 +14,12 @@ the RCT app's local protocol · **Sold as:** RCT Power systems through installer
 - **Why:** RCT Power GmbH (Konstanz) filed for insolvency in September 2026. The installed systems keep running, but
   service, app and portal are uncertain. OpenAmpere reads the inverter locally, without RCT's servers ([#646](https://github.com/Gr33ndev/OpenAmpere/issues/646)).
 - **Not Modbus TCP:** the inverters speak RCT's own protocol over TCP, **port 8899**, the same the RCT app uses in the
-  home network. Port 502 is closed. Modbus RTU exists only on the RS485 terminal.
+  home network. Modbus RTU exists only on the RS485 terminal.
 - The owner chooses "RCT Power" in the setup (advanced settings); detection over Modbus and the network scan do not
   find it. Port 502 (the setup's default) stands for 8899.
 - **No object names the model:** OpenAmpere reads the serial number and the control software version and shows
   "Power Storage / Power Inverter".
-- Only the inverter OpenAmpere is connected to is read. In a plant of several RCT inverters (master and slaves), each
-  further one can be added with its own address as a further inverter.
+- Only the inverter OpenAmpere is connected to is read, not further devices of a plant behind it (master and slaves).
 
 ## The insolvency
 
@@ -55,6 +54,7 @@ area; owners and integrators got it from RCT on request. Facts in own words, see
 | Fact | Status | Source |
 |---|---|---|
 | TCP, default port 8899; the same protocol as the WLAN board uses with the app. | documented | RCT protocol 1.14 |
+| Port 502 (Modbus TCP) is closed on these inverters; Modbus RTU only on the RS485 terminal (9600 baud). | derived | owners' reports in the Photovoltaikforum ("RCT Power DC 10.0 – Anbindung per Modbus TCP"); RCT "RS485 Communication with external devices" v1.2 (2020-04-29) |
 | Frame: start byte `+` (0x2B), command, length (2 bytes for the long commands), object id (4 bytes), data, CRC-16. Big endian; floats IEEE 754 single precision. One zero byte may come before a frame. | documented | RCT protocol 1.14 |
 | CRC-16/CCITT, polynomial 0x1021, start 0xFFFF, over command, length, id and data; padded with one zero byte to an even length. | documented | RCT protocol 1.14 (with two example frames, OpenAmpere's tests check both) |
 | `+` and `-` (0x2D) inside a frame are sent as `-` followed by the byte; the escape is not part of the CRC. | documented | RCT protocol 1.14 |
@@ -96,7 +96,7 @@ Objects as RCT's document names them; "Registers" here are 4-byte object ids. Al
 | Only when the owner chooses "RCT Power"; port 502 stands for 8899. Its error messages name the RCT inverter, not Modbus. | It does not answer on the Modbus port. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
 | One TCP connection, kept open; all objects of a read are requested at once, the answers collected for up to 2 s. An object without answer stays empty; if nothing answers, the read failed and the connection is opened again. | Like the app; a device without battery or with older firmware may not know every object. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
 | On every new connection the serial number is read first and compared with the owner's inverter. | Nothing is read from another device at the same address ([#567](https://github.com/Gr33ndev/OpenAmpere/issues/567)). | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
-| Plant frames (further devices behind the master) are ignored. | One driver reads one inverter; further ones get their own address. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
+| Plant frames (further devices behind the master) are ignored. | One driver reads one inverter. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
 | The S0 input (a further PV inverter) is not read yet. | How it adds up with the household load needs a device with one. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
 | The diagnostics show the objects of the last read with RCT's own signs and units (powers rounded) and which did not answer; not the serial number and no counters. No extra request. | So the first owner's report can confirm the signs. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
 | No search for a new address when the device is unreachable, and the device query (Mehr → Geräteabfrage) does not read it: it says so. | Both read Modbus registers only. A fixed IP address in the router keeps it reachable. | [#646](https://github.com/Gr33ndev/OpenAmpere/issues/646) |
@@ -107,6 +107,8 @@ Objects as RCT's document names them; "Registers" here are 4-byte object ids. Al
 - Every value above on a real device.
 - The sign of `g_sync.p_ac_grid_sum_lp` and `battery.current` on a real device.
 - How many TCP connections the inverter takes at once (the app and OpenAmpere together).
+- Whether a slave of a plant has its own network connection and answers on port 8899 by itself, so that it could be
+  added as a further inverter; otherwise only plant frames through the master reach it.
 - Which object tells the model, and what `prim_sm.state` reports in a power cut (for the outage detection).
 - Whether Power Storage DC 6.0 SP and Power Storage Flex speak this protocol.
 
