@@ -632,6 +632,61 @@ class SimulatedSenec:
             writer.close()
 
 
+class SimulatedRct:
+    """RCT Power Storage DC over RCT's own protocol on TCP (#646), on the same energy model: answers a READ of a known
+    object with RESPONSE (LONG_RESPONSE for text) and nothing for an unknown one, like the device. Writes are not taken.
+    `requests` keeps every object id asked for; `silent` makes it accept connections but answer nothing."""
+
+    def __init__(self, *, serial: str = "SIMRCT00000001", silent: bool = False) -> None:
+        from .drivers.rct import protocol
+        self.p = protocol
+        self.energy = EnergyModel()
+        self.serial, self.silent = serial, silent
+        self.requests: list[int] = []
+        self.model = "RCT Power Storage DC"
+
+    def values(self) -> dict:
+        e = self.energy
+        pv = e.pv_inputs_w + [0.0] * (2 - len(e.pv_inputs_w))
+        return {
+            "inverter_sn": self.serial, "svnversion": "SIM-1.0",
+            "dc_a_power": pv[0], "dc_b_power": pv[1], "dc_a_voltage": 520.0 if pv[0] else 0.0,
+            "dc_b_voltage": 480.0 if pv[1] else 0.0, "house_power": e.house_w, "grid_power": e.grid_w,
+            "battery_power": e.battery_w, "inverter_power": pv[0] + pv[1] + e.battery_w,
+            "battery_soc": e.soc / 100, "battery_soh": 0.97, "battery_voltage": 380.0,
+            "battery_current": e.battery_w / 380.0, "battery_temperature": 24.0, "heat_sink_temperature": 38.0,
+            "inverter_state": 4,
+            "pv_a_total": 1_000_000 + e.totals["pv"] * 0.6, "pv_b_total": 500_000 + e.totals["pv"] * 0.4,
+            "grid_import_total": 300_000 + e.totals["grid_import"], "grid_export_total": 800_000 + e.totals["grid_export"],
+            "load_total": 900_000 + e.totals["load"], "battery_charge_total": 200_000 + e.totals["battery_charge"],
+            "battery_discharge_total": 180_000 + e.totals["battery_discharge"],
+            "soc_min": e.min_soc / 100, "soc_max": e.max_soc / 100,
+        }
+
+    def answer(self, oid: int) -> bytes:
+        from .drivers.rct.driver import NAMES, OBJECTS
+        name = NAMES.get(oid)
+        if name is None:
+            return b""
+        kind = OBJECTS[name][1]
+        command = self.p.LONG_RESPONSE if kind == self.p.STRING else self.p.RESPONSE
+        return self.p.frame(command, oid, self.p.encode(kind, self.values()[name]))
+
+    async def serve_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        frames = self.p.FrameReader()
+        try:
+            while chunk := await reader.read(4096):
+                for command, oid, _ in frames.feed(chunk):
+                    self.requests.append(oid)
+                    if command == self.p.READ and not self.silent:
+                        writer.write(self.answer(oid))
+                await writer.drain()
+        except ConnectionError:
+            pass
+        finally:
+            writer.close()
+
+
 def crc16(data: bytes) -> int:
     """Modbus RTU checksum."""
     crc = 0xFFFF
@@ -1170,8 +1225,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="FoxESS H3 Modbus TCP simulator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=5020)
-    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "enphase", "mypv", "foxess-charger",
-                                             "weidmueller", "de-tuya", "goe"],
+    parser.add_argument("--vendor", choices=["foxess", "saj", "solarmax", "mtec", "senec", "enphase", "rct", "mypv",
+                                             "foxess-charger", "weidmueller", "de-tuya", "goe"],
                         default="foxess",
                         help="device family to emulate (mypv = my-PV heating rod, foxess-charger = FoxESS wallbox, "
                              "weidmueller = Weidmüller AC SMART wallbox, unit 255, "
@@ -1202,7 +1257,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     sim: SimulatedInverter | None = None
-    if args.vendor in ("senec", "enphase", "mypv", "foxess-charger", "weidmueller", "de-tuya", "goe"):
+    if args.vendor in ("senec", "enphase", "rct", "mypv", "foxess-charger", "weidmueller", "de-tuya", "goe"):
         pass
     elif args.vendor == "mtec":
         sim = MtecSimulatedInverter(unit=args.unit or 252, rtu=args.rtu, max_connections=args.max_connections,
@@ -1246,6 +1301,23 @@ def main() -> None:
                     senec.energy.step(datetime.fromtimestamp(sim_time), args.speed)
         try:
             asyncio.run(run_senec())
+        except KeyboardInterrupt:
+            pass
+        return
+    if args.vendor == "rct":
+        async def run_rct() -> None:
+            rct = SimulatedRct(serial=args.serial)
+            server = await asyncio.start_server(rct.serve_client, args.host, args.port)
+            log.info("simulating an RCT Power Storage DC (RCT protocol) on %s:%d, speed x%g", args.host, args.port,
+                     args.speed)
+            sim_time = time.time()
+            async with server:
+                while True:
+                    await asyncio.sleep(1.0)
+                    sim_time += args.speed
+                    rct.energy.step(datetime.fromtimestamp(sim_time), args.speed)
+        try:
+            asyncio.run(run_rct())
         except KeyboardInterrupt:
             pass
         return

@@ -29,6 +29,7 @@ released yet. Keep links relative; the build reports a link to a file or heading
 | Solarmax MAX.STORAGE (sold as "AMPERE.Storage", display only) | [solarmax/max-storage.md](solarmax/max-storage.md) |
 | Senec.Home V3 and V2.1 over their web interface (display only) | [senec/home-v3.md](senec/home-v3.md) |
 | Enphase IQ Gateway with IQ Batteries (display only, needs a token) | [enphase/iq-gateway.md](enphase/iq-gateway.md) |
+| RCT Power Storage DC, Storage AC and Power Inverter over the RCT app's protocol (display only) | [rct/power-storage.md](rct/power-storage.md) |
 | M-TEC Energy-Butler GEN3 (display only) | [mtec/energy-butler.md](mtec/energy-butler.md) |
 | my-PV AC ELWA heating rod | [mypv/elwa.md](mypv/elwa.md) |
 | Netze BW meter portal | [gridmeter/netze-bw.md](gridmeter/netze-bw.md) |

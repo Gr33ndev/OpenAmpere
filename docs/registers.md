@@ -17,6 +17,7 @@ The register tables, with the status and the source of every register, are on th
 | go-e Charger, display only: keys of its local HTTP API (no registers) | wallbox module `goe` | [devices/goe/charger.md](devices/goe/charger.md) |
 | M-TEC Energy-Butler GEN3, display only | `mtec_gen3` (units 252, 255, 247) | [devices/mtec/energy-butler.md](devices/mtec/energy-butler.md) |
 | Enphase IQ Gateway with IQ Batteries: endpoints and fields of its local API, display only | `enphase_local` (HTTPS, token) | [devices/enphase/iq-gateway.md](devices/enphase/iq-gateway.md) |
+| RCT Power Storage DC / AC, Power Inverter: the object ids of RCT's protocol on port 8899, display only | `rct_serial` (RCT protocol) | [devices/rct/power-storage.md](devices/rct/power-storage.md) |
 | my-PV AC ELWA heating rod | registers 1000–1003 | [devices/mypv/elwa.md](devices/mypv/elwa.md) |
 | Previous EKD smartbox: what it writes | — | [devices/topics/iq-box.md](devices/topics/iq-box.md) |
 

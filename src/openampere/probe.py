@@ -207,6 +207,9 @@ class Probe:
         if driver is not None and getattr(driver, "PROTOCOL", "modbus") == "http":  # Senec, Enphase (#547)
             raise ProbeError("OpenAmpere liest dieses Gerät über seine Weboberfläche, nicht über Modbus. Die "
                              "Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen.")
+        if driver is not None and getattr(driver, "PROTOCOL", "modbus") == "rct":  # RCT Power (#646)
+            raise ProbeError("OpenAmpere liest dieses Gerät über das eigene Protokoll von RCT, nicht über Modbus. Die "
+                             "Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen.")
         if driver is not None:
             own_unit = getattr(driver, "_unit", None)
             if unit not in (0, own_unit):

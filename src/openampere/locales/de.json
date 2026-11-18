@@ -288,7 +288,11 @@
     "enphaseNotAnswering": "Das Enphase-Gateway antwortet gerade nicht. OpenAmpere fragt es in Kürze wieder.",
     "notEnphase": "Unter {host} antwortet ein Gerät, aber nicht wie ein Enphase-Gateway. Stimmt die Adresse?",
     "enphasePlainHttp": "Das Enphase-Gateway antwortet nur unverschlüsselt; dorthin schickt OpenAmpere das Zugangs-Token nicht. Prüf die Adresse und versuch es noch einmal.",
-    "enphaseCertificateChanged": "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie. Ein neues Token bekommst du mit deinem Enphase-Konto auf entrez.enphaseenergy.com."
+    "enphaseCertificateChanged": "Das Enphase-Gateway meldet sich mit einem anderen Zertifikat als beim Einrichten. Deshalb schickt OpenAmpere ihm das Zugangs-Token nicht. Wurde das Gateway getauscht oder neu eingerichtet, trag das Token beim Einrichten noch einmal ein, prüf die Verbindung und speichere sie. Ein neues Token bekommst du mit deinem Enphase-Konto auf entrez.enphaseenergy.com.",
+    "rctReadOnly": "Beim RCT-Wechselrichter zeigt OpenAmpere nur die Werte an und ändert keine Einstellungen.",
+    "notRct": "Unter {host}, Port {port} antwortet kein RCT-Wechselrichter. Stimmt die Adresse?",
+    "rctNotAnswering": "Der RCT-Wechselrichter antwortet gerade nicht. OpenAmpere fragt ihn in Kürze wieder.",
+    "rctUnreachable": "Keine Verbindung zum RCT-Wechselrichter unter {host}, Port {port}. Stimmt die Adresse, und ist der Wechselrichter eingeschaltet und im Heimnetz?"
   },
   "eeg": {
     "enterInstalledPvCapacity": "Bitte die installierte Modulleistung angeben.",
@@ -389,7 +393,8 @@
     "noModbusConnection": "{host} ist erreichbar, nimmt auf Port {port} aber keine Modbus-Verbindung an. Vielleicht ist der Port falsch, oder ein anderes Programm wie evcc hält die einzige Verbindung des Geräts.",
     "onlyReadFunctions": "Nur die Funktionscodes 3 und 4 (lesen) sind möglich.",
     "tooManyRegisters": "Bitte höchstens {MAX_REGISTERS} Register zwischen 0 und 65535 lesen.",
-    "readThroughWebInterface": "OpenAmpere liest dieses Gerät über seine Weboberfläche, nicht über Modbus. Die Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen."
+    "readThroughWebInterface": "OpenAmpere liest dieses Gerät über seine Weboberfläche, nicht über Modbus. Die Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen.",
+    "readThroughRctProtocol": "OpenAmpere liest dieses Gerät über das eigene Protokoll von RCT, nicht über Modbus. Die Geräteabfrage liest nur Modbus-Register und kann es deshalb nicht abfragen."
   },
   "registry": {
     "noSupportedDeviceFound": "Kein unterstütztes Gerät erkannt. Ist die Adresse richtig und Modbus TCP aktiviert?"

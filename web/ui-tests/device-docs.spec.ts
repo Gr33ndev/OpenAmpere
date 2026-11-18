@@ -44,6 +44,14 @@ test("a Senec gets its own page", async ({ page, api }) => {
     .toHaveAttribute("href", `${SITE}docs/devices/senec/home-v3.html`);
 });
 
+test("an RCT Power inverter gets its own page", async ({ page, api }) => {
+  const status = (await demoRequest("GET", "/api/status")) as { device: Record<string, unknown> };
+  api.override("/api/status", { ...status, device: { ...status.device, manufacturer: "RCT Power", driver: "rct", register_map: "rct_serial" } });
+  await open(page, "more/installation");
+  await expect(page.getByRole("link", { name: /Was wir über diesen Wechselrichter wissen/ }))
+    .toHaveAttribute("href", `${SITE}docs/devices/rct/power-storage.html`);
+});
+
 test("an M-TEC gets its own page", async ({ page, api }) => {
   const status = (await demoRequest("GET", "/api/status")) as { device: Record<string, unknown> };
   api.override("/api/status", { ...status, device: { ...status.device, manufacturer: "M-TEC", driver: "mtec", register_map: "mtec_gen3 (socket)" } });

@@ -35,6 +35,7 @@ The app's user interface and the website are in German.
 | [M-TEC Energy-Butler GEN3](docs/devices/mtec/energy-butler.md) | Monitoring only: PV, battery, house, grid, state of charge and energy history. Through the Wi-Fi/LAN module, port 502 (5743 on older firmware). | Detection and monitoring confirmed (in the Home Assistant app); signs not yet |
 | [Senec.Home V3 / V2.1](docs/devices/senec/home-v3.md) | Monitoring only through its web interface in the home network (no Modbus): PV, battery, house, grid and state of charge. Choose it as the device type under "Advanced" in the setup. There is no energy history, because the device no longer reports counters. | Not yet confirmed |
 | [Enphase IQ Gateway with IQ Battery](docs/devices/enphase/iq-gateway.md) | Monitoring only through the gateway's local interface (no Modbus): PV, battery and state of charge, grid and house with consumption CTs. Needs an access token from the Enphase account once a year; enter it under "Advanced" in the setup. | Not yet confirmed |
+| [RCT Power Storage DC / AC, Power Inverter](docs/devices/rct/power-storage.md) | Monitoring only through the RCT app's protocol in the home network (port 8899, no Modbus): PV, battery, house, grid, state of charge and energy counters. Choose it as the device type under "Advanced" in the setup. For owners whose manufacturer RCT Power is insolvent. | Not yet confirmed |
 | [Immersion heater, heat pump (SG-Ready)](docs/devices/topics/consumers.md) | Switching on solar surplus via Shelly relays or web addresses. | Not yet confirmed |
 | [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](docs/devices/mypv/elwa.md) | Continuously variable according to solar surplus, optionally with cheap grid power. | Not yet confirmed |
 | [FoxESS AC EV Charger ("Ampere.ChargePro")](docs/devices/foxess/ac-charger.md) | Monitoring directly over Modbus TCP. OpenAmpere controls charging as a test, and for real only after you switch it on for the wallbox in the app. | ✅ Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed |
@@ -50,7 +51,7 @@ The app's user interface and the website are in German.
 
 **Not yet confirmed** means: the support is based on documentation from the manufacturers or the community and is checked with tests and the simulator, but nobody has reported it from a real system yet. It may well work. If you have such a device, help with a **device report**: in the app, start the diagnostics under **Mehr → Diagnose** (More → Diagnostics; it only reads and changes nothing), tap **Bericht kopieren** (Copy report) and paste the report into the [device report form](https://github.com/Gr33ndev/OpenAmpere/issues/new?template=device_report.yml). Remove IP addresses, passwords and API keys first. Every report helps to move a row to "confirmed".
 
-**The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2, Solarmax at 1, M-TEC at 252, 255 and 247. A Senec or an Enphase gateway has no Modbus: choose it as the device type under the advanced settings (Enphase also needs an access token from your Enphase account). So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
+**The device type is detected automatically.** Setup tries all known devices one after another, read-only: FoxESS at device address 247, SAJ at 1 and 2, Solarmax at 1, M-TEC at 252, 255 and 247. A Senec, an Enphase gateway or an RCT Power inverter has no Modbus TCP: choose it as the device type under the advanced settings (Enphase also needs an access token from your Enphase account; an RCT inverter is read on port 8899 of the RCT app). So you don't need to know the device address or the manufacturer. The connection uses Modbus TCP, default port 502. New drivers are welcome, see `src/openampere/drivers/registry.py`.
 
 Full list: [docs/devices.md](docs/devices.md), with what is read and controlled per model and what exactly has been confirmed on real hardware.
 
@@ -114,7 +115,7 @@ OpenAmpere runs in one of three ways. Choose one of them: only one OpenAmpere ma
 
 ### Way 1: standalone
 
-**Requirements:** a Linux computer on the same network as the inverter (Raspberry Pi with a 64-bit system, NAS, Proxmox …) and Modbus TCP enabled on the inverter. For the Ampere.StoragePro batteries sold by EKD this is already the case; for other devices the installer can take care of it.
+**Requirements:** a Linux computer on the same network as the inverter (Raspberry Pi with a 64-bit system, NAS, Proxmox …) and Modbus TCP enabled on the inverter. For the Ampere.StoragePro batteries sold by EKD this is already the case; for other devices the installer can take care of it. RCT Power inverters need no Modbus TCP.
 
 **1. Install:** run in a terminal on the computer:
 
@@ -584,9 +585,15 @@ The registers used for writing come from community documentation and have not ye
 - The "Ampere.IQ" app only works via EKD's servers. What will happen to it is unclear. Should the insolvency proceedings lead to these servers being shut down, OpenAmpere simply keeps running: it talks to the inverter directly on the home network and does not need any EKD server.
 - OpenAmpere was created as a local alternative by affected owners for affected owners.
 
+**Also for owners of RCT Power systems:**
+- RCT Power GmbH from Konstanz, maker of the Power Storage DC, Power Storage AC and Power Inverter, is insolvent as well. Official announcement of 15 September 2026 at [insolvenzbekanntmachungen.de](https://neu.insolvenzbekanntmachungen.de/ap/suche.jsf) (court: Konstanz, enter the case number):
+  - RCT Power GmbH, Konstanz (commercial register Freiburg im Breisgau, HRB 713720): K 42 IN 457/26
+- The systems keep running; what happens to service, the RCT app and the portal is open ([pv magazine](https://www.pv-magazine.de/2026/09/16/speicheranbieter-rct-power-meldet-insolvenz-an/)).
+- OpenAmpere shows the values of an RCT inverter directly in the home network, through the protocol of the RCT app and without any RCT server (display only). What we know about the devices: [docs/devices/rct/power-storage.md](docs/devices/rct/power-storage.md).
+
 **Why it works with EKD systems:** OpenAmpere talks directly to the installed inverters. The battery systems sold by EKD as "Ampere.StoragePro E3" are based on the FoxESS H3 series, the older "Ampere.StoragePro" on SAJ H2/HS2. OpenAmpere works just the same with these devices from other sources.
 
-**No affiliation with EKD or the manufacturers:** OpenAmpere is an independent, unofficial community project. It has no affiliation whatsoever with Energiekonzepte Deutschland GmbH, its insolvency administration, FoxESS, SAJ or Kiwigrid. It was neither commissioned, authorized nor supported by them.
+**No affiliation with EKD, RCT Power or the manufacturers:** OpenAmpere is an independent, unofficial community project. It has no affiliation whatsoever with Energiekonzepte Deutschland GmbH, RCT Power GmbH, their insolvency administrations, FoxESS, SAJ or Kiwigrid. It was neither commissioned, authorized nor supported by them.
 
 **No affiliation with Home Assistant:** OpenAmpere, its Home Assistant integration and its Home Assistant app are not affiliated with Home Assistant, the Open Home Foundation or Nabu Casa. They only use the public interfaces of Home Assistant.
 

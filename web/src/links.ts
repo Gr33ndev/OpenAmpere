@@ -31,6 +31,7 @@ const DRIVER_DOCS: Record<string, string> = {
   senec: "senec/home-v3.html",
   enphase: "enphase/iq-gateway.html",
   mtec: "mtec/energy-butler.html",
+  rct: "rct/power-storage.html",
 };
 /** The page about the inverter of a driver, null for a driver without one. */
 export const inverterDocsUrl = (driver: string | null | undefined) => (driver && DRIVER_DOCS[driver] ? DEVICE_DOCS_URL(DRIVER_DOCS[driver]) : null);

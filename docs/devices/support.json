@@ -163,6 +163,28 @@
       "page": "docs/devices/enphase/iq-gateway.md"
     },
     {
+      "id": "rct",
+      "name": {
+        "de": "RCT Power Storage DC / AC, Power Inverter",
+        "en": "RCT Power Storage DC / AC, Power Inverter"
+      },
+      "does": {
+        "de": "Nur Anzeige über das Protokoll der RCT-App im Heimnetz (Port 8899, kein Modbus): PV, Speicher, Haus, Netz, Ladestand und Energiezähler. Beim Einrichten unter „Erweitert“ als Gerätetyp wählen. Für Besitzer, deren Hersteller RCT Power insolvent ist.",
+        "en": "Monitoring only through the RCT app's protocol in the home network (port 8899, no Modbus): PV, battery, house, grid, state of charge and energy counters. Choose it as the device type under \"Advanced\" in the setup. For owners whose manufacturer RCT Power is insolvent."
+      },
+      "short": {
+        "de": "nur Anzeige, beim Einrichten auswählen",
+        "en": "monitoring only, chosen in the setup"
+      },
+      "confirmed": {
+        "de": "Noch nicht bestätigt",
+        "en": "Not yet confirmed"
+      },
+      "state": "read",
+      "next": "deviceReport",
+      "page": "docs/devices/rct/power-storage.md"
+    },
+    {
       "id": "relay",
       "name": {
         "de": "Heizstab, Wärmepumpe (SG-Ready)",

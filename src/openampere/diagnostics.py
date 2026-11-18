@@ -30,7 +30,7 @@ from .wallbox.native import report_markdown as native_markdown
 
 EXTRA_CONNECTIONS = 3
 WATCH_S = 300  # how often the background job looks at the remote control
-SENEC_STALE_S = 120  # values of the Senec's last read older than this (and three poll intervals) are marked as old
+SENEC_STALE_S = 120  # values of the last read (Senec, RCT) older than this (and three poll intervals) are marked as old
 REMOTE_SEEN = "remote_seen"  # meta: since when the remote control was on at every visit
 EXPORT_LIMIT = "Einspeisebegrenzung (46616)"
 
@@ -448,6 +448,8 @@ class Diagnostics:
             checks.append(self._enphase_token())
         if getattr(driver, "KEY", None) == "mtec":
             checks.append(await self._mtec_values())
+        if getattr(driver, "KEY", None) == "rct":
+            checks.append(self._rct_values())
 
         # 6. connection limit (optional: may briefly disturb other devices); Modbus only. A device that takes a single
         # connection drops OpenAmpere's own one when another opens (M-TEC, #628): the test would only disturb it.
@@ -612,6 +614,39 @@ class Diagnostics:
                      hint="OpenAmpere liest diesen Speicher nach offenen Projekten, aber noch ohne Bestätigung von einem "
                           "echten Gerät. Vergleiche Batterie- und Netzleistung mit der Senec-App und schreib uns, ob die "
                           "Vorzeichen stimmen.")
+    def _rct_values(self) -> Check:
+        """What the RCT driver reads (#646), built without a device: the objects of the collector's last read with RCT's
+        own signs and units (powers rounded like every power in the report, shares 0..1), and which objects did not
+        answer. No serial number and no energy counters. No extra request."""
+        from .drivers.rct.driver import LIVE
+        driver = self._driver()
+        title = "Werte (RCT Power)"
+        last = getattr(driver, "last_values", None)
+        if not last:
+            return Check("rct_values", title, "skipped", "Noch keine Werte vom RCT-Wechselrichter gelesen.")
+
+        def shown(name: str, value):
+            if not isinstance(value, float):
+                return value
+            return round(value, -2) if name.endswith("_power") else round(value, 2)
+
+        values = {name: shown(name, value) for name, value in last.items() if not name.endswith("_total")}
+        missing = [name for name in LIVE if name not in last]
+        read_at = getattr(driver, "last_values_at", None)
+        age = None if read_at is None else max(0, round(time.time() - read_at))
+        summary = (f"Batterie {values.get('battery_power')} W (entladen +), Netz {values.get('grid_power')} W "
+                   f"(Bezug +), Ladestand {values.get('battery_soc')} (0 bis 1)")
+        if missing:
+            summary += f", ohne Antwort: {len(missing)}"
+        stale_after = max(SENEC_STALE_S, 3 * self.runtime.collector.poll_interval())  # a longer interval is no fault
+        old = age is not None and age > stale_after
+        if old:  # the device stopped answering: these are not the values of now
+            summary = f"Letzte Werte von vor {age // 60} min: {summary}"
+        return Check("rct_values", title, "warn" if old else "info", summary, {"values": values, "missing": missing, "age_s": age},
+                     hint="OpenAmpere liest diesen Wechselrichter nach dem Protokoll von RCT, aber noch ohne "
+                          "Bestätigung von einem echten Gerät. Vergleiche Batterie- und Netzleistung mit der RCT-App "
+                          "und schreib uns, ob die Vorzeichen stimmen.")
+
     async def _mtec_values(self) -> Check:
         """What the M-TEC driver reads (#520), built without a device: the powers in M-TEC's own signs (rounded like every
         power in the report), the backup output (whether the house load must include it is open), and the unit id and
