@@ -161,6 +161,32 @@ async def test_a_device_that_answers_nothing_is_no_rct(monkeypatch):
             await registry.detect("127.0.0.1", port, only="rct")
 
 
+async def test_a_known_inverter_silent_on_reconnect_is_a_failed_read(monkeypatch):
+    """After a restart the network board may take the connection but answer nothing for a while: for the owner's
+    inverter that is a failed read, not "no RCT inverter at this address"."""
+    monkeypatch.setattr("openampere.drivers.rct.driver.DETECT_WAIT_S", 0.3)
+    sim = sunny(SimulatedRct())
+    server, port = await serve(sim)
+    async with server:
+        driver = RctDriver("127.0.0.1", port)
+        try:
+            await driver.connect()
+            await driver.disconnect()
+            sim.silent = True
+            with pytest.raises(ModbusTransientError) as caught:
+                await driver.connect()
+            assert not isinstance(caught.value, DetectionFailed)
+            fresh = RctDriver("127.0.0.1", port)
+            fresh.expected_serial = "SIMRCT00000001"  # as the collector sets it after a restart of OpenAmpere
+            with pytest.raises(ModbusTransientError):
+                await fresh.connect()
+            await fresh.close()
+            sim.silent = False
+            assert (await driver.connect()).serial == "SIMRCT00000001"
+        finally:
+            await driver.close()
+
+
 async def test_a_read_without_answer_is_a_failed_read(monkeypatch):
     monkeypatch.setattr("openampere.drivers.rct.driver.ANSWER_WAIT_S", 0.2)
     sim = sunny(SimulatedRct())

@@ -159,12 +159,16 @@ class RctDriver:
             return self.info
         identity = await self._query(IDENTITY, DETECT_WAIT_S)
         serial = identity.get("inverter_sn")
+        expected = self.expected_serial or (self.info.serial if self.info else None)
+        if not serial and expected:  # the owner's inverter, silent for now (e.g. its network board restarts)
+            await self._drop()
+            raise RctNotAnswering("Der RCT-Wechselrichter antwortet gerade nicht. OpenAmpere fragt ihn in Kürze "
+                                  "wieder.")
         if not serial:
             await self._drop()
             host, port = self._host, self._port
             raise NotRct(f"Unter {host}, Port {port} antwortet kein RCT-Wechselrichter. Stimmt die "
                          "Adresse?")
-        expected = self.expected_serial or (self.info.serial if self.info else None)
         if expected and serial != expected:
             await self._drop()
             self.info = None
