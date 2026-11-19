@@ -945,7 +945,7 @@
   },
   "externalPv": {
     "count": "Count the second inverter",
-    "intro": "Does your system have a second PV inverter without its own connection whose power a meter at the storage system measures (Meter B on SAJ)? Then OpenAmpere adds it to the solar power and shows it separately in the energy flow and the report. Without such a meter, leave the switch off.",
+    "intro": "Does your system have a second PV inverter without its own connection whose power a meter at the storage system measures (often called “Meter B” or “Meter 2”)? Then OpenAmpere adds it to the solar power and shows it separately in the energy flow and the report. Without such a meter, leave the switch off.",
     "meterNow": "The meter reads {power} right now.",
     "name": "Name",
     "nameHint": "For example “Garage”. Leave empty: “Second inverter”.",

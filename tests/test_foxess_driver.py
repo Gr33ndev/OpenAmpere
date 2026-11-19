@@ -177,3 +177,43 @@ async def test_a_register_map_chosen_by_hand_needs_a_foxess_for_writing(sim_map,
             assert (info is not None and info.supports_control) is control
         finally:
             await driver.close()  # an open connection keeps the server from closing
+
+
+async def test_meter2_is_read_as_the_extra_pv_inverter():
+    """#635: a second, AC-coupled PV inverter measured by meter 2 is not part of the H3's PV power."""
+    sim, server, port = await start_sim(H3_NEW, "H3-10.0-Smart")
+    sim.meter2_w = 1200
+    sim.update_registers()
+    async with server:
+        driver = FoxessDriver("127.0.0.1", port, 247)
+        try:
+            await driver.connect()
+            snap = (await driver.read()).sanitize()
+            sim.meter2_w = -3  # standby at night
+            sim.update_registers()
+            night = (await driver.read()).sanitize()
+            sim.meter2_w = 0  # meter 2 not set up
+            sim.update_registers()
+            none = (await driver.read()).sanitize()
+        finally:
+            await driver.close()
+    own_pv = snap.pv_power
+    assert snap.pv_external_power == pytest.approx(1200) and not snap.house_with_external
+    assert night.pv_external_power == 0
+    assert none.pv_external_power is None
+    assert snap.count_external_pv(True).pv_power == pytest.approx(own_pv + 1200)
+
+
+def test_meter2_balance_seen_on_a_device():
+    """The values of #635 (rounded): the house at 39225 already contains meter 2, the balance closes only with it."""
+    from openampere.drivers.foxess.driver import to_snapshot
+    raw = {"pv_power": 1130.0, "grid_power": -10.0, "battery_power": -1620.0, "house_power": 890.0,
+           "meter2_active": 1, "meter2_power": 1190.0}
+    counted = to_snapshot(H3_NEW, raw, 0).sanitize().count_external_pv(True)
+    assert counted.pv_power == pytest.approx(2320) and counted.house_power == 890
+    assert counted.pv_power + counted.grid_power + counted.battery_power == pytest.approx(counted.house_power, abs=200)
+    # not counted: the solar power leaves meter 2 out, the measured house stays (unlike the SAJ balance, #576)
+    plain = to_snapshot(H3_NEW, raw, 0).sanitize().count_external_pv(False)
+    assert plain.pv_power == 1130 and plain.pv_external_power is None and plain.house_power == 890
+    assert to_snapshot(H3_NEW, {**raw, "meter2_active": 0}, 0).pv_external_power is None
+    assert to_snapshot(H3_LEGACY, raw, 0).pv_external_power is None

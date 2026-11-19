@@ -167,6 +167,7 @@ class SimulatedInverter:
         self.max_connections = max_connections
         self.connections = 0
         self.energy = EnergyModel()
+        self.meter2_w = 0.0  # a second PV inverter measured by meter 2 (H3 new map, #635); 0 = no such meter
         self.regs: dict[int, int] = {}
         for start, count in register_map.blocks:
             for address in range(start, start + count):
@@ -272,7 +273,9 @@ class SimulatedInverter:
                 "bms1_connected": 1,
                 "grid_power": -e.grid_w,
                 "pv_power": e.pv_w,
-                "house_power": e.house_w,
+                "house_power": e.house_w + max(0.0, self.meter2_w),  # the extra inverter supplies the house too
+                "meter2_active": 1 if self.meter2_w else 0,
+                "meter2_power": self.meter2_w,
                 "off_grid_flags": 0,
             })
         else:

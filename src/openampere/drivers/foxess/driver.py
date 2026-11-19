@@ -330,6 +330,12 @@ def to_snapshot(register_map: RegisterMap | None, raw: dict[str, float], timesta
         # MPPT trackers correspond to module arrays; fall back to the raw PV string inputs
         pv_inputs = inputs("mppt", 3) or inputs("pv", 4)
         pv_power = g("pv_power", sum(i.power or 0 for i in pv_inputs) if pv_inputs else None)
+    # meter 2 (#635): a second PV inverter the H3 measures. Its power is not part of pv_power. The house at 39225 is
+    # measured and already right with it (the energy balance closes only so): unlike the SAJ balance (#576) it stays
+    # as it is when the owner does not count the inverter. Standby at night may read slightly below 0.
+    pv_external_power = None
+    if register_map is H3_NEW and g("meter2_active") == 1 and "meter2_power" in raw:
+        pv_external_power = max(0.0, raw["meter2_power"])
 
     temperatures = {key: raw[reg] for key, reg in (
         ("inverter", "inverter_temperature"), ("ambient", "ambient_temperature"),
@@ -362,6 +368,7 @@ def to_snapshot(register_map: RegisterMap | None, raw: dict[str, float], timesta
     return Snapshot(
         timestamp=timestamp,
         pv_power=pv_power,
+        pv_external_power=pv_external_power,
         house_power=house_power,
         grid_power=grid_power,
         battery_power=g("battery_power"),

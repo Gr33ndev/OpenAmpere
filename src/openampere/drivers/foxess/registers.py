@@ -57,6 +57,7 @@ H3_NEW = RegisterMap(
         (37002, 1),
         (37609, 24),
         (38814, 8),
+        (38901, 15),  # meter 2: a second, AC-coupled PV inverter (#635)
         (38309, 8),  # second battery module (BMS2) temperatures
         (39063, 15),
         (39118, 2),
@@ -66,7 +67,7 @@ H3_NEW = RegisterMap(
         (39327, 12),  # MPPT 1-3 (MPPT3 power is a 32-bit value at 39337-39338)
         (39601, 32),
     ),
-    optional_blocks=frozenset({37002, 38309, 39063, 39118, 39141, 39279, 39327}),
+    optional_blocks=frozenset({37002, 38309, 38901, 39063, 39118, 39141, 39279, 39327}),
     values={
         "bms1_connected": Reg(37002),
         "battery_voltage": Reg(37609, Kind.U16, 0.1),
@@ -81,6 +82,10 @@ H3_NEW = RegisterMap(
         "battery2_cell_temp_min": Reg(38316, Kind.I16, 0.1),
         "inverter_temperature": Reg(39141, Kind.I16, 0.1),  # 0.1 °C, confirmed on an H3 (raw 452 = 45.2 °C)
         "grid_power": Reg(38814, Kind.I32, 0.1),  # + = export
+        # meter 2 (#635): 1 while a meter for a second PV inverter is set up; its power + = generation (confirmed on
+        # one device by the energy balance)
+        "meter2_active": Reg(38901),
+        "meter2_power": Reg(38914, Kind.I32, 0.1),
         "inverter_state": Reg(39063),
         "off_grid_flags": Reg(39065, Kind.U32),
         "alarm1": Reg(39067),
