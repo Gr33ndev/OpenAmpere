@@ -226,7 +226,8 @@ class Tariffs:
     # ---- exchange prices ------------------------------------------------------
 
     async def refresh_prices(self, now: float | None = None) -> int:
-        """Fetches exchange prices for today and tomorrow when a dynamic tariff is used (at most hourly)."""
+        """Fetches exchange prices for today and tomorrow when a dynamic tariff is used: hourly, after a failed fetch
+        sooner (5, 10, 20, 40 minutes, then hourly again)."""
         now = time.time() if now is None else now
         areas = self.dynamic_areas()
         wait = min(FETCH_EVERY_S, RETRY_AFTER_ERROR_S * 2 ** (self._failures - 1)) if self._failures else FETCH_EVERY_S
