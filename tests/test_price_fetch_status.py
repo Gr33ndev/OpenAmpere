@@ -39,14 +39,24 @@ def test_a_failed_fetch_is_kept_and_retried_soon(tmp_path, monkeypatch):
     assert status["failing_since"] == later
     # not the full hour after an error: the owner who fixed the connection sees it working again soon
     assert asyncio.run(t.refresh_prices(now=later + RETRY_AFTER_ERROR_S - 1)) == 0
-    asyncio.run(t.refresh_prices(now=later + RETRY_AFTER_ERROR_S))  # still offline: the first failure stays
-    assert t.fetch_status("DE")["failing_since"] == later
-    later += RETRY_AFTER_ERROR_S
+    assert t.fetch_status("DE")["last_error"] == later  # not tried yet
+    # then less often: 5, 10, 20, 40 minutes, then hourly (fair use of aWATTar's free API)
+    for wait in (300, 600, 1200, 2400, 3600, 3600):
+        assert t.fetch_status("DE")["last_error"] == later
+        asyncio.run(t.refresh_prices(now=later + wait - 1))
+        assert t.fetch_status("DE")["last_error"] == later
+        later += wait
+        asyncio.run(t.refresh_prices(now=later))
+    assert t.fetch_status("DE")["last_error"] == later
+    assert t.fetch_status("DE")["failing_since"] == now + FETCH_EVERY_S  # the first failure stays
     monkeypatch.setattr(tariffs_module, "read_within", lambda *a, **k: ({}, json.dumps(payload).encode()))
-    asyncio.run(t.refresh_prices(now=later + RETRY_AFTER_ERROR_S))
-    assert t.fetch_status("DE") == {"last_ok": later + RETRY_AFTER_ERROR_S, "last_error": None, "failing_since": None, "error": None}
+    later += FETCH_EVERY_S
+    asyncio.run(t.refresh_prices(now=later))
+    assert t.fetch_status("DE") == {"last_ok": later, "last_error": None, "failing_since": None, "error": None}
+    # after a success the next fetch is an hour later again
+    assert asyncio.run(t.refresh_prices(now=later + RETRY_AFTER_ERROR_S)) == 0
     # the status survives a restart
-    assert tariffs_module.Tariffs(storage, lambda: (35.0, 8.0)).fetch_status("DE")["last_ok"] == later + RETRY_AFTER_ERROR_S
+    assert tariffs_module.Tariffs(storage, lambda: (35.0, 8.0)).fetch_status("DE")["last_ok"] == later
     assert t.fetch_status("AT") == {"last_ok": None, "last_error": None, "failing_since": None, "error": None}
 
 
@@ -67,7 +77,7 @@ def test_prices_answer_says_whether_the_next_day_is_known(tmp_path, authed):
 
     # a fixed tariff from tomorrow on: no exchange prices to switch to
     runtime.tariffs.save([DYNAMIC, {**DYNAMIC, "valid_from": "2026-06-02", "kind": "fixed", "price_ct": 30}])
-    assert client.get("/api/prices?date=2026-06-01").json()["next_day"] is False
+    assert client.get("/api/prices?date=2026-06-01").json()["next_day"] is None
     runtime.tariffs.save([DYNAMIC])
 
     storage.set_meta("price_fetch", {"DE": {"last_ok": 1, "last_error": 2, "failing_since": 2, "error": "timed out"}})
@@ -76,4 +86,4 @@ def test_prices_answer_says_whether_the_next_day_is_known(tmp_path, authed):
 
     runtime.tariffs.save([{**DYNAMIC, "kind": "fixed", "price_ct": 30}])
     fixed = client.get("/api/prices?date=2026-06-01").json()
-    assert fixed["next_day"] is False and fixed["fetch"] is None
+    assert fixed["next_day"] is None and fixed["fetch"] is None

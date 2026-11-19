@@ -789,7 +789,7 @@
     "chartLabelTomorrow": "Strompreis morgen je Viertelstunde",
     "cheapest": "Am günstigsten: {time} Uhr mit {price} ct/kWh (inkl. Aufschlag).",
     "fetchError": "Meldung: {error}",
-    "fetchFailed": "OpenAmpere erreicht den Börsenpreis-Dienst (aWATTar) nicht, erster Fehlversuch: {since}. Prüfe, ob OpenAmpere ins Internet kommt (auch VPN, Router oder Firewall). OpenAmpere versucht es alle 5 Minuten wieder.",
+    "fetchFailed": "OpenAmpere erreicht den Börsenpreis-Dienst (aWATTar) nicht, erster Fehlversuch: {since}. Prüfe, ob OpenAmpere ins Internet kommt (auch VPN, Router oder Firewall). OpenAmpere versucht es bald wieder, zuerst nach wenigen Minuten, dann stündlich.",
     "fetchedAt": "Börsenpreise zuletzt abgerufen: {time}",
     "noPrices": "Noch keine Börsenpreise für heute geladen (braucht Internet).",
     "noPricesTomorrow": "Noch keine Börsenpreise für morgen geladen. Sie erscheinen meist ab dem frühen Nachmittag.",

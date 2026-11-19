@@ -1586,8 +1586,9 @@ def create_app(runtime: Runtime) -> FastAPI:
         return {"kind": tariff.kind, "feed_in_ct": tariff.feed_in_ct, "fixed_ct": tariff.price_ct if tariff.kind == "fixed" else None,
                 "entries": entries,
                 # exchange prices of the next day are published in the early afternoon (#654)
-                # (only when that day's tariff is dynamic too, otherwise there is no chart to switch to)
-                "next_day": dynamic and runtime.tariffs.at(next_day).kind == "dynamic" and bool(storage.prices(end, end + 86400)),
+                # (null when that day's tariff is not dynamic: there is no chart to switch to and none to wait for)
+                "next_day": (bool(storage.prices(end, end + 86400))
+                             if dynamic and runtime.tariffs.at(next_day).kind == "dynamic" else None),
                 "fetch": runtime.tariffs.fetch_status(tariff.area) if dynamic else None}
 
     @app.get("/api/export/csv")

@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 
 PRICE_SOURCES = {"DE": "https://api.awattar.de/v1/marketdata", "AT": "https://api.awattar.at/v1/marketdata"}
 FETCH_EVERY_S = 3600
-RETRY_AFTER_ERROR_S = 300  # after a failed fetch try again soon, e.g. once a VPN or router is fixed (#654)
+# after a failed fetch try again soon, e.g. once a VPN or router is fixed (#654), then less often (5, 10, 20, 40
+# minutes, then hourly): aWATTar asks for a fair use of its free API
+RETRY_AFTER_ERROR_S = 300
 MAX_ANSWER_BYTES = 1024 ** 2  # prices of a few days are some kB
 DEADLINE_S = 60
 
@@ -117,7 +119,7 @@ class Tariffs:
         self.fallback = fallback  # () -> (price_ct, feed_in_ct) from the settings
         self.feed_in = feed_in  # () -> FeedInRate from the EEG rates (#71), or None to use each tariff's own value
         self._last_fetch = 0.0
-        self._failed = False
+        self._failures = 0  # failed fetches in a row
 
     def all(self) -> list[Tariff]:
         saved = self.storage.get_meta("tariffs")
@@ -227,7 +229,7 @@ class Tariffs:
         """Fetches exchange prices for today and tomorrow when a dynamic tariff is used (at most hourly)."""
         now = time.time() if now is None else now
         areas = self.dynamic_areas()
-        wait = RETRY_AFTER_ERROR_S if self._failed else FETCH_EVERY_S
+        wait = min(FETCH_EVERY_S, RETRY_AFTER_ERROR_S * 2 ** (self._failures - 1)) if self._failures else FETCH_EVERY_S
         if not areas or now - self._last_fetch < wait:
             return 0
         self._last_fetch = now
@@ -249,7 +251,7 @@ class Tariffs:
             count += len(rows)
             entry.update(last_ok=int(now), last_error=None, error=None, failing_since=None)
             status[area] = entry
-        self._failed = failed
+        self._failures = self._failures + 1 if failed else 0
         self.storage.set_meta("price_fetch", status)
         return count
 

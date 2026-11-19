@@ -279,7 +279,7 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
 }
 
 type PriceFetch = { last_ok: number | null; last_error: number | null; failing_since: number | null; error: string | null };
-type PricesView = { kind: string; entries: { ts: number; ct: number }[]; next_day?: boolean; fetch?: PriceFetch | null };
+type PricesView = { kind: string; entries: { ts: number; ct: number }[]; next_day?: boolean | null; fetch?: PriceFetch | null };
 
 /** The day after a YYYY-MM-DD date. */
 const nextIso = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
@@ -330,7 +330,7 @@ function PriceChart({ dynamicOnly = false }: { dynamicOnly?: boolean }) {
       ) : (
         <p className="hint">{tomorrow ? t("settings.priceChart.noPricesTomorrow") : t("settings.priceChart.noPrices")}</p>
       )}
-      {!tomorrow && !hasNextDay && data.kind === "dynamic" && cheapest && (
+      {!tomorrow && data.next_day === false && cheapest && (
         <p className="hint">{t("settings.priceChart.tomorrowLater")}</p>
       )}
       {data.fetch && <PriceFetchState fetch={data.fetch} />}
