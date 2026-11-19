@@ -309,16 +309,20 @@ function PriceChart({ dynamicOnly = false }: { dynamicOnly?: boolean }) {
     if (data && !tomorrow) setHasNextDay(!!data.next_day);
     if (data && tomorrow && data.kind !== "dynamic") setTomorrow(false); // tomorrow's tariff has no exchange prices
   }, [data, tomorrow]);
-  if (!data || data.kind === "fixed" || (dynamicOnly && data.kind !== "dynamic")) return null;
+  const switcher = (hasNextDay || tomorrow) && (
+    <Segmented value={tomorrow ? "tomorrow" : "today"} onChange={(v) => setTomorrow(v === "tomorrow")}
+      options={[["today", t("common.today")], ["tomorrow", t("settings.priceChart.tomorrow")]]} />
+  );
+  const title = <div className="section-title">{tomorrow ? t("settings.priceChart.titleTomorrow") : t("settings.priceChart.title")}</div>;
+  // while the other day loads, keep the title and the switch so the page does not jump
+  if (!data) return hasNextDay ? <div className="price-chart">{title}{switcher}</div> : null;
+  if (data.kind === "fixed" || (dynamicOnly && data.kind !== "dynamic")) return null;
   const cheapest = data.entries.length ? data.entries.reduce((a, b) => (b.ct < a.ct ? b : a)) : null;
   const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
   return (
     <div className="price-chart">
-      <div className="section-title">{tomorrow ? t("settings.priceChart.titleTomorrow") : t("settings.priceChart.title")}</div>
-      {(hasNextDay || tomorrow) && (
-        <Segmented value={tomorrow ? "tomorrow" : "today"} onChange={(v) => setTomorrow(v === "tomorrow")}
-          options={[["today", t("common.today")], ["tomorrow", t("settings.priceChart.tomorrow")]]} />
-      )}
+      {title}
+      {switcher}
       {cheapest ? (
         <>
           <Chart x={data.entries.map((e) => e.ts)}

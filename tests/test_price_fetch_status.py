@@ -60,6 +60,11 @@ def test_a_failed_fetch_is_kept_and_retried_soon(tmp_path, monkeypatch):
     # a failure from a refresh that started before a newer success does not hide that success
     t._note_fetch("DE", later - 60, OSError("timed out"))
     assert t.fetch_status("DE")["last_ok"] == later and t.fetch_status("DE")["last_error"] is None
+    # and a success from before a newer failure does not hide that failure
+    t._note_fetch("DE", later + 120, OSError("timed out"))
+    t._note_fetch("DE", later + 60)
+    status = t.fetch_status("DE")
+    assert status["last_ok"] == later + 60 and status["last_error"] == later + 120 and status["error"] == "timed out"
     assert t.fetch_status("AT") == {"last_ok": None, "last_error": None, "failing_since": None, "error": None}
 
 

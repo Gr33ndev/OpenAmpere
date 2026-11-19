@@ -253,11 +253,13 @@ class Tariffs:
 
     def _note_fetch(self, area: str, now: float, err: Exception | None = None) -> None:
         """Keeps the outcome of a fetch, read right before writing: a refresh started meanwhile (e.g. by saving the
-        tariffs) may have succeeded, and a failure from before it must not hide that success."""
+        tariffs) may have ended first, and an older outcome must not hide a newer one."""
         status = self.storage.get_meta("price_fetch") or {}
         entry = dict(status.get(area) or {})
         if err is None:
-            entry.update(last_ok=int(now), last_error=None, error=None, failing_since=None)
+            entry["last_ok"] = max(int(now), entry.get("last_ok") or 0)
+            if (entry.get("last_error") or 0) <= now:  # a newer failure stays
+                entry.update(last_error=None, error=None, failing_since=None)
         elif (entry.get("last_ok") or 0) > now:
             return
         else:
