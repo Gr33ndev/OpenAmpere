@@ -303,20 +303,22 @@ function PriceFetchState({ fetch }: { fetch: PriceFetch }) {
 function PriceChart({ dynamicOnly = false }: { dynamicOnly?: boolean }) {
   const [tomorrow, setTomorrow] = useState(false);
   const today = todayIso();
-  const { data } = useResource<PricesView>(`/api/prices?date=${tomorrow ? nextIso(today) : today}`, 15 * 60_000);
-  const [hasNextDay, setHasNextDay] = useState(false);
+  // today's answer always (it says whether tomorrow is known), tomorrow's only while it is shown
+  const { data: todayData } = useResource<PricesView>(`/api/prices?date=${today}`, 15 * 60_000);
+  const { data: tomorrowData } = useResource<PricesView>(tomorrow ? `/api/prices?date=${nextIso(today)}` : null, 15 * 60_000);
+  const hasNextDay = !!todayData?.next_day;
   useEffect(() => {
-    if (data && !tomorrow) setHasNextDay(!!data.next_day);
-    if (data && tomorrow && data.kind !== "dynamic") setTomorrow(false); // tomorrow's tariff has no exchange prices
-  }, [data, tomorrow]);
+    if (tomorrow && tomorrowData && tomorrowData.kind !== "dynamic") setTomorrow(false); // no exchange prices tomorrow
+  }, [tomorrow, tomorrowData]);
+  if (!todayData || todayData.kind === "fixed" || (dynamicOnly && todayData.kind !== "dynamic")) return null;
+  const data = tomorrow ? tomorrowData : todayData;
   const switcher = (hasNextDay || tomorrow) && (
     <Segmented value={tomorrow ? "tomorrow" : "today"} onChange={(v) => setTomorrow(v === "tomorrow")}
       options={[["today", t("common.today")], ["tomorrow", t("settings.priceChart.tomorrow")]]} />
   );
   const title = <div className="section-title">{tomorrow ? t("settings.priceChart.titleTomorrow") : t("settings.priceChart.title")}</div>;
-  // while the other day loads, keep the title and the switch so the page does not jump
-  if (!data) return hasNextDay ? <div className="price-chart">{title}{switcher}</div> : null;
-  if (data.kind === "fixed" || (dynamicOnly && data.kind !== "dynamic")) return null;
+  // while tomorrow loads, keep the title and the switch so the page does not jump
+  if (!data) return <div className="price-chart">{title}{switcher}</div>;
   const cheapest = data.entries.length ? data.entries.reduce((a, b) => (b.ct < a.ct ? b : a)) : null;
   const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
   return (

@@ -10,6 +10,12 @@ test("grid charging at the cheapest time shows today's and tomorrow's prices", a
   await page.getByRole("button", { name: "Morgen" }).click();
   await expect(page.getByText("Strompreis morgen", { exact: true })).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
+  // and back: the switch stays
+  await page.getByRole("button", { name: "Heute" }).click();
+  await expect(page.getByText("Strompreis heute", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Morgen" })).toBeVisible();
+  await page.getByRole("button", { name: "Morgen" }).click();
+  await expect(page.getByText("Strompreis morgen", { exact: true })).toBeVisible();
   // a fixed time window does not depend on the prices
   await page.getByRole("button", { name: "Festes Zeitfenster" }).click();
   await expect(page.getByText("Strompreis morgen", { exact: true })).toHaveCount(0);
