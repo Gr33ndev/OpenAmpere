@@ -237,24 +237,33 @@ class Tariffs:
         start = int(now // 86400 * 86400) - 86400
         count = 0
         failed = False
-        status = self.storage.get_meta("price_fetch") or {}
         for area in sorted(areas):
-            entry = dict(status.get(area) or {})
             try:
                 rows = await asyncio.to_thread(fetch_prices, area, start, start + 3 * 86400)
             except Exception as err:  # noqa: BLE001 - no internet: keep the prices we have
                 log.warning("could not fetch exchange prices (%s): %s", area, err)
                 failed = True
-                entry.update(last_error=int(now), error=str(err)[:200], failing_since=entry.get("failing_since") or int(now))
-                status[area] = entry
+                self._note_fetch(area, now, err)
                 continue
             self.storage.save_prices(rows)
             count += len(rows)
-            entry.update(last_ok=int(now), last_error=None, error=None, failing_since=None)
-            status[area] = entry
+            self._note_fetch(area, now)
         self._failures = self._failures + 1 if failed else 0
-        self.storage.set_meta("price_fetch", status)
         return count
+
+    def _note_fetch(self, area: str, now: float, err: Exception | None = None) -> None:
+        """Keeps the outcome of a fetch, read right before writing: a refresh started meanwhile (e.g. by saving the
+        tariffs) may have succeeded, and a failure from before it must not hide that success."""
+        status = self.storage.get_meta("price_fetch") or {}
+        entry = dict(status.get(area) or {})
+        if err is None:
+            entry.update(last_ok=int(now), last_error=None, error=None, failing_since=None)
+        elif (entry.get("last_ok") or 0) > now:
+            return
+        else:
+            entry.update(last_error=int(now), error=str(err)[:200], failing_since=entry.get("failing_since") or int(now))
+        status[area] = entry
+        self.storage.set_meta("price_fetch", status)
 
     def fetch_status(self, area: str) -> dict:
         """Last successful and last failed fetch of exchange prices for a price zone (#654), so the app can say

@@ -57,6 +57,9 @@ def test_a_failed_fetch_is_kept_and_retried_soon(tmp_path, monkeypatch):
     assert asyncio.run(t.refresh_prices(now=later + RETRY_AFTER_ERROR_S)) == 0
     # the status survives a restart
     assert tariffs_module.Tariffs(storage, lambda: (35.0, 8.0)).fetch_status("DE")["last_ok"] == later
+    # a failure from a refresh that started before a newer success does not hide that success
+    t._note_fetch("DE", later - 60, OSError("timed out"))
+    assert t.fetch_status("DE")["last_ok"] == later and t.fetch_status("DE")["last_error"] is None
     assert t.fetch_status("AT") == {"last_ok": None, "last_error": None, "failing_since": None, "error": None}
 
 
