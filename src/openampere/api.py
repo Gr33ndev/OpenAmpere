@@ -1581,8 +1581,12 @@ def create_app(runtime: Runtime) -> FastAPI:
         exchange = storage.prices(start, end)
         prices = runtime.tariffs.quarter_prices(start, end, runtime.tz) if tariff.kind != "fixed" else {}
         entries = [{"ts": ts, "ct": round(ct, 2), "exchange_eur_mwh": exchange.get(ts)} for ts, ct in prices.items()]
+        dynamic = tariff.kind == "dynamic"
         return {"kind": tariff.kind, "feed_in_ct": tariff.feed_in_ct, "fixed_ct": tariff.price_ct if tariff.kind == "fixed" else None,
-                "entries": entries}
+                "entries": entries,
+                # exchange prices of the next day are published in the early afternoon (#654)
+                "next_day": dynamic and bool(storage.prices(end, end + 86400)),
+                "fetch": runtime.tariffs.fetch_status(tariff.area) if dynamic else None}
 
     @app.get("/api/export/csv")
     def export_csv(start: str = Query(..., alias="from", pattern=r"^\d{4}-\d{2}-\d{2}$"),

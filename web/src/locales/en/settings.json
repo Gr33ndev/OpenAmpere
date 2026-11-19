@@ -786,9 +786,17 @@
   },
   "priceChart": {
     "chartLabel": "Electricity price today per quarter hour",
+    "chartLabelTomorrow": "Electricity price tomorrow per quarter hour",
     "cheapest": "Cheapest: {time} at {price} ct/kWh (incl. surcharge).",
+    "fetchError": "Message: {error}",
+    "fetchFailed": "OpenAmpere cannot reach the exchange price service (aWATTar), first failed attempt: {since}. Check whether OpenAmpere can reach the internet (including VPN, router or firewall). OpenAmpere tries again every 5 minutes.",
+    "fetchedAt": "Exchange prices last fetched: {time}",
     "noPrices": "No exchange prices loaded for today yet (needs internet).",
-    "title": "Electricity price today"
+    "noPricesTomorrow": "No exchange prices for tomorrow yet. They usually appear in the early afternoon.",
+    "title": "Electricity price today",
+    "titleTomorrow": "Electricity price tomorrow",
+    "tomorrow": "Tomorrow",
+    "tomorrowLater": "Tomorrow's prices usually appear in the early afternoon."
   },
   "pvSystemPage": {
     "hiddenHint": "Hidden inputs don't appear anywhere in the display or the report. OpenAmpere keeps storing their readings, and you can show them again at any time.",

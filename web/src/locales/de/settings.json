@@ -786,9 +786,17 @@
   },
   "priceChart": {
     "chartLabel": "Strompreis heute je Viertelstunde",
+    "chartLabelTomorrow": "Strompreis morgen je Viertelstunde",
     "cheapest": "Am günstigsten: {time} Uhr mit {price} ct/kWh (inkl. Aufschlag).",
+    "fetchError": "Meldung: {error}",
+    "fetchFailed": "OpenAmpere erreicht den Börsenpreis-Dienst (aWATTar) nicht, erster Fehlversuch: {since}. Prüfe, ob OpenAmpere ins Internet kommt (auch VPN, Router oder Firewall). OpenAmpere versucht es alle 5 Minuten wieder.",
+    "fetchedAt": "Börsenpreise zuletzt abgerufen: {time}",
     "noPrices": "Noch keine Börsenpreise für heute geladen (braucht Internet).",
-    "title": "Strompreis heute"
+    "noPricesTomorrow": "Noch keine Börsenpreise für morgen geladen. Sie erscheinen meist ab dem frühen Nachmittag.",
+    "title": "Strompreis heute",
+    "titleTomorrow": "Strompreis morgen",
+    "tomorrow": "Morgen",
+    "tomorrowLater": "Die Preise für morgen erscheinen meist ab dem frühen Nachmittag."
   },
   "pvSystemPage": {
     "hiddenHint": "Ausgeblendete Eingänge erscheinen nirgends in Anzeige und Auswertung. Ihre Messwerte speichert OpenAmpere weiter, du kannst sie jederzeit wieder einblenden.",
