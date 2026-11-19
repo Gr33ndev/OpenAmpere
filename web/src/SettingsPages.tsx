@@ -278,22 +278,69 @@ function TimeWindows({ windows, onChange }: { windows: Window[]; onChange: (w: W
   );
 }
 
-function PriceChart() {
-  const { data } = useResource<{ kind: string; entries: { ts: number; ct: number }[] }>(`/api/prices?date=${todayIso()}`, 15 * 60_000);
-  if (!data || data.kind === "fixed") return null;
-  if (!data.entries.length) return <p className="hint">{t("settings.priceChart.noPrices")}</p>;
-  const x = data.entries.map((e) => e.ts);
-  const cheapest = data.entries.reduce((a, b) => (b.ct < a.ct ? b : a));
+type PriceFetch = { last_ok: number | null; last_error: number | null; failing_since: number | null; error: string | null };
+type PricesView = { kind: string; entries: { ts: number; ct: number }[]; next_day?: boolean | null; fetch?: PriceFetch | null };
+
+/** The day after a YYYY-MM-DD date. */
+const nextIso = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/** Whether the exchange prices could be fetched lately (#654): a wrong VPN or no internet should not go unnoticed. */
+function PriceFetchState({ fetch }: { fetch: PriceFetch }) {
+  const failing = fetch.last_error !== null && (fetch.last_ok === null || fetch.last_error > fetch.last_ok);
+  if (failing) {
+    return (
+      <Notice kind="warn">
+        {t("settings.priceChart.fetchFailed", { since: updatedLabel(fetch.failing_since ?? fetch.last_error ?? 0) })}
+        {fetch.error && <span className="hint"> {t("settings.priceChart.fetchError", { error: fetch.error })}</span>}
+      </Notice>
+    );
+  }
+  if (fetch.last_ok === null) return null;
+  return <p className="hint">{t("settings.priceChart.fetchedAt", { time: updatedLabel(fetch.last_ok) })}</p>;
+}
+
+/** Import price per quarter hour of today or, once known (early afternoon), tomorrow (#654). */
+function PriceChart({ dynamicOnly = false }: { dynamicOnly?: boolean }) {
+  const [tomorrow, setTomorrow] = useState(false);
+  const today = todayIso();
+  // today's answer always (it says whether tomorrow is known), tomorrow's only while it is shown
+  const { data: todayData } = useResource<PricesView>(`/api/prices?date=${today}`, 15 * 60_000);
+  const { data: tomorrowData } = useResource<PricesView>(tomorrow ? `/api/prices?date=${nextIso(today)}` : null, 15 * 60_000);
+  const hasNextDay = !!todayData?.next_day;
+  useEffect(() => {
+    if (tomorrow && tomorrowData && tomorrowData.kind !== "dynamic") setTomorrow(false); // no exchange prices tomorrow
+  }, [tomorrow, tomorrowData]);
+  if (!todayData || todayData.kind === "fixed" || (dynamicOnly && todayData.kind !== "dynamic")) return null;
+  const data = tomorrow ? tomorrowData : todayData;
+  const switcher = (hasNextDay || tomorrow) && (
+    <Segmented value={tomorrow ? "tomorrow" : "today"} onChange={(v) => setTomorrow(v === "tomorrow")}
+      options={[["today", t("common.today")], ["tomorrow", t("settings.priceChart.tomorrow")]]} />
+  );
+  const title = <div className="section-title">{tomorrow ? t("settings.priceChart.titleTomorrow") : t("settings.priceChart.title")}</div>;
+  // while tomorrow loads, keep the title and the switch so the page does not jump
+  if (!data) return <div className="price-chart">{title}{switcher}</div>;
+  const cheapest = data.entries.length ? data.entries.reduce((a, b) => (b.ct < a.ct ? b : a)) : null;
+  const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });
   return (
-    <>
-      <div className="section-title">{t("settings.priceChart.title")}</div>
-      <Chart x={x} series={[{ label: t("common.price"), color: "var(--grid)", values: data.entries.map((e) => e.ct), unit: "ct" }]}
-        xFormat={(ts) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() })}
-        height={180} label={t("settings.priceChart.chartLabel")} />
-      <p className="hint">{t("settings.priceChart.cheapest", {
-        time: new Date(cheapest.ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() }),
-        price: ct(cheapest.ct) })}</p>
-    </>
+    <div className="price-chart">
+      {title}
+      {switcher}
+      {cheapest ? (
+        <>
+          <Chart x={data.entries.map((e) => e.ts)}
+            series={[{ label: t("common.price"), color: "var(--grid)", values: data.entries.map((e) => e.ct), unit: "ct" }]}
+            xFormat={clock} height={180}
+            label={tomorrow ? t("settings.priceChart.chartLabelTomorrow") : t("settings.priceChart.chartLabel")} />
+          <p className="hint">{t("settings.priceChart.cheapest", { time: clock(cheapest.ts), price: ct(cheapest.ct) })}</p>
+        </>
+      ) : (
+        <p className="hint">{tomorrow ? t("settings.priceChart.noPricesTomorrow") : t("settings.priceChart.noPrices")}</p>
+      )}
+      {!tomorrow && data.next_day === false && cheapest && (
+        <p className="hint">{t("settings.priceChart.tomorrowLater")}</p>
+      )}
+      {data.fetch && <PriceFetchState fetch={data.fetch} />}
+    </div>
   );
 }
 
@@ -1724,6 +1771,7 @@ export function ChargingPage({ onBack }: PageProps) {
                     onChange={(v) => set({ max_price_ct: v })} />
                     <span>ct/kWh</span></div>
                 </Field>
+                <PriceChart dynamicOnly />
               </>
             ) : (
               <div className="field-row">

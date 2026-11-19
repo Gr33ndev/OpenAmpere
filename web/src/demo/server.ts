@@ -378,7 +378,10 @@ function prices(q: URLSearchParams) {
   const [from, to] = bounds("day", q.get("date"));
   const entries = [];
   for (let ts = from; ts < to; ts += QUARTER) entries.push({ ts, ct: priceAt(ts), exchange_eur_mwh: null });
-  return { kind: "dynamic", feed_in_ct: FEED_IN_CT, fixed_ct: null, entries };
+  // the next day's prices are known in the demo, fetched at the start of the current hour (#654)
+  const fetched = Math.floor(now() / 3600) * 3600;
+  return { kind: "dynamic", feed_in_ct: FEED_IN_CT, fixed_ct: null, entries, next_day: true,
+    fetch: { last_ok: fetched, last_error: null, failing_since: null, error: null } };
 }
 
 function charging() {

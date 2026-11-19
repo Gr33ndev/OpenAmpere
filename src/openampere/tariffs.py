@@ -25,6 +25,9 @@ log = logging.getLogger(__name__)
 
 PRICE_SOURCES = {"DE": "https://api.awattar.de/v1/marketdata", "AT": "https://api.awattar.at/v1/marketdata"}
 FETCH_EVERY_S = 3600
+# after a failed fetch try again soon, e.g. once a VPN or router is fixed (#654), then less often (5, 10, 20, 40
+# minutes, then hourly): aWATTar asks for a fair use of its free API
+RETRY_AFTER_ERROR_S = 300
 MAX_ANSWER_BYTES = 1024 ** 2  # prices of a few days are some kB
 DEADLINE_S = 60
 
@@ -116,6 +119,7 @@ class Tariffs:
         self.fallback = fallback  # () -> (price_ct, feed_in_ct) from the settings
         self.feed_in = feed_in  # () -> FeedInRate from the EEG rates (#71), or None to use each tariff's own value
         self._last_fetch = 0.0
+        self._failures = 0  # failed fetches in a row
 
     def all(self) -> list[Tariff]:
         saved = self.storage.get_meta("tariffs")
@@ -222,23 +226,52 @@ class Tariffs:
     # ---- exchange prices ------------------------------------------------------
 
     async def refresh_prices(self, now: float | None = None) -> int:
-        """Fetches exchange prices for today and tomorrow when a dynamic tariff is used (at most hourly)."""
+        """Fetches exchange prices for today and tomorrow when a dynamic tariff is used: hourly, after a failed fetch
+        sooner (5, 10, 20, 40 minutes, then hourly again)."""
         now = time.time() if now is None else now
         areas = self.dynamic_areas()
-        if not areas or now - self._last_fetch < FETCH_EVERY_S:
+        wait = min(FETCH_EVERY_S, RETRY_AFTER_ERROR_S * 2 ** (self._failures - 1)) if self._failures else FETCH_EVERY_S
+        if not areas or now - self._last_fetch < wait:
             return 0
         self._last_fetch = now
         start = int(now // 86400 * 86400) - 86400
         count = 0
+        failed = False
         for area in sorted(areas):
             try:
                 rows = await asyncio.to_thread(fetch_prices, area, start, start + 3 * 86400)
             except Exception as err:  # noqa: BLE001 - no internet: keep the prices we have
                 log.warning("could not fetch exchange prices (%s): %s", area, err)
+                failed = True
+                self._note_fetch(area, now, err)
                 continue
             self.storage.save_prices(rows)
             count += len(rows)
+            self._note_fetch(area, now)
+        self._failures = self._failures + 1 if failed else 0
         return count
+
+    def _note_fetch(self, area: str, now: float, err: Exception | None = None) -> None:
+        """Keeps the outcome of a fetch, read right before writing: a refresh started meanwhile (e.g. by saving the
+        tariffs) may have ended first, and an older outcome must not hide a newer one."""
+        status = self.storage.get_meta("price_fetch") or {}
+        entry = dict(status.get(area) or {})
+        if err is None:
+            entry["last_ok"] = max(int(now), entry.get("last_ok") or 0)
+            if (entry.get("last_error") or 0) <= now:  # a newer failure stays
+                entry.update(last_error=None, error=None, failing_since=None)
+        elif (entry.get("last_ok") or 0) > now:
+            return
+        else:
+            entry.update(last_error=int(now), error=str(err)[:200], failing_since=entry.get("failing_since") or int(now))
+        status[area] = entry
+        self.storage.set_meta("price_fetch", status)
+
+    def fetch_status(self, area: str) -> dict:
+        """Last successful and last failed fetch of exchange prices for a price zone (#654), so the app can say
+        when the price service could not be reached (e.g. no internet or a wrong VPN)."""
+        entry = (self.storage.get_meta("price_fetch") or {}).get(area) or {}
+        return {key: entry.get(key) for key in ("last_ok", "last_error", "failing_since", "error")}
 
 
 def fetch_prices(area: str, start: float, end: float) -> list[tuple[int, float]]:
