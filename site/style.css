@@ -231,10 +231,8 @@ div.notice > :last-child { margin-bottom: 0; }
 
 /* EKD device matrix */
 .devices-page { max-width: 1080px; }
-.devices-page section { padding-top: 32px; max-width: 820px; }
+.devices-page section { padding-top: 32px; scroll-margin-top: 72px; }
 .devices-page section > p { color: var(--label); }
-/* a section with a table (RCT Power, #652) as wide as the EKD table above, not as the notes below */
-.devices-page section.matrix-section { max-width: none; scroll-margin-top: 72px; }
 .devices-page .notice { margin-top: 20px; }
 .devices-page .notice strong { color: var(--text); }
 .matrix-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 18px; margin-top: 8px; }
