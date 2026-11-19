@@ -305,7 +305,10 @@ function PriceChart({ dynamicOnly = false }: { dynamicOnly?: boolean }) {
   const today = todayIso();
   const { data } = useResource<PricesView>(`/api/prices?date=${tomorrow ? nextIso(today) : today}`, 15 * 60_000);
   const [hasNextDay, setHasNextDay] = useState(false);
-  useEffect(() => { if (data && !tomorrow) setHasNextDay(!!data.next_day); }, [data, tomorrow]);
+  useEffect(() => {
+    if (data && !tomorrow) setHasNextDay(!!data.next_day);
+    if (data && tomorrow && data.kind !== "dynamic") setTomorrow(false); // tomorrow's tariff has no exchange prices
+  }, [data, tomorrow]);
   if (!data || data.kind === "fixed" || (dynamicOnly && data.kind !== "dynamic")) return null;
   const cheapest = data.entries.length ? data.entries.reduce((a, b) => (b.ct < a.ct ? b : a)) : null;
   const clock = (ts: number) => new Date(ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timeZone() });

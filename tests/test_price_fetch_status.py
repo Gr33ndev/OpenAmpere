@@ -65,6 +65,11 @@ def test_prices_answer_says_whether_the_next_day_is_known(tmp_path, authed):
     storage.save_prices([(int(day) + 86400 + 13 * 3600, 90.0)])
     assert client.get("/api/prices?date=2026-06-01").json()["next_day"] is True
 
+    # a fixed tariff from tomorrow on: no exchange prices to switch to
+    runtime.tariffs.save([DYNAMIC, {**DYNAMIC, "valid_from": "2026-06-02", "kind": "fixed", "price_ct": 30}])
+    assert client.get("/api/prices?date=2026-06-01").json()["next_day"] is False
+    runtime.tariffs.save([DYNAMIC])
+
     storage.set_meta("price_fetch", {"DE": {"last_ok": 1, "last_error": 2, "failing_since": 2, "error": "timed out"}})
     assert client.get("/api/prices?date=2026-06-01").json()["fetch"] == {
         "last_ok": 1, "last_error": 2, "failing_since": 2, "error": "timed out"}
