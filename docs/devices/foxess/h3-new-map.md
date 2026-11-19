@@ -25,7 +25,7 @@ Family facts (detection, connection limits, remote control behaviour, decisions 
 
 ## Registers
 
-Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 39118+2, 39141+1, 39219+20, 39279+8,
+Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 38901+15, 39063+15, 39118+2, 39141+1, 39219+20, 39279+8,
 39327+12, 39601+32. Addresses inside a block that are not listed below are read but not used. Model string
 30000–30015: see [h3.md](h3.md). FC04 = input register, FC03 = holding register.
 
@@ -111,7 +111,7 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
 |---|---|---|
 | Blocks 37002, 38309, 38901, 39063, 39118, 39141, 39279 and 39327 are optional: a rejected one is skipped. | Models without a second battery, meter 2, MPPT details or other parts. | [registers.py](../../../src/openampere/drivers/foxess/registers.py) |
 | PV inputs: the MPPT trackers (up to 3) are preferred because they correspond to module arrays; otherwise PV1–PV4. PV total from 39118, otherwise the sum of the inputs. | MPPTs match the owner's arrays. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
-| While 38901 = 1, meter 2 (negative as 0) is the second PV inverter (`pv_external_power`), handled like Meter B of a SAJ ([h2-family.md](../saj/h2-family.md#decisions-in-openampere)): counted as solar power only when the owner switches it on in "Meine Anlage", its energy integrated by OpenAmpere; not counted, it is taken out of the house again. | 39118 and the PV counters leave it out, the house at 39225 contains it. No energy counter for meter 2 is known. | [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
+| While 38901 = 1, meter 2 (negative as 0) is the second PV inverter (`pv_external_power`), handled like Meter B of a SAJ ([h2-family.md](../saj/h2-family.md#decisions-in-openampere)): counted as solar power only when the owner switches it on in "Meine Anlage", its energy integrated by OpenAmpere. The house stays 39225 either way. | 39118 and the PV counters leave it out; 39225 is measured and already contains it, so taking it out (as the SAJ balance does) would show too little house power while it is not counted. No energy counter for meter 2 is known. | [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
 | SoC and battery temperatures are dropped when 37002 is 0; BMS2 temperatures are dropped when all are 0. | No battery or no second module connected. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
 | Grid power is negated to + = import. | OpenAmpere's common sign convention. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
 | If 46616 is rejected, the export limit is reported as not supported. | Not every device has the register. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |

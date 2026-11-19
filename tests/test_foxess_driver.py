@@ -198,9 +198,9 @@ async def test_meter2_is_read_as_the_extra_pv_inverter():
         finally:
             await driver.close()
     own_pv = snap.pv_power
-    assert snap.pv_external_power == pytest.approx(1200) and snap.house_with_external
+    assert snap.pv_external_power == pytest.approx(1200) and not snap.house_with_external
     assert night.pv_external_power == 0
-    assert none.pv_external_power is None and not none.house_with_external
+    assert none.pv_external_power is None
     assert snap.count_external_pv(True).pv_power == pytest.approx(own_pv + 1200)
 
 
@@ -212,8 +212,8 @@ def test_meter2_balance_seen_on_a_device():
     counted = to_snapshot(H3_NEW, raw, 0).sanitize().count_external_pv(True)
     assert counted.pv_power == pytest.approx(2320) and counted.house_power == 890
     assert counted.pv_power + counted.grid_power + counted.battery_power == pytest.approx(counted.house_power, abs=200)
-    # not counted: solar power and house leave meter 2 out, as for Meter B of a SAJ (#419)
+    # not counted: the solar power leaves meter 2 out, the measured house stays (unlike the SAJ balance, #576)
     plain = to_snapshot(H3_NEW, raw, 0).sanitize().count_external_pv(False)
-    assert plain.pv_power == 1130 and plain.pv_external_power is None and plain.house_power == 0
+    assert plain.pv_power == 1130 and plain.pv_external_power is None and plain.house_power == 890
     assert to_snapshot(H3_NEW, {**raw, "meter2_active": 0}, 0).pv_external_power is None
     assert to_snapshot(H3_LEGACY, raw, 0).pv_external_power is None
