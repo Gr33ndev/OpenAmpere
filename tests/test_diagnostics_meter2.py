@@ -20,9 +20,16 @@ def test_meter2_not_set_up():
 
 def test_meter2_active_shows_rounded_power():
     c = meter2_check(words(1, 12_345))  # 1234.5 W
-    assert c.summary == "aktiv, etwa 1230 W"
-    assert c.details == {"active": 1, "power_w": 1230}
-    assert "zweiter Zähler" in c.hint
+    assert c.summary == "aktiv, etwa 1230 W, nicht mitgezählt" and c.status == "warn"
+    assert c.details == {"active": 1, "power_w": 1230, "counted": False}
+    assert "zweiter Zähler" in c.hint and "Modulfelder benennen" in c.hint
+
+
+def test_meter2_counted_or_idle():
+    c = meter2_check(words(1, 12_345), counted=True)
+    assert c.summary == "aktiv, etwa 1230 W, mitgezählt" and c.status == "info" and not c.hint
+    idle = meter2_check(words(1, 0))  # at night: a hint, no warning
+    assert idle.status == "info" and idle.hint
 
 
 def test_meter2_negative_power_and_unknown_flag():

@@ -69,10 +69,10 @@ def export_limit_check(words: list[int], rated: int | None) -> Check:
 METER2 = "Zähler 2 / externe PV (38901)"
 
 
-def meter2_check(words: list[int] | None, error: str = "") -> Check:
+def meter2_check(words: list[int] | None, error: str = "", counted: bool = False) -> Check:
     """Meter 2 of a FoxESS H3 (#635): a second meter on the inverter that measures an AC-coupled PV inverter. 38901 = 1
-    while it is active, 38914–38915 its power (I32, 0.1 W, sign not known yet). Not read by the driver; the report
-    shows whether such a meter exists before OpenAmpere counts it."""
+    while it is active, 38914–38915 its power (I32, 0.1 W, + = generation). The driver reads it as the extra PV
+    inverter, counted only with the setting like Meter B of a SAJ (#419)."""
     if words is None or len(words) < 15:
         return Check("meter2", METER2, "info", f"nicht lesbar ({error})" if error else "nicht lesbar")
     raw = (words[13] << 16) | words[14]
@@ -80,11 +80,15 @@ def meter2_check(words: list[int] | None, error: str = "") -> Check:
         raw -= 1 << 32
     # rounded: the report should not carry exact energy figures of an installation
     power = round(raw / 10, -1)
-    details = {"active": words[0], "power_w": power}
+    details = {"active": words[0], "power_w": power, "counted": counted}
     if words[0] == 1:
-        return Check("meter2", METER2, "info", f"aktiv, etwa {power:.0f} W", details,
+        summary = f"aktiv, etwa {power:.0f} W, " + ("mitgezählt" if counted else "nicht mitgezählt")
+        if counted:
+            return Check("meter2", METER2, "info", summary, details)
+        return Check("meter2", METER2, "warn" if power > 50 else "info", summary, details,
                      "Am Wechselrichter ist ein zweiter Zähler eingerichtet, meist für einen weiteren "
-                     "Solar-Wechselrichter. OpenAmpere zählt ihn noch nicht mit. Teile bitte den Bericht.")
+                     "Solar-Wechselrichter. OpenAmpere zählt ihn erst mit, wenn du ihn unter Mehr → Meine Anlage → "
+                     "Modulfelder benennen einschaltest. Sonst fehlt seine Leistung bei Erzeugung und Verbrauch.")
     if words[0] == 0 and raw == 0:
         return Check("meter2", METER2, "info", "nicht eingerichtet", details)
     return Check("meter2", METER2, "info", f"unklar: Kennung {words[0]}, etwa {power:.0f} W", details,
@@ -394,9 +398,10 @@ class Diagnostics:
                            else "liefert Werte" if r["ok"] else f"{r['error']} – wird übersprungen")
                 checks.append(Check(f"optional_{start}", label, status, summary, {"words": r.get("words")}))
 
-            # meter 2 for an AC-coupled PV inverter (#635), read only here, not by the driver
+            # meter 2 for an AC-coupled PV inverter (#635), counted like Meter B of a SAJ only with the setting
             r = await self._try(38901, 15, fc)
-            checks.append(meter2_check(r["words"] if r["ok"] else None, r.get("error", "")))
+            checks.append(meter2_check(r["words"] if r["ok"] else None, r.get("error", ""),
+                                       self.runtime.config.pv.external))
 
             # 3. block read 37609-37632 compared with single reads
             block = await self._try(37609, 24, fc)

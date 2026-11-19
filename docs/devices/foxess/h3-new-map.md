@@ -49,8 +49,8 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
 | 38316 | BMS2 lowest cell temperature | I16, ×0.1 °C | R FC04 (optional block) | derived | nathanmarlor/foxess_modbus |
 | 38814–38815 | Grid power, total | I32, ×0.1 W, + = export (OpenAmpere negates it: + = import) | R FC04 | derived | nathanmarlor/foxess_modbus |
 | 38816–38821 | Grid power L1, L2, L3 | I32 each, ×0.1 W | read in the block, not used | derived | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md) |
-| 38901 | Meter 2 (external PV) active, = 1 | flag | diagnostics report only (block 38901+15, [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | derived, confirmed (active on one EKD system with a second PV inverter) | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md); owner's diagnostics report in [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
-| 38914–38915 | Meter 2 (external PV) power; sign not known | I32, ×0.1 W | diagnostics report only, rounded to 10 W ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | derived | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md) |
+| 38901 | Meter 2 (external PV) active, = 1 | flag | R FC04 (optional block 38901+15) | derived, confirmed (active on one EKD system with a second PV inverter) | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md); owner's diagnostics report in [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
+| 38914–38915 | Meter 2 (external PV) power, + = generation | I32, ×0.1 W | R FC04, as the second PV inverter while 38901 = 1 | derived, sign confirmed on one device by the energy balance ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)) | nathanmarlor/foxess_modbus; [docs/registers.md](../../registers.md); [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
 | 39063 | Inverter state (status code) | U16 | R FC04 (optional block) | derived | nathanmarlor/foxess_modbus |
 | 39065–39066 | Flags; bit 0 = off-grid (grid disconnected, backup operation) | U32 | R FC04 | derived; bit seen set on a real device, once spuriously ([#48](https://github.com/Gr33ndev/OpenAmpere/issues/48), [#50](https://github.com/Gr33ndev/OpenAmpere/issues/50), [#89](https://github.com/Gr33ndev/OpenAmpere/issues/89)) | nathanmarlor/foxess_modbus; [#89](https://github.com/Gr33ndev/OpenAmpere/issues/89), [#90](https://github.com/Gr33ndev/OpenAmpere/issues/90) |
 | 39067 / 39068 / 39069 | Alarm words 1, 2, 3 | U16 each | R FC04 | derived | nathanmarlor/foxess_modbus |
@@ -102,14 +102,16 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
 | One device read about 60000 W in 46616, far above its rated power. Probably the value for "no limit set"; not confirmed against the manufacturer's app. | open | diagnostics report, [#413](https://github.com/Gr33ndev/OpenAmpere/issues/413) |
 | On one owner's H3, 46001 stayed 1 with 46002 = 180 and 0 W long after the watchdog time; see [h3.md](h3.md#remote-control-grid-charging). | confirmed | [#141](https://github.com/Gr33ndev/OpenAmpere/issues/141), [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142) |
 | Reading 46001 right after writing 0 may show a delayed value; the delay is not quantified on a device (OpenAmpere polls for a few seconds). Under remote control a new backup reserve is taken over a few seconds late ([#322](https://github.com/Gr33ndev/OpenAmpere/issues/322)). | open | [#142](https://github.com/Gr33ndev/OpenAmpere/issues/142), [#322](https://github.com/Gr33ndev/OpenAmpere/issues/322) |
+| On an EKD system with a second PV inverter, meter 2 read about as much as the H3's own PV while the battery charged at midday. The balance (PV + meter 2 + grid − battery charge) matched the house at 39225 only with meter 2 counted as positive generation: 39225 already contains the second inverter, 39118 does not. | confirmed (one device) | [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
 | Energy counters count in 0.01 kWh (10 Wh) units. Suspected: some newer firmware steps only by 0.1 kWh. | open | [#194](https://github.com/Gr33ndev/OpenAmpere/issues/194), [#195](https://github.com/Gr33ndev/OpenAmpere/issues/195) |
 
 ## Decisions in OpenAmpere
 
 | Decision | Why | Issue/PR |
 |---|---|---|
-| Blocks 37002, 38309, 39063, 39118, 39141, 39279 and 39327 are optional: a rejected one is skipped. | Models without a second battery, MPPT details or other parts. | [registers.py](../../../src/openampere/drivers/foxess/registers.py) |
+| Blocks 37002, 38309, 38901, 39063, 39118, 39141, 39279 and 39327 are optional: a rejected one is skipped. | Models without a second battery, meter 2, MPPT details or other parts. | [registers.py](../../../src/openampere/drivers/foxess/registers.py) |
 | PV inputs: the MPPT trackers (up to 3) are preferred because they correspond to module arrays; otherwise PV1–PV4. PV total from 39118, otherwise the sum of the inputs. | MPPTs match the owner's arrays. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
+| While 38901 = 1, meter 2 (negative as 0) is the second PV inverter (`pv_external_power`), handled like Meter B of a SAJ ([h2-family.md](../saj/h2-family.md#decisions-in-openampere)): counted as solar power only when the owner switches it on in "Meine Anlage", its energy integrated by OpenAmpere; not counted, it is taken out of the house again. | 39118 and the PV counters leave it out, the house at 39225 contains it. No energy counter for meter 2 is known. | [#635](https://github.com/Gr33ndev/OpenAmpere/issues/635) |
 | SoC and battery temperatures are dropped when 37002 is 0; BMS2 temperatures are dropped when all are 0. | No battery or no second module connected. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
 | Grid power is negated to + = import. | OpenAmpere's common sign convention. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
 | If 46616 is rejected, the export limit is reported as not supported. | Not every device has the register. | [driver.py](../../../src/openampere/drivers/foxess/driver.py) |
@@ -130,9 +132,7 @@ Read in blocks (start + count): 37002+1, 37609+24, 38309+8, 38814+8, 39063+15, 3
   names only the H3 Smart).
 - Meaning of 20162, which the previous smartbox was reported to write.
 - Unit of the remaining capacity at 37632.
-- Whether every EKD system with a second, AC-coupled PV inverter measures it through Meter 2 (38901, 38914; one does,
-  about 120 W in its report), which sign its power has, and whether the house consumption at 39225 already contains it
-  ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)).
+- Whether every EKD system with a second, AC-coupled PV inverter measures it through meter 2 (38901, 38914), and whether the H3 has an energy counter for it ([#635](https://github.com/Gr33ndev/OpenAmpere/issues/635)).
 - Whether some firmware counts in 0.1 kWh steps ([#194](https://github.com/Gr33ndev/OpenAmpere/issues/194)).
 
 ## Sources

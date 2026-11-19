@@ -945,7 +945,7 @@
   },
   "externalPv": {
     "count": "Zweiten Wechselrichter mitzählen",
-    "intro": "Hängt an deiner Anlage ein zweiter PV-Wechselrichter ohne eigene Verbindung, dessen Leistung ein Zähler am Speicher misst (bei SAJ „Meter B“)? Dann zählt OpenAmpere ihn zur Solarleistung dazu und zeigt ihn im Energiefluss und in der Auswertung getrennt an. Ohne diesen Zähler bleibt der Schalter aus.",
+    "intro": "Hängt an deiner Anlage ein zweiter PV-Wechselrichter ohne eigene Verbindung, dessen Leistung ein Zähler am Speicher misst (oft „Meter B“ oder „Zähler 2“ genannt)? Dann zählt OpenAmpere ihn zur Solarleistung dazu und zeigt ihn im Energiefluss und in der Auswertung getrennt an. Ohne diesen Zähler bleibt der Schalter aus.",
     "meterNow": "Der Zähler misst gerade {power}.",
     "name": "Name",
     "nameHint": "Zum Beispiel „Garage“. Leer lassen: „Zweiter Wechselrichter“.",
