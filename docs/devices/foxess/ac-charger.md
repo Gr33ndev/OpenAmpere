@@ -10,7 +10,8 @@
 (live view and check) and the work mode on request ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464));
 control of charging as a test once the owner switches it on per wallbox ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465),
 offered as such in the setup since [#503](https://github.com/Gr33ndev/OpenAmpere/issues/503)) · **Confirmed on a real device:** partly (connection and the read registers on one
-three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431))
+three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431); OpenAmpere's write of the work mode
+"controlled" and the fallback when the controller stops on a second one, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621))
 
 ## Summary
 
@@ -30,7 +31,7 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
   On one system pulling the cable later made the charger unreachable altogether; there, changing the box's Modbus target
   port for the charger to 503 freed it while the box stayed connected ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)).
 - In Modbus TCP mode the charger's watchdog fails in the unsafe direction: it keeps charging when the controller stops
-  writing.
+  writing (seen on one charger: on at a lower power, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
 - The register addresses come from FoxESS's protocol document V1.6, which FoxESS support gives to owners and an owner
   posted in a public evcc discussion; it is marked "all rights reserved", so they are used as facts only. The
   write registers (work mode, current and power setpoints, start/stop) are documented there, not yet tested by
@@ -111,9 +112,12 @@ Values while charging and single-phase models are not confirmed yet.
 | Current and power setpoints are held in RAM and lost on a power cut; configuration values are probably stored. Automatic 1/3-phase switching follows the power setpoint. | derived | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | The previous smartbox of EKD (Ampere.IQ) systems is a Modbus TCP client of the charger: its settings page lists the charger as "Ampere.ChargePro Bridge", Modbus TCP, host `EVC-<serial>.local`, unit id 1, port 502, marked as not configurable. So the box competes with OpenAmpere and evcc for the charger's connection(s). | derived | an owner's screenshot of the box's settings page, [#427](https://github.com/Gr33ndev/OpenAmpere/issues/427); [#412](https://github.com/Gr33ndev/OpenAmpere/issues/412) |
 | While the previous smartbox is powered, OpenAmpere cannot read the charger: the connection on port 502 is refused, or it is accepted but the answers carry foreign transaction ids and then time out. With the box cut from power the check reads all blocks at once on port 502, unit id 1, FC03; port 1502 refused. Whether the charger allows only one client or mishandles concurrent clients is open. | confirmed (one device) | owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
-| On a second EKD system every TCP connection to port 502 timed out (evcc's `foxess-evc` template) while the box was connected, although the charger answered ping. With only the box's LAN cable pulled (the box stayed powered) evcc connected and showed a running charge. So it is the box's network connection that blocks the charger; pulling its LAN cable is enough. | confirmed (second device) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#622](https://github.com/Gr33ndev/OpenAmpere/issues/622) |
+| On a second EKD system every TCP connection to port 502 timed out (evcc's `foxess-evc` template) while the box was connected, although the charger answered ping. With only the box's LAN cable pulled (the box stayed powered) evcc connected, and evcc and OpenAmpere showed a running charge of about 4.8 kW. So it is the box's network connection that blocks the charger; pulling its LAN cable is enough. | confirmed (second device) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#622](https://github.com/Gr33ndev/OpenAmpere/issues/622) |
 | On that charger, starting and stopping a charge from evcc had no effect while the charger was read. Likely causes: work mode not "controlled" (0x3000; see the register table and the row on the work mode "controlled" above) or the charger not in the Modbus TCP communication mode; not known yet. | open | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
 | On the same system the charger later was not reachable at all (no ping, no answer on port 502) while the box's LAN cable was pulled, although a few days earlier pulling it had freed the charger; why is open (the charger may get its network through the box). Changing the box's Modbus target port for the charger from 502 to 503 in the box's web interface freed port 502 for OpenAmpere and evcc while the box stayed connected; the box then reports errors for the charger. With that, evcc started and stopped charging (seen in the car's app), while OpenAmpere's write of work mode "controlled" (0x3000) was refused. The Fox Switch app refused to add the charger ("SN unterstützt keine Bindung"). Which work mode and communication mode the charger is in is not recorded. | derived (one system) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647) |
+| On that system the charger and the box are both connected to the same switch, and neither has a second LAN port. Still, with the box's LAN cable pulled the router showed the charger as offline and it answered neither ping nor Modbus; with the cable back it answered ping again. Why the charger's network depends on the box is open. | derived (one system) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
+| On that system OpenAmpere's write of the work mode "controlled" (0x3000) was later kept, after the box's port had been moved to 503 (and OpenAmpere moved to a faster computer); which of the two made the difference is not known. With "controlled", evcc started, stopped and limited charging. Starting and stopping from evcc had also worked while OpenAmpere showed "plug and charge". | confirmed (one device) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
+| With evcc stopped during a charge at about 4.6 kW, the charger went on charging at about 1.9 kW (seen in the car's app), so it fell back to a lower current instead of stopping. After evcc was started again it set the current again within 1–2 minutes and could stop the charge. The fallback current (0x3006) and the validity (0x3005) evcc had set were not recorded. | confirmed (one device) | owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
 | Some chargers accept a single Modbus client only: a charger read by evcc may refuse a second connection or drop evcc's for a moment. The real number of connections is unknown. | open | [probe.py](../../../src/openampere/probe.py), [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | The installer's binding of the charger in the FoxESS app expires after 6 hours; owners can bind it to their own FoxESS cloud account. | derived | desk research in [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
 | OCPP: 1.6J works; 2.0.1 rejects charging profiles (FoxESS support recommends 1.6J). No phase switching over OCPP. After a server restart the charger can take many minutes to reconnect. In OCPP mode the FoxESS app/cloud and evcc lose control; the charge point id is the serial number. See [wallboxes](../topics/wallboxes.md). | derived | [#318](https://github.com/Gr33ndev/OpenAmpere/issues/318) |
@@ -147,9 +151,9 @@ Values while charging and single-phase models are not confirmed yet.
 
 ## Open questions
 
-- A write by OpenAmpere (work mode 0x3000, [#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)) is not yet
-  confirmed on a real device: the first one seen, "controlled" on the system of [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621), was refused, and which
-  exception code the charger sent is not recorded ([#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)). Open with it: whether the status leaves 8 ("locked") as soon as the work mode is no
+- OpenAmpere's write of the work mode 0x3000 ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)) was first
+  refused on the system of [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) (which exception code the charger sent is not recorded,
+  [#647](https://github.com/Gr33ndev/OpenAmpere/issues/647)) and later kept; why it was refused is open. Open with it: whether the status leaves 8 ("locked") as soon as the work mode is no
   longer 2 (the simulator assumes so), and which exception a charger outside the "Modbus TCP" mode sends for a write
   (the app's text assumes 1, 2, 3 or 6).
 
@@ -168,8 +172,8 @@ Values while charging and single-phase models are not confirmed yet.
 - Meaning of 0x1005, which read 1 while idle with no car plugged in; needs a reading with a car plugged in
   ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 - Meaning of alarm bit 1 in 0x1015, set on one device while idle ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
-- Real watchdog time and fallback (default current or full power); whether a stop holds after the link is lost;
-  which configuration values are stored.
+- Real watchdog time and which current the fallback uses (on one charger it charged on at a lower power, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621));
+  whether a stop holds after the link is lost; which configuration values are stored.
 - Whether PV linkage still runs in Modbus TCP mode.
 - Possible conflicts with OpenAmpere (no owner reports yet): OpenAmpere's export limit contradicts FoxESS's
   precondition for PV linkage, and the charger might see OpenAmpere's grid charging of the battery as surplus
@@ -179,7 +183,7 @@ Values while charging and single-phase models are not confirmed yet.
   stored profiles may wear the charger's flash, a 0 A base profile blocks charging while OpenAmpere is down, and OCPP
   1.6 leaves expiry and reboot behaviour open.
 - Meaning of the read but uninterpreted words (0x1000, 0x1002, 0x1004, 0x1006–0x1007, 0x100F–0x1010, 0x3007–0x3009).
-- No write by OpenAmpere tested on a real device yet: work mode, setpoints, start and stop
+- No write by OpenAmpere other than the work mode tested on a real device yet: setpoints, start and stop
   ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464), [#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)).
 - How the charger reacts to a start or a setpoint while it switches phases (status 9), and how long a switch takes.
   OpenAmpere counts status 9 as a running charge: no start is sent, the heartbeat goes on
@@ -194,7 +198,8 @@ Values while charging and single-phase models are not confirmed yet.
 - Whether the charger keeps the power setpoint 0x3002 after a stop or when the car is unplugged. OpenAmpere writes its
   owner's power setpoint back with every stop of a charge it capped at one phase and when it lets go
   ([#478](https://github.com/Gr33ndev/OpenAmpere/issues/478)).
-- Whether a stop (0x4001 = 2) has any effect once the work mode is no longer "controlled", and whether the watchdog
+- Whether a stop (0x4001 = 2) has any effect once the work mode is no longer "controlled" (evcc's start and stop worked
+  on one charger while OpenAmpere showed "plug and charge", [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)), and whether the watchdog
   (0x3005) still applies in plug and charge ([#465](https://github.com/Gr33ndev/OpenAmpere/issues/465)).
 - Why a charger switches to "locked" by itself ([#464](https://github.com/Gr33ndev/OpenAmpere/issues/464)).
 
@@ -214,6 +219,8 @@ Values while charging and single-phase models are not confirmed yet.
 - An owner's diagnostics report from the wallbox check ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)); not linked; only facts are used, nothing that
   identifies the device.
 - An owner's report in [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) (box off the network,
-  evcc reads the charger; start and stop without effect); facts only, nothing that identifies the device.
+  evcc reads the charger; start and stop without effect; later the box's port moved to 503, the work mode "controlled"
+  kept, the fallback when evcc stops, the charger's network depending on the box); facts only, nothing that identifies
+  the device.
 - OpenAmpere issues and pull requests linked above; code: [wallbox/foxess.py](../../../src/openampere/wallbox/foxess.py),
   [probe.py](../../../src/openampere/probe.py).
