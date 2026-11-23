@@ -810,11 +810,11 @@
       "names": {
         "period": "–",
         "sold": "heating rod",
-        "model": "my-PV, model not stated",
+        "model": "my-PV; an AC ELWA 2 on one system",
         "interface": "Modbus TCP",
         "openampere": "driver `mypv` ([mypv/elwa.md](../mypv/elwa.md))",
-        "status": "derived",
-        "source": "Photovoltaikforum on the Ampere Storage Pro (as above)"
+        "status": "derived; confirmed on one system (an AC ELWA 2 controlled by the previous smartbox)",
+        "source": "Photovoltaikforum on the Ampere Storage Pro (as above); owner report in [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660)"
       }
     }
   ],
