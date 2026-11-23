@@ -330,6 +330,38 @@ async def test_the_inverters_charge_limit_pauses_grid_charging_without_switching
             await runtime.collector.stop()
 
 
+async def test_a_battery_at_its_reserve_gets_longer_to_wake_up(tmp_path):
+    """Some batteries switch themselves off at the reserve and need a few minutes to take a charge again (#666)."""
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 12, 0)  # the simulator's reserve is 10 %
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)
+            await charging.tick(now=10_300)
+            assert charging.active and charging.last_error is None and charging.settings.enabled
+            await battery(runtime, sim, 13, -3000)  # awake: charges
+            await charging.tick(now=10_400)
+            assert charging.active and charging.verified
+        finally:
+            await runtime.collector.stop()
+
+
+async def test_a_battery_at_its_reserve_that_never_charges_still_stops_grid_charging(tmp_path):
+    sim, server, runtime, charging = await charging_session(tmp_path)
+    async with server:
+        try:
+            await battery(runtime, sim, 12, 0)
+            await charging.tick(now=10_000)
+            await charging.tick(now=10_100)
+            assert charging.active
+            await charging.tick(now=10_700)
+            assert not charging.active and "lädt trotz Befehl nicht" in (charging.last_error or "")
+            assert not charging.settings.enabled
+        finally:
+            await runtime.collector.stop()
+
+
 async def test_a_battery_that_does_not_charge_at_all_still_stops_grid_charging(tmp_path):
     sim, server, runtime, charging = await charging_session(tmp_path)
     async with server:

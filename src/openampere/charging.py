@@ -44,6 +44,9 @@ REMOTE_TIMEOUT_S = 180  # the inverter's watchdog: without a new command it ends
 CHARGE_SIGN = -1  # remote power: negative = battery charges (verify on site, see diagnostics)
 EFFICIENCY = 0.92
 VERIFY_AFTER_S = 90  # the battery must be charging this long after the first command (checked once per session)
+# a battery that starts at its reserve may have switched itself off there and need longer to wake up (SAJ, #666)
+VERIFY_AT_RESERVE_S = 600
+AT_RESERVE = 5  # % above the reserve that still counts as "at the reserve" for the longer wait
 NEAR_LIMIT = 5  # % below the inverter's own charge limit: no charging there is not an error (full, tapering, #218)
 RESTART_BELOW = 5  # % below the level where the battery took no more: grid charging tries again
 LIMIT_READ_S = 600  # the inverter's charge limit is read at most this often (#242)
@@ -165,6 +168,7 @@ class GridCharging:
         self.start_soc: float | None = None
         self.last_error: str | None = None
         self.verified = False  # the battery charged after the start of this session
+        self._at_reserve: bool | None = None  # at the reserve at the first check: waits longer (#666)
         self.full_at_soc: float | None = None  # state of charge at which the battery took no more
         self._limit: tuple[float, float] | None = None  # (read at, the inverter's charge limit in %)
         self._dry_logged_quarter: int | None = None
@@ -192,7 +196,7 @@ class GridCharging:
     def take_over(self, old: GridCharging) -> None:
         """Goes on with the charge of the same battery whose collector was made again: not stopped and started."""
         for name in ("active", "started_at", "start_soc", "last_error", "verified", "full_at_soc", "_limit",
-                     "_refused_quarter", "_target_logged"):
+                     "_refused_quarter", "_target_logged", "_at_reserve"):
             setattr(self, name, getattr(old, name))
 
     def pending(self) -> bool:
@@ -393,6 +397,8 @@ class GridCharging:
                 self.full_at_soc = soc
                 await self.stop(self._full_reason())
                 return
+            elif now - self.started_at <= VERIFY_AT_RESERVE_S and await self._waits_at_reserve(soc):
+                pass  # may still be waking up at its reserve: checked again with the next tick
             else:
                 await self.stop("Der Speicher lädt trotz Befehl nicht – Laden abgebrochen. Bitte in der Diagnose "
                                  "prüfen (Fernsteuerung).", error=True)
@@ -436,7 +442,7 @@ class GridCharging:
             return
         if not self.active:
             self.active, self.started_at, self.start_soc, self.last_error = True, now, snap.battery_soc if snap else None, None
-            self.verified, self._target_logged = False, None
+            self.verified, self._target_logged, self._at_reserve = False, None, None
             runtime.storage.log_control("grid_charging", {"from": {}, "to": {"power_w": power_w,
                                                                               "target_soc": s.target_soc},
                                                           **self._soc_now(), **self._who()},
@@ -565,6 +571,21 @@ class GridCharging:
         if self._limit is None or now - self._limit[0] > LIMIT_READ_S:
             self._limit = (now, await self._upper_limit())
         return self._limit[1]
+
+    async def _waits_at_reserve(self, soc: float | None) -> bool:
+        """The battery is at (or just above) its reserve, where some switch themselves off and take a while to accept
+        a charge again (SAJ: event "battery circuit break" at the reserve, #666). Decided once per session, so the
+        settings are not read with every tick; False if they cannot be read."""
+        if self._at_reserve is None:
+            self._at_reserve = False
+            if soc is not None:
+                try:
+                    settings = await self.collector.driver.read_settings()
+                except Exception:  # noqa: BLE001 - only decides how long to wait before "not charging" is a fault
+                    settings = None
+                reserves = [v for v in (settings.min_soc, settings.min_soc_on_grid) if v is not None] if settings else []
+                self._at_reserve = bool(reserves) and soc <= max(reserves) + AT_RESERVE
+        return self._at_reserve
 
     async def _upper_limit(self) -> float:
         """The inverter's own charge limit (max_soc), 100 if it cannot be read."""
