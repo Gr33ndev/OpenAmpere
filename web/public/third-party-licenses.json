@@ -73,7 +73,7 @@
    "packages": [
     {
      "name": "annotated-doc",
-     "version": "0.0.6",
+     "version": "0.0.7",
      "license": "MIT",
      "url": "https://github.com/fastapi/annotated-doc",
      "texts": [
@@ -129,7 +129,7 @@
     },
     {
      "name": "fastapi",
-     "version": "0.163.1",
+     "version": "0.165.0",
      "license": "MIT",
      "url": "https://github.com/fastapi/fastapi",
      "texts": [
@@ -174,7 +174,7 @@
     },
     {
      "name": "pydantic",
-     "version": "2.14.3",
+     "version": "2.14.4",
      "license": "MIT",
      "url": "https://github.com/pydantic/pydantic",
      "texts": [
@@ -183,7 +183,7 @@
     },
     {
      "name": "pydantic_core",
-     "version": "2.50.4",
+     "version": "2.50.5",
      "license": "MIT",
      "url": "https://github.com/pydantic/pydantic",
      "texts": [
@@ -202,7 +202,7 @@
     },
     {
      "name": "PyYAML",
-     "version": "6.0.3",
+     "version": "6.0.4",
      "license": "MIT License",
      "url": "https://pyyaml.org/",
      "texts": [
