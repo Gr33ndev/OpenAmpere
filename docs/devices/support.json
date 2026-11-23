@@ -66,8 +66,8 @@
         "en": "monitoring and control"
       },
       "confirmed": {
-        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher nur die Notstrom-Reserve bestätigt (wird übernommen und eingehalten); H2, HS2 und AS2 noch nicht bestätigt",
-        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); of the control only the backup reserve confirmed so far (taken over and kept); H2, HS2 and AS2 not yet confirmed"
+        "de": "Anzeige bestätigt und im Alltag im Einsatz an einem „3P-X E2“ (ältere „Ampere.StoragePro“); von der Steuerung bisher die Notstrom-Reserve (wird übernommen und eingehalten) und das Laden aus dem Netz bestätigt; H2, HS2 und AS2 noch nicht bestätigt",
+        "en": "Monitoring confirmed and in daily use on a \"3P-X E2\" (older \"Ampere.StoragePro\"); of the control the backup reserve (taken over and kept) and grid charging confirmed so far; H2, HS2 and AS2 not yet confirmed"
       },
       "check": true,
       "state": "both",
