@@ -39,12 +39,16 @@ async def start_sim():
     return sim, server, server.sockets[0].getsockname()[1]
 
 
-async def wait_connected(runtime, seconds=TIMEOUT_S):
+async def wait_connected(runtime, seconds=TIMEOUT_S, cleanup=None):
+    """cleanup: for a caller outside its try/finally, so a timeout never leaves the collector running (#668)."""
     for _ in range(int(seconds * 10)):
         if runtime.collector.connected and runtime.collector.latest:
             return
         await asyncio.sleep(0.1)
-    raise AssertionError(f"not connected: {runtime.collector.last_error}")
+    error = runtime.collector.last_error
+    if cleanup is not None:
+        await cleanup()
+    raise AssertionError(f"not connected: {error}")
 
 
 async def test_settings_reconnect_and_battery_control(tmp_path):

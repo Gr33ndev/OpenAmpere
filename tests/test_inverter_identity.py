@@ -474,7 +474,7 @@ async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path, m
         await wait_for(lambda: collector.wrong_device is not None)
         server.close()
         await server.wait_closed()
-        await wait_for(lambda: collector.wrong_device is None, seconds=20)
+        await wait_for(lambda: collector.wrong_device is None)
         assert not await collector.accept_device("127.0.0.1")
         assert storage.get_meta("known_device")["serial"] == OWN
     finally:

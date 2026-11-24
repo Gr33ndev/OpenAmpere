@@ -18,7 +18,10 @@ async def connected(tmp_path):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2,
                                    "control.enabled": True})
-    await wait_connected(runtime)
+    async def cleanup():
+        await runtime.collector.stop()
+        server.close()
+    await wait_connected(runtime, cleanup=cleanup)
     return sim, server, runtime
 
 
