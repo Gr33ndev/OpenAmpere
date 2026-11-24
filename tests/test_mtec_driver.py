@@ -16,6 +16,7 @@ from openampere.drivers.mtec.driver import to_snapshot
 from openampere.runtime import Runtime
 from openampere.simulator import MtecSimulatedInverter, SajSimulatedInverter, crc16
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def serve(sim):
@@ -114,10 +115,7 @@ async def test_the_report_shows_the_raw_signs_and_the_backup_output(tmp_path):
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "mtec", "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             report = await Diagnostics(runtime).run(connection_test=True)
             connected = runtime.collector.connected
         finally:

@@ -17,6 +17,7 @@ from openampere.drivers.solarmax.driver import to_snapshot
 from openampere.runtime import Runtime
 from openampere.simulator import SajSimulatedInverter, SolarmaxSimulatedInverter
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def serve(sim):
@@ -115,10 +116,7 @@ async def test_a_counted_second_inverter_is_there_at_night_after_a_restart(tmp_p
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.driver": "solarmax",
                                            "inverter.poll_interval": 2, "pv.external": True})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.external_pv_w == 0.0
         finally:
             await runtime.collector.stop()
@@ -248,10 +246,7 @@ async def test_the_app_keeps_control_off_and_the_report_shows_the_raw_signs(tmp_
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.device.driver == "solarmax" and not runtime.collector.device.supports_control
             result = await discovery.test_connection(runtime, "127.0.0.1", port, 0)
             assert result["ok"] and result["device"]["driver"] == "solarmax"

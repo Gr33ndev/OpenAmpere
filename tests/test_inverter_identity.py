@@ -18,6 +18,8 @@ from openampere.drivers.registry import AutoDriver
 from openampere.drivers.saj.driver import SajDriver
 from openampere.simulator import SajSimulatedInverter, SimulatedInverter
 from openampere.storage import Storage
+import waiting
+from waiting import TIMEOUT_S
 
 OWN, OTHER = "60BH000000000001", "60BH000000000002"
 
@@ -109,12 +111,8 @@ async def test_a_device_without_serial_number_is_not_checked():
             await driver.close()
 
 
-async def wait_for(condition, seconds=10.0):
-    for _ in range(int(seconds / 0.05)):
-        if condition():
-            return
-        await asyncio.sleep(0.05)
-    raise AssertionError("timed out")
+async def wait_for(condition, seconds=TIMEOUT_S):
+    await waiting.wait_for(condition, "condition", timeout=seconds)
 
 
 async def test_collector_stores_nothing_from_another_device_until_the_owner_accepts_it(tmp_path):
@@ -476,7 +474,7 @@ async def test_the_notice_goes_when_the_other_device_is_gone_as_well(tmp_path, m
         await wait_for(lambda: collector.wrong_device is not None)
         server.close()
         await server.wait_closed()
-        await wait_for(lambda: collector.wrong_device is None, seconds=20)
+        await wait_for(lambda: collector.wrong_device is None)
         assert not await collector.accept_device("127.0.0.1")
         assert storage.get_meta("known_device")["serial"] == OWN
     finally:

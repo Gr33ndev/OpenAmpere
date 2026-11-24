@@ -27,6 +27,7 @@ from openampere.runtime import Runtime
 from openampere.simulator import SimulatedEnphase, self_signed_tls
 from openampere.storage import Storage
 from conftest import login
+from waiting import wait_for
 
 
 def jwt(exp: float) -> str:
@@ -168,10 +169,7 @@ async def test_a_new_token_is_tried_although_the_gateway_is_connected(tmp_path):
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "enphase", "inverter.token": "t1",
                                            "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.connected:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.connected, "connection")
             wrong = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="typo")
             right = await discovery.test_connection(runtime, "127.0.0.1", port, 0, "enphase", token="t1")
         finally:
@@ -264,10 +262,7 @@ async def test_the_token_is_stored_encrypted_bound_to_the_address_and_shown_by_i
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "enphase", "inverter.token": token,
                                            "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.device.driver == "enphase"
             assert runtime.collector.poll_interval() == 15.0
             # the setup test of the stored address uses the stored token

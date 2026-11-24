@@ -20,6 +20,7 @@ from openampere.drivers.rct.driver import LIVE, OBJECTS, RctDriver, to_snapshot
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedRct
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def serve(sim):
@@ -266,10 +267,7 @@ async def test_the_collector_reads_it(tmp_path):
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "rct", "inverter.poll_interval": 2})
-            for _ in range(100):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.latest is not None
             check = Diagnostics(runtime)._rct_values()
             assert check.status == "info" and check.details["missing"] == []
