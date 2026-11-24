@@ -15,6 +15,7 @@ from openampere.simulator import SajSimulatedInverter
 from openampere.storage import Storage
 
 from test_detection import serve
+from waiting import wait_for
 
 
 async def serve_recording(sim):
@@ -170,10 +171,7 @@ async def test_the_collector_closes_a_lost_connection_through_the_driver(tmp_pat
         collector = Collector(driver, Storage(tmp_path / f"{cls.__name__}.db"), 10, 30)
         collector.start()
         try:
-            for _ in range(50):
-                if driver.calls:
-                    break
-                await asyncio.sleep(0.01)
+            await wait_for(lambda: driver.calls, "the collector closes the lost connection")
             assert driver.calls[0] == expected
         finally:
             await collector.stop()
