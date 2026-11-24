@@ -31,8 +31,8 @@ The evidence is on each device page. What EKD sold the devices as: [sales names 
 | [Enphase IQ Gateway with IQ Battery](devices/enphase/iq-gateway.md) | Not yet confirmed |
 | [RCT Power Storage DC / AC, Power Inverter](devices/rct/power-storage.md) | Not yet confirmed |
 | [Immersion heater, heat pump (SG-Ready)](devices/topics/consumers.md) | Not yet confirmed |
-| [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | Not yet confirmed |
-| [FoxESS AC EV Charger ("Ampere.ChargePro")](devices/foxess/ac-charger.md) | ✅ Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed |
+| [Immersion heater my-PV AC ELWA-E, AC ELWA 2, AC THOR](devices/mypv/elwa.md) | ✅ Monitoring confirmed on one AC ELWA 2; control not yet confirmed |
+| [FoxESS AC EV Charger ("Ampere.ChargePro")](devices/foxess/ac-charger.md) | ✅ Monitoring confirmed on two chargers of EKD systems, on one also while charging; setting the work mode confirmed; control of charging not yet confirmed |
 | [Weidmüller AC SMART ("AMPERE.Charge")](devices/weidmueller/ac-smart.md) | Not yet confirmed |
 | [go-e Charger](devices/goe/charger.md) | Confirmed: found and shown while charging |
 | [Portable dé wallbox (Tuya Wi-Fi)](devices/tuya/de-portable.md) | ✅ Monitoring confirmed; control not yet confirmed |

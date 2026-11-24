@@ -90,7 +90,7 @@ Wallboxes:
 |---|---|---|---|---|---|---|
 | 2020–2022 | Senec wallbox | SENEC.Wallbox | not looked into | not supported | open: only a datasheet hosted by EKD; derived (period) | Senec datasheet "SENEC.Wallbox" on ekd-solar.de, 2020-03 (web archive) |
 | 2023–2024 | "AMPERE.Charge" | Weidmüller AC Smart Value, 11 kW | Modbus TCP 502, Modbus RTU, OCPP 1.6J | wallbox module `weidmueller_ac_smart`, display only ([weidmueller/ac-smart.md](../weidmueller/ac-smart.md)); control through evcc (needs an evcc sponsor token). Not yet confirmed | documented (product, interfaces, start), derived (evcc, sponsor token, end of the period) | see [Sales names](#sales-names); evcc-io/evcc template `templates/definition/charger/weidmüller.yaml` (requirement `sponsorship`) |
-| about 2024 – 2026 | "Ampere.ChargePro" | FoxESS AC EV Charger, 22 kW | Modbus TCP 502, OCPP 1.6 | wallbox module `foxess_ac`. Monitoring partly confirmed (idle, on one charger of an EKD system); control not yet confirmed | documented (sales name), confirmed (FoxESS charger with EKD systems), derived (period) | [foxess/ac-charger.md](../foxess/ac-charger.md) |
+| about 2024 – 2026 | "Ampere.ChargePro" | FoxESS AC EV Charger, 22 kW | Modbus TCP 502, OCPP 1.6 | wallbox module `foxess_ac`. Monitoring confirmed on two chargers of EKD systems, on one also while charging; setting the work mode confirmed; control of charging not yet confirmed | documented (sales name), confirmed (FoxESS charger with EKD systems), derived (period) | [foxess/ac-charger.md](../foxess/ac-charger.md) |
 
 Around the storage system:
 
@@ -102,7 +102,7 @@ Around the storage system:
 | from 2024-08 | "Ampere.Offgrid" | three-phase 63 A transfer switch for backup power; maker not stated | none | nothing to read | documented | EKD datasheet "Ampere.Offgrid", 2024-08 |
 | about 2022 – 2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented (maker), derived (period) | EKD datasheets "Ampere.SolarPro" |
 | from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)). Not yet confirmed | documented (partners), derived (period) | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
-| – | heating rod | my-PV, model not stated | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)). Not yet confirmed | derived | Photovoltaikforum on the Ampere Storage Pro (as above) |
+| – | heating rod | my-PV; an AC ELWA 2 on one system | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)). Monitoring confirmed on one AC ELWA 2; control not yet confirmed | derived; confirmed on one system (an AC ELWA 2 whose Modbus connection the previous smartbox held) | Photovoltaikforum on the Ampere Storage Pro (as above); owner report in [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
 
 <!-- /generated:ekd -->
 

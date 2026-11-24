@@ -4,9 +4,11 @@
 > affiliation with my-PV, not legal advice. See [Device knowledge](../README.md).
 
 **Applies to:** my-PV AC ELWA-E, AC ELWA 2, AC THOR · **Sold as:** – (owners report a my-PV heating rod in EKD systems, connected through the IQ box; derived,
-[Photovoltaikforum](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/)) · **OpenAmpere:** consumer type "my-PV heating
+[Photovoltaikforum](https://www.photovoltaikforum.com/thread/222147-ekd-speicher-ampere-storage-pro-ein-chinamodell-und-weitere-fragen-dazu/);
+an AC ELWA 2 connected to the box on one system (the box held its Modbus connection), confirmed, [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660)) · **OpenAmpere:** consumer type "my-PV heating
 rod", `src/openampere/drivers/mypv.py` (`MyPvHeatingRod`) · **Support:** display and control (power setpoint only) ·
-**Confirmed on a real device:** no (simulator only)
+**Confirmed on a real device:** display on one AC ELWA 2 ([#660](https://github.com/Gr33ndev/OpenAmpere/issues/660));
+control not yet
 
 ## Summary
 
@@ -24,7 +26,7 @@ rod", `src/openampere/drivers/mypv.py` (`MyPvHeatingRod`) · **Support:** displa
 | Register | Meaning | Type, scale, sign | R/W | Status | Source |
 |---|---|---|---|---|---|
 | 1000 | Power setpoint | U16, W | R/W (holding, FC03 read, FC06 write) | documented | my-PV Modbus TCP description; [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238), [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
-| 1001 | Water temperature | S16 (two's complement), 0.1 °C, e.g. 0xFFF6 = −1.0 °C | R | documented | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
+| 1001 | Water temperature | S16 (two's complement), 0.1 °C, e.g. 0xFFF6 = −1.0 °C | R | documented; read on one AC ELWA 2 (one of its two sensors, see Behaviour) | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241); [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
 | 1002 | Target temperature | S16 (two's complement), 0.1 °C | R | documented | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
 | 1003 | Status, see below | U16, code | R | documented | my-PV Modbus TCP description; [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238) |
 
@@ -52,6 +54,8 @@ Status codes of register 1003:
 | The rod has a control timeout set in its web interface: when no new setpoint arrives in time, it stops heating by itself. It has to be a little longer than OpenAmpere's interval. | documented | my-PV Modbus TCP description; [#243](https://github.com/Gr33ndev/OpenAmpere/issues/243) |
 | The manufacturer asks not to write any other register frequently, because they are kept in non-volatile memory. | documented | my-PV Modbus TCP description; [NOTICE](../../../NOTICE) |
 | The registers 1000–1003 do not contain the power the rod really takes; only the setpoint. | derived | [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238) |
+| On an EKD system (with an SAJ inverter) the previous smartbox (Kiwigrid) held the rod's Modbus connection: OpenAmpere could read the rod only after the box was taken off the network and the rod restarted. Since then the box no longer reaches the rod. The water temperature is then shown. | confirmed (one AC ELWA 2) | owner report, [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
+| The AC ELWA 2 can have a second temperature sensor, mounted higher in the tank and therefore warmer. OpenAmpere shows only one temperature (1001); in which register the second one is, is open. | confirmed (one AC ELWA 2; register open) | owner report, [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
 
 ## Decisions in OpenAmpere
 
@@ -69,10 +73,15 @@ Retries for an unreachable rod follow the rules for all consumers, see [consumer
 
 ## Open questions
 
-- No owner has run a my-PV rod with OpenAmpere yet; everything is tested against the simulator only. The website and
-  README had wrongly shown it as tested
+- Control is not confirmed on a real device: the first owner ([#660](https://github.com/Gr33ndev/OpenAmpere/issues/660))
+  has not tried it yet; the writes are tested against the simulator only. The website and README had wrongly shown the
+  rod as tested before any owner ran it
   ([#111](https://github.com/Gr33ndev/OpenAmpere/issues/111), [#173](https://github.com/Gr33ndev/OpenAmpere/issues/173),
   [#185](https://github.com/Gr33ndev/OpenAmpere/issues/185)).
+- The register of the AC ELWA 2's second temperature sensor; a read of the registers from 1000 on with the device
+  reader, compared with the rod's web interface, would show it ([#660](https://github.com/Gr33ndev/OpenAmpere/issues/660)).
+- Whether my-PV's HTTP interface (used by a Home Assistant integration) could replace Modbus where the previous
+  smartbox holds the connection ([#660](https://github.com/Gr33ndev/OpenAmpere/issues/660)).
 - The power estimate (heating in status 2 and 4, and in 3 only with a setpoint) is OpenAmpere's reading of the status
   list; a real device may take power in other states or less than the setpoint.
 - The title and date of the my-PV document behind the registers are not recorded in the repository; a later edit
@@ -88,5 +97,7 @@ Retries for an unreachable rod follow the rules for all consumers, see [consumer
   [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238), [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241),
   [#243](https://github.com/Gr33ndev/OpenAmpere/issues/243), [#247](https://github.com/Gr33ndev/OpenAmpere/issues/247),
   [#259](https://github.com/Gr33ndev/OpenAmpere/issues/259), [#262](https://github.com/Gr33ndev/OpenAmpere/issues/262),
-  [#351](https://github.com/Gr33ndev/OpenAmpere/issues/351), [#363](https://github.com/Gr33ndev/OpenAmpere/issues/363).
+  [#351](https://github.com/Gr33ndev/OpenAmpere/issues/351), [#363](https://github.com/Gr33ndev/OpenAmpere/issues/363),
+  [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) (owner report on an AC ELWA 2; facts only, nothing that
+  identifies the device).
 - Code: `src/openampere/drivers/mypv.py`, `src/openampere/consumers.py`; simulator `src/openampere/simulator.py`.
