@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import socket
+import struct
 import time
 
 from pymodbus import FramerType
@@ -169,6 +171,11 @@ class ModbusDevice:
         self._checker: asyncio.Task | None = None  # the task reading the serial number for that
         self._detect_lock = asyncio.Lock()
         self._detector: asyncio.Task | None = None  # the task detecting the device, which reads before info is set
+        # #644: after a lost connection, connect again from its local address and port, so the device drops the
+        # half-open session that still takes one of its few slots (set from the connection settings, off by default)
+        self.reclaim_slot = False
+        self._answered = False  # the device answered on the current connection
+        self._lost_address: tuple[str, int] | None = None  # local address and port of the lost connection
 
     # ---- low level -------------------------------------------------------
 
@@ -177,8 +184,11 @@ class ModbusDevice:
             # created lazily: pymodbus needs a running event loop
             # retries=0 and reconnect_delay=0: retrying and reconnecting are handled here, not by pymodbus
             # (its own background reconnect could open a second socket and block one of the few slots)
+            source = self._source_address()
             self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=self._timeout, retries=0,
-                                                reconnect_delay=0, framer=self.framer)
+                                                reconnect_delay=0, framer=self.framer, source_address=source)
+            if source is not None:
+                log.info("connecting again from the local port of the lost connection (%d)", source[1])
         if not self._client.connected:
             if not await self._client.connect():
                 self._client.close()
@@ -190,7 +200,54 @@ class ModbusDevice:
                 self._client = None
                 raise InverterBusy(f"{self._host}:{self._port} closed the connection right after connecting")
             self._identity_checked = False  # a new connection can reach another device (#567)
+            self._answered = False
         return self._client
+
+    def _source_address(self) -> tuple[str, int] | None:
+        """The local address of the lost connection (#644), if the setting is on and its port is free; otherwise
+        None, and the system picks a free port as usual."""
+        if not self.reclaim_slot or self._lost_address is None:
+            return None
+        family = socket.AF_INET6 if ":" in self._lost_address[0] else socket.AF_INET
+        try:
+            with socket.socket(family, socket.SOCK_STREAM) as probe:  # a bind that fails would only fail connect()
+                probe.bind(self._lost_address)
+        except OSError as err:
+            log.info("local port %d of the lost connection is not free (%s), using another one",
+                     self._lost_address[1], err)
+            self._lost_address = None
+            return None
+        return self._lost_address
+
+    async def close_lost(self) -> None:
+        """Close after a failure (the collector gives up on the connection). With reclaim_slot, a connection the device
+        answered on is closed abortively (SO_LINGER 0: its port is free at once, nothing waits in FIN_WAIT or
+        TIME_WAIT) and its local address kept for the next connect: a SYN from it makes the device, which may still
+        hold the old session, answer with a challenge ACK, our kernel resets the session, and the slot is free (#644).
+        Waits for a request in flight, so a write is never cut off."""
+        if not self.reclaim_slot:
+            await self.close()
+            return
+        sock = None
+        async with self._lock:
+            client = self._client
+            transport = getattr(getattr(client, "ctx", None), "transport", None) if client is not None else None
+            if transport is not None and self._answered:
+                try:
+                    sockname = transport.get_extra_info("sockname")
+                    sock = transport.get_extra_info("socket")
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+                    self._lost_address = (sockname[0], sockname[1])
+                except (OSError, AttributeError, TypeError, IndexError) as err:
+                    log.debug("cannot keep the local port of the lost connection: %s", err)
+                    sock = None
+            await self.close()
+        # asyncio closes the socket a few turns of the loop later (how many depends on the Python version); only then
+        # is the port free for the next connect
+        for _ in range(100):
+            if sock is None or sock.fileno() == -1:
+                break
+            await asyncio.sleep(0.01)
 
     async def _read(self, address: int, count: int, function: int) -> list[int]:
         """Read registers; temporary failures (typical behind a Modbus proxy) are retried right away."""
@@ -230,6 +287,7 @@ class ModbusDevice:
                 raise ModbusTransientError(f"read {address}+{count}: {err}") from err
             finally:
                 await asyncio.sleep(REQUEST_GAP_S)
+            self._answered, self._lost_address = True, None  # this connection works: nothing to reclaim
         if response.isError():
             raise _error_from_response(response, f"read {address}+{count} (fc{function})")
         if len(response.registers) != count:  # e.g. a proxy answering with a cached, shorter block
@@ -255,6 +313,7 @@ class ModbusDevice:
                 raise ModbusTransientError(f"write {reg.address}={value}: {err}") from err
             finally:
                 await asyncio.sleep(REQUEST_GAP_S)
+            self._answered, self._lost_address = True, None  # this connection works: nothing to reclaim
         if response.isError():
             # a read-only Modbus proxy typically answers with "illegal function"
             raise _error_from_response(response, f"write {reg.address}={value}")

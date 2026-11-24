@@ -474,7 +474,9 @@ class Collector:
                     log.warning("%s error: %s (retry in %.0fs)", self.label, str(err) or type(err).__name__, backoff)
                 self.connected = False
                 self.last_error = message
-                await self.driver.close()
+                # a Modbus driver may keep the local port to free the device's slot on the next connect (#644)
+                close_lost = getattr(type(self.driver), "close_lost", None)
+                await (self.driver.close_lost() if close_lost else self.driver.close())
                 # never sooner than the device stands (a Senec restarts when asked too often, #521)
                 if await self._wait_retry(max(backoff, self.min_gap())):
                     backoff = RETRY_FIRST_S  # asked by the owner: the waiting time starts over (#640)

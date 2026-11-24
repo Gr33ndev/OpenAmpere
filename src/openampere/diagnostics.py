@@ -301,7 +301,8 @@ class Diagnostics:
         report = self._pseudonymise({"created": now, "version": self._version(), "full_serial": include_serial,
                                      "device": info,
                                      "connection": {"mode": self.runtime.config.inverter.connection_mode,
-                                                    "timeout_s": self.runtime.config.inverter.timeout},
+                                                    "timeout_s": self.runtime.config.inverter.timeout,
+                                                    "reclaim_slot": self.runtime.config.inverter.reclaim_slot},
                                      "inverters": self._extras(include_serial),
                                      "checks": [asdict(c) for c in checks], "log": logs.RECENT.lines(now),
                                      "probe": self.probe.section(include_text=include_serial),
@@ -807,7 +808,9 @@ def report_markdown(report: dict) -> str:
              f"- Gerät: {device.get('manufacturer')} {device.get('model')} (Firmware {device.get('firmware')}, "
              f"Seriennr. {device.get('serial')})" if device.get("model") else "- Gerät: nicht erkannt",
              f"- Registerkarte: {device.get('register_map')}, Geräteadresse {device.get('unit')}",
-             f"- Verbindung: {report['connection']['mode']}, Zeitlimit {report['connection']['timeout_s']} s", ""]
+             f"- Verbindung: {report['connection']['mode']}, Zeitlimit {report['connection']['timeout_s']} s"
+             + (", Port der verlorenen Verbindung wiederverwenden" if report["connection"].get("reclaim_slot") else ""),
+             ""]
     attention = [c for c in report["checks"] if c["status"] == "warn"]
     if attention:
         lines += ["### Zu prüfen", ""] + [f"- **{c['title']}**: {c['summary']}" for c in attention] + ["", "### Alle Prüfungen", ""]

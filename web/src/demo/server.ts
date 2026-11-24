@@ -193,7 +193,7 @@ const settings = {
   values: {
     "inverter.driver": "auto", "inverter.host": "wechselrichter.local", "inverter.port": 502, "inverter.unit": 0,
     "inverter.register_map": "auto", "inverter.read_function": "auto", "inverter.poll_interval": 10,
-    "inverter.timeout": 3, "inverter.connection_mode": "persistent", "storage.raw_retention_days": 30,
+    "inverter.timeout": 3, "inverter.connection_mode": "persistent", "inverter.reclaim_slot": false, "storage.raw_retention_days": 30,
     "inverter.name": "Haus", "inverter.capacity_kwh": BATTERY_WH / 2000,
     inverters: [{ id: "wr2", name: "Garage", driver: "saj", host: "garage-speicher.local", port: 502, unit: 0, register_map: "auto",
       read_function: "auto", timeout: 3, connection_mode: "persistent", capacity_kwh: BATTERY_WH / 2000, own_grid: false,
