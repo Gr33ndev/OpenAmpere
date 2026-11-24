@@ -189,6 +189,8 @@
     "perPollHint": "OpenAmpere connects anew for every poll and releases access afterwards – for devices that another energy manager is also connected to.",
     "permanent": "Permanent",
     "permanentHint": "A permanent connection is the fastest. If another energy manager (e.g. the Smartbox) keeps losing its connection, choose “Per poll”.",
+    "reclaimSlot": "Free blocked access after a dropout",
+    "reclaimSlotHint": "After a dropout, for example when the network cable was unplugged for a few minutes, the inverter sometimes still considers the old connection open. Because it allows only very few connections, it then no longer lets OpenAmpere in. With this setting on, OpenAmpere reconnects from the same port as before, and the inverter gives up the old connection. This has not been tried on real devices yet. Turn it on if, after a dropout, OpenAmpere keeps reporting that the inverter allows no further connection, and let us know whether it helped.",
     "pollEvery": "Poll every",
     "pollHint": "How often the inverter is polled. 10 seconds is a good value.",
     "readMethod": "Read method (Modbus function code)",

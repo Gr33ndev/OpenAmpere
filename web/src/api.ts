@@ -182,6 +182,7 @@ export type Settings = {
     "inverter.poll_interval": number;
     "inverter.timeout": number;
     "inverter.connection_mode": "persistent" | "per_poll";
+    "inverter.reclaim_slot": boolean;
     "inverter.name": string;
     "inverter.capacity_kwh": number;
     inverters: ExtraInverter[];

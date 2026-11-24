@@ -36,11 +36,15 @@ def make_driver(config: Config):
         return None
     options = dict(timeout=inv.timeout, register_map=inv.register_map, read_function=inv.read_function)
     if inv.driver == "auto":
-        return registry.AutoDriver(inv.host, inv.port, inv.unit, **options)
-    if inv.driver not in registry.DRIVERS:
+        driver = registry.AutoDriver(inv.host, inv.port, inv.unit, **options)
+    elif inv.driver not in registry.DRIVERS:
         raise ValueError(f"unknown inverter driver {inv.driver!r}")
-    return registry.create(inv.driver, inv.host, inv.port, inv.unit, token=inv.token, cert_sha256=inv.cert_sha256,
-                           **options)
+    else:
+        driver = registry.create(inv.driver, inv.host, inv.port, inv.unit, token=inv.token,
+                                 cert_sha256=inv.cert_sha256, **options)
+    if hasattr(driver, "reclaim_slot"):  # Modbus drivers only (#644)
+        driver.reclaim_slot = inv.reclaim_slot
+    return driver
 
 
 def make_extra_driver(entry: ExtraInverter):

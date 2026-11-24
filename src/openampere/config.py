@@ -37,6 +37,9 @@ class InverterConfig:
     # "persistent": keep one connection open; "per_poll": connect for each reading and release the slot
     # again (for inverters with very few connection slots shared with another energy manager)
     connection_mode: str = "persistent"
+    # after a lost connection, connect again from its local port so the inverter drops the half-open old session that
+    # still takes one of its few slots (#644); off by default until confirmed on real devices
+    reclaim_slot: bool = False
     token: str = ""  # access token of a device that needs one (Enphase, from the owner's Enphase account)
     # SHA-256 of the certificate the token may go to (Enphase, #539): recorded by the setup test with a new token
     cert_sha256: str = ""
@@ -235,6 +238,7 @@ EDITABLE: dict[str, tuple] = {
     "inverter.poll_interval": ("float", 2, 300),
     "inverter.timeout": ("float", 1, 30),
     "inverter.connection_mode": ("choice", "persistent", "per_poll"),
+    "inverter.reclaim_slot": ("bool",),
     "inverter.token": ("secret",),
     # not secret, but kept like the token: bound to the address, never from a backup, saved only together with it
     "inverter.cert_sha256": ("secret",),

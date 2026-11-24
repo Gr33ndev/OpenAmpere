@@ -114,6 +114,7 @@ class AutoDriver:
                           read_function=read_function)
         self._driver: ModbusDevice | None = None
         self._expected_serial: str | None = None
+        self._reclaim_slot = False  # #644, handed on to the detected driver
         self._unconfirmed = 0  # new connections in a row on which a gateway reported the device as not answering
 
     @property
@@ -125,6 +126,16 @@ class AutoDriver:
         self._expected_serial = serial
         if self._driver is not None:
             self._driver.expected_serial = serial
+
+    @property
+    def reclaim_slot(self) -> bool:
+        return self._reclaim_slot
+
+    @reclaim_slot.setter
+    def reclaim_slot(self, on: bool) -> None:
+        self._reclaim_slot = on
+        if self._driver is not None:
+            self._driver.reclaim_slot = on
 
     async def connect(self) -> DeviceInfo:
         if self._driver is not None:
@@ -165,6 +176,7 @@ class AutoDriver:
         info, driver = await detect_driver(a["host"], a["port"], a["unit"], timeout=a["timeout"],
                                            register_map=a["register_map"], read_function=a["read_function"])
         driver.expected_serial = self._expected_serial
+        driver.reclaim_slot = self._reclaim_slot
         try:
             await driver.match_detected()  # detected without knowing the owner's inverter (#567)
         except BaseException:
@@ -180,6 +192,10 @@ class AutoDriver:
     async def close(self) -> None:
         if self._driver is not None:
             await self._driver.close()
+
+    async def close_lost(self) -> None:
+        if self._driver is not None:
+            await self._driver.close_lost()
 
     def __getattr__(self, name):
         if self._driver is None:

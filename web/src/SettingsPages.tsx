@@ -510,12 +510,16 @@ export function TariffPage({ onBack }: PageProps) {
 
 // ---------------------------------------------------------------------------
 
+// devices read without Modbus TCP: no connection slot to reclaim (#644)
+const NO_MODBUS = ["senec", "enphase", "rct"];
+
 export function ConnectionPage({ onBack, onNavigate }: PageProps) {
   const { settings, locked, lockedKeys, save, error, reload } = useSettings();
   const { data: status } = useResource<Status>("/api/status", 5000);
   const [pollInterval, setPollInterval] = useState(10);
   const [timeout, setTimeoutValue] = useState(3);
   const [mode, setMode] = useState<"persistent" | "per_poll">("persistent");
+  const [reclaim, setReclaim] = useState(false);
   const [registerMap, setRegisterMap] = useState("auto");
   const [readFunction, setReadFunction] = useState("auto");
   useEffect(() => {
@@ -523,6 +527,7 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
     setPollInterval(settings["inverter.poll_interval"]);
     setTimeoutValue(settings["inverter.timeout"]);
     setMode(settings["inverter.connection_mode"]);
+    setReclaim(settings["inverter.reclaim_slot"]);
     setRegisterMap(settings["inverter.register_map"]);
     setReadFunction(settings["inverter.read_function"]);
   }, [settings]);
@@ -596,13 +601,17 @@ export function ConnectionPage({ onBack, onNavigate }: PageProps) {
               <Segmented value={mode} onChange={setMode} disabled={locked("inverter.connection_mode")}
                 options={[["persistent", t("settings.connectionPage.permanent")], ["per_poll", t("settings.connectionPage.perPoll")]]} />
             </Field>
+            {!NO_MODBUS.includes(status?.device?.driver ?? settings["inverter.driver"]) && (
+              <SwitchRow label={t("settings.connectionPage.reclaimSlot")} hint={t("settings.connectionPage.reclaimSlotHint")}
+                checked={reclaim} onChange={setReclaim} disabled={locked("inverter.reclaim_slot")} />
+            )}
             <Button variant="secondary"
               disabled={pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
-                && mode === settings["inverter.connection_mode"]}
+                && mode === settings["inverter.connection_mode"] && reclaim === settings["inverter.reclaim_slot"]}
               onClick={() => save({ "inverter.poll_interval": pollInterval, "inverter.timeout": timeout,
-                "inverter.connection_mode": mode })}>{t("common.save")}</Button>
+                "inverter.connection_mode": mode, "inverter.reclaim_slot": reclaim })}>{t("common.save")}</Button>
             <Unsaved show={!(pollInterval === settings["inverter.poll_interval"] && timeout === settings["inverter.timeout"]
-              && mode === settings["inverter.connection_mode"])} />
+              && mode === settings["inverter.connection_mode"] && reclaim === settings["inverter.reclaim_slot"])} />
           </div>
 
           {(status?.device?.driver ?? settings["inverter.driver"]) === "foxess" && (
