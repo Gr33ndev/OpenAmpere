@@ -56,7 +56,9 @@ In practice every inverter driver subclasses `ModbusDevice` from `modbus.py`, wh
 - `connect()`, which calls your `_detect()` once and afterwards only returns the cached `self.info`;
 - the identity check (#567): on every new connection the serial number is read again with your `_read_serial()`
   before anything else is read or written, so nothing goes to another device that answers at the same address;
-- `disconnect()` (closes the socket but keeps `self.info`, used by the connection mode `per_poll`) and `close()`.
+- `disconnect()` (closes the socket but keeps `self.info`, used by the connection mode `per_poll`) and `close()`;
+- `close_lost()`, which the collector calls instead of `close()` after a failure: with the connection option
+  `reclaim_slot` it keeps the local port of a connection the device answered on and connects again from it (#644).
 
 Errors are classified so the rest of the app can react correctly:
 
@@ -138,7 +140,7 @@ picked one in the setup.
 4. with the connection mode `per_poll`, calls `disconnect()` after each reading.
 
 On an exception that has `transient = True`, up to `MAX_TRANSIENT` consecutive failures keep the connection. Anything
-else marks the device as disconnected, shows `friendly_error(err)` in the app, calls `close()` and retries with an
+else marks the device as disconnected, shows `friendly_error(err)` in the app, calls `close_lost()` (or `close()` for a driver without it) and retries with an
 exponential backoff (5 s up to 60 s, #640; "Connect now" in the app ends the wait). So raise `ModbusTransientError`
 for "try again" and `ModbusIllegalError` or `ConnectionError` for "this does not work".
 
