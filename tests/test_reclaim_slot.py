@@ -117,6 +117,39 @@ async def test_a_request_in_flight_is_never_cut_off():
             await driver.close()
 
 
+class LateSocket:
+    """A socket that asyncio closes some turns of the loop after close() (more on Python 3.11 than on 3.12)."""
+
+    def __init__(self):
+        self.closed = False
+
+    def setsockopt(self, *args):
+        pass
+
+    def fileno(self):
+        return -1 if self.closed else 7
+
+
+class LateClient:
+    def __init__(self, sock):
+        transport = type("Transport", (), {"get_extra_info": lambda _, key: {
+            "sockname": ("127.0.0.1", 40000), "socket": sock}[key]})()
+        self.ctx = type("Ctx", (), {"transport": transport})()
+        self.sock = sock
+
+    def close(self):
+        asyncio.get_running_loop().call_later(0.05, setattr, self.sock, "closed", True)
+
+
+async def test_returns_only_once_the_socket_is_closed_and_its_port_free():
+    driver = registry.create("saj", "127.0.0.1", 502, 1, timeout=3)
+    driver.reclaim_slot, driver._answered = True, True
+    sock = LateSocket()
+    driver._client = LateClient(sock)
+    await driver.close_lost()
+    assert sock.closed and driver._lost_address == ("127.0.0.1", 40000)
+
+
 async def test_the_automatic_driver_hands_the_setting_on():
     sim = SajSimulatedInverter(max_connections=3)
     server, port = await serve(sim)
