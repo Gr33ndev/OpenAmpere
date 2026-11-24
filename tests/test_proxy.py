@@ -106,7 +106,7 @@ async def test_collector_rides_out_single_hiccups(tmp_path):
     async with server:
         collector = Collector(FoxessDriver("127.0.0.1", port, 247), Storage(tmp_path / "t.db"), 0.2, 30)
         collector.start()
-        await wait_for(lambda: collector.latest, "first reading")
+        await wait_for(lambda: collector.latest, "first reading", cleanup=collector.stop)
         sim.fault_rate = 1.0
         await asyncio.sleep(0.45)  # ~2 failed polls: below the tolerance
         assert collector.connected
@@ -132,7 +132,7 @@ async def test_stop_is_not_blocked_by_retries(tmp_path):
     async with server:
         collector = Collector(FoxessDriver("127.0.0.1", port, 247), Storage(tmp_path / "t.db"), 0.2, 30)
         collector.start()
-        await wait_for(lambda: collector.latest, "first reading")
+        await wait_for(lambda: collector.latest, "first reading", cleanup=collector.stop)
         sim.fault_rate = 1.0  # collector is now busy retrying
         await asyncio.sleep(0.5)
         loop = asyncio.get_running_loop()

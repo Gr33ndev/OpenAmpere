@@ -29,5 +29,5 @@ async def wait_for(condition: Callable[[], object], what: str, *, timeout: float
         if loop.time() > deadline:
             if cleanup is not None:
                 await cleanup()
-            pytest.fail(f"{what}: not within {timeout:.0f} s")
+            pytest.fail(f"{what}: not within {timeout:g} s")
         await sleep(0.1)

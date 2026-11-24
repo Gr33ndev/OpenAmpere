@@ -18,6 +18,6 @@ async def test_fails_naming_what_did_not_happen_and_cleans_up_first():
 
     async def cleanup():
         cleaned.append(True)
-    with pytest.raises(pytest.fail.Exception, match="first reading: not within 0 s"):
+    with pytest.raises(pytest.fail.Exception, match=r"first reading: not within 0\.2 s"):
         await wait_for(lambda: False, "first reading", timeout=0.2, cleanup=cleanup)
     assert cleaned == [True]
