@@ -813,7 +813,7 @@
         "model": "my-PV; an AC ELWA 2 on one system",
         "interface": "Modbus TCP",
         "openampere": "driver `mypv` ([mypv/elwa.md](../mypv/elwa.md))",
-        "status": "derived; confirmed on one system (an AC ELWA 2 controlled by the previous smartbox)",
+        "status": "derived; confirmed on one system (an AC ELWA 2 whose Modbus connection the previous smartbox held)",
         "source": "Photovoltaikforum on the Ampere Storage Pro (as above); owner report in [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660)"
       }
     }

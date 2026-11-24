@@ -102,7 +102,7 @@ Around the storage system:
 | from 2024-08 | "Ampere.Offgrid" | three-phase 63 A transfer switch for backup power; maker not stated | none | nothing to read | documented | EKD datasheet "Ampere.Offgrid", 2024-08 |
 | about 2022 – 2026 | "Ampere.SolarPro" | PV modules of SOLYCO Solar AG | none | nothing to read | documented (maker), derived (period) | EKD datasheets "Ampere.SolarPro" |
 | from 2025 | heat pumps of partner makers | Aira, Defro, Galvany, S&K, WKD, Heat Hero | SG Ready | SG Ready through a relay ([consumers.md](consumers.md)). Not yet confirmed | documented (partners), derived (period) | [ekd-solar.de/waermepumpe](https://www.ekd-solar.de/waermepumpe/) |
-| – | heating rod | my-PV; an AC ELWA 2 on one system | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)). Monitoring confirmed on one AC ELWA 2; control not yet confirmed | derived; confirmed on one system (an AC ELWA 2 controlled by the previous smartbox) | Photovoltaikforum on the Ampere Storage Pro (as above); owner report in [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
+| – | heating rod | my-PV; an AC ELWA 2 on one system | Modbus TCP | driver `mypv` ([mypv/elwa.md](../mypv/elwa.md)). Monitoring confirmed on one AC ELWA 2; control not yet confirmed | derived; confirmed on one system (an AC ELWA 2 whose Modbus connection the previous smartbox held) | Photovoltaikforum on the Ampere Storage Pro (as above); owner report in [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
 
 <!-- /generated:ekd -->
 

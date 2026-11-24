@@ -68,7 +68,7 @@ and the serial number (0x1016–0x1031) are not read at all. Only function code 
 | 0x101C–0x101D | RFID card that started the session | U32 | R FC03; removed from the report, only "set / not set" | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
 | 0x101E–0x1021 | Model code | ASCII, 4 registers | R FC03; kept in the report | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x1022–0x1031 | Serial number | ASCII | not read | documented | FoxESS EV Charger Modbus TCP protocol V1.6 |
-| 0x3000 | Work mode: 0 controlled (start through the app, a card or a Modbus controller), 1 plug and charge (charges when plugged in), 2 locked | U16 | R FC03, W FC16 | confirmed | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
+| 0x3000 | Work mode: 0 controlled (start through the app, a card or a Modbus controller), 1 plug and charge (charges when plugged in), 2 locked | U16 | R FC03, W FC16 | confirmed; OpenAmpere's write of 0 held on one device | FoxESS EV Charger Modbus TCP protocol V1.6; plausible on one device: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431); write: owner report, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621) |
 | 0x3001 | Maximum charging current (the current setpoint); outside a charge the charger resets it (behaviour below; whether at once, so that a read-back right after the write already shows the reset value, is open), so OpenAmpere does not take it as the set current and writes it again as soon as the car charges; matched the maximum current (0x1013) on one idle device | U16, ×0.1 A | R FC03, W FC16 | documented; read plausible on one device | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x3002 | Maximum charging power (the power setpoint); without a phase switch box it also selects the phases: below 1.4 kW paused, from 1.4 kW one phase, from 4.2 kW three phases. Matched the maximum power (0x1011) on one idle device | U16, ×0.1 kW | R FC03, W FC16 | documented; read plausible on one device | FoxESS EV Charger Modbus TCP protocol V1.6; owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
 | 0x3003 | Allowed charging time; read as 0xFFFF (probably unset) on one device, not used by OpenAmpere | U16, minutes | R FC03, W FC16 | documented | FoxESS EV Charger Modbus TCP protocol V1.6; reading: owner's diagnostics report, [#431](https://github.com/Gr33ndev/OpenAmpere/issues/431) |
@@ -86,9 +86,11 @@ and the serial number (0x1016–0x1031) are not read at all. Only function code 
 The registers marked confirmed gave plausible values in the check on one three-phase charger of an EKD system, idle
 with no car plugged in ([#431](https://github.com/Gr33ndev/OpenAmpere/issues/431)).
 According to the document, read/write registers are written with function code 16 and write-only registers with
-function code 6. OpenAmpere has not written any of them yet; evcc's driver (since July 2026) writes them on real
-devices ([evcc-io/evcc#31412](https://github.com/evcc-io/evcc/pull/31412)).
-Values while charging and single-phase models are not confirmed yet.
+function code 6. Of them OpenAmpere has written only the work mode 0x3000, and the write held on one charger
+([discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)); evcc's driver (since July 2026) writes
+others on real devices ([evcc-io/evcc#31412](https://github.com/evcc-io/evcc/pull/31412)).
+On a second three-phase charger of an EKD system OpenAmpere and evcc showed a running charge (about 4.8 kW)
+([discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)); single-phase models are not confirmed yet.
 
 ## Behaviour
 
