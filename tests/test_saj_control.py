@@ -22,6 +22,7 @@ from openampere.simulator import SajSimulatedInverter
 from openampere.storage import Storage
 
 from test_detection import serve
+from waiting import TIMEOUT_S, wait_for
 
 MONDAY_10 = datetime(2026, 10, 12, 10, 0)  # a Monday
 SLOT = saj.CHARGE_SLOT_ADDRESS
@@ -39,25 +40,20 @@ async def driver_for(sim):
     return server, driver
 
 
-CONNECT_TIMEOUT_S = 60  # the detection takes a few seconds locally and several times that on a busy CI runner (#668)
-
-
-async def connected_runtime(tmp_path, sim, timeout: float = CONNECT_TIMEOUT_S):
+async def connected_runtime(tmp_path, sim, timeout: float = TIMEOUT_S):
     """A runtime connected to the simulator with a first reading. Fails here, with the collector stopped, when it does
     not connect in time: a later NotConnected in the test would look like a bug in the control (#668)."""
     server, port = await serve(sim)
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2,
                                    "control.enabled": True, "control.dry_run": False})
-    deadline = asyncio.get_running_loop().time() + timeout
-    while not (runtime.collector.connected and runtime.collector.latest):
-        if asyncio.get_running_loop().time() > deadline:
-            await runtime.collector.stop()
-            runtime.storage.close()
-            server.close()
-            await server.wait_closed()
-            pytest.fail(f"no connection to the simulator within {timeout:.0f} s: {runtime.collector.last_error}")
-        await asyncio.sleep(0.1)
+    async def cleanup():
+        await runtime.collector.stop()
+        runtime.storage.close()
+        server.close()
+        await server.wait_closed()
+    await wait_for(lambda: runtime.collector.connected and runtime.collector.latest, "no connection to the simulator",
+                   timeout=timeout, cleanup=cleanup)
     return server, runtime
 
 

@@ -19,6 +19,7 @@ from openampere.drivers.senec.driver import LIVE, MAX_REQUEST_CHARS, SenecDriver
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedSenec
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def serve(sim):
@@ -152,10 +153,7 @@ async def test_a_failed_read_is_one_request_and_never_sooner_than_30_seconds_aga
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "senec", "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await real_sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading", sleep=real_sleep)
             sleeps.clear()
             sim.session = "sim2"  # the device restarted: reads fail until the reconnect asks for FACTORY again
             before = len(sim.requests)
@@ -290,10 +288,7 @@ async def test_polled_at_most_every_30_seconds_and_reported_without_the_device_i
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.driver": "senec", "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.device.driver == "senec"
             assert runtime.collector.poll_interval() == 30.0  # a Senec restarts when asked too often
             requests_before_report = len(sim.requests)

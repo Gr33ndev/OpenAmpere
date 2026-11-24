@@ -14,6 +14,7 @@ from openampere.drivers.foxess.registers import H3_LEGACY, H3_NEW
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedInverter
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def start(register_map=H3_NEW, model="H3-10.0-Smart"):
@@ -27,10 +28,7 @@ async def start(register_map=H3_NEW, model="H3-10.0-Smart"):
 async def connected_runtime(tmp_path, port):
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2})
-    for _ in range(100):
-        if runtime.collector.connected:
-            break
-        await asyncio.sleep(0.1)
+    await wait_for(lambda: runtime.collector.connected, "connection", cleanup=runtime.collector.stop)
     return runtime
 
 

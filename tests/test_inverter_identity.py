@@ -18,6 +18,8 @@ from openampere.drivers.registry import AutoDriver
 from openampere.drivers.saj.driver import SajDriver
 from openampere.simulator import SajSimulatedInverter, SimulatedInverter
 from openampere.storage import Storage
+import waiting
+from waiting import TIMEOUT_S
 
 OWN, OTHER = "60BH000000000001", "60BH000000000002"
 
@@ -109,12 +111,8 @@ async def test_a_device_without_serial_number_is_not_checked():
             await driver.close()
 
 
-async def wait_for(condition, seconds=10.0):
-    for _ in range(int(seconds / 0.05)):
-        if condition():
-            return
-        await asyncio.sleep(0.05)
-    raise AssertionError("timed out")
+async def wait_for(condition, seconds=TIMEOUT_S):
+    await waiting.wait_for(condition, "condition", timeout=seconds)
 
 
 async def test_collector_stores_nothing_from_another_device_until_the_owner_accepts_it(tmp_path):

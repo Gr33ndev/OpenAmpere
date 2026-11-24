@@ -10,6 +10,7 @@ from openampere.runtime import Runtime
 from openampere.storage import QUARTER, Storage
 
 from test_settings_control import start_sim, wait_connected
+from waiting import wait_for
 
 
 async def connected(tmp_path):
@@ -277,12 +278,10 @@ async def battery(runtime, sim, soc, power_w):
     """Sets what the simulated inverter reports and waits until OpenAmpere has read it."""
     sim.energy.soc, sim.energy.battery_w = soc, power_w
     sim.update_registers()
-    for _ in range(100):
+    def updated():
         snap = runtime.collector.latest
-        if snap and snap.battery_soc == pytest.approx(soc, abs=0.5) and snap.battery_power == pytest.approx(power_w, abs=50):
-            return
-        await asyncio.sleep(0.1)
-    raise AssertionError(f"reading not updated: {runtime.collector.latest}")
+        return snap and snap.battery_soc == pytest.approx(soc, abs=0.5) and snap.battery_power == pytest.approx(power_w, abs=50)
+    await wait_for(updated, f"reading with {soc} % and {power_w} W")
 
 
 async def charging_session(tmp_path, max_soc=100):

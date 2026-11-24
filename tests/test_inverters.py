@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 """More than one inverter in one installation (#619): settings, combined values, battery settings per inverter."""
 
-import asyncio
 import time
 from dataclasses import asdict
 
@@ -20,6 +19,7 @@ from openampere.simulator import SajSimulatedInverter
 from openampere.storage import Storage
 
 from test_detection import serve
+from waiting import wait_for
 
 
 class Extra:
@@ -233,11 +233,10 @@ async def two_inverters(tmp_path, *, control: bool = True):
                                    "inverter.name": "Haus", "control.enabled": control, "control.dry_run": False,
                                    "inverters": [{"id": "wr2", "name": "Garage", "host": "127.0.0.1", "port": port2,
                                                   "driver": "saj"}]})
-    for _ in range(150):
+    def both_read():
         latest = runtime.collector.latest
-        if latest and len(latest.inverters) == 2 and latest.inverters[1]["connected"] and latest.pv_power is not None:
-            break
-        await asyncio.sleep(0.1)
+        return latest and len(latest.inverters) == 2 and latest.inverters[1]["connected"] and latest.pv_power is not None
+    await wait_for(both_read, "reading of both inverters", cleanup=runtime.collector.stop)
     return (first, second), (server1, server2), runtime
 
 
@@ -286,10 +285,7 @@ async def test_removing_a_further_inverter_stops_it(tmp_path):
             extra = runtime.extra("wr2")
             await runtime.update_settings({"inverters": []})
             assert runtime.collector.extras == [] and extra._task is None
-            for _ in range(50):
-                if runtime.collector.latest.inverters == []:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest.inverters == [], "second inverter gone from the reading")
             assert runtime.collector.latest.inverters == []
         finally:
             await runtime.collector.stop()
@@ -610,10 +606,7 @@ async def test_a_charge_goes_on_when_the_inverter_is_read_anew(tmp_path):
                            "window_end": 0, "target_soc": 100, "power_w": 4000})
             await charging.tick()
             await runtime.update_settings({"inverter.poll_interval": 3})
-            for _ in range(100):
-                if runtime.extra("wr2").connected:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.extra("wr2").connected, "second inverter connected")
             await charging.tick()
             chargers = charging.chargers()
             assert chargers[1].source is runtime.extra("wr2") and chargers[1].active

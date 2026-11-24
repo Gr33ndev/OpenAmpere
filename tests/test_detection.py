@@ -14,6 +14,7 @@ from openampere.drivers.modbus import DeviceUnreachable
 from openampere.runtime import Runtime
 from openampere.simulator import SajSimulatedInverter, SimulatedInverter
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def serve(sim):
@@ -83,10 +84,7 @@ async def test_runtime_auto_driver_with_an_saj_as2_stays_read_only(tmp_path):
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             assert runtime.collector.device.driver == "saj" and not runtime.collector.device.supports_control
             result = await discovery.test_connection(runtime, "127.0.0.1", port, 0)
             assert result["ok"] and result["device"]["driver"] == "saj"
@@ -136,10 +134,7 @@ async def test_saj_diagnostics_shows_both_sets_of_limits(tmp_path):
         try:
             await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port,
                                            "inverter.poll_interval": 2})
-            for _ in range(150):
-                if runtime.collector.latest:
-                    break
-                await asyncio.sleep(0.1)
+            await wait_for(lambda: runtime.collector.latest, "first reading")
             checks = {c["id"]: c for c in (await Diagnostics(runtime).run())["checks"]}
         finally:
             await runtime.collector.stop()

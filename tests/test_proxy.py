@@ -12,6 +12,7 @@ from openampere.drivers.foxess.driver import FoxessDriver, ModbusIllegalError, M
 from openampere.drivers.foxess.registers import H3_NEW
 from openampere.simulator import SimulatedInverter
 from openampere.storage import Storage
+from waiting import wait_for
 
 
 async def start_sim(**kwargs):
@@ -105,10 +106,7 @@ async def test_collector_rides_out_single_hiccups(tmp_path):
     async with server:
         collector = Collector(FoxessDriver("127.0.0.1", port, 247), Storage(tmp_path / "t.db"), 0.2, 30)
         collector.start()
-        for _ in range(50):
-            if collector.latest:
-                break
-            await asyncio.sleep(0.1)
+        await wait_for(lambda: collector.latest, "first reading")
         sim.fault_rate = 1.0
         await asyncio.sleep(0.45)  # ~2 failed polls: below the tolerance
         assert collector.connected
@@ -134,10 +132,7 @@ async def test_stop_is_not_blocked_by_retries(tmp_path):
     async with server:
         collector = Collector(FoxessDriver("127.0.0.1", port, 247), Storage(tmp_path / "t.db"), 0.2, 30)
         collector.start()
-        for _ in range(60):
-            if collector.latest:
-                break
-            await asyncio.sleep(0.1)
+        await wait_for(lambda: collector.latest, "first reading")
         sim.fault_rate = 1.0  # collector is now busy retrying
         await asyncio.sleep(0.5)
         loop = asyncio.get_running_loop()

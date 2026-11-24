@@ -13,6 +13,7 @@ from openampere.drivers.foxess.registers import H3_NEW
 from openampere.runtime import Runtime
 from openampere.simulator import SimulatedInverter
 from openampere.storage import Storage
+from waiting import TIMEOUT_S
 
 
 def test_precedence_and_locking(monkeypatch):
@@ -38,8 +39,8 @@ async def start_sim():
     return sim, server, server.sockets[0].getsockname()[1]
 
 
-async def wait_connected(runtime, seconds=10):
-    for _ in range(seconds * 10):
+async def wait_connected(runtime, seconds=TIMEOUT_S):
+    for _ in range(int(seconds * 10)):
         if runtime.collector.connected and runtime.collector.latest:
             return
         await asyncio.sleep(0.1)
