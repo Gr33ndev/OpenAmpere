@@ -228,19 +228,26 @@ class ModbusDevice:
         if not self.reclaim_slot:
             await self.close()
             return
+        sock = None
         async with self._lock:
             client = self._client
             transport = getattr(getattr(client, "ctx", None), "transport", None) if client is not None else None
             if transport is not None and self._answered:
                 try:
                     sockname = transport.get_extra_info("sockname")
-                    transport.get_extra_info("socket").setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
-                                                                  struct.pack("ii", 1, 0))
+                    sock = transport.get_extra_info("socket")
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
                     self._lost_address = (sockname[0], sockname[1])
                 except (OSError, AttributeError, TypeError, IndexError) as err:
                     log.debug("cannot keep the local port of the lost connection: %s", err)
+                    sock = None
             await self.close()
-        await asyncio.sleep(0)  # asyncio closes the socket on the next turn of the loop; only then is the port free
+        # asyncio closes the socket a few turns of the loop later (how many depends on the Python version); only then
+        # is the port free for the next connect
+        for _ in range(100):
+            if sock is None or sock.fileno() == -1:
+                break
+            await asyncio.sleep(0.01)
 
     async def _read(self, address: int, count: int, function: int) -> list[int]:
         """Read registers; temporary failures (typical behind a Modbus proxy) are retried right away."""
