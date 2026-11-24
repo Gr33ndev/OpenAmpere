@@ -34,8 +34,9 @@ three-phase charger of an EKD system, [#431](https://github.com/Gr33ndev/OpenAmp
   writing (seen on one charger: on at a lower power, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621)).
 - The register addresses come from FoxESS's protocol document V1.6, which FoxESS support gives to owners and an owner
   posted in a public evcc discussion; it is marked "all rights reserved", so they are used as facts only. The
-  write registers (work mode, current and power setpoints, start/stop) are documented there, not yet tested by
-  OpenAmpere ([#463](https://github.com/Gr33ndev/OpenAmpere/issues/463)).
+  write registers (work mode, current and power setpoints, start/stop) are documented there. Of them OpenAmpere has
+  tested only the work mode on a real device (the write held on one charger, [discussion #621](https://github.com/Gr33ndev/OpenAmpere/discussions/621));
+  the others are not yet tested by OpenAmpere ([#463](https://github.com/Gr33ndev/OpenAmpere/issues/463)).
 
 ## Registers
 

@@ -26,7 +26,7 @@ control not yet
 | Register | Meaning | Type, scale, sign | R/W | Status | Source |
 |---|---|---|---|---|---|
 | 1000 | Power setpoint | U16, W | R/W (holding, FC03 read, FC06 write) | documented | my-PV Modbus TCP description; [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238), [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
-| 1001 | Water temperature | S16 (two's complement), 0.1 °C, e.g. 0xFFF6 = −1.0 °C | R | documented | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
+| 1001 | Water temperature | S16 (two's complement), 0.1 °C, e.g. 0xFFF6 = −1.0 °C | R | documented; read on one AC ELWA 2 (one of its two sensors, see Behaviour) | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241); [#660](https://github.com/Gr33ndev/OpenAmpere/issues/660) |
 | 1002 | Target temperature | S16 (two's complement), 0.1 °C | R | documented | my-PV Modbus TCP description; [#241](https://github.com/Gr33ndev/OpenAmpere/issues/241) |
 | 1003 | Status, see below | U16, code | R | documented | my-PV Modbus TCP description; [#238](https://github.com/Gr33ndev/OpenAmpere/issues/238) |
 
