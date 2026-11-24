@@ -39,16 +39,33 @@ async def driver_for(sim):
     return server, driver
 
 
-async def connected_runtime(tmp_path, sim):
+CONNECT_TIMEOUT_S = 60  # the detection takes a few seconds locally and several times that on a busy CI runner (#668)
+
+
+async def connected_runtime(tmp_path, sim, timeout: float = CONNECT_TIMEOUT_S):
+    """A runtime connected to the simulator with a first reading. Fails here, with the collector stopped, when it does
+    not connect in time: a later NotConnected in the test would look like a bug in the control (#668)."""
     server, port = await serve(sim)
     runtime = Runtime({}, Storage(tmp_path / "t.db"))
     await runtime.update_settings({"inverter.host": "127.0.0.1", "inverter.port": port, "inverter.poll_interval": 2,
                                    "control.enabled": True, "control.dry_run": False})
-    for _ in range(150):
-        if runtime.collector.latest:
-            break
+    deadline = asyncio.get_running_loop().time() + timeout
+    while not (runtime.collector.connected and runtime.collector.latest):
+        if asyncio.get_running_loop().time() > deadline:
+            await runtime.collector.stop()
+            runtime.storage.close()
+            server.close()
+            await server.wait_closed()
+            pytest.fail(f"no connection to the simulator within {timeout:.0f} s: {runtime.collector.last_error}")
         await asyncio.sleep(0.1)
     return server, runtime
+
+
+async def test_the_helper_fails_at_once_without_a_connection(tmp_path):
+    """#668: it used to return unconnected after 15 s, and the test failed later with NotConnected."""
+    sim = SajSimulatedInverter(max_connections=0)  # refuses every connection
+    with pytest.raises(pytest.fail.Exception, match="no connection to the simulator"):
+        await connected_runtime(tmp_path, sim, timeout=1)
 
 
 def slot_words(sim) -> list[int]:
